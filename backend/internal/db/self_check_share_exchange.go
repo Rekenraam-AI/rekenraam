@@ -9,11 +9,13 @@ import (
 	"rekenraam/backend/internal/exact"
 )
 
-// SelfCheckShareExchange is one share exchange (#177) or spin-off (#180)
-// folded exactly: whether every link's destination holds its source quantity
-// times the recorded ratio, and the link totals beside what the primary
-// journal posted to the holding and commodity_trading in each instrument. A
-// spin-off posts nothing in the parent.
+// SelfCheckShareExchange is one share exchange (#177), cash-and-stock merger
+// (#181) or spin-off (#180) folded exactly: whether every link's destination
+// holds its source quantity times the recorded ratio, and the link totals
+// beside what the primary journal posted to the holding and commodity_trading
+// in each instrument. A spin-off posts nothing in the parent. A merger's cash
+// legs, in its decision's currency, are checked against the decision by the
+// disposal clearing checks, not here.
 type SelfCheckShareExchange struct {
 	OperationID  int64
 	SpinOff      bool
@@ -64,7 +66,7 @@ func (r *SelfCheckRepository) SelfCheckShareExchanges(ctx context.Context, trans
 			AND f.transfer_kind = CASE o.operation_kind WHEN 'spin_off' THEN 'spin_off' ELSE 'exchange' END
 		LEFT JOIN investment_transfer_lot_links x ON x.operation_id = f.operation_id
 		LEFT JOIN investment_lots d ON d.id = x.destination_lot_id
-		WHERE o.book_id = ? AND o.operation_kind IN ('share_exchange', 'spin_off')
+		WHERE o.book_id = ? AND o.operation_kind IN ('share_exchange', 'cash_and_stock_merger', 'spin_off')
 		ORDER BY o.id, x.link_seq`, bookID)
 	if err != nil {
 		return nil, fmt.Errorf("read self-check share exchange links: %w", err)
@@ -114,6 +116,9 @@ func (r *SelfCheckRepository) SelfCheckShareExchanges(ctx context.Context, trans
 		JOIN posting_versions pv ON pv.transaction_version_id = link.transaction_version_id
 		JOIN accounts a ON a.id = pv.account_id
 		WHERE f.book_id = ? AND f.transfer_kind IN ('exchange', 'spin_off')
+			AND NOT (f.cash_basis_fraction_value IS NOT NULL AND pv.commodity_id NOT IN (f.commodity_id, f.destination_commodity_id)
+				AND EXISTS (SELECT 1 FROM investment_disposal_decisions d
+					WHERE d.operation_id = f.operation_id AND d.cost_commodity_id = pv.commodity_id))
 		ORDER BY f.operation_id`, bookID)
 	if err != nil {
 		return nil, fmt.Errorf("read self-check share exchange postings: %w", err)

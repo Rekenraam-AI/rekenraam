@@ -359,6 +359,10 @@ paths:
     $ref: "./paths/investments-share-exchange.yaml"
   /api/v1/investments/share-exchanges/preview:
     $ref: "./paths/investments-share-exchange-preview.yaml"
+  /api/v1/investments/cash-and-stock-mergers:
+    $ref: "./paths/investments-cash-and-stock-merger.yaml"
+  /api/v1/investments/cash-and-stock-mergers/preview:
+    $ref: "./paths/investments-cash-and-stock-merger-preview.yaml"
   /api/v1/investments/spin-offs:
     $ref: "./paths/investments-spin-off.yaml"
   /api/v1/investments/spin-offs/preview:
@@ -1218,6 +1222,18 @@ components:
       $ref: "./components/schemas/investments.yaml#/InvestmentLotOrigin"
     ShareExchangePreviewResponse:
       $ref: "./components/schemas/investments.yaml#/ShareExchangePreviewResponse"
+    CashStockMergerRequest:
+      $ref: "./components/schemas/investments.yaml#/CashStockMergerRequest"
+    CashStockMergerLink:
+      $ref: "./components/schemas/investments.yaml#/CashStockMergerLink"
+    CashStockMergerTotal:
+      $ref: "./components/schemas/investments.yaml#/CashStockMergerTotal"
+    CashStockMergerPlan:
+      $ref: "./components/schemas/investments.yaml#/CashStockMergerPlan"
+    CashStockMergerPreviewResponse:
+      $ref: "./components/schemas/investments.yaml#/CashStockMergerPreviewResponse"
+    CashStockMergerResponse:
+      $ref: "./components/schemas/investments.yaml#/CashStockMergerResponse"
     SpinOffRequest:
       $ref: "./components/schemas/investments.yaml#/SpinOffRequest"
     SpinOffLink:

@@ -311,6 +311,16 @@ non-trivial diff (yours or reviewed):
     spin-off. Key the source event on the transfer kind. Named regressions:
     `TestSpinOffUpstreamBuyReplacementRevisesBothSides`,
     `TestSpinOffCarriesUnknownBasisAndResolvesThroughReplay`.
+33. **Every disposal decision assumed to dispose units** — a cash-and-stock
+    merger's cash decision (#181) has quantity 0, and so do its allocations
+    and its `disposal` lot events: it realizes basis, the units leave through
+    the exchange. A reader or validator that requires `quantity > 0` (replay
+    persistence, the allocation-set and lot-reconciliation self-checks) or
+    that replays every decision as an ordinary `disposal` intent breaks it.
+    Exclude the merger's decision from the disposal intents (its exchange
+    group replays it) and allow zero only for that kind. Named regressions:
+    `TestBuyCorrectionBeforeCashStockMergerRevisesRealizedAndCarriedBasis`,
+    `TestCashStockMergerUnknownBasisLeavesResultUnresolved`.
 
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.

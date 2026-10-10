@@ -469,13 +469,14 @@ func transactionVersionSelect(source string, extraConditions string) string {
 			tv.change_reason,
 			-- A stable code for journals the system posts without user text
 			-- (T-136; an outbound transfer's basis bridge too), or that a
-			-- share exchange (#178) or spin-off (#180) posts; the frontend localizes it.
+			-- share exchange (#178), cash-and-stock merger (#181) or spin-off (#180)
+			-- posts; the frontend localizes it.
 			COALESCE((SELECT link.role FROM investment_operation_journal_links link
 				WHERE link.transaction_version_id = tv.id AND link.role IN ('split_adjustment', 'transfer_bridge')),
 				(SELECT op.operation_kind FROM investment_operation_journal_links link
 					JOIN investment_operations op ON op.id = link.operation_id
 					WHERE link.transaction_version_id = tv.id AND link.role = 'primary'
-						AND op.operation_kind IN ('share_exchange', 'spin_off')), '')
+						AND op.operation_kind IN ('share_exchange', 'cash_and_stock_merger', 'spin_off')), '')
 		FROM transactions t
 		JOIN ` + source + ` tv ON tv.transaction_id = t.id
 	` + extraConditions
@@ -509,13 +510,14 @@ func accountRegisterSelect(extraConditions string) string {
 			tv.change_reason,
 			-- A stable code for journals the system posts without user text
 			-- (T-136; an outbound transfer's basis bridge too), or that a
-			-- share exchange (#178) or spin-off (#180) posts; the frontend localizes it.
+			-- share exchange (#178), cash-and-stock merger (#181) or spin-off (#180)
+			-- posts; the frontend localizes it.
 			COALESCE((SELECT link.role FROM investment_operation_journal_links link
 				WHERE link.transaction_version_id = tv.id AND link.role IN ('split_adjustment', 'transfer_bridge')),
 				(SELECT op.operation_kind FROM investment_operation_journal_links link
 					JOIN investment_operations op ON op.id = link.operation_id
 					WHERE link.transaction_version_id = tv.id AND link.role = 'primary'
-						AND op.operation_kind IN ('share_exchange', 'spin_off')), ''),
+						AND op.operation_kind IN ('share_exchange', 'cash_and_stock_merger', 'spin_off')), ''),
 			je.id,
 			je.book_id,
 			je.transaction_version_id,

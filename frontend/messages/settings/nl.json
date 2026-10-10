@@ -1379,6 +1379,7 @@
   "transactions_investment_exchange_same_holding": "De nieuwe eenheden bleven op {name}.",
   "transactions_investment_exchange_holdings": "Van {source} naar {destination}.",
   "transactions_system_label_share_exchange": "Aandelenomwisseling",
+  "transactions_system_label_cash_and_stock_merger": "Fusie in aandelen en contanten",
   "investments_record_spin_off": "Afsplitsing vastleggen",
   "investments_spin_off_title": "Een afsplitsing vastleggen",
   "investments_spin_off_help": "Voor een afsplitsing (spin-off). U houdt de moederaandelen en ontvangt aandelen van een nieuw instrument. Een deel van de kostprijs van elke lot gaat naar de nieuwe aandelen, volgens het percentage dat de uitgevende instelling publiceert. Er wordt geen winst gerealiseerd.",

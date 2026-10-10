@@ -61,13 +61,20 @@ func persistInvestmentReplayPositionTx(ctx context.Context, tx *sql.Tx, bookID, 
 		lotIDs[lot.LotID] = true
 	}
 	decisions := make(map[int64]InvestmentReplayIntent)
+	// A cash-and-stock merger's cash decision disposes no units (#181).
+	basisOnly := make(map[int64]bool)
 	for _, intent := range intents {
-		if intent.Kind == "disposal" {
-			if intent.DecisionID <= 0 || decisions[intent.DecisionID].DecisionID != 0 {
-				return fmt.Errorf("%w: duplicate replay disposal intent", ErrInvalidDisposalParams)
-			}
-			decisions[intent.DecisionID] = intent
+		if intent.Kind == "exchange_out" && intent.MergerDecisionID > 0 {
+			intent = InvestmentReplayIntent{DecisionID: intent.MergerDecisionID, QuantityValue: exact.New(0),
+				AmountValue: intent.MergerCashValue, AmountScale: intent.MergerCashScale}
+			basisOnly[intent.DecisionID] = true
+		} else if intent.Kind != "disposal" {
+			continue
 		}
+		if intent.DecisionID <= 0 || decisions[intent.DecisionID].DecisionID != 0 {
+			return fmt.Errorf("%w: duplicate replay disposal intent", ErrInvalidDisposalParams)
+		}
+		decisions[intent.DecisionID] = intent
 	}
 	if len(decisions) != len(projection.Disposals) {
 		return fmt.Errorf("%w: replay disposal output does not cover its intents", ErrInvalidDisposalParams)
@@ -82,8 +89,8 @@ func persistInvestmentReplayPositionTx(ctx context.Context, tx *sql.Tx, bookID, 
 		quantity, proceeds := exact.NewScaledInt(), exact.NewScaledInt()
 		allocationBasis := make([]disposalAllocationBasis, len(disposal.Allocations))
 		for index, allocation := range disposal.Allocations {
-			if !lotIDs[allocation.LotID] || allocation.QuantityValue.Sign() <= 0 ||
-				allocation.CostBasisValue < 0 {
+			if !lotIDs[allocation.LotID] || allocation.QuantityValue.Sign() < 0 ||
+				(allocation.QuantityValue.Sign() == 0) != basisOnly[disposal.DecisionID] || allocation.CostBasisValue < 0 {
 				return fmt.Errorf("%w: replay allocation is invalid", ErrInvalidDisposalParams)
 			}
 			quantity.AddCoefficient(allocation.QuantityValue, allocation.QuantityScale)

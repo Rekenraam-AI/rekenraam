@@ -16446,6 +16446,193 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/investments/cash-and-stock-mergers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a cash-and-stock merger of one holding
+         * @description A merger paying cash with the new shares (#181). Every long lot of commodity_id open in holding_account_id on effective_on becomes one lot of destination_commodity_id in the destination holding, holding its remaining quantity times ratio_numerator/ratio_denominator exactly, as for a share exchange. Before the units move, the cash recovers the elected share of each lot's remaining basis: cash_basis_fraction (0 to 1 inclusive) times that basis, truncated at the position's allocation scale. The new lot carries the rest, so basis is conserved per lot; an unknown lot stays unknown on both legs. The cash is one long disposal decision of quantity 0 on the old position, with the cash as proceeds shared across the lots by old units, so its result is cash minus the realized basis. The journal posts the four security legs on effective_on and the cash (cash account +C, commodity_trading −C) on payable_on, never earlier. The cash currency must be every exchanged lot's cost currency. A merger is admitted in date order only; one dated behind a later depletion of either holding is INVESTMENT_EVENT_OUT_OF_ORDER. Fractions the issuer settles in cash are a separate cash in lieu linked to this transaction.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CSRF-Token": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CashStockMergerRequest"];
+                };
+            };
+            responses: {
+                /** @description Merger journal, fact, election, realizations, lot effects, links and cash decision recorded atomically */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CashStockMergerResponse"];
+                    };
+                };
+                /** @description Invalid merger facts: no cash, a payable date before the effective date, a fraction outside 0..1, cash in another currency than a lot's basis, or a destination holding that refuses the new instrument */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Origin or CSRF validation failed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description INVESTMENT_EXCHANGE_NO_HOLDINGS, INVESTMENT_EXCHANGE_CHANGED (preview again), INVESTMENT_EVENT_OUT_OF_ORDER (dated behind a later depletion), INVESTMENT_POSITION_SIDE_CONFLICT (an open short of the old instrument), or reconciliation override required */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description INVESTMENT_EXCHANGE_FRACTION_UNREPRESENTABLE — a lot's new quantity needs more decimals than the new instrument permits; never rounded */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/cash-and-stock-mergers/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview a cash-and-stock merger
+         * @description Runs the complete merger writer in a rolled-back transaction. Returns every link (old and new quantity, realized and carried basis, cash share and original date), the per-currency totals and result, and every active checkpoint the writer would invalidate. No durable change or temporary ID escapes; commit rechecks everything.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CashStockMergerRequest"];
+                };
+            };
+            responses: {
+                /** @description Merger preview computed (no mutation) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CashStockMergerPreviewResponse"];
+                    };
+                };
+                /** @description Invalid merger facts */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description INVESTMENT_EXCHANGE_NO_HOLDINGS, INVESTMENT_EVENT_OUT_OF_ORDER or INVESTMENT_POSITION_SIDE_CONFLICT */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description INVESTMENT_EXCHANGE_FRACTION_UNREPRESENTABLE */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/investments/spin-offs": {
         parameters: {
             query?: never;
@@ -24575,7 +24762,7 @@ export interface components {
              * @description Stable code for a journal the system posted without user text (T-136), or for a share exchange's journal (#178); the client localizes it and uses it as the title when the journal has no memo. Absent for ordinary journals.
              * @enum {string}
              */
-            system_label?: "split_adjustment" | "transfer_bridge" | "share_exchange" | "spin_off";
+            system_label?: "split_adjustment" | "transfer_bridge" | "share_exchange" | "cash_and_stock_merger" | "spin_off";
             invalidated_checkpoint_ids: number[];
         };
         TransactionsResponse: {
@@ -24631,7 +24818,7 @@ export interface components {
              * @description Stable code for a journal the system posted without user text (T-136), or for a share exchange's journal (#178); the client localizes it and uses it as the title when the journal has no memo. Absent for ordinary journals.
              * @enum {string}
              */
-            system_label?: "split_adjustment" | "transfer_bridge" | "share_exchange" | "spin_off";
+            system_label?: "split_adjustment" | "transfer_bridge" | "share_exchange" | "cash_and_stock_merger" | "spin_off";
             correction_chain?: components["schemas"]["RegisterCorrectionChain"];
         };
         /** @description Present when the row's transaction belongs to a correction chain of more than one transaction (T-120). The original, reversal and replacement stay separate posted rows, so the running balance counts each posting once; every row carries the whole chain, so members on other register pages are still named. */
@@ -26343,6 +26530,104 @@ export interface components {
         ShareExchangePreviewResponse: {
             plan: components["schemas"]["ShareExchangePlan"];
             impact: components["schemas"]["ReconciliationImpactResponse"];
+        };
+        /** @description A cash-and-stock merger (#181): a share exchange of the whole long holding of commodity_id in holding_account_id that also pays cash, with an explicit election of the share of each lot's basis the cash recovers. */
+        CashStockMergerRequest: {
+            /**
+             * Format: date
+             * @description Every long lot open on this date, at the operation's slot, is merged.
+             */
+            effective_on: string;
+            /**
+             * Format: date
+             * @description The date the cash is paid and posted; not before effective_on.
+             */
+            payable_on: string;
+            /** Format: int64 */
+            holding_account_id: number;
+            /**
+             * Format: int64
+             * @description Holding that receives the new instrument. Defaults to holding_account_id.
+             */
+            destination_holding_account_id?: number;
+            /**
+             * Format: int64
+             * @description The old instrument.
+             */
+            commodity_id: number;
+            /**
+             * Format: int64
+             * @description The new instrument; must differ from commodity_id and not be a currency.
+             */
+            destination_commodity_id: number;
+            /** Format: int64 */
+            ratio_numerator: number;
+            /** Format: int64 */
+            ratio_denominator: number;
+            /**
+             * Format: int64
+             * @description Settlement account that receives the cash.
+             */
+            cash_account_id: number;
+            /**
+             * Format: int64
+             * @description The cash currency; must be every exchanged lot's cost currency.
+             */
+            currency_id: number;
+            /** @description The actual total cash, a positive exact coefficient. The issuer's per-share amount belongs in source_evidence. */
+            cash_value: string;
+            cash_scale: number;
+            /** @description The election: the share of each lot's remaining basis the cash recovers, cash_basis_fraction_value/10^cash_basis_fraction_scale, from 0 to 1 inclusive with at most 12 decimal places, stored in lowest terms. A relative-value method gives cash / (cash + value of the new shares). The app does not choose a jurisdiction's rule. */
+            cash_basis_fraction_value: string;
+            cash_basis_fraction_scale: number;
+            source_evidence?: {
+                [key: string]: unknown;
+            };
+            memo?: string;
+            change_reason?: string;
+            reconciliation_override?: boolean;
+            /** @description Accepted for a uniform contract; an in-order merger revises no committed disposal. */
+            gain_impact_acknowledgement?: string;
+        };
+        CashStockMergerLink: components["schemas"]["ShareExchangeLink"] & {
+            /** @description Remaining basis times the election, truncated; null when unknown. */
+            realized_basis_value: string | null;
+            realized_basis_scale: number | null;
+            /** @description This lot's share of the cash, by old units. */
+            cash_value: string;
+            cash_scale: number;
+        };
+        CashStockMergerTotal: components["schemas"]["ShareExchangeBasisTotal"] & {
+            cash_value: string;
+            cash_scale: number;
+            /** @description Null when any lot in this currency is unknown. */
+            realized_basis_value: string | null;
+            realized_basis_scale: number | null;
+            /** @description Cash minus realized basis; null (unresolved) when any lot in this currency is unknown. */
+            result_value: string | null;
+            result_scale: number | null;
+        };
+        CashStockMergerPlan: {
+            /** Format: int64 */
+            ratio_numerator: number;
+            /** Format: int64 */
+            ratio_denominator: number;
+            cash_basis_fraction_value: string;
+            cash_basis_fraction_scale: number;
+            links: components["schemas"]["CashStockMergerLink"][];
+            source_quantity_value: string;
+            source_quantity_scale: number;
+            destination_quantity_value: string;
+            destination_quantity_scale: number;
+            totals: components["schemas"]["CashStockMergerTotal"][];
+        };
+        CashStockMergerPreviewResponse: {
+            plan: components["schemas"]["CashStockMergerPlan"];
+            impact: components["schemas"]["ReconciliationImpactResponse"];
+        };
+        CashStockMergerResponse: {
+            transaction: components["schemas"]["TransactionResponse"];
+            plan: components["schemas"]["CashStockMergerPlan"];
         };
         /** @description A spin-off or demerger (#180): every long lot of commodity_id in holding_account_id keeps its units and moves basis_fraction of its remaining basis to a new lot of destination_commodity_id. */
         SpinOffRequest: {

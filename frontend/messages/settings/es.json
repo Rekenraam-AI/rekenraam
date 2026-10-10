@@ -1379,6 +1379,7 @@
   "transactions_investment_exchange_same_holding": "Las nuevas unidades se quedaron en {name}.",
   "transactions_investment_exchange_holdings": "De {source} a {destination}.",
   "transactions_system_label_share_exchange": "Canje de acciones",
+  "transactions_system_label_cash_and_stock_merger": "Fusión en acciones y efectivo",
   "investments_record_spin_off": "Registrar escisión",
   "investments_spin_off_title": "Registrar una escisión",
   "investments_spin_off_help": "Para una escisión (spin-off). Conserva las acciones de la matriz y recibe acciones de un nuevo instrumento. Parte del coste de cada lote pasa a las nuevas acciones según el porcentaje que publica el emisor, sin ganancia realizada.",

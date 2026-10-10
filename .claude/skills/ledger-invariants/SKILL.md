@@ -207,6 +207,17 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   unknown on both sides. It is corrected by its own reversal and replacement
   (#183), and a backdated spin-off entitles every lot open at its slot
   through a subject `spin_off` replay intent, as a backdated exchange does.
+- A cash-and-stock merger (#181) is an exchange (`transfer_kind
+  'exchange'`, operation `cash_and_stock_merger`) whose cash recovers an
+  explicit elected fraction (0..1) of each lot's basis, truncated at the
+  allocation scale: a quantity-0 `disposal` event of `−a` before the
+  exchange's `transfer_out` of the rest, so basis is conserved per lot. The
+  cash is one quantity-0 long decision on the old position whose proceeds are
+  the cash, posted on its payable date (never earlier) in the lots' cost
+  currency. The app never picks a jurisdiction's rule. It is in date order
+  only until its own correction and backdating contract lands. Cash in lieu
+  may settle a split's, exchange's, merger's or spin-off's fraction
+  (`settled_operation_id`).
 
 ## Dates and times
 

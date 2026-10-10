@@ -74,36 +74,42 @@ type SelfCheckDisposalAllocationRecord struct {
 	BasisKnowledge string
 	ProceedsValue  exact.Coefficient
 	ProceedsScale  int
+	// BasisOnly marks a cash-and-stock merger's cash decision (#181), which
+	// disposes no units: its quantity and every allocation's are zero.
+	BasisOnly bool
 }
 
 func (r *SelfCheckRepository) StreamDisposalAllocationSets(ctx context.Context, transaction *sql.Tx, bookID int64, visit func(SelfCheckDisposalAllocationRecord) error) error {
 	rows, err := transaction.QueryContext(ctx, `
 		WITH decisions AS (
-			SELECT * FROM investment_disposal_decisions WHERE book_id = ?
+			SELECT d.*, o.operation_kind = 'cash_and_stock_merger' AS basis_only
+			FROM investment_disposal_decisions d JOIN investment_operations o ON o.id = d.operation_id
+			WHERE d.book_id = ?
 		), revisions AS (
 			SELECT revision.* FROM investment_disposal_revisions revision
 			JOIN decisions d ON d.id = revision.decision_id AND d.book_id = revision.book_id
 		)
 		SELECT d.id AS decision_id, 0 AS revision_id, 1 AS revision_seq, 0 AS is_allocation, 0 AS allocation_seq,
 			d.quantity_value, d.quantity_scale, d.disposed_basis_value, d.disposed_basis_scale, d.basis_knowledge,
-			d.proceeds_value, d.proceeds_scale
+			d.proceeds_value, d.proceeds_scale, d.basis_only
 		FROM decisions d
 		UNION ALL
 		SELECT d.id, 0, 1, 1, a.allocation_seq,
 			a.quantity_value, a.quantity_scale, a.cost_basis_value, a.cost_basis_scale, a.basis_knowledge,
-			a.proceeds_value, a.proceeds_scale
+			a.proceeds_value, a.proceeds_scale, d.basis_only
 		FROM decisions d JOIN investment_disposal_allocations a ON a.decision_id = d.id AND a.book_id = d.book_id
 		UNION ALL
 		SELECT d.id, revision.id, revision.revision_seq, 0, 0,
 			d.quantity_value, d.quantity_scale, revision.disposed_basis_value, revision.disposed_basis_scale,
-			revision.basis_knowledge, d.proceeds_value, d.proceeds_scale
+			revision.basis_knowledge, d.proceeds_value, d.proceeds_scale, d.basis_only
 		FROM revisions revision JOIN decisions d ON d.id = revision.decision_id
 		UNION ALL
 		SELECT revision.decision_id, revision.id, revision.revision_seq, 1, a.allocation_seq,
 			a.quantity_value, a.quantity_scale, a.cost_basis_value, a.cost_basis_scale, a.basis_knowledge,
-			a.proceeds_value, a.proceeds_scale
+			a.proceeds_value, a.proceeds_scale, d.basis_only
 		FROM revisions revision JOIN investment_disposal_revision_allocations a
 			ON a.revision_id = revision.id AND a.book_id = revision.book_id
+		JOIN decisions d ON d.id = revision.decision_id
 		ORDER BY decision_id, revision_seq, is_allocation, allocation_seq
 	`, bookID)
 	if err != nil {
@@ -115,7 +121,7 @@ func (r *SelfCheckRepository) StreamDisposalAllocationSets(ctx context.Context, 
 		var allocationSeq int
 		if err := rows.Scan(&record.DecisionID, &record.RevisionID, &record.RevisionSeq, &record.IsAllocation, &allocationSeq,
 			&record.QuantityValue, &record.QuantityScale, &record.BasisValue, &record.BasisScale, &record.BasisKnowledge,
-			&record.ProceedsValue, &record.ProceedsScale); err != nil {
+			&record.ProceedsValue, &record.ProceedsScale, &record.BasisOnly); err != nil {
 			return fmt.Errorf("scan disposal allocation set: %w", err)
 		}
 		if err := visit(record); err != nil {
@@ -200,7 +206,7 @@ func (r *SelfCheckRepository) StreamDisposalClearing(ctx context.Context, transa
 		WITH decisions AS (
 			SELECT d.* FROM investment_disposal_decisions d
 			JOIN investment_operations o ON o.id = d.operation_id AND o.book_id = d.book_id
-			WHERE d.book_id = ? AND o.operation_kind IN ('sell', 'write_off', 'cash_in_lieu')
+			WHERE d.book_id = ? AND o.operation_kind IN ('sell', 'write_off', 'cash_in_lieu', 'cash_and_stock_merger')
 		), clearing_groups AS (
 			SELECT DISTINCT book_id, operation_id, transaction_version_id, cost_commodity_id
 			FROM decisions
@@ -483,7 +489,9 @@ func (r *SelfCheckRepository) SelfCheckLotEvents(ctx context.Context, transactio
 	revised, err := transaction.QueryContext(ctx, `
 		SELECT allocation.lot_id, l.account_id, l.commodity_id, l.cost_commodity_id,
 			allocation.quantity_value, allocation.quantity_scale,
-			allocation.cost_basis_value, allocation.cost_basis_scale, allocation.basis_knowledge
+			allocation.cost_basis_value, allocation.cost_basis_scale, allocation.basis_knowledge,
+			-- A cash-and-stock merger's cash disposes no units (#181).
+			operation.operation_kind = 'cash_and_stock_merger'
 		FROM latest_investment_disposal_revisions revision
 		JOIN investment_disposal_decisions decision ON decision.id = revision.decision_id
 		JOIN effective_investment_operations operation ON operation.id = decision.operation_id
@@ -498,14 +506,15 @@ func (r *SelfCheckRepository) SelfCheckLotEvents(ctx context.Context, transactio
 		var event SelfCheckLotEventRecord
 		var quantity exact.Coefficient
 		var value, scale sql.NullInt64
+		var basisOnly bool
 		if err := revised.Scan(&event.LotID, &event.AccountID, &event.CommodityID,
 			&event.CostCommodityID, &quantity, &event.QuantityScale,
-			&value, &scale, &event.BasisKnowledge); err != nil {
+			&value, &scale, &event.BasisKnowledge, &basisOnly); err != nil {
 			revised.Close()
 			return nil, fmt.Errorf("scan effective self-check allocation: %w", err)
 		}
 		basis, basisScale, err := projectedBasis(value, scale, event.BasisKnowledge)
-		if err != nil || basis < 0 || quantity.Sign() <= 0 {
+		if err != nil || basis < 0 || quantity.Sign() < 0 || (quantity.Sign() == 0) != basisOnly {
 			revised.Close()
 			return nil, fmt.Errorf("invalid effective self-check allocation for lot %d", event.LotID)
 		}

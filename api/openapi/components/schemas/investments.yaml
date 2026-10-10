@@ -1565,6 +1565,179 @@ ShareExchangeResponse:
     plan:
       $ref: "../schemas/investments.yaml#/ShareExchangePlan"
 
+CashStockMergerRequest:
+  type: object
+  additionalProperties: false
+  required: [effective_on, payable_on, holding_account_id, commodity_id, destination_commodity_id, ratio_numerator,
+    ratio_denominator, cash_account_id, currency_id, cash_value, cash_scale, cash_basis_fraction_value,
+    cash_basis_fraction_scale]
+  description: >
+    A cash-and-stock merger (#181): a share exchange of the whole long holding
+    of commodity_id in holding_account_id that also pays cash, with an explicit
+    election of the share of each lot's basis the cash recovers.
+  properties:
+    effective_on:
+      type: string
+      format: date
+      description: Every long lot open on this date, at the operation's slot, is merged.
+    payable_on:
+      type: string
+      format: date
+      description: The date the cash is paid and posted; not before effective_on.
+    holding_account_id:
+      type: integer
+      format: int64
+    destination_holding_account_id:
+      type: integer
+      format: int64
+      description: Holding that receives the new instrument. Defaults to holding_account_id.
+    commodity_id:
+      type: integer
+      format: int64
+      description: The old instrument.
+    destination_commodity_id:
+      type: integer
+      format: int64
+      description: The new instrument; must differ from commodity_id and not be a currency.
+    ratio_numerator:
+      type: integer
+      format: int64
+      minimum: 1
+      maximum: 1000000000
+    ratio_denominator:
+      type: integer
+      format: int64
+      minimum: 1
+      maximum: 1000000000
+    cash_account_id:
+      type: integer
+      format: int64
+      description: Settlement account that receives the cash.
+    currency_id:
+      type: integer
+      format: int64
+      description: The cash currency; must be every exchanged lot's cost currency.
+    cash_value:
+      type: string
+      pattern: '^-?(0|[1-9][0-9]{0,18})$'
+      description: The actual total cash, a positive exact coefficient. The issuer's per-share amount belongs in source_evidence.
+    cash_scale:
+      type: integer
+      minimum: 0
+      maximum: 12
+    cash_basis_fraction_value:
+      type: string
+      description: >
+        The election: the share of each lot's remaining basis the cash
+        recovers, cash_basis_fraction_value/10^cash_basis_fraction_scale, from
+        0 to 1 inclusive with at most 12 decimal places, stored in lowest terms.
+        A relative-value method gives cash / (cash + value of the new shares).
+        The app does not choose a jurisdiction's rule.
+    cash_basis_fraction_scale:
+      type: integer
+      minimum: 0
+    source_evidence:
+      type: object
+      additionalProperties: true
+    memo:
+      type: string
+    change_reason:
+      type: string
+    reconciliation_override:
+      type: boolean
+    gain_impact_acknowledgement:
+      type: string
+      description: Accepted for a uniform contract; an in-order merger revises no committed disposal.
+
+CashStockMergerLink:
+  allOf:
+    - $ref: "../schemas/investments.yaml#/ShareExchangeLink"
+    - type: object
+      required: [realized_basis_value, realized_basis_scale, cash_value, cash_scale]
+      description: carried_basis_value is the basis left after the cash, which opens the new lot.
+      properties:
+        realized_basis_value:
+          type: [string, "null"]
+          description: Remaining basis times the election, truncated; null when unknown.
+        realized_basis_scale:
+          type: [integer, "null"]
+        cash_value:
+          type: string
+          description: This lot's share of the cash, by old units.
+        cash_scale:
+          type: integer
+
+CashStockMergerTotal:
+  allOf:
+    - $ref: "../schemas/investments.yaml#/ShareExchangeBasisTotal"
+    - type: object
+      required: [cash_value, cash_scale, realized_basis_value, realized_basis_scale, result_value, result_scale]
+      properties:
+        cash_value:
+          type: string
+        cash_scale:
+          type: integer
+        realized_basis_value:
+          type: [string, "null"]
+          description: Null when any lot in this currency is unknown.
+        realized_basis_scale:
+          type: [integer, "null"]
+        result_value:
+          type: [string, "null"]
+          description: Cash minus realized basis; null (unresolved) when any lot in this currency is unknown.
+        result_scale:
+          type: [integer, "null"]
+
+CashStockMergerPlan:
+  type: object
+  required: [ratio_numerator, ratio_denominator, cash_basis_fraction_value, cash_basis_fraction_scale, links,
+    source_quantity_value, source_quantity_scale, destination_quantity_value, destination_quantity_scale, totals]
+  properties:
+    ratio_numerator:
+      type: integer
+      format: int64
+    ratio_denominator:
+      type: integer
+      format: int64
+    cash_basis_fraction_value:
+      type: string
+    cash_basis_fraction_scale:
+      type: integer
+    links:
+      type: array
+      items:
+        $ref: "../schemas/investments.yaml#/CashStockMergerLink"
+    source_quantity_value:
+      type: string
+    source_quantity_scale:
+      type: integer
+    destination_quantity_value:
+      type: string
+    destination_quantity_scale:
+      type: integer
+    totals:
+      type: array
+      items:
+        $ref: "../schemas/investments.yaml#/CashStockMergerTotal"
+
+CashStockMergerPreviewResponse:
+  type: object
+  required: [plan, impact]
+  properties:
+    plan:
+      $ref: "../schemas/investments.yaml#/CashStockMergerPlan"
+    impact:
+      $ref: "../schemas/transactions.yaml#/ReconciliationImpactResponse"
+
+CashStockMergerResponse:
+  type: object
+  required: [transaction, plan]
+  properties:
+    transaction:
+      $ref: "../schemas/transactions.yaml#/TransactionResponse"
+    plan:
+      $ref: "../schemas/investments.yaml#/CashStockMergerPlan"
+
 SpinOffRequest:
   type: object
   additionalProperties: false

@@ -116,7 +116,9 @@ below is execution order, not a chain of hard dependencies.
    [#180](https://github.com/sergeyfarin/rekenraam/issues/180) (delivered 2026-10-10: in-order core, reads and
    mobile entry), its correction and backdating [#183](https://github.com/sergeyfarin/rekenraam/issues/183)
    (delivered 2026-10-10), and cash-and-stock merger with exchange
-   fractions [#181](https://github.com/sergeyfarin/rekenraam/issues/181) (next). Tender, rights and provider
+   fractions [#181](https://github.com/sergeyfarin/rekenraam/issues/181) (delivered 2026-10-10: design gate, date
+   sequence, cash in lieu of exchange and spin-off fractions, in-order merger API). Next: the merger's own
+   correction, backdating and browser entry. Tender, rights and provider
    corporate-action mappings are outside the #115 bar.
 
 **Delivered historical-entry and recovery gates:** dated holdings/lot selection

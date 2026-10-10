@@ -220,6 +220,8 @@ func RegisterRoutesWithAuth(mux *http.ServeMux, logger *slog.Logger, services Se
 	mux.HandleFunc("POST /api/v1/investments/splits", investmentSplit(logger, services.Auth, services.Investment, options))
 	mux.HandleFunc("POST /api/v1/investments/splits/preview", investmentSplitPreview(logger, services.Auth, services.Investment))
 	mux.HandleFunc("POST /api/v1/investments/share-exchanges", shareExchange(logger, services.Auth, services.Investment, options))
+	mux.HandleFunc("POST /api/v1/investments/cash-and-stock-mergers", cashStockMerger(logger, services.Auth, services.Investment, options))
+	mux.HandleFunc("POST /api/v1/investments/cash-and-stock-mergers/preview", cashStockMergerPreview(logger, services.Auth, services.Investment))
 	mux.HandleFunc("POST /api/v1/investments/spin-offs", spinOff(logger, services.Auth, services.Investment, options))
 	mux.HandleFunc("POST /api/v1/investments/spin-offs/preview", spinOffPreview(logger, services.Auth, services.Investment))
 	mux.HandleFunc("POST /api/v1/investments/transactions/{transaction_id}/reverse-spin-off", reverseSpinOff(logger, services.Auth, services.Investment, options))

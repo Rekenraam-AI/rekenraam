@@ -1379,6 +1379,7 @@
   "transactions_investment_exchange_same_holding": "Die neuen Stücke blieben in {name}.",
   "transactions_investment_exchange_holdings": "Von {source} nach {destination}.",
   "transactions_system_label_share_exchange": "Aktientausch",
+  "transactions_system_label_cash_and_stock_merger": "Fusion gegen Aktien und Barzahlung",
   "investments_record_spin_off": "Abspaltung erfassen",
   "investments_spin_off_title": "Eine Abspaltung erfassen",
   "investments_spin_off_help": "Für eine Abspaltung (Spin-off). Sie behalten die Aktien der Muttergesellschaft und erhalten Aktien eines neuen Instruments. Ein Teil der Anschaffungskosten jedes Postens geht nach dem vom Emittenten veröffentlichten Prozentsatz auf die neuen Aktien über. Es wird kein Gewinn realisiert.",

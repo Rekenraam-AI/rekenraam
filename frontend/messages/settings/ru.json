@@ -1379,6 +1379,7 @@
   "transactions_investment_exchange_same_holding": "Новые бумаги остались на счёте {name}.",
   "transactions_investment_exchange_holdings": "Со счёта {source} на счёт {destination}.",
   "transactions_system_label_share_exchange": "Обмен акций",
+  "transactions_system_label_cash_and_stock_merger": "Слияние с выплатой акциями и деньгами",
   "investments_record_spin_off": "Записать выделение",
   "investments_spin_off_title": "Записать выделение компании",
   "investments_spin_off_help": "Для выделения компании (спин-офф). Вы сохраняете акции материнской компании и получаете акции нового инструмента. Часть стоимости приобретения каждого лота переходит к новым акциям по проценту, который публикует эмитент; прибыль не реализуется.",

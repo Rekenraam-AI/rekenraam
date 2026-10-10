@@ -1,0 +1,81 @@
+post:
+  summary: Record a cash-and-stock merger of one holding
+  description: >
+    A merger paying cash with the new shares (#181). Every long lot of
+    commodity_id open in holding_account_id on effective_on becomes one lot of
+    destination_commodity_id in the destination holding, holding its remaining
+    quantity times ratio_numerator/ratio_denominator exactly, as for a share
+    exchange. Before the units move, the cash recovers the elected share of
+    each lot's remaining basis: cash_basis_fraction (0 to 1 inclusive) times
+    that basis, truncated at the position's allocation scale. The new lot
+    carries the rest, so basis is conserved per lot; an unknown lot stays
+    unknown on both legs. The cash is one long disposal decision of quantity 0
+    on the old position, with the cash as proceeds shared across the lots by
+    old units, so its result is cash minus the realized basis. The journal
+    posts the four security legs on effective_on and the cash (cash account +C,
+    commodity_trading −C) on payable_on, never earlier. The cash currency must
+    be every exchanged lot's cost currency. A merger is admitted in date order
+    only; one dated behind a later depletion of either holding is
+    INVESTMENT_EVENT_OUT_OF_ORDER. Fractions the issuer settles in cash are a
+    separate cash in lieu linked to this transaction.
+  parameters:
+    - in: header
+      name: X-CSRF-Token
+      required: true
+      schema: { type: string }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../openapi.yaml#/components/schemas/CashStockMergerRequest"
+  responses:
+    "201":
+      description: Merger journal, fact, election, realizations, lot effects, links and cash decision recorded atomically
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/CashStockMergerResponse"
+    "400":
+      description: >
+        Invalid merger facts: no cash, a payable date before the effective
+        date, a fraction outside 0..1, cash in another currency than a lot's
+        basis, or a destination holding that refuses the new instrument
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "401":
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "403":
+      description: Origin or CSRF validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "409":
+      description: >
+        INVESTMENT_EXCHANGE_NO_HOLDINGS, INVESTMENT_EXCHANGE_CHANGED (preview again),
+        INVESTMENT_EVENT_OUT_OF_ORDER (dated behind a later depletion),
+        INVESTMENT_POSITION_SIDE_CONFLICT (an open short of the old instrument),
+        or reconciliation override required
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "422":
+      description: INVESTMENT_EXCHANGE_FRACTION_UNREPRESENTABLE — a lot's new quantity needs more decimals than the new instrument permits; never rounded
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "500":
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"

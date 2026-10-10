@@ -340,7 +340,19 @@ func applyInvestmentReplayIntentTx(ctx context.Context, tx *sql.Tx, bookID, acco
 			projection.SubjectTransferOut = append(projection.SubjectTransferOut, moved...)
 			return keepPositionMethodFamilyTx(ctx, tx, params, intent.AuditEventID)
 		}
+		// A cash-and-stock merger's cash recovers each lot's elected share of
+		// basis first; the units then move with the rest (#181).
+		var realizations []LotDisposalRecord
 		for _, link := range intent.ExchangeLinks {
+			if intent.MergerDecisionID > 0 {
+				realization, err := realizeCashStockMergerLotTx(ctx, tx, bookID, accountID, commodityID, costCommodityID,
+					link.LotID, intent.EventDate, link.QuantityValue, link.QuantityScale, intent.BasisFractionValue,
+					intent.BasisFractionScale, allocationScale, intent.CreatedAt, intent.CreatedByUserID, intent.AuditEventID)
+				if err != nil {
+					return replayTransferError(intent, err)
+				}
+				realizations = append(realizations, realization)
+			}
 			moved, err := disposeLotTx(ctx, tx, params, link.LotID, link.QuantityValue, link.QuantityScale,
 				intent.AuditEventID, allocationScale)
 			if err != nil {
@@ -361,6 +373,13 @@ func applyInvestmentReplayIntentTx(ctx context.Context, tx *sql.Tx, bookID, acco
 		}
 		if err := requireShareExchangeCompleteTx(ctx, tx, bookID, accountID, commodityID, costCommodityID, intent.EventDate); err != nil {
 			return replayTransferError(intent, err)
+		}
+		if intent.MergerDecisionID > 0 {
+			disposal, err := cashStockMergerReplayDisposal(intent, realizations)
+			if err != nil {
+				return err
+			}
+			projection.Disposals = append(projection.Disposals, disposal)
 		}
 		if err := keepPositionMethodFamilyTx(ctx, tx, params, intent.AuditEventID); err != nil {
 			return err

@@ -92,9 +92,17 @@ type InvestmentReplayIntent struct {
 	// its entitled parent lots, whose amount is the allocated basis; replay
 	// reduces each by the basis fraction, then requires every lot open at the
 	// slot to be one of them.
-	ExchangeLinks         []InvestmentReplayTransferLink
-	BasisFractionValue    exact.Coefficient // spin-off only
-	BasisFractionScale    int
+	ExchangeLinks []InvestmentReplayTransferLink
+	// BasisFractionValue is a spin-off's fraction of basis that moves, or a
+	// cash-and-stock merger's fraction of basis its cash recovers (#181).
+	BasisFractionValue exact.Coefficient
+	BasisFractionScale int
+	// MergerDecisionID is a cash-and-stock merger's cash decision (#181):
+	// replay realizes each link's share of basis against it before moving
+	// the units, and MergerCash is its fixed proceeds.
+	MergerDecisionID      int64
+	MergerCashValue       exact.Coefficient
+	MergerCashScale       int
 	OriginalDateKnowledge string
 	OriginalAcquiredOn    string
 	TransactionID         int64
@@ -224,6 +232,8 @@ func investmentReplayIntentsQuery(ctx context.Context, reader queryer, bookID, a
 		FROM investment_disposal_decisions d JOIN effective_investment_operations o ON o.id = d.operation_id
 		WHERE d.book_id = ? AND d.account_id = ? AND d.commodity_id = ?
 			AND d.cost_commodity_id = ? AND d.position_side = ?
+			-- A merger's cash decision is replayed by its exchange group (#181).
+			AND o.operation_kind <> 'cash_and_stock_merger'
 	`, bookID, accountID, commodityID, costCommodityID, side)
 	if err != nil {
 		return nil, fmt.Errorf("read replay disposals: %w", err)
@@ -274,7 +284,9 @@ func investmentReplayIntentsQuery(ctx context.Context, reader queryer, bookID, a
 			CASE WHEN revision.id IS NULL THEN x.basis_knowledge ELSE revision.basis_knowledge END,
 			e.transaction_id, e.created_audit_event_id, e.created_by_user_id, e.created_at,
 			effect.effect_seq, f.basis_allocation, f.transfer_kind = 'external_out', f.transfer_kind,
-			f.basis_fraction_value, f.basis_fraction_scale
+			COALESCE(f.basis_fraction_value, f.cash_basis_fraction_value),
+			COALESCE(f.basis_fraction_scale, f.cash_basis_fraction_scale),
+			merger.id, merger.proceeds_value, merger.proceeds_scale
 		FROM investment_transfer_facts f
 		JOIN investment_transfer_lot_links x ON x.operation_id = f.operation_id
 		JOIN effective_investment_operations o ON o.id = f.operation_id
@@ -285,6 +297,9 @@ func investmentReplayIntentsQuery(ctx context.Context, reader queryer, bookID, a
 			AND e.event_kind = CASE f.transfer_kind WHEN 'spin_off' THEN 'basis_reduction' ELSE 'transfer_out' END
 		LEFT JOIN latest_investment_transfer_link_revisions revision
 			ON revision.operation_id = x.operation_id AND revision.link_seq = x.link_seq
+		-- A cash-and-stock merger's cash decision in this cost currency (#181).
+		LEFT JOIN investment_disposal_decisions merger ON merger.operation_id = f.operation_id
+			AND f.cash_basis_fraction_value IS NOT NULL AND merger.cost_commodity_id = x.cost_commodity_id
 		WHERE f.book_id = ? AND f.source_account_id = ? AND f.commodity_id = ?
 			AND ((f.transfer_kind = 'internal' AND f.destination_lineage = 'source_lots')
 				OR f.transfer_kind IN ('external_out', 'exchange', 'spin_off'))
@@ -310,12 +325,14 @@ func investmentReplayIntentsQuery(ctx context.Context, reader queryer, bookID, a
 			var transferKind string
 			var fraction sql.NullString
 			var fractionScale sql.NullInt64
+			var mergerDecisionID, mergerCashScale sql.NullInt64
+			var mergerCash sql.NullString
 			if err := transfers.Scan(&intent.OperationID, &intent.OperationKind, &intent.EventDate,
 				&intent.LinkSeq, &intent.transferSource.lotID, &intent.RecordedLotID, &sourceOperationID,
 				&intent.transferSource.openedOn, &intent.QuantityValue, &intent.QuantityScale, &basis, &basisScale, &knowledge,
 				&intent.TransactionID, &intent.AuditEventID, &intent.CreatedByUserID,
 				&intent.CreatedAt, &intent.EffectSeq, &allocation, &intent.ExternalOut, &transferKind,
-				&fraction, &fractionScale); err != nil {
+				&fraction, &fractionScale, &mergerDecisionID, &mergerCash, &mergerCashScale); err != nil {
 				transfers.Close()
 				return nil, fmt.Errorf("scan replay transfer depletion: %w", err)
 			}
@@ -343,6 +360,14 @@ func investmentReplayIntentsQuery(ctx context.Context, reader queryer, bookID, a
 							return nil, fmt.Errorf("%w: spin-off %d has no basis fraction", ErrInvalidDisposalParams, intent.OperationID)
 						}
 						intent.BasisFractionValue, intent.BasisFractionScale = exact.Coefficient(fraction.String), int(fractionScale.Int64)
+					} else if fraction.Valid {
+						if !fractionScale.Valid || !mergerDecisionID.Valid || !mergerCash.Valid || !mergerCashScale.Valid {
+							transfers.Close()
+							return nil, fmt.Errorf("%w: cash-and-stock merger %d has no cash decision in this currency", ErrInvalidDisposalParams, intent.OperationID)
+						}
+						intent.BasisFractionValue, intent.BasisFractionScale = exact.Coefficient(fraction.String), int(fractionScale.Int64)
+						intent.MergerDecisionID = mergerDecisionID.Int64
+						intent.MergerCashValue, intent.MergerCashScale = exact.Coefficient(mergerCash.String), int(mergerCashScale.Int64)
 					}
 					intent.LotID, intent.LinkSeq, intent.RecordedLotID = 0, 0, 0
 					intent.transferSource = transferSourceOpening{}

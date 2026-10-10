@@ -1379,6 +1379,7 @@
   "transactions_investment_exchange_same_holding": "Les nouvelles unités sont restées dans {name}.",
   "transactions_investment_exchange_holdings": "De {source} vers {destination}.",
   "transactions_system_label_share_exchange": "Échange d’actions",
+  "transactions_system_label_cash_and_stock_merger": "Fusion en actions et en espèces",
   "investments_record_spin_off": "Enregistrer une scission",
   "investments_spin_off_title": "Enregistrer une scission",
   "investments_spin_off_help": "Pour une scission (spin-off). Vous conservez les actions de la société mère et recevez des actions d'un nouvel instrument. Une partie du prix de revient de chaque lot passe aux nouvelles actions selon le pourcentage publié par l'émetteur, sans plus-value réalisée.",

@@ -571,7 +571,7 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 		// The ratio and journal totals are folded in Go.
 		{"share exchange missing its fact or linked whole-lot effects", `
 			SELECT o.id FROM investment_operations o WHERE o.book_id = ?
-			AND o.operation_kind = 'share_exchange'
+			AND o.operation_kind IN ('share_exchange', 'cash_and_stock_merger')
 			AND (NOT EXISTS (SELECT 1 FROM investment_transfer_facts f
 				JOIN investment_transfer_lot_links x ON x.operation_id = f.operation_id
 				WHERE f.operation_id = o.id AND f.transfer_kind = 'exchange' AND f.effective_on = o.event_date)
@@ -616,7 +616,39 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 				WHERE effect.operation_id = o.id AND NOT EXISTS (
 					SELECT 1 FROM investment_transfer_lot_links x
 					WHERE x.operation_id = o.id AND ((e.event_kind = 'transfer_out' AND x.source_lot_id = e.lot_id)
-						OR (e.event_kind = 'transfer_in' AND x.destination_lot_id = e.lot_id)))))`},
+						OR (e.event_kind = 'transfer_in' AND x.destination_lot_id = e.lot_id)
+						-- A merger's cash realizes on the exchanged lot (#181).
+						OR (e.event_kind = 'disposal' AND o.operation_kind = 'cash_and_stock_merger'
+							AND x.source_lot_id = e.lot_id)))))`},
+		// A cash-and-stock merger records its election and payable date, and
+		// one quantity-0 cash decision on the old position whose allocations
+		// realize each link's lot once, through quantity-0 disposal effects on
+		// the effective date (#181). Amounts are checked by the allocation,
+		// clearing and lot reconciliation checks.
+		{"cash-and-stock merger missing its election, cash decision or per-lot realization", `
+			SELECT o.id FROM investment_operations o WHERE o.book_id = ?
+			AND o.operation_kind = 'cash_and_stock_merger'
+			AND (NOT EXISTS (SELECT 1 FROM investment_transfer_facts f
+				JOIN investment_operation_dates payable ON payable.operation_id = o.id AND payable.date_role = 'payable'
+					AND payable.date_seq = 1 AND payable.event_date >= f.effective_on
+				WHERE f.operation_id = o.id AND f.transfer_kind = 'exchange' AND f.cash_basis_fraction_value IS NOT NULL)
+			OR (SELECT COUNT(*) FROM investment_disposal_decisions d JOIN investment_transfer_facts f ON f.operation_id = o.id
+				WHERE d.operation_id = o.id AND d.quantity_value = '0' AND d.position_side = 'long'
+					AND d.account_id = f.source_account_id AND d.commodity_id = f.commodity_id
+					AND d.event_date = f.effective_on) <> 1
+			OR EXISTS (SELECT 1 FROM investment_disposal_decisions d WHERE d.operation_id = o.id AND d.quantity_value <> '0')
+			OR (SELECT COUNT(*) FROM investment_disposal_allocations a
+				JOIN investment_disposal_decisions d ON d.id = a.decision_id WHERE d.operation_id = o.id)
+				<> (SELECT COUNT(*) FROM investment_transfer_lot_links x WHERE x.operation_id = o.id)
+			OR EXISTS (SELECT 1 FROM investment_transfer_lot_links x
+				JOIN investment_transfer_facts f ON f.operation_id = x.operation_id
+				WHERE x.operation_id = o.id AND NOT EXISTS (
+					SELECT 1 FROM investment_disposal_allocations a
+					JOIN investment_disposal_decisions d ON d.id = a.decision_id AND d.operation_id = o.id
+					JOIN investment_lot_events e ON e.id = a.lot_event_id AND e.lot_id = x.source_lot_id
+					JOIN investment_operation_lot_effects effect ON effect.lot_event_id = e.id AND effect.operation_id = o.id
+					WHERE a.lot_id = x.source_lot_id AND a.quantity_value = '0' AND e.event_kind = 'disposal'
+						AND e.quantity_value = '0' AND e.event_date = f.effective_on)))`},
 		// Each spin-off link reduces one parent lot's basis, keeping its units,
 		// by exactly the basis that opens one new lot of the distributed
 		// instrument, through effects on the spin-off's own journal (#180).
@@ -814,7 +846,7 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 						WHERE je.transaction_version_id = v.id AND je.entry_date <> f.effective_on))`},
 		{"posted long disposal missing proceeds decision", `
 			SELECT o.id FROM investment_operations o
-			WHERE o.book_id = ? AND o.operation_kind IN ('sell', 'write_off', 'cash_in_lieu')
+			WHERE o.book_id = ? AND o.operation_kind IN ('sell', 'write_off', 'cash_in_lieu', 'cash_and_stock_merger')
 			AND NOT EXISTS (SELECT 1 FROM investment_disposal_decisions d
 				WHERE d.operation_id = o.id AND d.position_side = 'long')`},
 		{"short sale missing its short lot", `
@@ -845,7 +877,7 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 		{"disposal decision has no matching operation journal link", `
 			SELECT d.id FROM investment_disposal_decisions d
 			JOIN investment_operations o ON o.id = d.operation_id
-			WHERE d.book_id = ? AND o.operation_kind IN ('sell', 'write_off', 'cash_in_lieu', 'short_cover')
+			WHERE d.book_id = ? AND o.operation_kind IN ('sell', 'write_off', 'cash_in_lieu', 'short_cover', 'cash_and_stock_merger')
 			AND NOT EXISTS (SELECT 1 FROM investment_operation_journal_links l
 				WHERE l.operation_id = d.operation_id AND l.book_id = d.book_id
 				AND l.transaction_version_id = d.transaction_version_id AND l.role <> 'reversal')`},
@@ -1611,11 +1643,11 @@ func (s *SelfCheckService) disposalAllocationCheck(ctx context.Context, snapshot
 			expectedProceeds = exact.ScaledIntFromCoefficient(record.ProceedsValue, record.ProceedsScale)
 			quantity, basis, proceeds = exact.NewScaledInt(), exact.NewScaledInt(), exact.NewScaledInt()
 			allocationCount, unknownAllocations = 0, 0
-			invalid = !ok || record.QuantityValue.Sign() <= 0
+			invalid = !ok || !selfCheckDisposalQuantity(record)
 			return nil
 		}
 		allocationCount++
-		invalid = invalid || !ok || record.QuantityValue.Sign() <= 0
+		invalid = invalid || !ok || !selfCheckDisposalQuantity(record)
 		quantity.AddCoefficient(record.QuantityValue, record.QuantityScale)
 		if known {
 			basis.AddScaled(value)
@@ -1634,6 +1666,15 @@ func (s *SelfCheckService) disposalAllocationCheck(ctx context.Context, snapshot
 			result.FindingCount, strings.Join(references, ", "))
 	}
 	return result, nil
+}
+
+// selfCheckDisposalQuantity is a disposal's unit rule: positive, except that
+// a cash-and-stock merger's cash decision disposes exactly none (#181).
+func selfCheckDisposalQuantity(record db.SelfCheckDisposalAllocationRecord) bool {
+	if record.BasisOnly {
+		return record.QuantityValue.Sign() == 0
+	}
+	return record.QuantityValue.Sign() > 0
 }
 
 // selfCheckDisposalBasis reads one stored basis knowledge/amount tuple. ok is

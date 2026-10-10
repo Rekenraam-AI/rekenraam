@@ -1407,6 +1407,7 @@
   "transactions_investment_exchange_same_holding": "The new units stayed in {name}.",
   "transactions_investment_exchange_holdings": "From {source} into {destination}.",
   "transactions_system_label_share_exchange": "Share exchange",
+  "transactions_system_label_cash_and_stock_merger": "Cash-and-stock merger",
   "investments_record_spin_off": "Record spin-off",
   "investments_spin_off_title": "Record a spin-off",
   "investments_spin_off_help": "For a spin-off or demerger. You keep the parent shares and receive shares of a new instrument. Part of each lot's cost basis moves to the new shares by the percentage the issuer publishes, and no gain is realized.",
