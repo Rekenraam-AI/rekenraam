@@ -1,7 +1,7 @@
 post:
   summary: Preview a cash-in-lieu replacement
   description: >-
-    Runs the native disposal replacement, retaining the same split link and
+    Runs the native disposal replacement, retaining the same settlement link and
     correction-root slot. Fraction, proceeds, dates and election may change.
     Original facts remain evidence. Split linkage, replay, checkpoint impact
     and gain acknowledgement are validated atomically. The preview rolls back

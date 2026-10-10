@@ -372,7 +372,7 @@ type investmentTradeCorrectionAvailableLotResponse struct {
 }
 
 type investmentTradeCorrectionContextResponse struct {
-	SplitTransactionID   int64                                           `json:"split_transaction_id,omitempty"`
+	SettledTransactionID int64                                           `json:"settled_transaction_id,omitempty"`
 	OperationID          int64                                           `json:"operation_id"`
 	TransactionID        int64                                           `json:"transaction_id"`
 	OperationKind        string                                          `json:"operation_kind"`
@@ -433,7 +433,7 @@ func toInvestmentTradeCorrectionContextResponse(record db.InvestmentTradeCorrect
 		})
 	}
 	return investmentTradeCorrectionContextResponse{
-		OperationID: record.OperationID, TransactionID: record.TransactionID, SplitTransactionID: record.SplitTransactionID,
+		OperationID: record.OperationID, TransactionID: record.TransactionID, SettledTransactionID: record.SettledTransactionID,
 		OperationKind: record.OperationKind, EventDate: record.EventDate,
 		HoldingAccountID: record.HoldingAccountID, CommodityID: record.CommodityID,
 		CommodityCode: record.CommodityCode, CostCommodityID: record.CostCommodityID,

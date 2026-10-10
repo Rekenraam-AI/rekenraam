@@ -781,11 +781,12 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 				JOIN investment_lot_events ev ON ev.id = x.lot_event_id
 				WHERE x.operation_id = o.id AND NOT EXISTS (SELECT 1 FROM investment_capital_return_effects e
 					WHERE e.operation_id = o.id AND e.lot_event_id = ev.id)))`},
-		{"cash in lieu missing its link to an effective split", `
+		{"cash in lieu missing its link to an effective split, exchange or spin-off", `
 			SELECT o.id FROM effective_investment_operations o WHERE o.book_id = ?
 			AND o.operation_kind = 'cash_in_lieu'
 			AND NOT EXISTS (SELECT 1 FROM investment_cash_in_lieu_facts f
-				JOIN effective_investment_operations split ON split.id = f.split_operation_id
+				JOIN effective_investment_operations settled ON settled.id = f.settled_operation_id
+					AND settled.operation_kind IN ('split', 'share_exchange', 'cash_and_stock_merger', 'spin_off')
 				WHERE f.operation_id = o.id)`},
 		{"split missing its sourced ratio or lot effects", `
 			SELECT o.id FROM investment_operations o WHERE o.book_id = ?

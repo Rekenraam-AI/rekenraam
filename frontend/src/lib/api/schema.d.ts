@@ -15306,7 +15306,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description Split transaction being settled. */
+                    /** @description Split, share exchange, cash-and-stock merger or spin-off transaction being settled. */
                     transaction_id: number;
                 };
                 cookie?: never;
@@ -15340,7 +15340,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Replacement not found or does not belong to the split */
+                /** @description Replacement not found or does not settle this operation */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -15563,7 +15563,7 @@ export interface paths {
         put?: never;
         /**
          * Correct a cash in lieu
-         * @description Runs the native disposal replacement, retaining the same split link and correction-root slot. Fraction, proceeds, dates and election may change. Original facts remain evidence. Split linkage, replay, checkpoint impact and gain acknowledgement are validated atomically. The preview rolls back and returns the corrected allocation, disposed basis and realized result.
+         * @description Runs the native disposal replacement, retaining the same settlement link and correction-root slot. Fraction, proceeds, dates and election may change. Original facts remain evidence. Split linkage, replay, checkpoint impact and gain acknowledgement are validated atomically. The preview rolls back and returns the corrected allocation, disposed basis and realized result.
          */
         post: {
             parameters: {
@@ -15655,7 +15655,7 @@ export interface paths {
         put?: never;
         /**
          * Preview a cash-in-lieu replacement
-         * @description Runs the native disposal replacement, retaining the same split link and correction-root slot. Fraction, proceeds, dates and election may change. Original facts remain evidence. Split linkage, replay, checkpoint impact and gain acknowledgement are validated atomically. The preview rolls back and returns the corrected allocation, disposed basis and realized result.
+         * @description Runs the native disposal replacement, retaining the same settlement link and correction-root slot. Fraction, proceeds, dates and election may change. Original facts remain evidence. Split linkage, replay, checkpoint impact and gain acknowledgement are validated atomically. The preview rolls back and returns the corrected allocation, disposed basis and realized result.
          */
         post: {
             parameters: {
@@ -15744,8 +15744,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Record cash in lieu of a split fraction
-         * @description Disposes the fractional share a split left (quantity below one) for cash (T-147): an ordinary long disposal under the holding's election, with the cash as proceeds. The security legs post on disposal_on and the cash on payment_on, as separate dated journal entries of one transaction. The disposal is linked to the split it settles, which must be an effective split of the holding on or before disposal_on (INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE otherwise); that split cannot then be corrected until the cash in lieu is. The realized result comes from replay at the disposal slot; it is never a dividend.
+         * Record cash in lieu of a fraction
+         * @description Disposes the fractional share (quantity below one) that a split, share exchange, cash-and-stock merger or spin-off left, for cash (T-147, #181): an ordinary long disposal under the holding's election, with the cash as proceeds. The security legs post on disposal_on and the cash on payment_on, as separate dated journal entries of one transaction. The disposal is linked to the operation it settles, which must be effective and dated on or before disposal_on. A split's fraction is in its own holding; the other actions' fraction is the new instrument in their destination holding (INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE otherwise). That operation cannot then be corrected until the cash in lieu is. The realized result comes from replay at the disposal slot; it is never a dividend.
          */
         post: {
             parameters: {
@@ -15762,7 +15762,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Disposal, both dated journal entries, split link and audit recorded atomically */
+                /** @description Disposal, both dated journal entries, settlement link and audit recorded atomically */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -15798,7 +15798,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Reconciliation override or gain acknowledgement required, split unavailable, insufficient lots or out of order */
+                /** @description Reconciliation override or gain acknowledgement required, settled operation unavailable, insufficient lots or out of order */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -25977,9 +25977,9 @@ export interface components {
         CashInLieuRequest: {
             /**
              * Format: int64
-             * @description The posted split this fraction comes from; the holding and security are its own.
+             * @description The posted split, share exchange, cash-and-stock merger or spin-off this fraction comes from. The holding and security are the split's own, or the other action's destination holding and new instrument.
              */
-            split_transaction_id: number;
+            settled_transaction_id: number;
             /** Format: date */
             disposal_on: string;
             /** Format: date */
@@ -26929,9 +26929,9 @@ export interface components {
         InvestmentTradeCorrectionContextResponse: {
             /**
              * Format: int64
-             * @description The fixed split link, present for cash-in-lieu correction context.
+             * @description The fixed link to the operation a cash in lieu settles, present for cash-in-lieu correction context.
              */
-            split_transaction_id?: number;
+            settled_transaction_id?: number;
             /** Format: int64 */
             operation_id: number;
             /** Format: int64 */

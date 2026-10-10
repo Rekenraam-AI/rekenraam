@@ -516,10 +516,10 @@ notes record design decisions per area; they carry no status or order.
   unknown-basis resolution, return of capital and linked cash in lieu retain
   the slice 5 posting/replay contracts. Compound kinds need explicit clearing
   attribution and, for cross-position effects, closure propagation before
-  admission. A kind with several cash events also needs repeated typed-date
-  sequences (`investment_operation_dates` is still keyed by
-  `(operation_id, date_role)`); that sequence lands with #181, the first such
-  kind. Bonds/derivatives need separate instrument contracts.
+  admission. A kind with several cash events numbers its typed dates
+  (`investment_operation_dates` is keyed by `(operation_id, date_role,
+  date_seq)` since #181). Bonds/derivatives need separate instrument
+  contracts.
 
 ### Short positions (#103)
 
@@ -624,7 +624,8 @@ an exchange. It is an instrument version change with no position effect.
 - **Quantity.** Each lot's remaining quantity is multiplied by the ratio
   exactly, as in a split, up to the new instrument's quantity scale on the
   effective date. A product the scale cannot represent refuses the command; it
-  is never rounded. #181 adds the cash in lieu that settles fractions.
+  is never rounded. The fraction an issuer settles in cash is disposed
+  afterwards by a cash in lieu linked to the exchange (#181).
 - **Basis and dates.** Each destination lot opens on the effective date with
   the source lot's remaining basis, cost currency and knowledge. Known stays
   known and unknown stays unknown, never zero. The link keeps the source's
@@ -646,8 +647,8 @@ an exchange. It is an instrument version change with no position effect.
   releases the lock, and a lot opened later keeps whatever lock applies. The
   new position's state is unchanged and the new lots join it like any opening.
 - **Dates.** The operation has one `effective` date. Record and ex dates do
-  not change eligibility, which is the position at the slot. Repeated typed
-  dates arrive with #181.
+  not change eligibility, which is the position at the slot. Record and ex
+  dates go in the source evidence.
 - **Admission.** An exchange dated behind a later depletion of the old or
   the new position is admitted by replay (#179). Behind the old position, the
   writer replays each of its cost currencies with the exchange as a subject
@@ -743,8 +744,9 @@ dividend in kind is not this kind.
   instrument's side rule applies as for any opening.
 - **Quantity.** Each lot's remaining quantity is multiplied by the ratio
   exactly, as for an exchange. A product that the new instrument's quantity
-  scale cannot represent refuses the command; it is never rounded. #181 adds
-  the cash in lieu that settles fractions.
+  scale cannot represent refuses the command; it is never rounded. The
+  fraction an issuer settles in cash is disposed afterwards by a cash in lieu
+  linked to the spin-off (#181).
 - **Basis.** Each lot's allocated basis is its remaining basis times the
   fraction, truncated at the position's basis allocation scale. The parent
   keeps the remainder, `remaining − allocated`. The remainder rule is
@@ -772,7 +774,7 @@ dividend in kind is not this kind.
   when the new units are held and the basis divides. Ex and record dates go
   in the source evidence, and eligibility is the position at the slot. A lot
   sold between the ex date and the distribution date is therefore not
-  entitled. Repeated typed dates arrive with #181.
+  entitled.
 - **Admission (#183).** A spin-off dated behind a later rewrite of the parent
   or the new position is admitted by replay, as an exchange is. Behind the
   parent, the writer replays each of its cost currencies with the spin-off as
@@ -840,6 +842,137 @@ dividend in kind is not this kind.
   - the reduction, carried basis and new lot's opening basis are one amount
     with one knowledge and cost currency;
   - the journal's two legs equal the new lots' total.
+
+  Replay-equivalence covers both positions.
+
+**Repeated typed dates (#181).** Decided 2026-10-10. An operation's typed
+dates are keyed by `(operation_id, date_role, date_seq)`. `date_seq` starts
+at 1 within each role. A kind that has several dates of one role, such as
+cash paid in instalments, numbers them in payment order. Every current writer
+records sequence 1, and a reader of a single role reads sequence 1. The
+export's `investment-operation-dates.csv` carries `date_seq`.
+
+**Cash in lieu of exchange fractions (#181).** Decided 2026-10-10. A
+share exchange, cash-and-stock merger or spin-off records its fractional new
+units exactly, as a split does. The cash the issuer pays for the fraction is
+the existing cash-in-lieu command (T-147), now linked to the operation it
+settles: a split, an exchange of either kind, or a spin-off.
+
+- **Representation.** `investment_cash_in_lieu_facts.settled_operation_id`
+  (formerly `split_operation_id`) names that operation. The trigger requires
+  it to be effective at insert, and the disposal's holding and instrument to
+  be the split's, or the destination holding and new instrument of the
+  exchange or spin-off, on or after its effective date.
+- **Disposal.** The fraction is strictly less than one unit of the new
+  instrument. It is an ordinary long disposal under the holding's election,
+  with the security legs on the disposal date and the cash on the payment
+  date. Its basis comes from replay at the disposal slot, so it disposes
+  exactly the fractional new units with the ordinary sale legs. It is never a
+  dividend.
+- **Correction.** The cash in lieu keeps its own reversal and replacement
+  (T-150); a replacement keeps the operation it settles. Correcting a split,
+  exchange or spin-off that an effective cash in lieu settles is refused
+  with the cash in lieu named, as for a split today.
+- **Limit.** A per-lot product the new instrument's quantity scale cannot
+  represent still refuses the exchange. An issuer's decimal ratio always
+  terminates, so a scale deep enough records it. A ratio such as 1/3 needs
+  units the denominator divides.
+
+**Cash-and-stock merger (#181).** Decided 2026-10-10. The holder's old
+instrument becomes a new instrument at a fixed ratio, plus cash (boot). The
+cash part realizes a result, and the stock part carries basis. Which share of
+each lot's basis the cash recovers is a jurisdiction's rule, so the command
+records it as an explicit election. The app does not choose it.
+
+- **Representation.** The operation kind is `cash_and_stock_merger`. Its
+  fact is an `investment_transfer_facts` row of `transfer_kind = 'exchange'`,
+  so the share-exchange terms, links, replay, closure, link revisions and
+  reads apply unchanged. The row also records the election:
+  `cash_basis_fraction_value`/`cash_basis_fraction_scale`. It is an exact
+  decimal from 0 to 1 inclusive (scale at most 12): the share of each lot's
+  remaining basis that the cash recovers. A relative-value method (cash over
+  cash plus the new shares' value) gives a fraction strictly between 0 and 1.
+  0 carries all basis into the new shares and 1 recovers it all against the
+  cash. A per-lot rule, such as one limiting the recognized gain to the cash,
+  is not a single fraction. It stays a later election kind.
+- **Eligibility.** As for an exchange: every long lot of the old instrument
+  open in the account at the slot, in every cost currency, with the same
+  refusals. The cash currency must also be every lot's cost currency. Cash in
+  another currency than the basis would need explicit conversion legs, so it
+  refuses.
+- **Cash.** The command records the actual total cash, which must be
+  positive (without cash the action is a share exchange), and the cash
+  account. It is allocated across the lots in link order by old units,
+  each share truncated and the remainder on the last lot, as sale proceeds
+  are. The issuer's per-share amount belongs in the source evidence.
+- **Lot effects.** For each lot with remaining quantity `q` and basis `b`:
+  - realized basis `a = b × fraction`, truncated at the position's basis
+    allocation scale;
+  - a `disposal` lot event of quantity 0 and basis `−a`. It disposes no
+    units: the units leave through the exchange;
+  - then the exchange's `transfer_out` of `−q` with basis `−(b − a)`, and the
+    new lot's `transfer_in` of `q × ratio` at `b − a`, carried on the link
+    with the lot's original acquisition date.
+
+  Basis is conserved per lot: `a + (b − a) = b`. An unknown lot stays unknown
+  on both legs, and the cash result is then unresolved, never computed
+  against a zero basis.
+- **Decision.** The cash leg is one long disposal decision on the old
+  position (decision 1, cost currency the cash currency), dated on the
+  effective date:
+  - quantity 0;
+  - proceeds equal to the cash;
+  - one allocation per lot of quantity 0, basis `a` and that lot's cash share;
+  - method `specific_lot` at the `transaction` tier, because the action
+    fixes every lot. It neither sets nor checks the position's method lock.
+
+  The gain is cash − Σ`a`, through the ordinary realized-gain, gain-impact,
+  export and self-check readers of decisions. Its clearing allocation is the
+  cash leg's `commodity_trading` posting.
+- **Journal.** One transaction with two journal entries:
+  - on the effective date, the exchange's four instrument legs;
+  - on the payable date, the cash account `+C` and `commodity_trading` `−C`
+    in the cash currency.
+
+  The payable date may not precede the effective date. The cash is never
+  pre-dated. The operation's dates are `effective` (1) and `payable` (1). The
+  carried basis never leaves clearing, so a position's clearing residual is
+  still its total operational result. Example: 100 shares bought for
+  1,000.00 become 50 new shares and 300.00 at a fraction of 0.25. The cash
+  realizes 300.00 − 250.00 = +50.00 and the new lot opens at 750.00. Selling
+  it for 1,000.00 realizes +250.00, and the residual is `−300.00`.
+- **Method state.** As for an exchange: the old position is emptied, which
+  releases its lock, and the new lots join their position like any opening.
+- **Admission.** In date order only. A merger dated behind a later rewrite of
+  the old or the new position is `INVESTMENT_EVENT_OUT_OF_ORDER` until its own
+  backdating and correction contract is admitted. The writer recomputes the
+  totals, the realized basis and the cash allocation inside its transaction
+  and refuses a plan that went stale.
+- **Replay and closure.** Replay reads the merger as an `exchange_out` group
+  carrying its decision and fraction. For each link, in link order, it takes
+  the lot (or the corrected successor), realizes `a` from the lot's replayed
+  remaining basis, then moves the units with the rest. The whole-holding rule
+  applies after the group. A changed `a` appends a decision revision, so the
+  shared gain acknowledgement covers it. A changed carried basis appends a
+  link revision and replays the new position. Upstream changes therefore
+  replay, or refuse by name like an exchange: a backdated purchase is
+  `ErrShareExchangeIncomplete`, and a backdated sale of a linked lot is a
+  named dependency. The ordinary disposal intents exclude the merger's
+  decision, which only its group replays.
+- **Correction.** The generic void path and the exchange correction
+  commands refuse a merger. Its own reversal and replacement are follow-up
+  work, as #179 was for the exchange.
+- **Reads.** The preview and the result return each link with its realized
+  basis, cash share and carried basis, and per cost currency the totals and
+  the result (unknown when any lot is). The journal carries the
+  `cash_and_stock_merger` system label.
+- **Evidence.** The export carries the fraction on
+  `investment-transfer-facts.csv` and the payable date on the dates file.
+  Self-check verifies, per link:
+  - the exchange's checks, with the cash entry outside the four instrument
+    legs;
+  - one quantity-0 `disposal` effect per link, recorded by the decision;
+  - the decision's proceeds against the cash clearing leg.
 
   Replay-equivalence covers both positions.
 

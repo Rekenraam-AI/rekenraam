@@ -1,15 +1,18 @@
 post:
-  summary: Record cash in lieu of a split fraction
+  summary: Record cash in lieu of a fraction
   description: >-
-    Disposes the fractional share a split left (quantity below one) for cash
-    (T-147): an ordinary long disposal under the holding's election, with the
-    cash as proceeds. The security legs post on disposal_on and the cash on
+    Disposes the fractional share (quantity below one) that a split, share
+    exchange, cash-and-stock merger or spin-off left, for cash (T-147, #181):
+    an ordinary long disposal under the holding's election, with the cash as
+    proceeds. The security legs post on disposal_on and the cash on
     payment_on, as separate dated journal entries of one transaction. The
-    disposal is linked to the split it settles, which must be an effective
-    split of the holding on or before disposal_on
-    (INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE otherwise); that split cannot
-    then be corrected until the cash in lieu is. The realized result comes
-    from replay at the disposal slot; it is never a dividend.
+    disposal is linked to the operation it settles, which must be effective
+    and dated on or before disposal_on. A split's fraction is in its own
+    holding; the other actions' fraction is the new instrument in their
+    destination holding (INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE
+    otherwise). That operation cannot then be corrected until the cash in
+    lieu is. The realized result comes from replay at the disposal slot; it is
+    never a dividend.
   parameters:
     - in: header
       name: X-CSRF-Token
@@ -23,7 +26,7 @@ post:
           $ref: "../openapi.yaml#/components/schemas/CashInLieuRequest"
   responses:
     "201":
-      description: Disposal, both dated journal entries, split link and audit recorded atomically
+      description: Disposal, both dated journal entries, settlement link and audit recorded atomically
       content:
         application/json:
           schema:
@@ -47,7 +50,7 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
-      description: Reconciliation override or gain acknowledgement required, split unavailable, insufficient lots or out of order
+      description: Reconciliation override or gain acknowledgement required, settled operation unavailable, insufficient lots or out of order
       content:
         application/json:
           schema:

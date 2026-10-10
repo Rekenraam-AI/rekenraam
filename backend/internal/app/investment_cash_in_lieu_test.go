@@ -23,7 +23,7 @@ func cashInLieuSetup(t *testing.T) (*investmentsTestFixture, InvestmentSplitResu
 }
 
 func cashInLieuInput(f *investmentsTestFixture, splitTransactionID int64) CashInLieuInput {
-	return CashInLieuInput{OwnerUserID: f.ownerUserID, SplitTransactionID: splitTransactionID,
+	return CashInLieuInput{OwnerUserID: f.ownerUserID, SettledTransactionID: splitTransactionID,
 		DisposalOn: "2026-06-01", PaymentOn: "2026-06-05", QuantityValue: exact.New(5), QuantityScale: 1,
 		CashAccountID: f.cashAccountID, CurrencyID: f.eurCommodityID, ProceedsValue: 800, ProceedsScale: 2,
 		Memo: "cash in lieu"}
@@ -45,7 +45,7 @@ func TestCashInLieuDisposesFractionWithCashOnItsPaymentDate(t *testing.T) {
 	assert.Equal(t, "2026-06-05", result.Transaction.JournalEntries[1].EntryDate)
 	var kind string
 	var linkedSplit int64
-	require.NoError(t, f.database.QueryRow(`SELECT o.operation_kind, f.split_operation_id
+	require.NoError(t, f.database.QueryRow(`SELECT o.operation_kind, f.settled_operation_id
 		FROM investment_cash_in_lieu_facts f JOIN investment_operations o ON o.id = f.operation_id`).Scan(&kind, &linkedSplit))
 	assert.Equal(t, "cash_in_lieu", kind)
 	assert.Equal(t, transferOperationID(t, f, split.Transaction.ID), linkedSplit)
@@ -153,7 +153,7 @@ func TestReplaceCashInLieuKeepsItsSplitAndPreviewMatchesCommit(t *testing.T) {
 	require.Len(t, result.Replacement.Transaction.JournalEntries, 2)
 	assert.Equal(t, "2026-06-08", result.Replacement.Transaction.JournalEntries[1].EntryDate)
 	var linked int64
-	require.NoError(t, f.database.QueryRow(`SELECT f.split_operation_id FROM investment_cash_in_lieu_facts f
+	require.NoError(t, f.database.QueryRow(`SELECT f.settled_operation_id FROM investment_cash_in_lieu_facts f
 		JOIN effective_investment_operations o ON o.id = f.operation_id`).Scan(&linked))
 	assert.Equal(t, transferOperationID(t, f, split.Transaction.ID), linked, "the successor settles the same split")
 	requireInvestmentSelfCheckPasses(t, f)

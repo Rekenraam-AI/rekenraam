@@ -24,7 +24,7 @@
   } = $props();
   const initial = untrack(() => correction);
   const initialSplit = untrack(() => split);
-  const splitID = initial?.split_transaction_id ?? initialSplit?.transactionID ?? 0;
+  const splitID = initial?.settled_transaction_id ?? initialSplit?.transactionID ?? 0;
   const holdingID = initial?.holding_account_id ?? initialSplit?.holdingAccountID ?? 0;
   const queryClient = useQueryClient();
   const accountsQuery = createQuery(() => accountsQueryOptions(false, false));
@@ -90,7 +90,7 @@
     if (paymentOn<disposalOn) {formError=new TranslatedFormError(m.investments_cash_in_lieu_dates_error());return null;}
     const choices=method==='specific_lot' ? parseCorrectionLotChoices(Object.entries(quantities).filter(([lot,q])=>q?.trim() && availableLots.some(a=>String(a.lot_id)===lot)).map(([lot,q])=>({lotID:lot,quantity:q})),availableLots,q.field):null;
     if (choices && !choices.ok) {formError=new TranslatedFormError(m.transactions_investment_replace_lot_mismatch());return null;}
-    return {split_transaction_id:splitID,disposal_on:disposalOn,payment_on:paymentOn,cash_account_id:Number(cashAccountID),currency_id:Number(currencyID),quantity_value:q.field.value,quantity_scale:q.field.scale,
+    return {settled_transaction_id:splitID,disposal_on:disposalOn,payment_on:paymentOn,cash_account_id:Number(cashAccountID),currency_id:Number(currencyID),quantity_value:q.field.value,quantity_scale:q.field.scale,
       proceeds_value:p.field.value,proceeds_scale:p.field.scale,cost_basis_method:method,lot_allocations:choices?.ok ? choices.allocations:undefined,memo:memo.trim() || undefined};
   }
   async function runPreview(payload:CashInLieuRequest) {

@@ -28,7 +28,7 @@ func TestCashInLieuAPIDisposesFractionAndNamesUnavailableSplit(t *testing.T) {
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&split))
 
 	path := "/api/v1/investments/cash-in-lieu"
-	request := cashInLieuRequest{SplitTransactionID: split.Transaction.ID, DisposalOn: "2026-02-01", PaymentOn: "2026-02-05",
+	request := cashInLieuRequest{SettledTransactionID: split.Transaction.ID, DisposalOn: "2026-02-01", PaymentOn: "2026-02-05",
 		QuantityValue: exact.New(5), QuantityScale: 1, CashAccountID: f.cashAccount.ID, CurrencyID: f.commodityID,
 		ProceedsValue: 800, ProceedsScale: 2}
 	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, path+"/preview", request, http.StatusOK)
@@ -42,7 +42,7 @@ func TestCashInLieuAPIDisposesFractionAndNamesUnavailableSplit(t *testing.T) {
 	require.NotNil(t, posted.DisposalDecision)
 	require.Len(t, posted.Transaction.JournalEntries, 2)
 
-	request.SplitTransactionID = posted.Transaction.ID
+	request.SettledTransactionID = posted.Transaction.ID
 	refused := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, path, request, http.StatusConflict)
 	assert.Contains(t, refused.Body.String(), "INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE", "a non-split transaction is not a split")
 }
@@ -60,7 +60,7 @@ func TestCashInLieuAPICorrectReverseAndReleaseSplitFence(t *testing.T) {
 	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/splits", splitRequest, http.StatusCreated)
 	var split investmentSplitResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&split))
-	input := cashInLieuRequest{SplitTransactionID: split.Transaction.ID, DisposalOn: "2026-02-01", PaymentOn: "2026-02-05", QuantityValue: exact.New(5), QuantityScale: 1, CashAccountID: f.cashAccount.ID, CurrencyID: f.commodityID, ProceedsValue: 800, ProceedsScale: 2}
+	input := cashInLieuRequest{SettledTransactionID: split.Transaction.ID, DisposalOn: "2026-02-01", PaymentOn: "2026-02-05", QuantityValue: exact.New(5), QuantityScale: 1, CashAccountID: f.cashAccount.ID, CurrencyID: f.commodityID, ProceedsValue: 800, ProceedsScale: 2}
 	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, "/api/v1/investments/cash-in-lieu/preview", input, http.StatusOK)
 	var initialPreview cashInLieuPreviewResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&initialPreview))
@@ -73,7 +73,7 @@ func TestCashInLieuAPICorrectReverseAndReleaseSplitFence(t *testing.T) {
 	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, contextPath, nil, http.StatusOK)
 	var source investmentTradeCorrectionContextResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&source))
-	require.Equal(t, split.Transaction.ID, source.SplitTransactionID)
+	require.Equal(t, split.Transaction.ID, source.SettledTransactionID)
 	require.False(t, source.CanReplaceSale, "generic sale correction must not be offered for cash in lieu")
 	require.Len(t, source.AvailableLots, 1)
 	correctionPath := fmt.Sprintf("/api/v1/investments/transactions/%d/replace-cash-in-lieu", posted.Transaction.ID)

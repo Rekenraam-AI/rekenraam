@@ -14,9 +14,9 @@ func (r *ExportRepository) ExportInvestmentFoundation(ctx context.Context, tx *s
 			FROM investment_disposal_clearing_allocations WHERE book_id = ? ORDER BY decision_id, posting_version_id`,
 		"journal-links": `SELECT l.operation_id, l.link_seq, l.transaction_version_id, l.role
 			FROM investment_operation_journal_links l WHERE l.book_id = ? ORDER BY l.operation_id, l.link_seq`,
-		"dates": `SELECT d.operation_id, d.date_role, d.event_date
+		"dates": `SELECT d.operation_id, d.date_role, d.event_date, d.date_seq
 			FROM investment_operation_dates d JOIN investment_operations o ON o.id = d.operation_id
-			WHERE o.book_id = ? ORDER BY d.operation_id, d.date_role`,
+			WHERE o.book_id = ? ORDER BY d.operation_id, d.date_role, d.date_seq`,
 		"components": `SELECT c.id, c.operation_id, c.component_seq, c.component_kind,
 			c.commodity_id, c.amount_value, c.amount_scale, c.amount_date, c.gross_unknown,
 			c.charge_treatment, c.charge_account_id, c.resolution_tier,
@@ -44,7 +44,7 @@ func (r *ExportRepository) ExportInvestmentFoundation(ctx context.Context, tx *s
 			f.basis_allocation, f.cost_basis_method, f.method_resolution_tier,
 			f.method_account_version_id, f.method_profile_version_id, f.destination_lineage,
 			f.destination_commodity_id, f.ratio_numerator, f.ratio_denominator,
-			f.basis_fraction_value, f.basis_fraction_scale
+			f.basis_fraction_value, f.basis_fraction_scale, f.cash_basis_fraction_value, f.cash_basis_fraction_scale
 			FROM investment_transfer_facts f WHERE f.book_id = ? ORDER BY f.operation_id`,
 		"transfer-lot-links": `SELECT l.operation_id, l.link_seq, l.source_lot_id, l.destination_lot_id,
 			l.quantity_value, l.quantity_scale, l.basis_knowledge, l.carried_basis_value,
@@ -78,7 +78,10 @@ func (r *ExportRepository) ExportInvestmentFoundation(ctx context.Context, tx *s
 			e.quantity_delta_value, e.quantity_delta_scale
 			FROM investment_split_revision_effects e WHERE e.book_id = ?
 			ORDER BY e.revision_id, e.effect_seq`,
-		"cash-in-lieu-facts": `SELECT f.operation_id, f.split_operation_id, f.payment_on, f.created_audit_event_id
+		"cash-in-lieu-facts": `SELECT f.operation_id,
+			CASE WHEN EXISTS (SELECT 1 FROM investment_split_facts s WHERE s.operation_id = f.settled_operation_id)
+				THEN f.settled_operation_id END,
+			f.payment_on, f.created_audit_event_id, f.settled_operation_id
 			FROM investment_cash_in_lieu_facts f WHERE f.book_id = ? ORDER BY f.operation_id`,
 		"capital-return-facts": `SELECT f.operation_id, f.account_id, f.commodity_id, f.cost_commodity_id,
 			f.cash_account_id, f.effective_on, f.payment_on, f.amount_value, f.amount_scale, f.entitlement_rule,

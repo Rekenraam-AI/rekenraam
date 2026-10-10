@@ -1034,13 +1034,15 @@ InvestmentTransferOutReplacementResponse:
 CashInLieuRequest:
   type: object
   additionalProperties: false
-  required: [split_transaction_id, disposal_on, payment_on, quantity_value, quantity_scale, cash_account_id,
+  required: [settled_transaction_id, disposal_on, payment_on, quantity_value, quantity_scale, cash_account_id,
     currency_id, proceeds_value, proceeds_scale]
   properties:
-    split_transaction_id:
+    settled_transaction_id:
       type: integer
       format: int64
-      description: The posted split this fraction comes from; the holding and security are its own.
+      description: >-
+        The posted split, share exchange, cash-and-stock merger or spin-off this fraction comes from.
+        The holding and security are the split's own, or the other action's destination holding and new instrument.
     disposal_on:
       type: string
       format: date
@@ -2451,10 +2453,10 @@ InvestmentTradeCorrectionContextResponse:
     imported, source_identity_id, source_kind, already_corrected, charges, elected_lots, can_replace_sale,
     available_lots, effective_elected_lots]
   properties:
-    split_transaction_id:
+    settled_transaction_id:
       type: integer
       format: int64
-      description: The fixed split link, present for cash-in-lieu correction context.
+      description: The fixed link to the operation a cash in lieu settles, present for cash-in-lieu correction context.
 
     operation_id: { type: integer, format: int64 }
     transaction_id: { type: integer, format: int64 }

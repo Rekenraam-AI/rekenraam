@@ -9,7 +9,7 @@ get:
       name: transaction_id
       required: true
       schema: { type: integer, format: int64 }
-      description: Split transaction being settled.
+      description: Split, share exchange, cash-and-stock merger or spin-off transaction being settled.
     - in: query
       name: currency_id
       required: true
@@ -41,7 +41,7 @@ get:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "404":
-      description: Replacement not found or does not belong to the split
+      description: Replacement not found or does not settle this operation
       content:
         application/json:
           schema:

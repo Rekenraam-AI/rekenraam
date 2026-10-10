@@ -10,7 +10,7 @@ import (
 )
 
 type cashInLieuRequest struct {
-	SplitTransactionID        int64                            `json:"split_transaction_id"`
+	SettledTransactionID      int64                            `json:"settled_transaction_id"`
 	DisposalOn                string                           `json:"disposal_on"`
 	PaymentOn                 string                           `json:"payment_on"`
 	QuantityValue             exact.Coefficient                `json:"quantity_value"`
@@ -45,7 +45,7 @@ func cashInLieuInput(owner app.Owner, r *http.Request, request cashInLieuRequest
 	}
 	return app.CashInLieuInput{
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-		SplitTransactionID: request.SplitTransactionID, DisposalOn: request.DisposalOn, PaymentOn: request.PaymentOn,
+		SettledTransactionID: request.SettledTransactionID, DisposalOn: request.DisposalOn, PaymentOn: request.PaymentOn,
 		QuantityValue: request.QuantityValue, QuantityScale: request.QuantityScale,
 		CashAccountID: request.CashAccountID, CurrencyID: request.CurrencyID,
 		ProceedsValue: int64(request.ProceedsValue), ProceedsScale: request.ProceedsScale,

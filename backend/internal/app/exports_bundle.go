@@ -187,7 +187,7 @@ func (s *ExportService) WriteBundle(ctx context.Context, out io.Writer, filter E
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "journal-links", []string{"operation_id", "link_seq", "transaction_version_id", "role"})
 		}},
 		{"investment-operation-dates.csv", func(w io.Writer) (int64, error) {
-			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "dates", []string{"operation_id", "date_role", "event_date"})
+			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "dates", []string{"operation_id", "date_role", "event_date", "date_seq"})
 		}},
 		{"investment-operation-components.csv", func(w io.Writer) (int64, error) {
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "components", []string{"component_id", "operation_id", "component_seq", "component_kind", "commodity_id", "amount_value", "amount_scale", "amount_date", "gross_unknown", "charge_treatment", "charge_account_id", "resolution_tier", "fee_policy_version_id", "source_evidence_json", "audit_event_id", "charge_kind", "cash_account_id", "separately_paid", "posting_version_id"})
@@ -205,7 +205,7 @@ func (s *ExportService) WriteBundle(ctx context.Context, out io.Writer, filter E
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "lot-effects", []string{"operation_id", "effect_seq", "lot_event_id"})
 		}},
 		{"investment-transfer-facts.csv", func(w io.Writer) (int64, error) {
-			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "transfer-facts", []string{"operation_id", "transfer_kind", "effective_on", "commodity_id", "source_account_id", "destination_account_id", "source_evidence_json", "audit_event_id", "basis_allocation", "cost_basis_method", "method_resolution_tier", "method_account_version_id", "method_profile_version_id", "destination_lineage", "destination_commodity_id", "ratio_numerator", "ratio_denominator", "basis_fraction_value", "basis_fraction_scale"})
+			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "transfer-facts", []string{"operation_id", "transfer_kind", "effective_on", "commodity_id", "source_account_id", "destination_account_id", "source_evidence_json", "audit_event_id", "basis_allocation", "cost_basis_method", "method_resolution_tier", "method_account_version_id", "method_profile_version_id", "destination_lineage", "destination_commodity_id", "ratio_numerator", "ratio_denominator", "basis_fraction_value", "basis_fraction_scale", "cash_basis_fraction_value", "cash_basis_fraction_scale"})
 		}},
 		{"investment-transfer-lot-links.csv", func(w io.Writer) (int64, error) {
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "transfer-lot-links", []string{"operation_id", "link_seq", "source_lot_id", "destination_lot_id", "quantity_value", "quantity_scale", "basis_knowledge", "carried_basis_value", "carried_basis_scale", "cost_commodity_id", "original_date_knowledge", "original_acquired_on", "source_evidence_json"})
@@ -229,7 +229,7 @@ func (s *ExportService) WriteBundle(ctx context.Context, out io.Writer, filter E
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "split-revision-effects", []string{"revision_id", "effect_seq", "lot_id", "quantity_delta_value", "quantity_delta_scale"})
 		}},
 		{"investment-cash-in-lieu-facts.csv", func(w io.Writer) (int64, error) {
-			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "cash-in-lieu-facts", []string{"operation_id", "split_operation_id", "payment_on", "audit_event_id"})
+			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "cash-in-lieu-facts", []string{"operation_id", "split_operation_id", "payment_on", "audit_event_id", "settled_operation_id"})
 		}},
 		{"investment-capital-return-facts.csv", func(w io.Writer) (int64, error) {
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "capital-return-facts", []string{"operation_id", "account_id", "commodity_id", "cost_commodity_id", "cash_account_id", "effective_on", "payment_on", "amount_value", "amount_scale", "entitlement_rule", "source_evidence_json", "audit_event_id"})
@@ -926,7 +926,7 @@ value in this archive was ever a floating-point number.`,
   investment-split-facts.csv  sourced split and reverse-split ratios and dates
   investment-split-revisions.csv  replay revisions of split lot effects per cost currency, with any adjustment journal
   investment-split-revision-effects.csv  per-lot quantity changes for those revisions
-  investment-cash-in-lieu-facts.csv  cash-in-lieu disposals and the split each settles, with payment dates
+  investment-cash-in-lieu-facts.csv  cash-in-lieu disposals and the operation each settles, with payment dates
   investment-capital-return-facts.csv  returns of capital: receipt, payment and effective dates, entitlement rule
   investment-capital-return-effects.csv  per-lot allocated receipt, basis reduction and unresolved excess
   investment-capital-return-entitlements.csv  lots an explicit entitlement names, with quantities held at commit
@@ -1032,7 +1032,15 @@ A spin-off is a transfer_kind 'spin_off' row: each link's quantity is the
 parent lot's units, which it keeps, and its carried basis is
 basis_fraction_value/10^basis_fraction_scale of the parent lot's remaining
 basis; the parent's basis_reduction event and the new lot's opening are that
-amount.`,
+amount. A cash-and-stock merger (operation kind cash_and_stock_merger) is an
+exchange row with cash_basis_fraction_value/10^cash_basis_fraction_scale: the
+share of each lot's basis its cash recovered. That basis is the merger's
+disposal decision, of quantity 0, whose proceeds are the cash; each link
+carries the rest.
+investment-operation-dates.csv numbers several dates of one role with
+date_seq, from 1. investment-cash-in-lieu-facts.csv names the operation a
+cash in lieu settles in settled_operation_id: a split, an exchange or a
+spin-off; split_operation_id repeats it only for a split.`,
 	}
 
 	if filter.From != "" || filter.To != "" || len(filter.AccountIDs) > 0 || len(filter.CommodityIDs) > 0 {

@@ -9,14 +9,16 @@ import (
 	"rekenraam/backend/internal/exact"
 )
 
-// T-147: cash in lieu of a split's fractional share. It is an ordinary long
-// disposal of the fraction under the holding's election, with the cash as
-// proceeds: the security legs post on the disposal date and the cash on the
-// payment date. The realized result comes from replay at the disposal slot;
-// it is never a dividend. The split it settles is pinned and rechecked.
+// T-147: cash in lieu of a split's fractional share, and since #181 of the
+// fraction a share exchange, cash-and-stock merger or spin-off leaves in its
+// destination holding. It is an ordinary long disposal of the fraction under
+// the holding's election, with the cash as proceeds: the security legs post
+// on the disposal date and the cash on the payment date. The realized result
+// comes from replay at the disposal slot; it is never a dividend. The
+// operation it settles is pinned and rechecked.
 
 var (
-	ErrCashInLieuSplitNotFound = errors.New("the split this cash in lieu settles was not found or is no longer effective")
+	ErrCashInLieuSplitNotFound = errors.New("the split, exchange or spin-off this cash in lieu settles was not found or is no longer effective")
 	ErrCashInLieuNotFraction   = errors.New("cash in lieu settles a fraction of one share")
 
 	ErrInvestmentCashInLieuNotFound         = errors.New("cash in lieu operation not found")
@@ -31,10 +33,12 @@ var (
 )
 
 type CashInLieuInput struct {
-	OwnerUserID               int64
-	AuthSessionID             int64
-	RequestID                 string
-	SplitTransactionID        int64
+	OwnerUserID   int64
+	AuthSessionID int64
+	RequestID     string
+	// SettledTransactionID is the posted split, share exchange, cash-and-stock
+	// merger or spin-off whose fraction this disposes.
+	SettledTransactionID      int64
 	DisposalOn                string
 	PaymentOn                 string
 	QuantityValue             exact.Coefficient
@@ -52,8 +56,8 @@ type CashInLieuInput struct {
 }
 
 func (s *InvestmentService) cashInLieuTrade(ctx context.Context, input CashInLieuInput) (InvestmentTradeInput, int64, string, error) {
-	if input.SplitTransactionID <= 0 {
-		return InvestmentTradeInput{}, 0, "", ValidationError{Message: "the split this cash in lieu settles is required"}
+	if input.SettledTransactionID <= 0 {
+		return InvestmentTradeInput{}, 0, "", ValidationError{Message: "the operation this cash in lieu settles is required"}
 	}
 	disposal, err := cleanRequiredDate(input.DisposalOn, "disposal date")
 	if err != nil {
@@ -76,30 +80,30 @@ func (s *InvestmentService) cashInLieuTrade(ctx context.Context, input CashInLie
 	if input.ProceedsValue <= 0 {
 		return InvestmentTradeInput{}, 0, "", ValidationError{Message: "cash in lieu amount must be positive"}
 	}
-	split, err := s.repository.SplitOperationByTransactionID(ctx, BookID, input.SplitTransactionID)
+	settled, err := s.repository.CashInLieuSettledOperation(ctx, BookID, input.SettledTransactionID)
 	if errors.Is(err, db.ErrNotFound) {
 		return InvestmentTradeInput{}, 0, "", ErrCashInLieuSplitNotFound
 	}
 	if err != nil {
-		return InvestmentTradeInput{}, 0, "", fmt.Errorf("read split for cash in lieu: %w", err)
+		return InvestmentTradeInput{}, 0, "", fmt.Errorf("read operation for cash in lieu: %w", err)
 	}
-	if split.AlreadyCorrected {
+	if settled.AlreadyCorrected {
 		return InvestmentTradeInput{}, 0, "", ErrCashInLieuSplitNotFound
 	}
-	if disposal < split.EventDate {
-		return InvestmentTradeInput{}, 0, "", ValidationError{Message: "cash in lieu cannot be disposed before its split"}
+	if disposal < settled.EventDate {
+		return InvestmentTradeInput{}, 0, "", ValidationError{Message: "cash in lieu cannot be disposed before the operation it settles"}
 	}
 	return InvestmentTradeInput{
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID, RequestID: input.RequestID,
-		TransactionDate: disposal, SettlementDate: payment, CommodityID: split.CommodityID,
-		HoldingAccountID: split.AccountID, CashAccountID: input.CashAccountID, CashCommodityID: input.CurrencyID,
+		TransactionDate: disposal, SettlementDate: payment, CommodityID: settled.CommodityID,
+		HoldingAccountID: settled.AccountID, CashAccountID: input.CashAccountID, CashCommodityID: input.CurrencyID,
 		QuantityValue: input.QuantityValue, QuantityScale: input.QuantityScale,
 		CashAmountValue: input.ProceedsValue, CashAmountScale: input.ProceedsScale,
 		CostBasisMethod: input.CostBasisMethod, LotAllocations: input.LotAllocations,
 		Memo: input.Memo, ChangeReason: input.ChangeReason, ReconciliationOverride: input.ReconciliationOverride,
 		GainImpactAcknowledgement: input.GainImpactAcknowledgement,
 		Operation:                 "investment.cash_in_lieu", CashInLieu: true,
-	}, split.OperationID, payment, nil
+	}, settled.OperationID, payment, nil
 }
 
 // PreviewCashInLieu runs the disposal writer and rolls back: the lots the
@@ -123,7 +127,7 @@ func cashInLieuPreviewResult(allocations []db.LotDisposalRecord, record db.Dispo
 
 func (s *InvestmentService) PreviewCashInLieu(ctx context.Context, input CashInLieuInput) (CashInLieuPreviewResult, ReconciliationImpact, error) {
 	input.ReconciliationOverride = true
-	trade, splitOperationID, payment, err := s.cashInLieuTrade(ctx, input)
+	trade, settledOperationID, payment, err := s.cashInLieuTrade(ctx, input)
 	if err != nil {
 		return CashInLieuPreviewResult{}, ReconciliationImpact{}, err
 	}
@@ -132,7 +136,7 @@ func (s *InvestmentService) PreviewCashInLieu(ctx context.Context, input CashInL
 		return CashInLieuPreviewResult{}, ReconciliationImpact{}, err
 	}
 	journal.GainImpact = gainImpactPolicy("")
-	simulated, allocations, decision, err := s.repository.SimulateCashInLieu(ctx, journal, disposal, splitOperationID, payment)
+	simulated, allocations, decision, err := s.repository.SimulateCashInLieu(ctx, journal, disposal, settledOperationID, payment)
 	if err != nil {
 		return CashInLieuPreviewResult{}, ReconciliationImpact{}, mapCashInLieuPreviewError(err)
 	}
@@ -152,13 +156,13 @@ func mapCashInLieuPreviewError(err error) error {
 }
 
 // CashInLieu records the fraction's disposal and its cash under one audit
-// event, linked to the split it settles.
+// event, linked to the operation it settles.
 func (s *InvestmentService) CashInLieu(ctx context.Context, input CashInLieuInput) (InvestmentTradeResult, error) {
-	trade, splitOperationID, payment, err := s.cashInLieuTrade(ctx, input)
+	trade, settledOperationID, payment, err := s.cashInLieuTrade(ctx, input)
 	if err != nil {
 		return InvestmentTradeResult{}, err
 	}
-	result, err := s.sell(ctx, trade, db.CashInLieuFactWriter(ctx, BookID, splitOperationID, payment))
+	result, err := s.sell(ctx, trade, db.CashInLieuFactWriter(ctx, BookID, settledOperationID, payment))
 	if errors.Is(err, db.ErrCashInLieuSplitUnavailable) {
 		return InvestmentTradeResult{}, ErrCashInLieuSplitNotFound
 	}
@@ -176,7 +180,7 @@ func (s *InvestmentService) ReverseCashInLieuReconciliationImpact(ctx context.Co
 }
 
 // ReplaceCashInLieuInput corrects a cash in lieu. Replacement carries the
-// corrected disposal and payment; the split it settles stays the same.
+// corrected disposal and payment; the operation it settles stays the same.
 type ReplaceCashInLieuInput struct {
 	OwnerUserID               int64
 	AuthSessionID             int64
@@ -189,7 +193,7 @@ type ReplaceCashInLieuInput struct {
 }
 
 func (s *InvestmentService) cashInLieuReplacement(ctx context.Context, input ReplaceCashInLieuInput) (ReplaceInvestmentSaleInput, int64, string, error) {
-	splitTransactionID, err := s.repository.CashInLieuSplitTransactionID(ctx, BookID, input.TransactionID)
+	settledTransactionID, err := s.repository.CashInLieuSettledTransactionID(ctx, BookID, input.TransactionID)
 	if errors.Is(err, db.ErrNotFound) {
 		return ReplaceInvestmentSaleInput{}, 0, "", ErrInvestmentCashInLieuNotFound
 	}
@@ -197,11 +201,11 @@ func (s *InvestmentService) cashInLieuReplacement(ctx context.Context, input Rep
 		return ReplaceInvestmentSaleInput{}, 0, "", err
 	}
 	replacement := input.Replacement
-	if replacement.SplitTransactionID != 0 && replacement.SplitTransactionID != splitTransactionID {
-		return ReplaceInvestmentSaleInput{}, 0, "", ValidationError{Message: "a cash in lieu replacement must keep its split"}
+	if replacement.SettledTransactionID != 0 && replacement.SettledTransactionID != settledTransactionID {
+		return ReplaceInvestmentSaleInput{}, 0, "", ValidationError{Message: "a cash in lieu replacement must keep the operation it settles"}
 	}
-	replacement.OwnerUserID, replacement.SplitTransactionID = input.OwnerUserID, splitTransactionID
-	trade, splitOperationID, payment, err := s.cashInLieuTrade(ctx, replacement)
+	replacement.OwnerUserID, replacement.SettledTransactionID = input.OwnerUserID, settledTransactionID
+	trade, settledOperationID, payment, err := s.cashInLieuTrade(ctx, replacement)
 	if err != nil {
 		return ReplaceInvestmentSaleInput{}, 0, "", err
 	}
@@ -214,19 +218,19 @@ func (s *InvestmentService) cashInLieuReplacement(ctx context.Context, input Rep
 	return ReplaceInvestmentSaleInput{OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID,
 		RequestID: input.RequestID, TransactionID: input.TransactionID, Reason: input.Reason,
 		ReconciliationOverride: input.ReconciliationOverride, Replacement: trade,
-		GainImpactAcknowledgement: input.GainImpactAcknowledgement}, splitOperationID, payment, nil
+		GainImpactAcknowledgement: input.GainImpactAcknowledgement}, settledOperationID, payment, nil
 }
 
 // ReplaceCashInLieu posts the inverse and the corrected disposal at the
 // replaced slot under one audit event, linking the successor to the same
-// split.
+// settled operation.
 func (s *InvestmentService) ReplaceCashInLieu(ctx context.Context, input ReplaceCashInLieuInput) (ReplaceInvestmentSaleResult, error) {
-	sale, splitOperationID, payment, err := s.cashInLieuReplacement(ctx, input)
+	sale, settledOperationID, payment, err := s.cashInLieuReplacement(ctx, input)
 	if err != nil {
 		return ReplaceInvestmentSaleResult{}, err
 	}
 	result, err := s.replaceDisposal(ctx, sale, "browser_api", "investment.cash_in_lieu.replace",
-		db.CashInLieuReplacementFactWriter(ctx, BookID, splitOperationID, payment), cashInLieuCorrectionFamily)
+		db.CashInLieuReplacementFactWriter(ctx, BookID, settledOperationID, payment), cashInLieuCorrectionFamily)
 	if errors.Is(err, db.ErrCashInLieuSplitUnavailable) {
 		return ReplaceInvestmentSaleResult{}, ErrCashInLieuSplitNotFound
 	}
@@ -240,7 +244,7 @@ func (s *InvestmentService) ReplaceCashInLieuReconciliationImpact(ctx context.Co
 
 func (s *InvestmentService) PreviewCashInLieuReplacement(ctx context.Context, input ReplaceCashInLieuInput) (CashInLieuPreviewResult, ReconciliationImpact, error) {
 	input.ReconciliationOverride = true
-	sale, splitOperationID, payment, err := s.cashInLieuReplacement(ctx, input)
+	sale, settledOperationID, payment, err := s.cashInLieuReplacement(ctx, input)
 	if err != nil {
 		return CashInLieuPreviewResult{}, ReconciliationImpact{}, err
 	}
@@ -248,7 +252,7 @@ func (s *InvestmentService) PreviewCashInLieuReplacement(ctx context.Context, in
 	if err != nil {
 		return CashInLieuPreviewResult{}, ReconciliationImpact{}, err
 	}
-	simulated, allocations, decision, err := s.repository.SimulateCashInLieuReplacement(ctx, prepared.Operation, prepared.Inverse, prepared.Replacement, prepared.Disposal, splitOperationID, payment)
+	simulated, allocations, decision, err := s.repository.SimulateCashInLieuReplacement(ctx, prepared.Operation, prepared.Inverse, prepared.Replacement, prepared.Disposal, settledOperationID, payment)
 	if err != nil {
 		return CashInLieuPreviewResult{}, ReconciliationImpact{}, mapCashInLieuPreviewError(err)
 	}
@@ -260,7 +264,7 @@ func (s *InvestmentService) PreviewCashInLieuReplacement(ctx context.Context, in
 	return result, impact, err
 }
 
-func (s *InvestmentService) CashInLieuAvailableLots(ctx context.Context, ownerUserID, splitTransactionID, currencyID int64, disposalOn string, replacingTransactionID int64) ([]db.InvestmentTradeCorrectionAvailableLot, error) {
+func (s *InvestmentService) CashInLieuAvailableLots(ctx context.Context, ownerUserID, settledTransactionID, currencyID int64, disposalOn string, replacingTransactionID int64) ([]db.InvestmentTradeCorrectionAvailableLot, error) {
 	if ownerUserID <= 0 || currencyID <= 0 {
 		return nil, ValidationError{Message: "owner and currency are required"}
 	}
@@ -268,17 +272,17 @@ func (s *InvestmentService) CashInLieuAvailableLots(ctx context.Context, ownerUs
 	if err != nil {
 		return nil, err
 	}
-	split, err := s.repository.SplitOperationByTransactionID(ctx, BookID, splitTransactionID)
-	if errors.Is(err, db.ErrNotFound) || split.AlreadyCorrected {
+	settled, err := s.repository.CashInLieuSettledOperation(ctx, BookID, settledTransactionID)
+	if errors.Is(err, db.ErrNotFound) || settled.AlreadyCorrected {
 		return nil, ErrCashInLieuSplitNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	if date < split.EventDate {
-		return nil, ValidationError{Message: "cash in lieu cannot be disposed before its split"}
+	if date < settled.EventDate {
+		return nil, ValidationError{Message: "cash in lieu cannot be disposed before the operation it settles"}
 	}
-	lots, err := s.repository.CashInLieuAvailableLots(ctx, BookID, split, currencyID, date, replacingTransactionID)
+	lots, err := s.repository.CashInLieuAvailableLots(ctx, BookID, settled, currencyID, date, replacingTransactionID)
 	if err != nil {
 		return nil, mapCashInLieuPreviewError(err)
 	}

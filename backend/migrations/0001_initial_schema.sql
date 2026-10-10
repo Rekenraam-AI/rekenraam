@@ -1449,11 +1449,15 @@ CREATE TABLE IF NOT EXISTS investment_operation_journal_links (
   UNIQUE (transaction_version_id)
 );
 
+-- A kind may record several dates of one role, such as cash paid in
+-- instalments: date_seq numbers them from 1 within the role (#181). Every
+-- current writer records sequence 1.
 CREATE TABLE IF NOT EXISTS investment_operation_dates (
   operation_id INTEGER NOT NULL REFERENCES investment_operations(id) ON DELETE RESTRICT,
   date_role TEXT NOT NULL CHECK (date_role IN ('trade', 'settlement', 'ex', 'record', 'payable', 'payment', 'effective')),
+  date_seq INTEGER NOT NULL DEFAULT 1 CHECK (date_seq > 0),
   event_date TEXT NOT NULL CHECK (event_date GLOB '????-??-??'),
-  PRIMARY KEY (operation_id, date_role)
+  PRIMARY KEY (operation_id, date_role, date_seq)
 );
 
 -- Immutable source components. A current net-only trade records only its
@@ -1573,6 +1577,18 @@ CREATE TABLE IF NOT EXISTS investment_transfer_facts (
     (length(basis_fraction_value) BETWEEN 1 AND 13 AND basis_fraction_value NOT GLOB '*[^0-9]*'
       AND substr(basis_fraction_value, 1, 1) BETWEEN '1' AND '9')),
   basis_fraction_scale INTEGER CHECK (basis_fraction_scale IS NULL OR basis_fraction_scale BETWEEN 1 AND 12),
+  -- A cash-and-stock merger (#181) is an exchange that also pays cash. The
+  -- election is the exact share of each lot's remaining basis the cash
+  -- recovers, from 0 to 1 inclusive; the rest carries into the new lot. A
+  -- plain share exchange has none.
+  cash_basis_fraction_value TEXT CHECK (cash_basis_fraction_value IS NULL OR
+    (length(cash_basis_fraction_value) BETWEEN 1 AND 13 AND cash_basis_fraction_value NOT GLOB '*[^0-9]*'
+      AND (cash_basis_fraction_value = '0' OR substr(cash_basis_fraction_value, 1, 1) BETWEEN '1' AND '9'))),
+  cash_basis_fraction_scale INTEGER CHECK (cash_basis_fraction_scale IS NULL OR cash_basis_fraction_scale BETWEEN 0 AND 12),
+  CHECK ((cash_basis_fraction_value IS NULL) = (cash_basis_fraction_scale IS NULL)),
+  CHECK (cash_basis_fraction_value IS NULL OR (transfer_kind = 'exchange'
+    AND ((cash_basis_fraction_value IN ('0', '1') AND cash_basis_fraction_scale = 0)
+      OR (cash_basis_fraction_value <> '0' AND length(cash_basis_fraction_value) <= cash_basis_fraction_scale)))),
   CHECK ((transfer_kind IN ('exchange', 'spin_off')) = (destination_commodity_id IS NOT NULL
     AND ratio_numerator IS NOT NULL AND ratio_denominator IS NOT NULL)),
   CHECK ((transfer_kind = 'spin_off') = (basis_fraction_value IS NOT NULL AND basis_fraction_scale IS NOT NULL)),
@@ -1632,7 +1648,10 @@ WHEN NOT EXISTS (
     AND ((NEW.transfer_kind = 'external_in' AND o.operation_kind = 'external_transfer_in')
       OR (NEW.transfer_kind = 'external_out' AND o.operation_kind = 'external_transfer_out')
       OR (NEW.transfer_kind = 'internal' AND o.operation_kind = 'internal_transfer')
-      OR (((NEW.transfer_kind = 'exchange' AND o.operation_kind = 'share_exchange')
+      OR (((NEW.transfer_kind = 'exchange' AND o.operation_kind = 'share_exchange'
+            AND NEW.cash_basis_fraction_value IS NULL)
+          OR (NEW.transfer_kind = 'exchange' AND o.operation_kind = 'cash_and_stock_merger'
+            AND NEW.cash_basis_fraction_value IS NOT NULL)
           OR (NEW.transfer_kind = 'spin_off' AND o.operation_kind = 'spin_off'))
         AND EXISTS (SELECT 1 FROM commodities n WHERE n.id = NEW.destination_commodity_id
           AND n.book_id = NEW.book_id)))
@@ -2335,14 +2354,16 @@ BEFORE DELETE ON investment_capital_return_effects
 BEGIN SELECT RAISE(ABORT, 'investment capital return effects are immutable'); END;
 -- +goose StatementEnd
 
--- Cash in lieu (slice 5, T-147): an ordinary long disposal of a split's
--- fractional entitlement, operation kind cash_in_lieu, linked here to the
--- effective split of the same holding it settles. Its security legs post on
--- the disposal date, its cash on payment_on (the trade's settlement date).
+-- Cash in lieu (slice 5, T-147): an ordinary long disposal of a fractional
+-- entitlement, operation kind cash_in_lieu, linked here to the effective
+-- operation that created the fraction (#181): a split of the same holding,
+-- or a share exchange, cash-and-stock merger or spin-off whose destination
+-- holding and new instrument it disposes. Its security legs post on the
+-- disposal date, its cash on payment_on (the trade's settlement date).
 CREATE TABLE IF NOT EXISTS investment_cash_in_lieu_facts (
   operation_id INTEGER PRIMARY KEY REFERENCES investment_operations(id) ON DELETE RESTRICT,
   book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
-  split_operation_id INTEGER NOT NULL REFERENCES investment_split_facts(operation_id) ON DELETE RESTRICT,
+  settled_operation_id INTEGER NOT NULL REFERENCES investment_operations(id) ON DELETE RESTRICT,
   payment_on TEXT NOT NULL CHECK (payment_on GLOB '????-??-??'),
   created_audit_event_id INTEGER NOT NULL REFERENCES audit_events(id) ON DELETE RESTRICT
 );
@@ -2353,16 +2374,19 @@ BEFORE INSERT ON investment_cash_in_lieu_facts
 WHEN NOT EXISTS (
   SELECT 1 FROM investment_operations o
   JOIN investment_disposal_decisions d ON d.operation_id = o.id
-  JOIN investment_split_facts s ON s.operation_id = NEW.split_operation_id
+  JOIN investment_operations settled ON settled.id = NEW.settled_operation_id AND settled.book_id = NEW.book_id
   WHERE o.id = NEW.operation_id AND o.book_id = NEW.book_id AND o.operation_kind = 'cash_in_lieu'
     AND o.created_audit_event_id = NEW.created_audit_event_id AND o.event_date <= NEW.payment_on
-    AND s.book_id = NEW.book_id AND d.account_id = s.account_id AND d.commodity_id = s.commodity_id
-    AND d.event_date >= s.effective_on
-    -- The split it settles must still be effective (T-147 seam fence).
+    AND (EXISTS (SELECT 1 FROM investment_split_facts s WHERE s.operation_id = settled.id
+        AND d.account_id = s.account_id AND d.commodity_id = s.commodity_id AND d.event_date >= s.effective_on)
+      OR EXISTS (SELECT 1 FROM investment_transfer_facts f WHERE f.operation_id = settled.id
+        AND f.transfer_kind IN ('exchange', 'spin_off') AND d.account_id = f.destination_account_id
+        AND d.commodity_id = f.destination_commodity_id AND d.event_date >= f.effective_on))
+    -- The operation it settles must still be effective (T-147 seam fence).
     AND NOT EXISTS (SELECT 1 FROM investment_operations successor
-      WHERE successor.correction_of_operation_id = s.operation_id)
+      WHERE successor.correction_of_operation_id = settled.id)
 )
-BEGIN SELECT RAISE(ABORT, 'investment cash in lieu fact is outside its disposal or split'); END;
+BEGIN SELECT RAISE(ABORT, 'investment cash in lieu fact is outside its disposal or settled operation'); END;
 -- +goose StatementEnd
 
 -- +goose StatementBegin

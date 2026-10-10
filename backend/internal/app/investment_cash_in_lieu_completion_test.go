@@ -64,12 +64,12 @@ func TestCashInLieuReplacementRefusesAnotherSplitAndLateFailureRollsBack(t *test
 	cil, err := f.investmentService.CashInLieu(ctx, input)
 	require.NoError(t, err)
 	replacement := ReplaceCashInLieuInput{OwnerUserID: f.ownerUserID, TransactionID: cil.Transaction.ID, Reason: "cash corrected", Replacement: input}
-	replacement.Replacement.SplitTransactionID = cil.Transaction.ID
+	replacement.Replacement.SettledTransactionID = cil.Transaction.ID
 	_, _, err = f.investmentService.PreviewCashInLieuReplacement(ctx, replacement)
 	require.Error(t, err)
 	_, err = f.investmentService.ReplaceCashInLieu(ctx, replacement)
 	require.Error(t, err)
-	replacement.Replacement.SplitTransactionID = split.Transaction.ID
+	replacement.Replacement.SettledTransactionID = split.Transaction.ID
 	replacement.Replacement.ProceedsValue = 850
 	_, impact, err := f.investmentService.PreviewCashInLieuReplacement(ctx, replacement)
 	require.NoError(t, err)
