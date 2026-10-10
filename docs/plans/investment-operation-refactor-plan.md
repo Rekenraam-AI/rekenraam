@@ -960,8 +960,8 @@ records it as an explicit election. The app does not choose it.
   named dependency. The ordinary disposal intents exclude the merger's
   decision, which only its group replays.
 - **Correction.** The generic void path and the exchange correction
-  commands refuse a merger. Its own reversal and replacement are follow-up
-  work, as #179 was for the exchange.
+  commands refuse a merger. Its own reversal, replacement and backdating
+  are #184, as #179 was for the exchange.
 - **Reads.** The preview and the result return each link with its realized
   basis, cash share and carried basis, and per cost currency the totals and
   the result (unknown when any lot is). The journal carries the
