@@ -63,6 +63,7 @@ func requireInvestmentSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
 		assert.Equalf(t, SelfCheckPassed, result.Status, "%s: %s %v", check, result.Summary, result.Sample)
 	}
 	requireEffectiveMovementsConsistent(t, f)
+	requireConservationOracle(t, f)
 }
 
 func replaceBuyPrice(f *investmentsTestFixture, buy InvestmentTradeResult, date string, quantity, cash int64) ReplaceInvestmentBuyInput {

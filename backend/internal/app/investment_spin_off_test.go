@@ -54,6 +54,7 @@ func requireSpinOffSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
 		assert.Equal(t, SelfCheckPassed, resultFor(t, run, check).Status, "%s: %s", check, resultFor(t, run, check).Summary)
 	}
 	requireEffectiveMovementsConsistent(t, f)
+	requireConservationOracle(t, f)
 }
 
 func TestSpinOffDividesBasisKeepsUnitsAndRealizesNothing(t *testing.T) {

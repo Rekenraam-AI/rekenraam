@@ -96,6 +96,27 @@ cd backend
 go test ./internal/app ./internal/api -run '^TestFinancial' -count=1
 ```
 
+Investment tests also run an independent conservation oracle
+(`requireConservationOracle`, [#190](https://github.com/sergeyfarin/rekenraam/issues/190)).
+Its expected values never come from replay or from the effective-movement
+owner:
+
+- dated long and named-short quantities against the posted journal, per
+  holding and date;
+- per-operation basis conservation, checked against the operation's own facts;
+- unknown basis staying unknown until a sourced resolution.
+
+Every shared investment self-check pass helper calls it, so a new
+investment test should end with one of them. When a later step corrects or
+reverses the revised operation, call the oracle in between: the correction
+retires the revision a buggy reader would mishandle. The named multi-family
+sequences are `TestOracle*`:
+
+```sh
+cd backend
+go test ./internal/app -run '^TestOracle' -count=1
+```
+
 These include independent exact expected amounts, fixed-seed trade sequences,
 gross cashflow scope checks and HTTP scale/total assertions. Keep the full
 backend script as the completion gate. See

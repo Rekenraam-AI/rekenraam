@@ -111,12 +111,12 @@ below is execution order, not a chain of hard dependencies.
 
 1. Investment read correctness from the
    [investment schema design review](reviews/investment-schema-design-review-2026-10-11.md)
-   (2026-10-11), ahead of the rest of the queue. The named-short defect
-   [#188](https://github.com/sergeyfarin/rekenraam/issues/188) and the single owner of committed effective movements
-   [#189](https://github.com/sergeyfarin/rekenraam/issues/189) and the backdating requirement text
-   [#193](https://github.com/sergeyfarin/rekenraam/issues/193) shipped 2026-10-11; remaining:
-   1. An independent conservation oracle [#190](https://github.com/sergeyfarin/rekenraam/issues/190).
-   2. Operation-kind capability matrix [#191](https://github.com/sergeyfarin/rekenraam/issues/191) and uniform number
+   (2026-10-11), ahead of the rest of the queue. Shipped 2026-10-11: the named-short defect
+   [#188](https://github.com/sergeyfarin/rekenraam/issues/188), the single owner of committed effective movements
+   [#189](https://github.com/sergeyfarin/rekenraam/issues/189), the backdating requirement text
+   [#193](https://github.com/sergeyfarin/rekenraam/issues/193) and the independent conservation oracle
+   [#190](https://github.com/sergeyfarin/rekenraam/issues/190). Remaining:
+   1. Operation-kind capability matrix [#191](https://github.com/sergeyfarin/rekenraam/issues/191) and uniform number
       CHECKs [#192](https://github.com/sergeyfarin/rekenraam/issues/192); #192 must land before the v0.1.0 tag.
 2. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
    share exchange core [#177](https://github.com/sergeyfarin/rekenraam/issues/177) (delivered 2026-10-10),

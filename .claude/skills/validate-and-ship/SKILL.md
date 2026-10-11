@@ -339,6 +339,11 @@ non-trivial diff (yours or reviewed):
     `TestNamedShortCountsARevisedCoverOnItsDate`,
     `TestUnexplainedNegativeUnitBesideARevisedCoverIsFlagged`,
     `TestShortOpeningInsideALongClosedByARevisedTransferIsRefused`.
+    Replay equivalence cannot see this class, because stored state and replay
+    agree. The independent oracle (`requireConservationOracle`, #190) checks
+    readers against the posted journal and operation facts. It runs in every
+    shared self-check pass helper; call it before a later correction retires
+    the revision under test.
 
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.

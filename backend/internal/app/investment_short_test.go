@@ -79,6 +79,7 @@ func shortSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
 		assert.Equal(t, SelfCheckPassed, result.Status, "%s: %s", check, result.Summary)
 	}
 	requireEffectiveMovementsConsistent(t, f)
+	requireConservationOracle(t, f)
 }
 
 func TestShortSaleOpensShortLotWithExactOpeningProceeds(t *testing.T) {

@@ -64,6 +64,7 @@ func requireSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
 		assert.Equal(t, SelfCheckPassed, result.Status, "%s: %s", check, result.Summary)
 	}
 	requireEffectiveMovementsConsistent(t, f)
+	requireConservationOracle(t, f)
 }
 
 // effectiveDisposedBasis is the decision's current basis: its latest replay
