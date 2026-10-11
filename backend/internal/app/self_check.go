@@ -134,7 +134,7 @@ var checkNarratives = map[string]checkNarrative{
 		nextStep:    "Review the named operation, disposal decision, journal or lot and the setup accounts. Preserve the original rows before correcting any mismatch or missing link.",
 	},
 	CheckInvestmentReplay: {
-		explanation: "Commands replay only the investment positions they affect. This check replays every long position from its effective trades, transfers, splits and elections in a rolled-back simulation and compares lot balances, each disposal's allocations, split effects, carried transfer basis and the method lock with what is stored, exactly and per cost currency. A stored result that history no longer produces means a command skipped a replay it needed.",
+		explanation: "Commands replay only the investment positions they affect. This check replays every long and short position from its effective trades, transfers, splits and elections in a rolled-back simulation and compares lot balances, each disposal's allocations, split effects, carried transfer basis and the method lock with what is stored, exactly and per cost currency. A stored result that history no longer produces means a command skipped a replay it needed.",
 		nextStep:    "Note the named lots, disposal decisions or operations and keep a backup. Do not edit the projection by hand: re-entering a correction through the app replays the position, and a refused replay names the operation history no longer supports.",
 	},
 	CheckSQLiteIntegrity: {
@@ -334,7 +334,7 @@ func (s *SelfCheckService) executeChecks(ctx context.Context) ([]SelfCheckResult
 	return results, nil
 }
 
-// investmentReplayCheck is T-134's verifier: every long position's stored
+// investmentReplayCheck is T-134's verifier: every long and short position's stored
 // projection must equal its replay from effective intents.
 func (s *SelfCheckService) investmentReplayCheck(ctx context.Context) (SelfCheckResult, error) {
 	equivalence, err := s.repository.InvestmentReplayEquivalence(ctx, BookID)

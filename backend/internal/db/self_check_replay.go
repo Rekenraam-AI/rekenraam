@@ -52,7 +52,8 @@ type InvestmentReplayEquivalence struct {
 	Mismatches []InvestmentReplayMismatch
 }
 
-// InvestmentReplayEquivalence replays every long position of the book. Each
+// InvestmentReplayEquivalence replays every position of the book, long and
+// short (#175), keyed by account, instrument, cost currency and side. Each
 // position runs in its own write transaction that is always rolled back, so
 // the write lock is held for one position at a time and nothing is stored.
 func (r *SelfCheckRepository) InvestmentReplayEquivalence(ctx context.Context, bookID int64) (InvestmentReplayEquivalence, error) {

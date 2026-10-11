@@ -343,14 +343,22 @@ Goal: add power-user workflows after the core ledger is stable.
   strings, including requests, lot basis, proceeds, and gains. The current
   backend int64 range remains an admission limit; browser Number conversion
   must not narrow that range or change an accepted coefficient.
-- A position's events are entered in order relative to its own disposals: a
-  trade dated before a sale that position has already recorded is refused, and
-  the refusal says which sale blocks the date. A disposal rewrites the
-  remaining-basis projection later events read, so an event behind one would be
-  computed against a state that has moved on. Backdating behind later
-  *purchases* is unaffected, and same-day events are ordered by entry. Replaying
-  a position under corrected history — preserving elections, journal entries and
-  provenance — is a separate, later capability, not a relaxation of this rule.
+- An investment event may be dated behind a position's later disposals or
+  transfers when its command has dated replay: buys, reinvestment, sales,
+  write-offs, transfers in, out and between accounts, splits, returns of
+  capital, cash in lieu, share exchanges, spin-offs, cash-and-stock mergers,
+  and named short sales and covers. Replay rebuilds every affected position
+  from its effective history in date order, with same-day events in entry
+  order. It preserves each later decision's recorded method, explicit
+  elections, journal entries and provenance. A changed earlier gain needs an
+  explicit acknowledgement, and a reconciled balance needs the override.
+- A backdated change that replay cannot satisfy is refused with nothing
+  written, naming the blocking operation. Examples: a later sale or cover that
+  would lack units, a `source_lots` transfer whose depleted lots would change,
+  a corporate action that would not cover the new lot, or an unknown basis
+  reaching a dependent that cannot carry it. A path without replay admission
+  keeps the in-order refusal, which names the blocking date. See ADR 0013
+  (replay scope, transfer correction and backdating refinements).
 - Every account an investment command names must play the role that command
   means it to play, checked at the API rather than assumed from the UI's
   pickers: holdings are subledger-managed accounts, settlement is ordinary cash,

@@ -12,7 +12,7 @@ import (
 	"rekenraam/backend/internal/exact"
 )
 
-// T-134: self-check replays every long position from its effective intents
+// T-134: self-check replays every long and short position from its effective intents
 // and compares the result with the stored projection. Each damage below is
 // internally consistent, so the consolidated lot and foundation readers still
 // pass; only the replay verifier sees that history no longer produces it.
