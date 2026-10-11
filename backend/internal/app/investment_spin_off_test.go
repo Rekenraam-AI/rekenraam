@@ -53,6 +53,7 @@ func requireSpinOffSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
 	for _, check := range []string{CheckInvestmentFoundation, CheckInvestmentReplay, CheckLotReconciliation} {
 		assert.Equal(t, SelfCheckPassed, resultFor(t, run, check).Status, "%s: %s", check, resultFor(t, run, check).Summary)
 	}
+	requireEffectiveMovementsConsistent(t, f)
 }
 
 func TestSpinOffDividesBasisKeepsUnitsAndRealizesNothing(t *testing.T) {
@@ -268,6 +269,11 @@ func TestSpinOffUpstreamBuyReplacementRevisesBothSides(t *testing.T) {
 	require.Len(t, sold.Allocations, 1)
 	assert.Zero(t, exact.ScaledIntFromInt64(sold.Allocations[0].CostBasisValue, sold.Allocations[0].CostBasisScale).Cmp(
 		exact.ScaledIntFromInt64(6000, 2)))
+	// #189: a revised spin-off parent gives up basis without units; the new
+	// lot receives units and the carried basis.
+	reduction := requireRevisedMovement(t, f, db.MovementSourceTransferLinkRevision, "basis_reduction", 0)
+	require.Negative(t, reduction.CostBasisValue)
+	requireRevisedMovement(t, f, db.MovementSourceTransferLinkRevision, "transfer_in", 1)
 	requireSpinOffSelfCheckPasses(t, f)
 }
 

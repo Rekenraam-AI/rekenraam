@@ -63,6 +63,7 @@ func requireSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
 		result := resultFor(t, run, check)
 		assert.Equal(t, SelfCheckPassed, result.Status, "%s: %s", check, result.Summary)
 	}
+	requireEffectiveMovementsConsistent(t, f)
 }
 
 // effectiveDisposedBasis is the decision's current basis: its latest replay

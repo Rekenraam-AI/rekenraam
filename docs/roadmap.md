@@ -112,10 +112,10 @@ below is execution order, not a chain of hard dependencies.
 1. Investment read correctness from the
    [investment schema design review](reviews/investment-schema-design-review-2026-10-11.md)
    (2026-10-11), ahead of the rest of the queue. The named-short defect
-   [#188](https://github.com/sergeyfarin/rekenraam/issues/188) is fixed (2026-10-11); remaining:
+   [#188](https://github.com/sergeyfarin/rekenraam/issues/188) and the single owner of committed effective movements
+   [#189](https://github.com/sergeyfarin/rekenraam/issues/189) shipped 2026-10-11; remaining:
    1. Backdating requirement and replay-equivalence comment [#193](https://github.com/sergeyfarin/rekenraam/issues/193).
-   2. One owner for committed effective movements [#189](https://github.com/sergeyfarin/rekenraam/issues/189), together with
-      an independent conservation oracle [#190](https://github.com/sergeyfarin/rekenraam/issues/190).
+   2. An independent conservation oracle [#190](https://github.com/sergeyfarin/rekenraam/issues/190).
    3. Operation-kind capability matrix [#191](https://github.com/sergeyfarin/rekenraam/issues/191) and uniform number
       CHECKs [#192](https://github.com/sergeyfarin/rekenraam/issues/192); #192 must land before the v0.1.0 tag.
 2. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into

@@ -143,6 +143,8 @@ operation-opened lot row *is* that operation's opening fact
 Effective readers select through the `effective_investment_operations`,
 `latest_investment_disposal_revisions`, `latest_investment_split_revisions`
 and `effective_investment_lot_events` views; audits read the base tables.
+Folds of lot history go through the one owner described under *Committed
+effective lot movements* below, never through those views directly.
 Keep projected remaining basis nullable with an explicit knowledge status;
 an unknown opening never becomes a fabricated zero in either lot state or
 an average-cost pool.
@@ -180,6 +182,69 @@ An importer maps `SHORT` to `short_sale` and `COVER` to `short_cover` only
 when the row's meaning is unambiguous; a negative ordinary holding remains
 an unclassified diagnostic. A source correction links its original source
 record and normalized operation. Prevent one source row from posting twice.
+
+### Committed effective lot movements (#189)
+
+One read model owns the per-lot movements a book's *committed operational
+elections* currently produce: `db.EffectiveLotMovements`
+(`internal/db/investment_effective_movements.go`). Readers that fold lot
+history into current or dated state use it instead of reading
+`effective_investment_lot_events` and adding back revisions themselves.
+That view only removes superseded events; omitting an add-back silently
+forgot revised covers (#188).
+
+A movement is one signed change to one lot:
+
+- **Identity:** lot, account, instrument, cost currency and side, taken from
+  the lot.
+- **Date:** the date of the event it stands for. A revised movement takes its
+  subject's date: a disposal decision's `event_date`; a split's, return of
+  capital's or transfer's `effective_on`. A replay revision never changes a
+  date.
+- **Kind:** the lot-event kind (`acquisition`, `disposal`,
+  `split_adjustment`, `transfer_in`, `transfer_out`, `basis_reduction`, …).
+  A revised movement keeps the kind of the events it replaces.
+- **Quantity:** a signed delta at its own scale. Zero is legitimate for a
+  cash-and-stock merger's cash disposal, a spin-off parent's
+  `basis_reduction` and a return-of-capital reduction.
+- **Basis:** a signed delta with explicit `basis_knowledge`. Unknown has no
+  amount, never zero.
+- **Provenance:**
+  - the source (an original event, or the latest revision of a disposal,
+    split, transfer link, pooled transfer or return of capital);
+  - the operation;
+  - the disposal decision, for a disposal;
+  - the journal transaction, when there is one;
+  - the original lot event a disposal stands for, used for stable ordering.
+
+Selection:
+
+- An original event counts while `effective_investment_lot_events` keeps it,
+  that is, while neither a correction nor a revision has superseded it.
+- A revised subject counts through its **latest** revision, and only while
+  its operation is in `effective_investment_operations`. A reversed or
+  replaced operation's revisions stay audit evidence.
+- Family rules:
+  - a share exchange's destination receives the destination lot's own units;
+  - a spin-off parent moves basis only;
+  - a `pooled_lot` transfer depletes its latest revision's source lots and
+    delivers the whole link to its one destination.
+
+Out of scope, by design:
+
+- **Replay inputs.** Replay keeps the original elections and recomputes
+  allocations; it never consumes the latest derived allocation.
+- **Audit, export and self-check structure checks** of original and
+  superseded evidence, which read the base tables.
+- **Per-subject effective terms**, such as one split's, return of capital's or
+  merger's current effects, and the gain-impact snapshot of decisions.
+- **Activity-date guards.** They need only an operation's dates and holding,
+  which revisions never change.
+- **ADR 0012 reporting profiles.**
+
+`TestEffectiveHistoryReadersUseTheOwner` refuses new readers of
+`effective_investment_lot_events` or `latest_*_revisions` outside the owner
+and a named allow-list.
 
 ### Operation families to support
 

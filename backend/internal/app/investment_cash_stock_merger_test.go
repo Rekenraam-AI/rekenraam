@@ -268,6 +268,11 @@ func TestBuyCorrectionBeforeCashStockMergerRevisesRealizedAndCarriedBasis(t *tes
 	var revisions int
 	require.NoError(t, f.database.QueryRow(`SELECT COUNT(*) FROM investment_transfer_link_revisions`).Scan(&revisions))
 	assert.Equal(t, 1, revisions)
+	// #189: the owner yields the revised cash result as a quantity-0
+	// disposal that removes basis, and the revised exchange out of the lot.
+	cash := requireRevisedMovement(t, f, db.MovementSourceDisposalRevision, "disposal", 0)
+	require.Negative(t, cash.CostBasisValue, "the cash recovers basis without units")
+	requireRevisedMovement(t, f, db.MovementSourceTransferLinkRevision, "transfer_out", -1)
 	requireInvestmentSelfCheckPasses(t, f)
 }
 

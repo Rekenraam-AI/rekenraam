@@ -31,48 +31,20 @@ func (r *SelfCheckRepository) SelfCheckShortLotQuantityEvents(ctx context.Contex
 	return shortLotQuantityEvents(ctx, transaction, bookID, "")
 }
 
-// A cover revised by replay has no effective lot events of its own: the view
-// drops the original disposal events and the latest revision's allocations
-// stand in for them, dated to the decision (#188). Leaving them out would
-// forget the cover and overstate the units owed.
+// The units a short owes move with its committed effective movements, so a
+// cover that replay revised still counts on its own date (#188, #189).
 func shortLotQuantityEvents(ctx context.Context, source queryer, bookID int64, through string) ([]ShortLotQuantityEvent, error) {
-	rows, err := source.QueryContext(ctx, `
-		SELECT event_date, account_id, commodity_id, quantity_value, quantity_scale, revised FROM (
-			SELECT e.event_date, l.account_id, l.commodity_id, e.quantity_value, e.quantity_scale,
-				0 AS revised, e.id AS row_order
-			FROM effective_investment_lot_events e
-			JOIN investment_lots l ON l.id = e.lot_id
-			WHERE l.book_id = ? AND l.position_side = 'short' AND (? = '' OR e.event_date <= ?)
-			UNION ALL
-			SELECT decision.event_date, l.account_id, l.commodity_id, allocation.quantity_value, allocation.quantity_scale,
-				1, allocation.id
-			FROM latest_investment_disposal_revisions revision
-			JOIN investment_disposal_decisions decision ON decision.id = revision.decision_id
-			JOIN effective_investment_operations operation ON operation.id = decision.operation_id
-			JOIN investment_disposal_revision_allocations allocation ON allocation.revision_id = revision.id
-			JOIN investment_lots l ON l.id = allocation.lot_id
-			WHERE revision.book_id = ? AND l.position_side = 'short' AND (? = '' OR decision.event_date <= ?)
-		)
-		ORDER BY event_date, revised, row_order`, bookID, through, through, bookID, through, through)
+	movements, err := EffectiveLotMovements(ctx, source, bookID, EffectiveMovementFilter{PositionSide: PositionSideShort})
 	if err != nil {
 		return nil, fmt.Errorf("read short lot quantity events: %w", err)
 	}
-	defer rows.Close()
 	var events []ShortLotQuantityEvent
-	for rows.Next() {
-		var event ShortLotQuantityEvent
-		var revised bool
-		if err := rows.Scan(&event.EventDate, &event.AccountID, &event.CommodityID, &event.QuantityValue, &event.QuantityScale, &revised); err != nil {
-			return nil, fmt.Errorf("scan short lot quantity event: %w", err)
+	for _, movement := range movements {
+		if movement.PositionSide != PositionSideShort || (through != "" && movement.EventDate > through) {
+			continue
 		}
-		if revised {
-			// An allocation records covered units as a positive quantity.
-			event.QuantityValue = event.QuantityValue.Negated()
-		}
-		events = append(events, event)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate short lot quantity events: %w", err)
+		events = append(events, ShortLotQuantityEvent{EventDate: movement.EventDate, AccountID: movement.AccountID,
+			CommodityID: movement.CommodityID, QuantityValue: movement.QuantityValue, QuantityScale: movement.QuantityScale})
 	}
 	return events, nil
 }

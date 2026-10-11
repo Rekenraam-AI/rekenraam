@@ -78,6 +78,7 @@ func shortSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
 		result := resultFor(t, run, check)
 		assert.Equal(t, SelfCheckPassed, result.Status, "%s: %s", check, result.Summary)
 	}
+	requireEffectiveMovementsConsistent(t, f)
 }
 
 func TestShortSaleOpensShortLotWithExactOpeningProceeds(t *testing.T) {

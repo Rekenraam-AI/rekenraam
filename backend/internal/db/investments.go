@@ -3422,17 +3422,6 @@ type realizedGainEventRow struct {
 	positionSide    string
 }
 
-// scanRealizedGainBasis reads one disposal's basis knowledge/amount tuple.
-func scanRealizedGainBasis(e *realizedGainEventRow, value, scale sql.NullInt64, knowledge string) error {
-	basis, basisScale, err := projectedBasis(value, scale, knowledge)
-	if err != nil {
-		return fmt.Errorf("realized gain disposal %d: %w", e.id, err)
-	}
-	e.costBasisValue, e.costBasisScale = basis, basisScale
-	e.unknownBasis = knowledge == InvestmentBasisUnknown
-	return nil
-}
-
 // ListRealizedGains returns one row per disposal event group (investment_lot_events
 // with event_kind='disposal'), aggregated at the transaction level so a single sell
 // transaction that disposes multiple lots produces one realized-gain row (manual
@@ -3449,108 +3438,26 @@ func (r *InvestmentRepository) ListRealizedGains(ctx context.Context, bookID int
 		return nil, fmt.Errorf("begin realized gains snapshot: %w", err)
 	}
 	defer rollbackTx(ctx, tx)
-	dateFilter := ""
-	revisedDateFilter := ""
-	args := []any{bookID}
-	if params.From != "" {
-		dateFilter += " AND le.event_date >= ?"
-		revisedDateFilter += " AND d.event_date >= ?"
-		args = append(args, params.From)
-	}
-	if params.To != "" {
-		dateFilter += " AND le.event_date <= ?"
-		revisedDateFilter += " AND d.event_date <= ?"
-		args = append(args, params.To)
-	}
-
-	rows, err := tx.QueryContext(ctx, `
-		SELECT
-			le.id,
-			le.transaction_id,
-			le.event_date,
-			lot.account_id,
-			lot.commodity_id,
-			lot.cost_commodity_id,
-			le.quantity_value,
-			le.quantity_scale,
-			le.cost_basis_value,
-			le.cost_basis_scale,
-			le.basis_knowledge,
-			lot.position_side
-		FROM effective_investment_lot_events le
-		JOIN current_investment_lots lot ON lot.id = le.lot_id
-		WHERE lot.book_id = ?
-			AND le.event_kind = 'disposal'
-			`+dateFilter+`
-	`, args...)
+	// Disposals come from the committed effective movements, so a revised
+	// decision contributes its latest allocations in place of its original
+	// lot events (#189).
+	movements, err := EffectiveLotMovements(ctx, tx, bookID, EffectiveMovementFilter{DisposalsOnly: true})
 	if err != nil {
 		return nil, fmt.Errorf("list realized gain events: %w", err)
 	}
 	var events []realizedGainEventRow
-	for rows.Next() {
-		var e realizedGainEventRow
-		var basis, basisScale sql.NullInt64
-		var knowledge string
-		if err := rows.Scan(&e.id, &e.transactionID, &e.eventDate, &e.accountID, &e.commodityID, &e.costCommodityID, &e.quantityValue, &e.quantityScale, &basis, &basisScale, &knowledge, &e.positionSide); err != nil {
-			rows.Close()
-			return nil, fmt.Errorf("scan realized gain event: %w", err)
+	for _, movement := range movements {
+		if movement.Kind != "disposal" ||
+			(params.From != "" && movement.EventDate < params.From) || (params.To != "" && movement.EventDate > params.To) {
+			continue
 		}
-		if err := scanRealizedGainBasis(&e, basis, basisScale, knowledge); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		events = append(events, e)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, fmt.Errorf("close realized gain events: %w", err)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate realized gain events: %w", err)
-	}
-	// A replay revision has no new posted lot events. Feed its effective
-	// allocations into the same exact grouping calculation as event-shaped rows.
-	revisedRows, err := tx.QueryContext(ctx, `
-		SELECT (SELECT MIN(original.lot_event_id) FROM investment_disposal_allocations original
-				WHERE original.decision_id = d.id),
-			d.transaction_id, d.event_date, d.account_id, d.commodity_id,
-			d.cost_commodity_id, allocation.quantity_value, allocation.quantity_scale,
-			allocation.cost_basis_value, allocation.cost_basis_scale, allocation.basis_knowledge, d.position_side
-		FROM investment_disposal_decisions d
-		JOIN effective_investment_operations operation ON operation.id = d.operation_id
-		JOIN latest_investment_disposal_revisions revision ON revision.decision_id = d.id
-		JOIN investment_disposal_revision_allocations allocation
-			ON allocation.revision_id = revision.id
-		WHERE d.book_id = ?
-			`+revisedDateFilter+`
-		ORDER BY d.id, allocation.allocation_seq`, args...)
-	if err != nil {
-		return nil, fmt.Errorf("read effective realized gain allocations: %w", err)
-	}
-	for revisedRows.Next() {
-		var e realizedGainEventRow
-		var quantity exact.Coefficient
-		var basis, basisScale sql.NullInt64
-		var knowledge string
-		if err := revisedRows.Scan(&e.id, &e.transactionID, &e.eventDate, &e.accountID,
-			&e.commodityID, &e.costCommodityID, &quantity, &e.quantityScale,
-			&basis, &basisScale, &knowledge, &e.positionSide); err != nil {
-			revisedRows.Close()
-			return nil, fmt.Errorf("scan effective realized gain allocation: %w", err)
-		}
-		if err := scanRealizedGainBasis(&e, basis, basisScale, knowledge); err != nil {
-			revisedRows.Close()
-			return nil, err
-		}
-		e.quantityValue = quantity.Negated()
-		e.costBasisValue = -e.costBasisValue
-		events = append(events, e)
-	}
-	if err := revisedRows.Err(); err != nil {
-		revisedRows.Close()
-		return nil, fmt.Errorf("iterate effective realized gain allocations: %w", err)
-	}
-	if err := revisedRows.Close(); err != nil {
-		return nil, fmt.Errorf("close effective realized gain allocations: %w", err)
+		events = append(events, realizedGainEventRow{
+			id: movement.OriginEventID, transactionID: movement.TransactionID, eventDate: movement.EventDate,
+			accountID: movement.AccountID, commodityID: movement.CommodityID, costCommodityID: movement.CostCommodityID,
+			quantityValue: movement.QuantityValue, quantityScale: movement.QuantityScale,
+			costBasisValue: movement.CostBasisValue, costBasisScale: movement.CostBasisScale,
+			unknownBasis: movement.BasisKnowledge == InvestmentBasisUnknown, positionSide: movement.PositionSide,
+		})
 	}
 	if len(events) == 0 {
 		return nil, nil

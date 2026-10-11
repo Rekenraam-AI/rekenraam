@@ -330,8 +330,9 @@ non-trivial diff (yours or reviewed):
     negative units passed as short, and the net-worth series showed a total it
     should withhold. The side guard did too, admitting overlapping long and
     short positions. Every existing self-check passed (#188). A current-state
-    reader adds back the latest revision of every family it needs, joined to
-    `effective_investment_operations` (item 26). A reader that needs only an
+    reader folds `db.EffectiveLotMovements` (#189), which owns those
+    add-backs; `TestEffectiveHistoryReadersUseTheOwner` refuses a new direct
+    reader unless it is allow-listed with a reason. A reader that needs only an
     operation's dates and holding takes the original events of effective
     operations, because a revision changes neither. Test a revised case, and
     test the visible warning, not just the quantity. Named regressions:

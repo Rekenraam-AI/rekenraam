@@ -62,6 +62,7 @@ func requireInvestmentSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
 		result := resultFor(t, run, check)
 		assert.Equalf(t, SelfCheckPassed, result.Status, "%s: %s %v", check, result.Summary, result.Sample)
 	}
+	requireEffectiveMovementsConsistent(t, f)
 }
 
 func replaceBuyPrice(f *investmentsTestFixture, buy InvestmentTradeResult, date string, quantity, cash int64) ReplaceInvestmentBuyInput {
@@ -245,6 +246,11 @@ func TestPooledTransferBasisPropagatesWhenLineageIsUnchanged(t *testing.T) {
 	requireScaled(t, 2500, 2, after, "carried basis at the corrected pool rate")
 	assert.Equal(t, 1, revisions)
 	requireScaled(t, 2500, 2, lotRemainingBasis(t, f, transfer.DestinationLotIDs[0]), "destination lot")
+	// #189: a revised pooled_lot transfer leaves its source lots through its
+	// latest depletions and enters its one destination whole.
+	requireRevisedMovement(t, f, db.MovementSourcePooledTransferRevision, "transfer_out", -1)
+	in := requireRevisedMovement(t, f, db.MovementSourcePooledTransferRevision, "transfer_in", 1)
+	require.Equal(t, transfer.DestinationLotIDs[0], in.LotID)
 	requireInvestmentSelfCheckPasses(t, f)
 }
 
