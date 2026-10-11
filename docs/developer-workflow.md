@@ -68,8 +68,8 @@ correctly formatted for the toolchain actually compiling them.
 ./scripts/test-backend.sh
 ```
 
-The race gate runs `go test -race -p 1 -timeout=15m ./...`: packages run
-serially, with an explicit 15-minute deadline per package. The non-race
+The race gate runs `go test -race -p 1 -timeout=20m ./...`: packages run
+serially, with an explicit 20-minute deadline per package. The non-race
 coverage pass retains Go's default deadline. Local validation and CI use the
 same wrapper.
 
@@ -83,6 +83,10 @@ run in parallel with isolated fixtures; the owner authorized the explicit
 cost rather than treating that bound as a runtime target. The full revised
 gate passed with the application package at 513.745 seconds, down from
 598.347 seconds; the focused race run retained all 60 named matrix cases.
+On 2026-10-11 the owner raised the bound from 15 to 20 minutes after the
+application package reached 856 seconds of 900 on this workspace
+([#164](https://github.com/sergeyfarin/rekenraam/issues/164)). #164 still
+owns restoring headroom by removing cost, not by raising the bound again.
 
 The financial property tests run in the normal backend suite. For a focused
 iteration on ledger, cashflow, lot conservation and gains arithmetic:
@@ -605,7 +609,7 @@ once a released version exists, `main` is something users can be running.
 
 ### Backend
 
-- Usually validate with `./scripts/test-backend.sh` — it gates on `gofmt -l`, then runs `go vet ./...` and `go test -race -p 1 -timeout=15m ./...`. Packages run serially with an explicit 15-minute race-test deadline per package.
+- Usually validate with `./scripts/test-backend.sh` — it gates on `gofmt -l`, then runs `go vet ./...` and `go test -race -p 1 -timeout=20m ./...`. Packages run serially with an explicit 20-minute race-test deadline per package.
 - If backend changes affect the integrated binary shape, also run `pnpm build`.
 
 ### Frontend

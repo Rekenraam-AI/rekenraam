@@ -136,7 +136,8 @@ below is execution order, not a chain of hard dependencies.
    category screens, same-day reorder everywhere or in one account), then investment entry from holding accounts and
    instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186). Race-gate headroom
    [#164](https://github.com/sergeyfarin/rekenraam/issues/164) goes before the next investment slice: the app
-   package now runs at its 900 s bound.
+   package reached 856 s of its former 900 s bound, so the owner raised the bound to
+   20 minutes on 2026-10-11; #164 still restores headroom by removing cost.
 
 **Delivered historical-entry and recovery gates:** dated holdings/lot selection
 [#166](https://github.com/sergeyfarin/rekenraam/issues/166) (2026-10-09),
