@@ -321,6 +321,23 @@ non-trivial diff (yours or reviewed):
     group replays it) and allow zero only for that kind. Named regressions:
     `TestBuyCorrectionBeforeCashStockMergerRevisesRealizedAndCarriedBasis`,
     `TestCashStockMergerUnknownBasisLeavesResultUnresolved`.
+34. **Reading `effective_investment_lot_events` as if it were complete** —
+    the view only *removes* events that a correction or a replay revision
+    superseded; it never adds the revised amounts back. A reader that folds
+    it alone forgets every revised cover, sale, split, return of capital and
+    transfer link. The named-short quantity did, so a cover revised by a
+    backdated opening stopped counting: 15 owed instead of 11, unexplained
+    negative units passed as short, and the net-worth series showed a total it
+    should withhold. The side guard did too, admitting overlapping long and
+    short positions. Every existing self-check passed (#188). A current-state
+    reader adds back the latest revision of every family it needs, joined to
+    `effective_investment_operations` (item 26). A reader that needs only an
+    operation's dates and holding takes the original events of effective
+    operations, because a revision changes neither. Test a revised case, and
+    test the visible warning, not just the quantity. Named regressions:
+    `TestNamedShortCountsARevisedCoverOnItsDate`,
+    `TestUnexplainedNegativeUnitBesideARevisedCoverIsFlagged`,
+    `TestShortOpeningInsideALongClosedByARevisedTransferIsRefused`.
 
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.

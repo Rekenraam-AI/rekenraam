@@ -183,7 +183,9 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   `latest_investment_disposal_revisions`, `latest_investment_split_revisions`,
   `effective_investment_lot_events` and `effective_investment_transfer_links`;
   never re-inline those predicates, and
-  never route an audit through them. Cross-position replay is scoped to the
+  never route an audit through them. `effective_investment_lot_events` only
+  removes superseded events; a current-state reader must add back the latest
+  revisions it needs (validate-and-ship item 34, #188). Cross-position replay is scoped to the
   dependency closure (`InvestmentReplayClosure`, ADR 0013 T-124 refinement):
   `persistInvestmentReplayProjectionTx` appends transfer link revisions and
   replays the downstream closure once as a merged dated stream (T-132, T-140). Any new reader of a

@@ -49,7 +49,20 @@ func requirePositionSideAvailableTx(ctx context.Context, tx *sql.Tx, bookID, acc
 			JOIN investment_lots l ON l.id = e.lot_id
 			WHERE l.book_id = ? AND l.account_id = ? AND l.commodity_id = ? AND l.position_side <> ?
 				AND e.event_date > ?
-		)`, bookID, accountID, commodityID, side, bookID, accountID, commodityID, side, openedOn).Scan(&conflictDate); err != nil {
+			UNION ALL
+			-- A replay revision restates an effective operation's amounts and
+			-- lots within the same holding and side, never its date, but the
+			-- view drops its original events (#188). The activity dates are
+			-- therefore every original event of an effective operation, whichever
+			-- family revised it: a cover, a sale, a split or a transfer link.
+			SELECT e.event_date FROM investment_lot_events e
+			JOIN investment_operation_lot_effects effect ON effect.lot_event_id = e.id
+			JOIN effective_investment_operations operation ON operation.id = effect.operation_id
+			JOIN investment_lots l ON l.id = e.lot_id
+			WHERE l.book_id = ? AND l.account_id = ? AND l.commodity_id = ? AND l.position_side <> ?
+				AND e.event_date > ?
+		)`, bookID, accountID, commodityID, side, bookID, accountID, commodityID, side, openedOn,
+		bookID, accountID, commodityID, side, openedOn).Scan(&conflictDate); err != nil {
 		return fmt.Errorf("read opposite position side: %w", err)
 	}
 	if !conflictDate.Valid {

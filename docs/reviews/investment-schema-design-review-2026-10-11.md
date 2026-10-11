@@ -130,6 +130,14 @@ Impact:
 view and also ignores revised cover dates. A probe did not produce a wrong
 admission: the open-lot branch caught it. It is the same latent pattern.
 
+*Resolution (2026-10-11, [#188](https://github.com/sergeyfarin/rekenraam/issues/188)):* fixed. The side guard
+turned out to be exploitable, not just latent: a long opening inside a short
+closed by a revised cover, and a short opening inside a long closed by a
+revised transfer, were both admitted. The guard now takes its dates from every
+original event of an effective operation, which covers every revision family.
+Named regressions are listed in `docs/implemented.md` (named short sale and
+cover).
+
 ### F2 — The effective history is assembled by hand in every reader
 
 `effective_investment_lot_events` defines "effective" by **removing** events.
