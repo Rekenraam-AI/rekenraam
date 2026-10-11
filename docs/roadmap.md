@@ -109,7 +109,16 @@ below is execution order, not a chain of hard dependencies.
 
 **Now**
 
-1. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
+1. Investment read correctness from the
+   [investment schema design review](reviews/investment-schema-design-review-2026-10-11.md)
+   (2026-10-11), ahead of the rest of the queue:
+   1. Named short quantity ignores revised covers [#188](https://github.com/sergeyfarin/rekenraam/issues/188).
+   2. Backdating requirement and replay-equivalence comment [#193](https://github.com/sergeyfarin/rekenraam/issues/193).
+   3. One owner for committed effective movements [#189](https://github.com/sergeyfarin/rekenraam/issues/189), together with
+      an independent conservation oracle [#190](https://github.com/sergeyfarin/rekenraam/issues/190).
+   4. Operation-kind capability matrix [#191](https://github.com/sergeyfarin/rekenraam/issues/191) and uniform number
+      CHECKs [#192](https://github.com/sergeyfarin/rekenraam/issues/192); #192 must land before the v0.1.0 tag.
+2. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
    share exchange core [#177](https://github.com/sergeyfarin/rekenraam/issues/177) (delivered 2026-10-10),
    its reads and mobile entry [#178](https://github.com/sergeyfarin/rekenraam/issues/178) (delivered 2026-10-10), its correction and
    backdating [#179](https://github.com/sergeyfarin/rekenraam/issues/179) (delivered 2026-10-10, API), spin-off
@@ -122,7 +131,7 @@ below is execution order, not a chain of hard dependencies.
    which completes #115. Tender, rights and provider corporate-action mappings are outside the #115 bar.
    The rest of the R16 bar is Refresh reach [#152](https://github.com/sergeyfarin/rekenraam/issues/152), then zero-delta
    splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146).
-2. Daily-use parallel work: the shared transaction workspace
+3. Daily-use parallel work: the shared transaction workspace
    [#185](https://github.com/sergeyfarin/rekenraam/issues/185) (slices 1 and 2 delivered 2026-10-11: entry from account and
    category screens, same-day reorder everywhere or in one account), then investment entry from holding accounts and
    instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186). Race-gate headroom
