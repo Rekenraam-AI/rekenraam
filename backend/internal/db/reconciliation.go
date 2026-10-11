@@ -771,6 +771,8 @@ func (r *TransactionRepository) appendReconciliationStatusVersions(ctx context.C
 			ChangeReason:        params.ChangeReason,
 			ChangeAuditEventID:  params.ChangeAuditEventID,
 			RequestID:           params.RequestID,
+			// A status change keeps the transaction's place in the journal.
+			TransactionDaySequence: current.TransactionDaySequence,
 		})
 		if err != nil {
 			return nil, err

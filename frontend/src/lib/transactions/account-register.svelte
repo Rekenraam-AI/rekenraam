@@ -2,7 +2,6 @@
   import { transactionTitle } from '#lib/transactions/transaction-title.ts';
   import { systemLabelText } from '#lib/transactions/system-label.ts';
   import { createInfiniteQuery, useQueryClient } from '@tanstack/svelte-query';
-  import AlertTriangle from '@lucide/svelte/icons/triangle-alert';
   import CheckCircle from '@lucide/svelte/icons/check-circle';
   import Circle from '@lucide/svelte/icons/circle';
   import { m } from '#lib/paraglide/messages.js';
@@ -11,32 +10,36 @@
   import StatusBadge from '#lib/components/status-badge.svelte';
   import {
     accountRegisterInfiniteQueryOptions,
-    accountRegisterQueryKey,
     movePosting,
+    placeTransaction,
     type AccountRegisterEntryResponse
   } from '#lib/api/transactions.ts';
   import { formatQuantity } from '#lib/money/format.ts';
-  import { forecastQueryKey } from '#lib/api/forecast.ts';
   import { formatSignedAmount, statusTone } from './transaction-labels';
   import type { AccountClass } from './transaction-labels';
   import TransactionTable from './transaction-table.svelte';
   import CorrectionChainNote from './correction-chain-note.svelte';
   import TransactionFilterBar from './transaction-filter-bar.svelte';
   import type { TransactionFilters } from './transaction-filter-bar.svelte';
+  import ReorderBar from './reorder-bar.svelte';
+  import ReorderArrows from './reorder-arrows.svelte';
+  import { ReorderMode } from './reorder-mode.svelte.ts';
+  import { placePosition, sameDayNeighbor, type ReorderDirection } from './reorder';
 
   let {
     accountID,
     csrfToken,
-    onRowClick
+    onRowClick,
+    offerOnlyThisAccount = true
   }: {
     accountID: number;
     csrfToken?: string;
     onRowClick?: (entry: AccountRegisterEntryResponse) => void;
+    /** A bank or card statement can list a day in its own order (#185). */
+    offerOnlyThisAccount?: boolean;
   } = $props();
 
   let filters = $state<TransactionFilters>({});
-  let movePendingKey = $state<string | undefined>(undefined);
-  let moveError = $state<unknown>(undefined);
 
   const locale = $derived(getLocale());
   const queryClient = useQueryClient();
@@ -83,21 +86,26 @@
   // The resolved account label for entry.posting is the *this* account (already known
   // from the route context); counterpart info comes via the transaction description/payee.
 
-  async function handleMove(entry: AccountRegisterEntryResponse, direction: 'earlier' | 'later') {
-    if (!csrfToken) return;
-    const key = `${entry.posting.posting_line_id}-${direction}`;
-    movePendingKey = key;
-    moveError = undefined;
-    try {
-      await movePosting(accountID, entry.posting.posting_line_id, direction, csrfToken);
-      // Invalidate the register query so the updated order is fetched fresh.
-      await queryClient.invalidateQueries({ queryKey: [...accountRegisterQueryKey, accountID] });
-      await queryClient.invalidateQueries({ queryKey: forecastQueryKey });
-    } catch (e) {
-      moveError = e;
-    } finally {
-      movePendingKey = undefined;
-    }
+  // Same-day reorder (#185). By default a move places the transaction beside
+  // its visible same-day neighbour everywhere both appear; "Only in this
+  // account" moves this register's posting alone. Two postings of one
+  // transaction in this account can only be reordered here.
+  const reorder = new ReorderMode(queryClient);
+  const entryDay = (entry: AccountRegisterEntryResponse) => entry.entry_date;
+
+  function neighbor(entry: AccountRegisterEntryResponse, direction: ReorderDirection) {
+    // The table hands back a proxy of the row, so find it by identity, not reference.
+    return sameDayNeighbor(rows, rows.findIndex((row) => row.posting.id === entry.posting.id), direction, entryDay);
+  }
+
+  function move(entry: AccountRegisterEntryResponse, direction: ReorderDirection) {
+    const anchor = neighbor(entry, direction);
+    if (!anchor || !csrfToken) return;
+    const token = csrfToken;
+    const local = reorder.onlyThisAccount || anchor.transaction_id === entry.transaction_id;
+    void reorder.move((override) => local
+      ? movePosting(accountID, entry.posting.posting_line_id, direction, token, override)
+      : placeTransaction(entry.transaction_id, anchor.transaction_id, placePosition(direction), token, override));
   }
 
 </script>
@@ -109,6 +117,10 @@
       show={{ status: true, dateRange: true }}
     />
   </Panel>
+
+  <div class="flex justify-end">
+    <ReorderBar mode={reorder} {offerOnlyThisAccount} disabled={!csrfToken} />
+  </div>
 
   {#snippet dateCell(entry: AccountRegisterEntryResponse)}
     <span class="tabular-nums text-muted">{entry.entry_date}</span>
@@ -173,41 +185,16 @@
   {/snippet}
 
   {#snippet actionsCell(entry: AccountRegisterEntryResponse)}
-    {@const postingKey = String(entry.posting.posting_line_id)}
-    <div class="flex items-center justify-end gap-1">
-      <button
-        type="button"
-        class="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-surface-strong hover:text-foreground disabled:opacity-30"
-        title={m.register_move_earlier()}
-        aria-label={m.register_move_earlier()}
-        disabled={movePendingKey === `${postingKey}-earlier`}
-        onclick={(e) => { e.stopPropagation(); handleMove(entry, 'earlier'); }}
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M18 15l-6-6-6 6"/>
-        </svg>
-      </button>
-      <button
-        type="button"
-        class="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-surface-strong hover:text-foreground disabled:opacity-30"
-        title={m.register_move_later()}
-        aria-label={m.register_move_later()}
-        disabled={movePendingKey === `${postingKey}-later`}
-        onclick={(e) => { e.stopPropagation(); handleMove(entry, 'later'); }}
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M6 9l6 6 6-6"/>
-        </svg>
-      </button>
+    <div class="flex items-center justify-end">
+      <ReorderArrows
+        canMoveLater={!!neighbor(entry, 'later')}
+        canMoveEarlier={!!neighbor(entry, 'earlier')}
+        pending={reorder.pending}
+        onLater={() => move(entry, 'later')}
+        onEarlier={() => move(entry, 'earlier')}
+      />
     </div>
   {/snippet}
-
-  {#if moveError}
-    <div class="flex items-center gap-2 rounded-(--radius-control) border border-warning/40 bg-warning-soft px-3 py-2 text-xs text-warning">
-      <AlertTriangle size={13} aria-hidden="true" />
-      {m.register_error_copy()}
-    </div>
-  {/if}
 
   <TransactionTable
     {rows}
@@ -219,7 +206,7 @@
       { key: 'balance', header: m.register_col_balance(), priority: 1, align: 'right', width: '10rem', cell: balanceCell },
       { key: 'reconciliation', header: m.register_col_reconciliation(), priority: 2, width: '5rem', align: 'right', cell: reconciliationCell },
       { key: 'memo', header: m.register_col_memo(), priority: 3, cell: memoCell },
-      { key: 'actions', header: '', priority: 1, width: '6rem', align: 'right', cell: actionsCell }
+      ...(reorder.active ? [{ key: 'actions', header: '', priority: 1 as const, width: '6rem', align: 'right' as const, cell: actionsCell }] : [])
     ]}
     isLoading={query.isPending}
     isFetchingNextPage={query.isFetchingNextPage}

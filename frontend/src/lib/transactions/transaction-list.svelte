@@ -5,13 +5,12 @@
   import { untrack } from 'svelte';
   import { createInfiniteQuery, useQueryClient } from '@tanstack/svelte-query';
   import { m } from '#lib/paraglide/messages.js';
-  import { forecastQueryKey } from '#lib/api/forecast.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import Panel from '#lib/components/panel.svelte';
   import StatusBadge from '#lib/components/status-badge.svelte';
   import {
     transactionsInfiniteQueryOptions,
-    moveTransaction,
+    placeTransaction,
     type TransactionResponse
   } from '#lib/api/transactions.ts';
   import {
@@ -24,6 +23,10 @@
   import TransactionTable from './transaction-table.svelte';
   import TransactionFilterBar from './transaction-filter-bar.svelte';
   import TransactionRowActions from './transaction-row-actions.svelte';
+  import ReorderBar from './reorder-bar.svelte';
+  import ReorderArrows from './reorder-arrows.svelte';
+  import { ReorderMode } from './reorder-mode.svelte.ts';
+  import { placePosition, sameDayNeighbor, type ReorderDirection } from './reorder';
   import type { TransactionFilters } from './transaction-filter-bar.svelte';
   import type { TransactionQueryFilters } from './transaction-url-filters';
   import type { Column } from './transaction-table-types';
@@ -76,9 +79,6 @@
   $effect(() => {
     onFiltersChange?.(activeFilters);
   });
-  let movePendingID = $state<number | undefined>(undefined);
-  let moveError = $state<unknown>(undefined);
-
   const locale = $derived(getLocale());
   const queryClient = useQueryClient();
 
@@ -109,19 +109,21 @@
     return m.transactions_detail_n_accounts({ n: labels.length });
   }
 
-  async function handleMove(tx: TransactionResponse, direction: 'earlier' | 'later') {
-    if (!csrfToken) return;
-    movePendingID = tx.id;
-    moveError = undefined;
-    try {
-      await moveTransaction(tx.id, direction, csrfToken);
-      await query.refetch();
-      await queryClient.invalidateQueries({ queryKey: forecastQueryKey });
-    } catch (e) {
-      moveError = e;
-    } finally {
-      movePendingID = undefined;
-    }
+  // Same-day reorder (#185): a move places the row beside its visible
+  // same-day neighbour, everywhere both appear.
+  const reorder = new ReorderMode(queryClient);
+  const transactionDay = (tx: TransactionResponse) => tx.transaction_date;
+
+  function neighbor(tx: TransactionResponse, direction: ReorderDirection) {
+    // The table hands back a proxy of the row, so find it by identity, not reference.
+    return sameDayNeighbor(rows, rows.findIndex((row) => row.id === tx.id), direction, transactionDay);
+  }
+
+  function move(tx: TransactionResponse, direction: ReorderDirection) {
+    const anchor = neighbor(tx, direction);
+    if (!anchor || !csrfToken) return;
+    const token = csrfToken;
+    void reorder.move((override) => placeTransaction(tx.id, anchor.id, placePosition(direction), token, override));
   }
 </script>
 
@@ -150,6 +152,10 @@
       show={{ status: true, kind: true, account: true, payee: true, search: true, dateRange: true, needsReview: true }}
     />
   </Panel>
+
+  <div class="flex justify-end">
+    <ReorderBar mode={reorder} disabled={!csrfToken} />
+  </div>
 
   {#snippet dateCell(tx: TransactionResponse)}
     <span class="tabular-nums text-muted">{tx.transaction_date}</span>
@@ -188,30 +194,15 @@
 
   {#snippet actionsCell(tx: TransactionResponse)}
     <div class="flex items-center justify-end gap-1">
-      <!-- Same-day Move up/down -->
-      <button
-        type="button"
-        class="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-surface-strong hover:text-foreground disabled:opacity-30"
-        title={m.transactions_action_view()}
-        disabled={movePendingID === tx.id}
-        onclick={(e) => { e.stopPropagation(); handleMove(tx, 'earlier'); }}
-        aria-label="Move earlier"
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M18 15l-6-6-6 6"/>
-        </svg>
-      </button>
-      <button
-        type="button"
-        class="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-surface-strong hover:text-foreground disabled:opacity-30"
-        disabled={movePendingID === tx.id}
-        onclick={(e) => { e.stopPropagation(); handleMove(tx, 'later'); }}
-        aria-label="Move later"
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M6 9l6 6 6-6"/>
-        </svg>
-      </button>
+      {#if reorder.active}
+        <ReorderArrows
+          canMoveLater={!!neighbor(tx, 'later')}
+          canMoveEarlier={!!neighbor(tx, 'earlier')}
+          pending={reorder.pending}
+          onLater={() => move(tx, 'later')}
+          onEarlier={() => move(tx, 'earlier')}
+        />
+      {/if}
       <TransactionRowActions
         transaction={tx}
         onEdit={onEdit}

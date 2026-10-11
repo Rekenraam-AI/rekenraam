@@ -562,6 +562,25 @@ TransactionLifecycleRequest:
     reconciliation_override:
       type: boolean
   additionalProperties: false
+PlaceTransactionRequest:
+  type: object
+  required:
+    - anchor_transaction_id
+    - position
+  properties:
+    anchor_transaction_id:
+      type: integer
+      format: int64
+      description: The transaction this one is placed beside; it must share a day with it.
+    position:
+      type: string
+      enum:
+        - before
+        - after
+    reconciliation_override:
+      type: boolean
+      description: Required when the change would cross an active reconciliation checkpoint boundary; accepts checkpoint invalidation.
+  additionalProperties: false
 MoveRequest:
   type: object
   required:

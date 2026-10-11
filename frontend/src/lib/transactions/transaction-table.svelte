@@ -85,6 +85,9 @@
   });
 
   function handleRowKeydown(e: KeyboardEvent, index: number, row: R) {
+    // Keys pressed on a control inside the row (row actions, reorder arrows)
+    // belong to that control: Enter on a button must not also open the row.
+    if (e.target !== e.currentTarget) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       focusedRowIndex = Math.min(index + 1, rows.length - 1);

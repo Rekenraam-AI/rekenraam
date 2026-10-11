@@ -282,6 +282,17 @@ type MoveTransactionInput struct {
 	Direction     string // "earlier" | "later"
 }
 
+type PlaceTransactionInput struct {
+	OwnerUserID            int64
+	AuthSessionID          int64
+	RequestID              string
+	OriginType             string
+	TransactionID          int64
+	AnchorTransactionID    int64
+	Position               string // "before" | "after"
+	ReconciliationOverride bool
+}
+
 type MovePostingInput struct {
 	OwnerUserID            int64
 	AuthSessionID          int64

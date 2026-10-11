@@ -1,0 +1,63 @@
+post:
+  summary: Place a transaction before or after another on their shared day
+  description: >-
+    States that the transaction happened before (or after) the anchor
+    transaction on their shared day (#185). It applies in the journal order when
+    both share a transaction date, and in every account register that holds
+    postings of both on the same entry date. A register where the relation
+    already holds keeps its order, so an order set in one account only stays
+    unless this contradicts it. Changed transactions get new versions under one
+    audit event. A change that crosses an active same-day reconciliation
+    boundary in an account needs reconciliation_override and invalidates that
+    account's checkpoint and its later ones. Placing a transaction where it
+    already is changes nothing.
+  parameters:
+    - $ref: "../openapi.yaml#/components/parameters/TransactionID"
+    - in: header
+      name: X-CSRF-Token
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../openapi.yaml#/components/schemas/PlaceTransactionRequest"
+  responses:
+    "200":
+      description: The transaction as now placed; invalidated_checkpoint_ids lists any checkpoint the override invalidated
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/TransactionResponse"
+    "400":
+      description: Invalid request, or the transactions share no day (VALIDATION_FAILED)
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "401":
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "403":
+      description: Origin or CSRF validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "404":
+      description: A transaction not found
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "409":
+      description: The move crosses a reconciled boundary and needs reconciliation_override
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"rekenraam/backend/internal/db"
@@ -63,4 +64,34 @@ func (s *TransactionService) MovePosting(ctx context.Context, input MovePostingI
 			ReconciliationOverride: input.ReconciliationOverride,
 		})
 	})
+}
+
+// PlaceTransaction states that a transaction happened before or after another
+// on their shared day (#185): it applies in the journal order and in every
+// account register holding both on that day, under the reconciliation guard.
+func (s *TransactionService) PlaceTransaction(ctx context.Context, input PlaceTransactionInput) (Transaction, error) {
+	if input.TransactionID <= 0 || input.AnchorTransactionID <= 0 || input.TransactionID == input.AnchorTransactionID {
+		return Transaction{}, ValidationError{Message: "two different transactions are required"}
+	}
+	if input.Position != "before" && input.Position != "after" {
+		return Transaction{}, ValidationError{Message: "position must be 'before' or 'after'"}
+	}
+	transaction, err := s.moveOp(ctx, input.OwnerUserID, func() (db.TransactionRecord, error) {
+		return s.repository.PlaceTransaction(ctx, db.PlaceTransactionParams{
+			BookID:                 BookID,
+			TransactionID:          input.TransactionID,
+			AnchorTransactionID:    input.AnchorTransactionID,
+			Position:               input.Position,
+			ActorUserID:            input.OwnerUserID,
+			AuthSessionID:          input.AuthSessionID,
+			RequestID:              input.RequestID,
+			OriginType:             input.OriginType,
+			RecordedAt:             s.now().UTC().Format(time.RFC3339),
+			ReconciliationOverride: input.ReconciliationOverride,
+		})
+	})
+	if errors.Is(err, db.ErrReorderNotSameDay) || errors.Is(err, db.ErrInvalidReorder) {
+		return Transaction{}, ValidationError{Message: err.Error()}
+	}
+	return transaction, err
 }

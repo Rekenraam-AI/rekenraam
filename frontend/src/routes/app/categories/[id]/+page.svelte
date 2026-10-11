@@ -35,7 +35,7 @@
       <h2 class="text-sm font-semibold text-foreground">{categoryName}</h2>
     {/if}
   {/snippet}
-  {#snippet list(actions)}
-    <CategoryTransactions {categoryID} onRowClick={actions.showDetail} />
+  {#snippet list(actions, csrfToken)}
+    <CategoryTransactions {categoryID} {csrfToken} onRowClick={actions.showDetail} />
   {/snippet}
 </TransactionWorkspace>

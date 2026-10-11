@@ -81,6 +81,47 @@ func movePosting(logger *slog.Logger, authService *app.AuthService, transactionS
 	}))
 }
 
+// placeRequest states that a transaction happened before or after another on
+// their shared day (#185).
+type placeRequest struct {
+	AnchorTransactionID    int64  `json:"anchor_transaction_id"`
+	Position               string `json:"position"`
+	ReconciliationOverride bool   `json:"reconciliation_override"`
+}
+
+func placeTransaction(logger *slog.Logger, authService *app.AuthService, transactionService *app.TransactionService, options HandlerOptions) http.HandlerFunc {
+	return requireAuthenticatedMutation(logger, authService, options, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		owner, ok := authenticatedMutationOwner(w, r)
+		if !ok {
+			return
+		}
+		transactionID, ok := readTransactionID(w, r)
+		if !ok {
+			return
+		}
+		var req placeRequest
+		if err := decodeJSONBody(r, &req); err != nil {
+			writeDecodeError(w, err)
+			return
+		}
+		transaction, err := transactionService.PlaceTransaction(r.Context(), app.PlaceTransactionInput{
+			OwnerUserID:            owner.ID,
+			AuthSessionID:          authenticatedSessionID(r),
+			RequestID:              RequestIDFromContext(r.Context()),
+			OriginType:             "browser_api",
+			TransactionID:          transactionID,
+			AnchorTransactionID:    req.AnchorTransactionID,
+			Position:               req.Position,
+			ReconciliationOverride: req.ReconciliationOverride,
+		})
+		if err != nil {
+			writeTransactionServiceError(w, r, logger, "place transaction", err)
+			return
+		}
+		writeJSON(w, http.StatusOK, toTransactionResponse(transaction))
+	}))
+}
+
 func readPostingLineIDParam(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	raw := r.PathValue("posting_line_id")
 	id, err := strconv.ParseInt(raw, 10, 64)

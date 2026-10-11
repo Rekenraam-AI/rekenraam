@@ -1,12 +1,13 @@
 <script lang="ts">
   import { transactionTitle } from '#lib/transactions/transaction-title.ts';
   import { systemLabelText } from '#lib/transactions/system-label.ts';
-  import { createInfiniteQuery } from '@tanstack/svelte-query';
+  import { createInfiniteQuery, useQueryClient } from '@tanstack/svelte-query';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import Panel from '#lib/components/panel.svelte';
   import StatusBadge from '#lib/components/status-badge.svelte';
   import {
+    placeTransaction,
     transactionsInfiniteQueryOptions,
     type TransactionResponse
   } from '#lib/api/transactions.ts';
@@ -20,13 +21,19 @@
   } from './transaction-labels';
   import TransactionTable from './transaction-table.svelte';
   import TransactionFilterBar from './transaction-filter-bar.svelte';
+  import ReorderBar from './reorder-bar.svelte';
+  import ReorderArrows from './reorder-arrows.svelte';
+  import { ReorderMode } from './reorder-mode.svelte.ts';
+  import { placePosition, sameDayNeighbor, type ReorderDirection } from './reorder';
   import type { TransactionFilters } from './transaction-filter-bar.svelte';
 
   let {
     categoryID,
+    csrfToken,
     onRowClick
   }: {
     categoryID: number;
+    csrfToken?: string;
     onRowClick?: (tx: TransactionResponse) => void;
   } = $props();
 
@@ -95,6 +102,23 @@
     });
   }
 
+  // Same-day reorder (#185). A category has no statement of its own, so a
+  // move always applies everywhere both transactions appear.
+  const reorder = new ReorderMode(useQueryClient());
+  const transactionDay = (tx: TransactionResponse) => tx.transaction_date;
+
+  function neighbor(tx: TransactionResponse, direction: ReorderDirection) {
+    // The table hands back a proxy of the row, so find it by identity, not reference.
+    return sameDayNeighbor(rows, rows.findIndex((row) => row.id === tx.id), direction, transactionDay);
+  }
+
+  function move(tx: TransactionResponse, direction: ReorderDirection) {
+    const anchor = neighbor(tx, direction);
+    if (!anchor || !csrfToken) return;
+    const token = csrfToken;
+    void reorder.move((override) => placeTransaction(tx.id, anchor.id, placePosition(direction), token, override));
+  }
+
   // Counterpart labels: non-category (non-income/expense) postings, excluding system accounts.
   function counterpartLabel(tx: TransactionResponse): string {
     const allPostings = tx.journal_entries?.flatMap((e) => e.postings ?? []) ?? [];
@@ -116,6 +140,10 @@
       show={{ status: true, dateRange: true, search: true }}
     />
   </Panel>
+
+  <div class="flex justify-end">
+    <ReorderBar mode={reorder} disabled={!csrfToken} />
+  </div>
 
   {#snippet dateCell(tx: TransactionResponse)}
     <span class="tabular-nums text-muted">{tx.transaction_date}</span>
@@ -167,6 +195,18 @@
     {/if}
   {/snippet}
 
+  {#snippet reorderCell(tx: TransactionResponse)}
+    <div class="flex items-center justify-end">
+      <ReorderArrows
+        canMoveLater={!!neighbor(tx, 'later')}
+        canMoveEarlier={!!neighbor(tx, 'earlier')}
+        pending={reorder.pending}
+        onLater={() => move(tx, 'later')}
+        onEarlier={() => move(tx, 'earlier')}
+      />
+    </div>
+  {/snippet}
+
   <TransactionTable
     {rows}
     rowId={(tx) => String(tx.id)}
@@ -176,7 +216,8 @@
       { key: 'amount', header: m.category_tx_col_amount(), priority: 1, align: 'right', width: '10rem', cell: amountCell },
       { key: 'counterpart', header: m.category_tx_col_counterpart(), priority: 2, cell: counterpartCell },
       { key: 'status', header: m.category_tx_col_status(), priority: 3, width: '7rem', cell: statusCell },
-      { key: 'flags', header: m.category_tx_col_flags(), priority: 3, width: '7rem', cell: flagsCell }
+      { key: 'flags', header: m.category_tx_col_flags(), priority: 3, width: '7rem', cell: flagsCell },
+      ...(reorder.active ? [{ key: 'reorder', header: '', priority: 1 as const, width: '6rem', align: 'right' as const, cell: reorderCell }] : [])
     ]}
     isLoading={query.isPending}
     isFetchingNextPage={query.isFetchingNextPage}

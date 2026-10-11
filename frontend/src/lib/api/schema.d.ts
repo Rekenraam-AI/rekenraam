@@ -8701,6 +8701,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/transactions/{transaction_id}/place": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Place a transaction before or after another on their shared day
+         * @description States that the transaction happened before (or after) the anchor transaction on their shared day (#185). It applies in the journal order when both share a transaction date, and in every account register that holds postings of both on the same entry date. A register where the relation already holds keeps its order, so an order set in one account only stays unless this contradicts it. Changed transactions get new versions under one audit event. A change that crosses an active same-day reconciliation boundary in an account needs reconciliation_override and invalidates that account's checkpoint and its later ones. Placing a transaction where it already is changes nothing.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CSRF-Token": string;
+                };
+                path: {
+                    transaction_id: components["parameters"]["TransactionID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PlaceTransactionRequest"];
+                };
+            };
+            responses: {
+                /** @description The transaction as now placed; invalidated_checkpoint_ids lists any checkpoint the override invalidated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TransactionResponse"];
+                    };
+                };
+                /** @description Invalid request, or the transactions share no day (VALIDATION_FAILED) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Origin or CSRF validation failed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description A transaction not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description The move crosses a reconciled boundary and needs reconciliation_override */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/transactions/{transaction_id}/reconciliation-impact": {
         parameters: {
             query?: never;
@@ -25288,6 +25380,17 @@ export interface components {
              */
             direction: "earlier" | "later";
             /** @description Required when the move would cross an active reconciliation checkpoint boundary; accepts checkpoint invalidation. */
+            reconciliation_override?: boolean;
+        };
+        PlaceTransactionRequest: {
+            /**
+             * Format: int64
+             * @description The transaction this one is placed beside; it must share a day with it.
+             */
+            anchor_transaction_id: number;
+            /** @enum {string} */
+            position: "before" | "after";
+            /** @description Required when the change would cross an active reconciliation checkpoint boundary; accepts checkpoint invalidation. */
             reconciliation_override?: boolean;
         };
         ReconciliationImpactResponse: {

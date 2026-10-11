@@ -123,8 +123,8 @@ below is execution order, not a chain of hard dependencies.
    The rest of the R16 bar is Refresh reach [#152](https://github.com/sergeyfarin/rekenraam/issues/152), then zero-delta
    splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146).
 2. Daily-use parallel work: the shared transaction workspace
-   [#185](https://github.com/sergeyfarin/rekenraam/issues/185) (slice 1 delivered 2026-10-11: entry from account and
-   category screens; slice 2: row actions and same-day order), then investment entry from holding accounts and
+   [#185](https://github.com/sergeyfarin/rekenraam/issues/185) (slices 1 and 2 delivered 2026-10-11: entry from account and
+   category screens, same-day reorder everywhere or in one account), then investment entry from holding accounts and
    instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186). Race-gate headroom
    [#164](https://github.com/sergeyfarin/rekenraam/issues/164) goes before the next investment slice: the app
    package now runs at its 900 s bound.

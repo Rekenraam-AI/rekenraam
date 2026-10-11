@@ -357,14 +357,41 @@ export async function moveTransaction(transactionID: number, direction: MoveRequ
   }
 }
 
-export async function movePosting(accountID: number, postingLineID: number, direction: MoveRequest['direction'], csrfToken: string): Promise<TransactionResponse> {
+/**
+ * Place a transaction before or after another on their shared day (#185): in
+ * the journal order and in every account register holding both that day.
+ */
+export async function placeTransaction(transactionID: number, anchorTransactionID: number, position: 'before' | 'after',
+  csrfToken: string, reconciliationOverride = false): Promise<TransactionResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST('/api/v1/transactions/{transaction_id}/place', {
+      params: {
+        path: { transaction_id: transactionID },
+        header: { 'X-CSRF-Token': csrfToken }
+      },
+      body: { anchor_transaction_id: anchorTransactionID, position, ...(reconciliationOverride ? { reconciliation_override: true } : {}) }
+    });
+    if (data !== undefined) {
+      return data;
+    }
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) {
+      throw error;
+    }
+    throw toNetworkError(error);
+  }
+}
+
+export async function movePosting(accountID: number, postingLineID: number, direction: MoveRequest['direction'], csrfToken: string,
+  reconciliationOverride = false): Promise<TransactionResponse> {
   try {
     const { data, error, response } = await apiClient.POST('/api/v1/accounts/{account_id}/postings/{posting_line_id}/move', {
       params: {
         path: { account_id: accountID, posting_line_id: postingLineID },
         header: { 'X-CSRF-Token': csrfToken }
       },
-      body: { direction }
+      body: { direction, ...(reconciliationOverride ? { reconciliation_override: true } : {}) }
     });
 
     if (data !== undefined) {
