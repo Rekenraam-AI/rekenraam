@@ -51,6 +51,13 @@ export type SpinOffPlan = components['schemas']['SpinOffPlan'];
 export type SpinOffPreviewResponse = components['schemas']['SpinOffPreviewResponse'];
 export type SpinOffResponse = components['schemas']['SpinOffResponse'];
 export type InvestmentCorrectionSpinOffTerms = components['schemas']['InvestmentCorrectionSpinOffTerms'];
+export type CashStockMergerRequest = components['schemas']['CashStockMergerRequest'];
+export type CashStockMergerPlan = components['schemas']['CashStockMergerPlan'];
+export type CashStockMergerPreviewResponse = components['schemas']['CashStockMergerPreviewResponse'];
+export type CashStockMergerResponse = components['schemas']['CashStockMergerResponse'];
+export type InvestmentCorrectionCashStockMergerTerms = components['schemas']['InvestmentCorrectionCashStockMergerTerms'];
+export type CashStockMergerReplacementRequest = components['schemas']['CashStockMergerReplacementRequest'];
+export type CashStockMergerReplacementResponse = components['schemas']['CashStockMergerReplacementResponse'];
 export type SpinOffReplacementRequest = components['schemas']['SpinOffReplacementRequest'];
 export type SpinOffReplacementResponse = components['schemas']['SpinOffReplacementResponse'];
 export type InvestmentLotOrigin = components['schemas']['InvestmentLotOrigin'];
@@ -1452,6 +1459,107 @@ export async function replaceSpinOff(
   try {
     const { data, error, response } = await apiClient.POST(
       '/api/v1/investments/transactions/{transaction_id}/replace-spin-off',
+      { params: { path: { transaction_id: transactionID }, header: { 'X-CSRF-Token': csrfToken } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+
+// Cash-and-stock merger (#181) and its reversal and replacement (#184). Every
+// preview runs the actual writer in a rolled-back transaction.
+export async function previewCashStockMerger(input: CashStockMergerRequest): Promise<CashStockMergerPreviewResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/cash-and-stock-mergers/preview',
+      { body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function recordCashStockMerger(input: CashStockMergerRequest, csrfToken: string): Promise<CashStockMergerResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/cash-and-stock-mergers',
+      { params: { header: { 'X-CSRF-Token': csrfToken } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function previewCashStockMergerReversalReconciliation(
+  transactionID: number,
+  input: InvestmentSaleReversalRequest
+): Promise<ReconciliationImpactResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/transactions/{transaction_id}/reverse-cash-and-stock-merger/reconciliation-impact',
+      { params: { path: { transaction_id: transactionID } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function reverseCashStockMerger(
+  transactionID: number,
+  input: InvestmentSaleReversalRequest,
+  csrfToken: string
+): Promise<InvestmentSaleReversalResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/transactions/{transaction_id}/reverse-cash-and-stock-merger',
+      { params: { path: { transaction_id: transactionID }, header: { 'X-CSRF-Token': csrfToken } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function previewCashStockMergerReplacement(
+  transactionID: number,
+  input: CashStockMergerReplacementRequest
+): Promise<CashStockMergerPreviewResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/transactions/{transaction_id}/replace-cash-and-stock-merger/preview',
+      { params: { path: { transaction_id: transactionID } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function replaceCashStockMerger(
+  transactionID: number,
+  input: CashStockMergerReplacementRequest,
+  csrfToken: string
+): Promise<CashStockMergerReplacementResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/transactions/{transaction_id}/replace-cash-and-stock-merger',
       { params: { path: { transaction_id: transactionID }, header: { 'X-CSRF-Token': csrfToken } }, body: input }
     );
     if (data !== undefined) return data;

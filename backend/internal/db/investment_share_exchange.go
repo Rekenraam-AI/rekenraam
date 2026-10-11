@@ -118,6 +118,9 @@ type shareExchangeWritePlan struct {
 	// the exchange's slot (#179); Depletions holds them in link order.
 	Replayed   bool
 	Depletions []LotDisposalRecord
+	// Realizations are a replayed cash-and-stock merger's quantity-0
+	// realizations at its slot (#184), in link order.
+	Realizations []LotDisposalRecord
 	// DestinationBackdated means the new lots open behind a later event of the
 	// destination holding, so they open by replay admission and it replays.
 	DestinationBackdated bool
@@ -128,6 +131,13 @@ type shareExchangeWritePlan struct {
 // instrument, or a replacement, replays the holding with the exchange as its
 // subject at the slot, so it takes the whole position open then (#179).
 func planShareExchangeTx(ctx context.Context, tx *sql.Tx, params CreateShareExchangeParams, subject compoundActionSubject) (shareExchangeWritePlan, error) {
+	return planShareExchangeAsTx(ctx, tx, params, subject, InvestmentReplayIntent{OperationKind: "share_exchange"})
+}
+
+// planShareExchangeAsTx plans an exchange whose replayed subject intent is
+// shaped by template: a cash-and-stock merger's carries its election (#184).
+func planShareExchangeAsTx(ctx context.Context, tx *sql.Tx, params CreateShareExchangeParams, subject compoundActionSubject,
+	template InvestmentReplayIntent) (shareExchangeWritePlan, error) {
 	if !validShareExchangeParams(params) {
 		return shareExchangeWritePlan{}, fmt.Errorf("%w: share exchange terms are incomplete", ErrInvalidDisposalParams)
 	}
@@ -161,7 +171,7 @@ func planShareExchangeTx(ctx context.Context, tx *sql.Tx, params CreateShareExch
 	}
 	var sources []sourceLot
 	if plan.Replayed {
-		if plan.Depletions, err = shareExchangeSubjectDepletionsTx(ctx, tx, params, subject); err != nil {
+		if plan.Depletions, plan.Realizations, err = shareExchangeSubjectDepletionsTx(ctx, tx, params, subject, template); err != nil {
 			return shareExchangeWritePlan{}, err
 		}
 		for _, depletion := range plan.Depletions {
@@ -247,20 +257,22 @@ func planShareExchangeTx(ctx context.Context, tx *sql.Tx, params CreateShareExch
 // old holding with the exchange as the subject at its slot: the replaced
 // exchange's correction-root slot for a replacement, else the exchange's own.
 // The depletions are what the exchange takes at that slot; a later decision
-// the emptied holding cannot satisfy is a named dependency.
+// the emptied holding cannot satisfy is a named dependency. A merger's
+// realizations precede them, one per depletion.
 func shareExchangeSubjectDepletionsTx(ctx context.Context, tx *sql.Tx, params CreateShareExchangeParams,
-	subject compoundActionSubject) ([]LotDisposalRecord, error) {
+	subject compoundActionSubject, template InvestmentReplayIntent) ([]LotDisposalRecord, []LotDisposalRecord, error) {
+	template.EventDate, template.Kind = params.EffectiveOn, "exchange_out"
 	projections, err := replayCompoundActionSubjectTx(ctx, tx, params.BookID, params.AccountID, params.CommodityID,
-		params.ReplacesOperationID, subject, InvestmentReplayIntent{OperationKind: "share_exchange",
-			EventDate: params.EffectiveOn, Kind: "exchange_out"})
+		params.ReplacesOperationID, subject, template)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	var depletions []LotDisposalRecord
+	var depletions, realizations []LotDisposalRecord
 	for _, projection := range projections {
 		depletions = append(depletions, projection.SubjectTransferOut...)
+		realizations = append(realizations, projection.SubjectMergerRealizations...)
 	}
-	return depletions, nil
+	return depletions, realizations, nil
 }
 
 // replayCompoundActionSubjectTx replays each long cost-currency position of a

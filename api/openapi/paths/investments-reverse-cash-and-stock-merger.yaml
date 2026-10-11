@@ -1,0 +1,65 @@
+post:
+  summary: Reverse a posted cash-and-stock merger
+  description: >-
+    Posts the exact inverse of the whole merger journal (the security legs on
+    the effective date, the cash leg on the payable date), removes the merger
+    and its cash decision from effective history and replays the old holding
+    (whose lots return with their basis) and then the new one (which loses
+    the lots the merger opened), in one audited database transaction (#184).
+    The original merger stays posted history. A later sale or onward transfer
+    of the removed new units, or an effective cash in lieu settling the
+    merger, refuses with INVESTMENT_TRANSFER_DEPENDENCY naming it, and nothing
+    is written. The removed cash result counts as a gain change: a non-empty
+    gain change set requires the preview's exact gain_impact_acknowledgement.
+  parameters:
+    - in: path
+      name: transaction_id
+      required: true
+      schema: { type: integer, format: int64 }
+    - in: header
+      name: X-CSRF-Token
+      required: true
+      schema: { type: string }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../openapi.yaml#/components/schemas/InvestmentSaleReversalRequest"
+  responses:
+    "201":
+      description: Merger reversed and both holdings replayed
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/InvestmentSaleReversalResponse"
+    "400":
+      description: Invalid request or missing reason
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "401":
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "403":
+      description: Origin or CSRF validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "404":
+      description: Posted cash-and-stock merger not found
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "409":
+      description: Already corrected (INVESTMENT_MERGER_ALREADY_CORRECTED), changed (INVESTMENT_EXCHANGE_CHANGED), INVESTMENT_TRANSFER_DEPENDENCY names a later operation the correction would make impossible, reconciliation override required, or gain changes not acknowledged
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"

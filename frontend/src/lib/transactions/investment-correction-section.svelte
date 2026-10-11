@@ -20,6 +20,8 @@
   import SpinOffSummary from '#lib/investments/spin-off-summary.svelte';
   import ShareExchangeForm from '#lib/investments/share-exchange-form.svelte';
   import SpinOffForm from '#lib/investments/spin-off-form.svelte';
+  import CashAndStockMergerForm from '#lib/investments/cash-and-stock-merger-form.svelte';
+  import CashAndStockMergerSummary from '#lib/investments/cash-and-stock-merger-summary.svelte';
   import { accountsQueryOptions } from '#lib/api/accounts.ts';
   import GainImpactList from '#lib/investments/gain-impact-list.svelte';
   import { invalidateInvestmentReads } from '#lib/investments/invalidate.ts';
@@ -63,6 +65,8 @@
     reverseShareExchange,
     previewSpinOffReversalReconciliation,
     reverseSpinOff,
+    previewCashStockMergerReversalReconciliation,
+    reverseCashStockMerger,
     type GainImpact,
     type ReconciliationImpactResponse
   } from '#lib/api/investments.ts';
@@ -89,7 +93,7 @@
     enabled: transactionID > 0
   }));
 
-  let replacementKind = $state<'buy' | 'sell' | 'split' | 'dividend' | 'reinvestment' | 'write_off' | 'transfer' | 'capital_return' | 'cash_in_lieu' | 'cash_in_lieu_entry' | 'resolve_basis' | 'correct_basis' | 'short_sale' | 'short_cover' | 'share_exchange' | 'spin_off' | null>(null);
+  let replacementKind = $state<'buy' | 'sell' | 'split' | 'dividend' | 'reinvestment' | 'write_off' | 'transfer' | 'capital_return' | 'cash_in_lieu' | 'cash_in_lieu_entry' | 'resolve_basis' | 'correct_basis' | 'short_sale' | 'short_cover' | 'share_exchange' | 'spin_off' | 'cash_and_stock_merger' | null>(null);
   // Splits pre-fill from the chain's effective_split; only trades need the
   // separate source-facts read.
   const replacementQuery = createQuery(() => ({
@@ -155,8 +159,20 @@
   const spinOff = $derived(chainQuery.data?.effective_transaction_id === transactionID
     ? chainQuery.data.effective_spin_off ?? null : null);
   const spinOffCorrectable = $derived(spinOff !== null && chainQuery.data?.can_correct_spin_off === true);
-  const instrumentsQuery = createQuery(() => ({ ...investmentInstrumentsQueryOptions(), enabled: shareExchange !== null || spinOff !== null }));
-  const exchangeAccountsQuery = createQuery(() => ({ ...accountsQueryOptions(false, false), enabled: shareExchange !== null || spinOff !== null }));
+  // A cash-and-stock merger adds its cash, realized basis and result (#184).
+  const merger = $derived(chainQuery.data?.effective_transaction_id === transactionID
+    ? chainQuery.data.effective_cash_and_stock_merger ?? null : null);
+  const mergerCorrectable = $derived(merger !== null && chainQuery.data?.can_correct_cash_and_stock_merger === true);
+  // Cash in lieu may settle the fraction an exchange, merger or spin-off
+  // leaves in its new holding (#181).
+  const cashInLieuSettles = $derived.by(() => {
+    const terms = shareExchange ?? merger ?? spinOff;
+    return terms ? { transactionID, holdingAccountID: terms.destination_holding_account_id,
+      commodityID: terms.destination_commodity_id, effectiveOn: terms.effective_on } : null;
+  });
+  const compoundAction = $derived(shareExchange !== null || spinOff !== null || merger !== null);
+  const instrumentsQuery = createQuery(() => ({ ...investmentInstrumentsQueryOptions(), enabled: compoundAction }));
+  const exchangeAccountsQuery = createQuery(() => ({ ...accountsQueryOptions(false, false), enabled: compoundAction }));
   function exchangeInstrumentName(commodityID: number): string {
     const instrument = (instrumentsQuery.data?.instruments ?? []).find((item) => item.commodity_id === commodityID);
     return instrument?.display_name ?? instrument?.commodity_code ?? `#${commodityID}`;
@@ -170,7 +186,7 @@
   );
 
   let modal = $state<'closed' | 'reason' | 'reconciliation'>('closed');
-  let reversalKind = $state<'buy' | 'sale' | 'split' | 'dividend' | 'reinvestment' | 'write_off' | 'transfer' | 'capital_return' | 'cash_in_lieu' | 'short_sale' | 'short_cover' | 'basis_resolution' | 'share_exchange' | 'spin_off'>('sale');
+  let reversalKind = $state<'buy' | 'sale' | 'split' | 'dividend' | 'reinvestment' | 'write_off' | 'transfer' | 'capital_return' | 'cash_in_lieu' | 'short_sale' | 'short_cover' | 'basis_resolution' | 'share_exchange' | 'spin_off' | 'cash_and_stock_merger'>('sale');
   let reason = $state('');
   let pending = $state(false);
   let actionError = $state<unknown>(undefined);
@@ -244,7 +260,9 @@
                             ? await previewShareExchangeReversalReconciliation(transactionID, body)
                             : reversalKind === 'spin_off'
                               ? await previewSpinOffReversalReconciliation(transactionID, body)
-                              : await previewSaleReversalReconciliation(transactionID, body);
+                              : reversalKind === 'cash_and_stock_merger'
+                                ? await previewCashStockMergerReversalReconciliation(transactionID, body)
+                                : await previewSaleReversalReconciliation(transactionID, body);
     if (!impactNeedsReview(preview)) return false;
     impacts = preview.affected_checkpoints;
     gainImpact = hasGainChanges(preview.gain_impact) ? preview.gain_impact : null;
@@ -287,6 +305,8 @@
       await reverseShareExchange(transactionID, body, csrfToken);
     } else if (reversalKind === 'spin_off') {
       await reverseSpinOff(transactionID, body, csrfToken);
+    } else if (reversalKind === 'cash_and_stock_merger') {
+      await reverseCashStockMerger(transactionID, body, csrfToken);
     } else {
       await reverseManualSale(transactionID, body, csrfToken);
     }
@@ -507,6 +527,54 @@
         {/if}
       </div>
     {/if}
+    {#if merger}
+      <div class="space-y-2" role="group" aria-labelledby="merger-detail-heading">
+        <h4 id="merger-detail-heading" class="text-xs font-semibold text-muted">{m.transactions_investment_merger_title()}</h4>
+        {#if instrumentsQuery.isPending || exchangeAccountsQuery.isPending}
+          <p class="text-sm text-muted" role="status">{m.transactions_investment_history_loading()}</p>
+        {:else}
+          <p class="text-sm text-foreground">{m.transactions_investment_merger_summary({
+            oldName: exchangeInstrumentName(merger.commodity_id),
+            newName: exchangeInstrumentName(merger.destination_commodity_id),
+            ratioNew: String(merger.plan.ratio_numerator), ratioOld: String(merger.plan.ratio_denominator),
+            date: formatDate(merger.effective_on), payable: formatDate(merger.payable_on)
+          })}</p>
+          <p class="text-xs text-muted">{merger.destination_holding_account_id === merger.holding_account_id
+            ? m.transactions_investment_exchange_same_holding({ name: exchangeAccountName(merger.holding_account_id) })
+            : m.transactions_investment_exchange_holdings({
+              source: exchangeAccountName(merger.holding_account_id),
+              destination: exchangeAccountName(merger.destination_holding_account_id)
+            })}
+            · {m.transactions_investment_merger_cash_account({ name: exchangeAccountName(merger.cash_account_id) })}</p>
+          <CashAndStockMergerSummary plan={merger.plan}
+            oldName={exchangeInstrumentName(merger.commodity_id)}
+            newName={exchangeInstrumentName(merger.destination_commodity_id)}
+            currenciesByID={new Map((currenciesQuery.data?.currencies ?? []).map((c: CurrencyResponse) => [c.id, c]))} />
+        {/if}
+        {#if mergerCorrectable}
+          <div class="flex flex-wrap gap-2">
+            <button type="button"
+              class="inline-flex min-h-10 items-center rounded-[var(--radius-control)] border border-warning/50 bg-control px-3 py-2 text-sm font-semibold text-foreground hover:bg-control-hover disabled:opacity-60"
+              disabled={!csrfToken || pending}
+              onclick={() => { reversalKind = 'cash_and_stock_merger'; reason = ''; actionError = undefined; modal = 'reason'; }}>
+              {m.transactions_investment_reverse_merger_action()}
+            </button>
+            <button type="button"
+              class="inline-flex min-h-10 items-center rounded-[var(--radius-control)] border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground hover:bg-control-hover disabled:opacity-60"
+              disabled={!csrfToken}
+              onclick={() => { replacementKind = 'cash_and_stock_merger'; }}>
+              {m.transactions_investment_replace_merger_action()}
+            </button>
+          </div>
+        {/if}
+      </div>
+    {/if}
+    {#if cashInLieuSettles && (shareExchangeCorrectable || mergerCorrectable || spinOffCorrectable)}
+      <div class="flex flex-wrap gap-2">
+        <button type="button" disabled={!csrfToken} onclick={() => (replacementKind = 'cash_in_lieu_entry')}
+          class="inline-flex min-h-10 items-center rounded-[var(--radius-control)] border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground disabled:opacity-60">{m.investments_cash_in_lieu_entry_action()}</button>
+      </div>
+    {/if}
     {#if systemLabel === 'split_adjustment'}
       <p class="text-xs text-muted">{m.transactions_investment_split_adjustment_note()}</p>
     {/if}
@@ -696,6 +764,8 @@
       role="dialog" aria-modal="true" aria-label={replacementKind === 'cash_in_lieu' ? m.investments_cash_in_lieu_correct() : m.investments_cash_in_lieu_title()}>
       {#if replacementKind === 'cash_in_lieu_entry' && chainQuery.data?.effective_split}
         <CashInLieuForm {csrfToken} split={{ transactionID, holdingAccountID: chainQuery.data.effective_split.holding_account_id, commodityID: chainQuery.data.effective_split.commodity_id, effectiveOn: chainQuery.data.effective_split.effective_on }} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+      {:else if replacementKind === 'cash_in_lieu_entry' && cashInLieuSettles}
+        <CashInLieuForm {csrfToken} split={cashInLieuSettles} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
       {:else if replacementQuery.isPending}<p role="status" class="text-sm text-muted">{m.investments_loading()}</p>
       {:else if replacementQuery.isError}<APIFormError error={replacementQuery.error} />
       {:else if replacementQuery.data?.operation_kind === 'cash_in_lieu' && !replacementQuery.data.already_corrected}
@@ -826,6 +896,15 @@
         onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
     </div>
   </div>
+{:else if replacementKind === 'cash_and_stock_merger' && csrfToken && merger}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
+    role="presentation">
+    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
+      role="dialog" aria-modal="true" aria-label={m.transactions_investment_replace_merger_title()}>
+      <CashAndStockMergerForm {csrfToken} correction={{ transactionID, terms: merger }}
+        onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+    </div>
+  </div>
 {:else if replacementKind === 'split' && csrfToken && chainQuery.data?.effective_split}
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
     role="presentation">
@@ -881,6 +960,7 @@
               : reversalKind === 'basis_resolution' ? m.transactions_investment_withdraw_basis_title()
               : reversalKind === 'share_exchange' ? m.transactions_investment_reverse_exchange_title()
               : reversalKind === 'spin_off' ? m.transactions_investment_reverse_spin_off_title()
+              : reversalKind === 'cash_and_stock_merger' ? m.transactions_investment_reverse_merger_title()
               : m.transactions_investment_reverse_title()
             : impacts.length > 0 ? m.transactions_reconciliation_warning_title() : m.investments_gain_impact_title()}
         </h3>
@@ -900,6 +980,7 @@
                 : reversalKind === 'basis_resolution' ? m.transactions_investment_withdraw_basis_copy()
                 : reversalKind === 'share_exchange' ? m.transactions_investment_reverse_exchange_copy()
                 : reversalKind === 'spin_off' ? m.transactions_investment_reverse_spin_off_copy()
+                : reversalKind === 'cash_and_stock_merger' ? m.transactions_investment_reverse_merger_copy()
                 : m.transactions_investment_reverse_copy()
               : m.transactions_reconciliation_warning_copy()}
           </p>

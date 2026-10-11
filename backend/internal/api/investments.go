@@ -343,8 +343,12 @@ type investmentCorrectionChainResponse struct {
 	EffectiveShareExchange *investmentCorrectionShareExchangeTerms `json:"effective_share_exchange,omitempty"`
 	// EffectiveSpinOff explains an effective spin-off (#180), which
 	// can_correct_spin_off offers to reverse or replace (#183).
-	EffectiveSpinOff *investmentCorrectionSpinOffTerms  `json:"effective_spin_off,omitempty"`
-	Operations       []investmentCorrectionNodeResponse `json:"operations"`
+	EffectiveSpinOff *investmentCorrectionSpinOffTerms `json:"effective_spin_off,omitempty"`
+	// CanCorrectCashStockMerger offers reversal and replacement of an
+	// effective merger (#184), which EffectiveCashStockMerger explains.
+	CanCorrectCashStockMerger bool                                      `json:"can_correct_cash_and_stock_merger"`
+	EffectiveCashStockMerger  *investmentCorrectionCashStockMergerTerms `json:"effective_cash_and_stock_merger,omitempty"`
+	Operations                []investmentCorrectionNodeResponse        `json:"operations"`
 }
 
 type investmentTradeCorrectionChargeResponse struct {
@@ -1201,6 +1205,8 @@ func investmentCorrectionChain(logger *slog.Logger, authService *app.AuthService
 			BasisResolutions:          toBasisResolutionHistory(chain.BasisResolutions),
 			EffectiveShareExchange:    toInvestmentCorrectionShareExchangeTerms(chain.EffectiveShareExchange),
 			EffectiveSpinOff:          toInvestmentCorrectionSpinOffTerms(chain.EffectiveSpinOff),
+			CanCorrectCashStockMerger: chain.CanCorrectCashStockMerger,
+			EffectiveCashStockMerger:  toInvestmentCorrectionCashStockMergerTerms(chain.EffectiveCashStockMerger),
 			Operations:                operations,
 		})
 	}
@@ -1970,6 +1976,10 @@ func writeInvestmentServiceError(w http.ResponseWriter, r *http.Request, logger 
 		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "spin-off operation not found")
 	case errors.Is(err, app.ErrSpinOffAlreadyCorrected):
 		writeAPIError(w, http.StatusConflict, "INVESTMENT_SPIN_OFF_ALREADY_CORRECTED", err.Error())
+	case errors.Is(err, app.ErrCashStockMergerNotFound):
+		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "cash-and-stock merger operation not found")
+	case errors.Is(err, app.ErrCashStockMergerAlreadyCorrected):
+		writeAPIError(w, http.StatusConflict, "INVESTMENT_MERGER_ALREADY_CORRECTED", err.Error())
 	case errors.Is(err, app.ErrShareExchangeNoHoldings):
 		writeAPIError(w, http.StatusConflict, "INVESTMENT_EXCHANGE_NO_HOLDINGS", err.Error())
 	case errors.Is(err, app.ErrShareExchangeFraction):

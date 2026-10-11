@@ -38,8 +38,9 @@ type CashStockMergerInput struct {
 	Memo                        string
 	ChangeReason                string
 	ReconciliationOverride      bool
-	// GainImpactAcknowledgement is unused by an in-order merger, which
-	// revises no committed disposal; it is accepted for a uniform contract.
+	// GainImpactAcknowledgement accepts the restated gains of later
+	// decisions a backdated merger revises (#184); an in-order merger revises
+	// none.
 	GainImpactAcknowledgement string
 }
 
@@ -89,6 +90,13 @@ type CashStockMergerResult struct {
 }
 
 func (s *InvestmentService) prepareCashStockMergerWrite(ctx context.Context, input CashStockMergerInput) (db.CreateTransactionParams, db.CreateCashStockMergerParams, error) {
+	return s.prepareCashStockMergerWriteWith(ctx, input, 0, "investment.cash_and_stock_merger")
+}
+
+// prepareCashStockMergerWriteWith plans a merger journal; a replacement (#184)
+// names the merger it corrects, whose correction-root slot the plan replays.
+func (s *InvestmentService) prepareCashStockMergerWriteWith(ctx context.Context, input CashStockMergerInput,
+	replacesOperationID int64, auditOperation string) (db.CreateTransactionParams, db.CreateCashStockMergerParams, error) {
 	fail := func(err error) (db.CreateTransactionParams, db.CreateCashStockMergerParams, error) {
 		return db.CreateTransactionParams{}, db.CreateCashStockMergerParams{}, err
 	}
@@ -167,6 +175,7 @@ func (s *InvestmentService) prepareCashStockMergerWrite(ctx context.Context, inp
 			BookID: BookID, AccountID: input.HoldingAccountID, DestinationAccountID: destinationAccountID,
 			CommodityID: input.CommodityID, DestinationCommodityID: input.DestinationCommodityID, EffectiveOn: date,
 			RatioNumerator: numerator, RatioDenominator: denominator, SourceEvidenceJSON: evidence,
+			ReplacesOperationID: replacesOperationID,
 		},
 		CashCommodityID: input.CurrencyID, CashValue: input.CashValue, CashScale: input.CashScale, PayableOn: payable,
 		CashBasisFractionValue: fractionValue, CashBasisFractionScale: fractionScale,
@@ -183,7 +192,7 @@ func (s *InvestmentService) prepareCashStockMergerWrite(ctx context.Context, inp
 	create := CreateTransactionInput{
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID,
 		RequestID: input.RequestID, OriginType: "browser_api",
-		Operation: "investment.cash_and_stock_merger", ChangeReason: input.ChangeReason,
+		Operation: auditOperation, ChangeReason: input.ChangeReason,
 		ReconciliationOverride: input.ReconciliationOverride,
 		Spec: TransactionInput{
 			Status: "posted", TransactionKind: "investment", InvestmentOperationKind: "cash_and_stock_merger",

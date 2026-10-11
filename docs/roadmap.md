@@ -117,9 +117,11 @@ below is execution order, not a chain of hard dependencies.
    mobile entry), its correction and backdating [#183](https://github.com/sergeyfarin/rekenraam/issues/183)
    (delivered 2026-10-10), and cash-and-stock merger with exchange
    fractions [#181](https://github.com/sergeyfarin/rekenraam/issues/181) (delivered 2026-10-10: design gate, date
-   sequence, cash in lieu of exchange and spin-off fractions, in-order merger API). Next: the merger's own
-   correction, backdating and browser entry [#184](https://github.com/sergeyfarin/rekenraam/issues/184). Tender, rights and provider
-   corporate-action mappings are outside the #115 bar.
+   sequence, cash in lieu of exchange and spin-off fractions, in-order merger API), and the merger's own
+   correction, backdating and browser entry [#184](https://github.com/sergeyfarin/rekenraam/issues/184) (delivered 2026-10-11),
+   which completes #115. Tender, rights and provider corporate-action mappings are outside the #115 bar.
+   The rest of the R16 bar is zero-delta splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146) and Refresh reach
+   [#152](https://github.com/sergeyfarin/rekenraam/issues/152), not yet sequenced.
 
 **Delivered historical-entry and recovery gates:** dated holdings/lot selection
 [#166](https://github.com/sergeyfarin/rekenraam/issues/166) (2026-10-09),

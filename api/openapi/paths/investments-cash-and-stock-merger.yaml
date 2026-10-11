@@ -14,10 +14,13 @@ post:
     old units, so its result is cash minus the realized basis. The journal
     posts the four security legs on effective_on and the cash (cash account +C,
     commodity_trading −C) on payable_on, never earlier. The cash currency must
-    be every exchanged lot's cost currency. A merger is admitted in date order
-    only; one dated behind a later depletion of either holding is
-    INVESTMENT_EVENT_OUT_OF_ORDER. Fractions the issuer settles in cash are a
-    separate cash in lieu linked to this transaction.
+    be every exchanged lot's cost currency. A merger dated behind a later
+    rewrite of either holding is admitted by replay (#184): every long lot
+    open at its slot is realized and merged, later decisions are revised (the
+    restated gains need the preview's gain_impact_acknowledgement) or named by
+    INVESTMENT_TRANSFER_DEPENDENCY, and nothing is written on refusal.
+    Fractions the issuer settles in cash are a separate cash in lieu linked to
+    this transaction.
   parameters:
     - in: header
       name: X-CSRF-Token
@@ -60,9 +63,10 @@ post:
     "409":
       description: >
         INVESTMENT_EXCHANGE_NO_HOLDINGS, INVESTMENT_EXCHANGE_CHANGED (preview again),
-        INVESTMENT_EVENT_OUT_OF_ORDER (dated behind a later depletion),
-        INVESTMENT_POSITION_SIDE_CONFLICT (an open short of the old instrument),
-        or reconciliation override required
+        INVESTMENT_TRANSFER_DEPENDENCY (a backdated merger leaves a later
+        operation impossible), INVESTMENT_POSITION_SIDE_CONFLICT (an open short
+        of the old instrument), gain changes not acknowledged, or
+        reconciliation override required
       content:
         application/json:
           schema:

@@ -82,7 +82,29 @@ type InvestmentCorrectionChain struct {
 	// (#183); EffectiveSpinOff (#180) carries the terms.
 	CanCorrectSpinOff bool
 	EffectiveSpinOff  *InvestmentCorrectionSpinOffTerms
-	Operations        []InvestmentCorrectionNode
+	// CanCorrectCashStockMerger allows native merger reversal and
+	// replacement (#184); EffectiveCashStockMerger explains the merger.
+	CanCorrectCashStockMerger bool
+	EffectiveCashStockMerger  *InvestmentCorrectionCashStockMergerTerms
+	Operations                []InvestmentCorrectionNode
+}
+
+// InvestmentCorrectionCashStockMergerTerms are a merger's instruments,
+// holdings, dates, ratio, election and cash, and every link with its current
+// realized and carried basis and its cash share (#184).
+type InvestmentCorrectionCashStockMergerTerms struct {
+	HoldingAccountID            int64
+	DestinationHoldingAccountID int64
+	CommodityID                 int64
+	DestinationCommodityID      int64
+	EffectiveOn                 string
+	PayableOn                   string
+	CashAccountID               int64
+	CurrencyID                  int64
+	CashValue                   exact.Coefficient
+	CashScale                   int
+	SourceEvidenceJSON          string
+	Plan                        CashStockMergerPlan
 }
 
 // InvestmentCorrectionSpinOffTerms are a spin-off's instruments, holdings,
@@ -303,6 +325,9 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 		if correctable && record.OperationKind == "spin_off" {
 			chain.CanCorrectSpinOff = true
 		}
+		if correctable && record.OperationKind == "cash_and_stock_merger" {
+			chain.CanCorrectCashStockMerger = true
+		}
 		if correctable && (record.OperationKind == "internal_transfer" || record.OperationKind == "external_transfer_in" ||
 			record.OperationKind == "external_transfer_out") {
 			resolved := false
@@ -374,6 +399,29 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 				HoldingAccountID: terms.AccountID, DestinationHoldingAccountID: terms.DestinationAccountID,
 				CommodityID: terms.CommodityID, DestinationCommodityID: terms.DestinationCommodityID,
 				EffectiveOn: terms.EffectiveOn, SourceEvidenceJSON: terms.SourceEvidenceJSON, Plan: plan,
+			}
+		}
+		if effective && record.OperationKind == "cash_and_stock_merger" {
+			terms, err := s.repository.CashStockMergerTermsByTransactionID(ctx, BookID, record.TransactionID.Int64)
+			if err != nil {
+				return InvestmentCorrectionChain{}, err
+			}
+			exchange := terms.Exchange
+			plan, err := toCashStockMergerPlan(db.CreateCashStockMergerParams{
+				Exchange:               db.CreateShareExchangeParams{RatioNumerator: exchange.RatioNumerator, RatioDenominator: exchange.RatioDenominator},
+				CashBasisFractionValue: terms.CashBasisFractionValue, CashBasisFractionScale: terms.CashBasisFractionScale,
+			}, db.CashStockMergerPlan{Links: terms.Links,
+				SourceQuantityValue: exchange.Plan.SourceQuantityValue, SourceQuantityScale: exchange.Plan.SourceQuantityScale,
+				DestinationQuantityValue: exchange.Plan.DestinationQuantityValue, DestinationQuantityScale: exchange.Plan.DestinationQuantityScale})
+			if err != nil {
+				return InvestmentCorrectionChain{}, err
+			}
+			chain.EffectiveCashStockMerger = &InvestmentCorrectionCashStockMergerTerms{
+				HoldingAccountID: exchange.AccountID, DestinationHoldingAccountID: exchange.DestinationAccountID,
+				CommodityID: exchange.CommodityID, DestinationCommodityID: exchange.DestinationCommodityID,
+				EffectiveOn: exchange.EffectiveOn, PayableOn: terms.PayableOn, CashAccountID: terms.CashAccountID,
+				CurrencyID: terms.CashCommodityID, CashValue: terms.CashValue, CashScale: terms.CashScale,
+				SourceEvidenceJSON: exchange.SourceEvidenceJSON, Plan: plan,
 			}
 		}
 		if effective && record.OperationKind == "buy" && (!importedLineage || committedSource) &&

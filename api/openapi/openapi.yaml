@@ -391,6 +391,14 @@ paths:
     $ref: "./paths/investments-replace-spin-off.yaml"
   /api/v1/investments/transactions/{transaction_id}/replace-spin-off/preview:
     $ref: "./paths/investments-replace-spin-off-preview.yaml"
+  /api/v1/investments/transactions/{transaction_id}/reverse-cash-and-stock-merger:
+    $ref: "./paths/investments-reverse-cash-and-stock-merger.yaml"
+  /api/v1/investments/transactions/{transaction_id}/reverse-cash-and-stock-merger/reconciliation-impact:
+    $ref: "./paths/investments-reverse-cash-and-stock-merger-reconciliation-impact.yaml"
+  /api/v1/investments/transactions/{transaction_id}/replace-cash-and-stock-merger:
+    $ref: "./paths/investments-replace-cash-and-stock-merger.yaml"
+  /api/v1/investments/transactions/{transaction_id}/replace-cash-and-stock-merger/preview:
+    $ref: "./paths/investments-replace-cash-and-stock-merger-preview.yaml"
   /api/v1/investments/transactions/{transaction_id}/reverse-split:
     $ref: "./paths/investments-reverse-split.yaml"
   /api/v1/investments/transactions/{transaction_id}/reverse-split/reconciliation-impact:
@@ -1234,6 +1242,12 @@ components:
       $ref: "./components/schemas/investments.yaml#/CashStockMergerPreviewResponse"
     CashStockMergerResponse:
       $ref: "./components/schemas/investments.yaml#/CashStockMergerResponse"
+    CashStockMergerReplacementRequest:
+      $ref: "./components/schemas/investments.yaml#/CashStockMergerReplacementRequest"
+    CashStockMergerReplacementResponse:
+      $ref: "./components/schemas/investments.yaml#/CashStockMergerReplacementResponse"
+    InvestmentCorrectionCashStockMergerTerms:
+      $ref: "./components/schemas/investments.yaml#/InvestmentCorrectionCashStockMergerTerms"
     SpinOffRequest:
       $ref: "./components/schemas/investments.yaml#/SpinOffRequest"
     SpinOffLink:

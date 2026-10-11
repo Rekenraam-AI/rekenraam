@@ -16457,7 +16457,7 @@ export interface paths {
         put?: never;
         /**
          * Record a cash-and-stock merger of one holding
-         * @description A merger paying cash with the new shares (#181). Every long lot of commodity_id open in holding_account_id on effective_on becomes one lot of destination_commodity_id in the destination holding, holding its remaining quantity times ratio_numerator/ratio_denominator exactly, as for a share exchange. Before the units move, the cash recovers the elected share of each lot's remaining basis: cash_basis_fraction (0 to 1 inclusive) times that basis, truncated at the position's allocation scale. The new lot carries the rest, so basis is conserved per lot; an unknown lot stays unknown on both legs. The cash is one long disposal decision of quantity 0 on the old position, with the cash as proceeds shared across the lots by old units, so its result is cash minus the realized basis. The journal posts the four security legs on effective_on and the cash (cash account +C, commodity_trading −C) on payable_on, never earlier. The cash currency must be every exchanged lot's cost currency. A merger is admitted in date order only; one dated behind a later depletion of either holding is INVESTMENT_EVENT_OUT_OF_ORDER. Fractions the issuer settles in cash are a separate cash in lieu linked to this transaction.
+         * @description A merger paying cash with the new shares (#181). Every long lot of commodity_id open in holding_account_id on effective_on becomes one lot of destination_commodity_id in the destination holding, holding its remaining quantity times ratio_numerator/ratio_denominator exactly, as for a share exchange. Before the units move, the cash recovers the elected share of each lot's remaining basis: cash_basis_fraction (0 to 1 inclusive) times that basis, truncated at the position's allocation scale. The new lot carries the rest, so basis is conserved per lot; an unknown lot stays unknown on both legs. The cash is one long disposal decision of quantity 0 on the old position, with the cash as proceeds shared across the lots by old units, so its result is cash minus the realized basis. The journal posts the four security legs on effective_on and the cash (cash account +C, commodity_trading −C) on payable_on, never earlier. The cash currency must be every exchanged lot's cost currency. A merger dated behind a later rewrite of either holding is admitted by replay (#184): every long lot open at its slot is realized and merged, later decisions are revised (the restated gains need the preview's gain_impact_acknowledgement) or named by INVESTMENT_TRANSFER_DEPENDENCY, and nothing is written on refusal. Fractions the issuer settles in cash are a separate cash in lieu linked to this transaction.
          */
         post: {
             parameters: {
@@ -16510,7 +16510,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description INVESTMENT_EXCHANGE_NO_HOLDINGS, INVESTMENT_EXCHANGE_CHANGED (preview again), INVESTMENT_EVENT_OUT_OF_ORDER (dated behind a later depletion), INVESTMENT_POSITION_SIDE_CONFLICT (an open short of the old instrument), or reconciliation override required */
+                /** @description INVESTMENT_EXCHANGE_NO_HOLDINGS, INVESTMENT_EXCHANGE_CHANGED (preview again), INVESTMENT_TRANSFER_DEPENDENCY (a backdated merger leaves a later operation impossible), INVESTMENT_POSITION_SIDE_CONFLICT (an open short of the old instrument), gain changes not acknowledged, or reconciliation override required */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -17825,6 +17825,370 @@ export interface paths {
                     };
                 };
                 /** @description Posted spin-off not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Already corrected, changed, no holdings at the corrected slot, or a later operation impossible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Corrected ratio not representable */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/transactions/{transaction_id}/reverse-cash-and-stock-merger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reverse a posted cash-and-stock merger
+         * @description Posts the exact inverse of the whole merger journal (the security legs on the effective date, the cash leg on the payable date), removes the merger and its cash decision from effective history and replays the old holding (whose lots return with their basis) and then the new one (which loses the lots the merger opened), in one audited database transaction (#184). The original merger stays posted history. A later sale or onward transfer of the removed new units, or an effective cash in lieu settling the merger, refuses with INVESTMENT_TRANSFER_DEPENDENCY naming it, and nothing is written. The removed cash result counts as a gain change: a non-empty gain change set requires the preview's exact gain_impact_acknowledgement.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CSRF-Token": string;
+                };
+                path: {
+                    transaction_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InvestmentSaleReversalRequest"];
+                };
+            };
+            responses: {
+                /** @description Merger reversed and both holdings replayed */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InvestmentSaleReversalResponse"];
+                    };
+                };
+                /** @description Invalid request or missing reason */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Origin or CSRF validation failed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Posted cash-and-stock merger not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Already corrected (INVESTMENT_MERGER_ALREADY_CORRECTED), changed (INVESTMENT_EXCHANGE_CHANGED), INVESTMENT_TRANSFER_DEPENDENCY names a later operation the correction would make impossible, reconciliation override required, or gain changes not acknowledged */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/transactions/{transaction_id}/reverse-cash-and-stock-merger/reconciliation-impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview a cash-and-stock merger reversal
+         * @description Runs the reversal writer and both replays in a rolled-back transaction and returns the reconciliation checkpoints and committed-disposal gain changes it would cause (#184).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    transaction_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InvestmentSaleReversalRequest"];
+                };
+            };
+            responses: {
+                /** @description Replay and reconciliation impact computed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReconciliationImpactResponse"];
+                    };
+                };
+                /** @description Invalid request or missing reason */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Posted cash-and-stock merger not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Already corrected, changed, or a later operation impossible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/transactions/{transaction_id}/replace-cash-and-stock-merger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Correct a posted cash-and-stock merger
+         * @description Posts the exact inverse of the whole merger journal (security legs and cash leg) and a replacement merger with corrected terms (dates, ratio, election, cash, new instrument, receiving holding or evidence) for the same merged holding and old instrument, in one audited database transaction (#184). The replacement takes the replaced merger's correction-root same-day slot and realizes and takes every lot open there; the old and every new holding replay, so later decisions are revised or named. Unchanged terms are refused; omitted evidence keeps the recorded evidence. The merger's own cash result counts as a gain change: a non-empty gain change set requires the preview's exact gain_impact_acknowledgement. An effective cash in lieu settling the merger refuses with INVESTMENT_TRANSFER_DEPENDENCY naming it.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CSRF-Token": string;
+                };
+                path: {
+                    transaction_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CashStockMergerReplacementRequest"];
+                };
+            };
+            responses: {
+                /** @description Merger replaced and holdings replayed */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CashStockMergerReplacementResponse"];
+                    };
+                };
+                /** @description Invalid request, unchanged terms, missing reason, or cash outside the lots' cost currency */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Origin or CSRF validation failed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Posted cash-and-stock merger not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Already corrected (INVESTMENT_MERGER_ALREADY_CORRECTED), changed (INVESTMENT_EXCHANGE_CHANGED), no holdings at the corrected slot (INVESTMENT_EXCHANGE_NO_HOLDINGS), INVESTMENT_TRANSFER_DEPENDENCY names a later operation the correction would make impossible, position side conflict, reconciliation override required, or gain changes not acknowledged */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Corrected ratio not representable at the new instrument's scale (INVESTMENT_EXCHANGE_FRACTION_UNREPRESENTABLE) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/transactions/{transaction_id}/replace-cash-and-stock-merger/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview a cash-and-stock merger replacement
+         * @description Returns the corrected merger's links, realizations, cash and totals, computed at the replaced merger's slot without it, plus the checkpoints and gain changes the replacement writer would cause, from a rolled-back run (#184).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    transaction_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CashStockMergerReplacementRequest"];
+                };
+            };
+            responses: {
+                /** @description Plan and impact computed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CashStockMergerPreviewResponse"];
+                    };
+                };
+                /** @description Invalid request, unchanged terms or missing reason */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Posted cash-and-stock merger not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -26586,7 +26950,7 @@ export interface components {
             memo?: string;
             change_reason?: string;
             reconciliation_override?: boolean;
-            /** @description Accepted for a uniform contract; an in-order merger revises no committed disposal. */
+            /** @description The preview's acknowledgement of the later gains a backdated merger restates (#184); an in-order merger revises none. */
             gain_impact_acknowledgement?: string;
         };
         CashStockMergerLink: components["schemas"]["ShareExchangeLink"] & {
@@ -26627,6 +26991,82 @@ export interface components {
         };
         CashStockMergerResponse: {
             transaction: components["schemas"]["TransactionResponse"];
+            plan: components["schemas"]["CashStockMergerPlan"];
+        };
+        /** @description Corrected terms for a cash-and-stock merger (#184). The merged holding and old instrument stay those of the merger; the dates, ratio, election, cash, new instrument, receiving holding or source evidence must change. Omitted evidence keeps the recorded evidence. */
+        CashStockMergerReplacementRequest: {
+            reason: string;
+            /** Format: date */
+            effective_on: string;
+            /** Format: date */
+            payable_on: string;
+            /**
+             * Format: int64
+             * @description Defaults to the merged holding.
+             */
+            destination_holding_account_id?: number;
+            /** Format: int64 */
+            destination_commodity_id: number;
+            /** Format: int64 */
+            ratio_numerator: number;
+            /** Format: int64 */
+            ratio_denominator: number;
+            /** Format: int64 */
+            cash_account_id: number;
+            /** Format: int64 */
+            currency_id: number;
+            cash_value: string;
+            cash_scale: number;
+            /** @description Coefficient of the corrected election, as for CashStockMergerRequest. */
+            cash_basis_fraction_value: string;
+            cash_basis_fraction_scale: number;
+            source_evidence?: {
+                [key: string]: unknown;
+            };
+            memo?: string;
+            reconciliation_override?: boolean;
+            gain_impact_acknowledgement?: string;
+        };
+        CashStockMergerReplacementResponse: {
+            inverse: components["schemas"]["TransactionResponse"];
+            replacement: components["schemas"]["TransactionResponse"];
+            plan: components["schemas"]["CashStockMergerPlan"];
+            /** Format: int64 */
+            corrected_transaction_id: number;
+        };
+        /** @description An effective cash-and-stock merger's terms (#184): its dates, holdings, instruments and cash, and a plan whose links carry each lot's current realized and carried basis and cash share, with totals and result. */
+        InvestmentCorrectionCashStockMergerTerms: {
+            /** Format: date */
+            effective_on: string;
+            /** Format: date */
+            payable_on: string;
+            /** Format: int64 */
+            holding_account_id: number;
+            /**
+             * Format: int64
+             * @description Equal to holding_account_id when the new units went to the same holding.
+             */
+            destination_holding_account_id: number;
+            /**
+             * Format: int64
+             * @description The old instrument.
+             */
+            commodity_id: number;
+            /**
+             * Format: int64
+             * @description The new instrument.
+             */
+            destination_commodity_id: number;
+            /** Format: int64 */
+            cash_account_id: number;
+            /** Format: int64 */
+            currency_id: number;
+            /** @description The total cash, an exact coefficient. */
+            cash_value: string;
+            cash_scale: number;
+            source_evidence: {
+                [key: string]: unknown;
+            };
             plan: components["schemas"]["CashStockMergerPlan"];
         };
         /** @description A spin-off or demerger (#180): every long lot of commodity_id in holding_account_id keeps its units and moves basis_fraction of its remaining basis to a new lot of destination_commodity_id. */
@@ -27179,6 +27619,8 @@ export interface components {
             can_correct_share_exchange: boolean;
             /** @description The effective operation is a spin-off that may be reversed or replaced (#183); effective_spin_off carries its terms. */
             can_correct_spin_off: boolean;
+            /** @description The effective operation is a cash-and-stock merger that may be reversed or replaced (#184); effective_cash_and_stock_merger carries its terms. */
+            can_correct_cash_and_stock_merger: boolean;
             /** @description Whether the effective posted write-off can be reversed or replaced (T-118). The trade correction context pre-fills the replacement; dependent replay may still refuse the command. */
             can_correct_write_off: boolean;
             /** @description Whether the effective posted internal or external-in transfer can attempt reversal (T-119). A destination disposal or onward transfer of the removed units may still refuse the command. */
@@ -27208,6 +27650,8 @@ export interface components {
             effective_share_exchange?: components["schemas"]["InvestmentCorrectionShareExchangeTerms"];
             /** @description Present when the effective operation is a spin-off (#180): its instruments, holdings, ratio, basis fraction and each link's current allocated basis. can_correct_spin_off offers its reversal and replacement (#183). */
             effective_spin_off?: components["schemas"]["InvestmentCorrectionSpinOffTerms"];
+            /** @description Present when the effective operation is a cash-and-stock merger (#184). can_correct_cash_and_stock_merger offers its reversal and replacement. */
+            effective_cash_and_stock_merger?: components["schemas"]["InvestmentCorrectionCashStockMergerTerms"];
             operations: components["schemas"]["InvestmentCorrectionNodeResponse"][];
         };
         /** @description Immutable buy or sale source facts for pre-filling a full replacement. The write command rechecks eligibility. */
@@ -27738,7 +28182,7 @@ export interface components {
         };
         ErrorBody: {
             /** @enum {string} */
-            code: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "CSRF_INVALID" | "RATE_LIMITED" | "RESOURCE_BUSY" | "LEDGER_OVERFLOW" | "FORECAST_TOO_LARGE" | "FORECAST_BASIS_CHANGED" | "INVESTMENT_WORKFLOW_REQUIRED" | "INVESTMENT_EVENT_OUT_OF_ORDER" | "INVESTMENT_POSITION_SIDE_CONFLICT" | "INVESTMENT_SHORT_DEPENDENCY" | "INVESTMENT_TRANSFER_POOL_REQUIRED" | "INVESTMENT_TRANSFER_POOL_UNAVAILABLE" | "INVESTMENT_SALE_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SALE" | "INVESTMENT_SALE_CHANGED" | "INVESTMENT_SALE_DEPENDENCY" | "INVESTMENT_BUY_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_BUY" | "INVESTMENT_BUY_CHANGED" | "INVESTMENT_BUY_DEPENDENCY" | "INVESTMENT_DIVIDEND_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_DIVIDEND" | "INVESTMENT_DIVIDEND_CHANGED" | "INVESTMENT_WRITE_OFF_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_CHANGED" | "INVESTMENT_TRANSFER_DEPENDENCY" | "INVESTMENT_IMPORTED_TRANSFER" | "INVESTMENT_TRANSFER_BASIS_RESOLVED" | "INVESTMENT_TRANSFER_BASIS_NOT_UNKNOWN" | "INVESTMENT_TRANSFER_BASIS_NOT_RESOLVED" | "INVESTMENT_BASIS_RESOLUTION_ALREADY_CORRECTED" | "INVESTMENT_BASIS_RESOLUTION_CHANGED" | "INVESTMENT_WRITE_OFF_CHANGED" | "INVESTMENT_REINVESTMENT_ALREADY_CORRECTED" | "INVESTMENT_REINVESTMENT_CHANGED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE" | "INVESTMENT_SPLIT_NO_HOLDINGS" | "INVESTMENT_CAPITAL_RETURN_DEPENDENCY" | "INVESTMENT_CAPITAL_RETURN_NO_HOLDINGS" | "INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE" | "INVESTMENT_SPLIT_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPLIT_CHANGED" | "INVESTMENT_SPLIT_DEPENDENCY" | "INVESTMENT_SPLIT_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SPLIT" | "INVESTMENT_EXCHANGE_NO_HOLDINGS" | "INVESTMENT_EXCHANGE_FRACTION_UNREPRESENTABLE" | "INVESTMENT_EXCHANGE_CHANGED" | "INVESTMENT_EXCHANGE_ALREADY_CORRECTED" | "INVESTMENT_SPIN_OFF_NO_HOLDINGS" | "INVESTMENT_SPIN_OFF_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPIN_OFF_CHANGED" | "INVESTMENT_SPIN_OFF_ALREADY_CORRECTED" | "IMPORT_SPLIT_LINK_UNAVAILABLE" | "TRANSACTION_DRAFT_NOT_USER_CREATABLE" | "TRANSACTION_VERSION_STALE" | "POSTING_ACCOUNT_VERSION_STALE" | "RECURRING_TEMPLATE_UNBALANCED" | "RECURRING_SCHEDULE_INVALID" | "RECURRING_TEMPLATE_ARCHIVED" | "RECURRING_OCCURRENCE_ALREADY_MATERIALIZED" | "SETUP_REQUIRED" | "SETUP_ALREADY_COMPLETE" | "CONFIG_REQUIRED" | "PROVIDER_ERROR" | "EXPORT_SCOPE_UNSUPPORTED" | "QIF_ACCOUNT_UNSUPPORTED" | "INTERNAL_ERROR";
+            code: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "CSRF_INVALID" | "RATE_LIMITED" | "RESOURCE_BUSY" | "LEDGER_OVERFLOW" | "FORECAST_TOO_LARGE" | "FORECAST_BASIS_CHANGED" | "INVESTMENT_WORKFLOW_REQUIRED" | "INVESTMENT_EVENT_OUT_OF_ORDER" | "INVESTMENT_POSITION_SIDE_CONFLICT" | "INVESTMENT_SHORT_DEPENDENCY" | "INVESTMENT_TRANSFER_POOL_REQUIRED" | "INVESTMENT_TRANSFER_POOL_UNAVAILABLE" | "INVESTMENT_SALE_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SALE" | "INVESTMENT_SALE_CHANGED" | "INVESTMENT_SALE_DEPENDENCY" | "INVESTMENT_BUY_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_BUY" | "INVESTMENT_BUY_CHANGED" | "INVESTMENT_BUY_DEPENDENCY" | "INVESTMENT_DIVIDEND_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_DIVIDEND" | "INVESTMENT_DIVIDEND_CHANGED" | "INVESTMENT_WRITE_OFF_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_CHANGED" | "INVESTMENT_TRANSFER_DEPENDENCY" | "INVESTMENT_IMPORTED_TRANSFER" | "INVESTMENT_TRANSFER_BASIS_RESOLVED" | "INVESTMENT_TRANSFER_BASIS_NOT_UNKNOWN" | "INVESTMENT_TRANSFER_BASIS_NOT_RESOLVED" | "INVESTMENT_BASIS_RESOLUTION_ALREADY_CORRECTED" | "INVESTMENT_BASIS_RESOLUTION_CHANGED" | "INVESTMENT_WRITE_OFF_CHANGED" | "INVESTMENT_REINVESTMENT_ALREADY_CORRECTED" | "INVESTMENT_REINVESTMENT_CHANGED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE" | "INVESTMENT_SPLIT_NO_HOLDINGS" | "INVESTMENT_CAPITAL_RETURN_DEPENDENCY" | "INVESTMENT_CAPITAL_RETURN_NO_HOLDINGS" | "INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE" | "INVESTMENT_SPLIT_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPLIT_CHANGED" | "INVESTMENT_SPLIT_DEPENDENCY" | "INVESTMENT_SPLIT_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SPLIT" | "INVESTMENT_EXCHANGE_NO_HOLDINGS" | "INVESTMENT_EXCHANGE_FRACTION_UNREPRESENTABLE" | "INVESTMENT_EXCHANGE_CHANGED" | "INVESTMENT_EXCHANGE_ALREADY_CORRECTED" | "INVESTMENT_SPIN_OFF_NO_HOLDINGS" | "INVESTMENT_SPIN_OFF_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPIN_OFF_CHANGED" | "INVESTMENT_SPIN_OFF_ALREADY_CORRECTED" | "INVESTMENT_MERGER_ALREADY_CORRECTED" | "IMPORT_SPLIT_LINK_UNAVAILABLE" | "TRANSACTION_DRAFT_NOT_USER_CREATABLE" | "TRANSACTION_VERSION_STALE" | "POSTING_ACCOUNT_VERSION_STALE" | "RECURRING_TEMPLATE_UNBALANCED" | "RECURRING_SCHEDULE_INVALID" | "RECURRING_TEMPLATE_ARCHIVED" | "RECURRING_OCCURRENCE_ALREADY_MATERIALIZED" | "SETUP_REQUIRED" | "SETUP_ALREADY_COMPLETE" | "CONFIG_REQUIRED" | "PROVIDER_ERROR" | "EXPORT_SCOPE_UNSUPPORTED" | "QIF_ACCOUNT_UNSUPPORTED" | "INTERNAL_ERROR";
             message: string;
         };
         ErrorResponse: {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { basisFractionPercent, parseBasisPercent, parseExchangeRatio, parseSplitRatio } from './split-ratio';
+import { basisFractionPercent, parseBasisPercent, parseElectionPercent, parseExchangeRatio, parseSplitRatio } from './split-ratio';
 
 describe('parseSplitRatio', () => {
   it('accepts forward and reverse ratios as typed', () => {
@@ -54,5 +54,20 @@ describe('basisFractionPercent', () => {
     ['5', 3, '5', 1]
   ])('shows %s at scale %d as %s at scale %d', (value, scale, percentValue, percentScale) => {
     expect(basisFractionPercent(value, scale)).toEqual({ value: percentValue, scale: percentScale });
+  });
+});
+
+describe('parseElectionPercent', () => {
+  it('stores the merger election in lowest terms, 0 and 100 % included', () => {
+    for (const [input, value, scale] of [['25', '25', 2], ['25,0', '25', 2], ['12.5', '125', 3], ['10', '1', 1],
+      ['0', '0', 0], ['0.00', '0', 0], ['100', '1', 0], ['100.000', '1', 0], ['33.3333333333', '333333333333', 12]] as const) {
+      expect(parseElectionPercent(input)).toEqual({ ok: true, value, scale });
+    }
+  });
+
+  it('refuses more than 100 %, signs, spaces, two marks and too many decimals', () => {
+    for (const input of ['100.01', '101', '-5', '1 000', '1.5.0', '', '0.00000000001', 'abc']) {
+      expect(parseElectionPercent(input)).toEqual({ ok: false });
+    }
   });
 });

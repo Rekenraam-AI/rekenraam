@@ -66,38 +66,30 @@ type CashStockMergerPlan struct {
 	DestinationQuantityScale int
 }
 
-// planCashStockMergerTx plans the exchange part and refuses a merger outside
-// date order or with cash in another currency than a lot's basis.
-func planCashStockMergerTx(ctx context.Context, tx *sql.Tx, params CreateCashStockMergerParams, actorUserID int64) (shareExchangeWritePlan, error) {
-	if params.Exchange.ReplacesOperationID != 0 || params.CashCommodityID <= 0 || params.CashValue <= 0 ||
+// planCashStockMergerTx plans the exchange part and refuses cash in another
+// currency than a lot's basis. A merger dated behind a later rewrite of the
+// old holding, or a replacement, replays that holding with the merger as its
+// subject at the slot, so it realizes and takes every lot open then (#184).
+func planCashStockMergerTx(ctx context.Context, tx *sql.Tx, params CreateCashStockMergerParams, subject compoundActionSubject) (shareExchangeWritePlan, error) {
+	if params.CashCommodityID <= 0 || params.CashValue <= 0 ||
 		params.CashScale < 0 || params.CashScale > 12 || !isDisposalCalendarDate(params.PayableOn) ||
 		params.PayableOn < params.Exchange.EffectiveOn || !validCashBasisFraction(params.CashBasisFractionValue, params.CashBasisFractionScale) {
 		return shareExchangeWritePlan{}, fmt.Errorf("%w: cash-and-stock merger terms are incomplete", ErrInvalidDisposalParams)
 	}
-	// Backdating and correction need their own contract; until then a merger
-	// is admitted in date order only, before the exchange planner would
-	// replay a backdated holding.
-	for _, holding := range [][2]int64{{params.Exchange.AccountID, params.Exchange.CommodityID},
-		{params.Exchange.DestinationAccountID, params.Exchange.DestinationCommodityID}} {
-		backdated, err := positionRewrittenAfterTx(ctx, tx, params.Exchange.BookID, holding[0], holding[1], params.Exchange.EffectiveOn)
-		if err != nil {
-			return shareExchangeWritePlan{}, err
-		}
-		if backdated {
-			return shareExchangeWritePlan{}, ErrOutOfOrderPositionEvent
-		}
-	}
-	plan, err := planShareExchangeTx(ctx, tx, params.Exchange, compoundActionSubject{ActorUserID: actorUserID, CreatedAt: "1970-01-01T00:00:00Z"})
+	plan, err := planShareExchangeAsTx(ctx, tx, params.Exchange, subject, InvestmentReplayIntent{
+		OperationKind: "cash_and_stock_merger", BasisFractionValue: params.CashBasisFractionValue,
+		BasisFractionScale: params.CashBasisFractionScale})
 	if err != nil {
 		return shareExchangeWritePlan{}, err
-	}
-	if plan.Replayed || plan.DestinationBackdated {
-		return shareExchangeWritePlan{}, ErrOutOfOrderPositionEvent
 	}
 	for _, link := range plan.Links {
 		if link.CostCommodityID != params.CashCommodityID {
 			return shareExchangeWritePlan{}, ErrCashStockMergerCurrency
 		}
+	}
+	if plan.Replayed && len(plan.Realizations) != len(plan.Links) {
+		return shareExchangeWritePlan{}, fmt.Errorf("%w: replay realized %d of %d merged lots", ErrInvalidDisposalParams,
+			len(plan.Realizations), len(plan.Links))
 	}
 	return plan, nil
 }
@@ -121,7 +113,7 @@ func (r *InvestmentRepository) PlanCashStockMerger(ctx context.Context, params C
 		return ShareExchangePlan{}, fmt.Errorf("begin cash-and-stock merger plan: %w", err)
 	}
 	defer rollbackTx(ctx, tx)
-	plan, err := planCashStockMergerTx(ctx, tx, params, actorUserID)
+	plan, err := planCashStockMergerTx(ctx, tx, params, compoundActionSubject{ActorUserID: actorUserID, CreatedAt: "1970-01-01T00:00:00Z"})
 	if err != nil {
 		return ShareExchangePlan{}, err
 	}
@@ -164,7 +156,8 @@ func writeCashStockMergerTx(ctx context.Context, tx *sql.Tx, params CreateCashSt
 	if err != nil {
 		return CashStockMergerPlan{}, err
 	}
-	planned, err := planCashStockMergerTx(ctx, tx, params, journal.ActorUserID)
+	planned, err := planCashStockMergerTx(ctx, tx, params, compoundActionSubject{OperationID: operationID,
+		TransactionID: transaction.ID, AuditEventID: auditEventID, ActorUserID: journal.ActorUserID, CreatedAt: journal.CreatedAt})
 	if err != nil {
 		return CashStockMergerPlan{}, err
 	}
@@ -197,14 +190,18 @@ func writeCashStockMergerTx(ctx context.Context, tx *sql.Tx, params CreateCashSt
 		return CashStockMergerPlan{}, err
 	}
 	// The cash recovers its share of each lot's basis first: a quantity-0
-	// disposal event per lot. Its decision links those events below.
+	// disposal event per lot. Its decision links those events below. A
+	// replayed plan records the realizations replay produced at the slot; the
+	// replay that follows installs the projection (#184).
 	realizations := make([]LotDisposalRecord, len(planned.Links))
 	for index, link := range planned.Links {
-		realization, err := realizeCashStockMergerLotTx(ctx, tx, exchange.BookID, exchange.AccountID, exchange.CommodityID,
+		var realization LotDisposalRecord
+		if planned.Replayed {
+			realization = planned.Realizations[index]
+		} else if realization, err = realizeCashStockMergerLotTx(ctx, tx, exchange.BookID, exchange.AccountID, exchange.CommodityID,
 			params.CashCommodityID, link.SourceLotID, exchange.EffectiveOn, link.SourceQuantityValue, link.SourceQuantityScale,
 			params.CashBasisFractionValue, params.CashBasisFractionScale, allocationScale, journal.CreatedAt,
-			journal.ActorUserID, auditEventID)
-		if err != nil {
+			journal.ActorUserID, auditEventID); err != nil {
 			return CashStockMergerPlan{}, err
 		}
 		knowledge := normalizedBasisKnowledge(realization.BasisKnowledge)
@@ -232,9 +229,15 @@ func writeCashStockMergerTx(ctx context.Context, tx *sql.Tx, params CreateCashSt
 		DestinationQuantityValue: planned.DestinationQuantityValue, DestinationQuantityScale: planned.DestinationQuantityScale}
 	depletions := make([]LotDisposalRecord, len(planned.Links))
 	for index, link := range planned.Links {
-		depletion, err := disposeLotTx(ctx, tx, depletionParams, link.SourceLotID, link.SourceQuantityValue,
-			link.SourceQuantityScale, auditEventID, allocationScale)
-		if err != nil {
+		var depletion LotDisposalRecord
+		if planned.Replayed {
+			depletion = planned.Depletions[index]
+			if depletion.EventID, err = insertShareExchangeDepletionTx(ctx, tx, exchange, transaction.ID, journal,
+				auditEventID, depletion); err != nil {
+				return CashStockMergerPlan{}, err
+			}
+		} else if depletion, err = disposeLotTx(ctx, tx, depletionParams, link.SourceLotID, link.SourceQuantityValue,
+			link.SourceQuantityScale, auditEventID, allocationScale); err != nil {
 			return CashStockMergerPlan{}, err
 		}
 		if err := linkLotEffectTx(ctx, tx, operationID, depletion.EventID); err != nil {
@@ -256,7 +259,7 @@ func writeCashStockMergerTx(ctx context.Context, tx *sql.Tx, params CreateCashSt
 			CostBasisValue: link.CarriedBasisValue, CostBasisScale: link.CarriedBasisScale, CostCommodityID: link.CostCommodityID,
 			OpeningBasisKnowledge: link.BasisKnowledge, MetadataJSON: `{"source":"cash_and_stock_merger"}`,
 			EventKind: "transfer_in", CreatedAt: journal.CreatedAt, CreatedByUserID: journal.ActorUserID,
-		}, auditEventID, false)
+		}, auditEventID, planned.DestinationBackdated)
 		if err != nil {
 			return CashStockMergerPlan{}, err
 		}
@@ -288,14 +291,69 @@ func writeCashStockMergerTx(ctx context.Context, tx *sql.Tx, params CreateCashSt
 	if _, err := createDisposalDecisionTx(ctx, tx, transaction, decisionParams, realizations, auditEventID); err != nil {
 		return CashStockMergerPlan{}, err
 	}
+	if !planned.Replayed {
+		if err := keepPositionMethodFamilyTx(ctx, tx, depletionParams, auditEventID); err != nil {
+			return CashStockMergerPlan{}, err
+		}
+	}
+	// The old holding first, so a dependency the emptied holding breaks is
+	// named before one the new lots change.
+	var replayed [][2]int64
+	if planned.Replayed {
+		replayed = append(replayed, [2]int64{exchange.AccountID, exchange.CommodityID})
+	}
+	if planned.DestinationBackdated {
+		replayed = append(replayed, [2]int64{exchange.DestinationAccountID, exchange.DestinationCommodityID})
+	}
+	if err := replayHoldingsTx(ctx, tx, exchange.BookID, replayed, operationID, auditEventID,
+		journal.ActorUserID, journal.CreatedAt); err != nil {
+		return CashStockMergerPlan{}, err
+	}
 	if err := requirePositionBasisRangeQueryTx(ctx, tx, exchange.BookID, exchange.AccountID,
 		exchange.CommodityID, params.CashCommodityID, true, PositionSideLong); err != nil {
 		return CashStockMergerPlan{}, err
 	}
-	if err := keepPositionMethodFamilyTx(ctx, tx, depletionParams, auditEventID); err != nil {
-		return CashStockMergerPlan{}, err
-	}
 	return plan, nil
+}
+
+// realizeCashStockMergerHoldingTx is the subject merger's cash step in replay
+// (#184): it realizes the elected share of every long lot of the position
+// open at the slot, in the order takeShareExchangeHoldingTx then takes them.
+func realizeCashStockMergerHoldingTx(ctx context.Context, tx *sql.Tx, bookID, accountID, commodityID, costCommodityID int64,
+	intent InvestmentReplayIntent, allocationScale int) ([]LotDisposalRecord, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT id, remaining_quantity_value, remaining_quantity_scale
+		FROM current_investment_lots
+		WHERE book_id = ? AND account_id = ? AND commodity_id = ? AND cost_commodity_id = ?
+			AND position_side = 'long' AND status = 'open' AND opened_on <= ?
+		ORDER BY opened_on, id`, bookID, accountID, commodityID, costCommodityID, intent.EventDate)
+	if err != nil {
+		return nil, fmt.Errorf("read cash-and-stock merger holding: %w", err)
+	}
+	var lots []LotAllocation
+	for rows.Next() {
+		var lot LotAllocation
+		if err := rows.Scan(&lot.LotID, &lot.QuantityValue, &lot.QuantityScale); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("scan cash-and-stock merger holding: %w", err)
+		}
+		if lot.QuantityValue.Sign() > 0 {
+			lots = append(lots, lot)
+		}
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return nil, fmt.Errorf("read cash-and-stock merger holding: %w", err)
+	}
+	realized := make([]LotDisposalRecord, 0, len(lots))
+	for _, lot := range lots {
+		realization, err := realizeCashStockMergerLotTx(ctx, tx, bookID, accountID, commodityID, costCommodityID, lot.LotID,
+			intent.EventDate, lot.QuantityValue, lot.QuantityScale, intent.BasisFractionValue, intent.BasisFractionScale,
+			allocationScale, intent.CreatedAt, intent.CreatedByUserID, intent.AuditEventID)
+		if err != nil {
+			return nil, err
+		}
+		realized = append(realized, realization)
+	}
+	return realized, nil
 }
 
 // realizeCashStockMergerLotTx is the merger's cash step for one lot, shared by

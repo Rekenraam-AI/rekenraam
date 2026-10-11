@@ -27,6 +27,10 @@ type InvestmentReplayProjection struct {
 	// lot events record (average_cost for a pool, empty for selected lots).
 	SubjectTransferOut    []LotDisposalRecord
 	SubjectTransferMethod string
+	// SubjectMergerRealizations are the subject cash-and-stock merger's
+	// quantity-0 realizations at its replay slot (#184), one per lot in
+	// SubjectTransferOut order.
+	SubjectMergerRealizations []LotDisposalRecord
 	// SubjectSpinOff is the subject spin-off's per-lot reductions at its
 	// replay slot (#183): every long lot open there, in effect order.
 	SubjectSpinOff []SpinOffLink
@@ -333,6 +337,16 @@ func applyInvestmentReplayIntentTx(ctx context.Context, tx *sql.Tx, bookID, acco
 		// The exchange a command is recording has no links yet: it takes
 		// every lot open at its slot whole and reports them (#179).
 		if intent.TransferIsSubject {
+			// A merger a command is recording realizes each lot's elected
+			// share of basis first, as its committed intent does (#184).
+			if intent.OperationKind == "cash_and_stock_merger" {
+				realized, err := realizeCashStockMergerHoldingTx(ctx, tx, bookID, accountID, commodityID, costCommodityID,
+					intent, allocationScale)
+				if err != nil {
+					return err
+				}
+				projection.SubjectMergerRealizations = append(projection.SubjectMergerRealizations, realized...)
+			}
 			moved, err := takeShareExchangeHoldingTx(ctx, tx, params, intent.AuditEventID, allocationScale)
 			if err != nil {
 				return err

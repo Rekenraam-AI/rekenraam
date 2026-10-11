@@ -243,22 +243,6 @@ func TestCashStockMergerRefusesUnsupportedTerms(t *testing.T) {
 	assert.Equal(t, before, shareExchangeWriteCounts(t, f.database), "a refusal writes nothing")
 }
 
-// Backdating needs its own contract; until then a merger behind a later
-// depletion of either holding is refused.
-func TestCashStockMergerIsAdmittedInDateOrderOnly(t *testing.T) {
-	t.Parallel()
-	f := newInvestmentsTestFixture(t)
-	ctx := context.Background()
-	newID := seedTestSecurityCommodity(t, f, "NEWCO")
-	buyOn(t, f, "2026-02-01", 100, 100000)
-	_, err := f.investmentService.Sell(ctx, sellInput(f, "2026-07-01", 10))
-	require.NoError(t, err)
-	before := shareExchangeWriteCounts(t, f.database)
-	_, err = f.investmentService.CashStockMerger(ctx, cashStockMergerInput(f, newID, "2026-06-01", "2026-06-05", 1, 2, 30000, "25", 2))
-	require.ErrorIs(t, err, db.ErrOutOfOrderPositionEvent)
-	assert.Equal(t, before, shareExchangeWriteCounts(t, f.database))
-}
-
 // A corrected acquisition before the merger replays it: the realized part
 // is revised (the gain needs the shared acknowledgement), and the carried
 // part appends a link revision that the new lot replays from.
@@ -312,8 +296,8 @@ func TestBackdatedPurchaseBeforeCashStockMergerIsRefusedWithMergerNamed(t *testi
 	assert.Equal(t, before, shareExchangeWriteCounts(t, f.database))
 }
 
-// Correction is follow-up work: the exchange correction commands and the
-// generic void path refuse a merger.
+// A merger has its own correction commands (#184): the exchange and sale
+// corrections and the generic void path refuse it.
 func TestCashStockMergerIsClosedToOtherCorrectionCommands(t *testing.T) {
 	t.Parallel()
 	f := newInvestmentsTestFixture(t)

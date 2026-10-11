@@ -943,11 +943,17 @@ records it as an explicit election. The app does not choose it.
   it for 1,000.00 realizes +250.00, and the residual is `−300.00`.
 - **Method state.** As for an exchange: the old position is emptied, which
   releases its lock, and the new lots join their position like any opening.
-- **Admission.** In date order only. A merger dated behind a later rewrite of
-  the old or the new position is `INVESTMENT_EVENT_OUT_OF_ORDER` until its own
-  backdating and correction contract is admitted. The writer recomputes the
-  totals, the realized basis and the cash allocation inside its transaction
-  and refuses a plan that went stale.
+- **Admission.** As for an exchange (#184). A merger dated behind a later
+  rewrite of the old position replays that holding with the merger as a
+  subject `exchange_out` intent carrying the election: at its slot it
+  realizes `a` from every open lot's replayed remaining basis, then takes the
+  lot whole, and those realizations and depletions become the lot events.
+  Behind the new position, the new lots open by replay admission. Both
+  holdings then replay; later decisions are revised (shared gain
+  acknowledgement) or named, and a refusal writes nothing. The merger's own
+  new decision is not in the gain change set: it had no earlier result. The
+  writer recomputes the totals, the realized basis and the cash allocation
+  inside its transaction and refuses a plan that went stale.
 - **Replay and closure.** Replay reads the merger as an `exchange_out` group
   carrying its decision and fraction. For each link, in link order, it takes
   the lot (or the corrected successor), realizes `a` from the lot's replayed
@@ -959,9 +965,24 @@ records it as an explicit election. The app does not choose it.
   `ErrShareExchangeIncomplete`, and a backdated sale of a linked lot is a
   named dependency. The ordinary disposal intents exclude the merger's
   decision, which only its group replays.
-- **Correction.** The generic void path and the exchange correction
-  commands refuse a merger. Its own reversal, replacement and backdating
-  are #184, as #179 was for the exchange.
+- **Correction (#184).** The generic void path and the exchange correction
+  commands refuse a merger; it has its own, following #179. A reversal posts
+  the exact inverse of both journal entries (each on its own date), so the
+  cash leg is inverted too, and replays the old holding, then the new one.
+  Its cash decision leaves effective history with it, which the gain change
+  set discloses as removed. A replacement (inverse plus corrected merger in
+  one audited write) may change the dates, ratio, election, cash, cash
+  account, new instrument, receiving holding or evidence; the holding and
+  old instrument stay fixed. It takes the replaced merger's correction-root
+  slot, so its decision keeps the root's identity and the gain change set
+  shows the restated result as replaced. Unchanged terms are refused, with
+  equivalent ratios, elections and cash amounts counting as unchanged.
+  Every fence of the exchange applies: already corrected, imported lineage,
+  a moved journal, and an effective cash in lieu that settles the merger,
+  which is named. The chain explains an effective merger: its dates,
+  holdings, cash account and currency, the cash, and each link's current
+  realized basis (the decision's latest revision, allocation `n` being link
+  `n`), carried basis and cash share, with per-currency totals and result.
 - **Reads.** The preview and the result return each link with its realized
   basis, cash share and carried basis, and per cost currency the totals and
   the result (unknown when any lot is). The journal carries the

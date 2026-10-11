@@ -67,3 +67,30 @@ export function parseBasisPercent(raw: string): ParsedFraction {
 export function basisFractionPercent(value: string, scale: number): { value: string; scale: number } {
   return scale >= 2 ? { value, scale: scale - 2 } : { value: value + '0'.repeat(2 - scale), scale: 0 };
 }
+
+/**
+ * Parse a cash-and-stock merger's basis election typed as a percentage
+ * (#184): the share of each lot's basis the cash recovers, from 0 to 100 %
+ * inclusive, into the exact fraction the API stores in lowest terms (25 % is
+ * "25" at scale 2, 100 % is "1" at scale 0). The same decimal-mark rule as
+ * parseBasisPercent applies; at most 12 decimals of fraction.
+ */
+export function parseElectionPercent(raw: string): ParsedFraction {
+  const match = /^([0-9]{1,3})(?:[.,]([0-9]{1,10}))?$/.exec(raw.trim());
+  if (!match) return { ok: false };
+  const fractionDigits = (match[2] ?? '').replace(/0+$/, '');
+  const coefficient = (match[1] + fractionDigits).replace(/^0+/, '');
+  if (!coefficient) return { ok: true, value: '0', scale: 0 };
+  const scale = fractionDigits.length + 2;
+  if (scale > 12) return { ok: false };
+  // At most 100 %: the coefficient may not exceed 10^scale.
+  const whole = '1' + '0'.repeat(scale);
+  if (coefficient.length > whole.length || (coefficient.length === whole.length && coefficient > whole)) return { ok: false };
+  let value = coefficient;
+  let lowest = scale;
+  while (lowest > 0 && value.endsWith('0')) {
+    value = value.slice(0, -1);
+    lowest--;
+  }
+  return { ok: true, value, scale: lowest };
+}

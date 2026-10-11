@@ -214,8 +214,11 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   exchange's `transfer_out` of the rest, so basis is conserved per lot. The
   cash is one quantity-0 long decision on the old position whose proceeds are
   the cash, posted on its payable date (never earlier) in the lots' cost
-  currency. The app never picks a jurisdiction's rule. It is in date order
-  only until its own correction and backdating contract lands. Cash in lieu
+  currency. The app never picks a jurisdiction's rule. It is corrected by
+  its own reversal (both journal entries inverted; its cash result leaves
+  the gain set as removed) and replacement (#184), and a backdated merger
+  realizes and takes every lot open at its slot through a subject
+  `exchange_out` intent carrying the election. Cash in lieu
   may settle a split's, exchange's, merger's or spin-off's fraction
   (`settled_operation_id`).
 
