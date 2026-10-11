@@ -1497,5 +1497,6 @@
   "api_error_investment_merger_already_corrected": "This merger has already been corrected.",
   "investments_gain_impact_merger_revised": "Merger cash on {date}: basis {basisBefore} → {basisAfter}, gain {before} → {after} {currency}",
   "investments_gain_impact_merger_replaced": "Merger cash on {date} replaced: basis {basisBefore} → {basisAfter}, gain {before} → {after} {currency}",
-  "investments_gain_impact_merger_removed": "Merger cash on {date} removed: basis {basisBefore}, gain {before} {currency} no longer reported"
+  "investments_gain_impact_merger_removed": "Merger cash on {date} removed: basis {basisBefore}, gain {before} {currency} no longer reported",
+  "register_record_investment_activity": "Record investment activity"
 }

@@ -1,0 +1,246 @@
+<script lang="ts" module>
+  import type { TransactionResponse } from '#lib/api/transactions.ts';
+
+  /** What a screen's list may ask the shared side panel to do. */
+  export type TransactionWorkspaceActions = {
+    /** Open a loaded transaction's detail. */
+    showDetail: (transaction: TransactionResponse) => void;
+    /** Load a transaction by ID (a register row carries only its posting), then open its detail. */
+    showTransaction: (transactionID: number) => Promise<void>;
+    edit: (transaction: TransactionResponse) => void;
+    correct: (transaction: TransactionResponse) => void;
+    /** A row action changed the transaction: refresh every list and close its detail. */
+    changed: (transaction: TransactionResponse) => Promise<void>;
+  };
+
+  /**
+   * How a screen offers a new transaction. `editor` opens the generic editor
+   * with the screen's defaults; `link` points elsewhere (a holding account's
+   * activity is entered on the investments screen); `none` offers nothing.
+   */
+  export type TransactionWorkspaceCreate =
+    | { kind: 'editor'; defaults?: { accountID?: number; categoryID?: number } }
+    | { kind: 'link'; href: string; label: string }
+    | { kind: 'none' };
+</script>
+
+<script lang="ts">
+  import { onMount, type Snippet } from 'svelte';
+  import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import Plus from '@lucide/svelte/icons/plus';
+  import { m } from '#lib/paraglide/messages.js';
+  import Panel from '#lib/components/panel.svelte';
+  import APIFormError from '#lib/components/api-form-error.svelte';
+  import { authSessionQueryOptions } from '#lib/api/auth.ts';
+  import { accountRegisterQueryKey, getTransaction, restoreTransaction, transactionsQueryKey } from '#lib/api/transactions.ts';
+  import { forecastQueryKey } from '#lib/api/forecast.ts';
+  import TransactionDetailPanel from './transaction-detail-panel.svelte';
+  import TransactionEditor from './transaction-editor.svelte';
+
+  // The transaction workspace (#185): one list screen plus the shared side
+  // panel for detail, edit, correction, creation and undo of a deletion. The
+  // main transactions screen, an account register and a category's
+  // transactions all use it, so every screen offers the same actions. The
+  // screen supplies its list and how it offers a new transaction.
+  let {
+    header,
+    list,
+    create = { kind: 'editor' },
+    linkedTransactionID = 0
+  }: {
+    /** Leading content of the toolbar row, such as a back link and title. */
+    header?: Snippet;
+    list: Snippet<[TransactionWorkspaceActions, string | undefined]>;
+    create?: TransactionWorkspaceCreate;
+    /** A transaction to open on arrival (a `transaction_id` link). */
+    linkedTransactionID?: number;
+  } = $props();
+
+  type PanelState =
+    | { type: 'none' }
+    | { type: 'detail'; transaction: TransactionResponse }
+    | { type: 'edit'; transaction: TransactionResponse }
+    | { type: 'correct'; transaction: TransactionResponse }
+    | { type: 'create' }
+    | { type: 'just-deleted'; transaction: TransactionResponse };
+
+  let panel = $state<PanelState>({ type: 'none' });
+  let loadingTransactionID = $state<number | undefined>(undefined);
+  let loadError = $state<unknown>();
+
+  const sessionQuery = createQuery(() => authSessionQueryOptions());
+  const csrfToken = $derived(sessionQuery.data?.csrf_token);
+  const queryClient = useQueryClient();
+
+  onMount(() => {
+    if (Number.isSafeInteger(linkedTransactionID) && linkedTransactionID > 0) void showTransaction(linkedTransactionID);
+  });
+
+  // A write may change any list and every account's running balance.
+  async function invalidate() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: accountRegisterQueryKey }),
+      queryClient.invalidateQueries({ queryKey: forecastQueryKey })
+    ]);
+  }
+
+  async function showTransaction(transactionID: number) {
+    loadingTransactionID = transactionID;
+    loadError = undefined;
+    try {
+      const transaction = await getTransaction(transactionID);
+      if (loadingTransactionID === transactionID) panel = { type: 'detail', transaction };
+    } catch (error) {
+      if (loadingTransactionID === transactionID) loadError = error;
+    } finally {
+      if (loadingTransactionID === transactionID) loadingTransactionID = undefined;
+    }
+  }
+
+  const actions: TransactionWorkspaceActions = {
+    showDetail: (transaction) => { panel = { type: 'detail', transaction }; },
+    showTransaction,
+    edit: (transaction) => { panel = { type: 'edit', transaction }; },
+    correct: (transaction) => { panel = { type: 'correct', transaction }; },
+    changed: async (transaction) => {
+      await invalidate();
+      if (panel.type === 'detail' && panel.transaction.id === transaction.id) panel = { type: 'none' };
+    }
+  };
+
+  async function handleSaved(saved: TransactionResponse) {
+    await invalidate();
+    panel = { type: 'detail', transaction: saved };
+  }
+
+  // Cancelling an edit or correction returns to the transaction's detail.
+  function handleCancel() {
+    panel = panel.type === 'edit' || panel.type === 'correct'
+      ? { type: 'detail', transaction: panel.transaction }
+      : { type: 'none' };
+  }
+
+  async function handleRefresh() {
+    await invalidate();
+    panel = { type: 'none' };
+  }
+
+  function handleSoftDeleted(transaction: TransactionResponse) {
+    // A brief undo affordance before the panel closes.
+    panel = { type: 'just-deleted', transaction };
+    setTimeout(async () => {
+      if (panel.type === 'just-deleted') panel = { type: 'none' };
+      await invalidate();
+    }, 5000);
+  }
+
+  async function handleUndoDelete(transaction: TransactionResponse) {
+    if (!csrfToken) return;
+    try {
+      await restoreTransaction(transaction.id, csrfToken, {});
+      await invalidate();
+    } catch {
+      // It stays deleted; Settings → Trash can still restore it.
+    }
+    panel = { type: 'none' };
+  }
+
+  async function closeDeleted() {
+    panel = { type: 'none' };
+    await invalidate();
+  }
+</script>
+
+<div class="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
+  <div class="min-w-0">
+    {#if loadingTransactionID !== undefined && panel.type === 'none'}
+      <p role="status" class="mb-4 text-sm text-muted">{m.transactions_linked_loading()}</p>
+    {:else if loadError}
+      <div class="mb-4"><APIFormError error={loadError} /></div>
+    {/if}
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex min-w-0 flex-wrap items-center gap-3">
+        {@render header?.()}
+      </div>
+      {#if create.kind === 'editor'}
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-[var(--radius-control)] bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90"
+          onclick={() => (panel = { type: 'create' })}
+        >
+          <Plus size={16} aria-hidden="true" />
+          {m.transactions_new()}
+        </button>
+      {:else if create.kind === 'link'}
+        <a
+          href={create.href}
+          class="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-control px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-control-hover"
+        >
+          {create.label}
+        </a>
+      {/if}
+    </div>
+
+    {@render list(actions, csrfToken)}
+  </div>
+
+  {#if panel.type !== 'none'}
+    <!-- Mobile: a full-screen overlay. Desktop: the right-hand column. -->
+    <aside
+      class="fixed inset-0 z-30 overflow-y-auto bg-surface lg:relative lg:inset-auto lg:z-auto lg:overflow-visible"
+      aria-label={m.transactions_detail_actions()}
+    >
+      <div class="fixed inset-0 bg-background/50 lg:hidden" role="presentation" onclick={() => (panel = { type: 'none' })}></div>
+
+      <div class="relative lg:sticky lg:top-4">
+        <Panel>
+          {#if panel.type === 'detail'}
+            <TransactionDetailPanel
+              transaction={panel.transaction}
+              {csrfToken}
+              onClose={() => (panel = { type: 'none' })}
+              onEdit={actions.edit}
+              onCreateCorrection={actions.correct}
+              onSoftDeleted={handleSoftDeleted}
+              onRefresh={handleRefresh}
+            />
+          {:else if panel.type === 'edit'}
+            <TransactionEditor mode="edit" transaction={panel.transaction} {csrfToken} onSaved={handleSaved} onCancel={handleCancel} />
+          {:else if panel.type === 'correct'}
+            <TransactionEditor mode="correct" transaction={panel.transaction} {csrfToken} onSaved={handleSaved} onCancel={handleCancel} />
+          {:else if panel.type === 'create'}
+            <TransactionEditor
+              mode="create"
+              {csrfToken}
+              createDefaults={create.kind === 'editor' ? create.defaults : undefined}
+              onSaved={handleSaved}
+              onCancel={() => (panel = { type: 'none' })}
+            />
+          {:else if panel.type === 'just-deleted'}
+            {@const deleted = panel.transaction}
+            <div class="space-y-3 py-2">
+              <p class="text-sm text-muted">{m.transactions_detail_just_deleted()}</p>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-control-hover"
+                  onclick={() => handleUndoDelete(deleted)}
+                >
+                  {m.transactions_detail_undo()}
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-control px-3 py-2 text-sm font-semibold text-muted transition hover:bg-control-hover"
+                  onclick={closeDeleted}
+                >
+                  {m.transactions_detail_close()}
+                </button>
+              </div>
+            </div>
+          {/if}
+        </Panel>
+      </div>
+    </aside>
+  {/if}
+</div>

@@ -1469,5 +1469,6 @@
   "api_error_investment_merger_already_corrected": "Cette fusion a déjà été corrigée.",
   "investments_gain_impact_merger_revised": "Espèces de la fusion du {date} : base {basisBefore} → {basisAfter}, plus-value {before} → {after} {currency}",
   "investments_gain_impact_merger_replaced": "Espèces de la fusion du {date} remplacées : base {basisBefore} → {basisAfter}, plus-value {before} → {after} {currency}",
-  "investments_gain_impact_merger_removed": "Espèces de la fusion du {date} supprimées : base {basisBefore}, la plus-value {before} {currency} n’est plus déclarée"
+  "investments_gain_impact_merger_removed": "Espèces de la fusion du {date} supprimées : base {basisBefore}, la plus-value {before} {currency} n’est plus déclarée",
+  "register_record_investment_activity": "Enregistrer une opération de placement"
 }

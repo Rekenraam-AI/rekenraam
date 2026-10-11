@@ -14,7 +14,7 @@ Other questions have exactly one home each:
 Do not restate shipped detail here; when a focus item ships, delete it and
 record the capability in `implemented.md`.
 
-Last reviewed: 2026-10-10. The current order is R16, R11 price management,
+Last reviewed: 2026-10-11. The current order is R16, R11 price management,
 R17 quotes and crypto, R18 gains projections, then R13 returns analytics.
 Cross-border input and date correctness run in parallel. Prior roadmap detail
 is retained in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md).
@@ -120,8 +120,14 @@ below is execution order, not a chain of hard dependencies.
    sequence, cash in lieu of exchange and spin-off fractions, in-order merger API), and the merger's own
    correction, backdating and browser entry [#184](https://github.com/sergeyfarin/rekenraam/issues/184) (delivered 2026-10-11),
    which completes #115. Tender, rights and provider corporate-action mappings are outside the #115 bar.
-   The rest of the R16 bar is zero-delta splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146) and Refresh reach
-   [#152](https://github.com/sergeyfarin/rekenraam/issues/152), not yet sequenced.
+   The rest of the R16 bar is Refresh reach [#152](https://github.com/sergeyfarin/rekenraam/issues/152), then zero-delta
+   splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146).
+2. Daily-use parallel work: the shared transaction workspace
+   [#185](https://github.com/sergeyfarin/rekenraam/issues/185) (slice 1 delivered 2026-10-11: entry from account and
+   category screens; slice 2: row actions and same-day order), then investment entry from holding accounts and
+   instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186). Race-gate headroom
+   [#164](https://github.com/sergeyfarin/rekenraam/issues/164) goes before the next investment slice: the app
+   package now runs at its 900 s bound.
 
 **Delivered historical-entry and recovery gates:** dated holdings/lot selection
 [#166](https://github.com/sergeyfarin/rekenraam/issues/166) (2026-10-09),
@@ -156,11 +162,8 @@ and write-off mobile entry [#172](https://github.com/sergeyfarin/rekenraam/issue
 These do not reopen #114/#160 or expand the bounded R16 completion bar;
 #170/#171 can run alongside the ordered work, while #169/#172 remain later.
 
-**Placed, not sequenced:** race-gate headroom for the backend app package
-[#164](https://github.com/sergeyfarin/rekenraam/issues/164); zero-delta splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146);
-lot-opening `NOT NULL` [#148](https://github.com/sergeyfarin/rekenraam/issues/148) before the v0.1.0 tag; Refresh
-reach for revised Trading 212 fills before the fetch cursor [#152](https://github.com/sergeyfarin/rekenraam/issues/152). Blocked on
-provider evidence: [#145](https://github.com/sergeyfarin/rekenraam/issues/145), [#136](https://github.com/sergeyfarin/rekenraam/issues/136).
+**Placed, not sequenced:** lot-opening `NOT NULL`
+[#148](https://github.com/sergeyfarin/rekenraam/issues/148) before the v0.1.0 tag. Blocked on provider evidence: [#145](https://github.com/sergeyfarin/rekenraam/issues/145), [#136](https://github.com/sergeyfarin/rekenraam/issues/136).
 
 ### Completed initiatives through R10
 

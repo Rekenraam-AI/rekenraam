@@ -1,7 +1,7 @@
 <script lang="ts">
   import { transactionTitle } from '#lib/transactions/transaction-title.ts';
   import { systemLabelText } from '#lib/transactions/system-label.ts';
-  import type { Snippet } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
   import { tagsQueryOptions } from '#lib/api/tags.ts';
   import Plus from '@lucide/svelte/icons/plus';
   import Save from '@lucide/svelte/icons/save';
@@ -11,6 +11,7 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { isSubledgerManagedAccountKind } from '#lib/accounts/subledger-accounts.ts';
+  import { isOrdinaryEntryAccount } from './entry-account';
   import { m } from '#lib/paraglide/messages.js';
   import { accountsQueryOptions } from '#lib/api/accounts.ts';
   import { categoriesQueryOptions } from '#lib/api/categories.ts';
@@ -75,6 +76,7 @@
     onSaved,
     onCancel,
     initialValues,
+    createDefaults,
     templateFields,
     saveTemplate,
     onPendingChange,
@@ -85,6 +87,9 @@
     csrfToken?: string;
     onSaved?: (saved: TransactionResponse) => Promise<void> | void;
     initialValues?: TransactionRequest;
+    /** Pre-selects the account or category a new transaction starts from,
+     *  when it is entered from that account's or category's screen (#185). */
+    createDefaults?: { accountID?: number; categoryID?: number };
     templateFields?: Snippet;
     saveTemplate?: (payload: TransactionRequest) => Promise<void>;
     preservePostings?: boolean;
@@ -173,10 +178,7 @@
   // ── Derived ───────────────────────────────────────────────────────
   const assetLiabilityAccounts = $derived(
     (accountsQuery.data?.accounts ?? []).filter(
-      (a: AccountResponse) =>
-        (a.account_class === 'asset' || a.account_class === 'liability') &&
-        a.status === 'active' && !a.is_system &&
-        a.allows_postings && !isSubledgerManagedAccountKind(a.account_kind)
+      (a: AccountResponse) => isOrdinaryEntryAccount(a)
     )
   );
 
@@ -195,6 +197,14 @@
         return label.toLowerCase().includes(q);
       })
       .slice(0, 40);
+  });
+
+  // A pre-selected category gets its label once the categories load, without
+  // re-running the form initialisation (which would clear typed input).
+  $effect(() => {
+    if (categoryID === undefined || categoryLabel !== '') return;
+    const category = (categoriesQuery.data?.categories ?? []).find((c: CategoryResponse) => c.id === categoryID);
+    if (category) categoryLabel = categoryDisplayName(category);
   });
 
   const selectedAccount = $derived(
@@ -264,10 +274,11 @@
       payeeSearch = '';
       initialPayeeName = '';
       description = '';
-      categoryID = undefined;
+      // Read once: a later filter change must not clear a form in progress.
+      categoryID = untrack(() => createDefaults?.categoryID);
       categoryLabel = '';
       amountStr = '';
-      accountID = undefined;
+      accountID = untrack(() => createDefaults?.accountID);
       simpleCommodityID = undefined;
       transactionKind = 'ordinary';
       noteMarkdown = '';
