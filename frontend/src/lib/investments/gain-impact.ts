@@ -10,6 +10,8 @@ import { formatExactMoney } from '#lib/money/format.ts';
 export type GainImpactRow = {
   key: string;
   kind: GainImpactChange['change_kind'];
+  /** The committed decision's operation, which names the row (#184). */
+  operationKind: string;
   date: string;
   before: string | null;
   after: string | null;
@@ -34,6 +36,7 @@ export function gainImpactRows(
     return {
       key: `${change.root_operation_id}:${change.decision_seq}`,
       kind: change.change_kind,
+      operationKind: change.operation_kind,
       date: change.after?.disposal_date ?? change.before.disposal_date,
       before: label(formatGain(change.before, before.standardScale, locale), before.code),
       after: change.after ? label(formatGain(change.after, after.standardScale, locale), after.code) : null,

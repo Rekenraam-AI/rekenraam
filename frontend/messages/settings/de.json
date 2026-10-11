@@ -1466,5 +1466,8 @@
   "transactions_investment_reverse_merger_copy": "Dies bucht eine Gegenbuchung zum Datum der Fusion, einschließlich des Barbetrags. Die alten Positionen kehren mit ihrer vollen Basis zurück, die neuen werden stillgelegt und das Ergebnis auf den Barbetrag entfällt. Ein späterer Verkauf oder Übertrag der neuen Stücke oder ein Barausgleich für diese Fusion verhindert die Stornierung.",
   "transactions_investment_replace_merger_action": "Fusion korrigieren…",
   "transactions_investment_replace_merger_title": "Diese Fusion korrigieren",
-  "api_error_investment_merger_already_corrected": "Diese Fusion wurde bereits korrigiert."
+  "api_error_investment_merger_already_corrected": "Diese Fusion wurde bereits korrigiert.",
+  "investments_gain_impact_merger_revised": "Barbetrag der Fusion am {date}: Basis {basisBefore} → {basisAfter}, Gewinn {before} → {after} {currency}",
+  "investments_gain_impact_merger_replaced": "Barbetrag der Fusion am {date} ersetzt: Basis {basisBefore} → {basisAfter}, Gewinn {before} → {after} {currency}",
+  "investments_gain_impact_merger_removed": "Barbetrag der Fusion am {date} entfernt: Basis {basisBefore}, Gewinn {before} {currency} wird nicht mehr ausgewiesen"
 }

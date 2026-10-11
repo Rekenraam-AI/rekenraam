@@ -1466,5 +1466,8 @@
   "transactions_investment_reverse_merger_copy": "Contabiliza una transacción inversa con la fecha de la fusión, incluido el efectivo. Los lotes antiguos vuelven con todo su coste, los nuevos se retiran y se elimina el resultado del efectivo. Una venta o traspaso posterior de las nuevas unidades, o un pago en efectivo por fracciones de esta fusión, impide la reversión.",
   "transactions_investment_replace_merger_action": "Corregir fusión…",
   "transactions_investment_replace_merger_title": "Corregir esta fusión",
-  "api_error_investment_merger_already_corrected": "Esta fusión ya se ha corregido."
+  "api_error_investment_merger_already_corrected": "Esta fusión ya se ha corregido.",
+  "investments_gain_impact_merger_revised": "Efectivo de la fusión del {date}: base {basisBefore} → {basisAfter}, ganancia {before} → {after} {currency}",
+  "investments_gain_impact_merger_replaced": "Efectivo de la fusión del {date} reemplazado: base {basisBefore} → {basisAfter}, ganancia {before} → {after} {currency}",
+  "investments_gain_impact_merger_removed": "Efectivo de la fusión del {date} eliminado: base {basisBefore}, la ganancia {before} {currency} ya no se informa"
 }

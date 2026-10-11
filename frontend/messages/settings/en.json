@@ -1494,5 +1494,8 @@
   "transactions_investment_reverse_merger_copy": "This posts an inverse transaction dated to the merger, including the cash. The old lots come back with their full basis, the new lots are retired and the cash result is removed. A later sale or transfer of the new units, or a cash in lieu for this merger, blocks the reversal.",
   "transactions_investment_replace_merger_action": "Correct merger…",
   "transactions_investment_replace_merger_title": "Correct this merger",
-  "api_error_investment_merger_already_corrected": "This merger has already been corrected."
+  "api_error_investment_merger_already_corrected": "This merger has already been corrected.",
+  "investments_gain_impact_merger_revised": "Merger cash on {date}: basis {basisBefore} → {basisAfter}, gain {before} → {after} {currency}",
+  "investments_gain_impact_merger_replaced": "Merger cash on {date} replaced: basis {basisBefore} → {basisAfter}, gain {before} → {after} {currency}",
+  "investments_gain_impact_merger_removed": "Merger cash on {date} removed: basis {basisBefore}, gain {before} {currency} no longer reported"
 }

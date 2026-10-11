@@ -26166,6 +26166,8 @@ export interface components {
              */
             root_operation_id: number;
             decision_seq: number;
+            /** @description The committed decision's operation kind (sell, write_off, cash_in_lieu, short_cover, cash_and_stock_merger), for labelling the change. It is not part of the acknowledgement digest. */
+            operation_kind: string;
             /**
              * Format: int64
              * @description Committed operation of the disclosed decision.

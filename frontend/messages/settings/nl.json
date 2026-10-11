@@ -1466,5 +1466,8 @@
   "transactions_investment_reverse_merger_copy": "Dit boekt een tegenboeking op de datum van de fusie, inclusief de contanten. De oude posities keren terug met hun volle kostprijs, de nieuwe worden afgesloten en het resultaat op de contanten vervalt. Een latere verkoop of overboeking van de nieuwe stukken, of een fractievergoeding voor deze fusie, blokkeert het terugdraaien.",
   "transactions_investment_replace_merger_action": "Fusie corrigeren…",
   "transactions_investment_replace_merger_title": "Deze fusie corrigeren",
-  "api_error_investment_merger_already_corrected": "Deze fusie is al gecorrigeerd."
+  "api_error_investment_merger_already_corrected": "Deze fusie is al gecorrigeerd.",
+  "investments_gain_impact_merger_revised": "Fusiecontanten op {date}: basis {basisBefore} → {basisAfter}, winst {before} → {after} {currency}",
+  "investments_gain_impact_merger_replaced": "Fusiecontanten op {date} vervangen: basis {basisBefore} → {basisAfter}, winst {before} → {after} {currency}",
+  "investments_gain_impact_merger_removed": "Fusiecontanten op {date} verwijderd: basis {basisBefore}, winst {before} {currency} wordt niet meer gerapporteerd"
 }

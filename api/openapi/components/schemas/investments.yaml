@@ -3827,6 +3827,7 @@ GainImpactChange:
     - change_kind
     - root_operation_id
     - decision_seq
+    - operation_kind
     - operation_id
     - decision_id
     - transaction_id
@@ -3846,6 +3847,12 @@ GainImpactChange:
       description: Correction-root operation; with decision_seq, the stable identity.
     decision_seq:
       type: integer
+    operation_kind:
+      type: string
+      description: >-
+        The committed decision's operation kind (sell, write_off, cash_in_lieu,
+        short_cover, cash_and_stock_merger), for labelling the change. It is not
+        part of the acknowledgement digest.
     operation_id:
       type: integer
       format: int64

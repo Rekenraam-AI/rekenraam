@@ -139,7 +139,7 @@ test('correcting a merger election restates its cash result on mobile', async ({
   await form.getByRole('button', { name: 'Correct merger' }).click();
 
   const review = page.getByRole('alertdialog');
-  await expect(review).toContainText('basis 25.00 → 50.00');
+  await expect(review).toContainText(`Merger cash on ${daysFromTodayISO(-10)} replaced: basis 25.00 → 50.00`);
   await review.getByRole('button', { name: 'Accept changed gains' }).click();
   await expect(form).toBeHidden();
   await expect.poll(async () => {
@@ -173,7 +173,8 @@ test('reversing an unsold merger returns the old lot and removes the cash result
   await page.getByLabel('Reason for reversal').fill('no merger happened');
   await page.getByRole('button', { name: 'Review and reverse' }).click();
   const review = page.getByRole('alertdialog');
-  await expect(review).toContainText('no longer reported');
+  await expect(review).toContainText(`Merger cash on ${daysFromTodayISO(-10)} removed: basis 25.00`);
+  await expect(review).not.toContainText('Sale on');
   await review.getByRole('button', { name: 'Accept changed gains' }).click();
   await expect(review).toBeHidden();
   await expect.poll(async () => {

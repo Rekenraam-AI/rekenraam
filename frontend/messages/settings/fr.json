@@ -1466,5 +1466,8 @@
   "transactions_investment_reverse_merger_copy": "Cela comptabilise une opération inverse datée de la fusion, espèces comprises. Les anciens lots reviennent avec tout leur coût, les nouveaux sont retirés et le résultat sur les espèces est supprimé. Une vente ou un transfert ultérieur des nouvelles unités, ou une soulte pour cette fusion, bloque la contrepassation.",
   "transactions_investment_replace_merger_action": "Corriger la fusion…",
   "transactions_investment_replace_merger_title": "Corriger cette fusion",
-  "api_error_investment_merger_already_corrected": "Cette fusion a déjà été corrigée."
+  "api_error_investment_merger_already_corrected": "Cette fusion a déjà été corrigée.",
+  "investments_gain_impact_merger_revised": "Espèces de la fusion du {date} : base {basisBefore} → {basisAfter}, plus-value {before} → {after} {currency}",
+  "investments_gain_impact_merger_replaced": "Espèces de la fusion du {date} remplacées : base {basisBefore} → {basisAfter}, plus-value {before} → {after} {currency}",
+  "investments_gain_impact_merger_removed": "Espèces de la fusion du {date} supprimées : base {basisBefore}, la plus-value {before} {currency} n’est plus déclarée"
 }

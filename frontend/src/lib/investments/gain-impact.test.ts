@@ -21,15 +21,22 @@ function state(gain: string | null, date = '2026-03-01'): GainImpactChange['befo
   };
 }
 
-function change(kind: GainImpactChange['change_kind'], before: GainImpactChange['before'], after: GainImpactChange['after']): GainImpactChange {
-  return { change_kind: kind, root_operation_id: 7, decision_seq: 1, operation_id: 7, decision_id: 11,
+function change(kind: GainImpactChange['change_kind'], before: GainImpactChange['before'], after: GainImpactChange['after'],
+  operationKind = 'sell'): GainImpactChange {
+  return { change_kind: kind, root_operation_id: 7, decision_seq: 1, operation_kind: operationKind, operation_id: 7, decision_id: 11,
     transaction_id: 8, before, after };
 }
 
 describe('gainImpactRows', () => {
+  it('names the operation a change belongs to, so a merger cash result is not called a sale (#184)', () => {
+    const [row] = gainImpactRows([change('removed', state('5000'), null, 'cash_and_stock_merger')],
+      () => ({ code: 'EUR', standardScale: 2 }), 'en-US');
+    expect(row.operationKind).toBe('cash_and_stock_merger');
+  });
+
   it('formats the issue FIFO case exactly: 50.00 to 140.00', () => {
     const [row] = gainImpactRows([change('revised', state('5000'), state('14000'))], () => ({ code: 'EUR', standardScale: 2 }), 'en-US');
-    expect(row).toEqual({ key: '7:1', kind: 'revised', date: '2026-03-01', before: '50.00', after: '140.00',
+    expect(row).toEqual({ key: '7:1', kind: 'revised', operationKind: 'sell', date: '2026-03-01', before: '50.00', after: '140.00',
       basisBefore: '100.00', basisAfter: '100.00', currency: 'EUR' });
   });
 

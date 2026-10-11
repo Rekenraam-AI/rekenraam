@@ -24,6 +24,17 @@
       date: row.date, before: row.before ?? unknown, after: row.after ?? unknown,
       basisBefore: row.basisBefore ?? unknown, basisAfter: row.basisAfter ?? unknown, currency: row.currency
     };
+    // A merger's cash result is not a sale (#184).
+    if (row.operationKind === 'cash_and_stock_merger') {
+      switch (row.kind) {
+        case 'removed':
+          return m.investments_gain_impact_merger_removed(values);
+        case 'replaced':
+          return m.investments_gain_impact_merger_replaced(values);
+        default:
+          return m.investments_gain_impact_merger_revised(values);
+      }
+    }
     switch (row.kind) {
       case 'removed':
         return m.investments_gain_impact_removed(values);

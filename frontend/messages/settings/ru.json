@@ -1466,5 +1466,8 @@
   "transactions_investment_reverse_merger_copy": "Будет проведена обратная операция датой слияния, включая деньги. Старые лоты вернутся с полной себестоимостью, новые будут закрыты, а результат по деньгам удалён. Последующая продажа или перевод новых бумаг либо выплата за дробные доли по этому слиянию блокирует сторно.",
   "transactions_investment_replace_merger_action": "Исправить слияние…",
   "transactions_investment_replace_merger_title": "Исправить это слияние",
-  "api_error_investment_merger_already_corrected": "Это слияние уже исправлено."
+  "api_error_investment_merger_already_corrected": "Это слияние уже исправлено.",
+  "investments_gain_impact_merger_revised": "Денежная часть слияния {date}: база {basisBefore} → {basisAfter}, прибыль {before} → {after} {currency}",
+  "investments_gain_impact_merger_replaced": "Денежная часть слияния {date} заменена: база {basisBefore} → {basisAfter}, прибыль {before} → {after} {currency}",
+  "investments_gain_impact_merger_removed": "Денежная часть слияния {date} удалена: база {basisBefore}, прибыль {before} {currency} больше не отражается"
 }

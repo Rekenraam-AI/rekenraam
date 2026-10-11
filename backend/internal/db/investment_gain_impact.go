@@ -73,8 +73,12 @@ type InvestmentGainState struct {
 // result changes. The durable IDs name the committed decision; After carries
 // values only, because a replacement decision exists only inside the write.
 type InvestmentGainChange struct {
-	Identity      InvestmentGainIdentity
-	Kind          string
+	Identity InvestmentGainIdentity
+	Kind     string
+	// OperationKind is the committed decision's operation (sell,
+	// cash_and_stock_merger, ...). It only labels the disclosure and is
+	// outside the acknowledgement digest, which already binds OperationID.
+	OperationKind string
 	OperationID   int64
 	DecisionID    int64
 	TransactionID int64
@@ -91,6 +95,7 @@ type InvestmentGainImpact struct {
 
 type investmentGainSnapshotEntry struct {
 	operationID   int64
+	operationKind string
 	decisionID    int64
 	transactionID int64
 	state         InvestmentGainState
@@ -106,7 +111,7 @@ func investmentGainSnapshotTx(ctx context.Context, tx *sql.Tx, bookID int64) (ma
 		return nil, err
 	}
 	rows, err := tx.QueryContext(ctx, `
-		SELECT d.id, d.operation_id, d.decision_seq, d.transaction_id, d.account_id,
+		SELECT d.id, d.operation_id, o.operation_kind, d.decision_seq, d.transaction_id, d.account_id,
 			d.commodity_id, d.cost_commodity_id, d.event_date, d.cost_basis_method,
 			d.quantity_value, d.quantity_scale, d.disposed_basis_value, d.disposed_basis_scale,
 			d.basis_knowledge, d.proceeds_value, d.proceeds_scale, r.id,
@@ -129,7 +134,7 @@ func investmentGainSnapshotTx(ctx context.Context, tx *sql.Tx, bookID int64) (ma
 		var knowledge string
 		var revisedKnowledge sql.NullString
 		var side string
-		if err := rows.Scan(&entry.decisionID, &entry.operationID, &seq, &entry.transactionID,
+		if err := rows.Scan(&entry.decisionID, &entry.operationID, &entry.operationKind, &seq, &entry.transactionID,
 			&entry.state.AccountID, &entry.state.CommodityID, &entry.state.CostCommodityID,
 			&entry.state.DisposalDate, &entry.state.CostBasisMethod, &quantity, &quantityScale,
 			&basis, &basisScale, &knowledge, &proceeds, &proceedsScale, &revisionID,
@@ -200,7 +205,7 @@ func compareInvestmentGainSnapshots(before, after map[InvestmentGainIdentity]inv
 	var impact InvestmentGainImpact
 	for _, identity := range identities {
 		old := before[identity]
-		change := InvestmentGainChange{Identity: identity, OperationID: old.operationID,
+		change := InvestmentGainChange{Identity: identity, OperationKind: old.operationKind, OperationID: old.operationID,
 			DecisionID: old.decisionID, TransactionID: old.transactionID, Before: old.state}
 		current, exists := after[identity]
 		switch {

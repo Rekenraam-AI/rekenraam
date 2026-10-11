@@ -16,6 +16,7 @@ type gainImpactChangeResponse struct {
 	ChangeKind      string                   `json:"change_kind"`
 	RootOperationID int64                    `json:"root_operation_id"`
 	DecisionSeq     int                      `json:"decision_seq"`
+	OperationKind   string                   `json:"operation_kind"`
 	OperationID     int64                    `json:"operation_id"`
 	DecisionID      int64                    `json:"decision_id"`
 	TransactionID   int64                    `json:"transaction_id"`
@@ -55,7 +56,8 @@ func toGainImpactResponse(impact *db.InvestmentGainImpact) (*gainImpactResponse,
 		}
 		item := gainImpactChangeResponse{ChangeKind: change.Kind,
 			RootOperationID: change.Identity.RootOperationID, DecisionSeq: change.Identity.DecisionSeq,
-			OperationID: change.OperationID, DecisionID: change.DecisionID,
+			OperationKind: change.OperationKind,
+			OperationID:   change.OperationID, DecisionID: change.DecisionID,
 			TransactionID: change.TransactionID, Before: before}
 		if change.After != nil {
 			after, err := toGainImpactStateResponse(*change.After)
