@@ -66,10 +66,23 @@ type EffectiveLotMovement struct {
 	// DecisionID is the disposal decision of a disposal movement, else 0.
 	DecisionID    int64
 	TransactionID sql.NullInt64
-	// OriginEventID is the lot event the movement stands for. A revised
-	// disposal names its decision's earliest original allocation event, so
-	// readers keep a stable order across revisions; other revised movements
-	// leave it 0.
+	// OrderOperationID is the correction root's same-day slot. EffectSeq is
+	// the immutable event sequence, or the first effect of a revised subject.
+	// RevisionEffectSeq orders that revision's children within the slot.
+	// An unlinked original event has zero operation/order/effect fields.
+	OrderOperationID  int64
+	EffectSeq         int
+	RevisionEffectSeq int
+	// A link is identified by (TransferOperationID, LinkSeq), including
+	// pooled source depletions. Both are zero for non-transfer movements.
+	TransferOperationID int64
+	LinkSeq             int
+	// RevisionID identifies the exact row in Source's revision family;
+	// RevisionSeq is its recorded version. Both are zero for original events.
+	RevisionID  int64
+	RevisionSeq int
+	// OriginEventID is the immutable event anchoring the movement's slot.
+	// A revision may move a different lot or number of lots than its anchor.
 	OriginEventID int64
 }
 
@@ -84,18 +97,9 @@ type EffectiveMovementFilter struct {
 	DisposalsOnly bool
 }
 
-var movementSourceRank = map[string]int{
-	MovementSourceEvent:                  0,
-	MovementSourceDisposalRevision:       1,
-	MovementSourceSplitRevision:          2,
-	MovementSourceTransferLinkRevision:   3,
-	MovementSourcePooledTransferRevision: 4,
-	MovementSourceCapitalReturnRevision:  5,
-}
-
 // EffectiveLotMovements reads the book's committed effective lot movements
-// that pass the filter, ordered by date, then source, then each source's own
-// order.
+// that pass the filter, ordered by date, correction-root slot and effect
+// sequence, then revision child sequence and deterministic identity ties.
 func EffectiveLotMovements(ctx context.Context, source queryer, bookID int64, filter EffectiveMovementFilter) ([]EffectiveLotMovement, error) {
 	reads := []func(context.Context, queryer, int64, EffectiveMovementFilter) ([]EffectiveLotMovement, error){
 		effectiveEventMovements, revisedDisposalMovements,
@@ -112,13 +116,123 @@ func EffectiveLotMovements(ctx context.Context, source queryer, bookID int64, fi
 		}
 		movements = append(movements, read...)
 	}
-	slices.SortStableFunc(movements, func(a, b EffectiveLotMovement) int {
-		if c := cmp.Compare(a.EventDate, b.EventDate); c != 0 {
-			return c
-		}
-		return cmp.Compare(movementSourceRank[a.Source], movementSourceRank[b.Source])
-	})
+	if err := effectiveMovementProvenance(ctx, source, bookID, movements); err != nil {
+		return nil, err
+	}
+	slices.SortFunc(movements, compareEffectiveLotMovements)
 	return movements, nil
+}
+
+func compareEffectiveLotMovements(a, b EffectiveLotMovement) int {
+	return cmp.Or(
+		cmp.Compare(a.EventDate, b.EventDate),
+		cmp.Compare(a.OrderOperationID, b.OrderOperationID),
+		cmp.Compare(a.EffectSeq, b.EffectSeq),
+		cmp.Compare(a.RevisionEffectSeq, b.RevisionEffectSeq),
+		cmp.Compare(a.Source, b.Source),
+		cmp.Compare(a.RevisionID, b.RevisionID),
+		cmp.Compare(a.LinkSeq, b.LinkSeq),
+		cmp.Compare(a.OriginEventID, b.OriginEventID),
+		cmp.Compare(a.LotID, b.LotID),
+		cmp.Compare(a.Kind, b.Kind),
+	)
+}
+
+// effectiveMovementProvenance attaches immutable subject slots in two bulk
+// metadata reads. It reads no amounts, so unrelated damaged allocations do
+// not widen a filtered reader's failure scope. Replay and committed reads
+// share the correction ancestry calculation, never the replay allocations.
+func effectiveMovementProvenance(ctx context.Context, source queryer, bookID int64, movements []EffectiveLotMovement) error {
+	if len(movements) == 0 {
+		return nil
+	}
+	roots, err := investmentReplayOrderOperationIDsQuery(ctx, source, bookID)
+	if err != nil {
+		return err
+	}
+	type effect struct {
+		eventID, operationID, costCommodityID, decisionID, transferOperationID int64
+		seq, linkSeq                                                           int
+		kind                                                                   string
+		transactionID                                                          sql.NullInt64
+	}
+	type subject struct {
+		operationID int64
+		kind        string
+		id          int64 // Decision, split cost currency, link sequence, or 0 for capital return.
+	}
+	rows, err := source.QueryContext(ctx, `
+		SELECT e.id, x.operation_id, l.cost_commodity_id, x.effect_seq, e.event_kind, e.transaction_id,
+			COALESCE(a.decision_id, 0), COALESCE(link.operation_id, resolution.transfer_operation_id, 0),
+			COALESCE(link.link_seq, resolution.link_seq, 0)
+		FROM investment_operation_lot_effects x
+		JOIN investment_operations o ON o.id = x.operation_id
+		JOIN investment_lot_events e ON e.id = x.lot_event_id
+		JOIN investment_lots l ON l.id = e.lot_id
+		LEFT JOIN investment_disposal_allocations a ON a.lot_event_id = e.id
+		LEFT JOIN investment_transfer_lot_links link ON link.operation_id = x.operation_id
+			AND (link.cost_commodity_id IS NULL OR link.cost_commodity_id = l.cost_commodity_id)
+			AND ((e.event_kind IN ('transfer_out', 'basis_reduction')
+				AND (link.source_lot_id = e.lot_id OR link.source_lot_id IS NULL))
+				OR (e.event_kind IN ('transfer_in', 'acquisition') AND link.destination_lot_id = e.lot_id))
+		LEFT JOIN investment_basis_resolutions resolution ON resolution.operation_id = x.operation_id
+			AND resolution.lot_id = e.lot_id
+		WHERE o.book_id = ?`, bookID)
+	if err != nil {
+		return fmt.Errorf("read effective movement provenance: %w", err)
+	}
+	byEvent := make(map[int64]effect)
+	anchors := make(map[subject]effect)
+	for rows.Next() {
+		var e effect
+		if err := rows.Scan(&e.eventID, &e.operationID, &e.costCommodityID, &e.seq, &e.kind,
+			&e.transactionID, &e.decisionID, &e.transferOperationID, &e.linkSeq); err != nil {
+			rows.Close()
+			return fmt.Errorf("scan effective movement provenance: %w", err)
+		}
+		byEvent[e.eventID] = e
+		key := subject{operationID: e.operationID, kind: e.kind, id: int64(e.linkSeq)}
+		switch e.kind {
+		case "disposal":
+			key.id = e.decisionID
+		case "split_adjustment":
+			key.id = e.costCommodityID
+		}
+		if previous, ok := anchors[key]; !ok || e.seq < previous.seq {
+			anchors[key] = e
+		}
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return fmt.Errorf("read effective movement provenance: %w", err)
+	}
+	for i := range movements {
+		m := &movements[i]
+		if m.OperationID == 0 {
+			continue // Preserve unlinked evidence without fabricating an owner.
+		}
+		m.OrderOperationID = roots[m.OperationID]
+		var anchor effect
+		if m.Source == MovementSourceEvent {
+			anchor = byEvent[m.OriginEventID]
+			m.TransferOperationID, m.LinkSeq = anchor.transferOperationID, anchor.linkSeq
+		} else {
+			key := subject{operationID: m.OperationID, kind: m.Kind, id: int64(m.LinkSeq)}
+			switch m.Source {
+			case MovementSourceDisposalRevision:
+				key.id = m.DecisionID
+			case MovementSourceSplitRevision:
+				key.id = m.CostCommodityID
+			}
+			anchor = anchors[key]
+			m.OriginEventID, m.TransactionID = anchor.eventID, anchor.transactionID
+			m.TransferOperationID = anchor.transferOperationID
+		}
+		if m.OrderOperationID <= 0 || anchor.eventID == 0 {
+			return fmt.Errorf("effective %s movement of operation %d has no immutable order anchor", m.Source, m.OperationID)
+		}
+		m.EffectSeq = anchor.seq
+	}
+	return nil
 }
 
 func effectiveEventMovements(ctx context.Context, source queryer, bookID int64, filter EffectiveMovementFilter) ([]EffectiveLotMovement, error) {
@@ -169,8 +283,7 @@ func revisedDisposalMovements(ctx context.Context, source queryer, bookID int64,
 			-- A cash-and-stock merger's cash disposes no units (#181).
 			operation.operation_kind = 'cash_and_stock_merger',
 			decision.operation_id, decision.id, decision.transaction_id,
-			COALESCE((SELECT MIN(original.lot_event_id) FROM investment_disposal_allocations original
-				WHERE original.decision_id = decision.id), 0)
+			revision.id, revision.revision_seq, allocation.allocation_seq
 		FROM latest_investment_disposal_revisions revision
 		JOIN investment_disposal_decisions decision ON decision.id = revision.decision_id
 		JOIN effective_investment_operations operation ON operation.id = decision.operation_id
@@ -190,7 +303,8 @@ func revisedDisposalMovements(ctx context.Context, source queryer, bookID int64,
 		if err := rows.Scan(&movement.LotID, &movement.AccountID, &movement.CommodityID, &movement.CostCommodityID,
 			&movement.PositionSide, &movement.EventDate, &quantity, &movement.QuantityScale, &value, &scale,
 			&movement.BasisKnowledge, &basisOnly, &movement.OperationID, &movement.DecisionID,
-			&movement.TransactionID, &movement.OriginEventID); err != nil {
+			&movement.TransactionID,
+			&movement.RevisionID, &movement.RevisionSeq, &movement.RevisionEffectSeq); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("scan revised disposal allocation: %w", err)
 		}
@@ -214,7 +328,8 @@ func revisedDisposalMovements(ctx context.Context, source queryer, bookID int64,
 func revisedSplitMovements(ctx context.Context, source queryer, bookID int64, filter EffectiveMovementFilter) ([]EffectiveLotMovement, error) {
 	rows, err := source.QueryContext(ctx, `
 		SELECT effect.lot_id, l.account_id, l.commodity_id, l.cost_commodity_id, l.position_side,
-			fact.effective_on, effect.quantity_delta_value, effect.quantity_delta_scale, revision.operation_id
+			fact.effective_on, effect.quantity_delta_value, effect.quantity_delta_scale, revision.operation_id,
+			revision.id, revision.revision_seq, effect.effect_seq
 		FROM latest_investment_split_revisions revision
 		JOIN effective_investment_operations operation ON operation.id = revision.operation_id
 		JOIN investment_split_facts fact ON fact.operation_id = revision.operation_id
@@ -231,7 +346,7 @@ func revisedSplitMovements(ctx context.Context, source queryer, bookID int64, fi
 			BasisKnowledge: InvestmentBasisKnown}
 		if err := rows.Scan(&movement.LotID, &movement.AccountID, &movement.CommodityID, &movement.CostCommodityID,
 			&movement.PositionSide, &movement.EventDate, &movement.QuantityValue, &movement.QuantityScale,
-			&movement.OperationID); err != nil {
+			&movement.OperationID, &movement.RevisionID, &movement.RevisionSeq, &movement.RevisionEffectSeq); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("scan revised split effect: %w", err)
 		}
@@ -259,7 +374,8 @@ func revisedTransferLinkMovements(ctx context.Context, source queryer, bookID in
 			revision.basis_knowledge,
 			COALESCE(destination.quantity_value, link.quantity_value),
 			COALESCE(destination.quantity_scale, link.quantity_scale),
-			fact.transfer_kind = 'spin_off', fact.effective_on, revision.operation_id
+			fact.transfer_kind = 'spin_off', fact.effective_on, revision.operation_id,
+			revision.link_seq, revision.id, revision.revision_seq
 		FROM latest_investment_transfer_link_revisions revision
 		JOIN effective_investment_operations operation ON operation.id = revision.operation_id
 		JOIN investment_transfer_facts fact ON fact.operation_id = revision.operation_id
@@ -286,7 +402,7 @@ func revisedTransferLinkMovements(ctx context.Context, source queryer, bookID in
 		if err := rows.Scan(&out.LotID, &out.AccountID, &out.CommodityID, &out.CostCommodityID, &out.PositionSide,
 			&in.LotID, &in.AccountID, &in.CommodityID, &in.CostCommodityID, &in.PositionSide,
 			&quantity, &scale, &basis, &basisScale, &knowledge, &inQuantity, &inScale,
-			&spinOff, &date, &operationID); err != nil {
+			&spinOff, &date, &operationID, &out.LinkSeq, &out.RevisionID, &out.RevisionSeq); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("scan revised transfer link: %w", err)
 		}
@@ -295,6 +411,7 @@ func revisedTransferLinkMovements(ctx context.Context, source queryer, bookID in
 			rows.Close()
 			return nil, fmt.Errorf("invalid revised transfer link for lot %d", in.LotID)
 		}
+		in.LinkSeq, in.RevisionID, in.RevisionSeq = out.LinkSeq, out.RevisionID, out.RevisionSeq
 		for _, movement := range []*EffectiveLotMovement{&out, &in} {
 			movement.EventDate, movement.OperationID, movement.BasisKnowledge = date, operationID, knowledge
 			movement.CostBasisScale = valueScale
@@ -322,7 +439,8 @@ func revisedPooledTransferMovements(ctx context.Context, source queryer, bookID 
 	rows, err := source.QueryContext(ctx, `
 		SELECT depletion.source_lot_id, src.account_id, src.commodity_id, src.cost_commodity_id, src.position_side,
 			depletion.quantity_value, depletion.quantity_scale, depletion.cost_basis_value, depletion.cost_basis_scale,
-			depletion.basis_knowledge, 0, fact.effective_on, revision.operation_id
+			depletion.basis_knowledge, 0, fact.effective_on, revision.operation_id,
+			revision.link_seq, revision.id, revision.revision_seq, depletion.depletion_seq
 		FROM latest_investment_transfer_link_revisions revision
 		JOIN effective_investment_operations operation ON operation.id = revision.operation_id
 		JOIN investment_transfer_facts fact ON fact.operation_id = revision.operation_id
@@ -333,7 +451,8 @@ func revisedPooledTransferMovements(ctx context.Context, source queryer, bookID 
 		SELECT link.destination_lot_id, destination.account_id, destination.commodity_id, destination.cost_commodity_id,
 			destination.position_side, link.quantity_value, link.quantity_scale,
 			revision.carried_basis_value, revision.carried_basis_scale,
-			revision.basis_knowledge, 1, fact.effective_on, revision.operation_id
+			revision.basis_knowledge, 1, fact.effective_on, revision.operation_id,
+			revision.link_seq, revision.id, revision.revision_seq, 0
 		FROM latest_investment_transfer_link_revisions revision
 		JOIN effective_investment_operations operation ON operation.id = revision.operation_id
 		JOIN investment_transfer_facts fact ON fact.operation_id = revision.operation_id
@@ -354,7 +473,8 @@ func revisedPooledTransferMovements(ctx context.Context, source queryer, bookID 
 		var incoming bool
 		if err := rows.Scan(&movement.LotID, &movement.AccountID, &movement.CommodityID, &movement.CostCommodityID,
 			&movement.PositionSide, &quantity, &movement.QuantityScale, &basis, &basisScale,
-			&movement.BasisKnowledge, &incoming, &movement.EventDate, &movement.OperationID); err != nil {
+			&movement.BasisKnowledge, &incoming, &movement.EventDate, &movement.OperationID,
+			&movement.LinkSeq, &movement.RevisionID, &movement.RevisionSeq, &movement.RevisionEffectSeq); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("scan revised pooled transfer: %w", err)
 		}
@@ -381,7 +501,8 @@ func revisedPooledTransferMovements(ctx context.Context, source queryer, bookID 
 func revisedCapitalReturnMovements(ctx context.Context, source queryer, bookID int64, filter EffectiveMovementFilter) ([]EffectiveLotMovement, error) {
 	rows, err := source.QueryContext(ctx, `
 		SELECT e.lot_id, l.account_id, l.commodity_id, l.cost_commodity_id, l.position_side,
-			e.reduction_value, e.reduction_scale, fact.effective_on, revision.operation_id
+			e.reduction_value, e.reduction_scale, fact.effective_on, revision.operation_id,
+			revision.id, revision.revision_seq, e.effect_seq
 		FROM latest_investment_capital_return_revisions revision
 		JOIN effective_investment_operations operation ON operation.id = revision.operation_id
 		JOIN investment_capital_return_facts fact ON fact.operation_id = revision.operation_id
@@ -399,7 +520,7 @@ func revisedCapitalReturnMovements(ctx context.Context, source queryer, bookID i
 		var reduction exact.Coefficient
 		if err := rows.Scan(&movement.LotID, &movement.AccountID, &movement.CommodityID, &movement.CostCommodityID,
 			&movement.PositionSide, &reduction, &movement.CostBasisScale, &movement.EventDate,
-			&movement.OperationID); err != nil {
+			&movement.OperationID, &movement.RevisionID, &movement.RevisionSeq, &movement.RevisionEffectSeq); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("scan revised capital return: %w", err)
 		}

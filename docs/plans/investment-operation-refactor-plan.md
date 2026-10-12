@@ -201,6 +201,18 @@ A movement is one signed change to one lot:
   subject's date: a disposal decision's `event_date`; a split's, return of
   capital's or transfer's `effective_on`. A replay revision never changes a
   date.
+- **Order:** event date, `OrderOperationID` (the correction root's original
+  same-day slot), `EffectSeq`, then `RevisionEffectSeq`. An original event
+  keeps its immutable operation effect sequence. A revised set uses the first
+  immutable effect of its subject as its anchor: the disposal decision, split
+  in its cost currency, return of capital, or transfer-link end. Its children
+  keep their recorded allocation/effect/depletion sequence in
+  `RevisionEffectSeq`. This permits changed allocation counts without moving
+  a subject after a later effect. Pooled source depletions all use the first
+  original source effect; the destination keeps its own later effect slot.
+  Source, revision ID, link sequence, origin event ID and lot ID break any
+  remaining ties deterministically. Unlinked events have slot and effect
+  sequence zero and are ordered by origin event ID; no operation is invented.
 - **Kind:** the lot-event kind (`acquisition`, `disposal`,
   `split_adjustment`, `transfer_in`, `transfer_out`, `basis_reduction`, …).
   A revised movement keeps the kind of the events it replaces.
@@ -212,10 +224,16 @@ A movement is one signed change to one lot:
 - **Provenance:**
   - the source (an original event, or the latest revision of a disposal,
     split, transfer link, pooled transfer or return of capital);
-  - the operation;
+  - the effective operation and its correction-root slot;
   - the disposal decision, for a disposal;
+  - the transfer link's composite identity (`TransferOperationID`, `LinkSeq`),
+    for either end, including pooled sources and original inbound openings;
+  - the exact revision (`Source`, `RevisionID`, `RevisionSeq`) and its child
+    sequence; original events have zero revision fields;
   - the journal transaction, when there is one;
-  - the original lot event a disposal stands for, used for stable ordering.
+  - the original lot event used as the effect anchor. An anchor identifies
+    the subject's original slot, not necessarily the revised movement's lot.
+    Revised movements inherit that event's transaction provenance.
 
 Selection:
 
@@ -246,14 +264,10 @@ Out of scope, by design:
 `effective_investment_lot_events` or `latest_*_revisions` outside the owner
 and a named allow-list.
 
-**Closure audit (2026-10-12):** this owner currently orders by event date,
-then movement family and that family's query order. It does not expose a
-correction-root slot or effect sequence, and revised movements identify their
-family and operation rather than the exact revision and transfer link. The
-current consumers fold dated totals; this ordering is not a chronological
-replay contract. Those metadata requirements in #189 remain unfinished and
-keep that issue open. Replay continues to use its own economic inputs; see
+The metadata completion (2026-10-12, #189) resolves the gap identified in
 [the closure audit](../reviews/investment-schema-closure-audit-2026-10-12.md).
+The stream describes committed movements in causal subject order; it is not
+a substitute for replay's economic inputs or ADR 0012 reporting profiles.
 
 ### Operation families to support
 

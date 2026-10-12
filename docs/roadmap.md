@@ -109,13 +109,11 @@ below is execution order, not a chain of hard dependencies.
 
 **Now**
 
-1. Finish the committed-movement metadata contract in
-   [#189](https://github.com/sergeyfarin/rekenraam/issues/189) and malformed-text
-   admission checks in [#192](https://github.com/sergeyfarin/rekenraam/issues/192), reopened by the
+1. Finish malformed-text admission checks in
+   [#192](https://github.com/sergeyfarin/rekenraam/issues/192), reopened by the
    [2026-10-12 closure audit](reviews/investment-schema-closure-audit-2026-10-12.md).
-   The shared reader ships, but its promised correction-root slot, effect
-   sequence and link/revision identity remain incomplete; exact-number CHECKs
-   still admit an embedded NUL followed by nonnumeric text. The other bounded
+   Exact-number CHECKs still admit an embedded NUL followed by nonnumeric text.
+   The other bounded
    work from the [investment schema design review](reviews/investment-schema-design-review-2026-10-11.md)
    is delivered, including the cash-in-lieu replay regression gap #194.
 2. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
