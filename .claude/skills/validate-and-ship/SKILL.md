@@ -362,6 +362,14 @@ non-trivial diff (yours or reviewed):
     matrix (#191) fails until the kind has a row naming, for each capability,
     a test, a refusal test or a gap issue, and until a capability scenario
     records it. A new replay-intent family needs its own row too.
+36. **Canonical text CHECKs that inspect only a valid prefix** — SQLite text
+    `length` and `GLOB` stop at an embedded NUL, so a digit-only CHECK admitted
+    `1\0abc` and trailing NULs in every coefficient column (#192). Canonical
+    ASCII coefficient CHECKs also require `instr(value, char(0)) = 0`, outside
+    any zero allowance; this works across SQLite text encodings. Test installed
+    CHECKs through actual insertions, including embedded/trailing NULs, signed
+    boundaries and nullable amounts.
+    Named regression: `TestExactNumberColumnChecks`.
 
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.

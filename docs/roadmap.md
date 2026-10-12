@@ -109,14 +109,7 @@ below is execution order, not a chain of hard dependencies.
 
 **Now**
 
-1. Finish malformed-text admission checks in
-   [#192](https://github.com/sergeyfarin/rekenraam/issues/192), reopened by the
-   [2026-10-12 closure audit](reviews/investment-schema-closure-audit-2026-10-12.md).
-   Exact-number CHECKs still admit an embedded NUL followed by nonnumeric text.
-   The other bounded
-   work from the [investment schema design review](reviews/investment-schema-design-review-2026-10-11.md)
-   is delivered, including the cash-in-lieu replay regression gap #194.
-2. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
+1. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
    share exchange core [#177](https://github.com/sergeyfarin/rekenraam/issues/177) (delivered 2026-10-10),
    its reads and mobile entry [#178](https://github.com/sergeyfarin/rekenraam/issues/178) (delivered 2026-10-10), its correction and
    backdating [#179](https://github.com/sergeyfarin/rekenraam/issues/179) (delivered 2026-10-10, API), spin-off
@@ -129,7 +122,7 @@ below is execution order, not a chain of hard dependencies.
    which completes #115. Tender, rights and provider corporate-action mappings are outside the #115 bar.
    The rest of the R16 bar is Refresh reach [#152](https://github.com/sergeyfarin/rekenraam/issues/152), then zero-delta
    splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146).
-3. Daily-use parallel work: the shared transaction workspace
+2. Daily-use parallel work: the shared transaction workspace
    [#185](https://github.com/sergeyfarin/rekenraam/issues/185) (slices 1 and 2 delivered 2026-10-11: entry from account and
    category screens, same-day reorder everywhere or in one account), then investment entry from holding accounts and
    instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186).

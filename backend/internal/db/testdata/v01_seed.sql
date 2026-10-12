@@ -1,7 +1,9 @@
 -- Frozen v0.1 seed: a realistic book built through the real HTTP API against
--- migration 0001, then dumped. TestMigrateUpgradesV01DatabaseToFreshHeadSchema
--- replays it into a 0001-only database and upgrades that to HEAD, so this file
--- stands in for "a database written by a released version".
+-- migration 0001, then dumped. TestMigrateSeededBaselineMatchesFreshSchema
+-- loads it into the unused candidate baseline and checks repeated migration
+-- admission, schema equivalence and preservation of every durable figure.
+-- Reviewed for #192's whole-value canonical CHECKs (2026-10-12): its exact
+-- coefficient data remains valid without changing any financial figures.
 --
 -- It is frozen on purpose. Regenerating it against a later schema would defeat
 -- the test: the point is to migrate data written by the OLD app, which future

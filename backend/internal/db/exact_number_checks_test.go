@@ -165,10 +165,22 @@ func columnCheckExpression(t *testing.T, database *sql.DB, table, column string)
 
 func TestExactNumberColumnChecks(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-	database := openTestDatabase(t)
-	require.NoError(t, Migrate(ctx, database))
+	for _, encoding := range []string{"UTF-8", "UTF-16le", "UTF-16be"} {
+		t.Run(encoding, func(t *testing.T) {
+			database := openTestDatabase(t)
+			_, err := database.Exec(`PRAGMA encoding = '` + encoding + `'`)
+			require.NoError(t, err)
+			require.NoError(t, Migrate(context.Background(), database))
+			var installedEncoding string
+			require.NoError(t, database.QueryRow(`PRAGMA encoding`).Scan(&installedEncoding))
+			require.Equal(t, encoding, installedEncoding)
+			requireExactNumberColumnChecks(t, database)
+		})
+	}
+}
 
+func requireExactNumberColumnChecks(t *testing.T, database *sql.DB) {
+	t.Helper()
 	columns := exactNumberColumns(t, database)
 	found := make([]string, 0, len(columns))
 	for _, column := range columns {
@@ -185,10 +197,21 @@ func TestExactNumberColumnChecks(t *testing.T) {
 		t.Run(column.table+"."+column.column, func(t *testing.T) {
 			rule := exactNumberColumnRules[column.table+"."+column.column]
 			expression := columnCheckExpression(t, database, column.table, column.column)
+			// Exercise insertion with TEXT affinity and SQLite's installed
+			// CHECK, including bytes hidden from text length/GLOB by a NUL.
+			_, err := database.Exec(`CREATE TABLE coefficient_probe (` + column.column + ` TEXT CHECK (` + expression + `))`)
+			require.NoError(t, err)
+			defer func() {
+				_, err := database.Exec(`DROP TABLE coefficient_probe`)
+				require.NoError(t, err)
+			}()
 			passes := func(value any) bool {
-				var ok bool
-				require.NoError(t, database.QueryRow(`SELECT (`+expression+`) IS NOT 0 FROM (SELECT ? AS `+column.column+`)`, value).Scan(&ok))
-				return ok
+				_, err := database.Exec(`INSERT INTO coefficient_probe VALUES (?)`, value)
+				if err != nil {
+					require.ErrorContains(t, err, "CHECK constraint failed")
+					return false
+				}
+				return true
 			}
 			widest := digits('9', rule.maxDigits)
 			tooWide := digits('1', rule.maxDigits+1)
@@ -207,6 +230,27 @@ func TestExactNumberColumnChecks(t *testing.T) {
 			for value, want := range expect {
 				require.Equal(t, want, passes(value), "%s %s with %q", rule.legality, column.column, value)
 			}
+			t.Run("rejects_embedded_and_trailing_NULs", func(t *testing.T) {
+				for name, value := range map[string]string{
+					"NUL_only":              "\x00",
+					"leading_NUL":           "\x001",
+					"trailing_NUL":          "1\x00",
+					"hidden_malformed_text": "1\x00abc",
+					"hidden_digits":         "1\x002",
+					"multiple_NULs":         "1\x00\x00abc",
+					"signed_trailing_NUL":   "-1\x00",
+					"signed_hidden_text":    "-1\x00abc",
+					"zero_trailing_NUL":     "0\x00",
+					"zero_hidden_text":      "0\x00abc",
+					"widest_trailing_NUL":   widest + "\x00",
+					"widest_hidden_text":    widest + "\x00abc",
+					"signed_widest_NUL":     "-" + widest + "\x00",
+				} {
+					t.Run(name, func(t *testing.T) {
+						require.False(t, passes(value), "%s %s with %q", rule.legality, column.column, value)
+					})
+				}
+			})
 			if column.nullable {
 				require.True(t, passes(nil), "a nullable coefficient's own CHECK leaves NULL to its pair CHECK")
 			}

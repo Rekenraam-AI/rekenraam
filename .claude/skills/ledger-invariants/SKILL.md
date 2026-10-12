@@ -16,6 +16,10 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   is `exact.Coefficient` (`backend/internal/exact/coefficient.go`): a canonical
   signed decimal **string** in SQLite and JSON, max 38 digits, computed with
   `math/big`.
+- Coefficient CHECKs validate the entire stored ASCII string, including
+  an explicit NUL search to reject embedded/trailing NULs that SQLite text
+  `length` and `GLOB` ignore (#192). Copy the applicable legality CHECK and
+  add new coefficient columns to `TestExactNumberColumnChecks`.
 - **Never aggregate coefficient columns with SQLite `SUM`** — they are strings.
   Sum in Go.
 - **All coefficient + scale arithmetic goes through `exact.ScaledInt`**

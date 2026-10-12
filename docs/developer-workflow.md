@@ -588,12 +588,16 @@ command above, then redo owner setup. No installed v0.1 database exists.
 
 **BREAKING DEV DATABASE, exact-number CHECKs (#192, 2026-10-12):** every
 `0001` coefficient column now requires the canonical form `exact.Coefficient`
-writes: at most 38 digits, an optional `-`, no leading zero and no `-0`. Each
+writes over the entire stored value: at most 38 ASCII digits, an optional `-`,
+no leading zero and no `-0`. An explicit NUL search also rejects embedded
+and trailing NULs, which SQLite's text predicates otherwise stop before. Each
 column also states whether it is signed, signed and nonzero, nonnegative or
 positive; `TestExactNumberColumnChecks` lists the rule per column. The checksum
-changed. Stop the app and reset only the same disposable `DATABASE_URL`
-database and sidecars using the command above, then redo owner setup. No
-installed v0.1 database exists.
+changed again for the NUL admission fix. Stop the app and reset only the same
+disposable `DATABASE_URL` database and sidecars using the command above, then
+redo owner setup. No installed v0.1 database exists. Candidate seed rows remain canonical; seeded
+schema equivalence and a fresh HTTP-built release seed validate the stricter
+baseline without regenerating historical financial figures.
 
 The final pre-`v0.1.0` consolidation changed the highest schema version from 8
 to 1. Databases and backups made before that consolidation are incompatible in

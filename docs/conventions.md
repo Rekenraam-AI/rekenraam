@@ -204,10 +204,13 @@ When a feature introduces a durable new rule, update one of those documents in t
   JSON, limited to 38 digits, and are calculated with arbitrary-precision
   integers. Never aggregate quantity coefficient text with SQLite `SUM`.
 - Every coefficient column's CHECK enforces that canonical form (at most 38
-  digits, optional leading `-`, no leading zero, no `-0`) and states one
-  legality rule: signed, signed nonzero, nonnegative or positive (#192). A new
+  ASCII digits, optional leading `-`, no leading zero, no `-0`) over the whole
+  stored value and states one legality rule: signed, signed nonzero,
+  nonnegative or positive (#192). A new
   `*_value`/`*_scale` column copies the matching CHECK from the baseline and
   adds its rule to `TestExactNumberColumnChecks`, which fails until it does.
+  An explicit `instr(value, char(0)) = 0` rejects embedded and trailing NULs that
+  SQLite's text `length` and `GLOB` would otherwise ignore.
 - The technical scale ceiling is 24 for crypto and 12 for every other
   commodity kind. A commodity's own `max_quantity_scale` may be lower.
 - Standard/display scale is independent from maximum storage scale; do not
