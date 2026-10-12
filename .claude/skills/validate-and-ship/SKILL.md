@@ -344,6 +344,13 @@ non-trivial diff (yours or reviewed):
     readers against the posted journal and operation facts. It runs in every
     shared self-check pass helper; call it before a later correction retires
     the revision under test.
+35. **An operation kind added without its capabilities** — kinds are
+    special-cased by string across generic code, so a new kind can ship
+    without replay, a correction, export rows or a passing self-check. Writers
+    refuse kinds missing from `db.InvestmentOperationKinds`. The capability
+    matrix (#191) fails until the kind has a row naming, for each capability,
+    a test, a refusal test or a gap issue, and until a capability scenario
+    records it. A new replay-intent family needs its own row too.
 
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.

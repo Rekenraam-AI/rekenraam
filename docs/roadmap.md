@@ -115,9 +115,11 @@ below is execution order, not a chain of hard dependencies.
    [#188](https://github.com/sergeyfarin/rekenraam/issues/188), the single owner of committed effective movements
    [#189](https://github.com/sergeyfarin/rekenraam/issues/189), the backdating requirement text
    [#193](https://github.com/sergeyfarin/rekenraam/issues/193) and the independent conservation oracle
-   [#190](https://github.com/sergeyfarin/rekenraam/issues/190). Remaining:
-   1. Operation-kind capability matrix [#191](https://github.com/sergeyfarin/rekenraam/issues/191) and uniform number
-      CHECKs [#192](https://github.com/sergeyfarin/rekenraam/issues/192); #192 must land before the v0.1.0 tag.
+   [#190](https://github.com/sergeyfarin/rekenraam/issues/190). Shipped 2026-10-12: the operation-kind capability
+   matrix [#191](https://github.com/sergeyfarin/rekenraam/issues/191); its one gap is
+   [#194](https://github.com/sergeyfarin/rekenraam/issues/194). Remaining:
+   1. Uniform number CHECKs [#192](https://github.com/sergeyfarin/rekenraam/issues/192), which must land before the
+      v0.1.0 tag.
 2. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
    share exchange core [#177](https://github.com/sergeyfarin/rekenraam/issues/177) (delivered 2026-10-10),
    its reads and mobile entry [#178](https://github.com/sergeyfarin/rekenraam/issues/178) (delivered 2026-10-10), its correction and

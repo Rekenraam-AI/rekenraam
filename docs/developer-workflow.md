@@ -117,6 +117,26 @@ cd backend
 go test ./internal/app -run '^TestOracle' -count=1
 ```
 
+Operation kinds have a capability matrix
+([#191](https://github.com/sergeyfarin/rekenraam/issues/191),
+`backend/internal/app/investment_capability_matrix_test.go`). Writers record
+only the kinds in `db.InvestmentOperationKinds`. Each kind's row names, for
+replay behind a later depletion, replacement, reversal, export and self-check:
+
+- the test that exercises it,
+- the test that asserts its named refusal, or
+- the GitHub issue that tracks the gap.
+
+`TestEveryOperationKindExportsItsRowsAndPassesSelfCheck` records every kind,
+checks the exported bundle rows and runs the self-checks. A second table covers
+the replay-intent families. To add an operation kind, add it to the list, give
+it a matrix row and record it in one of the capability scenarios:
+
+```sh
+cd backend
+go test ./internal/app -run 'CapabilityMatrix|ReplayIntentCapabilities|EveryOperationKind' -count=1
+```
+
 These include independent exact expected amounts, fixed-seed trade sequences,
 gross cashflow scope checks and HTTP scale/total assertions. Keep the full
 backend script as the completion gate. See

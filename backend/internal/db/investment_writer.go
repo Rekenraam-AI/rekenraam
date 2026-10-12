@@ -281,6 +281,9 @@ func insertJournalFreeInvestmentOperationTx(ctx context.Context, tx *sql.Tx, par
 	if !params.AuditOnly || params.Spec.InvestmentOperationKind == "" {
 		return 0, fmt.Errorf("%w: a journal-free operation needs an audit-only header", ErrInvalidDisposalParams)
 	}
+	if err := requireKnownInvestmentOperationKind(params.Spec.InvestmentOperationKind); err != nil {
+		return 0, err
+	}
 	result, err := tx.ExecContext(ctx, `INSERT INTO investment_operations (
 			book_id, operation_kind, event_date, created_at, created_audit_event_id,
 			correction_of_operation_id, correction_mode, correction_reason

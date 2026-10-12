@@ -153,6 +153,9 @@ func insertTransactionWithAuditEventTx(ctx context.Context, tx *sql.Tx, params C
 		if params.Spec.TransactionKind != "investment" || params.Spec.Status != "posted" {
 			return TransactionRecord{}, fmt.Errorf("investment operation requires a posted investment transaction")
 		}
+		if err := requireKnownInvestmentOperationKind(params.Spec.InvestmentOperationKind); err != nil {
+			return TransactionRecord{}, err
+		}
 		operationResult, err := tx.ExecContext(ctx, `
 			INSERT INTO investment_operations (
 				book_id, operation_kind, event_date,
