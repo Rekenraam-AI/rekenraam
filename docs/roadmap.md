@@ -118,7 +118,15 @@ below is execution order, not a chain of hard dependencies.
    still admit an embedded NUL followed by nonnumeric text. The other bounded
    work from the [investment schema design review](reviews/investment-schema-design-review-2026-10-11.md)
    is delivered, including the cash-in-lieu replay regression gap #194.
-2. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
+2. Migrate to bundled native SQLite
+   [#195](https://github.com/sergeyfarin/rekenraam/issues/195) under
+   [ADR 0014](adrs/0014-native-sqlite-driver.md) and the
+   [migration plan](plans/native-sqlite-driver-migration-plan.md), before the
+   next investment feature slice. SQLite remains the database; modernc is
+   still installed until the validated cutover. Race-gate feedback/headroom
+   [#164](https://github.com/sergeyfarin/rekenraam/issues/164) requires measured
+   improvement with retained regressions and the current 20-minute bound.
+3. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
    share exchange core [#177](https://github.com/sergeyfarin/rekenraam/issues/177) (delivered 2026-10-10),
    its reads and mobile entry [#178](https://github.com/sergeyfarin/rekenraam/issues/178) (delivered 2026-10-10), its correction and
    backdating [#179](https://github.com/sergeyfarin/rekenraam/issues/179) (delivered 2026-10-10, API), spin-off
@@ -131,13 +139,10 @@ below is execution order, not a chain of hard dependencies.
    which completes #115. Tender, rights and provider corporate-action mappings are outside the #115 bar.
    The rest of the R16 bar is Refresh reach [#152](https://github.com/sergeyfarin/rekenraam/issues/152), then zero-delta
    splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146).
-3. Daily-use parallel work: the shared transaction workspace
+4. Daily-use parallel work: the shared transaction workspace
    [#185](https://github.com/sergeyfarin/rekenraam/issues/185) (slices 1 and 2 delivered 2026-10-11: entry from account and
    category screens, same-day reorder everywhere or in one account), then investment entry from holding accounts and
-   instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186). Race-gate headroom
-   [#164](https://github.com/sergeyfarin/rekenraam/issues/164) goes before the next investment slice: the app
-   package reached 856 s of its former 900 s bound, so the owner raised the bound to
-   20 minutes on 2026-10-11; #164 still restores headroom by removing cost.
+   instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186).
 
 **Delivered historical-entry and recovery gates:** dated holdings/lot selection
 [#166](https://github.com/sergeyfarin/rekenraam/issues/166) (2026-10-09),

@@ -326,8 +326,16 @@ When a feature introduces a durable new rule, update one of those documents in t
 - Soft-deletion uses a nullable `deleted_at` timestamp for current state and append-only deletion/restoration events for auditable history. Do not represent soft-delete as a lifecycle status. The transaction implementation is the reference pattern: it hides a transaction from ordinary views while keeping the row durable for audit and recovery.
 - Schema changes require explicit migrations under `backend/migrations`.
 - The migration runner is **`pressly/goose`** with embedded SQL files. Migrations are sequential numbered `.sql` files under `backend/migrations/`. Run at startup; goose tracks applied versions in the database.
-- The SQLite Go driver is **`modernc.org/sqlite`** (pure Go, no CGO). Do not use `mattn/go-sqlite3`.
-- SQLite connections must install PRAGMAs on every physical connection through the modernc DSN: `busy_timeout(5000)`, `foreign_keys(1)`, `journal_mode(WAL)`, `synchronous(NORMAL)`, and `wal_autocheckpoint(1000)`.
+- ADR 0014 selects **`github.com/mattn/go-sqlite3`** with bundled native SQLite
+  through CGO. Migration is planned in #195; the installed driver remains
+  `modernc.org/sqlite` until the validated cutover. Production and tests use
+  one driver, with the same required SQLite features. See
+  [the migration plan](plans/native-sqlite-driver-migration-plan.md).
+- SQLite connections must install PRAGMAs on every physical connection through
+  supported driver DSN options or a connection hook: `busy_timeout(5000)`,
+  `foreign_keys(1)`, `journal_mode(WAL)`, `synchronous(NORMAL)`, and
+  `wal_autocheckpoint(1000)`. Initial and replacement connections must obey
+  the same policy; setting a PRAGMA once on a pool is insufficient.
 - Startup must validate effective SQLite PRAGMA state before serving requests.
 - Early runtime uses one application `*sql.DB` pool with `SetMaxOpenConns(1)`; revisit only when real workload pressure justifies more concurrency.
 - Database access uses repository-style methods over raw `database/sql`. Introduce **`sqlc`** only when the query surface is large enough to justify code generation, and document the generation command before generated files land.

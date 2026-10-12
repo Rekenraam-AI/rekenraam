@@ -53,11 +53,16 @@ Existing codes: `VALIDATION_FAILED`, `UNAUTHENTICATED`, `FORBIDDEN`,
 updating the OpenAPI `ErrorBody.code` enum too. Never return raw Go error
 strings to the client.
 
-## SQLite rules (source: ADR 0004, conventions § Data)
+## SQLite rules (source: ADRs 0004/0014, conventions § Data)
 
-- Driver is `modernc.org/sqlite` (pure Go). Never `mattn/go-sqlite3`.
-- `db.Open` (`internal/db/sqlite.go`) installs PRAGMAs per connection, runs
-  goose migrations, and validates PRAGMA state. Use it everywhere, tests included.
+- ADR 0014 selects bundled native SQLite through `github.com/mattn/go-sqlite3`
+  (CGO); #195 owns migration. The installed driver remains `modernc.org/sqlite`
+  until cutover. Follow `docs/plans/native-sqlite-driver-migration-plan.md`;
+  use one driver and consistent features in runtime and tests. Install required
+  settings on every physical connection, including replacements.
+- `db.Open` (`internal/db/sqlite.go`) installs PRAGMAs per connection and
+  validates PRAGMA state. `db.Migrate` applies goose migrations at startup;
+  ordinary tests copy the migrated template. Use these paths everywhere.
 - **The pool is `SetMaxOpenConns(1)`.** One `BeginTx` is a full mutual-exclusion
   lock — this is why single-transaction guard+insert patterns work (see
   `background-work` skill). Don't "fix" this without an ADR.

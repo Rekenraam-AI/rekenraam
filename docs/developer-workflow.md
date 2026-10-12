@@ -88,6 +88,17 @@ application package reached 856 seconds of 900 on this workspace
 ([#164](https://github.com/sergeyfarin/rekenraam/issues/164)). #164 still
 owns restoring headroom by removing cost, not by raising the bound again.
 
+**Selected implementation path (2026-10-12):**
+[ADR 0014](adrs/0014-native-sqlite-driver.md) and
+[#195](https://github.com/sergeyfarin/rekenraam/issues/195) plan migration to
+bundled native SQLite through CGO. The
+[driver migration plan](plans/native-sqlite-driver-migration-plan.md) requires
+one driver/feature set across runtime, tests and builds, retained database and
+backup compatibility, and controlled before/after performance measurements.
+The installed driver and commands above remain current until that cutover.
+#164 stays open for measured feedback/headroom improvement. Its earlier
+modernc race-exclusion proposal is not the selected implementation path.
+
 The financial property tests run in the normal backend suite. For a focused
 iteration on ledger, cashflow, lot conservation and gains arithmetic:
 
@@ -244,6 +255,12 @@ Builds the frontend, copies it into `backend/internal/web/dist/`, runs the
 embed test, and compiles `dist/rekenraam`.
 
 #### Reproducibility
+
+The description below applies to the current modernc build. The selected
+native-driver migration (#195, ADR 0014) will enable CGO and add the C compiler,
+linker, headers, build tags and libc baseline to the reproducible inputs.
+It must document the delivered binary's actual dependencies and compatible
+runtime baseline; a libc-independent static build is separate work.
 
 The binary is built with `-trimpath` and `CGO_ENABLED=0`, which is what makes
 the same source produce the same bytes on a different machine. Verify with:

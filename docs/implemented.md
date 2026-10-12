@@ -31,7 +31,7 @@ governs the journal/subledger boundary and ADR 0013 the R16 operation model.
 | Capability | Status | Notes |
 |---|---|---|
 | SQLite migrations + schema version | ✅ | The unused v0.1 candidate baseline in `backend/migrations/0001_initial_schema.sql` is checksum-enforced, auto-run before serving, and covered by fresh/seeded schema equivalence and repeated migration-admission data-preservation tests. No legacy databases exist; source revisions and lot opening guards are consolidated into migration 1. ADR 0013 permits this pre-release redesign; installed-release migrations remain immutable. Migration numbers remain sequential and independent of release numbers. |
-| Connection PRAGMAs (WAL, FK, busy timeout) | ✅ | `db/sqlite.go`; single-connection contract documented. |
+| Connection PRAGMAs (WAL, FK, busy timeout) | ✅ | `db/sqlite.go`; single write connection with separate read-only pool. The installed driver is `modernc.org/sqlite`. ADR 0014 selects bundled native SQLite; migration [#195](https://github.com/sergeyfarin/rekenraam/issues/195) is planned, not shipped. |
 | Reusable application runtime | ✅ | `internal/appruntime` owns the database lock, read/write pools, migrations, services, worker lifecycle and existing API/static handler. The `serve` command owns the listener and signals. Shutdown cancels and joins workers before closing pools and the lock; failed startup releases acquired resources. The deployed shape remains one Go binary. |
 | Browser first-run setup (owner → book → currencies → system accounts → categories) | ✅ | Persisted `setup_steps`, derived install state. |
 | Auth: Argon2id, sessions, CSRF, origin checks | ✅ | `app/auth.go`, `api/auth.go`; rehash-on-login, dual-scope throttling. |

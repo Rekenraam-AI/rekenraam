@@ -55,6 +55,11 @@ R16 investment lifecycle completeness is the current initiative. Its
 [operation plan](plans/investment-operation-refactor-plan.md) and slice
 contracts govern design; the [roadmap](roadmap.md) holds its current focus.
 
+The [native SQLite driver migration plan](plans/native-sqlite-driver-migration-plan.md)
+and [ADR 0014](adrs/0014-native-sqlite-driver.md) record the accepted driver
+direction, compatibility/build contracts and performance evidence for #195
+and #164. Implementation is pending; the current runtime still uses modernc.
+
 The [2026-09-27 work-tracking audit](reviews/github-work-tracking-audit-2026-09-27.md)
 records the open-ID triage used for the migration to GitHub Issues.
 The [pre-migration backlog snapshot](reviews/open-backlog-before-github-2026-09-27.md)

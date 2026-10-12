@@ -47,6 +47,13 @@ browser suite and `pnpm test:release-preflight` for the serial release journeys.
 Commands, test scope, and environment settings are in the
 [developer workflow](docs/developer-workflow.md).
 
+Migration to bundled native SQLite is planned in
+[#195](https://github.com/sergeyfarin/rekenraam/issues/195), governed by
+[ADR 0014](docs/adrs/0014-native-sqlite-driver.md) and the
+[migration plan](docs/plans/native-sqlite-driver-migration-plan.md).
+The current driver and build commands still use modernc; C toolchain
+requirements will land with the validated implementation.
+
 ## Run the built app
 
 Set a random `SETUP_TOKEN` of at least 32 characters before first production

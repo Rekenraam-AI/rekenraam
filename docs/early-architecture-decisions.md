@@ -33,6 +33,12 @@ Reasons:
 
 Use SQLite as the primary database.
 
+[ADR 0014](adrs/0014-native-sqlite-driver.md) selects migration from modernc to
+bundled native SQLite through CGO (#195), with one driver for runtime and
+tests. This is planned work; the current implementation still uses modernc.
+The [migration plan](plans/native-sqlite-driver-migration-plan.md) defines
+compatibility and performance evidence without changing the financial model.
+
 Rules:
 
 - Every schema change must be represented by a migration under `backend/migrations`.
@@ -41,7 +47,10 @@ Rules:
 - Tests should use temporary SQLite databases.
 - Runtime database files belong in a persistent data directory, not inside the binary or container image.
 - Install SQLite connection pragmas deliberately: foreign keys on, WAL mode for normal runtime use, a busy timeout, and an explicit synchronous setting.
-- Install those PRAGMAs on every physical SQLite connection through the driver DSN: `busy_timeout(5000)`, `foreign_keys(1)`, `journal_mode(WAL)`, `synchronous(NORMAL)`, and `wal_autocheckpoint(1000)`.
+- Install those PRAGMAs on every physical SQLite connection through supported
+  driver DSN options or a connection hook: `busy_timeout(5000)`,
+  `foreign_keys(1)`, `journal_mode(WAL)`, `synchronous(NORMAL)`, and
+  `wal_autocheckpoint(1000)`.
 - Run embedded goose migrations automatically at startup before the HTTP server listens. Migration failure fails startup.
 - Keep goose's default per-file transaction behavior unless a migration explicitly documents why `NO TRANSACTION` is required.
 - Prefer SQLite's online backup API, or `VACUUM INTO` for compact operator-triggered backups, over raw live file copying.
