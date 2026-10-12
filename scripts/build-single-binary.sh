@@ -7,6 +7,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+cd "$ROOT/backend"
+source "$ROOT/scripts/native-sqlite-env.sh"
+
 pnpm --dir "$ROOT/frontend" run build
 
 cd "$ROOT"
@@ -21,7 +24,6 @@ REKENRAAM_RUN_EMBEDDED_WEB_TESTS=1 go test ./internal/web -run TestHandlerServes
 # which both leaks that layout to anyone who downloads a release and means two
 # machines can never produce the same bytes.
 #
-# CGO_ENABLED=0 makes it a static binary. The SQLite driver is pure Go
-# (modernc.org/sqlite, ADR 0004), so nothing here needs libc; leaving cgo on
-# only links the host's glibc and ties the release to that version.
-CGO_ENABLED=0 go build -trimpath -o "$ROOT/dist/rekenraam" ./cmd/rekenraam
+# Bundled native SQLite uses CGO. The container supplies the target libc;
+# standalone artifacts require a compatible libc on the target machine.
+go build -trimpath -o "$ROOT/dist/rekenraam" ./cmd/rekenraam

@@ -8,6 +8,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 cd "$ROOT/backend"
+source "$ROOT/scripts/native-sqlite-env.sh"
 
 # Formatting gate. Without this in the wrapper script, CI never sees gofmt
 # drift (backlog T-49: four files sat unformatted with a green pipeline).
@@ -49,10 +50,13 @@ else
   # all cores inside its package (T-125; TestIntegrationSuitesRunTestsInParallel
   # keeps it that way). Packages still run one at a time: -p 2 cut the 4-core
   # wall time a further 19% but stretched the application package to 77% of
-  # its bound. T-111 profiled the suite: SQLite parsing and race
-  # instrumentation dominate. Keep all regressions and the explicit 20m
+  # its bound. T-111 profiled modernc: SQLite parsing and translated-engine
+  # race instrumentation dominated. #195 uses bundled native SQLite with
+  # Go race coverage retained (the C engine is outside that instrumentation).
+  # Keep all regressions and the explicit 20m
   # per-package bound; it is not a runtime target. The owner raised it from
   # 15m on 2026-10-11 when the application package reached 856 s (#164).
-  # Measurements: docs/reviews/race-gate-runtime-2026-10-04.md.
+  # Measurements: docs/reviews/native-sqlite-driver-2026-10-12.md; historical
+  # scheduling review: docs/reviews/race-gate-runtime-2026-10-04.md.
   go test -race -p 1 -timeout=20m ./...
 fi

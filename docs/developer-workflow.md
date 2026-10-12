@@ -49,8 +49,21 @@ The minimum Go toolchain is 1.27.2, declared in `backend/go.mod`. This patch
 fixes the standard-library vulnerabilities reported by the 2026-10-09
 `govulncheck` run. GitHub Actions reads that same minimum with
 `go-version-file`; local Go commands automatically select it when needed.
-The Docker builder follows the 1.27 patch series (`golang:1.27-trixie`);
-pull the current image when rebuilding so a cached older builder is refreshed.
+The Docker builder pins `golang:1.27.2-trixie`; the runtime remains Debian
+trixie. Native SQLite requires CGO and a C compiler with development headers
+(Debian/Ubuntu: `sudo apt install build-essential`; macOS: Xcode command-line
+tools). Windows needs a target C toolchain; no Windows release artifact is
+claimed by this Linux/amd64 validation.
+
+Supported commands source `scripts/native-sqlite-env.sh`, which checks CGO
+and the compiler and enables `fts5,netgo,osusergo`. FTS5 is required by the
+schema; the other tags preserve the previous pure-Go network/user lookup
+behavior. Do not use the `libsqlite3` tag. `CGO_ENABLED=0` fails early with
+setup guidance. For focused Go commands from repo root, use
+`./scripts/go-backend.sh test ./internal/db -run TestNative -count=1` rather
+than an untagged raw command. Advanced commands may source the same helper
+after entering `backend/`; its required tags supersede a caller
+`GOFLAGS=-tags=...`.
 
 Checks formatting (`gofmt -l`), runs `go vet ./...`, then the full Go suite with
 the race detector. The formatting and vet gates live inside the wrapper script
@@ -88,23 +101,27 @@ application package reached 856 seconds of 900 on this workspace
 ([#164](https://github.com/sergeyfarin/rekenraam/issues/164)). #164 still
 owns restoring headroom by removing cost, not by raising the bound again.
 
-**Selected implementation path (2026-10-12):**
+**Native SQLite cutover (2026-10-12):**
 [ADR 0014](adrs/0014-native-sqlite-driver.md) and
-[#195](https://github.com/sergeyfarin/rekenraam/issues/195) plan migration to
-bundled native SQLite through CGO. The
-[driver migration plan](plans/native-sqlite-driver-migration-plan.md) requires
-one driver/feature set across runtime, tests and builds, retained database and
-backup compatibility, and controlled before/after performance measurements.
-The installed driver and commands above remain current until that cutover.
-#164 stays open for measured feedback/headroom improvement. Its earlier
-modernc race-exclusion proposal is not the selected implementation path.
+[#195](https://github.com/sergeyfarin/rekenraam/issues/195) install
+`github.com/mattn/go-sqlite3` v1.14.52 with bundled SQLite 3.53.4. Runtime,
+tests, migrations, seed tooling and builds use the same driver/features.
+The owner confirmed that no legacy databases/backups exist; current schema,
+seed/checksum and backup/restore contracts remain unchanged. The
+[delivery review](reviews/native-sqlite-driver-2026-10-12.md) records
+compatibility, performance and build evidence. #164's measured headroom
+acceptance is met: matched full race wall time improves from 27.67 to 3.76
+minutes, with the same named test set and timeout. No race-instrumentation
+exclusions are applied:
+`-race` covers Go application and driver-wrapper code, while the native
+SQLite C engine is outside Go's race instrumentation. A deliberate Go race
+must still fail the gate.
 
 The financial property tests run in the normal backend suite. For a focused
 iteration on ledger, cashflow, lot conservation and gains arithmetic:
 
 ```sh
-cd backend
-go test ./internal/app ./internal/api -run '^TestFinancial' -count=1
+./scripts/go-backend.sh test ./internal/app ./internal/api -run '^TestFinancial' -count=1
 ```
 
 Investment tests also run an independent conservation oracle
@@ -124,8 +141,7 @@ retires the revision a buggy reader would mishandle. The named multi-family
 sequences are `TestOracle*`:
 
 ```sh
-cd backend
-go test ./internal/app -run '^TestOracle' -count=1
+./scripts/go-backend.sh test ./internal/app -run '^TestOracle' -count=1
 ```
 
 Operation kinds have a capability matrix
@@ -144,8 +160,7 @@ the replay-intent families. To add an operation kind, add it to the list, give
 it a matrix row and record it in one of the capability scenarios:
 
 ```sh
-cd backend
-go test ./internal/app -run 'CapabilityMatrix|ReplayIntentCapabilities|EveryOperationKind' -count=1
+./scripts/go-backend.sh test ./internal/app -run 'CapabilityMatrix|ReplayIntentCapabilities|EveryOperationKind' -count=1
 ```
 
 These include independent exact expected amounts, fixed-seed trade sequences,
@@ -181,19 +196,19 @@ pass.
 Reset the owner password locally with a verified SQLite backup first:
 
 ```sh
-printf '%s\n' 'new-password' | DATABASE_URL=file:backend/var/dev.sqlite go run ./backend/cmd/rekenraam recover-owner --password-stdin
+printf '%s\n' 'new-password' | DATABASE_URL=file:var/dev.sqlite ./scripts/go-backend.sh run ./cmd/rekenraam recover-owner --password-stdin
 ```
 
 Write the verified backup to an explicit path when needed:
 
 ```sh
-printf '%s\n' 'new-password' | DATABASE_URL=file:backend/var/dev.sqlite go run ./backend/cmd/rekenraam recover-owner --password-stdin --backup-path dist/recovery.sqlite
+printf '%s\n' 'new-password' | DATABASE_URL=file:var/dev.sqlite ./scripts/go-backend.sh run ./cmd/rekenraam recover-owner --password-stdin --backup-path ../dist/recovery.sqlite
 ```
 
 Only use the emergency override when backup creation or verification is impossible and you accept the risk of proceeding without a fresh verified backup:
 
 ```sh
-printf '%s\n' 'new-password' | DATABASE_URL=file:backend/var/dev.sqlite go run ./backend/cmd/rekenraam recover-owner --password-stdin --allow-no-backup
+printf '%s\n' 'new-password' | DATABASE_URL=file:var/dev.sqlite ./scripts/go-backend.sh run ./cmd/rekenraam recover-owner --password-stdin --allow-no-backup
 ```
 
 ### Online Provider Secret Key
@@ -256,33 +271,28 @@ embed test, and compiles `dist/rekenraam`.
 
 #### Reproducibility
 
-The description below applies to the current modernc build. The selected
-native-driver migration (#195, ADR 0014) will enable CGO and add the C compiler,
-linker, headers, build tags and libc baseline to the reproducible inputs.
-It must document the delivered binary's actual dependencies and compatible
-runtime baseline; a libc-independent static build is separate work.
-
-The binary is built with `-trimpath` and `CGO_ENABLED=0`, which is what makes
-the same source produce the same bytes on a different machine. Verify with:
+Native SQLite builds use `CGO_ENABLED=1`, `-trimpath` and the shared
+`fts5,netgo,osusergo` features. SQLite C source is bundled in the pinned module,
+so the artifact does not need a separately installed `libsqlite3`. The default
+Linux artifact dynamically links libc. A libc-independent static artifact is
+separate work; cross-compilation is not a gate for a platform-native build.
 
 ```sh
-pnpm build && sha256sum dist/rekenraam
+pnpm build
+sha256sum dist/rekenraam
+ldd dist/rekenraam
+./scripts/go-backend.sh build -trimpath -o /tmp/rekenraam-repeat ./cmd/rekenraam
+sha256sum /tmp/rekenraam-repeat dist/rekenraam
 ```
 
-Two builds of the same commit, on the same Go version, must print the same
-hash. What each flag buys:
-
-- **`-trimpath`** keeps the builder's absolute paths out of the artifact.
-  Without it the binary carries ~1200 references to whatever home directory
-  built it — that layout ships to anyone who downloads a release, and no two
-  machines can agree on the bytes.
-- **`CGO_ENABLED=0`** produces a static binary. The SQLite driver is pure Go
-  (`modernc.org/sqlite`, ADR 0004), so nothing needs libc; leaving cgo on links
-  the host's glibc and ties the release to that version.
-
-The **Go toolchain version is part of the input**: a different minor version
-produces different bytes from identical source. Record it beside the hash when
-publishing a release, and see the Go toolchain notes before bumping it.
+Matching hashes require identical source, embedded frontend, Go patch version,
+C compiler/linker, headers, libc target, build tags, CGO flags and module graph.
+Record those inputs and base-image digests with release artifacts. `-trimpath`
+removes builder paths; it does not make differing C toolchains equivalent.
+The Docker build uses the Debian trixie C toolchain/runtime together. A binary
+built on a newer libc may not run on an older host: build for the actual target
+baseline or use the container. The delivery review records measured local and
+container dependencies and same-input repeated-build hashes.
 
 ### E2E
 
@@ -316,7 +326,7 @@ pnpm test:release-preflight
 
 ## Area Notes
 
-- Backend code lives in `backend/`; run `go test ./...` there directly only when you intentionally want to bypass the wrapper script.
+- Backend code lives in `backend/`; focused commands use `./scripts/go-backend.sh`. The full validation gate remains `./scripts/test-backend.sh`.
 - `scripts/test-e2e-acceptance.sh` runs only the browser cases tagged
   `[acceptance]` — the ones that map onto a plan's validation matrix, so closing
   an initiative can point at a suite rather than at an argument (T-61). The

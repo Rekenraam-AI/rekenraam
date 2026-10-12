@@ -1087,14 +1087,15 @@ func insertMinimalFinancialFixture(t *testing.T, database *sql.DB) {
 
 func TestWithRequiredPragmasPreservesExistingQuery(t *testing.T) {
 	t.Parallel()
-	got := withRequiredPragmas("file:var/dev.sqlite?mode=rwc")
+	got, err := sqliteDSN("file:var/dev.sqlite?mode=rwc", false)
+	require.NoError(t, err)
 
 	assert.Contains(t, got, "mode=rwc")
-	assert.Contains(t, got, "_pragma=busy_timeout(5000)")
-	assert.Contains(t, got, "_pragma=foreign_keys(1)")
-	assert.Contains(t, got, "_pragma=journal_mode(WAL)")
-	assert.Contains(t, got, "_pragma=synchronous(NORMAL)")
-	assert.Contains(t, got, "_pragma=wal_autocheckpoint(1000)")
+	assert.Contains(t, got, "_busy_timeout=5000")
+	assert.Contains(t, got, "_foreign_keys=1")
+	assert.Contains(t, got, "_journal_mode=WAL")
+	assert.Contains(t, got, "_synchronous=NORMAL")
+	assert.Contains(t, got, "_stmt_cache_size=0")
 }
 
 func openTestDatabase(t *testing.T) *sql.DB {

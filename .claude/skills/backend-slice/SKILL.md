@@ -37,7 +37,7 @@ backend/cmd/rekenraam/  binary entrypoint + service wiring (command.go)
   API codes in the handler layer (pattern: `api/transactions_errors.go`).
 - Structured logging via `log/slog` only; **never log financial content**
   (amounts, payees, account names) at any level.
-- Run `"$(go env GOROOT)/bin/gofmt" -w` and `go vet ./...` on touched files.
+- Run `"$(go env GOROOT)/bin/gofmt" -w` and `./scripts/go-backend.sh vet ./...` on touched files.
   Use the GOROOT path, not a bare `gofmt`: a version manager can leave an older
   gofmt first on PATH while `go` switches to the newer toolchain go.mod asks
   for, and the two disagree about formatting.
@@ -56,8 +56,9 @@ strings to the client.
 ## SQLite rules (source: ADRs 0004/0014, conventions § Data)
 
 - ADR 0014 selects bundled native SQLite through `github.com/mattn/go-sqlite3`
-  (CGO); #195 owns migration. The installed driver remains `modernc.org/sqlite`
-  until cutover. Follow `docs/plans/native-sqlite-driver-migration-plan.md`;
+  (CGO), delivered in #195. Use `./scripts/go-backend.sh` for focused Go
+  commands; it checks CGO/compiler prerequisites and enables
+  `fts5,netgo,osusergo`. Follow `docs/plans/native-sqlite-driver-migration-plan.md`;
   use one driver and consistent features in runtime and tests. Install required
   settings on every physical connection, including replacements.
 - `db.Open` (`internal/db/sqlite.go`) installs PRAGMAs per connection and
@@ -66,6 +67,8 @@ strings to the client.
 - **The pool is `SetMaxOpenConns(1)`.** One `BeginTx` is a full mutual-exclusion
   lock — this is why single-transaction guard+insert patterns work (see
   `background-work` skill). Don't "fix" this without an ADR.
+- Backup/inspection/stopped-database maintenance connections use the central
+  auxiliary DSN with explicit FULL synchronous mode; the writer uses WAL/NORMAL.
 - Treat `SQLITE_BUSY` as possible even with `busy_timeout`; exhausted timeout →
   retryable server error (`RESOURCE_BUSY`), never a partial apply.
 - Mutations that must be atomic go in **one** DB transaction, including their
@@ -119,7 +122,8 @@ strings to the client.
 
 ```sh
 ./scripts/test-backend.sh            # go test -race -p 1 -timeout=20m ./... — the default gate
-cd backend && go vet ./... && "$(go env GOROOT)/bin/gofmt" -l .
+./scripts/go-backend.sh vet ./...
+cd backend && "$(go env GOROOT)/bin/gofmt" -l .
 pnpm build                           # only if the integrated binary shape changed
 ```
 

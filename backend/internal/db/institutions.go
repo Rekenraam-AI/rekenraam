@@ -531,7 +531,7 @@ func scanInstitutionRecords(rows *sql.Rows) ([]InstitutionRecord, error) {
 func mapInstitutionDeleteError(err error) error {
 	message := err.Error()
 	if strings.Contains(message, "institution_versions rows are append-only") ||
-		strings.Contains(message, "FOREIGN KEY constraint failed") {
+		isSQLiteForeignKeyConstraint(err) {
 		return fmt.Errorf("%w: %v", ErrInstitutionDeleteNotPermitted, err)
 	}
 

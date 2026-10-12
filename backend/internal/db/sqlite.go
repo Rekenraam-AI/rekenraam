@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	sqlite "github.com/mattn/go-sqlite3"
 	"github.com/pressly/goose/v3"
-	_ "modernc.org/sqlite"
 
 	"rekenraam/backend/migrations"
 )
@@ -35,22 +35,13 @@ const (
 	expectedWALCheckpoint = 1000
 )
 
-var requiredPragmas = []string{
-	"busy_timeout(5000)",
-	"foreign_keys(1)",
-	"journal_mode(WAL)",
-	"synchronous(NORMAL)",
-	"wal_autocheckpoint(1000)",
-}
-
-// readOnlyPragmas are the subset a read-only connection can set. Journal mode,
-// synchronous, and autocheckpoint are database-level settings owned by the
-// writer; query_only is added so a bug on this pool fails loudly instead of
-// writing.
-var readOnlyPragmas = []string{
-	"busy_timeout(5000)",
-	"foreign_keys(1)",
-	"query_only(1)",
+// Register a single bundled native driver. ConnectHook runs for every physical
+// connection (including replacements); autocheckpoint has no native DSN option.
+func init() {
+	sql.Register(driverName, &sqlite.SQLiteDriver{ConnectHook: func(conn *sqlite.SQLiteConn) error {
+		_, err := conn.Exec("PRAGMA wal_autocheckpoint=1000", nil)
+		return err
+	}})
 }
 
 type SQLiteState struct {
@@ -66,7 +57,11 @@ func Open(ctx context.Context, databaseURL string) (*sql.DB, error) {
 		databaseURL = DefaultSQLiteURL
 	}
 
-	database, err := sql.Open(driverName, withRequiredPragmas(databaseURL))
+	dsn, err := sqliteDSN(databaseURL, false)
+	if err != nil {
+		return nil, err
+	}
+	database, err := sql.Open(driverName, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
 	}
@@ -108,18 +103,11 @@ func Open(ctx context.Context, databaseURL string) (*sql.DB, error) {
 // The database must already exist and be migrated — mode=ro will not create it,
 // which is deliberate: this pool is never the one that brings a book into being.
 func OpenReadOnly(ctx context.Context, databaseURL string) (*sql.DB, error) {
-	databasePath, err := ResolveSQLiteFilePath(databaseURL)
+	dsn, err := sqliteDSN(databaseURL, true)
 	if err != nil {
 		return nil, err
 	}
-
-	parts := make([]string, 0, len(readOnlyPragmas)+1)
-	parts = append(parts, "mode=ro")
-	for _, pragma := range readOnlyPragmas {
-		parts = append(parts, "_pragma="+pragma)
-	}
-
-	database, err := sql.Open(driverName, "file:"+databasePath+"?"+strings.Join(parts, "&"))
+	database, err := sql.Open(driverName, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open read-only sqlite database: %w", err)
 	}
@@ -221,18 +209,65 @@ func Check(ctx context.Context, database *sql.DB) (SQLiteState, error) {
 	return state, nil
 }
 
-func withRequiredPragmas(databaseURL string) string {
-	separator := "?"
-	if strings.Contains(databaseURL, "?") {
-		separator = "&"
+// sqliteDSN preserves ordinary SQLite URI options, but the application's
+// durability, integrity, transaction and cache policies cannot be overridden.
+// Only the former supported _pragma settings are accepted; silently ignoring
+// an arbitrary modernc-specific option would hide a configuration change.
+func sqliteDSN(databaseURL string, readOnly bool) (string, error) {
+	if databaseURL == "" {
+		databaseURL = DefaultSQLiteURL
 	}
-
-	parts := make([]string, 0, len(requiredPragmas))
-	for _, pragma := range requiredPragmas {
-		parts = append(parts, "_pragma="+pragma)
+	base, query, _ := strings.Cut(databaseURL, "?")
+	params, err := url.ParseQuery(query)
+	if err != nil {
+		return "", fmt.Errorf("parse sqlite connection options: %w", err)
 	}
+	for _, pragma := range params["_pragma"] {
+		name, _, _ := strings.Cut(pragma, "(")
+		switch strings.ToLower(strings.TrimSpace(name)) {
+		case "busy_timeout", "foreign_keys", "journal_mode", "synchronous", "wal_autocheckpoint", "query_only":
+		default:
+			return "", fmt.Errorf("unsupported modernc sqlite _pragma option %q; use a supported SQLite URI option", pragma)
+		}
+	}
+	for _, alias := range []string{"_pragma", "_timeout", "_fk", "_journal", "_sync", "_defer_fk"} {
+		params.Del(alias)
+	}
+	for key, value := range map[string]string{
+		"_busy_timeout": "5000", "_foreign_keys": "1", "_txlock": "deferred",
+		"_stmt_cache_size": "0", "_defer_foreign_keys": "0",
+		"_ignore_check_constraints": "0", "_writable_schema": "0", "_mutex": "full",
+	} {
+		params.Set(key, value)
+	}
+	if readOnly {
+		params.Set("mode", "ro")
+		params.Set("_query_only", "1")
+		params.Del("_journal_mode")
+		params.Set("_synchronous", "FULL")
+	} else {
+		params.Set("_query_only", "0")
+		params.Set("_journal_mode", "WAL")
+		params.Set("_synchronous", "NORMAL")
+	}
+	return base + "?" + params.Encode(), nil
+}
 
-	return databaseURL + separator + strings.Join(parts, "&")
+// sqliteFileURL escapes filesystem punctuation before it becomes URI syntax.
+func sqliteFileURL(path string) string {
+	return (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), OmitHost: true}).String()
+}
+
+// sqliteAuxiliaryDSN retains the old FULL synchronous policy on backup,
+// inspection and stopped-database maintenance connections. The native driver
+// defaults to NORMAL even outside WAL, so relying on that default changes the
+// recovery policy despite the engines having identical versions.
+func sqliteAuxiliaryDSN(path string, readOnly bool) string {
+	params := url.Values{"_busy_timeout": {"5000"}, "_synchronous": {"FULL"}}
+	if readOnly {
+		params.Set("mode", "ro")
+	}
+	return sqliteFileURL(path) + "?" + params.Encode()
 }
 
 func ResolveSQLiteFilePath(databaseURL string) (string, error) {
@@ -244,7 +279,11 @@ func ResolveSQLiteFilePath(databaseURL string) (string, error) {
 	if err == nil && parsedURL.Scheme == "file" {
 		switch {
 		case parsedURL.Opaque != "":
-			return parsedURL.Opaque, nil
+			path, err := url.PathUnescape(parsedURL.Opaque)
+			if err != nil {
+				return "", fmt.Errorf("decode sqlite file path: %w", err)
+			}
+			return path, nil
 		case parsedURL.Host != "":
 			return "//" + parsedURL.Host + parsedURL.Path, nil
 		case parsedURL.Path != "":
@@ -288,7 +327,7 @@ func BackupSQLiteDatabase(ctx context.Context, database *sql.DB, backupPath stri
 	if _, err := database.ExecContext(ctx, statement); err != nil {
 		return fmt.Errorf("vacuum into backup: %w", err)
 	}
-	if err := EnforceSQLiteFilePermissions("file:" + backupPath); err != nil {
+	if err := EnforceSQLiteFilePermissions(sqliteFileURL(backupPath)); err != nil {
 		return fmt.Errorf("set sqlite backup permissions: %w", err)
 	}
 
@@ -320,7 +359,7 @@ func VerifySQLiteBackupStats(ctx context.Context, backupPath string) (OnlineBack
 		return OnlineBackupResult{}, fmt.Errorf("backup path is required")
 	}
 
-	backupDatabase, err := sql.Open(driverName, "file:"+backupPath+"?mode=ro")
+	backupDatabase, err := sql.Open(driverName, sqliteAuxiliaryDSN(backupPath, true))
 	if err != nil {
 		return OnlineBackupResult{}, fmt.Errorf("open sqlite backup: %w", err)
 	}

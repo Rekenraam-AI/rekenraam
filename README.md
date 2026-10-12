@@ -47,12 +47,12 @@ browser suite and `pnpm test:release-preflight` for the serial release journeys.
 Commands, test scope, and environment settings are in the
 [developer workflow](docs/developer-workflow.md).
 
-Migration to bundled native SQLite is planned in
-[#195](https://github.com/sergeyfarin/rekenraam/issues/195), governed by
-[ADR 0014](docs/adrs/0014-native-sqlite-driver.md) and the
-[migration plan](docs/plans/native-sqlite-driver-migration-plan.md).
-The current driver and build commands still use modernc; C toolchain
-requirements will land with the validated implementation.
+SQLite uses `github.com/mattn/go-sqlite3` with bundled C source (ADR 0014).
+Backend commands require CGO and a C compiler with development headers:
+`sudo apt install build-essential` on Debian/Ubuntu. The shared wrappers enable
+FTS5, `netgo` and `osusergo`; use `./scripts/go-backend.sh test ...` for focused
+Go checks. Standalone binaries need a compatible libc; Docker supplies the
+Debian trixie runtime. See the [developer workflow](docs/developer-workflow.md).
 
 ## Run the built app
 

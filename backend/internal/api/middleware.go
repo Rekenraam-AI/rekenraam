@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"rekenraam/backend/internal/db"
 )
 
 const requestIDHeader = "X-Request-ID"
@@ -51,6 +53,10 @@ func writeAPIError(w http.ResponseWriter, status int, code string, message strin
 func writeServiceInternalError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, action string, err error) {
 	if logger == nil {
 		logger = slog.Default()
+	}
+	if db.IsSQLiteBusy(err) {
+		writeAPIError(w, http.StatusServiceUnavailable, "RESOURCE_BUSY", "database is busy; retry the request")
+		return
 	}
 	logger.ErrorContext(r.Context(), action, slog.Any("err", err))
 	writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")

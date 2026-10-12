@@ -118,15 +118,7 @@ below is execution order, not a chain of hard dependencies.
    still admit an embedded NUL followed by nonnumeric text. The other bounded
    work from the [investment schema design review](reviews/investment-schema-design-review-2026-10-11.md)
    is delivered, including the cash-in-lieu replay regression gap #194.
-2. Migrate to bundled native SQLite
-   [#195](https://github.com/sergeyfarin/rekenraam/issues/195) under
-   [ADR 0014](adrs/0014-native-sqlite-driver.md) and the
-   [migration plan](plans/native-sqlite-driver-migration-plan.md), before the
-   next investment feature slice. SQLite remains the database; modernc is
-   still installed until the validated cutover. Race-gate feedback/headroom
-   [#164](https://github.com/sergeyfarin/rekenraam/issues/164) requires measured
-   improvement with retained regressions and the current 20-minute bound.
-3. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
+2. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
    share exchange core [#177](https://github.com/sergeyfarin/rekenraam/issues/177) (delivered 2026-10-10),
    its reads and mobile entry [#178](https://github.com/sergeyfarin/rekenraam/issues/178) (delivered 2026-10-10), its correction and
    backdating [#179](https://github.com/sergeyfarin/rekenraam/issues/179) (delivered 2026-10-10, API), spin-off
@@ -139,10 +131,20 @@ below is execution order, not a chain of hard dependencies.
    which completes #115. Tender, rights and provider corporate-action mappings are outside the #115 bar.
    The rest of the R16 bar is Refresh reach [#152](https://github.com/sergeyfarin/rekenraam/issues/152), then zero-delta
    splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146).
-4. Daily-use parallel work: the shared transaction workspace
+3. Daily-use parallel work: the shared transaction workspace
    [#185](https://github.com/sergeyfarin/rekenraam/issues/185) (slices 1 and 2 delivered 2026-10-11: entry from account and
    category screens, same-day reorder everywhere or in one account), then investment entry from holding accounts and
    instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186).
+
+**Delivered native SQLite and test-feedback improvement (2026-10-12):**
+[#195](https://github.com/sergeyfarin/rekenraam/issues/195) installs the bundled
+native driver under ADR 0014 with schema/seed and durability policies retained.
+[#164](https://github.com/sergeyfarin/rekenraam/issues/164) restores race-gate
+headroom: matched median full race wall time 27.67 → 3.76 minutes (86.4% less),
+application race execution 962.65 → 85.71 seconds, same named regression cohort.
+Cold compilation needs a C toolchain and takes longer. See the
+[delivery review](reviews/native-sqlite-driver-2026-10-12.md) for all runs,
+validation and the native C-engine race-coverage boundary.
 
 **Delivered historical-entry and recovery gates:** dated holdings/lot selection
 [#166](https://github.com/sergeyfarin/rekenraam/issues/166) (2026-10-09),
@@ -430,10 +432,11 @@ scanning paths before an announcement.
    Required shape: hashed at rest, scoped, expiring by default, revocable,
    and emitting authentication events.
 5. ◐ Produce signed release binaries with reproducibility notes.
-   **Reproducibility done 2026-09-12** (T-92): the build is `-trimpath` +
-   `CGO_ENABLED=0`, so it is static, carries none of the builder's paths, and
-   two builds of a commit hash identically — see `docs/developer-workflow.md`
-   § Reproducibility. **Signing is still open** and needs an owner decision:
+   **Reproducibility rechecked 2026-10-12** (#195): native SQLite uses
+   `-trimpath`, CGO and a pinned bundled engine. Identical Go/C toolchain,
+   source and embedded frontend inputs produce matching hashes. The Linux
+   artifact links libc/libm; fully static linking is separate work. See
+   `docs/developer-workflow.md` § Reproducibility. **Signing is still open** and needs an owner decision:
    a signing identity (Sigstore keyless via GitHub OIDC, or a held key) and a
    release workflow, neither of which exists yet — there is no release job in
    `.github/workflows/`, only `ci.yml` and `govulncheck.yml`.

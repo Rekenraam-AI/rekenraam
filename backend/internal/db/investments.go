@@ -3809,6 +3809,9 @@ func boolInt(value bool) int {
 }
 
 func mapInvestmentConstraintError(err error) error {
+	if !IsSQLiteUniqueConstraint(err) {
+		return err
+	}
 	message := err.Error()
 	switch {
 	case strings.Contains(message, "UNIQUE constraint failed: commodities.book_id, commodities.code"):

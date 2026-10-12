@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	sqlite "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -145,4 +147,18 @@ func TestSecurityMiddlewareSetsHSTSOnlyForHTTPS(t *testing.T) {
 		handler.ServeHTTP(res, req)
 		assert.Equal(t, "max-age=63072000; includeSubDomains", res.Header().Get("Strict-Transport-Security"))
 	})
+}
+
+func TestNativeSQLiteBusyReturnsRetryableAPIError(t *testing.T) {
+	t.Parallel()
+	for _, code := range []sqlite.ErrNo{sqlite.ErrBusy, sqlite.ErrLocked} {
+		res := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
+		writeServiceInternalError(res, request, nil, "test", fmt.Errorf("wrapped: %w", sqlite.Error{Code: code}))
+		require.Equal(t, http.StatusServiceUnavailable, res.Code)
+		var body errorResponse
+		require.NoError(t, json.Unmarshal(res.Body.Bytes(), &body))
+		assert.Equal(t, "RESOURCE_BUSY", body.Error.Code)
+		assert.NotContains(t, res.Body.String(), "wrapped")
+	}
 }

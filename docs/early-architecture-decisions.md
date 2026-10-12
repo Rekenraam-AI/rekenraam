@@ -35,7 +35,8 @@ Use SQLite as the primary database.
 
 [ADR 0014](adrs/0014-native-sqlite-driver.md) selects migration from modernc to
 bundled native SQLite through CGO (#195), with one driver for runtime and
-tests. This is planned work; the current implementation still uses modernc.
+tests. #195 installs `github.com/mattn/go-sqlite3` with bundled C source and
+shared `fts5,netgo,osusergo` build tags; native builds require a C toolchain.
 The [migration plan](plans/native-sqlite-driver-migration-plan.md) defines
 compatibility and performance evidence without changing the financial model.
 

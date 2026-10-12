@@ -563,5 +563,5 @@ func toImportConnection(rec db.ImportConnectionRecord, apiKey string) ImportConn
 
 // isDuplicateError detects a SQLite UNIQUE constraint violation.
 func isDuplicateError(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
+	return db.IsSQLiteUniqueConstraint(err)
 }

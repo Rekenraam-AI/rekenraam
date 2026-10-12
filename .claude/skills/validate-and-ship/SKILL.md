@@ -10,7 +10,7 @@ description: How to run, debug, validate, review, commit, and document changes i
 ```sh
 pnpm install                 # once, repo root
 pnpm dev                     # backend :16888 + frontend :1888 (proxies /api)
-pnpm dev:backend             # go run, APP_ENV=development
+pnpm dev:backend             # native SQLite wrapper, APP_ENV=development
 pnpm dev:frontend
 ```
 Open http://localhost:1888. Dev SQLite lives at `backend/var/dev.sqlite`
@@ -26,12 +26,18 @@ sessions; never edit the users table.
 
 | Changed | Run |
 |---|---|
-| `backend/**` | `./scripts/test-backend.sh` (= `go test -race -p 1 -timeout=20m ./...`), plus `go vet ./...`, `gofmt -l .` in `backend/` |
+| `backend/**` | `./scripts/test-backend.sh` (= `go test -race -p 1 -timeout=20m ./...`), plus `./scripts/go-backend.sh vet ./...`, `gofmt -l .` in `backend/` |
 | Backend coverage check (optional, same script) | `COVERAGE=1 ./scripts/test-backend.sh` — non-race coverage pass, prints the merged total; CI enforces a soft floor (`scripts/check-coverage-floor.sh`) |
 | `frontend/**` | `./scripts/test-frontend.sh` (openapi:generate + paraglide:compile + svelte-check); `pnpm --dir frontend run test` for unit-tested logic |
 | OpenAPI | both scripts above |
 | Integrated shape / static serving / embed | `pnpm build` (builds frontend, copies into `backend/internal/web/dist/`, runs embed test, compiles `dist/rekenraam`) |
 | User journeys | `./scripts/test-e2e.sh` (self-contained: builds app, boots on 127.0.0.1:16889, fresh `backend/var/e2e.sqlite`) |
+
+Native SQLite requires CGO and a C compiler with development headers. Supported
+commands source `scripts/native-sqlite-env.sh` and enable `fts5,netgo,osusergo`.
+Use `./scripts/go-backend.sh test ...` for focused checks. Go race detection
+covers application and driver-wrapper Go code; it does not instrument the
+bundled SQLite C engine.
 
 Never invent parallel validation commands; if a command must change, change
 the script and CI together and update `docs/developer-workflow.md`.

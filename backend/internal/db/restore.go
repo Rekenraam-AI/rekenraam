@@ -60,7 +60,7 @@ func InspectBackup(ctx context.Context, backupPath string) (BackupInspection, er
 	}
 	inspection.IntegrityOK = true
 
-	backupDatabase, err := sql.Open(driverName, "file:"+backupPath+"?mode=ro")
+	backupDatabase, err := sql.Open(driverName, sqliteAuxiliaryDSN(backupPath, true))
 	if err != nil {
 		return inspection, fmt.Errorf("open backup: %w", err)
 	}
@@ -106,7 +106,7 @@ func InspectBackup(ctx context.Context, backupPath string) (BackupInspection, er
 // caller holding the key can prove the data is still readable rather than
 // assume it.
 func SealedSamples(ctx context.Context, backupPath string) (map[string]string, error) {
-	backupDatabase, err := sql.Open(driverName, "file:"+backupPath+"?mode=ro")
+	backupDatabase, err := sql.Open(driverName, sqliteAuxiliaryDSN(backupPath, true))
 	if err != nil {
 		return nil, fmt.Errorf("open backup: %w", err)
 	}
@@ -306,7 +306,7 @@ func checkpointStoppedDatabase(ctx context.Context, databasePath string) error {
 		return nil
 	}
 
-	database, err := sql.Open(driverName, "file:"+databasePath+"?_pragma=busy_timeout(5000)")
+	database, err := sql.Open(driverName, sqliteAuxiliaryDSN(databasePath, false))
 	if err != nil {
 		return fmt.Errorf("open database for checkpoint: %w", err)
 	}

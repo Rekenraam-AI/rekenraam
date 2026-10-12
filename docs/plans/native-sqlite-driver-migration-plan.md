@@ -1,6 +1,8 @@
 # Native SQLite driver migration plan
 
-**Status:** accepted direction, implementation pending (2026-10-12).
+**Status:** delivered and validated, including matched performance (2026-10-12).
+See the [delivery review](../reviews/native-sqlite-driver-2026-10-12.md) for
+the admitted pin/features, validation and measurements.
 Governed by [ADR 0014](../adrs/0014-native-sqlite-driver.md), ADRs 0004/0005/0013,
 and the financial requirements. The [roadmap](../roadmap.md) owns execution
 order; [#195](https://github.com/sergeyfarin/rekenraam/issues/195) owns the driver
@@ -25,8 +27,8 @@ native driver does not fix the embedded-NUL CHECK gap.
 ### Dependency and feature selection
 
 Use the driver's bundled amalgamation, with an exact Go module pin. The
-initial candidate checked on 2026-10-12 is v1.14.52; admission requires the
-compatibility spike below. Record `sqlite_version()`, `sqlite_source_id()` and
+admitted version is v1.14.52, bundling SQLite 3.53.4, with
+`fts5,netgo,osusergo`; the implementation stages below define its admission. Record `sqlite_version()`, `sqlite_source_id()` and
 `PRAGMA compile_options` for both drivers. If their engine versions differ,
 identify the engine update rather than attributing all differences to CGO.
 
@@ -57,7 +59,7 @@ connections too, not just the first pool connection.
 | Contract | Required behavior |
 | --- | --- |
 | Write pool | One connection; foreign keys on; busy timeout 5000 ms; WAL; synchronous NORMAL; autocheckpoint 1000 pages |
-| Read pool | Separate read-only connections; current pool limits; foreign keys and busy timeout installed; writes refused |
+| Read pool | Separate read-only connections; current pool limits; foreign keys and busy timeout installed; existing FULL synchronous mode retained; writes refused |
 | Transactions | Current begin/commit/rollback and savepoint behavior; no incidental switch to immediate/exclusive BEGIN |
 | Snapshot | Self-check reads one consistent state while the separate writer persists results |
 | Values | Canonical TEXT coefficients and exact scales; signed 38-digit values survive; unknown stays paired NULL; known zero stays numeric |
@@ -72,7 +74,7 @@ next healthy operation on a reused connection.
 
 ### Online backup and restore
 
-`internal/db/backup_online.go` currently depends on modernc's `NewBackup`.
+`internal/db/backup_online.go` formerly depended on modernc's `NewBackup`.
 The native API starts the copy from the destination connection and requires
 both source and destination raw connections. Keep both acquired connections
 and raw lifetimes valid until completion, and finish before either is released.
@@ -86,10 +88,13 @@ so contention cannot create a tight spin or an unbounded copy. Handle Finish
 once, including error/cancellation cleanup, and read metadata while valid.
 
 Retain copying uncheckpointed WAL content, bounded page steps and deadline,
-private directory/file permissions, partial-artifact cleanup, consolidation
+private directory/file permissions, explicit FULL synchronous mode on auxiliary
+connections, partial-artifact cleanup, consolidation
 into one verified backup file, and safety copies on restore. Keep `VACUUM INTO`
-as the separate operator path. Backups made by the current driver must restore
-under the native driver without dropping history or changing coefficients.
+as the separate operator path. The owner confirmed on 2026-10-12 that no legacy
+databases or backups exist. Do not add historical binary fixtures or an operator
+data-upgrade workflow for this cutover; retain the current schema/seed and
+backup/restore regressions.
 
 ### Builds and race coverage
 
@@ -124,10 +129,10 @@ These stages describe how to deliver this change, not roadmap work order.
 
 | Stage | Concrete result and evidence |
 | --- | --- |
-| Baseline | Record revision, module verification, engine fingerprints, C/Go toolchain, CPU budget, test names/counts and uncached ordinary/race timings. Preserve a current-driver database and verified backup fixture. |
+| Baseline | Record revision, module verification, engine fingerprints, C/Go toolchain, CPU budget, test names/counts and uncached ordinary/race timings. No installed legacy databases/backups exist; retain the existing SQL seed and regression suite. |
 | Compatibility spike | Admit the pinned native driver in an isolated checkout against current migrations, exact-value scans, connection replacement, FTS search, cancellation and online backup/restore. Build and boot the integrated artifact. |
 | Atomic cutover | Switch every opening/build/test path; remove modernc-specific types and dependencies; synchronize commands, CI, developer requirements and task guides. Each committed implementation slice stays runnable. |
-| Data and behavior proof | Run unchanged service/API/financial suites, fresh/seeded migration equivalence, schema checksum, restore and runtime lifecycle checks. Confirm retained old-driver files preserve durable values and audit evidence. |
+| Data and behavior proof | Run unchanged service/API/financial suites, fresh/seeded migration equivalence, schema checksum, restore and runtime lifecycle checks. Preserve exact values and audit evidence through the existing financial and restore cases. |
 | Performance proof | Compare identical workloads and CPU resources, then measure fixture-pool reuse or scheduling separately under #164. Record full-gate wall time and per-package/test time; distinguish compilation from execution. |
 | Delivery record | Update the capability ledger, replace pending workflow notes with actual commands/prerequisites, and post commits, validation, performance and retained limits on the delivery issue and #164. |
 
@@ -179,10 +184,10 @@ The driver cutover does not require a schema migration or checksum change.
 If a discovered difference requires one, handle it explicitly under the
 governing migration policy rather than silently bundling a schema redesign.
 
-Keep the baseline revision and old-driver sample/backup for comparison. Binary
-rollback is allowed only while file/schema compatibility has been proved;
-otherwise restore a verified pre-cutover backup using the existing procedure.
-Prefer isolating and reporting a failing fixture over changing its evidence.
+Keep the baseline revision for measured comparison. No legacy databases or
+backups exist (owner confirmation, 2026-10-12), so an installed-data migration
+and frozen old-driver binary fixtures are not delivery requirements. Current
+schema/seed, recovery behavior and future backup guarantees remain covered.
 
 Per-fixture read-pool reuse, native statement caching, CI/process sharding and
 changes to how often the full local race gate runs are follow-up optimizations

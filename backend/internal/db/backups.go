@@ -19,7 +19,7 @@ var ErrBackupOccurrenceExists = errors.New("a backup run already exists for this
 // this table is never silently reported as a duplicate occurrence — the same
 // convention db/investments.go follows.
 func isBackupOccurrenceConflict(err error) bool {
-	return err != nil && strings.Contains(err.Error(),
+	return IsSQLiteUniqueConstraint(err) && strings.Contains(err.Error(),
 		"UNIQUE constraint failed: backup_runs.book_id, backup_runs.occurrence_key")
 }
 

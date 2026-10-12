@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted; implementation pending.
+Accepted; implemented in #195 (2026-10-12).
 
 ## Date
 
@@ -30,6 +30,7 @@ delivery, and the roadmap owns work order.
 
 1. Keep SQLite and Go. Select `github.com/mattn/go-sqlite3`, using its bundled
    SQLite C source through CGO, as the replacement for `modernc.org/sqlite`.
+   #195 admits v1.14.52 (SQLite 3.53.4) with `fts5,netgo,osusergo`.
    Pin the admitted driver version and record the SQLite engine version and
    compile options. Do not depend on an operator's system `libsqlite3`.
 2. Use one driver in production, application tests, API tests, migrations,
@@ -39,8 +40,9 @@ delivery, and the roadmap owns work order.
 3. Preserve the existing SQLite schema, coefficient/scale representation,
    operational elections, audit history and database-file workflows. The
    driver change is not grounds to rewrite the baseline, regenerate its seed
-   or reset a development database. Demonstrate compatibility on retained
-   copies before claiming it.
+   or reset a development database. The owner confirmed no legacy databases
+   or backups exist; retain current schema/seed and backup/restore regressions
+   rather than adding an installed-data upgrade workflow.
 4. Keep the single write connection and separate read-only pool, the current
    transaction begin policy, and all ADR 0004 PRAGMA values. Install required
    settings on every physical connection through supported DSN options and,

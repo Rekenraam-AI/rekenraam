@@ -14,6 +14,10 @@ concurrency:
 permissions:
   contents: read
 
+# The shared wrappers enable FTS5/netgo/osusergo and check the runner C compiler.
+env:
+  CGO_ENABLED: "1"
+
 jobs:
   backend-test:
     name: Backend Tests

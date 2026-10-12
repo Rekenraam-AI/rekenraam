@@ -29,7 +29,7 @@ var ErrRecurringOccurrenceExists = errors.New("a recurring occurrence already ex
 // columns rather than by "any unique violation", so an unrelated constraint on
 // this table is never silently reported as a duplicate occurrence.
 func isRecurringOccurrenceConflict(err error) bool {
-	return err != nil && strings.Contains(err.Error(),
+	return IsSQLiteUniqueConstraint(err) && strings.Contains(err.Error(),
 		"UNIQUE constraint failed: recurring_occurrences.template_id, recurring_occurrences.occurrence_date")
 }
 

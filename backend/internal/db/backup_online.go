@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	sqlite "modernc.org/sqlite"
+	sqlite "github.com/mattn/go-sqlite3"
 )
 
 // OnlineBackupOptions bounds a copy. The online backup API restarts its work
@@ -36,18 +36,12 @@ type OnlineBackupResult struct {
 // retryable, not terminal: the same work can succeed once writes quieten.
 var ErrOnlineBackupDeadline = errors.New("online backup did not complete within its deadline")
 
-// sqliteBackupStarter is the driver capability this uses, asserted as a local
-// interface rather than a concrete type so the dependency stays a behaviour.
-type sqliteBackupStarter interface {
-	NewBackup(destinationURI string) (*sqlite.Backup, error)
-}
-
 // OnlineBackupSQLiteDatabase copies a live database using SQLite's online
 // backup API, which ADR 0004 names as the preferred in-app mechanism.
 // VACUUM INTO stays the operator-triggered path (BackupSQLiteDatabase).
 //
-// The whole copy — NewBackup, every Step, and Finish — runs inside the
-// sql.Conn.Raw callback, because the raw driver connection is only valid for
+// The whole copy — Backup, every Step, and Finish — runs inside nested
+// sql.Conn.Raw callbacks, because the raw driver connection is only valid for
 // that callback's lifetime; keeping it beyond that is a use-after-free waiting
 // for an unlucky schedule.
 //
@@ -85,43 +79,58 @@ func OnlineBackupSQLiteDatabase(ctx context.Context, source *sql.DB, backupPath 
 	}
 	defer connection.Close()
 
+	// Reserve the artifact privately before the driver writes financial data.
+	// O_EXCL also closes the gap between the existence check and creation.
+	file, err := os.OpenFile(backupPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return OnlineBackupResult{}, fmt.Errorf("create backup destination: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		removeBackupFiles(backupPath)
+		return OnlineBackupResult{}, fmt.Errorf("close new backup destination: %w", err)
+	}
+
+	// The destination uses DELETE journalling, not the live writer's WAL policy.
+	// Both sql.Conn.Raw callbacks stay active until Finish has released SQLite's
+	// backup handle. No raw connection escapes its callback.
+	destination, err := sql.Open(driverName, sqliteAuxiliaryDSN(backupPath, false))
+	if err != nil {
+		removeBackupFiles(backupPath)
+		return OnlineBackupResult{}, fmt.Errorf("open backup destination: %w", err)
+	}
+	destination.SetMaxOpenConns(1)
+	defer destination.Close()
+	destinationConn, err := destination.Conn(copyCtx)
+	if err != nil {
+		_ = destination.Close()
+		removeBackupFiles(backupPath)
+		return OnlineBackupResult{}, fmt.Errorf("acquire backup destination: %w", err)
+	}
 	var result OnlineBackupResult
-	rawErr := connection.Raw(func(driverConn any) error {
-		starter, ok := driverConn.(sqliteBackupStarter)
+	rawErr := connection.Raw(func(sourceRaw any) error {
+		sourceNative, ok := sourceRaw.(*sqlite.SQLiteConn)
 		if !ok {
 			return fmt.Errorf("sqlite driver does not support the online backup API")
 		}
-
-		backup, err := starter.NewBackup(backupPath)
-		if err != nil {
-			return fmt.Errorf("start online backup: %w", err)
-		}
-
-		for {
-			if copyCtx.Err() != nil {
-				_ = backup.Finish()
-				return ErrOnlineBackupDeadline
+		return destinationConn.Raw(func(destinationRaw any) error {
+			destinationNative, ok := destinationRaw.(*sqlite.SQLiteConn)
+			if !ok {
+				return fmt.Errorf("sqlite driver does not support the online backup API")
 			}
-
-			more, stepErr := backup.Step(options.PagesPerStep)
-			if stepErr != nil {
-				_ = backup.Finish()
-				return fmt.Errorf("copy pages: %w", stepErr)
+			backup, err := destinationNative.Backup("main", sourceNative, "main")
+			if err != nil {
+				return fmt.Errorf("start online backup: %w", err)
 			}
-			if !more {
-				result.PageCount = backup.PageCount()
-				break
-			}
-		}
-
-		if err := backup.Finish(); err != nil {
-			return fmt.Errorf("finish online backup: %w", err)
-		}
-		return nil
+			return copyBackupPages(copyCtx, backup, int(options.PagesPerStep), &result)
+		})
 	})
+	_ = destinationConn.Close()
+	closeErr := destination.Close()
+	if rawErr == nil {
+		rawErr = closeErr
+	}
 	if rawErr != nil {
-		// A failed copy leaves no artifact behind to be mistaken for a backup.
-		_ = os.Remove(backupPath)
+		removeBackupFiles(backupPath)
 		if errors.Is(rawErr, driver.ErrBadConn) {
 			return OnlineBackupResult{}, fmt.Errorf("online backup connection failed: %w", rawErr)
 		}
@@ -135,12 +144,12 @@ func OnlineBackupSQLiteDatabase(ctx context.Context, source *sql.DB, backupPath 
 	// journalling, which removes the sidecars. The live database is untouched,
 	// and a restored copy returns to WAL when the app opens it.
 	if err := consolidateBackupFile(ctx, backupPath); err != nil {
-		_ = os.Remove(backupPath)
+		removeBackupFiles(backupPath)
 		return OnlineBackupResult{}, err
 	}
 
-	if err := EnforceSQLiteFilePermissions("file:" + backupPath); err != nil {
-		_ = os.Remove(backupPath)
+	if err := EnforceSQLiteFilePermissions(sqliteFileURL(backupPath)); err != nil {
+		removeBackupFiles(backupPath)
 		return OnlineBackupResult{}, fmt.Errorf("set sqlite backup permissions: %w", err)
 	}
 
@@ -151,6 +160,54 @@ func OnlineBackupSQLiteDatabase(ctx context.Context, source *sql.DB, backupPath 
 	result.ByteSize = info.Size()
 
 	return result, nil
+}
+
+// backupPageCopier keeps the step loop independently testable, including the
+// native API's BUSY/LOCKED result (false, nil) and DONE result (true, nil).
+type backupPageCopier interface {
+	Step(int) (bool, error)
+	Remaining() int
+	PageCount() int
+	Finish() error
+}
+
+func copyBackupPages(ctx context.Context, backup backupPageCopier, pages int, result *OnlineBackupResult) (err error) {
+	defer func() {
+		if finishErr := backup.Finish(); finishErr != nil {
+			err = errors.Join(err, fmt.Errorf("finish online backup: %w", finishErr))
+		}
+	}()
+	for {
+		if ctx.Err() != nil {
+			return errors.Join(ErrOnlineBackupDeadline, ctx.Err())
+		}
+		before := backup.Remaining()
+		done, stepErr := backup.Step(pages)
+		if stepErr != nil {
+			return fmt.Errorf("copy pages: %w", stepErr)
+		}
+		if done {
+			result.PageCount = backup.PageCount()
+			return nil
+		}
+		// A contended step makes no progress. Pause rather than spin while
+		// retaining a bounded response to cancellation and the copy deadline.
+		if backup.Remaining() >= before {
+			timer := time.NewTimer(10 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return errors.Join(ErrOnlineBackupDeadline, ctx.Err())
+			case <-timer.C:
+			}
+		}
+	}
+}
+
+func removeBackupFiles(path string) {
+	for _, file := range []string{path, path + "-wal", path + "-shm", path + "-journal"} {
+		_ = os.Remove(file)
+	}
 }
 
 // SyncFileAndParent flushes a file and the directory entry that names it.
@@ -188,7 +245,7 @@ func SyncDirectory(path string) error {
 
 // consolidateBackupFile leaves the backup as a single file with no sidecars.
 func consolidateBackupFile(ctx context.Context, backupPath string) error {
-	backupDatabase, err := sql.Open(driverName, "file:"+backupPath+"?_pragma=busy_timeout(5000)")
+	backupDatabase, err := sql.Open(driverName, sqliteAuxiliaryDSN(backupPath, false))
 	if err != nil {
 		return fmt.Errorf("open backup for consolidation: %w", err)
 	}

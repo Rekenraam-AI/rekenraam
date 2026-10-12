@@ -28,7 +28,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-(cd "$ROOT/backend" && SEED_OUT="$WORK/seed.sqlite" go test ./internal/api \
+(SEED_OUT="$WORK/seed.sqlite" "$ROOT/scripts/go-backend.sh" test ./internal/api \
   -run '^TestBuildReleaseSeedFixture$' -count=1)
 
 python3 - "$WORK/seed.sqlite" "$OUT" <<'PY'
