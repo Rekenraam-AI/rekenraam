@@ -1094,7 +1094,7 @@ func TestWithRequiredPragmasPreservesExistingQuery(t *testing.T) {
 	assert.Contains(t, got, "_busy_timeout=5000")
 	assert.Contains(t, got, "_foreign_keys=1")
 	assert.Contains(t, got, "_journal_mode=WAL")
-	assert.Contains(t, got, "_synchronous=NORMAL")
+	assert.Contains(t, got, "_synchronous=FULL")
 	assert.Contains(t, got, "_stmt_cache_size=0")
 }
 

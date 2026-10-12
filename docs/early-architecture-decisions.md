@@ -50,7 +50,7 @@ Rules:
 - Install SQLite connection pragmas deliberately: foreign keys on, WAL mode for normal runtime use, a busy timeout, and an explicit synchronous setting.
 - Install those PRAGMAs on every physical SQLite connection through supported
   driver DSN options or a connection hook: `busy_timeout(5000)`,
-  `foreign_keys(1)`, `journal_mode(WAL)`, `synchronous(NORMAL)`, and
+  `foreign_keys(1)`, `journal_mode(WAL)`, `synchronous(FULL)`, and
   `wal_autocheckpoint(1000)`.
 - Run embedded goose migrations automatically at startup before the HTTP server listens. Migration failure fails startup.
 - Keep goose's default per-file transaction behavior unless a migration explicitly documents why `NO TRANSACTION` is required.

@@ -1,0 +1,751 @@
+{
+  "policy": "WAL/FULL writer; FULL on registered application-driver direct/replacement and auxiliary connections",
+  "source_parent_commit": "b69dda32559d6284ac42f2d9c70e9a5425e93f44",
+  "driver": "github.com/mattn/go-sqlite3 v1.14.52",
+  "engine": {
+    "compile_options": [
+      "ATOMIC_INTRINSICS=1",
+      "COMPILER=gcc-13.3.0",
+      "DEFAULT_AUTOVACUUM",
+      "DEFAULT_CACHE_SIZE=-2000",
+      "DEFAULT_FILE_FORMAT=4",
+      "DEFAULT_JOURNAL_SIZE_LIMIT=-1",
+      "DEFAULT_MMAP_SIZE=0",
+      "DEFAULT_PAGE_SIZE=4096",
+      "DEFAULT_PCACHE_INITSZ=20",
+      "DEFAULT_RECURSIVE_TRIGGERS",
+      "DEFAULT_SECTOR_SIZE=4096",
+      "DEFAULT_SYNCHRONOUS=2",
+      "DEFAULT_WAL_AUTOCHECKPOINT=1000",
+      "DEFAULT_WAL_SYNCHRONOUS=1",
+      "DEFAULT_WORKER_THREADS=0",
+      "DIRECT_OVERFLOW_READ",
+      "ENABLE_FTS3",
+      "ENABLE_FTS3_PARENTHESIS",
+      "ENABLE_FTS5",
+      "ENABLE_RTREE",
+      "ENABLE_UPDATE_DELETE_LIMIT",
+      "MALLOC_SOFT_LIMIT=1024",
+      "MAX_ATTACHED=10",
+      "MAX_COLUMN=2000",
+      "MAX_COMPOUND_SELECT=500",
+      "MAX_DEFAULT_PAGE_SIZE=8192",
+      "MAX_EXPR_DEPTH=1000",
+      "MAX_FUNCTION_ARG=1000",
+      "MAX_LENGTH=1000000000",
+      "MAX_LIKE_PATTERN_LENGTH=50000",
+      "MAX_MMAP_SIZE=0x7fff0000",
+      "MAX_PAGE_COUNT=0xfffffffe",
+      "MAX_PAGE_SIZE=65536",
+      "MAX_SQL_LENGTH=1000000000",
+      "MAX_TRIGGER_DEPTH=1000",
+      "MAX_VARIABLE_NUMBER=32766",
+      "MAX_VDBE_OP=250000000",
+      "MAX_WORKER_THREADS=8",
+      "MUTEX_PTHREADS",
+      "OMIT_DEPRECATED",
+      "SYSTEM_MALLOC",
+      "TEMP_STORE=1",
+      "THREADSAFE=1"
+    ],
+    "source_id": "2026-07-24 19:02:57 bf7c7f30031888f4e796e429ab3978879485813aaca6f641c7b33e4e09459bcc",
+    "version": "3.53.4"
+  },
+  "environment": {
+    "go": "go version go1.27.2 linux/amd64",
+    "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "linker": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+    "libc": "glibc 2.39",
+    "cpu": {
+      "model": "AMD EPYC 3251 8-Core Processor",
+      "virtual_cpus": 10,
+      "measured_cpus": 4,
+      "hypervisor": "KVM"
+    },
+    "kernel": "Linux coding-server 6.8.0-146-generic #146-Ubuntu SMP PREEMPT_DYNAMIC Thu Sep  3 16:12:30 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+    "cpu_affinity": "0-3",
+    "GOMAXPROCS": 4,
+    "test_package_parallelism": 1,
+    "count": 1,
+    "timeout": "20m/package",
+    "native_tags": "fts5,netgo,osusergo",
+    "statement_cache": 0
+  },
+  "comparison_note": "Historical NORMAL reference was measured earlier under different shared-host load. This is a FULL correctness/headroom measurement, not an isolated driver or fsync-effect comparison.",
+  "runs": {
+    "ordinary": [
+      {
+        "wall_seconds": 167.87,
+        "user_seconds": 226.55,
+        "system_seconds": 52.14,
+        "max_rss_kib": 624536.0,
+        "run": 1,
+        "run_case_count": 2834,
+        "passed_case_count": 2831,
+        "skipped_cases": [
+          "rekenraam/backend/internal/api/TestBuildReleaseSeedFixture",
+          "rekenraam/backend/internal/app/TestMeasureReplaySelfCheckRuntime",
+          "rekenraam/backend/internal/web/TestHandlerServesEmbeddedBuildOutput"
+        ],
+        "case_names_sha256": "85f28b35c41dce481495a6a6337c2fabfa7a52fb1825c8311c3e6731367bc629",
+        "packages": {
+          "rekenraam/backend/cmd/rekenraam": 2.558,
+          "rekenraam/backend/internal/api": 27.855,
+          "rekenraam/backend/internal/app": 92.333,
+          "rekenraam/backend/internal/appruntime": 1.054,
+          "rekenraam/backend/internal/config": 0.003,
+          "rekenraam/backend/internal/db": 9.886,
+          "rekenraam/backend/internal/exact": 0.01,
+          "rekenraam/backend/internal/marketdata": 0.006,
+          "rekenraam/backend/internal/onlinesource/trading212": 0.028,
+          "rekenraam/backend/internal/recur": 0.005,
+          "rekenraam/backend/internal/secretbox": 0.003,
+          "rekenraam/backend/internal/testdb": 0.235,
+          "rekenraam/backend/internal/totp": 0.004,
+          "rekenraam/backend/internal/web": 0.005,
+          "rekenraam/backend/migrations": 0.003
+        },
+        "selected_cases": {
+          "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass": 7.68,
+          "TestCommitImportBatch_BuyOrderFillCreatesInstrumentHoldingAndLot": 0.22,
+          "TestCommitImportBatch_GenericCashRowCommitsToRealLedger": 0.18,
+          "TestEveryOperationKindExportsItsRowsAndPassesSelfCheck": 31.13
+        }
+      },
+      {
+        "wall_seconds": 142.14,
+        "user_seconds": 168.34,
+        "system_seconds": 49.02,
+        "max_rss_kib": 296528.0,
+        "run": 2,
+        "run_case_count": 2834,
+        "passed_case_count": 2831,
+        "skipped_cases": [
+          "rekenraam/backend/internal/api/TestBuildReleaseSeedFixture",
+          "rekenraam/backend/internal/app/TestMeasureReplaySelfCheckRuntime",
+          "rekenraam/backend/internal/web/TestHandlerServesEmbeddedBuildOutput"
+        ],
+        "case_names_sha256": "85f28b35c41dce481495a6a6337c2fabfa7a52fb1825c8311c3e6731367bc629",
+        "packages": {
+          "rekenraam/backend/cmd/rekenraam": 2.637,
+          "rekenraam/backend/internal/api": 28.599,
+          "rekenraam/backend/internal/app": 90.149,
+          "rekenraam/backend/internal/appruntime": 0.982,
+          "rekenraam/backend/internal/config": 0.004,
+          "rekenraam/backend/internal/db": 12.829,
+          "rekenraam/backend/internal/exact": 0.005,
+          "rekenraam/backend/internal/marketdata": 0.004,
+          "rekenraam/backend/internal/onlinesource/trading212": 0.028,
+          "rekenraam/backend/internal/recur": 0.005,
+          "rekenraam/backend/internal/secretbox": 0.003,
+          "rekenraam/backend/internal/testdb": 0.407,
+          "rekenraam/backend/internal/totp": 0.003,
+          "rekenraam/backend/internal/web": 0.005,
+          "rekenraam/backend/migrations": 0.003
+        },
+        "selected_cases": {
+          "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass": 8.11,
+          "TestCommitImportBatch_GenericCashRowCommitsToRealLedger": 0.19,
+          "TestCommitImportBatch_BuyOrderFillCreatesInstrumentHoldingAndLot": 0.22,
+          "TestEveryOperationKindExportsItsRowsAndPassesSelfCheck": 30.19
+        }
+      },
+      {
+        "wall_seconds": 143.97,
+        "user_seconds": 171.13,
+        "system_seconds": 48.52,
+        "max_rss_kib": 294796.0,
+        "run": 3,
+        "run_case_count": 2834,
+        "passed_case_count": 2831,
+        "skipped_cases": [
+          "rekenraam/backend/internal/api/TestBuildReleaseSeedFixture",
+          "rekenraam/backend/internal/app/TestMeasureReplaySelfCheckRuntime",
+          "rekenraam/backend/internal/web/TestHandlerServesEmbeddedBuildOutput"
+        ],
+        "case_names_sha256": "85f28b35c41dce481495a6a6337c2fabfa7a52fb1825c8311c3e6731367bc629",
+        "packages": {
+          "rekenraam/backend/cmd/rekenraam": 2.561,
+          "rekenraam/backend/internal/api": 28.914,
+          "rekenraam/backend/internal/app": 90.937,
+          "rekenraam/backend/internal/appruntime": 0.454,
+          "rekenraam/backend/internal/config": 0.004,
+          "rekenraam/backend/internal/db": 14.193,
+          "rekenraam/backend/internal/exact": 0.005,
+          "rekenraam/backend/internal/marketdata": 0.005,
+          "rekenraam/backend/internal/onlinesource/trading212": 0.026,
+          "rekenraam/backend/internal/recur": 0.006,
+          "rekenraam/backend/internal/secretbox": 0.002,
+          "rekenraam/backend/internal/testdb": 0.23,
+          "rekenraam/backend/internal/totp": 0.004,
+          "rekenraam/backend/internal/web": 0.006,
+          "rekenraam/backend/migrations": 0.003
+        },
+        "selected_cases": {
+          "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass": 8.04,
+          "TestCommitImportBatch_GenericCashRowCommitsToRealLedger": 0.18,
+          "TestCommitImportBatch_BuyOrderFillCreatesInstrumentHoldingAndLot": 0.22,
+          "TestEveryOperationKindExportsItsRowsAndPassesSelfCheck": 34.41
+        }
+      }
+    ],
+    "race": [
+      {
+        "wall_seconds": 303.42,
+        "user_seconds": 494.7,
+        "system_seconds": 139.2,
+        "max_rss_kib": 1287796.0,
+        "run": 1,
+        "run_case_count": 2834,
+        "passed_case_count": 2831,
+        "skipped_cases": [
+          "rekenraam/backend/internal/api/TestBuildReleaseSeedFixture",
+          "rekenraam/backend/internal/app/TestMeasureReplaySelfCheckRuntime",
+          "rekenraam/backend/internal/web/TestHandlerServesEmbeddedBuildOutput"
+        ],
+        "case_names_sha256": "85f28b35c41dce481495a6a6337c2fabfa7a52fb1825c8311c3e6731367bc629",
+        "packages": {
+          "rekenraam/backend/cmd/rekenraam": 11.11,
+          "rekenraam/backend/internal/api": 52.688,
+          "rekenraam/backend/internal/app": 109.964,
+          "rekenraam/backend/internal/appruntime": 3.426,
+          "rekenraam/backend/internal/config": 1.017,
+          "rekenraam/backend/internal/db": 49.447,
+          "rekenraam/backend/internal/exact": 1.021,
+          "rekenraam/backend/internal/marketdata": 1.021,
+          "rekenraam/backend/internal/onlinesource/trading212": 1.058,
+          "rekenraam/backend/internal/recur": 1.025,
+          "rekenraam/backend/internal/secretbox": 1.015,
+          "rekenraam/backend/internal/testdb": 2.515,
+          "rekenraam/backend/internal/totp": 1.016,
+          "rekenraam/backend/internal/web": 1.03,
+          "rekenraam/backend/migrations": 1.013
+        },
+        "selected_cases": {
+          "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass": 11.73,
+          "TestCommitImportBatch_GenericCashRowCommitsToRealLedger": 0.19,
+          "TestCommitImportBatch_BuyOrderFillCreatesInstrumentHoldingAndLot": 0.25,
+          "TestEveryOperationKindExportsItsRowsAndPassesSelfCheck": 73.55
+        }
+      },
+      {
+        "wall_seconds": 254.95,
+        "user_seconds": 429.64,
+        "system_seconds": 136.05,
+        "max_rss_kib": 1005556.0,
+        "run": 2,
+        "run_case_count": 2834,
+        "passed_case_count": 2831,
+        "skipped_cases": [
+          "rekenraam/backend/internal/api/TestBuildReleaseSeedFixture",
+          "rekenraam/backend/internal/app/TestMeasureReplaySelfCheckRuntime",
+          "rekenraam/backend/internal/web/TestHandlerServesEmbeddedBuildOutput"
+        ],
+        "case_names_sha256": "85f28b35c41dce481495a6a6337c2fabfa7a52fb1825c8311c3e6731367bc629",
+        "packages": {
+          "rekenraam/backend/cmd/rekenraam": 13.818,
+          "rekenraam/backend/internal/api": 52.965,
+          "rekenraam/backend/internal/app": 114.74,
+          "rekenraam/backend/internal/appruntime": 3.443,
+          "rekenraam/backend/internal/config": 1.018,
+          "rekenraam/backend/internal/db": 50.004,
+          "rekenraam/backend/internal/exact": 1.022,
+          "rekenraam/backend/internal/marketdata": 1.02,
+          "rekenraam/backend/internal/onlinesource/trading212": 1.059,
+          "rekenraam/backend/internal/recur": 1.027,
+          "rekenraam/backend/internal/secretbox": 1.015,
+          "rekenraam/backend/internal/testdb": 2.401,
+          "rekenraam/backend/internal/totp": 1.016,
+          "rekenraam/backend/internal/web": 1.03,
+          "rekenraam/backend/migrations": 1.015
+        },
+        "selected_cases": {
+          "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass": 12.18,
+          "TestCommitImportBatch_GenericCashRowCommitsToRealLedger": 0.18,
+          "TestCommitImportBatch_BuyOrderFillCreatesInstrumentHoldingAndLot": 0.21,
+          "TestEveryOperationKindExportsItsRowsAndPassesSelfCheck": 44.94
+        }
+      },
+      {
+        "wall_seconds": 256.51,
+        "user_seconds": 441.49,
+        "system_seconds": 140.1,
+        "max_rss_kib": 817648.0,
+        "run": 3,
+        "run_case_count": 2834,
+        "passed_case_count": 2831,
+        "skipped_cases": [
+          "rekenraam/backend/internal/api/TestBuildReleaseSeedFixture",
+          "rekenraam/backend/internal/app/TestMeasureReplaySelfCheckRuntime",
+          "rekenraam/backend/internal/web/TestHandlerServesEmbeddedBuildOutput"
+        ],
+        "case_names_sha256": "85f28b35c41dce481495a6a6337c2fabfa7a52fb1825c8311c3e6731367bc629",
+        "packages": {
+          "rekenraam/backend/cmd/rekenraam": 10.964,
+          "rekenraam/backend/internal/api": 54.582,
+          "rekenraam/backend/internal/app": 113.309,
+          "rekenraam/backend/internal/appruntime": 3.5869999999999997,
+          "rekenraam/backend/internal/config": 1.019,
+          "rekenraam/backend/internal/db": 53.643,
+          "rekenraam/backend/internal/exact": 1.024,
+          "rekenraam/backend/internal/marketdata": 1.021,
+          "rekenraam/backend/internal/onlinesource/trading212": 1.058,
+          "rekenraam/backend/internal/recur": 1.03,
+          "rekenraam/backend/internal/secretbox": 1.015,
+          "rekenraam/backend/internal/testdb": 2.598,
+          "rekenraam/backend/internal/totp": 1.016,
+          "rekenraam/backend/internal/web": 1.031,
+          "rekenraam/backend/migrations": 1.014
+        },
+        "selected_cases": {
+          "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass": 12.29,
+          "TestCommitImportBatch_GenericCashRowCommitsToRealLedger": 0.19,
+          "TestCommitImportBatch_BuyOrderFillCreatesInstrumentHoldingAndLot": 0.22,
+          "TestEveryOperationKindExportsItsRowsAndPassesSelfCheck": 77.35
+        }
+      }
+    ]
+  },
+  "summary": {
+    "ordinary": {
+      "wall_seconds": {
+        "median": 143.97,
+        "min": 142.14,
+        "max": 167.87,
+        "runs": [
+          167.87,
+          142.14,
+          143.97
+        ]
+      },
+      "app_seconds": {
+        "median": 90.937,
+        "min": 90.149,
+        "max": 92.333,
+        "runs": [
+          92.333,
+          90.149,
+          90.937
+        ]
+      },
+      "api_seconds": {
+        "median": 28.599,
+        "min": 27.855,
+        "max": 28.914,
+        "runs": [
+          27.855,
+          28.599,
+          28.914
+        ]
+      },
+      "db_seconds": {
+        "median": 12.829,
+        "min": 9.886,
+        "max": 14.193,
+        "runs": [
+          9.886,
+          12.829,
+          14.193
+        ]
+      }
+    },
+    "race": {
+      "wall_seconds": {
+        "median": 256.51,
+        "min": 254.95,
+        "max": 303.42,
+        "runs": [
+          303.42,
+          254.95,
+          256.51
+        ]
+      },
+      "app_seconds": {
+        "median": 113.309,
+        "min": 109.964,
+        "max": 114.74,
+        "runs": [
+          109.964,
+          114.74,
+          113.309
+        ]
+      },
+      "api_seconds": {
+        "median": 52.965,
+        "min": 52.688,
+        "max": 54.582,
+        "runs": [
+          52.688,
+          52.965,
+          54.582
+        ]
+      },
+      "db_seconds": {
+        "median": 50.004,
+        "min": 49.447,
+        "max": 53.643,
+        "runs": [
+          49.447,
+          50.004,
+          53.643
+        ]
+      }
+    }
+  },
+  "case_count": 2834,
+  "case_names_sha256": "85f28b35c41dce481495a6a6337c2fabfa7a52fb1825c8311c3e6731367bc629",
+  "slowest_application_race_headroom_percent": 90.43833333333333,
+  "historical_normal_reference": {
+    "modernc": {
+      "ordinary": {
+        "wall_seconds": {
+          "median": 125.41,
+          "min": 117.83,
+          "max": 132.68,
+          "runs": [
+            117.83,
+            125.41,
+            132.68
+          ]
+        },
+        "app_seconds": {
+          "median": 77.82,
+          "min": 71.085,
+          "max": 84.462,
+          "runs": [
+            71.085,
+            77.82,
+            84.462
+          ]
+        },
+        "api_seconds": {
+          "median": 25.885,
+          "min": 25.05,
+          "max": 28.338,
+          "runs": [
+            25.05,
+            25.885,
+            28.338
+          ]
+        },
+        "db_seconds": {
+          "median": 12.387,
+          "min": 9.536,
+          "max": 12.487,
+          "runs": [
+            12.387,
+            12.487,
+            9.536
+          ]
+        }
+      },
+      "race": {
+        "wall_seconds": {
+          "median": 1660.18,
+          "min": 1511.76,
+          "max": 1788.68,
+          "runs": [
+            1511.76,
+            1788.68,
+            1660.18
+          ]
+        },
+        "app_seconds": {
+          "median": 962.652,
+          "min": 891.132,
+          "max": 1177.068,
+          "runs": [
+            891.132,
+            1177.068,
+            962.652
+          ]
+        },
+        "api_seconds": {
+          "median": 313.019,
+          "min": 291.16,
+          "max": 428.838,
+          "runs": [
+            313.019,
+            291.16,
+            428.838
+          ]
+        },
+        "db_seconds": {
+          "median": 174.813,
+          "min": 162.544,
+          "max": 229.968,
+          "runs": [
+            162.544,
+            229.968,
+            174.813
+          ]
+        }
+      }
+    },
+    "native": {
+      "ordinary": {
+        "wall_seconds": {
+          "median": 115.53,
+          "min": 106.48,
+          "max": 177.64,
+          "runs": [
+            177.64,
+            106.48,
+            115.53
+          ]
+        },
+        "app_seconds": {
+          "median": 69.842,
+          "min": 65.612,
+          "max": 91.131,
+          "runs": [
+            91.131,
+            65.612,
+            69.842
+          ]
+        },
+        "api_seconds": {
+          "median": 23.614,
+          "min": 23.425,
+          "max": 27.807,
+          "runs": [
+            27.807,
+            23.425,
+            23.614
+          ]
+        },
+        "db_seconds": {
+          "median": 10.44,
+          "min": 7.743,
+          "max": 12.155,
+          "runs": [
+            10.44,
+            7.743,
+            12.155
+          ]
+        }
+      },
+      "race": {
+        "wall_seconds": {
+          "median": 225.34,
+          "min": 218.72,
+          "max": 353.59,
+          "runs": [
+            353.59,
+            218.72,
+            225.34
+          ]
+        },
+        "app_seconds": {
+          "median": 85.71,
+          "min": 83.553,
+          "max": 118.228,
+          "runs": [
+            118.228,
+            83.553,
+            85.71
+          ]
+        },
+        "api_seconds": {
+          "median": 53.938,
+          "min": 50.343,
+          "max": 61.575,
+          "runs": [
+            61.575,
+            50.343,
+            53.938
+          ]
+        },
+        "db_seconds": {
+          "median": 49.749,
+          "min": 49.555,
+          "max": 50.457,
+          "runs": [
+            49.749,
+            49.555,
+            50.457
+          ]
+        }
+      }
+    }
+  },
+  "raw_default_settings_probe": {
+    "probe": "sql.Open on :memory:; raw upstream driver defaults, before application initialization",
+    "modernc_v1_60_1": {
+      "recursive_triggers": 0,
+      "secure_delete": 0,
+      "locking_mode": "normal",
+      "read_uncommitted": 0,
+      "temp_store": 0,
+      "cache_size": -2000,
+      "mmap_size": "not applicable to the memory probe",
+      "trusted_schema": 1,
+      "defer_foreign_keys": 0,
+      "foreign_keys": 0,
+      "ignore_check_constraints": 0,
+      "writable_schema": 0,
+      "query_only": 0,
+      "synchronous": 2,
+      "busy_timeout": 0,
+      "wal_autocheckpoint": 1000
+    },
+    "mattn_v1_14_52": {
+      "recursive_triggers": 0,
+      "secure_delete": 0,
+      "locking_mode": "normal",
+      "read_uncommitted": 0,
+      "temp_store": 0,
+      "cache_size": -2000,
+      "mmap_size": "not applicable to the memory probe",
+      "trusted_schema": 1,
+      "defer_foreign_keys": 0,
+      "foreign_keys": 0,
+      "ignore_check_constraints": 0,
+      "writable_schema": 0,
+      "query_only": 0,
+      "synchronous": 1,
+      "busy_timeout": 5000,
+      "wal_autocheckpoint": 1000
+    },
+    "application_policy": "writer FULL=2, busy_timeout=5000; auxiliary FULL=2, busy_timeout=5000"
+  },
+  "commit_latency_probe": {
+    "description": "Isolated native SQLite WAL commit probe; 500 transactions with TEXT values, two balanced postings and one audit row. Includes preparation, writes and commit. Separate upstream driver connection permits diagnostic NORMAL comparison; shipped app always uses FULL. Not a complete application workflow or production latency guarantee.",
+    "runs": [
+      {
+        "commits": 500,
+        "effective_synchronous": 1,
+        "elapsed_seconds": 0.080290077,
+        "max_transaction_ms": 26.386451,
+        "median_transaction_ms": 0.079066,
+        "mode": "NORMAL",
+        "p95_transaction_ms": 0.107512,
+        "round": 1
+      },
+      {
+        "commits": 500,
+        "effective_synchronous": 2,
+        "elapsed_seconds": 3.839699678,
+        "max_transaction_ms": 15.969863,
+        "median_transaction_ms": 8.382884,
+        "mode": "FULL",
+        "p95_transaction_ms": 11.840135,
+        "round": 1
+      },
+      {
+        "commits": 500,
+        "effective_synchronous": 2,
+        "elapsed_seconds": 3.31230678,
+        "max_transaction_ms": 20.440016,
+        "median_transaction_ms": 4.7162745,
+        "mode": "FULL",
+        "p95_transaction_ms": 11.220492,
+        "round": 2
+      },
+      {
+        "commits": 500,
+        "effective_synchronous": 1,
+        "elapsed_seconds": 0.075345842,
+        "max_transaction_ms": 24.293209,
+        "median_transaction_ms": 0.0732965,
+        "mode": "NORMAL",
+        "p95_transaction_ms": 0.121162,
+        "round": 2
+      },
+      {
+        "commits": 500,
+        "effective_synchronous": 1,
+        "elapsed_seconds": 0.07423879,
+        "max_transaction_ms": 24.858039,
+        "median_transaction_ms": 0.07309099999999999,
+        "mode": "NORMAL",
+        "p95_transaction_ms": 0.103792,
+        "round": 3
+      },
+      {
+        "commits": 500,
+        "effective_synchronous": 2,
+        "elapsed_seconds": 5.174681403,
+        "max_transaction_ms": 82.319324,
+        "median_transaction_ms": 10.0707795,
+        "mode": "FULL",
+        "p95_transaction_ms": 12.645258,
+        "round": 3
+      }
+    ]
+  },
+  "source_files_sha256": {
+    "backend/go.mod": "1d4521dae1a788f55f1faf6dabb6676d12f9fa07c46d2d27ef02806aa2f43f46",
+    "backend/go.sum": "778ca414388f2396ff7e5834b78f160bca454413c6f21fc884900531af0a2a4d",
+    "backend/internal/db/sqlite.go": "1326f9ce6a576caec10c1f69c8c02e2f8a6828149bb5fdf282501319db7d2089",
+    "backend/internal/db/sqlite_native_test.go": "2c11e8f733425856874df1309cb7ee119307ef96365ed4250dbec3fc80dbb04a",
+    "backend/internal/db/sqlite_test.go": "1540c84588b2b213739e22f88f22866708347c1ab44d4628a3e65ad08e95d119",
+    "scripts/native-sqlite-env.sh": "d142840ed4111727727dbbee1a58122211556632d87fb2a93d8c3dfdfc209720",
+    "scripts/test-backend.sh": "91bb4fde0ee1c22ba81aede8e9363ad483e0f5f9b85a3ff31648512ece9b7557",
+    "docs/reviews/sqlite-full-commit-probe.go": "ff12dd9dde7ee40cf2cfe50dcb0c7218f24baf9e4b784b0cde38e56994bd1c82"
+  },
+  "engine_reference": "Pinned engine/source/features match the original fingerprint; admitted engine and FTS5 are asserted again by the native correctness cases.",
+  "dependency_graphs": {
+    "production": {
+      "sha256": "375174eaee975a2d4f4c1879fb1dc4ce9db005a4b78e3c297b81f278f6c7b361",
+      "bundled_native_present": true,
+      "modernc_present": false
+    },
+    "test": {
+      "sha256": "5b47696fac728407f000c0b6a709085afb9025c3ee5cc079e121eff92b9edd04",
+      "bundled_native_present": true,
+      "modernc_present": false
+    }
+  },
+  "validation": {
+    "shared_gate": {
+      "command": "./scripts/test-backend.sh",
+      "wall_seconds": 219.93,
+      "user_seconds": 755.14,
+      "system_seconds": 452.18,
+      "max_rss_kib": 1644012.0,
+      "packages": {
+        "rekenraam/backend/cmd/rekenraam": "11.157s",
+        "rekenraam/backend/internal/api": "50.352s",
+        "rekenraam/backend/internal/app": "103.588s",
+        "rekenraam/backend/internal/appruntime": "3.439s",
+        "rekenraam/backend/internal/config": "(cached)",
+        "rekenraam/backend/internal/db": "41.317s",
+        "rekenraam/backend/internal/exact": "(cached)",
+        "rekenraam/backend/internal/marketdata": "(cached)",
+        "rekenraam/backend/internal/onlinesource/trading212": "(cached)",
+        "rekenraam/backend/internal/recur": "(cached)",
+        "rekenraam/backend/internal/secretbox": "(cached)",
+        "rekenraam/backend/internal/testdb": "2.545s",
+        "rekenraam/backend/internal/totp": "(cached)",
+        "rekenraam/backend/internal/web": "(cached)",
+        "rekenraam/backend/migrations": "(cached)"
+      },
+      "cpu_budget": "default available host parallelism; no GOMAXPROCS override"
+    },
+    "narrow_native_and_recovery_race": "pass",
+    "module_verification": "all modules verified",
+    "documentation_links": "pass",
+    "integrated_build": "pnpm build: pass, including embedded frontend serving",
+    "browser_smoke": {
+      "passed": 124,
+      "elapsed_minutes": 5.6,
+      "command": "./scripts/test-e2e-smoke.sh"
+    },
+    "remote_ci": "pending at commit time; see GitHub delivery records",
+    "container_smoke": {
+      "image": "rekenraam-sqlite-full:local",
+      "container": "rekenraam-full-final-16818420",
+      "volume": "rekenraam-full-final-16818420-data",
+      "api_health": "{\"status\":\"ok\"}\n",
+      "embedded_frontend_bytes": 1790,
+      "identity": "uid=10001 gid=10001 groups=10001",
+      "permissions": "700 10001 10001 /app/data\n600 10001 10001 /app/data/rekenraam.sqlite\n600 10001 10001 /app/data/rekenraam.sqlite-wal\n600 10001 10001 /app/data/rekenraam.sqlite-shm",
+      "dependencies": "linux-vdso.so.1 (0x00007ffd3fd94000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007e37364dd000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007e37362e9000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007e37365d1000)",
+      "provider_https": "200 0",
+      "image_id": "sha256:87368bee15285413eedb414e8b2cac69a82158aa39c500b49477b0dd09c0da44",
+      "container_libc": "glibc 2.41"
+    },
+    "container_build": "docker build --tag rekenraam-sqlite-full:local --file deploy/docker/Dockerfile .: pass"
+  }
+}

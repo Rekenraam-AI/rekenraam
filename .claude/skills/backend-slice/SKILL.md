@@ -53,7 +53,7 @@ Existing codes: `VALIDATION_FAILED`, `UNAUTHENTICATED`, `FORBIDDEN`,
 updating the OpenAPI `ErrorBody.code` enum too. Never return raw Go error
 strings to the client.
 
-## SQLite rules (source: ADRs 0004/0014, conventions § Data)
+## SQLite rules (source: ADRs 0004/0014/0015, conventions § Data)
 
 - ADR 0014 selects bundled native SQLite through `github.com/mattn/go-sqlite3`
   (CGO), delivered in #195. Use `./scripts/go-backend.sh` for focused Go
@@ -67,8 +67,11 @@ strings to the client.
 - **The pool is `SetMaxOpenConns(1)`.** One `BeginTx` is a full mutual-exclusion
   lock — this is why single-transaction guard+insert patterns work (see
   `background-work` skill). Don't "fix" this without an ADR.
-- Backup/inspection/stopped-database maintenance connections use the central
-  auxiliary DSN with explicit FULL synchronous mode; the writer uses WAL/NORMAL.
+- Runtime, migrations, tests and auxiliary connections use FULL synchronous
+  mode (ADR 0015); the writer uses WAL/FULL. The central DSN and native driver
+  hook install FULL on initial and replacement connections, including direct
+  driver opens. Keep the separate read-only pool capped at four connections;
+  this is a pool limit, not a node or CPU requirement.
 - Treat `SQLITE_BUSY` as possible even with `busy_timeout`; exhausted timeout →
   retryable server error (`RESOURCE_BUSY`), never a partial apply.
 - Mutations that must be atomic go in **one** DB transaction, including their

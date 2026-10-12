@@ -47,10 +47,11 @@ else
   # Ordinary integration fixtures copy a process-wide migrated SQLite template
   # (internal/testdb) instead of replaying the full schema per test, so every
   # top-level application and database test runs with t.Parallel() and uses
-  # all cores inside its package (T-125; TestIntegrationSuitesRunTestsInParallel
-  # keeps it that way). Packages still run one at a time: -p 2 cut the 4-core
-  # wall time a further 19% but stretched the application package to 77% of
-  # its bound. T-111 profiled modernc: SQLite parsing and translated-engine
+  # available Go parallelism inside its package (T-125;
+  # TestIntegrationSuitesRunTestsInParallel keeps it that way). Packages run
+  # one at a time for predictable gate resource use; there is no four-CPU cap.
+  # Prior modernc scheduling measurements do not establish the optimal native
+  # schedule. T-111 profiled modernc: SQLite parsing and translated-engine
   # race instrumentation dominated. #195 uses bundled native SQLite with
   # Go race coverage retained (the C engine is outside that instrumentation).
   # Keep all regressions and the explicit 20m

@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted. Driver binding details are superseded by ADR 0014; the historical
+WAL/NORMAL synchronous policy below is superseded by
+[ADR 0015](0015-sqlite-commit-durability.md), which requires WAL/FULL.
 
 ## Date
 

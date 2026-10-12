@@ -53,8 +53,9 @@ func TestNativeConnectionPoliciesSurviveReplacement(t *testing.T) {
 	_, err = writer.ExecContext(ctx, "CREATE TABLE policy_test(id INTEGER PRIMARY KEY)")
 	require.NoError(t, err)
 	for range 2 {
-		_, err := Check(ctx, writer)
+		state, err := Check(ctx, writer)
 		require.NoError(t, err)
+		assert.Equal(t, 2, state.Synchronous, "acknowledged financial writes require FULL")
 		conn, err := writer.Conn(ctx)
 		require.NoError(t, err)
 		require.ErrorIs(t, conn.Raw(func(any) error { return driver.ErrBadConn }), driver.ErrBadConn)
@@ -70,13 +71,15 @@ func TestNativeConnectionPoliciesSurviveReplacement(t *testing.T) {
 			conn, err := reader.Conn(ctx)
 			require.NoError(t, err)
 			connections = append(connections, conn)
-			var foreignKeys, busyTimeout, queryOnly, autocheckpoint int
+			var foreignKeys, busyTimeout, queryOnly, autocheckpoint, synchronous int
 			require.NoError(t, conn.QueryRowContext(ctx, `SELECT foreign_keys,timeout,query_only FROM pragma_foreign_keys,pragma_busy_timeout,pragma_query_only`).Scan(&foreignKeys, &busyTimeout, &queryOnly))
 			require.NoError(t, conn.QueryRowContext(ctx, "PRAGMA wal_autocheckpoint").Scan(&autocheckpoint))
+			require.NoError(t, conn.QueryRowContext(ctx, "PRAGMA synchronous").Scan(&synchronous))
 			assert.Equal(t, 1, foreignKeys)
 			assert.Equal(t, 5000, busyTimeout)
 			assert.Equal(t, 1, queryOnly)
 			assert.Equal(t, 1000, autocheckpoint)
+			assert.Equal(t, 2, synchronous)
 			_, err = conn.ExecContext(ctx, "INSERT INTO policy_test DEFAULT VALUES")
 			require.Error(t, err)
 		}
@@ -84,6 +87,26 @@ func TestNativeConnectionPoliciesSurviveReplacement(t *testing.T) {
 			require.ErrorIs(t, conn.Raw(func(any) error { return driver.ErrBadConn }), driver.ErrBadConn)
 			_ = conn.Close()
 		}
+	}
+}
+
+func TestNativeDriverRequiresFullSynchronousOnEveryConnection(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	// Direct opens must share the durability policy too, even when they bypass
+	// the app DSN or attempt to supply the driver's weaker defaults.
+	database, err := sql.Open(driverName, sqliteFileURL(filepath.Join(t.TempDir(), "raw-sync.sqlite"))+"?_synchronous=OFF")
+	require.NoError(t, err)
+	defer database.Close()
+	database.SetMaxOpenConns(1)
+	for range 2 {
+		conn, err := database.Conn(ctx)
+		require.NoError(t, err)
+		var synchronous int
+		require.NoError(t, conn.QueryRowContext(ctx, "PRAGMA synchronous").Scan(&synchronous))
+		assert.Equal(t, 2, synchronous)
+		require.ErrorIs(t, conn.Raw(func(any) error { return driver.ErrBadConn }), driver.ErrBadConn)
+		assert.ErrorIs(t, conn.Close(), sql.ErrConnDone)
 	}
 }
 

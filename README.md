@@ -48,6 +48,8 @@ Commands, test scope, and environment settings are in the
 [developer workflow](docs/developer-workflow.md).
 
 SQLite uses `github.com/mattn/go-sqlite3` with bundled C source (ADR 0014).
+Financial writes use WAL with FULL commit durability consistently in runtime
+and tests ([ADR 0015](docs/adrs/0015-sqlite-commit-durability.md)).
 Backend commands require CGO and a C compiler with development headers:
 `sudo apt install build-essential` on Debian/Ubuntu. The shared wrappers enable
 FTS5, `netgo` and `osusergo`; use `./scripts/go-backend.sh test ...` for focused

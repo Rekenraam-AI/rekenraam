@@ -111,11 +111,24 @@ seed/checksum and backup/restore contracts remain unchanged. The
 [delivery review](reviews/native-sqlite-driver-2026-10-12.md) records
 compatibility, performance and build evidence. #164's measured headroom
 acceptance is met: matched full race wall time improves from 27.67 to 3.76
-minutes, with the same named test set and timeout. No race-instrumentation
+minutes, with the same named test set and timeout under the historical
+WAL/NORMAL writer policy. No race-instrumentation
 exclusions are applied:
 `-race` covers Go application and driver-wrapper code, while the native
 SQLite C engine is outside Go's race instrumentation. A deliberate Go race
 must still fail the gate.
+
+**Commit durability follow-up (2026-10-12):**
+[ADR 0015](adrs/0015-sqlite-commit-durability.md) requires WAL/FULL for the
+writer and FULL consistently across migrations, tests and auxiliary opens.
+The native driver's hook enforces FULL on direct and replacement connections;
+startup checks its effective value. No schema/seed migration is needed.
+The [FULL review](reviews/sqlite-full-durability-2026-10-12.md) records current
+performance and the connection/build settings audit. The read pool's maximum
+four connections is independent of CPU count. The shared gate does not cap
+GOMAXPROCS or test parallelism at four; four-CPU affinity is a controlled
+measurement condition. Keep `-p 1` and the 20-minute package bound until a
+separate native scheduling measurement justifies changing them.
 
 The financial property tests run in the normal backend suite. For a focused
 iteration on ledger, cashflow, lot conservation and gains arithmetic:

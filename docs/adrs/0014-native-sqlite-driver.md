@@ -4,6 +4,10 @@
 
 Accepted; implemented in #195 (2026-10-12).
 
+[ADR 0015](0015-sqlite-commit-durability.md) subsequently replaces the retained
+WAL/NORMAL writer policy with FULL consistently. The original driver admission
+and matched performance evidence remain historical results.
+
 ## Date
 
 2026-10-12

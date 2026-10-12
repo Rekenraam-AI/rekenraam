@@ -61,6 +61,11 @@ direction, compatibility/build contracts and performance evidence for #195
 and #164. #195 installs the bundled native driver; #164 records controlled
 performance and development-feedback evidence.
 
+[ADR 0015](adrs/0015-sqlite-commit-durability.md) strengthens the writer from
+WAL/NORMAL to WAL/FULL after driver admission. The
+[FULL durability review](reviews/sqlite-full-durability-2026-10-12.md) records
+current-policy validation and the remaining connection/build settings audit.
+
 The [2026-09-27 work-tracking audit](reviews/github-work-tracking-audit-2026-09-27.md)
 records the open-ID triage used for the migration to GitHub Issues.
 The [pre-migration backlog snapshot](reviews/open-backlog-before-github-2026-09-27.md)

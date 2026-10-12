@@ -31,15 +31,16 @@ const (
 	driverName            = "sqlite"
 	expectedBusyTimeout   = 5000
 	expectedJournalMode   = "wal"
-	expectedSynchronous   = 1
+	expectedSynchronous   = 2
 	expectedWALCheckpoint = 1000
 )
 
 // Register a single bundled native driver. ConnectHook runs for every physical
-// connection (including replacements); autocheckpoint has no native DSN option.
+// connection (including replacements). FULL also applies to direct driver opens;
+// autocheckpoint has no native DSN option.
 func init() {
 	sql.Register(driverName, &sqlite.SQLiteDriver{ConnectHook: func(conn *sqlite.SQLiteConn) error {
-		_, err := conn.Exec("PRAGMA wal_autocheckpoint=1000", nil)
+		_, err := conn.Exec("PRAGMA synchronous=FULL; PRAGMA wal_autocheckpoint=1000", nil)
 		return err
 	}})
 }
@@ -70,7 +71,8 @@ func Open(ctx context.Context, databaseURL string) (*sql.DB, error) {
 	// and the background FX worker (pricing_worker.go) intentionally performs all
 	// HTTP fetches before opening any DB transaction (see pricing_refresh.go), so
 	// no transaction is ever held across a network call. User requests serialize
-	// behind worker writes; busy_timeout=5000 handles the wait.
+	// behind worker writes through database/sql's context-aware pool queue.
+	// busy_timeout=5000 handles contention on SQLite locks, not that queue.
 	database.SetMaxOpenConns(1)
 	database.SetMaxIdleConns(1)
 
@@ -237,6 +239,7 @@ func sqliteDSN(databaseURL string, readOnly bool) (string, error) {
 		"_busy_timeout": "5000", "_foreign_keys": "1", "_txlock": "deferred",
 		"_stmt_cache_size": "0", "_defer_foreign_keys": "0",
 		"_ignore_check_constraints": "0", "_writable_schema": "0", "_mutex": "full",
+		"_synchronous": "FULL",
 	} {
 		params.Set(key, value)
 	}
@@ -244,11 +247,9 @@ func sqliteDSN(databaseURL string, readOnly bool) (string, error) {
 		params.Set("mode", "ro")
 		params.Set("_query_only", "1")
 		params.Del("_journal_mode")
-		params.Set("_synchronous", "FULL")
 	} else {
 		params.Set("_query_only", "0")
 		params.Set("_journal_mode", "WAL")
-		params.Set("_synchronous", "NORMAL")
 	}
 	return base + "?" + params.Encode(), nil
 }
@@ -258,10 +259,8 @@ func sqliteFileURL(path string) string {
 	return (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), OmitHost: true}).String()
 }
 
-// sqliteAuxiliaryDSN retains the old FULL synchronous policy on backup,
-// inspection and stopped-database maintenance connections. The native driver
-// defaults to NORMAL even outside WAL, so relying on that default changes the
-// recovery policy despite the engines having identical versions.
+// sqliteAuxiliaryDSN explicitly applies the shared FULL synchronous policy to
+// backup, inspection and stopped-database maintenance connections.
 func sqliteAuxiliaryDSN(path string, readOnly bool) string {
 	params := url.Values{"_busy_timeout": {"5000"}, "_synchronous": {"FULL"}}
 	if readOnly {

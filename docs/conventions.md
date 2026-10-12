@@ -332,12 +332,13 @@ When a feature introduces a durable new rule, update one of those documents in t
   [the migration plan](plans/native-sqlite-driver-migration-plan.md).
 - SQLite connections must install PRAGMAs on every physical connection through
   supported driver DSN options or a connection hook: `busy_timeout(5000)`,
-  `foreign_keys(1)`, `journal_mode(WAL)`, `synchronous(NORMAL)`, and
+  `foreign_keys(1)`, `journal_mode(WAL)`, `synchronous(FULL)`, and
   `wal_autocheckpoint(1000)`. Initial and replacement connections must obey
   the same policy; setting a PRAGMA once on a pool is insufficient.
-- Backup, inspection, stopped-database maintenance and read-only connections
-  retain explicit `synchronous=FULL`; the native driver's NORMAL default must
-  not silently alter their existing policy.
+- ADR 0015 requires FULL consistently for runtime, migrations, tests, backup,
+  inspection and stopped-database maintenance. The registered driver's hook
+  also installs FULL on direct opens and replacement connections. Read-only
+  connections share the setting, though reads gain no additional durability.
 - Startup must validate effective SQLite PRAGMA state before serving requests.
 - Early runtime uses one application `*sql.DB` pool with `SetMaxOpenConns(1)`; revisit only when real workload pressure justifies more concurrency.
 - Database access uses repository-style methods over raw `database/sql`. Introduce **`sqlc`** only when the query surface is large enough to justify code generation, and document the generation command before generated files land.

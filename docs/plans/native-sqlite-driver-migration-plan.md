@@ -3,6 +3,10 @@
 **Status:** delivered and validated, including matched performance (2026-10-12).
 See the [delivery review](../reviews/native-sqlite-driver-2026-10-12.md) for
 the admitted pin/features, validation and measurements.
+The original driver comparison retained WAL/NORMAL. The subsequent owner
+decision in [ADR 0015](../adrs/0015-sqlite-commit-durability.md) requires FULL
+consistently; its [review](../reviews/sqlite-full-durability-2026-10-12.md)
+records the current policy and fresh validation.
 Governed by [ADR 0014](../adrs/0014-native-sqlite-driver.md), ADRs 0004/0005/0013,
 and the financial requirements. The [roadmap](../roadmap.md) owns execution
 order; [#195](https://github.com/sergeyfarin/rekenraam/issues/195) owns the driver
@@ -58,8 +62,8 @@ connections too, not just the first pool connection.
 
 | Contract | Required behavior |
 | --- | --- |
-| Write pool | One connection; foreign keys on; busy timeout 5000 ms; WAL; synchronous NORMAL; autocheckpoint 1000 pages |
-| Read pool | Separate read-only connections; current pool limits; foreign keys and busy timeout installed; existing FULL synchronous mode retained; writes refused |
+| Write pool | One connection; foreign keys on; busy timeout 5000 ms; WAL; synchronous FULL (ADR 0015 follow-up); autocheckpoint 1000 pages |
+| Read pool | Separate read-only connections; maximum four/idle two; foreign keys and busy timeout installed; FULL synchronous mode; writes refused |
 | Transactions | Current begin/commit/rollback and savepoint behavior; no incidental switch to immediate/exclusive BEGIN |
 | Snapshot | Self-check reads one consistent state while the separate writer persists results |
 | Values | Canonical TEXT coefficients and exact scales; signed 38-digit values survive; unknown stays paired NULL; known zero stays numeric |
@@ -191,5 +195,6 @@ schema/seed, recovery behavior and future backup guarantees remain covered.
 
 Per-fixture read-pool reuse, native statement caching, CI/process sharding and
 changes to how often the full local race gate runs are follow-up optimizations
-owned by #164 or separately scoped issues. Native desktop packaging and
+for separately scoped issues; #164's original headroom acceptance is met by
+the delivered migration. Native desktop packaging and
 PostgreSQL remain outside this migration.
