@@ -26,7 +26,7 @@ sessions; never edit the users table.
 
 | Changed | Run |
 |---|---|
-| `backend/**` | `./scripts/test-backend.sh` (= `go test -race -p 1 -timeout=20m ./...`), plus `./scripts/go-backend.sh vet ./...`, `gofmt -l .` in `backend/` |
+| `backend/**` | `./scripts/test-backend.sh` (= `go test -race -p 2 -timeout=5m ./...`), plus `./scripts/go-backend.sh vet ./...`, `gofmt -l .` in `backend/` |
 | Backend coverage check (optional, same script) | `COVERAGE=1 ./scripts/test-backend.sh` — non-race coverage pass, prints the merged total; CI enforces a soft floor (`scripts/check-coverage-floor.sh`) |
 | `frontend/**` | `./scripts/test-frontend.sh` (openapi:generate + paraglide:compile + svelte-check); `pnpm --dir frontend run test` for unit-tested logic |
 | OpenAPI | both scripts above |
@@ -38,6 +38,11 @@ commands source `scripts/native-sqlite-env.sh` and enable `fts5,netgo,osusergo`.
 Use `./scripts/go-backend.sh test ...` for focused checks. Go race detection
 covers application and driver-wrapper Go code; it does not instrument the
 bundled SQLite C engine.
+
+ADR 0016 sets two concurrent packages and a five-minute per-package deadline
+for both race and coverage modes. Normal commands use available Go CPU
+resources; the old four-core tuning advice applies only to historical modernc
+measurements. CI's integrated build runs independently, and every check remains.
 
 Never invent parallel validation commands; if a command must change, change
 the script and CI together and update `docs/developer-workflow.md`.

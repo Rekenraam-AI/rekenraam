@@ -81,10 +81,14 @@ correctly formatted for the toolchain actually compiling them.
 ./scripts/test-backend.sh
 ```
 
-The race gate runs `go test -race -p 1 -timeout=20m ./...`: packages run
-serially, with an explicit 20-minute deadline per package. The non-race
-coverage pass retains Go's default deadline. Local validation and CI use the
-same wrapper.
+The race gate runs `go test -race -p 2 -timeout=5m ./...`: two packages run
+concurrently, with an explicit five-minute deadline per package. The non-race
+coverage pass uses the same package concurrency and deadline. Local validation
+and CI use the same wrapper. Neither command sets a fixed GOMAXPROCS,
+test `-parallel` limit or CPU affinity; use available Go CPU resources.
+CI's integrated build runs independently of other checks; all jobs still
+must pass. [ADR 0016](adrs/0016-native-backend-test-resources.md) and the
+[native gate review](reviews/native-test-gate-2026-10-12.md) govern these limits.
 
 [T-111 #126](https://github.com/sergeyfarin/rekenraam/issues/126) reviewed the
 complete suite after the 2026-09-30 gate took 598.347 seconds against the old
@@ -127,8 +131,9 @@ The [FULL review](reviews/sqlite-full-durability-2026-10-12.md) records current
 performance and the connection/build settings audit. The read pool's maximum
 four connections is independent of CPU count. The shared gate does not cap
 GOMAXPROCS or test parallelism at four; four-CPU affinity is a controlled
-measurement condition. Keep `-p 1` and the 20-minute package bound until a
-separate native scheduling measurement justifies changing them.
+measurement condition. The owner's subsequent clarification requested updated
+test limits: ADR 0016 replaces the old serial-package/20-minute gate with two
+concurrent packages and five-minute deadlines after native measurements.
 
 The financial property tests run in the normal backend suite. For a focused
 iteration on ledger, cashflow, lot conservation and gains arithmetic:
@@ -699,7 +704,7 @@ once a released version exists, `main` is something users can be running.
 
 ### Backend
 
-- Usually validate with `./scripts/test-backend.sh` — it gates on `gofmt -l`, then runs `go vet ./...` and `go test -race -p 1 -timeout=20m ./...`. Packages run serially with an explicit 20-minute race-test deadline per package.
+- Usually validate with `./scripts/test-backend.sh` — it gates on `gofmt -l`, then runs `go vet ./...` and `go test -race -p 2 -timeout=5m ./...`. Two packages run concurrently with a five-minute deadline each; normal test parallelism uses available Go CPU resources.
 - If backend changes affect the integrated binary shape, also run `pnpm build`.
 
 ### Frontend

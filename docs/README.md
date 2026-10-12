@@ -66,6 +66,11 @@ WAL/NORMAL to WAL/FULL after driver admission. The
 [FULL durability review](reviews/sqlite-full-durability-2026-10-12.md) records
 current-policy validation and the remaining connection/build settings audit.
 
+[ADR 0016](adrs/0016-native-backend-test-resources.md) and the
+[native gate review](reviews/native-test-gate-2026-10-12.md) replace the old
+serial-package/20-minute test gate with two concurrent packages, five-minute
+deadlines and normal available CPU resources after native scheduling evidence.
+
 The [2026-09-27 work-tracking audit](reviews/github-work-tracking-audit-2026-09-27.md)
 records the open-ID triage used for the migration to GitHub Issues.
 The [pre-migration backlog snapshot](reviews/open-backlog-before-github-2026-09-27.md)

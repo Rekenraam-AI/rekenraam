@@ -1,0 +1,256 @@
+{
+  "comparison": "Native SQLite/FULL, four CPUs, same cohort; serial versus two concurrent packages",
+  "source_parent_commit": "6b6ff54372c0986f70f42b858ded1c10c1387085",
+  "GOMAXPROCS": 4,
+  "cpu_affinity": "0-3",
+  "runs": [
+    {
+      "wall_seconds": 156.63,
+      "user_seconds": 402.25,
+      "system_seconds": 125.42,
+      "max_child_rss_kib": 897800.0,
+      "run": 1,
+      "packages": {
+        "rekenraam/backend/cmd/rekenraam": 12.44,
+        "rekenraam/backend/internal/api": 65.895,
+        "rekenraam/backend/internal/appruntime": 3.598,
+        "rekenraam/backend/internal/config": 1.018,
+        "rekenraam/backend/internal/db": 68.637,
+        "rekenraam/backend/internal/exact": 1.026,
+        "rekenraam/backend/internal/marketdata": 1.023,
+        "rekenraam/backend/internal/onlinesource/trading212": 1.077,
+        "rekenraam/backend/internal/recur": 1.026,
+        "rekenraam/backend/internal/secretbox": 1.014,
+        "rekenraam/backend/internal/app": 139.764,
+        "rekenraam/backend/internal/testdb": 2.495,
+        "rekenraam/backend/internal/totp": 1.016,
+        "rekenraam/backend/internal/web": 1.029,
+        "rekenraam/backend/migrations": 1.014
+      },
+      "case_count": 2834,
+      "case_names_sha256": "85f28b35c41dce481495a6a6337c2fabfa7a52fb1825c8311c3e6731367bc629",
+      "skipped_cases": [
+        "rekenraam/backend/internal/api/TestBuildReleaseSeedFixture",
+        "rekenraam/backend/internal/app/TestMeasureReplaySelfCheckRuntime",
+        "rekenraam/backend/internal/web/TestHandlerServesEmbeddedBuildOutput"
+      ]
+    },
+    {
+      "wall_seconds": 155.41,
+      "user_seconds": 400.59,
+      "system_seconds": 123.4,
+      "max_child_rss_kib": 1248944.0,
+      "run": 2,
+      "packages": {
+        "rekenraam/backend/cmd/rekenraam": 12.35,
+        "rekenraam/backend/internal/api": 65.828,
+        "rekenraam/backend/internal/appruntime": 3.431,
+        "rekenraam/backend/internal/config": 1.021,
+        "rekenraam/backend/internal/db": 66.739,
+        "rekenraam/backend/internal/exact": 1.025,
+        "rekenraam/backend/internal/marketdata": 1.023,
+        "rekenraam/backend/internal/onlinesource/trading212": 1.072,
+        "rekenraam/backend/internal/recur": 1.026,
+        "rekenraam/backend/internal/secretbox": 1.017,
+        "rekenraam/backend/internal/testdb": 2.691,
+        "rekenraam/backend/internal/totp": 1.017,
+        "rekenraam/backend/internal/web": 1.034,
+        "rekenraam/backend/internal/app": 140.454,
+        "rekenraam/backend/migrations": 1.014
+      },
+      "case_count": 2834,
+      "case_names_sha256": "85f28b35c41dce481495a6a6337c2fabfa7a52fb1825c8311c3e6731367bc629",
+      "skipped_cases": [
+        "rekenraam/backend/internal/api/TestBuildReleaseSeedFixture",
+        "rekenraam/backend/internal/app/TestMeasureReplaySelfCheckRuntime",
+        "rekenraam/backend/internal/web/TestHandlerServesEmbeddedBuildOutput"
+      ]
+    },
+    {
+      "wall_seconds": 162.61,
+      "user_seconds": 413.88,
+      "system_seconds": 128.51,
+      "max_child_rss_kib": 1293668.0,
+      "run": 3,
+      "packages": {
+        "rekenraam/backend/cmd/rekenraam": 13.9,
+        "rekenraam/backend/internal/api": 68.89,
+        "rekenraam/backend/internal/appruntime": 3.241,
+        "rekenraam/backend/internal/config": 1.021,
+        "rekenraam/backend/internal/db": 70.996,
+        "rekenraam/backend/internal/exact": 1.025,
+        "rekenraam/backend/internal/marketdata": 1.026,
+        "rekenraam/backend/internal/onlinesource/trading212": 1.065,
+        "rekenraam/backend/internal/recur": 1.034,
+        "rekenraam/backend/internal/secretbox": 1.016,
+        "rekenraam/backend/internal/testdb": 2.838,
+        "rekenraam/backend/internal/totp": 1.018,
+        "rekenraam/backend/internal/app": 145.119,
+        "rekenraam/backend/internal/web": 1.029,
+        "rekenraam/backend/migrations": 1.014
+      },
+      "case_count": 2834,
+      "case_names_sha256": "85f28b35c41dce481495a6a6337c2fabfa7a52fb1825c8311c3e6731367bc629",
+      "skipped_cases": [
+        "rekenraam/backend/internal/api/TestBuildReleaseSeedFixture",
+        "rekenraam/backend/internal/app/TestMeasureReplaySelfCheckRuntime",
+        "rekenraam/backend/internal/web/TestHandlerServesEmbeddedBuildOutput"
+      ]
+    }
+  ],
+  "historical_serial_package_summary": {
+    "wall_seconds": {
+      "median": 256.51,
+      "min": 254.95,
+      "max": 303.42,
+      "runs": [
+        303.42,
+        254.95,
+        256.51
+      ]
+    },
+    "app_seconds": {
+      "median": 113.309,
+      "min": 109.964,
+      "max": 114.74,
+      "runs": [
+        109.964,
+        114.74,
+        113.309
+      ]
+    },
+    "api_seconds": {
+      "median": 52.965,
+      "min": 52.688,
+      "max": 54.582,
+      "runs": [
+        52.688,
+        52.965,
+        54.582
+      ]
+    },
+    "db_seconds": {
+      "median": 50.004,
+      "min": 49.447,
+      "max": 53.643,
+      "runs": [
+        49.447,
+        50.004,
+        53.643
+      ]
+    }
+  },
+  "summary": {
+    "wall_seconds": {
+      "median": 156.63,
+      "min": 155.41,
+      "max": 162.61,
+      "runs": [
+        156.63,
+        155.41,
+        162.61
+      ]
+    },
+    "app_seconds": {
+      "median": 140.454,
+      "min": 139.764,
+      "max": 145.119,
+      "runs": [
+        139.764,
+        140.454,
+        145.119
+      ]
+    },
+    "api_seconds": {
+      "median": 65.895,
+      "min": 65.828,
+      "max": 68.89,
+      "runs": [
+        65.895,
+        65.828,
+        68.89
+      ]
+    },
+    "db_seconds": {
+      "median": 68.637,
+      "min": 66.739,
+      "max": 70.996,
+      "runs": [
+        68.637,
+        66.739,
+        70.996
+      ]
+    }
+  },
+  "wall_reduction_percent": 38.93805309734514,
+  "slowest_application_headroom_percent": 51.627,
+  "source_files_sha256": {
+    "backend/go.mod": "1d4521dae1a788f55f1faf6dabb6676d12f9fa07c46d2d27ef02806aa2f43f46",
+    "backend/go.sum": "778ca414388f2396ff7e5834b78f160bca454413c6f21fc884900531af0a2a4d",
+    "backend/internal/db/sqlite.go": "1326f9ce6a576caec10c1f69c8c02e2f8a6828149bb5fdf282501319db7d2089",
+    "scripts/test-backend.sh": "70c120c5eed1fd85c796c71343344582afd4498df7b54afdb88d90e0988d80a0",
+    ".github/workflows/ci.yml": "4517050215c4348c224b1b3262d8a22d5a9248916034a06cc1c56017b163c2a4"
+  },
+  "prior_ci_application_race_seconds": 56.508,
+  "prior_ci_total_coverage_percent": 79.6,
+  "normal_caller_GOMAXPROCS": "unset",
+  "host_logical_cpus": 10,
+  "validation": {
+    "race": {
+      "command": "./scripts/test-backend.sh",
+      "wall_seconds": 136.7,
+      "user_seconds": 652.93,
+      "system_seconds": 311.21,
+      "max_child_rss_kib": 1466608.0,
+      "packages": {
+        "rekenraam/backend/cmd/rekenraam": "12.567s",
+        "rekenraam/backend/internal/api": "55.707s",
+        "rekenraam/backend/internal/app": "117.373s",
+        "rekenraam/backend/internal/appruntime": "3.651s",
+        "rekenraam/backend/internal/config": "1.020s",
+        "rekenraam/backend/internal/db": "58.514s",
+        "rekenraam/backend/internal/exact": "1.028s",
+        "rekenraam/backend/internal/marketdata": "1.029s",
+        "rekenraam/backend/internal/onlinesource/trading212": "1.084s",
+        "rekenraam/backend/internal/recur": "1.035s",
+        "rekenraam/backend/internal/secretbox": "1.024s",
+        "rekenraam/backend/internal/testdb": "2.638s",
+        "rekenraam/backend/internal/totp": "1.018s",
+        "rekenraam/backend/internal/web": "1.031s",
+        "rekenraam/backend/migrations": "1.014s"
+      },
+      "normal_CPU_resources": true,
+      "passed": true
+    },
+    "coverage": {
+      "command": "COVERAGE=1 ./scripts/test-backend.sh",
+      "wall_seconds": 122.03,
+      "user_seconds": 434.85,
+      "system_seconds": 292.58,
+      "max_child_rss_kib": 669880.0,
+      "packages": {
+        "rekenraam/backend/cmd/rekenraam": "3.731s",
+        "rekenraam/backend/internal/api": "39.161s",
+        "rekenraam/backend/internal/app": "95.619s",
+        "rekenraam/backend/internal/appruntime": "0.746s",
+        "rekenraam/backend/internal/config": "0.116s",
+        "rekenraam/backend/internal/db": "14.756s",
+        "rekenraam/backend/internal/exact": "0.118s",
+        "rekenraam/backend/internal/marketdata": "0.106s",
+        "rekenraam/backend/internal/onlinesource/trading212": "0.140s",
+        "rekenraam/backend/internal/recur": "0.099s",
+        "rekenraam/backend/internal/secretbox": "0.087s",
+        "rekenraam/backend/internal/testdb": "0.526s",
+        "rekenraam/backend/internal/totp": "0.097s",
+        "rekenraam/backend/internal/web": "0.104s",
+        "rekenraam/backend/migrations": "0.106s"
+      },
+      "normal_CPU_resources": true,
+      "passed": true,
+      "total_coverage_percent": 79.6
+    },
+    "shell_syntax_and_document_links": "pass",
+    "CI_structure": "all five jobs retained; integrated build has no needs prerequisite",
+    "remote_CI": "pending at commit time; see GitHub delivery records"
+  }
+}

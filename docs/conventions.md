@@ -584,9 +584,14 @@ has actual installations, its migration files are immutable.
   `db.Open`, including its production PRAGMA and permission checks. Tests whose
   subject is migration, restore, or fresh-database startup behavior must keep
   constructing and migrating their own database instead of using the template.
+- ADR 0016 sets the shared native backend gate to two concurrent packages and
+  a five-minute deadline per package in both race and coverage modes. Normal
+  commands use available Go CPU resources; do not impose the historical
+  four-core/GOMAXPROCS limit. CI's integrated build runs independently of
+  other checks, with all validation jobs retained.
 - Every top-level test in `internal/app` and `internal/db` calls `t.Parallel()`
-  first; the race gate runs packages one at a time, so tests left serial run
-  on one core (T-125). A test that genuinely needs process-wide state
+  first; serial tests still use only one core within their package (T-125).
+  A test that genuinely needs process-wide state
   (`t.Setenv`, working directory, a package variable) instead carries a
   `// serial: <reason>` comment directly above it.
   `TestIntegrationSuitesRunTestsInParallel` enforces this. Never share a live

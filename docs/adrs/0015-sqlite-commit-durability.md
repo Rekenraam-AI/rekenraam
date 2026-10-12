@@ -5,6 +5,10 @@
 Accepted (2026-10-12). Supersedes ADR 0004's WAL/NORMAL runtime policy and
 ADR 0014's requirement to preserve that synchronous value during cutover.
 
+[ADR 0016](0016-native-backend-test-resources.md) subsequently supersedes
+decision 5's test schedule and deadline after the owner's clarification and
+native scheduling measurements. Other decisions remain in force.
+
 ## Context
 
 The completed #195 driver migration deliberately kept the former writer's

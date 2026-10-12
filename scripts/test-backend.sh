@@ -39,25 +39,20 @@ go vet ./...
 
 # COVERAGE=1 runs a separate, non-race coverage pass (a combined run is slow
 # and muddies both signals). Writes backend/coverage.out and prints the merged
-# total. Default mode is unchanged: the race-detector run.
+# total. Both modes share the native scheduling and per-package deadline.
 if [ "${COVERAGE:-0}" = "1" ]; then
-  go test -p 1 ./... -coverpkg=./... -coverprofile=coverage.out
+  go test -p 2 -timeout=5m ./... -coverpkg=./... -coverprofile=coverage.out
   go tool cover -func=coverage.out | tail -1
 else
   # Ordinary integration fixtures copy a process-wide migrated SQLite template
   # (internal/testdb) instead of replaying the full schema per test, so every
   # top-level application and database test runs with t.Parallel() and uses
   # available Go parallelism inside its package (T-125;
-  # TestIntegrationSuitesRunTestsInParallel keeps it that way). Packages run
-  # one at a time for predictable gate resource use; there is no four-CPU cap.
-  # Prior modernc scheduling measurements do not establish the optimal native
-  # schedule. T-111 profiled modernc: SQLite parsing and translated-engine
-  # race instrumentation dominated. #195 uses bundled native SQLite with
-  # Go race coverage retained (the C engine is outside that instrumentation).
-  # Keep all regressions and the explicit 20m
-  # per-package bound; it is not a runtime target. The owner raised it from
-  # 15m on 2026-10-11 when the application package reached 856 s (#164).
-  # Measurements: docs/reviews/native-sqlite-driver-2026-10-12.md; historical
-  # scheduling review: docs/reviews/race-gate-runtime-2026-10-04.md.
-  go test -race -p 1 -timeout=20m ./...
+  # TestIntegrationSuitesRunTestsInParallel keeps it that way). Native SQLite
+  # with FULL supports two concurrent packages and a five-minute package
+  # deadline (ADR 0016). No fixed GOMAXPROCS, -parallel or CPU-affinity cap.
+  # Keep every assertion and Go race instrumentation; the native C engine is
+  # outside that instrumentation. The deadline is a failure bound, not a target.
+  # Measurements: docs/reviews/native-test-gate-2026-10-12.md.
+  go test -race -p 2 -timeout=5m ./...
 fi

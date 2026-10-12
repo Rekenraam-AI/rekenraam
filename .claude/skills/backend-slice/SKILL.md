@@ -124,7 +124,7 @@ strings to the client.
 ## Validation
 
 ```sh
-./scripts/test-backend.sh            # go test -race -p 1 -timeout=20m ./... — the default gate
+./scripts/test-backend.sh            # go test -race -p 2 -timeout=5m ./... — the default gate
 ./scripts/go-backend.sh vet ./...
 cd backend && "$(go env GOROOT)/bin/gofmt" -l .
 pnpm build                           # only if the integrated binary shape changed

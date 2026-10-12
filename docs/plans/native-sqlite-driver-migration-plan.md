@@ -7,6 +7,10 @@ The original driver comparison retained WAL/NORMAL. The subsequent owner
 decision in [ADR 0015](../adrs/0015-sqlite-commit-durability.md) requires FULL
 consistently; its [review](../reviews/sqlite-full-durability-2026-10-12.md)
 records the current policy and fresh validation.
+The owner's subsequent test-limit clarification is delivered through
+[ADR 0016](../adrs/0016-native-backend-test-resources.md): two concurrent
+packages, five-minute deadlines and available Go CPU resources. The original
+driver and FULL comparisons below retained their historical 20-minute bound.
 Governed by [ADR 0014](../adrs/0014-native-sqlite-driver.md), ADRs 0004/0005/0013,
 and the financial requirements. The [roadmap](../roadmap.md) owns execution
 order; [#195](https://github.com/sergeyfarin/rekenraam/issues/195) owns the driver

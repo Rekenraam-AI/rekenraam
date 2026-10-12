@@ -30,7 +30,7 @@ jobs:
           cache-dependency-path: backend/go.sum
       - name: Run backend tests
         # Shared local/CI gate: race detector, parallel tests inside each
-        # package, packages one at a time, 20m per package (T-125, #164).
+        # package, two packages concurrently, 5m per package (ADR 0016, #164).
         run: ./scripts/test-backend.sh
 
   backend-coverage:
@@ -108,7 +108,8 @@ jobs:
   app-build:
     name: Integrated Build
     runs-on: ubuntu-latest
-    needs: [backend-test, frontend-check]
+    # Independent validation: building need not wait for other checks.
+    # Every CI job remains required for the overall workflow to pass.
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
