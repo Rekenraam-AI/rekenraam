@@ -246,6 +246,15 @@ Out of scope, by design:
 `effective_investment_lot_events` or `latest_*_revisions` outside the owner
 and a named allow-list.
 
+**Closure audit (2026-10-12):** this owner currently orders by event date,
+then movement family and that family's query order. It does not expose a
+correction-root slot or effect sequence, and revised movements identify their
+family and operation rather than the exact revision and transfer link. The
+current consumers fold dated totals; this ordering is not a chronological
+replay contract. Those metadata requirements in #189 remain unfinished and
+keep that issue open. Replay continues to use its own economic inputs; see
+[the closure audit](../reviews/investment-schema-closure-audit-2026-10-12.md).
+
 ### Operation families to support
 
 | Family | Named operations and effects |

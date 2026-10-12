@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/exact"
 )
 
@@ -56,6 +57,86 @@ func TestCashInLieuDisposesFractionWithCashOnItsPaymentDate(t *testing.T) {
 	disposed.AddScaled(remaining)
 	requireScaled(t, 3000, 2, disposed, "the fraction's basis plus the rest conserve 30.00")
 	requireInvestmentSelfCheckPasses(t, f)
+}
+
+// #194: enter the fraction after recording a later sale. The fraction takes
+// 30 / 9 = 3.333333 at the currency's allocation scale; selling the
+// remaining four units then takes the exact remainder, 26.666667.
+func TestCashInLieuBackdatedBehindALaterSaleRevisesIt(t *testing.T) {
+	t.Parallel()
+	f, split := cashInLieuSetup(t)
+	ctx := context.Background()
+	sale := sellInput(f, "2026-07-01", 4)
+	sale.CostBasisMethod = "fifo"
+	sold, err := f.investmentService.Sell(ctx, sale)
+	require.NoError(t, err)
+	requireScaled(t, 26666666, 6, saleEffectiveBasis(t, f, sold.Transaction.ID), "four ninths of twice the opening basis, truncated")
+
+	input := cashInLieuInput(f, split.Transaction.ID)
+	input.CostBasisMethod = "fifo"
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	preview, impact, err := f.investmentService.PreviewCashInLieu(ctx, input)
+	require.NoError(t, err)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "preview leaves every durable row unchanged")
+	require.NotNil(t, impact.GainImpact)
+	require.Len(t, impact.GainImpact.Changes, 1, "only the existing sale is restated")
+	change := impact.GainImpact.Changes[0]
+	require.Equal(t, db.GainImpactRevised, change.Kind)
+	require.Equal(t, sold.Transaction.ID, change.TransactionID)
+	require.NotNil(t, change.Before)
+	require.NotNil(t, change.After)
+	require.Equal(t, "2026-07-01", change.After.DisposalDate)
+	require.Equal(t, "fifo", change.After.CostBasisMethod)
+	requireScaled(t, 26666666, 6, change.Before.DisposedBasis, "original sale basis")
+	requireScaled(t, 26666667, 6, change.After.DisposedBasis, "sale takes the remainder after the fraction")
+	require.NotEmpty(t, impact.GainImpact.Acknowledgement)
+
+	_, err = f.investmentService.CashInLieu(ctx, input)
+	require.ErrorIs(t, err, ErrGainImpactAcknowledgementRequired)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "unacknowledged replay writes nothing")
+
+	input.GainImpactAcknowledgement = impact.GainImpact.Acknowledgement
+	result, err := f.investmentService.CashInLieu(ctx, input)
+	require.NoError(t, err)
+	require.Equal(t, preview.Allocations, result.Allocations)
+	requireScaled(t, 3333333, 6, saleEffectiveBasis(t, f, result.Transaction.ID), "fraction takes one ninth of the opening basis")
+	requireScaled(t, 26666667, 6, saleEffectiveBasis(t, f, sold.Transaction.ID), "acknowledged commit revises the later sale")
+	var original exact.Coefficient
+	var originalScale, revisions int
+	require.NoError(t, f.database.QueryRow(`SELECT d.disposed_basis_value, d.disposed_basis_scale,
+		(SELECT COUNT(*) FROM investment_disposal_revisions r WHERE r.decision_id = d.id)
+		FROM investment_disposal_decisions d WHERE d.transaction_id = ?`, sold.Transaction.ID).
+		Scan(&original, &originalScale, &revisions))
+	requireScaled(t, 26666666, 6, exact.ScaledIntFromCoefficient(original, originalScale), "original decision remains audit evidence")
+	require.Equal(t, 1, revisions)
+	quantity, basis := openPositionBasis(t, f, f.holdingAccountID)
+	require.Zero(t, quantity.Sign(), "the fraction and sale close the holding")
+	require.Zero(t, basis.Sign(), "all opening basis is disposed")
+	requireSelfCheckPasses(t, f)
+}
+
+func TestCashInLieuBackdatedBehindAFullSaleNamesItAndWritesNothing(t *testing.T) {
+	t.Parallel()
+	f, split := cashInLieuSetup(t)
+	ctx := context.Background()
+	sale := sellInput(f, "2026-07-01", 0)
+	sale.QuantityValue, sale.QuantityScale = exact.New(45), 1
+	sale.CostBasisMethod = "fifo"
+	sold, err := f.investmentService.Sell(ctx, sale)
+	require.NoError(t, err)
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	input := cashInLieuInput(f, split.Transaction.ID)
+	_, _, err = f.investmentService.PreviewCashInLieu(ctx, input)
+	var dependency InvestmentSaleDependencyError
+	require.ErrorAs(t, err, &dependency)
+	require.Equal(t, transferOperationID(t, f, sold.Transaction.ID), dependency.OperationID)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "impossible preview writes nothing")
+
+	_, err = f.investmentService.CashInLieu(ctx, input)
+	require.ErrorAs(t, err, &dependency)
+	require.Equal(t, transferOperationID(t, f, sold.Transaction.ID), dependency.OperationID)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "impossible commit writes nothing")
+	requireSelfCheckPasses(t, f)
 }
 
 func TestCashInLieuRefusesWholeShares(t *testing.T) {

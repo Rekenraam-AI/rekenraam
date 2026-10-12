@@ -14,7 +14,7 @@ Other questions have exactly one home each:
 Do not restate shipped detail here; when a focus item ships, delete it and
 record the capability in `implemented.md`.
 
-Last reviewed: 2026-10-11. The current order is R16, R11 price management,
+Last reviewed: 2026-10-12. The current order is R16, R11 price management,
 R17 quotes and crypto, R18 gains projections, then R13 returns analytics.
 Cross-border input and date correctness run in parallel. Prior roadmap detail
 is retained in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md).
@@ -109,16 +109,15 @@ below is execution order, not a chain of hard dependencies.
 
 **Now**
 
-1. Investment read correctness from the
-   [investment schema design review](reviews/investment-schema-design-review-2026-10-11.md)
-   (2026-10-11), ahead of the rest of the queue. Shipped 2026-10-11: the named-short defect
-   [#188](https://github.com/sergeyfarin/rekenraam/issues/188), the single owner of committed effective movements
-   [#189](https://github.com/sergeyfarin/rekenraam/issues/189), the backdating requirement text
-   [#193](https://github.com/sergeyfarin/rekenraam/issues/193) and the independent conservation oracle
-   [#190](https://github.com/sergeyfarin/rekenraam/issues/190). Shipped 2026-10-12: the operation-kind capability
-   matrix [#191](https://github.com/sergeyfarin/rekenraam/issues/191) and uniform exact-number CHECKs
-   [#192](https://github.com/sergeyfarin/rekenraam/issues/192). Remaining: the matrix's one gap,
-   [#194](https://github.com/sergeyfarin/rekenraam/issues/194).
+1. Finish the committed-movement metadata contract in
+   [#189](https://github.com/sergeyfarin/rekenraam/issues/189) and malformed-text
+   admission checks in [#192](https://github.com/sergeyfarin/rekenraam/issues/192), reopened by the
+   [2026-10-12 closure audit](reviews/investment-schema-closure-audit-2026-10-12.md).
+   The shared reader ships, but its promised correction-root slot, effect
+   sequence and link/revision identity remain incomplete; exact-number CHECKs
+   still admit an embedded NUL followed by nonnumeric text. The other bounded
+   work from the [investment schema design review](reviews/investment-schema-design-review-2026-10-11.md)
+   is delivered, including the cash-in-lieu replay regression gap #194.
 2. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
    share exchange core [#177](https://github.com/sergeyfarin/rekenraam/issues/177) (delivered 2026-10-10),
    its reads and mobile entry [#178](https://github.com/sergeyfarin/rekenraam/issues/178) (delivered 2026-10-10), its correction and

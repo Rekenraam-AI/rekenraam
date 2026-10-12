@@ -105,7 +105,7 @@ func init() {
 			export:      exercised(TestWriteOffCorrectionsExportAsOperations),
 			selfCheck:   allKinds},
 		{kind: "cash_in_lieu", exportedIn: []string{disposalDecisionsFile, "investment-cash-in-lieu-facts.csv"},
-			replay:      gap(194),
+			replay:      exercised(TestCashInLieuBackdatedBehindALaterSaleRevisesIt),
 			replacement: exercised(TestReplaceCashInLieuKeepsItsSplitAndPreviewMatchesCommit),
 			reversal:    exercised(TestReverseCashInLieuRestoresFractionAndFreesSplit),
 			export:      allKinds,
