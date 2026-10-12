@@ -1,5 +1,13 @@
 -- BREAKING DEV DATABASE: pre-release ADR 0013 investment foundation rewrite.
 -- Disposable developer databases must be reset before running this baseline.
+--
+-- Exact numbers are a TEXT coefficient beside an INTEGER scale (ADR 0009).
+-- Every coefficient CHECK enforces exact.Coefficient's canonical form:
+-- base-10 digits, at most 38 of them, an optional leading '-', no leading
+-- zero, and no '-0'. Each column also states one legality rule (#192):
+-- signed, signed_nonzero, nonnegative or positive. A nullable coefficient
+-- passes its own CHECK when NULL; the table CHECK pairs it with its scale and
+-- basis knowledge. TestExactNumberColumnChecks lists the rule per column.
 -- +goose Up
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY,
@@ -527,7 +535,9 @@ CREATE TABLE IF NOT EXISTS posting_versions (
   posting_line_id INTEGER NOT NULL REFERENCES posting_lines(id) ON DELETE RESTRICT,
   line_seq INTEGER NOT NULL CHECK (line_seq > 0),
   account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
-  quantity_value TEXT NOT NULL DEFAULT '0' CHECK (length(quantity_value) BETWEEN 1 AND 39),
+  quantity_value TEXT NOT NULL DEFAULT '0' CHECK (quantity_value = '0' OR (
+    length(quantity_value) BETWEEN 1 + (quantity_value GLOB '-*') AND 38 + (quantity_value GLOB '-*')
+    AND substr(quantity_value, 1 + (quantity_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(quantity_value, 1 + (quantity_value GLOB '-*')) NOT GLOB '0*')),
   quantity_scale INTEGER NOT NULL DEFAULT 0 CHECK (quantity_scale BETWEEN 0 AND 24),
   commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE RESTRICT,
   memo TEXT NOT NULL DEFAULT '',
@@ -581,14 +591,22 @@ CREATE TABLE IF NOT EXISTS reconciliation_sessions (
   status TEXT NOT NULL CHECK (status IN ('open', 'finished', 'voided')),
   source_kind TEXT NOT NULL CHECK (source_kind IN ('statement', 'online_balance', 'manual_cash_count', 'asset_valuation', 'other')),
   statement_date TEXT NOT NULL CHECK (statement_date GLOB '????-??-??'),
-  statement_balance_value TEXT NOT NULL DEFAULT '0' CHECK (length(statement_balance_value) BETWEEN 1 AND 39),
+  statement_balance_value TEXT NOT NULL DEFAULT '0' CHECK (statement_balance_value = '0' OR (
+    length(statement_balance_value) BETWEEN 1 + (statement_balance_value GLOB '-*') AND 38 + (statement_balance_value GLOB '-*')
+    AND substr(statement_balance_value, 1 + (statement_balance_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(statement_balance_value, 1 + (statement_balance_value GLOB '-*')) NOT GLOB '0*')),
   statement_balance_scale INTEGER NOT NULL DEFAULT 0 CHECK (statement_balance_scale BETWEEN 0 AND 24),
   starting_checkpoint_id INTEGER REFERENCES reconciliation_checkpoints(id) ON DELETE RESTRICT,
-  starting_balance_value TEXT NOT NULL DEFAULT '0' CHECK (length(starting_balance_value) BETWEEN 1 AND 39),
+  starting_balance_value TEXT NOT NULL DEFAULT '0' CHECK (starting_balance_value = '0' OR (
+    length(starting_balance_value) BETWEEN 1 + (starting_balance_value GLOB '-*') AND 38 + (starting_balance_value GLOB '-*')
+    AND substr(starting_balance_value, 1 + (starting_balance_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(starting_balance_value, 1 + (starting_balance_value GLOB '-*')) NOT GLOB '0*')),
   starting_balance_scale INTEGER NOT NULL DEFAULT 0 CHECK (starting_balance_scale BETWEEN 0 AND 24),
-  selected_balance_value TEXT NOT NULL DEFAULT '0' CHECK (length(selected_balance_value) BETWEEN 1 AND 39),
+  selected_balance_value TEXT NOT NULL DEFAULT '0' CHECK (selected_balance_value = '0' OR (
+    length(selected_balance_value) BETWEEN 1 + (selected_balance_value GLOB '-*') AND 38 + (selected_balance_value GLOB '-*')
+    AND substr(selected_balance_value, 1 + (selected_balance_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(selected_balance_value, 1 + (selected_balance_value GLOB '-*')) NOT GLOB '0*')),
   selected_balance_scale INTEGER NOT NULL DEFAULT 0 CHECK (selected_balance_scale BETWEEN 0 AND 24),
-  difference_value TEXT NOT NULL DEFAULT '0' CHECK (length(difference_value) BETWEEN 1 AND 39),
+  difference_value TEXT NOT NULL DEFAULT '0' CHECK (difference_value = '0' OR (
+    length(difference_value) BETWEEN 1 + (difference_value GLOB '-*') AND 38 + (difference_value GLOB '-*')
+    AND substr(difference_value, 1 + (difference_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(difference_value, 1 + (difference_value GLOB '-*')) NOT GLOB '0*')),
   difference_scale INTEGER NOT NULL DEFAULT 0 CHECK (difference_scale BETWEEN 0 AND 24),
   metadata_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL,
@@ -615,7 +633,9 @@ CREATE TABLE IF NOT EXISTS reconciliation_session_postings (
   account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
   commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE RESTRICT,
   entry_date TEXT NOT NULL CHECK (entry_date GLOB '????-??-??'),
-  quantity_value TEXT NOT NULL DEFAULT '0' CHECK (length(quantity_value) BETWEEN 1 AND 39),
+  quantity_value TEXT NOT NULL DEFAULT '0' CHECK (quantity_value = '0' OR (
+    length(quantity_value) BETWEEN 1 + (quantity_value GLOB '-*') AND 38 + (quantity_value GLOB '-*')
+    AND substr(quantity_value, 1 + (quantity_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(quantity_value, 1 + (quantity_value GLOB '-*')) NOT GLOB '0*')),
   quantity_scale INTEGER NOT NULL DEFAULT 0 CHECK (quantity_scale BETWEEN 0 AND 24),
   payee_name TEXT,
   description TEXT NOT NULL DEFAULT '',
@@ -637,7 +657,9 @@ CREATE TABLE IF NOT EXISTS reconciliation_checkpoints (
   previous_checkpoint_id INTEGER REFERENCES reconciliation_checkpoints(id) ON DELETE RESTRICT,
   status TEXT NOT NULL CHECK (status IN ('active', 'invalidated', 'voided')),
   statement_date TEXT NOT NULL CHECK (statement_date GLOB '????-??-??'),
-  statement_balance_value TEXT NOT NULL DEFAULT '0' CHECK (length(statement_balance_value) BETWEEN 1 AND 39),
+  statement_balance_value TEXT NOT NULL DEFAULT '0' CHECK (statement_balance_value = '0' OR (
+    length(statement_balance_value) BETWEEN 1 + (statement_balance_value GLOB '-*') AND 38 + (statement_balance_value GLOB '-*')
+    AND substr(statement_balance_value, 1 + (statement_balance_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(statement_balance_value, 1 + (statement_balance_value GLOB '-*')) NOT GLOB '0*')),
   statement_balance_scale INTEGER NOT NULL DEFAULT 0 CHECK (statement_balance_scale BETWEEN 0 AND 24),
   created_at TEXT NOT NULL,
   created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -663,7 +685,9 @@ CREATE TABLE IF NOT EXISTS reconciliation_checkpoint_postings (
   account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
   commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE RESTRICT,
   entry_date TEXT NOT NULL CHECK (entry_date GLOB '????-??-??'),
-  quantity_value TEXT NOT NULL DEFAULT '0' CHECK (length(quantity_value) BETWEEN 1 AND 39),
+  quantity_value TEXT NOT NULL DEFAULT '0' CHECK (quantity_value = '0' OR (
+    length(quantity_value) BETWEEN 1 + (quantity_value GLOB '-*') AND 38 + (quantity_value GLOB '-*')
+    AND substr(quantity_value, 1 + (quantity_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(quantity_value, 1 + (quantity_value GLOB '-*')) NOT GLOB '0*')),
   quantity_scale INTEGER NOT NULL DEFAULT 0 CHECK (quantity_scale BETWEEN 0 AND 24),
   PRIMARY KEY (checkpoint_id, posting_version_id)
 );
@@ -1112,9 +1136,9 @@ CREATE TABLE IF NOT EXISTS investment_lots (
   commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE RESTRICT,
   opened_on TEXT NOT NULL CHECK (opened_on GLOB '????-??-??'),
   source_transaction_id INTEGER REFERENCES transactions(id) ON DELETE RESTRICT,
-  quantity_value TEXT NOT NULL DEFAULT '0' CHECK (length(quantity_value) BETWEEN 1 AND 38),
+  quantity_value TEXT NOT NULL DEFAULT '0' CHECK (length(quantity_value) BETWEEN 1 AND 38 AND quantity_value NOT GLOB '*[^0-9]*' AND quantity_value NOT GLOB '0*'),
   quantity_scale INTEGER NOT NULL DEFAULT 0 CHECK (quantity_scale BETWEEN 0 AND 24),
-  cost_basis_value TEXT CHECK (length(cost_basis_value) BETWEEN 1 AND 38),
+  cost_basis_value TEXT CHECK (cost_basis_value = '0' OR (length(cost_basis_value) BETWEEN 1 AND 38 AND cost_basis_value NOT GLOB '*[^0-9]*' AND cost_basis_value NOT GLOB '0*')),
   cost_basis_scale INTEGER CHECK (cost_basis_scale BETWEEN 0 AND 12),
   cost_commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE RESTRICT,
   metadata_json TEXT NOT NULL DEFAULT '{}',
@@ -1162,9 +1186,9 @@ CREATE TABLE IF NOT EXISTS investment_lot_state (
   lot_id INTEGER PRIMARY KEY REFERENCES investment_lots(id) ON DELETE RESTRICT,
   book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
   status TEXT NOT NULL CHECK (status IN ('open', 'closed')),
-  remaining_quantity_value TEXT NOT NULL CHECK (length(remaining_quantity_value) BETWEEN 1 AND 38 AND substr(remaining_quantity_value, 1, 1) <> '-'),
+  remaining_quantity_value TEXT NOT NULL CHECK (remaining_quantity_value = '0' OR (length(remaining_quantity_value) BETWEEN 1 AND 38 AND remaining_quantity_value NOT GLOB '*[^0-9]*' AND remaining_quantity_value NOT GLOB '0*')),
   remaining_quantity_scale INTEGER NOT NULL CHECK (remaining_quantity_scale BETWEEN 0 AND 24),
-  remaining_cost_basis_value TEXT CHECK (length(remaining_cost_basis_value) BETWEEN 1 AND 38 AND substr(remaining_cost_basis_value, 1, 1) <> '-'),
+  remaining_cost_basis_value TEXT CHECK (remaining_cost_basis_value = '0' OR (length(remaining_cost_basis_value) BETWEEN 1 AND 38 AND remaining_cost_basis_value NOT GLOB '*[^0-9]*' AND remaining_cost_basis_value NOT GLOB '0*')),
   remaining_cost_basis_scale INTEGER CHECK (remaining_cost_basis_scale BETWEEN 0 AND 12),
   updated_at TEXT NOT NULL,
   updated_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -1228,9 +1252,13 @@ CREATE TABLE IF NOT EXISTS investment_lot_events (
   event_kind TEXT NOT NULL CHECK (event_kind IN ('acquisition', 'disposal', 'split_adjustment', 'reinvested_dividend', 'manual_adjustment', 'transfer_in', 'transfer_out', 'basis_reduction')),
   transaction_id INTEGER REFERENCES transactions(id) ON DELETE RESTRICT,
   event_date TEXT NOT NULL CHECK (event_date GLOB '????-??-??'),
-  quantity_value TEXT NOT NULL DEFAULT '0' CHECK (length(quantity_value) BETWEEN 1 AND 39),
+  quantity_value TEXT NOT NULL DEFAULT '0' CHECK (quantity_value = '0' OR (
+    length(quantity_value) BETWEEN 1 + (quantity_value GLOB '-*') AND 38 + (quantity_value GLOB '-*')
+    AND substr(quantity_value, 1 + (quantity_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(quantity_value, 1 + (quantity_value GLOB '-*')) NOT GLOB '0*')),
   quantity_scale INTEGER NOT NULL DEFAULT 0 CHECK (quantity_scale BETWEEN 0 AND 24),
-  cost_basis_value TEXT DEFAULT '0' CHECK (length(cost_basis_value) BETWEEN 1 AND 39),
+  cost_basis_value TEXT DEFAULT '0' CHECK (cost_basis_value = '0' OR (
+    length(cost_basis_value) BETWEEN 1 + (cost_basis_value GLOB '-*') AND 38 + (cost_basis_value GLOB '-*')
+    AND substr(cost_basis_value, 1 + (cost_basis_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(cost_basis_value, 1 + (cost_basis_value GLOB '-*')) NOT GLOB '0*')),
   cost_basis_scale INTEGER DEFAULT 0 CHECK (cost_basis_scale BETWEEN 0 AND 12),
   metadata_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL,
@@ -1277,11 +1305,13 @@ CREATE TABLE IF NOT EXISTS investment_disposal_decisions (
   commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE RESTRICT,
   cost_commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE RESTRICT,
   event_date TEXT NOT NULL CHECK (event_date GLOB '????-??-??'),
-  quantity_value TEXT NOT NULL CHECK (length(quantity_value) BETWEEN 1 AND 38),
+  quantity_value TEXT NOT NULL CHECK (quantity_value = '0' OR (length(quantity_value) BETWEEN 1 AND 38 AND quantity_value NOT GLOB '*[^0-9]*' AND quantity_value NOT GLOB '0*')),
   quantity_scale INTEGER NOT NULL CHECK (quantity_scale BETWEEN 0 AND 24),
-  disposed_basis_value TEXT CHECK (length(disposed_basis_value) BETWEEN 1 AND 38),
+  disposed_basis_value TEXT CHECK (disposed_basis_value = '0' OR (length(disposed_basis_value) BETWEEN 1 AND 38 AND disposed_basis_value NOT GLOB '*[^0-9]*' AND disposed_basis_value NOT GLOB '0*')),
   disposed_basis_scale INTEGER CHECK (disposed_basis_scale BETWEEN 0 AND 12),
-  proceeds_value TEXT NOT NULL DEFAULT '0' CHECK (length(proceeds_value) BETWEEN 1 AND 38),
+  proceeds_value TEXT NOT NULL DEFAULT '0' CHECK (proceeds_value = '0' OR (
+    length(proceeds_value) BETWEEN 1 + (proceeds_value GLOB '-*') AND 38 + (proceeds_value GLOB '-*')
+    AND substr(proceeds_value, 1 + (proceeds_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(proceeds_value, 1 + (proceeds_value GLOB '-*')) NOT GLOB '0*')),
   proceeds_scale INTEGER NOT NULL DEFAULT 0 CHECK (proceeds_scale BETWEEN 0 AND 12),
   cost_basis_method TEXT NOT NULL CHECK (cost_basis_method IN ('fifo', 'lifo', 'average_cost', 'specific_lot')),
   resolution_tier TEXT NOT NULL CHECK (resolution_tier IN ('transaction', 'account', 'global', 'fallback')),
@@ -1313,11 +1343,13 @@ CREATE TABLE IF NOT EXISTS investment_disposal_allocations (
   lot_event_id INTEGER NOT NULL REFERENCES investment_lot_events(id) ON DELETE RESTRICT,
   lot_id INTEGER NOT NULL REFERENCES investment_lots(id) ON DELETE RESTRICT,
   allocation_seq INTEGER NOT NULL CHECK (allocation_seq > 0),
-  quantity_value TEXT NOT NULL CHECK (length(quantity_value) BETWEEN 1 AND 38),
+  quantity_value TEXT NOT NULL CHECK (quantity_value = '0' OR (length(quantity_value) BETWEEN 1 AND 38 AND quantity_value NOT GLOB '*[^0-9]*' AND quantity_value NOT GLOB '0*')),
   quantity_scale INTEGER NOT NULL CHECK (quantity_scale BETWEEN 0 AND 24),
-  cost_basis_value TEXT CHECK (length(cost_basis_value) BETWEEN 1 AND 38),
+  cost_basis_value TEXT CHECK (cost_basis_value = '0' OR (length(cost_basis_value) BETWEEN 1 AND 38 AND cost_basis_value NOT GLOB '*[^0-9]*' AND cost_basis_value NOT GLOB '0*')),
   cost_basis_scale INTEGER CHECK (cost_basis_scale BETWEEN 0 AND 12),
-  proceeds_value TEXT NOT NULL CHECK (length(proceeds_value) BETWEEN 1 AND 38),
+  proceeds_value TEXT NOT NULL CHECK (proceeds_value = '0' OR (
+    length(proceeds_value) BETWEEN 1 + (proceeds_value GLOB '-*') AND 38 + (proceeds_value GLOB '-*')
+    AND substr(proceeds_value, 1 + (proceeds_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(proceeds_value, 1 + (proceeds_value GLOB '-*')) NOT GLOB '0*')),
   proceeds_scale INTEGER NOT NULL CHECK (proceeds_scale BETWEEN 0 AND 12),
   basis_knowledge TEXT NOT NULL DEFAULT 'known' CHECK (basis_knowledge IN ('known', 'unknown')),
   CHECK ((basis_knowledge = 'known' AND cost_basis_value IS NOT NULL AND cost_basis_scale IS NOT NULL)
@@ -1333,7 +1365,9 @@ CREATE TABLE IF NOT EXISTS investment_disposal_clearing_allocations (
   book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
   decision_id INTEGER NOT NULL REFERENCES investment_disposal_decisions(id) ON DELETE RESTRICT,
   posting_version_id INTEGER NOT NULL REFERENCES posting_versions(id) ON DELETE RESTRICT,
-  proceeds_value TEXT NOT NULL CHECK (length(proceeds_value) BETWEEN 1 AND 39),
+  proceeds_value TEXT NOT NULL CHECK (proceeds_value = '0' OR (
+    length(proceeds_value) BETWEEN 1 + (proceeds_value GLOB '-*') AND 38 + (proceeds_value GLOB '-*')
+    AND substr(proceeds_value, 1 + (proceeds_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(proceeds_value, 1 + (proceeds_value GLOB '-*')) NOT GLOB '0*')),
   proceeds_scale INTEGER NOT NULL CHECK (proceeds_scale BETWEEN 0 AND 12),
   UNIQUE (decision_id, posting_version_id)
 );
@@ -1350,7 +1384,7 @@ CREATE TABLE IF NOT EXISTS investment_disposal_revisions (
   revision_seq INTEGER NOT NULL CHECK (revision_seq >= 2),
   caused_by_operation_id INTEGER NOT NULL REFERENCES investment_operations(id) ON DELETE RESTRICT,
   supersedes_revision_id INTEGER REFERENCES investment_disposal_revisions(id) ON DELETE RESTRICT,
-  disposed_basis_value TEXT CHECK (length(disposed_basis_value) BETWEEN 1 AND 38),
+  disposed_basis_value TEXT CHECK (disposed_basis_value = '0' OR (length(disposed_basis_value) BETWEEN 1 AND 38 AND disposed_basis_value NOT GLOB '*[^0-9]*' AND disposed_basis_value NOT GLOB '0*')),
   disposed_basis_scale INTEGER CHECK (disposed_basis_scale BETWEEN 0 AND 12),
   created_at TEXT NOT NULL,
   created_audit_event_id INTEGER NOT NULL REFERENCES audit_events(id) ON DELETE RESTRICT,
@@ -1367,11 +1401,13 @@ CREATE TABLE IF NOT EXISTS investment_disposal_revision_allocations (
   revision_id INTEGER NOT NULL REFERENCES investment_disposal_revisions(id) ON DELETE RESTRICT,
   allocation_seq INTEGER NOT NULL CHECK (allocation_seq > 0),
   lot_id INTEGER NOT NULL REFERENCES investment_lots(id) ON DELETE RESTRICT,
-  quantity_value TEXT NOT NULL CHECK (length(quantity_value) BETWEEN 1 AND 38),
+  quantity_value TEXT NOT NULL CHECK (quantity_value = '0' OR (length(quantity_value) BETWEEN 1 AND 38 AND quantity_value NOT GLOB '*[^0-9]*' AND quantity_value NOT GLOB '0*')),
   quantity_scale INTEGER NOT NULL CHECK (quantity_scale BETWEEN 0 AND 24),
-  cost_basis_value TEXT CHECK (length(cost_basis_value) BETWEEN 1 AND 38),
+  cost_basis_value TEXT CHECK (cost_basis_value = '0' OR (length(cost_basis_value) BETWEEN 1 AND 38 AND cost_basis_value NOT GLOB '*[^0-9]*' AND cost_basis_value NOT GLOB '0*')),
   cost_basis_scale INTEGER CHECK (cost_basis_scale BETWEEN 0 AND 12),
-  proceeds_value TEXT NOT NULL CHECK (length(proceeds_value) BETWEEN 1 AND 38),
+  proceeds_value TEXT NOT NULL CHECK (proceeds_value = '0' OR (
+    length(proceeds_value) BETWEEN 1 + (proceeds_value GLOB '-*') AND 38 + (proceeds_value GLOB '-*')
+    AND substr(proceeds_value, 1 + (proceeds_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(proceeds_value, 1 + (proceeds_value GLOB '-*')) NOT GLOB '0*')),
   proceeds_scale INTEGER NOT NULL CHECK (proceeds_scale BETWEEN 0 AND 12),
   basis_knowledge TEXT NOT NULL DEFAULT 'known' CHECK (basis_knowledge IN ('known', 'unknown')),
   CHECK ((basis_knowledge = 'known' AND cost_basis_value IS NOT NULL AND cost_basis_scale IS NOT NULL)
@@ -1470,14 +1506,9 @@ CREATE TABLE IF NOT EXISTS investment_operation_components (
   component_kind TEXT NOT NULL CHECK (length(trim(component_kind)) > 0 AND component_kind = trim(component_kind)),
   charge_kind TEXT CHECK (charge_kind IS NULL OR (length(trim(charge_kind)) > 0 AND charge_kind = trim(charge_kind))),
   commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE RESTRICT,
-  amount_value TEXT NOT NULL CHECK (
-    length(amount_value) BETWEEN 1 AND 39 AND (
-      amount_value = '0' OR
-      (amount_value NOT GLOB '*[^0-9]*' AND substr(amount_value, 1, 1) BETWEEN '1' AND '9') OR
-      (substr(amount_value, 1, 1) = '-' AND substr(amount_value, 2) NOT GLOB '*[^0-9]*'
-       AND substr(amount_value, 2, 1) BETWEEN '1' AND '9')
-    )
-  ),
+  amount_value TEXT NOT NULL CHECK (amount_value = '0' OR (
+    length(amount_value) BETWEEN 1 + (amount_value GLOB '-*') AND 38 + (amount_value GLOB '-*')
+    AND substr(amount_value, 1 + (amount_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(amount_value, 1 + (amount_value GLOB '-*')) NOT GLOB '0*')),
   amount_scale INTEGER NOT NULL CHECK (amount_scale BETWEEN 0 AND 24),
   amount_date TEXT NOT NULL CHECK (amount_date GLOB '????-??-??'),
   gross_unknown INTEGER NOT NULL DEFAULT 0 CHECK (gross_unknown IN (0, 1)),
@@ -1612,13 +1643,10 @@ CREATE TABLE IF NOT EXISTS investment_transfer_lot_links (
   link_seq INTEGER NOT NULL CHECK (link_seq > 0),
   source_lot_id INTEGER REFERENCES investment_lots(id) ON DELETE RESTRICT,
   destination_lot_id INTEGER REFERENCES investment_lots(id) ON DELETE RESTRICT,
-  quantity_value TEXT NOT NULL CHECK (length(quantity_value) BETWEEN 1 AND 38
-    AND quantity_value NOT GLOB '*[^0-9]*' AND substr(quantity_value, 1, 1) BETWEEN '1' AND '9'),
+  quantity_value TEXT NOT NULL CHECK (length(quantity_value) BETWEEN 1 AND 38 AND quantity_value NOT GLOB '*[^0-9]*' AND quantity_value NOT GLOB '0*'),
   quantity_scale INTEGER NOT NULL CHECK (quantity_scale BETWEEN 0 AND 24),
   basis_knowledge TEXT NOT NULL CHECK (basis_knowledge IN ('known', 'unknown')),
-  carried_basis_value TEXT CHECK (carried_basis_value IS NULL OR
-    (length(carried_basis_value) BETWEEN 1 AND 38 AND carried_basis_value NOT GLOB '*[^0-9]*'
-      AND (carried_basis_value = '0' OR substr(carried_basis_value, 1, 1) BETWEEN '1' AND '9'))),
+  carried_basis_value TEXT CHECK (carried_basis_value = '0' OR (length(carried_basis_value) BETWEEN 1 AND 38 AND carried_basis_value NOT GLOB '*[^0-9]*' AND carried_basis_value NOT GLOB '0*')),
   carried_basis_scale INTEGER CHECK (carried_basis_scale IS NULL OR carried_basis_scale BETWEEN 0 AND 12),
   cost_commodity_id INTEGER REFERENCES commodities(id) ON DELETE RESTRICT,
   original_date_knowledge TEXT NOT NULL CHECK (original_date_knowledge IN ('known', 'unknown')),
@@ -1733,9 +1761,7 @@ CREATE TABLE IF NOT EXISTS investment_transfer_link_revisions (
   caused_by_operation_id INTEGER NOT NULL REFERENCES investment_operations(id) ON DELETE RESTRICT,
   supersedes_revision_id INTEGER REFERENCES investment_transfer_link_revisions(id) ON DELETE RESTRICT,
   source_lot_id INTEGER REFERENCES investment_lots(id) ON DELETE RESTRICT,
-  carried_basis_value TEXT CHECK (length(carried_basis_value) BETWEEN 1 AND 38
-    AND carried_basis_value NOT GLOB '*[^0-9]*'
-    AND (carried_basis_value = '0' OR substr(carried_basis_value, 1, 1) BETWEEN '1' AND '9')),
+  carried_basis_value TEXT CHECK (carried_basis_value = '0' OR (length(carried_basis_value) BETWEEN 1 AND 38 AND carried_basis_value NOT GLOB '*[^0-9]*' AND carried_basis_value NOT GLOB '0*')),
   carried_basis_scale INTEGER CHECK (carried_basis_scale BETWEEN 0 AND 12),
   -- A revision restates the link's knowledge with its amounts as one tuple.
   -- It may not change the link's knowledge (T-145): unknown-to-known needs a
@@ -1799,12 +1825,9 @@ CREATE TABLE IF NOT EXISTS investment_transfer_link_revision_depletions (
   depletion_seq INTEGER NOT NULL CHECK (depletion_seq > 0),
   book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
   source_lot_id INTEGER NOT NULL REFERENCES investment_lots(id) ON DELETE RESTRICT,
-  quantity_value TEXT NOT NULL CHECK (length(quantity_value) BETWEEN 1 AND 38
-    AND quantity_value NOT GLOB '*[^0-9]*' AND substr(quantity_value, 1, 1) BETWEEN '1' AND '9'),
+  quantity_value TEXT NOT NULL CHECK (length(quantity_value) BETWEEN 1 AND 38 AND quantity_value NOT GLOB '*[^0-9]*' AND quantity_value NOT GLOB '0*'),
   quantity_scale INTEGER NOT NULL CHECK (quantity_scale BETWEEN 0 AND 24),
-  cost_basis_value TEXT CHECK (length(cost_basis_value) BETWEEN 1 AND 38
-    AND cost_basis_value NOT GLOB '*[^0-9]*'
-    AND (cost_basis_value = '0' OR substr(cost_basis_value, 1, 1) BETWEEN '1' AND '9')),
+  cost_basis_value TEXT CHECK (cost_basis_value = '0' OR (length(cost_basis_value) BETWEEN 1 AND 38 AND cost_basis_value NOT GLOB '*[^0-9]*' AND cost_basis_value NOT GLOB '0*')),
   cost_basis_scale INTEGER CHECK (cost_basis_scale BETWEEN 0 AND 12),
   basis_knowledge TEXT NOT NULL DEFAULT 'known' CHECK (basis_knowledge IN ('known', 'unknown')),
   CHECK ((basis_knowledge = 'known' AND cost_basis_value IS NOT NULL AND cost_basis_scale IS NOT NULL)
@@ -1854,13 +1877,11 @@ CREATE TABLE IF NOT EXISTS investment_basis_resolutions (
   transfer_operation_id INTEGER NOT NULL,
   link_seq INTEGER NOT NULL,
   lot_id INTEGER NOT NULL REFERENCES investment_lots(id) ON DELETE RESTRICT,
-  quantity_value TEXT NOT NULL CHECK (length(quantity_value) BETWEEN 1 AND 38
-    AND quantity_value NOT GLOB '*[^0-9]*' AND substr(quantity_value, 1, 1) BETWEEN '1' AND '9'),
+  quantity_value TEXT NOT NULL CHECK (length(quantity_value) BETWEEN 1 AND 38 AND quantity_value NOT GLOB '*[^0-9]*' AND quantity_value NOT GLOB '0*'),
   quantity_scale INTEGER NOT NULL CHECK (quantity_scale BETWEEN 0 AND 24),
   cost_commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE RESTRICT,
   -- A known zero is '0' and journal-free: it has no bridge to post (#168).
-  basis_value TEXT NOT NULL CHECK (basis_value = '0' OR (length(basis_value) BETWEEN 1 AND 38
-    AND basis_value NOT GLOB '*[^0-9]*' AND substr(basis_value, 1, 1) BETWEEN '1' AND '9')),
+  basis_value TEXT NOT NULL CHECK (basis_value = '0' OR (length(basis_value) BETWEEN 1 AND 38 AND basis_value NOT GLOB '*[^0-9]*' AND basis_value NOT GLOB '0*')),
   basis_scale INTEGER NOT NULL CHECK (basis_scale BETWEEN 0 AND 12),
   source_evidence_json TEXT NOT NULL DEFAULT '{}',
   created_audit_event_id INTEGER NOT NULL REFERENCES audit_events(id) ON DELETE RESTRICT,
@@ -1960,8 +1981,9 @@ CREATE TABLE IF NOT EXISTS investment_split_revision_effects (
   revision_id INTEGER NOT NULL REFERENCES investment_split_revisions(id) ON DELETE RESTRICT,
   effect_seq INTEGER NOT NULL CHECK (effect_seq > 0),
   lot_id INTEGER NOT NULL REFERENCES investment_lots(id) ON DELETE RESTRICT,
-  quantity_delta_value TEXT NOT NULL CHECK (length(quantity_delta_value) BETWEEN 1 AND 39
-    AND quantity_delta_value <> '0' AND quantity_delta_value <> '-0'),
+  quantity_delta_value TEXT NOT NULL CHECK (
+    length(quantity_delta_value) BETWEEN 1 + (quantity_delta_value GLOB '-*') AND 38 + (quantity_delta_value GLOB '-*')
+    AND substr(quantity_delta_value, 1 + (quantity_delta_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(quantity_delta_value, 1 + (quantity_delta_value GLOB '-*')) NOT GLOB '0*'),
   quantity_delta_scale INTEGER NOT NULL CHECK (quantity_delta_scale BETWEEN 0 AND 24),
   UNIQUE (revision_id, effect_seq),
   UNIQUE (revision_id, lot_id)
@@ -2146,8 +2168,7 @@ CREATE TABLE IF NOT EXISTS investment_capital_return_facts (
   cash_account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
   effective_on TEXT NOT NULL CHECK (effective_on GLOB '????-??-??'),
   payment_on TEXT NOT NULL CHECK (payment_on GLOB '????-??-??'),
-  amount_value TEXT NOT NULL CHECK (length(amount_value) BETWEEN 1 AND 38
-    AND amount_value NOT GLOB '*[^0-9]*' AND substr(amount_value, 1, 1) BETWEEN '1' AND '9'),
+  amount_value TEXT NOT NULL CHECK (length(amount_value) BETWEEN 1 AND 38 AND amount_value NOT GLOB '*[^0-9]*' AND amount_value NOT GLOB '0*'),
   amount_scale INTEGER NOT NULL CHECK (amount_scale BETWEEN 0 AND 12),
   -- open_lots_per_share: every lot open on the effective date; explicit_lots:
   -- the lot/quantity set the corporate action names (T-148).
@@ -2163,14 +2184,13 @@ CREATE TABLE IF NOT EXISTS investment_capital_return_effects (
   book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
   lot_id INTEGER NOT NULL REFERENCES investment_lots(id) ON DELETE RESTRICT,
   lot_event_id INTEGER NOT NULL UNIQUE REFERENCES investment_lot_events(id) ON DELETE RESTRICT,
-  entitled_quantity_value TEXT NOT NULL CHECK (length(entitled_quantity_value) BETWEEN 1 AND 38
-    AND entitled_quantity_value NOT GLOB '*[^0-9]*' AND substr(entitled_quantity_value, 1, 1) BETWEEN '1' AND '9'),
+  entitled_quantity_value TEXT NOT NULL CHECK (length(entitled_quantity_value) BETWEEN 1 AND 38 AND entitled_quantity_value NOT GLOB '*[^0-9]*' AND entitled_quantity_value NOT GLOB '0*'),
   entitled_quantity_scale INTEGER NOT NULL CHECK (entitled_quantity_scale BETWEEN 0 AND 24),
-  allocated_value TEXT NOT NULL CHECK (length(allocated_value) BETWEEN 1 AND 38 AND allocated_value NOT GLOB '*[^0-9]*'),
+  allocated_value TEXT NOT NULL CHECK (allocated_value = '0' OR (length(allocated_value) BETWEEN 1 AND 38 AND allocated_value NOT GLOB '*[^0-9]*' AND allocated_value NOT GLOB '0*')),
   allocated_scale INTEGER NOT NULL CHECK (allocated_scale BETWEEN 0 AND 12),
-  reduction_value TEXT NOT NULL CHECK (length(reduction_value) BETWEEN 1 AND 38 AND reduction_value NOT GLOB '*[^0-9]*'),
+  reduction_value TEXT NOT NULL CHECK (reduction_value = '0' OR (length(reduction_value) BETWEEN 1 AND 38 AND reduction_value NOT GLOB '*[^0-9]*' AND reduction_value NOT GLOB '0*')),
   reduction_scale INTEGER NOT NULL CHECK (reduction_scale BETWEEN 0 AND 12),
-  excess_value TEXT NOT NULL CHECK (length(excess_value) BETWEEN 1 AND 38 AND excess_value NOT GLOB '*[^0-9]*'),
+  excess_value TEXT NOT NULL CHECK (excess_value = '0' OR (length(excess_value) BETWEEN 1 AND 38 AND excess_value NOT GLOB '*[^0-9]*' AND excess_value NOT GLOB '0*')),
   excess_scale INTEGER NOT NULL CHECK (excess_scale BETWEEN 0 AND 12),
   PRIMARY KEY (operation_id, effect_seq),
   UNIQUE (operation_id, lot_id)
@@ -2184,8 +2204,7 @@ CREATE TABLE IF NOT EXISTS investment_capital_return_entitlements (
   entitlement_seq INTEGER NOT NULL CHECK (entitlement_seq > 0),
   book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
   lot_id INTEGER NOT NULL REFERENCES investment_lots(id) ON DELETE RESTRICT,
-  quantity_value TEXT NOT NULL CHECK (length(quantity_value) BETWEEN 1 AND 38
-    AND quantity_value NOT GLOB '*[^0-9]*' AND substr(quantity_value, 1, 1) BETWEEN '1' AND '9'),
+  quantity_value TEXT NOT NULL CHECK (length(quantity_value) BETWEEN 1 AND 38 AND quantity_value NOT GLOB '*[^0-9]*' AND quantity_value NOT GLOB '0*'),
   quantity_scale INTEGER NOT NULL CHECK (quantity_scale BETWEEN 0 AND 24),
   PRIMARY KEY (operation_id, entitlement_seq),
   UNIQUE (operation_id, lot_id)
@@ -2234,14 +2253,13 @@ CREATE TABLE IF NOT EXISTS investment_capital_return_revision_effects (
   effect_seq INTEGER NOT NULL CHECK (effect_seq > 0),
   book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
   lot_id INTEGER NOT NULL REFERENCES investment_lots(id) ON DELETE RESTRICT,
-  entitled_quantity_value TEXT NOT NULL CHECK (length(entitled_quantity_value) BETWEEN 1 AND 38
-    AND entitled_quantity_value NOT GLOB '*[^0-9]*' AND substr(entitled_quantity_value, 1, 1) BETWEEN '1' AND '9'),
+  entitled_quantity_value TEXT NOT NULL CHECK (length(entitled_quantity_value) BETWEEN 1 AND 38 AND entitled_quantity_value NOT GLOB '*[^0-9]*' AND entitled_quantity_value NOT GLOB '0*'),
   entitled_quantity_scale INTEGER NOT NULL CHECK (entitled_quantity_scale BETWEEN 0 AND 24),
-  allocated_value TEXT NOT NULL CHECK (length(allocated_value) BETWEEN 1 AND 38 AND allocated_value NOT GLOB '*[^0-9]*'),
+  allocated_value TEXT NOT NULL CHECK (allocated_value = '0' OR (length(allocated_value) BETWEEN 1 AND 38 AND allocated_value NOT GLOB '*[^0-9]*' AND allocated_value NOT GLOB '0*')),
   allocated_scale INTEGER NOT NULL CHECK (allocated_scale BETWEEN 0 AND 12),
-  reduction_value TEXT NOT NULL CHECK (length(reduction_value) BETWEEN 1 AND 38 AND reduction_value NOT GLOB '*[^0-9]*'),
+  reduction_value TEXT NOT NULL CHECK (reduction_value = '0' OR (length(reduction_value) BETWEEN 1 AND 38 AND reduction_value NOT GLOB '*[^0-9]*' AND reduction_value NOT GLOB '0*')),
   reduction_scale INTEGER NOT NULL CHECK (reduction_scale BETWEEN 0 AND 12),
-  excess_value TEXT NOT NULL CHECK (length(excess_value) BETWEEN 1 AND 38 AND excess_value NOT GLOB '*[^0-9]*'),
+  excess_value TEXT NOT NULL CHECK (excess_value = '0' OR (length(excess_value) BETWEEN 1 AND 38 AND excess_value NOT GLOB '*[^0-9]*' AND excess_value NOT GLOB '0*')),
   excess_scale INTEGER NOT NULL CHECK (excess_scale BETWEEN 0 AND 12),
   PRIMARY KEY (revision_id, effect_seq),
   UNIQUE (revision_id, lot_id)
@@ -3994,7 +4012,7 @@ CREATE TABLE IF NOT EXISTS budget_targets (
   category_account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
   commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE RESTRICT,
   period_start TEXT NOT NULL CHECK (period_start GLOB '????-??-01'),
-  quantity_value TEXT NOT NULL CHECK (length(quantity_value) BETWEEN 1 AND 39),
+  quantity_value TEXT NOT NULL CHECK (quantity_value = '0' OR (length(quantity_value) BETWEEN 1 AND 38 AND quantity_value NOT GLOB '*[^0-9]*' AND quantity_value NOT GLOB '0*')),
   quantity_scale INTEGER NOT NULL CHECK (quantity_scale BETWEEN 0 AND 12),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
@@ -4098,7 +4116,9 @@ CREATE TABLE IF NOT EXISTS recurring_template_postings (
   line_seq INTEGER NOT NULL CHECK (line_seq > 0),
   line_key TEXT NOT NULL CHECK (length(trim(line_key)) > 0 AND line_key = trim(line_key)),
   account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
-  quantity_value TEXT NOT NULL DEFAULT '0' CHECK (length(quantity_value) BETWEEN 1 AND 39),
+  quantity_value TEXT NOT NULL DEFAULT '0' CHECK (quantity_value = '0' OR (
+    length(quantity_value) BETWEEN 1 + (quantity_value GLOB '-*') AND 38 + (quantity_value GLOB '-*')
+    AND substr(quantity_value, 1 + (quantity_value GLOB '-*')) NOT GLOB '*[^0-9]*' AND substr(quantity_value, 1 + (quantity_value GLOB '-*')) NOT GLOB '0*')),
   quantity_scale INTEGER NOT NULL DEFAULT 0 CHECK (quantity_scale BETWEEN 0 AND 24),
   commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE RESTRICT,
   memo TEXT NOT NULL DEFAULT '',

@@ -14,14 +14,17 @@ func TestSelfCheckDetectsDisposalAllocationConservationDamage(t *testing.T) {
 	for _, replayed := range []bool{false, true} {
 		for _, mutation := range []struct {
 			name, assignment string
+			// refusedBySchema is damage the coefficient CHECKs (#192) stop
+			// before the self-check could see it.
+			refusedBySchema bool
 		}{
-			{"quantity", "quantity_value = '2'"},
-			{"basis", "cost_basis_value = '9999'"},
-			{"proceeds", "proceeds_value = '9999'"},
-			{"negative quantity", "quantity_value = '-1'"},
-			{"negative basis", "cost_basis_value = '-1'"},
-			{"wide basis", "cost_basis_value = '100000000000000000000'"},
-			{"missing allocations", ""},
+			{"quantity", "quantity_value = '2'", false},
+			{"basis", "cost_basis_value = '9999'", false},
+			{"proceeds", "proceeds_value = '9999'", false},
+			{"negative quantity", "quantity_value = '-1'", true},
+			{"negative basis", "cost_basis_value = '-1'", true},
+			{"wide basis", "cost_basis_value = '100000000000000000000'", false},
+			{"missing allocations", "", false},
 		} {
 			t.Run(fmt.Sprintf("replayed=%t/%s", replayed, mutation.name), func(t *testing.T) {
 				t.Parallel()
@@ -55,6 +58,10 @@ func TestSelfCheckDetectsDisposalAllocationConservationDamage(t *testing.T) {
 					_, err = f.database.Exec(`DROP TRIGGER ` + table + `_no_update`)
 					require.NoError(t, err)
 					_, err = f.database.Exec(`UPDATE `+table+` SET `+mutation.assignment+` WHERE `+where+` = ?`, id)
+				}
+				if mutation.refusedBySchema {
+					require.ErrorContains(t, err, "CHECK constraint failed")
+					return
 				}
 				require.NoError(t, err)
 				check := resultFor(t, mustRunInvestmentSelfCheck(t, f), CheckLotReconciliation)

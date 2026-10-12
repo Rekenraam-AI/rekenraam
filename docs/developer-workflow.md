@@ -541,6 +541,15 @@ changed, with fresh/seeded schema equivalence validation. Stop the app and
 reset only the same disposable `DATABASE_URL` database and sidecars using the
 command above, then redo owner setup. No installed v0.1 database exists.
 
+**BREAKING DEV DATABASE, exact-number CHECKs (#192, 2026-10-12):** every
+`0001` coefficient column now requires the canonical form `exact.Coefficient`
+writes: at most 38 digits, an optional `-`, no leading zero and no `-0`. Each
+column also states whether it is signed, signed and nonzero, nonnegative or
+positive; `TestExactNumberColumnChecks` lists the rule per column. The checksum
+changed. Stop the app and reset only the same disposable `DATABASE_URL`
+database and sidecars using the command above, then redo owner setup. No
+installed v0.1 database exists.
+
 The final pre-`v0.1.0` consolidation changed the highest schema version from 8
 to 1. Databases and backups made before that consolidation are incompatible in
 both directions: export anything worth keeping before updating, then recreate
