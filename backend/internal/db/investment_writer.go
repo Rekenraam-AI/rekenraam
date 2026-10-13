@@ -130,7 +130,7 @@ func runInvestmentJournalsWithGuardTx[T any](ctx context.Context, database *sql.
 ) ([]TransactionRecord, T, error) {
 	var zero T
 	if len(params) == 0 {
-		return nil, zero, fmt.Errorf("investment write requires a journal")
+		return nil, zero, fmt.Errorf("investment write requires a command header")
 	}
 	for _, journal := range params {
 		if journal.BookID != params[0].BookID || journal.ActorUserID != params[0].ActorUserID {
@@ -175,10 +175,7 @@ func runInvestmentJournalsWithGuardTx[T any](ctx context.Context, database *sql.
 	var first TransactionRecord
 	var auditEventID int64
 	if params[0].AuditOnly {
-		// A journal-free command (#168) has exactly its header.
-		if len(params) != 1 {
-			return nil, zero, fmt.Errorf("a journal-free investment command has no journals")
-		}
+		// The command's first header owns its audit even when it has no journal.
 		auditEventID, err = openInvestmentCommandAuditTx(ctx, tx, params[0])
 	} else {
 		first, auditEventID, err = createTransactionWithAuditTx(ctx, tx, params[0])
@@ -189,6 +186,10 @@ func runInvestmentJournalsWithGuardTx[T any](ctx context.Context, database *sql.
 	journals := make([]TransactionRecord, 0, len(params))
 	journals = append(journals, first)
 	for _, journal := range params[1:] {
+		if journal.AuditOnly {
+			journals = append(journals, TransactionRecord{})
+			continue
+		}
 		record, err := insertTransactionWithAuditEventTx(ctx, tx, journal, auditEventID)
 		if err != nil {
 			return nil, zero, err
@@ -267,10 +268,14 @@ func openInvestmentCommandAuditTx(ctx context.Context, tx *sql.Tx, params Create
 	if _, err := readBookForUpdate(ctx, tx, params.BookID); err != nil {
 		return 0, err
 	}
+	metadata := params.AuditMetadataJSON
+	if metadata == "" {
+		metadata = params.Spec.MetadataJSON
+	}
 	return insertAuditEvent(ctx, tx, AuditEventParams{
 		BookID: params.BookID, ActorUserID: params.ActorUserID, AuthSessionID: params.AuthSessionID,
 		OccurredAt: params.CreatedAt, RequestID: params.RequestID, OriginType: params.OriginType,
-		Operation: params.Operation, Reason: params.ChangeReason, MetadataJSON: params.Spec.MetadataJSON,
+		Operation: params.Operation, Reason: params.ChangeReason, MetadataJSON: metadata,
 	})
 }
 

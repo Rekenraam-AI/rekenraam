@@ -175,7 +175,12 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   a zero journal; sourced zero-delta splits also have a declared exemption
   (#146). A split recorded without holdings remains a dated ratio intent;
   entitled backdated acquisitions append its effects and guarded adjustment
-  journals. Per-split journal/effect conservation must still pass.
+  journals. Per-split journal/effect conservation must still pass. Operation-based
+  split correction (#196) can cross zero: inverse and successor headers share
+  one command audit and post only their nonzero deltas. A journal-free reversal
+  still retires the source, and every nonzero inverse remains journal-linked.
+  Cash-in-lieu and import identities pin the split operation without inventing
+  a primary transaction.
   Other depletions refuse unknown basis until they have their own contract.
 - Named shorts (#173): a short lot holds owed units at a positive quantity
   and its exact opening proceeds in the basis columns; a cover's decision is

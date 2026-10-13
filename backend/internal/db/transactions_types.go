@@ -226,6 +226,8 @@ type CreateTransactionParams struct {
 	Spec                      TransactionSpec
 	CreatedAt                 string
 	ChangeReason              string
+	// AuditMetadataJSON belongs to the command, including a journal-free successor.
+	AuditMetadataJSON string
 	// CheckpointCandidates are the positions this write touches; the write
 	// transaction resolves them into the checkpoints that must be invalidated
 	// and applies the override guard there (T-94). Callers pass candidates, not

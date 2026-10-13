@@ -647,3 +647,43 @@ Existing transaction-addressed split correction, settlement and import-link
 routes require a primary journal. Addressing initially journal-free splits by
 operation identity is bounded follow-up #196; replacement of an ordinary split
 with a journal-free one remains refused until that correction contract ships.
+
+
+## Operation-Addressed Split Correction Refinement (2026-10-13, #196)
+
+This completes the preceding split refinement's retained correction,
+settlement and inspection boundary. The split's durable operation ID addresses
+its source independently of a primary transaction; transaction-addressed
+routes remain compatible for splits that have one. An adjustment is never
+promoted into a primary journal.
+
+A reversal inverts the split's current primary-plus-adjustment quantity delta.
+A zero delta produces a journal-free `reversal` operation; a nonzero one posts
+its exact inverse on the split date. A replacement keeps the correction-root
+slot and runs an inverse header and successor header under one command audit,
+with a journal only for each nonzero delta. Both zero-to-positive and
+positive-to-zero replacements preserve original facts, effects and journals.
+The first header owns command audit attribution, gain comparison and net
+checkpoint guard; audit-only headers can therefore coexist with posted
+journals. A journal-free successor's memo belongs to that command's audit
+metadata. Account-version, imported-source and effective cash-in-lieu fences
+still run before any correction is written.
+
+`GET /investments/splits` is a composed cursor read of source terms, optional
+primary transaction, exact journal delta, correction links and standing; an
+`operation_id` filter addresses one historical or current source directly.
+The mobile Splits tab offers inspection, correction, reversal and cash-in-lieu
+entry for both journal shapes. Cash-in-lieu entry and lot selection accept
+operation identity, its correction context retains that identity, and a
+replacement must settle the same operation. Import split candidates retain a
+null primary transaction for journal-free sources; dedupe identity effects
+bind the operation without a transaction and still fence retries and corrected
+sources.
+
+Self-check also declares the journal-free split-reversal exemption. It verifies
+the predecessor's journals including any successor inverse against its now
+zero effective effects, so a nonzero reversal missing its inverse still fails.
+Export and restored replay preserve the correction graph and both journal
+shapes. The capability matrix covers crossing zero, both reversal shapes and
+export/restore; named guard, damaged-data, late-rollback and mobile cases cover
+the wider contract.

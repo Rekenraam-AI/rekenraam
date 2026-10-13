@@ -1,7 +1,7 @@
 post:
   summary: Correct a posted split's date, ratio or source evidence
   description: >-
-    Posts the inverse of the split's current journal delta and a replacement
+    Records the inverse of the split's current journal delta and a replacement
     split with corrected terms for the same holding and security, in one
     audited database transaction (T-129). The replacement takes the replaced
     split's correction-root same-day slot; per-lot effects and any dependent

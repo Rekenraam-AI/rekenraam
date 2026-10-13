@@ -6,7 +6,7 @@
   import { currenciesQueryOptions, type CurrencyResponse } from '#lib/api/currencies.ts';
   import {
     investmentInstrumentsQueryOptions, datedHoldingsQueryOptions, previewInvestmentSplit,
-    previewSplitReplacement, recordInvestmentSplit, replaceSplit, type GainImpact,
+    previewSplitReplacement, previewSplitOperationReplacement, recordInvestmentSplit, replaceSplit, replaceSplitOperation, type GainImpact,
     type InvestmentCorrectionSplitTerms, type InvestmentSplitPlan, type InvestmentSplitRequest,
     type ReconciliationImpactResponse
   } from '#lib/api/investments.ts';
@@ -29,7 +29,7 @@
     csrfToken: string;
     onSaved: () => void;
     onCancel: () => void;
-    correction?: { transactionID: number; terms: InvestmentCorrectionSplitTerms };
+    correction?: { transactionID?: number; operationID?: number; terms: InvestmentCorrectionSplitTerms };
   } = $props();
 
   const queryClient = useQueryClient();
@@ -132,7 +132,7 @@
 
   async function runPreview(payload: InvestmentSplitRequest): Promise<void> {
     const result = correction
-      ? await previewSplitReplacement(correction.transactionID, replacementRequest(payload))
+      ? await (correction.operationID ? previewSplitOperationReplacement(correction.operationID, replacementRequest(payload)) : previewSplitReplacement(correction.transactionID!, replacementRequest(payload)))
       : await previewInvestmentSplit(payload);
     preview = {
       plan: result.plan,
@@ -178,7 +178,7 @@
       ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
     };
     if (correction) {
-      await replaceSplit(correction.transactionID, { ...replacementRequest(preview.payload), ...confirmations }, csrfToken);
+      await (correction.operationID ? replaceSplitOperation(correction.operationID, { ...replacementRequest(preview.payload), ...confirmations }, csrfToken) : replaceSplit(correction.transactionID!, { ...replacementRequest(preview.payload), ...confirmations }, csrfToken));
     } else {
       await recordInvestmentSplit({ ...preview.payload, ...confirmations }, csrfToken);
     }

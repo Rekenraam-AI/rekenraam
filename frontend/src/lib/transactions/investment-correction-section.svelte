@@ -576,6 +576,7 @@
       </div>
     {/if}
     {#if systemLabel === 'split_adjustment'}
+      <a href="/app/investments?tab=splits" class="text-sm text-accent underline">{m.investments_split_history_title()}</a>
       <p class="text-xs text-muted">{m.transactions_investment_split_adjustment_note()}</p>
     {/if}
     {#if splitCorrectable}

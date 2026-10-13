@@ -38,6 +38,7 @@ type CashInLieuInput struct {
 	RequestID     string
 	// SettledTransactionID is the posted split, share exchange, cash-and-stock
 	// merger or spin-off whose fraction this disposes.
+	SettledOperationID        int64
 	SettledTransactionID      int64
 	DisposalOn                string
 	PaymentOn                 string
@@ -56,7 +57,7 @@ type CashInLieuInput struct {
 }
 
 func (s *InvestmentService) cashInLieuTrade(ctx context.Context, input CashInLieuInput) (InvestmentTradeInput, int64, string, error) {
-	if input.SettledTransactionID <= 0 {
+	if (input.SettledTransactionID <= 0) == (input.SettledOperationID <= 0) {
 		return InvestmentTradeInput{}, 0, "", ValidationError{Message: "the operation this cash in lieu settles is required"}
 	}
 	disposal, err := cleanRequiredDate(input.DisposalOn, "disposal date")
@@ -80,7 +81,12 @@ func (s *InvestmentService) cashInLieuTrade(ctx context.Context, input CashInLie
 	if input.ProceedsValue <= 0 {
 		return InvestmentTradeInput{}, 0, "", ValidationError{Message: "cash in lieu amount must be positive"}
 	}
-	settled, err := s.repository.CashInLieuSettledOperation(ctx, BookID, input.SettledTransactionID)
+	var settled db.CashInLieuSettledRecord
+	if input.SettledOperationID > 0 {
+		settled, err = s.repository.CashInLieuSettledOperationByID(ctx, BookID, input.SettledOperationID)
+	} else {
+		settled, err = s.repository.CashInLieuSettledOperation(ctx, BookID, input.SettledTransactionID)
+	}
 	if errors.Is(err, db.ErrNotFound) {
 		return InvestmentTradeInput{}, 0, "", ErrCashInLieuSplitNotFound
 	}
@@ -193,7 +199,7 @@ type ReplaceCashInLieuInput struct {
 }
 
 func (s *InvestmentService) cashInLieuReplacement(ctx context.Context, input ReplaceCashInLieuInput) (ReplaceInvestmentSaleInput, int64, string, error) {
-	settledTransactionID, err := s.repository.CashInLieuSettledTransactionID(ctx, BookID, input.TransactionID)
+	settledID, settledTransactionID, err := s.repository.CashInLieuSettledIDs(ctx, BookID, input.TransactionID)
 	if errors.Is(err, db.ErrNotFound) {
 		return ReplaceInvestmentSaleInput{}, 0, "", ErrInvestmentCashInLieuNotFound
 	}
@@ -201,10 +207,10 @@ func (s *InvestmentService) cashInLieuReplacement(ctx context.Context, input Rep
 		return ReplaceInvestmentSaleInput{}, 0, "", err
 	}
 	replacement := input.Replacement
-	if replacement.SettledTransactionID != 0 && replacement.SettledTransactionID != settledTransactionID {
+	if replacement.SettledTransactionID != 0 && replacement.SettledTransactionID != settledTransactionID || replacement.SettledOperationID != 0 && replacement.SettledOperationID != settledID {
 		return ReplaceInvestmentSaleInput{}, 0, "", ValidationError{Message: "a cash in lieu replacement must keep the operation it settles"}
 	}
-	replacement.OwnerUserID, replacement.SettledTransactionID = input.OwnerUserID, settledTransactionID
+	replacement.OwnerUserID, replacement.SettledTransactionID, replacement.SettledOperationID = input.OwnerUserID, 0, settledID
 	trade, settledOperationID, payment, err := s.cashInLieuTrade(ctx, replacement)
 	if err != nil {
 		return ReplaceInvestmentSaleInput{}, 0, "", err
@@ -265,6 +271,14 @@ func (s *InvestmentService) PreviewCashInLieuReplacement(ctx context.Context, in
 }
 
 func (s *InvestmentService) CashInLieuAvailableLots(ctx context.Context, ownerUserID, settledTransactionID, currencyID int64, disposalOn string, replacingTransactionID int64) ([]db.InvestmentTradeCorrectionAvailableLot, error) {
+	return s.cashInLieuAvailableLots(ctx, ownerUserID, settledTransactionID, 0, currencyID, disposalOn, replacingTransactionID)
+}
+
+func (s *InvestmentService) CashInLieuAvailableLotsForOperation(ctx context.Context, ownerUserID, operationID, currencyID int64, disposalOn string, replacingTransactionID int64) ([]db.InvestmentTradeCorrectionAvailableLot, error) {
+	return s.cashInLieuAvailableLots(ctx, ownerUserID, 0, operationID, currencyID, disposalOn, replacingTransactionID)
+}
+
+func (s *InvestmentService) cashInLieuAvailableLots(ctx context.Context, ownerUserID, settledTransactionID, operationID, currencyID int64, disposalOn string, replacingTransactionID int64) ([]db.InvestmentTradeCorrectionAvailableLot, error) {
 	if ownerUserID <= 0 || currencyID <= 0 {
 		return nil, ValidationError{Message: "owner and currency are required"}
 	}
@@ -272,7 +286,12 @@ func (s *InvestmentService) CashInLieuAvailableLots(ctx context.Context, ownerUs
 	if err != nil {
 		return nil, err
 	}
-	settled, err := s.repository.CashInLieuSettledOperation(ctx, BookID, settledTransactionID)
+	var settled db.CashInLieuSettledRecord
+	if operationID > 0 {
+		settled, err = s.repository.CashInLieuSettledOperationByID(ctx, BookID, operationID)
+	} else {
+		settled, err = s.repository.CashInLieuSettledOperation(ctx, BookID, settledTransactionID)
+	}
 	if errors.Is(err, db.ErrNotFound) || settled.AlreadyCorrected {
 		return nil, ErrCashInLieuSplitNotFound
 	}

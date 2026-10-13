@@ -35,13 +35,13 @@ type SplitLinkCandidate struct {
 // first, marking those already linked to a committed source row.
 func (r *ImportRepository) ListSplitLinkCandidates(ctx context.Context, bookID, commodityID int64) ([]SplitLinkCandidate, error) {
 	rows, err := r.database.QueryContext(ctx, `
-		SELECT f.operation_id, v.transaction_id, f.account_id, f.effective_on,
+		SELECT f.operation_id, COALESCE(v.transaction_id, 0), f.account_id, f.effective_on,
 			f.ratio_numerator, f.ratio_denominator,
 			EXISTS (SELECT 1 FROM import_commit_identity_effects e WHERE e.operation_id = f.operation_id)
 		FROM investment_split_facts f
 		JOIN effective_investment_operations o ON o.id = f.operation_id
-		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.role = 'primary'
-		JOIN transaction_versions v ON v.id = link.transaction_version_id
+		LEFT JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.role = 'primary'
+		LEFT JOIN transaction_versions v ON v.id = link.transaction_version_id
 		WHERE f.book_id = ? AND f.commodity_id = ?
 		ORDER BY f.effective_on DESC, f.operation_id DESC`, bookID, commodityID)
 	if err != nil {
@@ -108,10 +108,10 @@ func (r *ImportRepository) LinkStagedRowToSplit(ctx context.Context, params Link
 	}
 	var accountID, transactionID int64
 	err = tx.QueryRowContext(ctx, `
-		SELECT f.account_id, v.transaction_id FROM investment_split_facts f
+		SELECT f.account_id, COALESCE(v.transaction_id, 0) FROM investment_split_facts f
 		JOIN effective_investment_operations o ON o.id = f.operation_id
-		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.role = 'primary'
-		JOIN transaction_versions v ON v.id = link.transaction_version_id
+		LEFT JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.role = 'primary'
+		LEFT JOIN transaction_versions v ON v.id = link.transaction_version_id
 		WHERE f.operation_id = ? AND f.book_id = ? AND f.commodity_id = ?
 			AND NOT EXISTS (SELECT 1 FROM import_commit_identity_effects e WHERE e.operation_id = o.id)`,
 		params.OperationID, params.BookID, params.CommodityID).Scan(&accountID, &transactionID)
@@ -136,7 +136,7 @@ func (r *ImportRepository) LinkStagedRowToSplit(ctx context.Context, params Link
 		AccountID: accountID, CreatedAt: params.Now,
 	}, []CreateImportCommitEffectParams{{
 		OperationID:   sql.NullInt64{Int64: params.OperationID, Valid: true},
-		TransactionID: sql.NullInt64{Int64: transactionID, Valid: true},
+		TransactionID: sql.NullInt64{Int64: transactionID, Valid: transactionID > 0},
 	}})
 	if errors.Is(err, ErrCommitIdentityConflict) {
 		return 0, ErrSplitLinkUnavailable
@@ -147,7 +147,7 @@ func (r *ImportRepository) LinkStagedRowToSplit(ctx context.Context, params Link
 	if err := commitImportStagedRowExec(ctx, tx, CommitImportStagedRowParams{
 		RowID: params.RowID, CommitStatus: "committed",
 		CommittedIdentityID:    sql.NullInt64{Int64: identityID, Valid: true},
-		CommittedTransactionID: sql.NullInt64{Int64: transactionID, Valid: true},
+		CommittedTransactionID: sql.NullInt64{Int64: transactionID, Valid: transactionID > 0},
 	}); err != nil {
 		if errors.Is(err, ErrImportStagedRowAlreadyCommitted) {
 			return 0, ErrSplitLinkUnavailable

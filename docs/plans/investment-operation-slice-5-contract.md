@@ -325,10 +325,36 @@ and every later revision and adjustment link. Backup/restore retains that
 entitlement behavior. The mobile form lists configured empty holdings and
 explains the journal-free result in all six catalogs.
 
-Transaction-addressed correction, cash-in-lieu and import-link commands still
-require a primary journal. Their operation-addressed extension for initially
-journal-free splits, including replacement across zero, is tracked in
-[#196](https://github.com/sergeyfarin/rekenraam/issues/196).
+**Operation-based inspection and correction (#196, 2026-10-13).**
+`GET /api/v1/investments/splits` composes a cursor-paginated source/history page
+with standing, optional primary transaction, correction links, settlement fence
+and exact primary-plus-adjustment quantity delta. `operation_id` filters one
+source, including one on an older history page. The mobile Splits tab provides
+source evidence and memo, date/ratio, correction and reversal, and cash-in-lieu
+entry for every effective source; all copy uses six catalogs.
+
+`/investments/operations/{operation_id}/reverse-split` and `replace-split`, with
+their reconciliation-impact/preview routes, use the same writer as the retained
+transaction routes. Reversal posts the exact current quantity inverse, or only
+an audited terminal operation when it is zero. Replacement runs inverse and
+successor command headers, each journal-bearing only for a nonzero delta,
+under one audit event and the shared gain/checkpoint guard. Zero can cross in
+both directions. The successor retains the correction-root slot; the original
+source and journals never change, and missing primaries are NULL in API/CSV.
+Imported-source ancestry and the effective cash-in-lieu fence remain active.
+
+Cash in lieu accepts exactly one of `settled_operation_id` and
+`settled_transaction_id`; dated lot reads also have an operation route. Its
+correction context retains the settled operation, and replacements cannot
+change it. Import linking already addresses `operation_id`; candidates now
+include journal-free sources, and an admitted identity effect with no primary
+transaction records only the source operation. Re-fetch/retry remains deduped.
+
+The journal-link check explicitly exempts split reversals that need no journal;
+per-split journal/effect conservation still proves every nonzero inverse is
+posted. Capability tests, named impossible-dependency and late-rollback tests,
+export/restored replay and the mobile inspection→correction→settlement→reversal
+journey cover both journal shapes.
 
 ## Cash in lieu
 

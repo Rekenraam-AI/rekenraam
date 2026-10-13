@@ -34,19 +34,27 @@ type CashInLieuSettledRecord struct {
 // CashInLieuSettledOperation reads the split, exchange, merger or spin-off
 // posted as transactionID.
 func (r *InvestmentRepository) CashInLieuSettledOperation(ctx context.Context, bookID, transactionID int64) (CashInLieuSettledRecord, error) {
+	return r.cashInLieuSettledOperation(ctx, bookID, "v.transaction_id", transactionID)
+}
+
+func (r *InvestmentRepository) CashInLieuSettledOperationByID(ctx context.Context, bookID, operationID int64) (CashInLieuSettledRecord, error) {
+	return r.cashInLieuSettledOperation(ctx, bookID, "o.id", operationID)
+}
+
+func (r *InvestmentRepository) cashInLieuSettledOperation(ctx context.Context, bookID int64, column string, id int64) (CashInLieuSettledRecord, error) {
 	var record CashInLieuSettledRecord
 	err := r.database.QueryRowContext(ctx, `SELECT o.id, o.operation_kind,
 			COALESCE(s.effective_on, f.effective_on), COALESCE(s.account_id, f.destination_account_id),
 			COALESCE(s.commodity_id, f.destination_commodity_id),
 			EXISTS (SELECT 1 FROM investment_operations successor WHERE successor.correction_of_operation_id = o.id)
 		FROM investment_operations o
-		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.role = 'primary'
-		JOIN transaction_versions v ON v.id = link.transaction_version_id
+		LEFT JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.role = 'primary'
+		LEFT JOIN transaction_versions v ON v.id = link.transaction_version_id
 		LEFT JOIN investment_split_facts s ON s.operation_id = o.id AND o.operation_kind = 'split'
 		LEFT JOIN investment_transfer_facts f ON f.operation_id = o.id AND f.transfer_kind IN ('exchange', 'spin_off')
 			AND o.operation_kind IN ('share_exchange', 'cash_and_stock_merger', 'spin_off')
-		WHERE o.book_id = ? AND v.transaction_id = ? AND (s.operation_id IS NOT NULL OR f.operation_id IS NOT NULL)`,
-		bookID, transactionID).Scan(&record.OperationID, &record.OperationKind, &record.EventDate,
+		WHERE o.book_id = ? AND `+column+` = ? AND (s.operation_id IS NOT NULL OR f.operation_id IS NOT NULL)`,
+		bookID, id).Scan(&record.OperationID, &record.OperationKind, &record.EventDate,
 		&record.AccountID, &record.CommodityID, &record.AlreadyCorrected)
 	if errors.Is(err, sql.ErrNoRows) {
 		return CashInLieuSettledRecord{}, ErrNotFound
@@ -117,25 +125,24 @@ func CashInLieuReplacementFactWriter(ctx context.Context, bookID, settledOperati
 	}
 }
 
-// CashInLieuSettledTransactionID returns the posted transaction of the
-// operation a cash in lieu settles.
-func (r *InvestmentRepository) CashInLieuSettledTransactionID(ctx context.Context, bookID, transactionID int64) (int64, error) {
-	var settledTransactionID int64
-	err := r.database.QueryRowContext(ctx, `SELECT settled_version.transaction_id
-		FROM investment_cash_in_lieu_facts f
-		JOIN investment_operation_journal_links link ON link.operation_id = f.operation_id AND link.role = 'primary'
-		JOIN transaction_versions v ON v.id = link.transaction_version_id
-		JOIN investment_operation_journal_links settled_link ON settled_link.operation_id = f.settled_operation_id
-			AND settled_link.role = 'primary'
-		JOIN transaction_versions settled_version ON settled_version.id = settled_link.transaction_version_id
-		WHERE f.book_id = ? AND v.transaction_id = ?`, bookID, transactionID).Scan(&settledTransactionID)
+// CashInLieuSettledIDs reads the immutable operation a disposal settles and
+// its optional primary transaction. Operation identity survives either shape.
+func (r *InvestmentRepository) CashInLieuSettledIDs(ctx context.Context, bookID, transactionID int64) (int64, int64, error) {
+	var operationID, primaryID int64
+	err := r.database.QueryRowContext(ctx, `SELECT f.settled_operation_id, COALESCE(sv.transaction_id, 0)
+ FROM investment_cash_in_lieu_facts f
+ JOIN investment_operation_journal_links link ON link.operation_id = f.operation_id AND link.role = 'primary'
+ JOIN transaction_versions v ON v.id = link.transaction_version_id
+ LEFT JOIN investment_operation_journal_links sl ON sl.operation_id = f.settled_operation_id AND sl.role = 'primary'
+ LEFT JOIN transaction_versions sv ON sv.id = sl.transaction_version_id
+ WHERE f.book_id = ? AND v.transaction_id = ?`, bookID, transactionID).Scan(&operationID, &primaryID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, ErrNotFound
+		return 0, 0, ErrNotFound
 	}
 	if err != nil {
-		return 0, fmt.Errorf("read operation a cash in lieu settles: %w", err)
+		return 0, 0, fmt.Errorf("read operation a cash in lieu settles: %w", err)
 	}
-	return settledTransactionID, nil
+	return operationID, primaryID, nil
 }
 
 // Cash-in-lieu previews include the immutable settlement fact and its transactional

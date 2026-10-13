@@ -571,8 +571,9 @@ ImportSplitCandidate:
       type: integer
       format: int64
     transaction_id:
-      type: integer
+      type: [integer, "null"]
       format: int64
+      description: Null for an initially journal-free split; linking always uses operation_id.
     holding_account_id:
       type: integer
       format: int64

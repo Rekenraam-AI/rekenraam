@@ -273,8 +273,11 @@ When a feature introduces a durable new rule, update one of those documents in t
   the triggering command's gain and checkpoint guards. The journal-link
   self-check exempts only sourced splits with no original lot effects; split
   journal/effect conservation still requires every nonzero effective delta to
-  have posted journals. Operation-addressed correction and settlement of an
-  initially journal-free split are tracked in #196.
+  have posted journals. Both journal shapes are inspected and corrected by operation identity
+  (#196), while transaction routes remain compatible. Inverse and replacement
+  headers share one command audit; each posts only a nonzero delta. Cash in
+  lieu and import dedupe bind the settled/source operation, and a missing primary
+  transaction is NULL, never a fabricated zero ID.
 - Projected investment basis has explicit `known`/`unknown` knowledge. Unknown
   coefficient and scale are NULL in storage and on the API, and empty in CSV;
   known zero remains numeric. Numeric read-model fields are usable only when

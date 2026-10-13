@@ -16171,7 +16171,71 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List recorded splits and their correction history
+         * @description A composed, cursor-paginated read of every sourced split, including initially journal-free operations. Includes source terms, standing, correction links, settlement fence and the exact quantity its own journals move. No per-row requests.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Read this split alone by operation identity, including historical sources. */
+                    operation_id?: number;
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Split activity page */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InvestmentSplitActivityResponse"];
+                    };
+                };
+                /** @description Invalid cursor or page size */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Requested split operation does not exist */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
         put?: never;
         /**
          * Record a split or reverse split of one holding
@@ -18326,7 +18390,7 @@ export interface paths {
         put?: never;
         /**
          * Reverse a posted split
-         * @description Posts the exact inverse of everything the split's journals currently move (its primary journal plus every split_adjustment journal), dated to the split, removes the split from effective history and replays every cost currency of the holding in one audited database transaction (T-129). The original split stays posted history. A later disposal the unsplit holding cannot satisfy refuses the command with INVESTMENT_SPLIT_DEPENDENCY, naming that disposal, and nothing is written. A non-empty gain change set requires the preview's exact gain_impact_acknowledgement.
+         * @description Posts the exact inverse of everything the split's journals currently move (its primary journal plus every split_adjustment journal), dated to the split, removes the split from effective history and replays every cost currency of the holding in one audited database transaction (T-129). The original split remains source history. A zero current delta creates only an audited reversal, with a null transaction (#196). A later disposal the unsplit holding cannot satisfy refuses the command with INVESTMENT_SPLIT_DEPENDENCY, naming that disposal, and nothing is written. A non-empty gain change set requires the preview's exact gain_impact_acknowledgement.
          */
         post: {
             parameters: {
@@ -18351,7 +18415,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["InvestmentSaleReversalResponse"];
+                        "application/json": components["schemas"]["InvestmentSplitReversalResponse"];
                     };
                 };
                 /** @description Invalid request or missing reason */
@@ -18690,7 +18754,7 @@ export interface paths {
         put?: never;
         /**
          * Correct a posted split's date, ratio or source evidence
-         * @description Posts the inverse of the split's current journal delta and a replacement split with corrected terms for the same holding and security, in one audited database transaction (T-129). The replacement takes the replaced split's correction-root same-day slot; per-lot effects and any dependent disposals are replayed. Unchanged terms are refused. A non-empty gain change set requires the preview's exact gain_impact_acknowledgement.
+         * @description Records the inverse of the split's current journal delta and a replacement split with corrected terms for the same holding and security, in one audited database transaction (T-129). The replacement takes the replaced split's correction-root same-day slot; per-lot effects and any dependent disposals are replayed. Unchanged terms are refused. A non-empty gain change set requires the preview's exact gain_impact_acknowledgement.
          */
         post: {
             parameters: {
@@ -23132,6 +23196,461 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/investments/operations/{operation_id}/reverse-split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reverse a recorded split
+         * @description Posts the exact inverse of everything the split's journals currently move (its primary journal if any plus every split_adjustment journal), dated to the split, removes the split from effective history and replays every cost currency of the holding in one audited database transaction (T-129). The original split remains source history. A zero current delta creates only an audited reversal, with a null transaction (#196). A later disposal the unsplit holding cannot satisfy refuses the command with INVESTMENT_SPLIT_DEPENDENCY, naming that disposal, and nothing is written. A non-empty gain change set requires the preview's exact gain_impact_acknowledgement.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CSRF-Token": string;
+                };
+                path: {
+                    operation_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InvestmentSaleReversalRequest"];
+                };
+            };
+            responses: {
+                /** @description Split reversed and holding replayed */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InvestmentSplitReversalResponse"];
+                    };
+                };
+                /** @description Invalid request or missing reason */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Origin or CSRF validation failed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Recorded split not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Already corrected (INVESTMENT_SPLIT_ALREADY_CORRECTED), unlinked import (INVESTMENT_IMPORTED_SPLIT), changed (INVESTMENT_SPLIT_CHANGED), later disposal impossible (INVESTMENT_SPLIT_DEPENDENCY), reconciliation override required, or gain changes not acknowledged */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/operations/{operation_id}/reverse-split/reconciliation-impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview a split reversal
+         * @description Runs the reversal writer and its replay in a rolled-back transaction and returns the reconciliation checkpoints and committed-disposal gain changes it would cause (T-129).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    operation_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InvestmentSaleReversalRequest"];
+                };
+            };
+            responses: {
+                /** @description Replay and reconciliation impact computed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReconciliationImpactResponse"];
+                    };
+                };
+                /** @description Invalid request or missing reason */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Recorded split not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Already corrected, unlinked import, changed, or later disposal impossible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/operations/{operation_id}/replace-split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Correct a recorded split's date, ratio or source evidence
+         * @description Records the inverse of the split's current journal delta and a replacement split with corrected terms for the same holding and security, in one audited database transaction (T-129). The replacement takes the replaced split's correction-root same-day slot; per-lot effects and any dependent disposals are replayed. Unchanged terms are refused. A non-empty gain change set requires the preview's exact gain_impact_acknowledgement.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CSRF-Token": string;
+                };
+                path: {
+                    operation_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InvestmentSplitReplacementRequest"];
+                };
+            };
+            responses: {
+                /** @description Split replaced and holding replayed */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InvestmentSplitReplacementResponse"];
+                    };
+                };
+                /** @description Invalid request or missing reason */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Origin or CSRF validation failed */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Recorded split not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Already corrected, unlinked import, changed, no eligible holdings, later disposal impossible, reconciliation override required, or gain changes not acknowledged */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Corrected ratio not representable at the security's scale (INVESTMENT_SPLIT_FRACTION_UNREPRESENTABLE) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/operations/{operation_id}/replace-split/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview a split replacement
+         * @description Returns the corrected split's exact per-lot plan, computed without the replaced split, plus the checkpoints and gain changes the replacement writer would cause, from a rolled-back run (T-129).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    operation_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InvestmentSplitReplacementRequest"];
+                };
+            };
+            responses: {
+                /** @description Plan and impact computed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InvestmentSplitPreviewResponse"];
+                    };
+                };
+                /** @description Invalid request or missing reason */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Recorded split not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Already corrected, unlinked import, changed, no eligible holdings, or later disposal impossible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Corrected ratio not representable */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/operations/{operation_id}/cash-in-lieu-lots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read lots available at a cash-in-lieu disposal slot
+         * @description Composed dated lot quantities for specific-lot entry. With replacing_transaction_id, exclude that cash in lieu and retain its correction-root slot. This is a read-only rolled-back replay, never an authorization for a later write.
+         */
+        get: {
+            parameters: {
+                query: {
+                    currency_id: number;
+                    disposal_on: string;
+                    replacing_transaction_id?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Split, share exchange, cash-and-stock merger or spin-off transaction being settled. */
+                    operation_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Dated lots of the holding and cost currency */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CashInLieuLotsResponse"];
+                    };
+                };
+                /** @description Invalid dates or currency */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Replacement not found or does not settle this operation */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Split is unavailable or historical replay is impossible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Exact value exceeds supported range */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -25624,8 +26143,11 @@ export interface components {
         ImportSplitCandidate: {
             /** Format: int64 */
             operation_id: number;
-            /** Format: int64 */
-            transaction_id: number;
+            /**
+             * Format: int64
+             * @description Null for an initially journal-free split; linking always uses operation_id.
+             */
+            transaction_id: number | null;
             /** Format: int64 */
             holding_account_id: number;
             /** Format: date */
@@ -26633,9 +27155,14 @@ export interface components {
         CashInLieuRequest: {
             /**
              * Format: int64
+             * @description Operation being settled, including an initially journal-free split; supply this or settled_transaction_id.
+             */
+            settled_operation_id?: number;
+            /**
+             * Format: int64
              * @description The posted split, share exchange, cash-and-stock merger or spin-off this fraction comes from. The holding and security are the split's own, or the other action's destination holding and new instrument.
              */
-            settled_transaction_id: number;
+            settled_transaction_id?: number;
             /** Format: date */
             disposal_on: string;
             /** Format: date */
@@ -26656,7 +27183,7 @@ export interface components {
             change_reason?: string;
             reconciliation_override?: boolean;
             gain_impact_acknowledgement?: string;
-        };
+        } & (unknown | unknown);
         CashInLieuPreviewResponse: {
             /** @description Total exact basis of the fraction taken by the dated writer. */
             disposed_basis_value: string;
@@ -26832,6 +27359,51 @@ export interface components {
         InvestmentSplitPreviewResponse: {
             plan: components["schemas"]["InvestmentSplitPlan"];
             impact: components["schemas"]["ReconciliationImpactResponse"];
+        };
+        InvestmentSplitActivityResponse: {
+            splits: components["schemas"]["InvestmentSplitActivity"][];
+            next_cursor: string | null;
+        };
+        InvestmentSplitActivity: {
+            /** Format: int64 */
+            operation_id: number;
+            /** Format: int64 */
+            transaction_id: number | null;
+            /** Format: int64 */
+            correction_of_operation_id: number | null;
+            /** Format: int64 */
+            successor_operation_id: number | null;
+            /** Format: int64 */
+            holding_account_id: number;
+            /** Format: int64 */
+            commodity_id: number;
+            account_name: string;
+            instrument_name: string;
+            /** Format: date */
+            effective_on: string;
+            /** Format: int64 */
+            ratio_numerator: number;
+            /** Format: int64 */
+            ratio_denominator: number;
+            source_evidence: {
+                [key: string]: unknown;
+            };
+            memo: string;
+            reason: string;
+            /** Format: date-time */
+            created_at: string;
+            /** @enum {string} */
+            standing: "effective" | "superseded" | "reversed";
+            settled: boolean;
+            quantity_delta_value: string;
+            quantity_delta_scale: number;
+        };
+        InvestmentSplitReversalResponse: {
+            transaction: components["schemas"]["TransactionResponse"] | null;
+            /** Format: int64 */
+            corrected_transaction_id: number | null;
+            /** Format: int64 */
+            corrected_operation_id: number;
         };
         InvestmentSplitResponse: {
             /**
@@ -27411,11 +27983,17 @@ export interface components {
             gain_impact_acknowledgement?: string;
         };
         InvestmentSplitReplacementResponse: {
-            inverse: components["schemas"]["TransactionResponse"];
-            replacement: components["schemas"]["TransactionResponse"];
+            /** @description Null when the predecessor's current quantity delta is zero. */
+            inverse: components["schemas"]["TransactionResponse"] | null;
+            /** @description Null when no lots are entitled to the corrected split. */
+            replacement: components["schemas"]["TransactionResponse"] | null;
             plan: components["schemas"]["InvestmentSplitPlan"];
             /** Format: int64 */
-            corrected_transaction_id: number;
+            corrected_transaction_id: number | null;
+            /** Format: int64 */
+            corrected_operation_id: number;
+            /** Format: int64 */
+            operation_id: number;
         };
         /** @description The effective transfer's committed terms, for pre-filling a replacement (T-119, outbound T-144). Selected-lot transfers list lot_allocations; pool transfers and external transfers in give quantity_value/scale. An outbound transfer has no destination account or lineage. An external transfer in has no source account or lineage and gives its carried basis and original date. */
         InvestmentCorrectionTransferTerms: {
@@ -27767,6 +28345,11 @@ export interface components {
         };
         /** @description Immutable buy or sale source facts for pre-filling a full replacement. The write command rechecks eligibility. */
         InvestmentTradeCorrectionContextResponse: {
+            /**
+             * Format: int64
+             * @description Immutable settled operation identity for a cash in lieu.
+             */
+            settled_operation_id?: number;
             /**
              * Format: int64
              * @description The fixed link to the operation a cash in lieu settles, present for cash-in-lieu correction context.

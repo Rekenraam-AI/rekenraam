@@ -12,6 +12,7 @@ import (
 // source under its write transaction; this read is never an authorization.
 type InvestmentTradeCorrectionContext struct {
 	SettledTransactionID int64
+	SettledOperationID   int64
 	OperationID          int64
 	TransactionID        int64
 	OperationKind        string
@@ -253,9 +254,9 @@ func (r *InvestmentRepository) TradeCorrectionContext(ctx context.Context, bookI
 		}
 	}
 	if record.OperationKind == "cash_in_lieu" {
-		if err := tx.QueryRowContext(ctx, `SELECT v.transaction_id FROM investment_cash_in_lieu_facts f
-            JOIN investment_operation_journal_links l ON l.operation_id = f.settled_operation_id AND l.role = 'primary'
-            JOIN transaction_versions v ON v.id = l.transaction_version_id WHERE f.operation_id = ? AND f.book_id = ?`, record.OperationID, bookID).Scan(&record.SettledTransactionID); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(v.transaction_id, 0), f.settled_operation_id FROM investment_cash_in_lieu_facts f
+            LEFT JOIN investment_operation_journal_links l ON l.operation_id = f.settled_operation_id AND l.role = 'primary'
+            LEFT JOIN transaction_versions v ON v.id = l.transaction_version_id WHERE f.operation_id = ? AND f.book_id = ?`, record.OperationID, bookID).Scan(&record.SettledTransactionID, &record.SettledOperationID); err != nil {
 			return InvestmentTradeCorrectionContext{}, err
 		}
 	}

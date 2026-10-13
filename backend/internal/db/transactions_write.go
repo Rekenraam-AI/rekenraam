@@ -105,6 +105,7 @@ func createTransactionWithAuditTx(ctx context.Context, tx *sql.Tx, params Create
 		OriginType:    params.OriginType,
 		Operation:     params.Operation,
 		Reason:        params.ChangeReason,
+		MetadataJSON:  params.AuditMetadataJSON,
 	})
 	if err != nil {
 		return TransactionRecord{}, 0, err

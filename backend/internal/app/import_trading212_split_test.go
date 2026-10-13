@@ -191,3 +191,49 @@ func TestTrading212SplitLinkRefusesBatchDiscardedAfterPreparation(t *testing.T) 
 		f.splitOpID).Scan(&identities))
 	assert.Zero(t, identities, "no source identity is admitted for a discarded batch")
 }
+
+func TestTrading212SplitRowLinksJournalFreeOperationAndKeepsDedupe(t *testing.T) {
+	t.Parallel()
+	f := newSplitImportFixture(t)
+	ctx := context.Background()
+	positions, err := f.investmentSvc.Positions(ctx)
+	require.NoError(t, err)
+	zero, err := f.investmentSvc.Split(ctx, InvestmentSplitInput{OwnerUserID: f.ownerUserID, EffectiveOn: "2026-04-01", HoldingAccountID: f.holdingID, CommodityID: positions[0].CommodityID, RatioNumerator: 2, RatioDenominator: 1})
+	require.NoError(t, err)
+	require.Zero(t, zero.Transaction.ID)
+	batchID, rowID := f.stageOrderFillRow(t, f.connectionID, f.splitFill)
+	input := Trading212SplitRowInput{OwnerUserID: f.ownerUserID, BatchID: batchID, RowID: rowID}
+	candidates, err := f.importService.Trading212SplitCandidates(ctx, input)
+	require.NoError(t, err)
+	var found bool
+	for _, candidate := range candidates {
+		if candidate.OperationID == zero.OperationID {
+			found = true
+			require.Zero(t, candidate.TransactionID)
+		}
+	}
+	require.True(t, found)
+	var before int
+	require.NoError(t, f.database.QueryRow(`SELECT COUNT(*) FROM transactions`).Scan(&before))
+	require.NoError(t, f.importService.LinkTrading212Split(ctx, LinkTrading212SplitInput{Trading212SplitRowInput: input, OperationID: zero.OperationID}))
+	row, err := f.importRepo.ImportStagedRowByID(ctx, rowID)
+	require.NoError(t, err)
+	require.False(t, row.CommittedTransactionID.Valid)
+	require.Len(t, row.CommitEffects, 1)
+	require.False(t, row.CommitEffects[0].TransactionID.Valid)
+	require.Equal(t, zero.OperationID, row.CommitEffects[0].OperationID.Int64)
+	_, retryRow := f.stageOrderFillRow(t, f.connectionID, f.splitFill)
+	retried, err := f.importRepo.ImportStagedRowByID(ctx, retryRow)
+	require.NoError(t, err)
+	require.Equal(t, "duplicate", retried.DedupeStatus)
+	var after int
+	require.NoError(t, f.database.QueryRow(`SELECT COUNT(*) FROM transactions`).Scan(&after))
+	require.Equal(t, before, after)
+	_, err = f.investmentSvc.ReverseSplit(ctx, ReverseInvestmentSplitInput{OwnerUserID: f.ownerUserID, OperationID: zero.OperationID, Reason: "wrong notice"})
+	require.NoError(t, err)
+	otherFill := f.splitFill
+	otherFill.FillID = "unlinked-split-after-reversal"
+	otherBatch, otherRow := f.stageOrderFillRow(t, f.connectionID, otherFill)
+	require.ErrorIs(t, f.importService.LinkTrading212Split(ctx, LinkTrading212SplitInput{Trading212SplitRowInput: Trading212SplitRowInput{
+		OwnerUserID: f.ownerUserID, BatchID: otherBatch, RowID: otherRow}, OperationID: zero.OperationID}), ErrImportSplitLinkUnavailable)
+}

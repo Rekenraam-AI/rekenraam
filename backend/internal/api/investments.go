@@ -376,6 +376,7 @@ type investmentTradeCorrectionAvailableLotResponse struct {
 }
 
 type investmentTradeCorrectionContextResponse struct {
+	SettledOperationID   int64                                           `json:"settled_operation_id,omitempty"`
 	SettledTransactionID int64                                           `json:"settled_transaction_id,omitempty"`
 	OperationID          int64                                           `json:"operation_id"`
 	TransactionID        int64                                           `json:"transaction_id"`
@@ -437,7 +438,7 @@ func toInvestmentTradeCorrectionContextResponse(record db.InvestmentTradeCorrect
 		})
 	}
 	return investmentTradeCorrectionContextResponse{
-		OperationID: record.OperationID, TransactionID: record.TransactionID, SettledTransactionID: record.SettledTransactionID,
+		OperationID: record.OperationID, TransactionID: record.TransactionID, SettledTransactionID: record.SettledTransactionID, SettledOperationID: record.SettledOperationID,
 		OperationKind: record.OperationKind, EventDate: record.EventDate,
 		HoldingAccountID: record.HoldingAccountID, CommodityID: record.CommodityID,
 		CommodityCode: record.CommodityCode, CostCommodityID: record.CostCommodityID,
@@ -2647,10 +2648,42 @@ type investmentSplitReplacementRequest struct {
 }
 
 type investmentSplitReplacementResponse struct {
-	Inverse                transactionResponse         `json:"inverse"`
-	Replacement            transactionResponse         `json:"replacement"`
+	Inverse                *transactionResponse        `json:"inverse"`
+	Replacement            *transactionResponse        `json:"replacement"`
 	Plan                   investmentSplitPlanResponse `json:"plan"`
-	CorrectedTransactionID int64                       `json:"corrected_transaction_id"`
+	CorrectedTransactionID *int64                      `json:"corrected_transaction_id"`
+	CorrectedOperationID   int64                       `json:"corrected_operation_id"`
+	OperationID            int64                       `json:"operation_id"`
+}
+
+// Both identities have dedicated routes; accepting one never guesses the other.
+func readSplitIdentity(w http.ResponseWriter, r *http.Request) (int64, int64, bool) {
+	if r.PathValue("operation_id") != "" {
+		id, ok := readPathInt64(w, r, "operation_id", "operation id")
+		return 0, id, ok
+	}
+	id, ok := readPathInt64(w, r, "transaction_id", "transaction id")
+	return id, 0, ok
+}
+
+func splitJournalResponse(transaction app.Transaction) *transactionResponse {
+	if transaction.ID == 0 {
+		return nil
+	}
+	return optionalTransactionResponse(&transaction)
+}
+
+func splitTransactionRef(id int64) *int64 {
+	if id == 0 {
+		return nil
+	}
+	return &id
+}
+
+type investmentSplitReversalResponse struct {
+	Transaction            *transactionResponse `json:"transaction"`
+	CorrectedTransactionID *int64               `json:"corrected_transaction_id"`
+	CorrectedOperationID   int64                `json:"corrected_operation_id"`
 }
 
 func investmentSplitReplacementInput(owner app.Owner, r *http.Request, transactionID int64, request investmentSplitReplacementRequest) app.ReplaceInvestmentSplitInput {
@@ -2674,7 +2707,7 @@ func reverseInvestmentSplit(logger *slog.Logger, authService *app.AuthService, i
 		if !ok {
 			return
 		}
-		transactionID, ok := readPathInt64(w, r, "transaction_id", "transaction id")
+		transactionID, operationID, ok := readSplitIdentity(w, r)
 		if !ok {
 			return
 		}
@@ -2683,16 +2716,16 @@ func reverseInvestmentSplit(logger *slog.Logger, authService *app.AuthService, i
 			writeDecodeError(w, err)
 			return
 		}
-		transaction, err := investmentService.ReverseSplit(r.Context(), app.ReverseInvestmentSplitInput{
+		transaction, err := investmentService.ReverseSplitWithIdentity(r.Context(), app.ReverseInvestmentSplitInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-			TransactionID: transactionID, Reason: request.Reason,
+			TransactionID: transactionID, OperationID: operationID, Reason: request.Reason,
 			ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "reverse investment split", err)
 			return
 		}
-		writeJSON(w, http.StatusCreated, investmentSaleReversalResponse{Transaction: toTransactionResponse(transaction), CorrectedTransactionID: transactionID})
+		writeJSON(w, http.StatusCreated, investmentSplitReversalResponse{Transaction: splitJournalResponse(transaction.Transaction), CorrectedTransactionID: splitTransactionRef(transaction.CorrectedTransactionID), CorrectedOperationID: transaction.CorrectedOperationID})
 	}))
 }
 
@@ -2702,7 +2735,7 @@ func reverseInvestmentSplitReconciliationImpact(logger *slog.Logger, authService
 		if !ok {
 			return
 		}
-		transactionID, ok := readPathInt64(w, r, "transaction_id", "transaction id")
+		transactionID, operationID, ok := readSplitIdentity(w, r)
 		if !ok {
 			return
 		}
@@ -2712,7 +2745,7 @@ func reverseInvestmentSplitReconciliationImpact(logger *slog.Logger, authService
 			return
 		}
 		impact, err := investmentService.ReverseSplitReconciliationImpact(r.Context(), app.ReverseInvestmentSplitInput{
-			OwnerUserID: owner.ID, TransactionID: transactionID, Reason: request.Reason,
+			OwnerUserID: owner.ID, TransactionID: transactionID, OperationID: operationID, Reason: request.Reason,
 		})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "preview split reversal reconciliation impact", err)
@@ -2728,7 +2761,7 @@ func replaceInvestmentSplit(logger *slog.Logger, authService *app.AuthService, i
 		if !ok {
 			return
 		}
-		transactionID, ok := readPathInt64(w, r, "transaction_id", "transaction id")
+		transactionID, operationID, ok := readSplitIdentity(w, r)
 		if !ok {
 			return
 		}
@@ -2737,14 +2770,16 @@ func replaceInvestmentSplit(logger *slog.Logger, authService *app.AuthService, i
 			writeDecodeError(w, err)
 			return
 		}
-		result, err := investmentService.ReplaceSplit(r.Context(), investmentSplitReplacementInput(owner, r, transactionID, request))
+		input := investmentSplitReplacementInput(owner, r, transactionID, request)
+		input.OperationID = operationID
+		result, err := investmentService.ReplaceSplit(r.Context(), input)
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "replace investment split", err)
 			return
 		}
 		writeJSON(w, http.StatusCreated, investmentSplitReplacementResponse{
-			Inverse: toTransactionResponse(result.Inverse), Replacement: toTransactionResponse(result.Replacement),
-			Plan: toInvestmentSplitPlanResponse(result.Plan), CorrectedTransactionID: result.CorrectedTransactionID,
+			Inverse: splitJournalResponse(result.Inverse), Replacement: splitJournalResponse(result.Replacement),
+			Plan: toInvestmentSplitPlanResponse(result.Plan), CorrectedTransactionID: splitTransactionRef(result.CorrectedTransactionID), CorrectedOperationID: result.CorrectedOperationID, OperationID: result.OperationID,
 		})
 	}))
 }
@@ -2755,7 +2790,7 @@ func replaceInvestmentSplitPreview(logger *slog.Logger, authService *app.AuthSer
 		if !ok {
 			return
 		}
-		transactionID, ok := readPathInt64(w, r, "transaction_id", "transaction id")
+		transactionID, operationID, ok := readSplitIdentity(w, r)
 		if !ok {
 			return
 		}
@@ -2764,7 +2799,9 @@ func replaceInvestmentSplitPreview(logger *slog.Logger, authService *app.AuthSer
 			writeDecodeError(w, err)
 			return
 		}
-		preview, err := investmentService.PreviewSplitReplacement(r.Context(), investmentSplitReplacementInput(owner, r, transactionID, request))
+		input := investmentSplitReplacementInput(owner, r, transactionID, request)
+		input.OperationID = operationID
+		preview, err := investmentService.PreviewSplitReplacement(r.Context(), input)
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "preview split replacement", err)
 			return

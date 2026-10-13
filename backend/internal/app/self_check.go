@@ -439,6 +439,11 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 			AND NOT (o.operation_kind = 'split' AND EXISTS (
 				SELECT 1 FROM investment_split_facts f WHERE f.operation_id = o.id AND f.book_id = o.book_id)
 				AND NOT EXISTS (SELECT 1 FROM investment_operation_lot_effects x WHERE x.operation_id = o.id))
+            -- #196: reversing a sourced split can also be journal-free.
+            -- Its predecessor's journals, including this inverse if any,
+            -- must still net to the now-ineffective split's zero effects.
+            AND NOT (o.operation_kind = 'reversal' AND EXISTS (
+              SELECT 1 FROM investment_split_facts f WHERE f.operation_id = o.correction_of_operation_id AND f.book_id = o.book_id))
 			AND NOT EXISTS (SELECT 1 FROM investment_operation_journal_links l
 				JOIN transaction_versions v ON v.id = l.transaction_version_id
 				JOIN transactions t ON t.id = v.transaction_id

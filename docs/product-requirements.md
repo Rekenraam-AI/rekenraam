@@ -159,6 +159,10 @@ These apply across all feature phases.
 - Import workflows must preserve source metadata where practical.
 - Duplicate detection, reconciliation, and correction behavior must be explicit.
 - Reports and exports must reflect durable accounting semantics rather than ad hoc UI summaries.
+- Journal-free investment operations remain audited source facts. Their source
+  and correction history must be inspectable even when the ledger has no
+  transaction row for the operation; a sourced zero-delta split remains
+  correctable and reversible by its operation identity.
 - Investment settlement facts belong to the canonical journal; lot relationships,
   basis adjustments, corporate actions, and actual lot elections belong to an
   auditable investment subledger. They must share one atomic lifecycle so editing,

@@ -4,7 +4,7 @@
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { accountsQueryOptions } from '#lib/api/accounts.ts';
   import { currenciesQueryOptions } from '#lib/api/currencies.ts';
-  import { cashInLieuLotsQueryKey, getCashInLieuLots, previewCashInLieu, recordCashInLieu, previewCashInLieuReplacement, replaceCashInLieu,
+  import { cashInLieuLotsQueryKey, getCashInLieuLots, getCashInLieuLotsForOperation, previewCashInLieu, recordCashInLieu, previewCashInLieuReplacement, replaceCashInLieu,
     type CashInLieuRequest, type CashInLieuPreviewResponse, type InvestmentTradeCorrectionContextResponse } from '#lib/api/investments.ts';
   import { parseMagnitude, parseMoneyMagnitude } from './form-amounts';
   import { parseCorrectionLotChoices } from './trade-economics';
@@ -19,12 +19,13 @@
 
   let { csrfToken, onSaved, onCancel, split, correction }: {
     csrfToken: string; onSaved: () => void; onCancel: () => void;
-    split?: { transactionID: number; holdingAccountID: number; commodityID: number; effectiveOn: string };
+    split?: { transactionID?: number; operationID?: number; holdingAccountID: number; commodityID: number; effectiveOn: string };
     correction?: InvestmentTradeCorrectionContextResponse;
   } = $props();
   const initial = untrack(() => correction);
   const initialSplit = untrack(() => split);
   const splitID = initial?.settled_transaction_id ?? initialSplit?.transactionID ?? 0;
+  const splitOperationID = initial?.settled_operation_id ?? initialSplit?.operationID ?? 0;
   const holdingID = initial?.holding_account_id ?? initialSplit?.holdingAccountID ?? 0;
   const queryClient = useQueryClient();
   const accountsQuery = createQuery(() => accountsQueryOptions(false, false));
@@ -56,12 +57,12 @@
   const loading = $derived(accountsQuery.isPending || currenciesQuery.isPending);
   const loadError = $derived(accountsQuery.isError || currenciesQuery.isError);
   const lotsQuery = createQuery(() => ({
-    queryKey: [...cashInLieuLotsQueryKey,splitID,disposalOn,currencyID,initial?.transaction_id],
-    queryFn: () => getCashInLieuLots(splitID,disposalOn,Number(currencyID),initial?.transaction_id),
-    enabled: method === 'specific_lot' && !!disposalOn && !!currencyID && splitID > 0
+    queryKey: [...cashInLieuLotsQueryKey,splitOperationID ? 'operation' : 'transaction',splitOperationID || splitID,disposalOn,currencyID,initial?.transaction_id],
+    queryFn: () => splitOperationID ? getCashInLieuLotsForOperation(splitOperationID,disposalOn,Number(currencyID),initial?.transaction_id) : getCashInLieuLots(splitID,disposalOn,Number(currencyID),initial?.transaction_id),
+    enabled: method === 'specific_lot' && !!disposalOn && !!currencyID && (splitID > 0 || splitOperationID > 0)
   }));
   const availableLots = $derived(lotsQuery.data?.lots ?? []);
-  const canPreview = $derived(!loading && !loadError && splitID > 0 && !!disposalOn && !!paymentOn && !!cashAccountID && !!currencyID && !!quantity.trim() && !!proceeds.trim() &&
+  const canPreview = $derived(!loading && !loadError && (splitID > 0 || splitOperationID > 0) && !!disposalOn && !!paymentOn && !!cashAccountID && !!currencyID && !!quantity.trim() && !!proceeds.trim() &&
     (!initial || !!reason.trim()) && (method !== 'specific_lot' || (!lotsQuery.isPending && !lotsQuery.isError && availableLots.length > 0)));
   const gainImpact = $derived(preview && hasGainChanges(preview.result.impact.gain_impact) ? preview.result.impact.gain_impact : null);
   const gainRows = $derived(gainImpact ? gainImpactRows(gainImpact.changes,gainImpactCurrency(currencyMap),locale) : []);
@@ -90,7 +91,7 @@
     if (paymentOn<disposalOn) {formError=new TranslatedFormError(m.investments_cash_in_lieu_dates_error());return null;}
     const choices=method==='specific_lot' ? parseCorrectionLotChoices(Object.entries(quantities).filter(([lot,q])=>q?.trim() && availableLots.some(a=>String(a.lot_id)===lot)).map(([lot,q])=>({lotID:lot,quantity:q})),availableLots,q.field):null;
     if (choices && !choices.ok) {formError=new TranslatedFormError(m.transactions_investment_replace_lot_mismatch());return null;}
-    return {settled_transaction_id:splitID,disposal_on:disposalOn,payment_on:paymentOn,cash_account_id:Number(cashAccountID),currency_id:Number(currencyID),quantity_value:q.field.value,quantity_scale:q.field.scale,
+    return {...(splitOperationID ? {settled_operation_id:splitOperationID} : {settled_transaction_id:splitID}),disposal_on:disposalOn,payment_on:paymentOn,cash_account_id:Number(cashAccountID),currency_id:Number(currencyID),quantity_value:q.field.value,quantity_scale:q.field.scale,
       proceeds_value:p.field.value,proceeds_scale:p.field.scale,cost_basis_method:method,lot_allocations:choices?.ok ? choices.allocations:undefined,memo:memo.trim() || undefined};
   }
   async function runPreview(payload:CashInLieuRequest) {
@@ -133,7 +134,7 @@
 <form onsubmit={handlePreview} class="space-y-4" aria-busy={pending}>
   <h2 class="text-base font-semibold text-foreground">{initial ? m.investments_cash_in_lieu_correct() : m.investments_cash_in_lieu_title()}</h2>
   <p class="text-sm text-muted">{m.investments_cash_in_lieu_help()}</p>
-  <p class="text-sm text-foreground">{accounts.find(a=>a.id===holdingID)?.name} · <a class="text-accent underline" href={`/app/transactions?transaction_id=${splitID}`}>{m.investments_cash_in_lieu_split({id:String(splitID)})}</a></p>
+  <p class="text-sm text-foreground">{accounts.find(a=>a.id===holdingID)?.name} · <a class="text-accent underline" href={splitID ? `/app/transactions?transaction_id=${splitID}` : `/app/investments?tab=splits&split_operation_id=${splitOperationID}`}>{m.investments_cash_in_lieu_split({id:String(splitOperationID || splitID)})}</a></p>
   {#if loading}<p class="text-sm text-muted" role="status">{m.investments_loading()}</p>
   {:else if loadError}<p class="text-sm text-danger" role="alert">{m.investments_transfer_load_error()}</p>
   {:else}

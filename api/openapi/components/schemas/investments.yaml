@@ -1034,9 +1034,18 @@ InvestmentTransferOutReplacementResponse:
 CashInLieuRequest:
   type: object
   additionalProperties: false
-  required: [settled_transaction_id, disposal_on, payment_on, quantity_value, quantity_scale, cash_account_id,
+  required: [disposal_on, payment_on, quantity_value, quantity_scale, cash_account_id,
     currency_id, proceeds_value, proceeds_scale]
+  oneOf:
+    - required: [settled_transaction_id]
+    - required: [settled_operation_id]
   properties:
+    settled_operation_id:
+      type: integer
+      format: int64
+      minimum: 1
+      description: Operation being settled, including an initially journal-free split; supply this or settled_transaction_id.
+
     settled_transaction_id:
       type: integer
       format: int64
@@ -2259,15 +2268,27 @@ InvestmentSplitReplacementRequest:
 
 InvestmentSplitReplacementResponse:
   type: object
-  required: [inverse, replacement, plan, corrected_transaction_id]
+  required: [inverse, replacement, plan, corrected_transaction_id, corrected_operation_id, operation_id]
   properties:
     inverse:
-      $ref: "../schemas/transactions.yaml#/TransactionResponse"
+      description: Null when the predecessor's current quantity delta is zero.
+      oneOf:
+        - $ref: "../schemas/transactions.yaml#/TransactionResponse"
+        - type: "null"
     replacement:
-      $ref: "../schemas/transactions.yaml#/TransactionResponse"
+      description: Null when no lots are entitled to the corrected split.
+      oneOf:
+        - $ref: "../schemas/transactions.yaml#/TransactionResponse"
+        - type: "null"
     plan:
       $ref: "../schemas/investments.yaml#/InvestmentSplitPlan"
     corrected_transaction_id:
+      type: [integer, "null"]
+      format: int64
+    corrected_operation_id:
+      type: integer
+      format: int64
+    operation_id:
       type: integer
       format: int64
 
@@ -2768,6 +2789,10 @@ InvestmentTradeCorrectionContextResponse:
     imported, source_identity_id, source_kind, already_corrected, charges, elected_lots, can_replace_sale,
     available_lots, effective_elected_lots]
   properties:
+    settled_operation_id:
+      type: integer
+      format: int64
+      description: Immutable settled operation identity for a cash in lieu.
     settled_transaction_id:
       type: integer
       format: int64
@@ -4189,3 +4214,52 @@ InvestmentBasisResolutionHistoryEntry:
     reversal_reason:
       type: string
       description: Why a reversed resolution was withdrawn.
+
+
+InvestmentSplitReversalResponse:
+  type: object
+  required: [transaction, corrected_transaction_id, corrected_operation_id]
+  properties:
+    transaction:
+      oneOf:
+        - $ref: "../schemas/transactions.yaml#/TransactionResponse"
+        - type: "null"
+    corrected_transaction_id:
+      type: [integer, "null"]
+      format: int64
+    corrected_operation_id:
+      type: integer
+      format: int64
+
+InvestmentSplitActivity:
+  type: object
+  required: [operation_id, transaction_id, correction_of_operation_id, successor_operation_id, holding_account_id, commodity_id, account_name, instrument_name, effective_on, ratio_numerator, ratio_denominator, source_evidence, memo, reason, created_at, standing, settled, quantity_delta_value, quantity_delta_scale]
+  properties:
+    operation_id: {type: integer, format: int64}
+    transaction_id: {type: [integer, "null"], format: int64}
+    correction_of_operation_id: {type: [integer, "null"], format: int64}
+    successor_operation_id: {type: [integer, "null"], format: int64}
+    holding_account_id: {type: integer, format: int64}
+    commodity_id: {type: integer, format: int64}
+    account_name: {type: string}
+    instrument_name: {type: string}
+    effective_on: {type: string, format: date}
+    ratio_numerator: {type: integer, format: int64}
+    ratio_denominator: {type: integer, format: int64}
+    source_evidence: {type: object, additionalProperties: true}
+    memo: {type: string}
+    reason: {type: string}
+    created_at: {type: string, format: date-time}
+    standing: {type: string, enum: [effective, superseded, reversed]}
+    settled: {type: boolean}
+    quantity_delta_value: {type: string, pattern: "^-?(0|[1-9][0-9]*)$"}
+    quantity_delta_scale: {type: integer}
+
+InvestmentSplitActivityResponse:
+  type: object
+  required: [splits, next_cursor]
+  properties:
+    splits:
+      type: array
+      items: {$ref: "../schemas/investments.yaml#/InvestmentSplitActivity"}
+    next_cursor: {type: [string, "null"]}

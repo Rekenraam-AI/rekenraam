@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
+  import { page } from '$app/state';
   import { createQuery } from '@tanstack/svelte-query';
   import TrendingUp from '@lucide/svelte/icons/trending-up';
   import X from '@lucide/svelte/icons/x';
@@ -21,6 +23,7 @@
   import InternalTransferForm from '#lib/investments/internal-transfer-form.svelte';
   import ExternalTransferOutForm from '#lib/investments/external-transfer-out-form.svelte';
   import CapitalReturnForm from '#lib/investments/capital-return-form.svelte';
+  import SplitActivity from '#lib/investments/split-activity.svelte';
   import SplitForm from '#lib/investments/split-form.svelte';
   import ShareExchangeForm from '#lib/investments/share-exchange-form.svelte';
   import SpinOffForm from '#lib/investments/spin-off-form.svelte';
@@ -143,8 +146,8 @@
   }
 
   // Tab navigation
-  type Tab = 'portfolio' | 'gains' | 'suggestions';
-  let activeTab = $state<Tab>('portfolio');
+  type Tab = 'portfolio' | 'gains' | 'splits' | 'suggestions';
+  let activeTab = $state<Tab>(untrack(() => page.url.searchParams.get('tab') === 'splits' ? 'splits' : 'portfolio'));
 
   // Badge: count pending suggestions
   const suggestionsQuery = createQuery(() => ({
@@ -160,18 +163,19 @@
 <div>
   <div class="p-4 sm:p-6 lg:p-8">
     <!-- Tab navigation -->
-    <div class="mb-5 flex items-center gap-1 border-b border-border">
-      {#each (['portfolio', 'gains', 'suggestions'] as const) as tab}
+    <div class="mb-5 flex items-center gap-1 overflow-x-auto border-b border-border">
+      {#each (['portfolio', 'gains', 'splits', 'suggestions'] as const) as tab}
         <button
           type="button"
           onclick={() => { activeTab = tab; }}
-          class="relative -mb-px flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition
+          class="relative -mb-px flex shrink-0 items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition
             {activeTab === tab
               ? 'border-b-2 border-foreground text-foreground'
               : 'text-muted hover:text-foreground'}"
         >
           {#if tab === 'portfolio'}{m.investments_tab_portfolio()}
           {:else if tab === 'gains'}{m.investments_tab_gains()}
+          {:else if tab === 'splits'}{m.investments_split_history_title()}
           {:else}{m.investments_tab_suggestions()}
           {/if}
           {#if tab === 'suggestions' && pendingCount > 0}
@@ -448,6 +452,8 @@
     {#if activeTab === 'gains'}
       <GainsReport />
     {/if}
+
+    {#if activeTab === 'splits'}<SplitActivity {csrfToken}/>{/if}
 
     <!-- Suggestions tab -->
     {#if activeTab === 'suggestions'}

@@ -30,9 +30,8 @@ import (
 // split (H +e, T -e), linked to the split operation and the revision (T-129).
 
 var (
-	// ErrSplitNoEligibleHoldings fences a transaction-addressed replacement
-	// whose corrected split would have no primary journal (#196). New sourced
-	// splits with no eligible lots are admitted journal-free (#146).
+	// ErrSplitNoEligibleHoldings is retained for legacy error-code compatibility.
+	// Sourced splits and replacements without eligible lots are journal-free.
 	ErrSplitNoEligibleHoldings = errors.New("no holdings are open on the split effective date")
 	// ErrSplitFractionUnrepresentable means a lot's split quantity has more
 	// decimal places than the security permits.
@@ -364,23 +363,13 @@ func (r *InvestmentRepository) createSplit(ctx context.Context, journal CreateTr
 		if err != nil {
 			return SplitPlan{}, err
 		}
-		return writeSplitEffectsForOperationTx(ctx, tx, params, transaction, operationID, auditEventID, journal.ActorUserID, journal.CreatedAt)
+		return writeSplitEffectsTx(ctx, tx, params, transaction, operationID, auditEventID, journal.ActorUserID, journal.CreatedAt)
 	}, nil)
 }
 
-// writeSplitEffectsTx records a split whose journal the enclosing writer just
-// posted: it recomputes the plan at the slot, refuses a stale journal delta,
-// then writes the sourced terms, per-lot effects and any dependent replay.
+// writeSplitEffectsTx recomputes a journal-bearing or journal-free split at
+// its slot, refuses a stale delta, and writes its source and replay effects.
 func writeSplitEffectsTx(ctx context.Context, tx *sql.Tx, params CreateSplitParams, transaction TransactionRecord,
-	auditEventID, actorUserID int64, createdAt string) (SplitPlan, error) {
-	operationID, err := investmentOperationIDTx(ctx, tx, params.BookID, transaction.ID)
-	if err != nil {
-		return SplitPlan{}, err
-	}
-	return writeSplitEffectsForOperationTx(ctx, tx, params, transaction, operationID, auditEventID, actorUserID, createdAt)
-}
-
-func writeSplitEffectsForOperationTx(ctx context.Context, tx *sql.Tx, params CreateSplitParams, transaction TransactionRecord,
 	operationID, auditEventID, actorUserID int64, createdAt string) (SplitPlan, error) {
 	plan, err := planSplitTx(ctx, tx, params, operationID, auditEventID, actorUserID, createdAt)
 	if err != nil {

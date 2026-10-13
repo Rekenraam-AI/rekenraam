@@ -513,6 +513,21 @@ paths:
     $ref: "./paths/investments-automation-rules.yaml"
   /api/v1/investments/gains:
     $ref: "./paths/investments-gains.yaml"
+  /api/v1/investments/operations/{operation_id}/reverse-split:
+    $ref: "./paths/investments-operation-reverse-split.yaml"
+
+  /api/v1/investments/operations/{operation_id}/reverse-split/reconciliation-impact:
+    $ref: "./paths/investments-operation-reverse-split-reconciliation-impact.yaml"
+
+  /api/v1/investments/operations/{operation_id}/replace-split:
+    $ref: "./paths/investments-operation-replace-split.yaml"
+
+  /api/v1/investments/operations/{operation_id}/replace-split/preview:
+    $ref: "./paths/investments-operation-replace-split-preview.yaml"
+
+  /api/v1/investments/operations/{operation_id}/cash-in-lieu-lots:
+    $ref: "./paths/investments-operation-cash-in-lieu-lots.yaml"
+
 components:
   headers:
     XRequestID:
@@ -1218,6 +1233,12 @@ components:
       $ref: "./components/schemas/investments.yaml#/InvestmentSplitPlan"
     InvestmentSplitPreviewResponse:
       $ref: "./components/schemas/investments.yaml#/InvestmentSplitPreviewResponse"
+    InvestmentSplitActivityResponse:
+      $ref: "./components/schemas/investments.yaml#/InvestmentSplitActivityResponse"
+    InvestmentSplitActivity:
+      $ref: "./components/schemas/investments.yaml#/InvestmentSplitActivity"
+    InvestmentSplitReversalResponse:
+      $ref: "./components/schemas/investments.yaml#/InvestmentSplitReversalResponse"
     InvestmentSplitResponse:
       $ref: "./components/schemas/investments.yaml#/InvestmentSplitResponse"
     ShareExchangeRequest:

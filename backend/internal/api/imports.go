@@ -1133,7 +1133,7 @@ type importLinkSplitRequest struct {
 
 type importSplitCandidateResponse struct {
 	OperationID      int64  `json:"operation_id"`
-	TransactionID    int64  `json:"transaction_id"`
+	TransactionID    *int64 `json:"transaction_id"`
 	HoldingAccountID int64  `json:"holding_account_id"`
 	EffectiveOn      string `json:"effective_on"`
 	RatioNumerator   int64  `json:"ratio_numerator"`
@@ -1179,7 +1179,9 @@ func importSplitCandidates(logger *slog.Logger, authService *app.AuthService, im
 		}
 		response := importSplitCandidatesResponse{Candidates: make([]importSplitCandidateResponse, 0, len(candidates))}
 		for _, candidate := range candidates {
-			response.Candidates = append(response.Candidates, importSplitCandidateResponse(candidate))
+			response.Candidates = append(response.Candidates, importSplitCandidateResponse{
+				OperationID: candidate.OperationID, TransactionID: splitTransactionRef(candidate.TransactionID), HoldingAccountID: candidate.HoldingAccountID,
+				EffectiveOn: candidate.EffectiveOn, RatioNumerator: candidate.RatioNumerator, RatioDenominator: candidate.RatioDenominator, Linked: candidate.Linked})
 		}
 		writeJSON(w, http.StatusOK, response)
 	}

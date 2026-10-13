@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	// ErrInvestmentSplitNoHoldings fences a replacement with no primary journal (#196).
+	// ErrInvestmentSplitNoHoldings is the reserved legacy no-holdings error.
 	ErrInvestmentSplitNoHoldings = db.ErrSplitNoEligibleHoldings
 	// ErrInvestmentSplitFraction means a lot's split quantity needs more
 	// decimal places than the security permits; a cash-in-lieu event would
@@ -163,10 +163,6 @@ func (s *InvestmentService) prepareSplitWriteWith(ctx context.Context, input Inv
 	}
 	split.ExpectedDeltaValue, split.ExpectedDeltaScale = planned.DeltaValue, planned.DeltaScale
 	if planned.DeltaValue.Sign() == 0 {
-		// Transaction-addressed correction commands still require a primary journal.
-		if replacesOperationID > 0 {
-			return fail(ErrInvestmentSplitNoHoldings)
-		}
 		reason, err := cleanChangeReason(input.ChangeReason, "")
 		if err != nil {
 			return fail(err)

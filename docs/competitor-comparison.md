@@ -32,7 +32,7 @@ The external workflow evidence retains the 2026-09-27 review date.
    journal-free sourced splits and entitlement replay to the shipped long,
    short and compound-action workflows. This gains zero-delta split recording;
    inspecting/correcting/settling initially journal-free splits by operation
-   identity is a deliberate remaining gap (#196). Continue with the roadmap's
+   identity also ships in #196, including mobile history and import dedupe. Continue with the roadmap's
    R11 operator surface before more investment producers. The competing
    investment workflows treat corrections, transfers, basis actions and splits
    as ordinary operations. Rekenraam's bounded #114 and #166–#168 gates, named

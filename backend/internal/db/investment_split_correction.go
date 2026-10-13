@@ -17,7 +17,7 @@ import (
 // the replaced split's correction-root slot. Original facts, effects and
 // journals stay immutable; every effect commits under one audit event.
 
-// SplitOperationRecord pins a posted split and the aggregate quantity its
+// SplitOperationRecord pins a sourced split and the aggregate quantity its
 // journals currently move. A correction rechecks it inside the write.
 type SplitOperationRecord struct {
 	OperationID          int64
@@ -47,19 +47,28 @@ type splitOperationReader interface {
 	queryer
 }
 
+func (r *InvestmentRepository) SplitOperationByID(ctx context.Context, bookID, operationID int64) (SplitOperationRecord, error) {
+	return splitOperationQuery(ctx, r.database, bookID, "o.id", operationID)
+}
+
 func splitOperationByTransactionIDQuery(ctx context.Context, reader splitOperationReader, bookID, transactionID int64) (SplitOperationRecord, error) {
+	return splitOperationQuery(ctx, reader, bookID, "linked_version.transaction_id", transactionID)
+}
+
+// column is selected only by the two repository entry points above.
+func splitOperationQuery(ctx context.Context, reader splitOperationReader, bookID int64, column string, id int64) (SplitOperationRecord, error) {
 	var record SplitOperationRecord
 	var corrected int
-	err := reader.QueryRowContext(ctx, `SELECT o.id, linked_version.transaction_id, link.transaction_version_id,
-		current.id, f.effective_on, f.account_id, f.commodity_id, f.ratio_numerator, f.ratio_denominator,
+	err := reader.QueryRowContext(ctx, `SELECT o.id, COALESCE(linked_version.transaction_id, 0), COALESCE(link.transaction_version_id, 0),
+		COALESCE(current.id, 0), f.effective_on, f.account_id, f.commodity_id, f.ratio_numerator, f.ratio_denominator,
 		EXISTS(SELECT 1 FROM investment_operations successor WHERE successor.correction_of_operation_id = o.id)
 		FROM investment_operations o
 		JOIN investment_split_facts f ON f.operation_id = o.id AND f.book_id = o.book_id
-		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
-		JOIN transaction_versions linked_version ON linked_version.id = link.transaction_version_id
-		JOIN current_transaction_versions current ON current.transaction_id = linked_version.transaction_id
-		WHERE o.book_id = ? AND linked_version.transaction_id = ? AND o.operation_kind = 'split'`,
-		bookID, transactionID).Scan(&record.OperationID, &record.TransactionID, &record.TransactionVersionID,
+		LEFT JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
+		LEFT JOIN transaction_versions linked_version ON linked_version.id = link.transaction_version_id
+		LEFT JOIN current_transaction_versions current ON current.transaction_id = linked_version.transaction_id
+		WHERE o.book_id = ? AND `+column+` = ? AND o.operation_kind = 'split'`,
+		bookID, id).Scan(&record.OperationID, &record.TransactionID, &record.TransactionVersionID,
 		&record.CurrentVersionID, &record.EventDate, &record.AccountID, &record.CommodityID,
 		&record.RatioNumerator, &record.RatioDenominator, &corrected)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -106,7 +115,7 @@ func splitOperationByTransactionIDQuery(ctx context.Context, reader splitOperati
 // not already corrected, an imported lineage still names its committed source,
 // and nothing about the split or its journals moved since it was planned.
 func checkSplitOperationForCorrectionTx(ctx context.Context, tx *sql.Tx, bookID int64, expected SplitOperationRecord) (SplitOperationRecord, error) {
-	current, err := splitOperationByTransactionIDQuery(ctx, tx, bookID, expected.TransactionID)
+	current, err := splitOperationQuery(ctx, tx, bookID, "o.id", expected.OperationID)
 	if err != nil {
 		return SplitOperationRecord{}, err
 	}
@@ -127,6 +136,9 @@ func checkSplitOperationForCorrectionTx(ctx context.Context, tx *sql.Tx, bookID 
 	}
 	if err := requireNoCashInLieuSettlesTx(ctx, tx, bookID, current.OperationID); err != nil {
 		return SplitOperationRecord{}, err
+	}
+	if current.TransactionID == 0 {
+		return current, nil
 	}
 	if err := checkInvestmentSourceJournalTx(ctx, tx, bookID, current.TransactionID,
 		current.EventDate, current.TransactionVersionID, current.CurrentVersionID); err != nil {
@@ -197,7 +209,7 @@ func (r *InvestmentRepository) reverseSplit(ctx context.Context, params CreateTr
 		params.Spec.Status != "posted" || params.Spec.TransactionDate != expected.EventDate ||
 		params.InvestmentCorrectionOfOperationID != expected.OperationID ||
 		params.InvestmentCorrectionMode != "reverse" || params.InvestmentCorrectionReason == "" ||
-		!params.CorrectionOfTransactionID.Valid || params.CorrectionOfTransactionID.Int64 != expected.TransactionID {
+		params.CorrectionOfTransactionID.Valid != (expected.TransactionID > 0) || params.CorrectionOfTransactionID.Int64 != expected.TransactionID {
 		return TransactionRecord{}, fmt.Errorf("%w: split reversal is incomplete", ErrInvalidDisposalParams)
 	}
 	if err := requireSplitInverseJournal(params, expected); err != nil {
@@ -208,7 +220,7 @@ func (r *InvestmentRepository) reverseSplit(ctx context.Context, params CreateTr
 		return err
 	}
 	effect := func(tx *sql.Tx, transaction TransactionRecord, auditEventID int64) (struct{}, error) {
-		operationID, err := investmentOperationIDTx(ctx, tx, params.BookID, transaction.ID)
+		operationID, err := investmentCommandOperationTx(ctx, tx, params, transaction, auditEventID)
 		if err != nil {
 			return struct{}{}, err
 		}
@@ -228,6 +240,9 @@ func (r *InvestmentRepository) reverseSplit(ctx context.Context, params CreateTr
 // requireSplitInverseJournal checks that a correction's inverse journal moves
 // exactly the negation of the split's current journal delta on its holding.
 func requireSplitInverseJournal(params CreateTransactionParams, expected SplitOperationRecord) error {
+	if params.AuditOnly != (expected.JournalDeltaValue.Sign() == 0) {
+		return fmt.Errorf("%w: split inverse journal shape disagrees with its delta", ErrInvalidDisposalParams)
+	}
 	holding := exact.NewScaledInt()
 	for _, entry := range params.Spec.JournalEntries {
 		if entry.EntryDate != expected.EventDate {
@@ -290,9 +305,9 @@ func (r *InvestmentRepository) replaceSplit(ctx context.Context, expected SplitO
 		replacementParams.InvestmentCorrectionOfOperationID != expected.OperationID ||
 		replacementParams.InvestmentCorrectionMode != "replace" ||
 		replacementParams.InvestmentCorrectionReason == "" ||
-		!inverseParams.CorrectionOfTransactionID.Valid ||
+		inverseParams.CorrectionOfTransactionID.Valid != (expected.TransactionID > 0) ||
 		inverseParams.CorrectionOfTransactionID.Int64 != expected.TransactionID ||
-		!replacementParams.CorrectionOfTransactionID.Valid ||
+		replacementParams.CorrectionOfTransactionID.Valid != (expected.TransactionID > 0) ||
 		replacementParams.CorrectionOfTransactionID.Int64 != expected.TransactionID {
 		return SplitReplacementRecord{}, fmt.Errorf("%w: split replacement is incomplete", ErrInvalidDisposalParams)
 	}
@@ -310,16 +325,19 @@ func (r *InvestmentRepository) replaceSplit(ctx context.Context, expected SplitO
 			return err
 		}, func(tx *sql.Tx, journals []TransactionRecord, auditEventID int64) (SplitPlan, error) {
 			inverse, replacement := journals[0], journals[1]
-			operationID, err := investmentOperationIDTx(ctx, tx, replacementParams.BookID, replacement.ID)
+			operationID, err := investmentCommandOperationTx(ctx, tx, replacementParams, replacement, auditEventID)
 			if err != nil {
 				return SplitPlan{}, err
 			}
-			if _, err := tx.ExecContext(ctx, `INSERT INTO investment_operation_journal_links
-				(book_id, operation_id, transaction_version_id, link_seq, role)
-				VALUES (?, ?, ?, 2, 'reversal')`, replacementParams.BookID, operationID, inverse.VersionID); err != nil {
-				return SplitPlan{}, fmt.Errorf("link split replacement inverse: %w", err)
+			if inverse.VersionID > 0 {
+				if _, err := tx.ExecContext(ctx, `INSERT INTO investment_operation_journal_links
+ (book_id, operation_id, transaction_version_id, link_seq, role)
+ SELECT ?, ?, ?, COALESCE(MAX(link_seq), 0) + 1, 'reversal'
+ FROM investment_operation_journal_links WHERE operation_id = ?`, replacementParams.BookID, operationID, inverse.VersionID, operationID); err != nil {
+					return SplitPlan{}, fmt.Errorf("link split replacement inverse: %w", err)
+				}
 			}
-			return writeSplitEffectsTx(ctx, tx, split, replacement, auditEventID,
+			return writeSplitEffectsTx(ctx, tx, split, replacement, operationID, auditEventID,
 				replacementParams.ActorUserID, replacementParams.CreatedAt)
 		}, nil)
 	if err != nil {

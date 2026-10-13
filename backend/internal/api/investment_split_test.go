@@ -105,7 +105,7 @@ func TestInvestmentSplitCorrectionAPIReplaceReverseAndLabels(t *testing.T) {
 		splitPath("/replace-split"), replacement, http.StatusCreated)
 	var replaced investmentSplitReplacementResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&replaced))
-	assert.Equal(t, split.Transaction.ID, replaced.CorrectedTransactionID)
+	assert.Equal(t, split.Transaction.ID, *replaced.CorrectedTransactionID)
 
 	// The original is now corrected; the replacement can be reversed.
 	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost,
@@ -119,4 +119,82 @@ func TestInvestmentSplitCorrectionAPIReplaceReverseAndLabels(t *testing.T) {
 	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost,
 		"/api/v1/investments/transactions/999999/reverse-split", investmentSaleReversalRequest{Reason: "x"}, http.StatusNotFound)
 	assert.Contains(t, res.Body.String(), "NOT_FOUND")
+}
+
+func TestJournalFreeSplitOperationAPIAndActivityPagination(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	f := bootstrapInvestmentAPITest(t, handler)
+	instrument := createInstrumentForSession(t, handler, f, "ISPLITOPS")
+	holding := createHoldingAccountForSession(t, handler, f, instrument.ID)
+	request := investmentSplitRequest{EffectiveOn: "2026-03-01", HoldingAccountID: holding.ID, CommodityID: instrument.CommodityID, RatioNumerator: 2, RatioDenominator: 1}
+	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/splits", request, http.StatusCreated)
+	var zero investmentSplitResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&zero))
+	require.Nil(t, zero.Transaction)
+	path := "/api/v1/investments/operations/" + strconv.FormatInt(zero.OperationID, 10)
+	replacement := investmentSplitReplacementRequest{Reason: "broker notice correction", EffectiveOn: "2026-03-01", RatioNumerator: 3, RatioDenominator: 1}
+	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, path+"/replace-split/preview", replacement, http.StatusOK)
+	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, path+"/replace-split", replacement, http.StatusForbidden)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, path+"/replace-split", replacement, http.StatusCreated)
+	var successor investmentSplitReplacementResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&successor))
+	require.Nil(t, successor.Inverse)
+	require.Nil(t, successor.Replacement)
+	require.Nil(t, successor.CorrectedTransactionID)
+	require.Equal(t, zero.OperationID, successor.CorrectedOperationID)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/splits?limit=1", nil, http.StatusOK)
+	var page splitActivityPageResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&page))
+	require.Len(t, page.Splits, 1)
+	require.Equal(t, "effective", page.Splits[0].Standing)
+	require.NotNil(t, page.NextCursor)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/splits?limit=1&cursor="+*page.NextCursor, nil, http.StatusOK)
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&page))
+	require.Len(t, page.Splits, 1)
+	require.Equal(t, "superseded", page.Splits[0].Standing)
+	require.Nil(t, page.Splits[0].TransactionID)
+	require.Nil(t, page.NextCursor)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/splits?operation_id="+strconv.FormatInt(zero.OperationID, 10), nil, http.StatusOK)
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&page))
+	require.Len(t, page.Splits, 1)
+	require.Equal(t, zero.OperationID, page.Splits[0].OperationID)
+	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/splits?operation_id=999999", nil, http.StatusNotFound)
+	reversal := investmentSaleReversalRequest{Reason: "entered twice"}
+	path = "/api/v1/investments/operations/" + strconv.FormatInt(successor.OperationID, 10)
+	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, path+"/reverse-split/reconciliation-impact", reversal, http.StatusOK)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, path+"/reverse-split", reversal, http.StatusCreated)
+	var reversed investmentSplitReversalResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&reversed))
+	require.Nil(t, reversed.Transaction)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/splits", nil, http.StatusOK)
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&page))
+	require.Len(t, page.Splits, 2)
+	require.Equal(t, "reversed", page.Splits[0].Standing)
+	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/splits?cursor=-1", nil, http.StatusBadRequest)
+}
+
+func TestJournalFreeSplitOperationCashInLieuAPI(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	f := bootstrapInvestmentAPITest(t, handler)
+	instrument := createInstrumentForSession(t, handler, f, "ISPLITCASHOPS")
+	holding := createHoldingAccountForSession(t, handler, f, instrument.ID)
+	request := investmentSplitRequest{EffectiveOn: "2026-03-01", HoldingAccountID: holding.ID, CommodityID: instrument.CommodityID, RatioNumerator: 3, RatioDenominator: 2}
+	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/splits", request, http.StatusCreated)
+	var split investmentSplitResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&split))
+	buy := tradeRequestBody(f, holding.ID, instrument.CommodityID, "1", 10000)
+	buy.TransactionDate = "2026-02-01"
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/buy", buy, http.StatusCreated)
+	path := "/api/v1/investments/operations/" + strconv.FormatInt(split.OperationID, 10)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, path+"/cash-in-lieu-lots?currency_id="+strconv.FormatInt(f.commodityID, 10)+"&disposal_on=2026-03-01", nil, http.StatusOK)
+	var lots cashInLieuLotsResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&lots))
+	require.Len(t, lots.Lots, 1)
+	cash := cashInLieuRequest{SettledOperationID: split.OperationID, DisposalOn: "2026-03-01", PaymentOn: "2026-03-05", QuantityValue: "5", QuantityScale: 1, CashAccountID: f.cashAccount.ID, CurrencyID: f.commodityID, ProceedsValue: 800, ProceedsScale: 2}
+	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, "/api/v1/investments/cash-in-lieu/preview", cash, http.StatusOK)
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/cash-in-lieu", cash, http.StatusCreated)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, path+"/reverse-split/reconciliation-impact", investmentSaleReversalRequest{Reason: "wrong action"}, http.StatusConflict)
+	require.Contains(t, res.Body.String(), "INVESTMENT_SPLIT_DEPENDENCY")
 }

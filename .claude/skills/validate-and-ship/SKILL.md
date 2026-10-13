@@ -251,6 +251,13 @@ non-trivial diff (yours or reviewed):
     `TestBackdatedAcquisitionEntitledToJournalFreeSplitPostsAdjustment`,
     `TestJournalFreeSplitAdjustmentUsesGainAndCheckpointGuards`,
     `TestJournalFreeSplitExemptionDoesNotHideMissingJournals`.
+    Operation-addressed correction (#196) covers both journal shapes: never
+    promote an adjustment to a primary, fabricate a zero inverse, or drop a
+    journal-free successor's source/memo. Keep source identity through cash-in-lieu
+    correction and import dedupe. Named cases:
+    `TestSplitOperationReplacementCrossesZeroBothWays`,
+    `TestJournalFreeSplitReversalBeforeAndAfterEntitlement`,
+    `TestJournalFreeSplitReversalExemptionRequiresNonzeroInverseJournal`.
 25. **A replay branch that omits a side effect its writer performs** —
     replay re-derives a position from intents, so anything the commit path
     writes besides lot effects (the method-family lock, a link's original

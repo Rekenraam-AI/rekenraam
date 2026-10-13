@@ -6,10 +6,12 @@ import (
 	"strconv"
 
 	"rekenraam/backend/internal/app"
+	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/exact"
 )
 
 type cashInLieuRequest struct {
+	SettledOperationID        int64                            `json:"settled_operation_id"`
 	SettledTransactionID      int64                            `json:"settled_transaction_id"`
 	DisposalOn                string                           `json:"disposal_on"`
 	PaymentOn                 string                           `json:"payment_on"`
@@ -45,7 +47,7 @@ func cashInLieuInput(owner app.Owner, r *http.Request, request cashInLieuRequest
 	}
 	return app.CashInLieuInput{
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-		SettledTransactionID: request.SettledTransactionID, DisposalOn: request.DisposalOn, PaymentOn: request.PaymentOn,
+		SettledTransactionID: request.SettledTransactionID, SettledOperationID: request.SettledOperationID, DisposalOn: request.DisposalOn, PaymentOn: request.PaymentOn,
 		QuantityValue: request.QuantityValue, QuantityScale: request.QuantityScale,
 		CashAccountID: request.CashAccountID, CurrencyID: request.CurrencyID,
 		ProceedsValue: int64(request.ProceedsValue), ProceedsScale: request.ProceedsScale,
@@ -209,7 +211,7 @@ func cashInLieuLots(logger *slog.Logger, auth *app.AuthService, service *app.Inv
 		if !ok {
 			return
 		}
-		id, ok := readPathInt64(w, r, "transaction_id", "split transaction id")
+		id, operationID, ok := readSplitIdentity(w, r)
 		if !ok {
 			return
 		}
@@ -226,7 +228,12 @@ func cashInLieuLots(logger *slog.Logger, auth *app.AuthService, service *app.Inv
 				return
 			}
 		}
-		lots, err := service.CashInLieuAvailableLots(r.Context(), owner.ID, id, currency, r.URL.Query().Get("disposal_on"), replacing)
+		var lots []db.InvestmentTradeCorrectionAvailableLot
+		if operationID > 0 {
+			lots, err = service.CashInLieuAvailableLotsForOperation(r.Context(), owner.ID, operationID, currency, r.URL.Query().Get("disposal_on"), replacing)
+		} else {
+			lots, err = service.CashInLieuAvailableLots(r.Context(), owner.ID, id, currency, r.URL.Query().Get("disposal_on"), replacing)
+		}
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "read cash in lieu dated lots", err)
 			return

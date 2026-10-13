@@ -131,9 +131,9 @@ validation and the native C-engine race-coverage boundary.
 [#146](https://github.com/sergeyfarin/rekenraam/issues/146) records sourced splits
 without eligible lots journal-free, with entitled backdated acquisition replay,
 guarded quantity adjustments, export/restore and self-check. Operation-addressed
-correction, settlement and import linking for these splits remain a bounded
-follow-up [#196](https://github.com/sergeyfarin/rekenraam/issues/196), outside the
-agreed admission gate.
+inspection, correction, settlement and import linking also ship in
+[#196](https://github.com/sergeyfarin/rekenraam/issues/196) (2026-10-13), with the
+mobile Splits history surface and both journal shapes covered.
 
 **Delivered historical-entry and recovery gates:** dated holdings/lot selection
 [#166](https://github.com/sergeyfarin/rekenraam/issues/166) (2026-10-09),
@@ -210,8 +210,8 @@ release gate, not an R16 one; the evidence-blocked provider mappings
 [#176](https://github.com/sergeyfarin/rekenraam/issues/176), wait on provider evidence and do not hold R16 open; write-off entry UI (#172),
 unresolved non-sale results (#169), provenance declarations (#170), excess
 visibility (#171), and provider return-of-capital/cash-in-lieu suggestions
-remain follow-ups, as does operation-addressed correction/settlement of
-initially journal-free splits (#196). #114's delivered transfer/basis-action
+remain follow-ups. Operation-addressed correction/settlement of initially
+journal-free splits is delivered (#196). #114's delivered transfer/basis-action
 family is closed under the audit above; the other agreed R16 gates were
 delivered separately.
 

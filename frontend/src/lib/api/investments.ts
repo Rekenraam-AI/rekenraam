@@ -1276,7 +1276,7 @@ export async function reverseSplit(
   transactionID: number,
   input: InvestmentSaleReversalRequest,
   csrfToken: string
-): Promise<InvestmentSaleReversalResponse> {
+): Promise<components['schemas']['InvestmentSplitReversalResponse']> {
   try {
     const { data, error, response } = await apiClient.POST(
       '/api/v1/investments/transactions/{transaction_id}/reverse-split',
@@ -2107,4 +2107,98 @@ export async function reverseBasisResolution(transactionID: number, input: Inves
     if (error instanceof APIClientError) throw error;
     throw toNetworkError(error);
   }
+}
+
+export async function previewSplitOperationReversal(
+  operationID: number,
+  input: InvestmentSaleReversalRequest
+): Promise<ReconciliationImpactResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/operations/{operation_id}/reverse-split/reconciliation-impact',
+      { params: { path: { operation_id: operationID } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function reverseSplitOperation(
+  operationID: number,
+  input: InvestmentSaleReversalRequest,
+  csrfToken: string
+): Promise<components['schemas']['InvestmentSplitReversalResponse']> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/operations/{operation_id}/reverse-split',
+      { params: { path: { operation_id: operationID }, header: { 'X-CSRF-Token': csrfToken } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function previewSplitOperationReplacement(
+  operationID: number,
+  input: InvestmentSplitReplacementRequest
+): Promise<InvestmentSplitPreviewResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/operations/{operation_id}/replace-split/preview',
+      { params: { path: { operation_id: operationID } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function replaceSplitOperation(
+  operationID: number,
+  input: InvestmentSplitReplacementRequest,
+  csrfToken: string
+): Promise<InvestmentSplitReplacementResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/operations/{operation_id}/replace-split',
+      { params: { path: { operation_id: operationID }, header: { 'X-CSRF-Token': csrfToken } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function getCashInLieuLotsForOperation(splitOperationID: number, disposalOn: string, currencyID: number, replacingTransactionID?: number): Promise<components['schemas']['CashInLieuLotsResponse']> {
+  try {
+    const { data, error, response } = await apiClient.GET('/api/v1/investments/operations/{operation_id}/cash-in-lieu-lots', {
+      params: { path: { operation_id: splitOperationID }, query: { currency_id: currencyID, disposal_on: disposalOn, replacing_transaction_id: replacingTransactionID } }
+    });
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+
+export const investmentSplitsQueryKey = ['investments', 'splits'] as const;
+export type InvestmentSplitActivity = components['schemas']['InvestmentSplitActivity'];
+export async function getSplitActivity(cursor?: string, operationID?: number): Promise<components['schemas']['InvestmentSplitActivityResponse']> {
+ try {
+  const { data, error, response } = await apiClient.GET('/api/v1/investments/splits', { params: { query: { cursor, operation_id: operationID } } });
+  if (data !== undefined) return data;
+  throw toAPIClientError(response,error);
+ } catch(error) { if(error instanceof APIClientError)throw error;throw toNetworkError(error); }
 }

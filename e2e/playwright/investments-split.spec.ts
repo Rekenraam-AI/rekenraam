@@ -47,7 +47,7 @@ async function setup(page: Page) {
       effective_on: daysFromTodayISO(-daysAgo), holding_account_id: holding.id, commodity_id: instrument.commodity_id,
       ratio_numerator: numerator, ratio_denominator: denominator
     });
-  return { commodityID: instrument.commodity_id, holdingID: holding.id, holdingLabel: `${holdingName} · ${name}`, trade, split };
+  return { cashID: cash.id, currencyID, csrfToken, commodityID: instrument.commodity_id, holdingID: holding.id, holdingLabel: `${holdingName} · ${name}`, trade, split };
 }
 
 async function gainsFor(page: Page, commodityID: number): Promise<string[]> {
@@ -158,4 +158,75 @@ test('an empty holding records a zero-delta split and a later backdated acquisit
   await s.trade('buy', 30, '10', '10000');
   await page.goto(`/app/accounts/${s.holdingID}/register`);
   await expect(page.getByText('Split adjustment')).toBeVisible();
+});
+
+test('a journal-free split is inspected, corrected, settled and reversed by operation on mobile', async ({ page }) => {
+  const s = await setup(page);
+  await page.goto('/app/investments');
+  await page.getByRole('button', { name: 'Record split' }).click();
+  await page.getByLabel('Holding', { exact: true }).selectOption({ label: s.holdingLabel });
+  await page.getByLabel('Split effective date').fill(daysFromTodayISO(-20));
+  await page.getByLabel('New shares').fill('2');
+  await page.getByLabel('For old shares').fill('1');
+  await page.getByRole('button', { name: 'Preview split' }).click();
+  await expect(page.getByRole('region', { name: 'What changes' })).toContainText('Holding change: 0');
+  await page.getByRole('button', { name: 'Record split' }).last().click();
+  await page.getByRole('button', { name: 'Splits', exact: true }).click();
+  const active = page.getByRole('article').filter({ hasText: s.holdingLabel.split(' · ')[0] }).filter({ hasText: 'Active' });
+  await expect(active).toContainText('Holding change: 0');
+  await active.getByRole('button', { name: 'Correct split…' }).click();
+  const correction = page.getByRole('dialog', { name: 'Correct this split' });
+  await correction.getByLabel('Reason for correction').fill('sourced 3-for-2');
+  await correction.getByLabel('New shares').fill('3');
+  await correction.getByLabel('For old shares').fill('2');
+  await correction.getByRole('button', { name: 'Preview split' }).click();
+  await correction.getByRole('button', { name: 'Correct split', exact: true }).click();
+  await expect(correction).toBeHidden();
+  await expect(active).toContainText('3:2');
+  await s.trade('buy', 30, '1', '10000');
+  await page.reload();
+  await page.getByRole('button', { name: 'Splits', exact: true }).click();
+  await expect(active).toContainText('Holding change: 0.5');
+  await active.getByRole('button', { name: 'Record cash in lieu', exact: true }).click();
+  const settlement = page.getByRole('dialog', { name: 'Record cash in lieu', exact: true });
+  // The same settlement form used from a posted split supports operation identity.
+  await settlement.getByLabel('Received into', { exact: true }).selectOption(String(s.cashID));
+  await settlement.getByLabel('Settlement currency', { exact: true }).selectOption(String(s.currencyID));
+  await settlement.getByLabel('Fraction disposed').fill('0.5');
+  await settlement.getByLabel('Cash proceeds').fill('8');
+  await settlement.getByRole('button', { name: 'Preview cash in lieu' }).click();
+  const posted = page.waitForResponse(r => r.url().endsWith('/api/v1/investments/cash-in-lieu') && r.request().method() === 'POST');
+  await settlement.getByRole('button', { name: 'Record cash in lieu', exact: true }).click();
+  await expect(settlement).toBeHidden();
+  await expect(active.getByRole('button', { name: 'Reverse split…' })).toBeDisabled();
+  const cash = await (await posted).json();
+  await page.goto(`/app/transactions?transaction_id=${cash.transaction.id}`);
+  await page.getByRole('button', {name:'Correct cash in lieu',exact:true}).click();
+  const cashCorrection=page.getByRole('dialog',{name:'Correct cash in lieu',exact:true});
+  await cashCorrection.getByLabel('Reason for correction').fill('broker proceeds revised');
+  await cashCorrection.getByLabel('Cost-basis method').selectOption('specific_lot');
+  await cashCorrection.getByLabel(/quantity to dispose \(available:/).fill('0.5');
+  await cashCorrection.getByLabel('Cash proceeds').fill('8.50');
+  await cashCorrection.getByRole('button',{name:'Preview cash in lieu',exact:true}).click();
+  const correctedResponse=page.waitForResponse(r=>r.url().endsWith('/replace-cash-in-lieu') && r.request().method()==='POST');
+  await cashCorrection.getByRole('button',{name:'Save corrected cash in lieu'}).click();
+  await page.getByRole('button',{name:'Accept changed gains'}).click();
+  const corrected=await(await correctedResponse).json();
+  await expect(cashCorrection).toBeHidden();
+  await page.goto(`/app/transactions?transaction_id=${corrected.replacement.transaction.id}`);
+  await page.getByRole('button', { name: 'Reverse cash in lieu…', exact: true }).click();
+  await page.getByLabel('Reason for reversal').fill('fraction payment withdrawn');
+  await page.getByRole('button', { name: 'Review and reverse' }).click();
+  const reversedResponse=page.waitForResponse(r=>r.url().endsWith('/reverse-cash-in-lieu') && r.request().method()==='POST');
+  await page.getByRole('button', { name: 'Accept changed gains' }).click();
+  expect((await reversedResponse).status()).toBe(201);
+  await expect(page.getByRole('alertdialog')).toBeHidden();
+  await page.goto('/app/investments?tab=splits');
+  await active.getByRole('button', { name: 'Reverse split…' }).click();
+  const reversal = page.getByRole('dialog', { name: 'Reverse split…', exact: true });
+  await reversal.getByLabel('Reason for reversal').fill('withdraw split');
+  await reversal.getByRole('button', { name: 'Review and reverse' }).click();
+  await expect(reversal).toBeHidden();
+  await expect(page.getByRole('article').filter({hasText:s.holdingLabel.split(' · ')[0]}).first()).toContainText(/· Reversed/);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

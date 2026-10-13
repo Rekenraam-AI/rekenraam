@@ -1,3 +1,47 @@
+get:
+  summary: List recorded splits and their correction history
+  description: >-
+    A composed, cursor-paginated read of every sourced split, including initially
+    journal-free operations. Includes source terms, standing, correction links,
+    settlement fence and the exact quantity its own journals move. No per-row requests.
+  parameters:
+    - in: query
+      name: operation_id
+      schema: {type: integer, format: int64, minimum: 1}
+      description: Read this split alone by operation identity, including historical sources.
+    - in: query
+      name: cursor
+      schema: {type: string}
+    - in: query
+      name: limit
+      schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+  responses:
+    "200":
+      description: Split activity page
+      content:
+        application/json:
+          schema: {$ref: "../openapi.yaml#/components/schemas/InvestmentSplitActivityResponse"}
+    "400":
+      description: Invalid cursor or page size
+      content:
+        application/json:
+          schema: {$ref: "../openapi.yaml#/components/schemas/ErrorResponse"}
+    "401":
+      description: Authentication required
+      content:
+        application/json:
+          schema: {$ref: "../openapi.yaml#/components/schemas/ErrorResponse"}
+    "404":
+      description: Requested split operation does not exist
+      content:
+        application/json:
+          schema: {$ref: "../openapi.yaml#/components/schemas/ErrorResponse"}
+    "500":
+      description: Internal server error
+      content:
+        application/json:
+          schema: {$ref: "../openapi.yaml#/components/schemas/ErrorResponse"}
+
 post:
   summary: Record a split or reverse split of one holding
   description: >
