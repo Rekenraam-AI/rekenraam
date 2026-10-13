@@ -114,6 +114,10 @@ Earlier cross-document code reconciliation:
 [2026-08-31 documentation review](reviews/documentation-code-review-2026-08-31.md).
 It records findings at that date; T-79 has since closed and T-80 remains open.
 
+Provider evidence:
+[2026-10-13 Trading 212 split recheck and collection guide](reviews/trading212-split-evidence-2026-10-13.md)
+records the evidence still required by #145.
+
 Recent change and issue-closure audits:
 [2026-10-12 investment schema closure audit](reviews/investment-schema-closure-audit-2026-10-12.md),
 [2026-10-07 review since f2bd160f](reviews/changes-since-f2bd160f-2026-10-07.md)

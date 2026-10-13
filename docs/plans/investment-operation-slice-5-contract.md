@@ -423,7 +423,9 @@ Every investment mutation invalidates this dated read along with the existing
 positions/lots/gains/correction reads. Cash-in-lieu unknown-basis admission
 remains refused pending [#169](https://github.com/sergeyfarin/rekenraam/issues/169);
 Trading 212 fractional-share mapping stays in review until #145 supplies verified
-evidence.
+evidence. The [2026-10-13 provider evidence recheck](../reviews/trading212-split-evidence-2026-10-13.md)
+records official schema/help findings, the original-response capture requirement
+and the missing ratio/date/entitlement and cash-in-lieu evidence.
 
 For the 3-for-2 example above, suppose 0.5 share receives 8.00 EUR. The
 linked cash-in-lieu journal posts security `H −0.5`, `T +0.5` and EUR

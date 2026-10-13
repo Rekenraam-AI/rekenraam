@@ -179,6 +179,9 @@ delivered: immutable evidence revisions at unchanged exact basis, without
 financial writes, with transfer history, export and stale-correction guards.
 
 **Blocked on provider evidence:** [#145](https://github.com/sergeyfarin/rekenraam/issues/145), [#136](https://github.com/sergeyfarin/rekenraam/issues/136).
+The [2026-10-13 split evidence recheck](reviews/trading212-split-evidence-2026-10-13.md)
+records the current official schema, missing live payloads and collection guide
+for #145; the provider-mapping gate remains.
 
 ### Completed initiatives through R10
 
