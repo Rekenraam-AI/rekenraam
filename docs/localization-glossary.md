@@ -133,6 +133,26 @@ Dutch **Instelling** collides with *instellingen* ("settings"). It is still the
 right word for a financial institution and the contexts never sit side by side,
 but this is the second thing to check with a native speaker.
 
+## CSV mapping and account security
+
+Draft terms for #102, subject to native review along with the ledger glossary.
+CSV mapping assigns source columns to import fields; it does not change a
+statement or previously imported transactions. Debit/credit here name the
+bank file's columns, not a new ledger posting convention.
+
+| English | Spanish | French | Dutch | German | Russian |
+|---|---|---|---|---|---|
+| Column mapping | Asignación de columnas | Correspondance des colonnes | Kolomtoewijzing | Spaltenzuordnung | Сопоставление столбцов |
+| Debit / credit column | Columna de débito / crédito | Colonne de débit / crédit | Debetkolom / creditkolom | Sollspalte / Habenspalte | Столбец списаний / зачислений |
+| Authenticator app | Aplicación de autenticación | Application d’authentification | Authenticator-app | Authenticator-App | Приложение-аутентификатор |
+| Recovery code | Código de recuperación | Code de récupération | Herstelcode | Wiederherstellungscode | Код восстановления |
+| Two-factor authentication | Autenticación de dos factores | Authentification à deux facteurs | Tweefactorauthenticatie | Zwei-Faktor-Authentifizierung | Двухфакторная аутентификация |
+
+Recovery codes each work once; the setup key is the shared authenticator
+secret, not a recovery code. Keep that distinction in enrollment and sign-in.
+Review instructions and approval evidence belong in
+[the #102 review packet](reviews/localization-native-review-2026-10-13.md).
+
 ## Register
 
 The English copy is calm and declarative: full sentences for explanation, terse

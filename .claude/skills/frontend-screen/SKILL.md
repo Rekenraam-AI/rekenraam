@@ -44,6 +44,9 @@ description: SvelteKit frontend rules for Rekenraam - static adapter constraints
   `m.some_message_id()`. Catalogs live in
   `frontend/messages/<domain>/<locale>.json`; keep message IDs flat, prefixed
   by domain/screen (`import_preview_dedupe_duplicate`).
+- Add every new key to all configured locales with the same placeholder names.
+  `pnpm --dir frontend run catalogs:check` gates dev/check/build and CI;
+  native terminology review remains separate (#102).
 - Never concatenate translated fragments into sentences; use message parameters.
 - Formatting of money, dates, numbers is locale-aware (`Intl.NumberFormat`,
   `Intl.DateTimeFormat`, `date-fns` v4) and separate from translation.

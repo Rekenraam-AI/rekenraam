@@ -17,8 +17,8 @@ record the capability in `implemented.md`.
 Last reviewed: 2026-10-13. R16’s agreed gates and R11 price management are
 delivered. The current order is R17 quotes and crypto, R18 gains projections,
 then R13 returns analytics.
-Owner-local date correctness and catalog review run in parallel. Prior roadmap detail
-is retained in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md).
+Owner-local date correctness is delivered; native catalog review remains
+parallel work. Prior roadmap detail is retained in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md).
 
 ## Slice index
 
@@ -251,8 +251,8 @@ dates are delivered (2026-10-13): shared authenticated server date, preserved
 explicit dates and opposite-midnight browser coverage. Before presenting the
 five drafted non-English catalogs as complete or using them in a migration
 demo, close [#102](https://github.com/sergeyfarin/rekenraam/issues/102)
-(catalog parity and native review). That communication work remains
-independently shippable and does not require waiting for R16 or R11.
+(native review; catalog parity and its regression gate are delivered). That
+communication work remains independently shippable and does not require waiting for R16 or R11.
 
 ### R17 — crypto instrument type
 
@@ -435,8 +435,9 @@ scanning paths before an announcement.
    does not get a second first impression.
 3. **Cross-border entry trust — open.** #100’s locale-aware amount input and
    #101’s owner-local default dates are delivered.
-   Fill #102's 65 missing message keys per non-English locale and arrange
-   native review before describing those catalogs as complete.
+   #102 catalog parity and its regression gate are delivered. Assign native
+   reviewers and record terminology sign-off before describing those catalogs
+   as complete; see the [review packet](reviews/localization-native-review-2026-10-13.md).
 4. **Personal-access tokens — open** (added 2026-08-05, review §3f). The
    typed OpenAPI surface is the foundation for an ecosystem, but session
    cookie + CSRF header auth means no script, tool, or community client can

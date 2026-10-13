@@ -463,7 +463,7 @@ has actual installations, its migration files are immutable.
 - Backend translation (export file headers, server-generated content) is deferred to Phase 3. When needed, use `nicksnyder/go-i18n` with JSON message files.
 - All user-facing copy goes through a translation boundary.
 - English is the initial implementation language.
-- Message catalogs live in `frontend/messages/{app,settings}/{locale}.json`. Both
+- Message catalogs live in `frontend/messages/{app,settings,budgets,pricing}/{locale}.json`. All
   directories feed the single `m` namespace, so a key must be unique across
   them; which file a key sits in is a grouping decision, not a namespace.
 - Shipping locales are `en, es, fr, nl, de, ru`. Locale resolution is
@@ -477,8 +477,11 @@ has actual installations, its migration files are immutable.
   exists in GnuCash or a localized MS Money/Quicken, that term wins over a more
   literal one. Add a row to the glossary before introducing a new domain term.
 - A missing translation falls back to English per message rather than rendering
-  blank; partial catalogs are an acceptable intermediate state, and the language
-  settings page says so when the active locale is not English.
+  blank. Configured shipping catalogs must match the base locale in keys and
+  placeholders, contain nonempty text, and have unique IDs across domains.
+  `catalogs:check` enforces this before frontend dev/check/build and in CI.
+  Key parity is separate from native terminology review; the language settings
+  page retains the draft notice until review is recorded on #102.
 - UI code and built-in app-defined data must stay ready for additional languages without route, component, or schema rewrites.
 - Do not concatenate translated fragments to form sentences.
 - Formatting of numbers, dates, percentages, and money must be locale-aware and separate from message translation.

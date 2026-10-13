@@ -37,7 +37,7 @@ Do not apply that reset to a database containing data you need to keep.
 
 ```sh
 ./scripts/test-backend.sh      # Go formatting, vet, race tests (2 packages, 5m/package)
-./scripts/test-frontend.sh     # generated API types, Svelte checks, unit tests
+./scripts/test-frontend.sh     # catalog parity, generated API types, Svelte checks, unit tests
 ./scripts/test-e2e-smoke.sh    # integrated browser smoke suite
 pnpm build                     # static frontend + embedded Go binary
 ```
