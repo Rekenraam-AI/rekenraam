@@ -86,6 +86,7 @@ type InvestmentCorrectionChain struct {
 	// replacement (#184); EffectiveCashStockMerger explains the merger.
 	CanCorrectCashStockMerger bool
 	EffectiveCashStockMerger  *InvestmentCorrectionCashStockMergerTerms
+	CapitalReturns            []CapitalReturnRead
 	Operations                []InvestmentCorrectionNode
 }
 
@@ -224,6 +225,16 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 	chain := InvestmentCorrectionChain{
 		RootOperationID: records[0].OperationID,
 		Operations:      make([]InvestmentCorrectionNode, 0, len(records)),
+	}
+	capitalReturnIDs := make([]int64, 0)
+	for _, record := range records {
+		if record.OperationKind == "return_of_capital" {
+			capitalReturnIDs = append(capitalReturnIDs, record.OperationID)
+		}
+	}
+	chain.CapitalReturns, err = s.capitalReturnReads(ctx, false, GainsReportParams{}, capitalReturnIDs)
+	if err != nil {
+		return InvestmentCorrectionChain{}, err
 	}
 	importedLineage := false
 	for _, record := range records {

@@ -1211,6 +1211,8 @@ components:
       $ref: "./components/schemas/investments.yaml#/CapitalReturnReplacementResponse"
     CapitalReturnRequest:
       $ref: "./components/schemas/investments.yaml#/CapitalReturnRequest"
+    CapitalReturnRead:
+      $ref: "./components/schemas/investments.yaml#/CapitalReturnRead"
     CapitalReturnEffect:
       $ref: "./components/schemas/investments.yaml#/CapitalReturnEffect"
     CapitalReturnResponse:

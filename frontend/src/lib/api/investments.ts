@@ -28,6 +28,7 @@ export type ExternalTransferOutPlan = components['schemas']['ExternalTransferOut
 export type CapitalReturnRequest = components['schemas']['CapitalReturnRequest'];
 export type CapitalReturnResponse = components['schemas']['CapitalReturnResponse'];
 export type CapitalReturnPreviewResponse = components['schemas']['CapitalReturnPreviewResponse'];
+export type CapitalReturnRead = components['schemas']['CapitalReturnRead'];
 export type CapitalReturnEffect = components['schemas']['CapitalReturnEffect'];
 export type InvestmentTransferOutReplacementRequest = components['schemas']['InvestmentTransferOutReplacementRequest'];
 export type InvestmentTransferOutReplacementResponse = components['schemas']['InvestmentTransferOutReplacementResponse'];

@@ -227,6 +227,31 @@ basis reduces basis to zero and records 3.00 EUR unresolved excess. The cash
 journal still posts the full 10.00 EUR. Later source correction of an earlier
 purchase replays the 7.00/3.00 split without changing the source receipt.
 
+**Persistent result visibility (2026-10-13, #171).** The composed gains read
+includes `capital_returns`, separate from disposal decisions and realized
+currency totals. It selects only effective operations and their latest whole
+allocation set, with original effects used only when there is no revision.
+The inclusive `from`/`to` range uses the payment date; the basis effective date
+is shown separately. Each receipt includes exact cash, entitled quantities,
+allocations, reductions, excess, currency and saved source evidence. A known
+zero excess is distinct from unknown reduction/excess. Any unknown effect
+leaves the receipt's total reduction/excess NULL, while independent known
+allocations and their excess remain visible.
+
+Transaction correction history includes every original and revised whole
+allocation set across replacement and reversal, with revision sequence,
+causing operation, recording time and audit identity. Only the latest set of
+an effective operation is marked effective. Superseded and reversed sets are
+historical evidence and do not contribute outstanding excess. The mobile
+six-locale Gains summary and transaction detail share this display; both use
+the existing investment mutation invalidation boundary. Original source JSON
+is displayed as exact saved text, preserving additional numeric metadata.
+
+Numeric excess remains unresolved until a separately specified reporting or
+accounting decision (#118). Viewing these facts does not post income, classify
+tax gain, change basis, or include the excess in definitive disposal gains.
+This visibility slice needs neither tax profiles nor a new financial writer.
+
 ## Split and reverse split
 
 The sourced ratio is a positive integer numerator and denominator in lowest
@@ -433,5 +458,5 @@ that allocation rather than rewriting the 8.00 EUR receipt.
    mapping are supported; #145 and #111 track that boundary.
 4. Mobile entry and unresolved labels ship for the bounded family. Dated
    historical-entry selectors (#166), stronger provenance declarations (#170),
-   and persistent return-of-capital excess visibility (#171) have their own
+   and persistent return-of-capital excess visibility (#171, delivered 2026-10-13) have their own
    acceptance. The feature ledger records each shipped command and its limits.

@@ -18,6 +18,7 @@ import (
 var effectiveHistoryReaders = map[string]string{
 	"investment_position_side.go:requirePositionSideAvailableTx": "activity dates of effective operations, which revisions never change",
 
+	"investment_capital_return_reads.go:ListCapitalReturnReads":                      "receipt allocation/reduction/excess sets and immutable evidence history, not a fold of lot movements",
 	"investment_capital_return.go:effectiveCapitalReturnEffectsQuery":                "one return of capital's current effects (per-subject terms)",
 	"investment_split.go:effectiveSplitEffectsQuery":                                 "one split's current effects (per-subject terms)",
 	"investment_cash_stock_merger_correction.go:CashStockMergerTermsByTransactionID": "one merger's current cash result (per-subject terms)",

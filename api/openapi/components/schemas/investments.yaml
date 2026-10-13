@@ -2676,8 +2676,13 @@ InvestmentReinvestmentReplacementRequest:
 
 InvestmentCorrectionChainResponse:
   type: object
-  required: [root_operation_id, effective_transaction_id, can_reverse_manual_sale, can_reverse_manual_buy, can_reverse_sale, can_reverse_buy, can_correct_split, can_correct_dividend, can_correct_reinvested_dividend, can_reverse_return_of_capital, can_replace_return_of_capital, can_correct_write_off, can_correct_short_sale, can_correct_short_cover, can_correct_share_exchange, can_correct_spin_off, can_correct_cash_and_stock_merger, can_correct_cash_in_lieu, can_reverse_transfer, can_replace_transfer, can_resolve_basis, can_correct_basis_resolution, basis_resolutions, operations]
+  required: [root_operation_id, effective_transaction_id, can_reverse_manual_sale, can_reverse_manual_buy, can_reverse_sale, can_reverse_buy, can_correct_split, can_correct_dividend, can_correct_reinvested_dividend, can_reverse_return_of_capital, can_replace_return_of_capital, can_correct_write_off, can_correct_short_sale, can_correct_short_cover, can_correct_share_exchange, can_correct_spin_off, can_correct_cash_and_stock_merger, can_correct_cash_in_lieu, can_reverse_transfer, can_replace_transfer, can_resolve_basis, can_correct_basis_resolution, basis_resolutions, capital_returns, operations]
   properties:
+    capital_returns:
+      type: array
+      description: All original and revised return-of-capital sets in this correction chain, including retired operations.
+      items:
+        $ref: "#/CapitalReturnRead"
     root_operation_id:
       type: integer
       format: int64
@@ -3817,7 +3822,13 @@ InvestmentGainsResponse:
     - realized
     - unrealized
     - realized_totals
+    - capital_returns
   properties:
+    capital_returns:
+      type: array
+      description: Effective return-of-capital allocations at the latest whole-effect revision, filtered inclusively by payment date using from/to. Separate from realized gains and income.
+      items:
+        $ref: "#/CapitalReturnRead"
     currencies:
       type: array
       description: Currency labels and standard display scales; calculations retain their recorded precision.
@@ -4345,3 +4356,87 @@ InvestmentBasisProvenanceHistoryEntry:
     request_id: {type: string}
     created_at: {type: string, format: date-time}
     reason: {type: string}
+
+CapitalReturnRead:
+  type: object
+  description: >-
+    One immutable whole allocation set. Original is revision 1 with null revision_id;
+    effective is true only for the latest set of an effective operation. Excess has
+    no tax or income classification. Reading never changes journals or projections.
+    Total reduction/excess are null if any lot is unknown; independent known effects
+    stay visible. Source JSON is exact saved text, including additional metadata.
+  required: [operation_id, transaction_id, holding_account_id, commodity_id, currency_id,
+    holding_name, instrument_name, currency_code, currency_scale, effective_on, payment_on,
+    amount_value, amount_scale, entitlement_rule, source_evidence_json, revision_id,
+    revision_seq, caused_by_operation_id, audit_event_id, created_at, effective, effects,
+    reduction_value, reduction_scale, excess_value, excess_scale, unknown_lots, has_excess]
+  properties:
+    operation_id:
+      type: integer
+      format: int64
+    transaction_id:
+      type: integer
+      format: int64
+    holding_account_id:
+      type: integer
+      format: int64
+    commodity_id:
+      type: integer
+      format: int64
+    currency_id:
+      type: integer
+      format: int64
+    audit_event_id:
+      type: integer
+      format: int64
+    holding_name:
+      type: string
+    instrument_name:
+      type: string
+    currency_code:
+      type: string
+    entitlement_rule:
+      type: string
+    source_evidence_json:
+      type: string
+    currency_scale:
+      type: integer
+    amount_scale:
+      type: integer
+    revision_seq:
+      type: integer
+    unknown_lots:
+      type: integer
+    effective_on:
+      type: string
+      format: date
+    payment_on:
+      type: string
+      format: date
+    amount_value:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    revision_id:
+      type: [integer, "null"]
+      format: int64
+    caused_by_operation_id:
+      type: [integer, "null"]
+      format: int64
+    effective:
+      type: boolean
+    has_excess:
+      type: boolean
+    reduction_value:
+      type: [string, "null"]
+    excess_value:
+      type: [string, "null"]
+    reduction_scale:
+      type: [integer, "null"]
+    excess_scale:
+      type: [integer, "null"]
+    effects:
+      type: array
+      items:
+        $ref: "#/CapitalReturnEffect"

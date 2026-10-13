@@ -6,6 +6,7 @@
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import APIFormError from '#lib/components/api-form-error.svelte';
+  import CapitalReturnSummary from '#lib/investments/capital-return-summary.svelte';
   import CapitalReturnForm from '#lib/investments/capital-return-form.svelte';
   import CashInLieuForm from '#lib/investments/cash-in-lieu-form.svelte';
   import BuyForm from '#lib/investments/buy-form.svelte';
@@ -407,6 +408,14 @@
     </ol>
     {#if chainQuery.data.operations.some((node) => node.imported)}
       <p class="text-xs text-muted">{m.transactions_investment_history_imported()}</p>
+    {/if}
+    {#if chainQuery.data.capital_returns?.length > 0}
+      <section class="space-y-2" aria-label={m.investments_roc_history()}>
+        <h4 class="text-sm font-semibold text-foreground">{m.investments_roc_history()}</h4>
+        {#each chainQuery.data.capital_returns as entry (`${entry.operation_id}:${entry.revision_seq}`)}
+          <CapitalReturnSummary {entry} />
+        {/each}
+      </section>
     {/if}
     {#if basisResolutions.length > 0}
       <div class="space-y-2" role="group" aria-labelledby="basis-resolution-history-heading">

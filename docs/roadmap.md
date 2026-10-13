@@ -160,11 +160,12 @@ Every bounded #114 child is delivered; #114 is closed following the
 The audit found historical-entry and resolution-recovery gaps; these are
 separate R16 completion gates above, rather than reopening delivered children.
 
-**Later extensions and parallel trust follow-ups from that audit:**
-recorded return-of-capital excess visibility [#171](https://github.com/sergeyfarin/rekenraam/issues/171),
-and write-off mobile entry [#172](https://github.com/sergeyfarin/rekenraam/issues/172).
-These do not reopen #114/#160 or expand the bounded R16 completion bar;
-#171 can run alongside the ordered work, while #172 remains later.
+**Delivered parallel trust follow-up (2026-10-13):** recorded return-of-capital
+excess visibility [#171](https://github.com/sergeyfarin/rekenraam/issues/171),
+with effective allocations and immutable history in transaction detail and
+the investment summary. The separately specified reporting decision remains
+in #118. Write-off mobile entry [#172](https://github.com/sergeyfarin/rekenraam/issues/172)
+remains later; neither follow-up reopens #114/#160 or expands R16’s bounded bar.
 Unresolved non-sale results [#169](https://github.com/sergeyfarin/rekenraam/issues/169)
 are delivered (2026-10-13); see the [non-sale contract](plans/investment-unresolved-non-sale-plan.md).
 Basis-resolution provenance declarations [#170](https://github.com/sergeyfarin/rekenraam/issues/170)
@@ -213,9 +214,7 @@ their stated scope and placement; R11 remains the next ordered initiative.
 
 | Issue | Remaining gap | Disposition |
 |---|---|---|
-| [#169](https://github.com/sergeyfarin/rekenraam/issues/169) | Unresolved non-sale action results | Deferred extension; retain safe refusal until each family has a contract |
-| [#171](https://github.com/sergeyfarin/rekenraam/issues/171) | Recorded return-of-capital excess visibility | Parallel trust work; its writers remain delivered |
-| [#172](https://github.com/sergeyfarin/rekenraam/issues/172) | Mobile write-off creation | Deferred workflow; known-basis entry need not wait for #169 |
+| [#172](https://github.com/sergeyfarin/rekenraam/issues/172) | Mobile write-off creation | Deferred workflow |
 | [#145](https://github.com/sergeyfarin/rekenraam/issues/145) | Trading 212 split mapping | Blocked on verified provider semantics and representative payloads |
 | [#136](https://github.com/sergeyfarin/rekenraam/issues/136) | Provider execution cancellations | Blocked on provider evidence |
 | [#176](https://github.com/sergeyfarin/rekenraam/issues/176) | Provider short/cover import | Blocked on provider evidence |

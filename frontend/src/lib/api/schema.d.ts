@@ -23140,14 +23140,14 @@ export interface paths {
         };
         /**
          * List realized and unrealized investment gains
-         * @description Returns all realized gains (from closed lot disposal events) and unrealized gains (from open positions vs. latest price). Realized gains can be filtered by disposal date. Unrealized gain fields are omitted when no price observation exists for the instrument.
+         * @description Returns all realized gains (from closed lot disposal events) and unrealized gains (from open positions vs. latest price). Realized gains can be filtered by disposal date. Unrealized gain fields are omitted when no price observation exists for the instrument. Effective return-of-capital allocation sets are included separately, filtered by payment date. Their unresolved excess is not included in disposal gains or totals; viewing does not post income.
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description Start date filter for realized gains (ISO date, inclusive) */
+                    /** @description Start date filter for disposal gains and capital-return payments (ISO date, inclusive) */
                     from?: string;
-                    /** @description End date filter for realized gains (ISO date, inclusive) */
+                    /** @description End date filter for disposal gains and capital-return payments (ISO date, inclusive) */
                     to?: string;
                 };
                 header?: never;
@@ -27252,6 +27252,48 @@ export interface components {
             reconciliation_override?: boolean;
             gain_impact_acknowledgement?: string;
         };
+        /** @description One immutable whole allocation set. Original is revision 1 with null revision_id; effective is true only for the latest set of an effective operation. Excess has no tax or income classification. Reading never changes journals or projections. Total reduction/excess are null if any lot is unknown; independent known effects stay visible. Source JSON is exact saved text, including additional metadata. */
+        CapitalReturnRead: {
+            /** Format: int64 */
+            operation_id: number;
+            /** Format: int64 */
+            transaction_id: number;
+            /** Format: int64 */
+            holding_account_id: number;
+            /** Format: int64 */
+            commodity_id: number;
+            /** Format: int64 */
+            currency_id: number;
+            /** Format: int64 */
+            audit_event_id: number;
+            holding_name: string;
+            instrument_name: string;
+            currency_code: string;
+            entitlement_rule: string;
+            source_evidence_json: string;
+            currency_scale: number;
+            amount_scale: number;
+            revision_seq: number;
+            unknown_lots: number;
+            /** Format: date */
+            effective_on: string;
+            /** Format: date */
+            payment_on: string;
+            amount_value: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: int64 */
+            revision_id: number | null;
+            /** Format: int64 */
+            caused_by_operation_id: number | null;
+            effective: boolean;
+            has_excess: boolean;
+            reduction_value: string | null;
+            excess_value: string | null;
+            reduction_scale: number | null;
+            excess_scale: number | null;
+            effects: components["schemas"]["CapitalReturnEffect"][];
+        };
         CapitalReturnEffect: {
             /**
              * @description Unknown leaves reduction and excess amount pairs null; entitlement and allocation remain exact.
@@ -28338,6 +28380,8 @@ export interface components {
             replacement: components["schemas"]["ReinvestedDividendRequest"];
         };
         InvestmentCorrectionChainResponse: {
+            /** @description All original and revised return-of-capital sets in this correction chain, including retired operations. */
+            capital_returns: components["schemas"]["CapitalReturnRead"][];
             /** Format: int64 */
             root_operation_id: number;
             /**
@@ -28925,6 +28969,8 @@ export interface components {
             total_gain_scale: number | null;
         };
         InvestmentGainsResponse: {
+            /** @description Effective return-of-capital allocations at the latest whole-effect revision, filtered inclusively by payment date using from/to. Separate from realized gains and income. */
+            capital_returns: components["schemas"]["CapitalReturnRead"][];
             /** @description Currency labels and standard display scales; calculations retain their recorded precision. */
             currencies: components["schemas"]["CurrencyResponse"][];
             realized: components["schemas"]["RealizedGainEntry"][];

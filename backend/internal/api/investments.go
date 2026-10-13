@@ -308,6 +308,7 @@ type investmentCorrectionNodeResponse struct {
 }
 
 type investmentCorrectionChainResponse struct {
+	CapitalReturns          []capitalReturnReadResponse        `json:"capital_returns"`
 	RootOperationID         int64                              `json:"root_operation_id"`
 	EffectiveTransactionID  *int64                             `json:"effective_transaction_id"`
 	CanReverseManualSale    bool                               `json:"can_reverse_manual_sale"`
@@ -1189,6 +1190,7 @@ func investmentCorrectionChain(logger *slog.Logger, authService *app.AuthService
 			})
 		}
 		writeJSON(w, http.StatusOK, investmentCorrectionChainResponse{
+			CapitalReturns:  toCapitalReturnReads(chain.CapitalReturns),
 			RootOperationID: chain.RootOperationID, EffectiveTransactionID: chain.EffectiveTransactionID,
 			CanReverseManualSale: chain.CanReverseManualSale, CanReverseManualBuy: chain.CanReverseManualBuy,
 			CanReverseSale: chain.CanReverseSale, CanReverseBuy: chain.CanReverseBuy,
@@ -2368,6 +2370,7 @@ type realizedGainTotalResponse struct {
 }
 
 type investmentGainsResponse struct {
+	CapitalReturns []capitalReturnReadResponse `json:"capital_returns"`
 	Currencies     []currencyResponse          `json:"currencies"`
 	Realized       []realizedGainResponse      `json:"realized"`
 	Unrealized     []unrealizedGainResponse    `json:"unrealized"`
@@ -2391,6 +2394,11 @@ func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, inve
 		realized, err := investmentService.ListRealizedGains(r.Context(), params)
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "list realized gains", err)
+			return
+		}
+		capitalReturns, err := investmentService.ListCapitalReturns(r.Context(), params)
+		if err != nil {
+			writeInvestmentServiceError(w, r, logger, "list capital returns", err)
 			return
 		}
 		unrealized, err := investmentService.ListUnrealizedGains(r.Context())
@@ -2485,6 +2493,7 @@ func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, inve
 			})
 		}
 		writeJSON(w, http.StatusOK, investmentGainsResponse{
+			CapitalReturns: toCapitalReturnReads(capitalReturns),
 			Currencies:     toCurrencyResponses(currencies),
 			Realized:       realizedResponses,
 			Unrealized:     unrealizedResponses,

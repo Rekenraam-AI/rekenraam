@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query';
+  import CapitalReturnSummary from '#lib/investments/capital-return-summary.svelte';
   import Panel from '#lib/components/panel.svelte';
   import StatePanel from '#lib/components/state-panel.svelte';
   import {
@@ -253,6 +254,23 @@
           </table>
         </div>
       </Panel>
+    {/if}
+  </section>
+  <section class="space-y-3" aria-label={m.investments_roc_summary_title()}>
+    <h2 class="text-sm font-semibold text-foreground">{m.investments_roc_summary_title()}</h2>
+    <p class="text-xs text-muted">{m.investments_roc_period_note()}</p>
+    {#if gainsQuery.isPending}
+      <Panel><p class="text-sm text-muted" role="status">{m.investments_gains_loading()}</p></Panel>
+    {:else if gainsQuery.isError}
+      <Panel><p class="text-sm text-destructive" role="alert">{m.investments_gains_error()}</p></Panel>
+    {:else if !gainsQuery.data?.capital_returns?.length}
+      <StatePanel title={m.investments_roc_empty()} copy="" />
+    {:else}
+      <div class="grid gap-3 md:grid-cols-2">
+        {#each gainsQuery.data.capital_returns as entry (entry.operation_id)}
+          <CapitalReturnSummary {entry} />
+        {/each}
+      </div>
     {/if}
   </section>
 </div>

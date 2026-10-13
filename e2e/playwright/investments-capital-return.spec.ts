@@ -69,16 +69,33 @@ test('a return of capital beyond the basis previews its excess, then is reversed
     page, 'GET', `/api/v1/transactions?account_id=${cash.id}`);
   const receipt = transactions.transactions.find((transaction) => transaction.transaction_date === daysFromTodayISO(-5));
   expect(receipt).toBeTruthy();
+  await page.getByRole('button', { name: 'Gains', exact: true }).click();
+  const summary = page.getByRole('region', { name: 'Return-of-capital results' });
+  const card = summary.getByRole('article').filter({ hasText: name });
+  await expect(card).toContainText('3.00');
+  await expect(card).toContainText('Basis reduction');
+  await expect(card).toContainText('7.00');
   await page.goto(`/app/transactions?transaction_id=${receipt!.id}`);
+  const history = page.getByRole('region', { name: 'Return-of-capital allocation history' });
+  await expect(history).toContainText('3.00');
+  await expect(history).toContainText('Effective allocation set');
   await page.getByRole('button', { name: 'Reverse return of capital…' }).click();
   const reversal = page.getByRole('alertdialog');
   await reversal.getByLabel('Reason for reversal').fill('notice withdrawn');
   await reversal.getByRole('button', { name: 'Review and reverse' }).click();
   await expect(reversal).toBeHidden();
+  await page.goto(`/app/transactions?transaction_id=${receipt!.id}`);
+  await expect(history).toContainText('Historical allocation set');
+  await expect(history).not.toContainText('Effective allocation set');
+  await expect(history).toContainText('3.00');
+
   await expect.poll(async () => {
     const value = await positionBasis();
     return value === null ? null : BigInt(value) > 0n;
   }).toBe(true);
+  await page.goto('/app/investments');
+  await page.getByRole('button', { name: 'Gains', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Return-of-capital results' }).getByRole('article').filter({ hasText: name })).toHaveCount(0);
 });
 
 // The position is already closed today. Correction must still use the original
@@ -130,6 +147,14 @@ test('a closed position allows partial-lot return correction before its same-day
   await expect(confirmation).toContainText('basis 16.00 → 10.00');
   await confirmation.getByRole('button', { name: 'Accept changed gains' }).click();
   await expect(form).toBeHidden();
+  await page.goto(`/app/transactions?transaction_id=${receipt.transaction.id}`);
+  const history = page.getByRole('region', { name: 'Return-of-capital allocation history' });
+  await expect(history.getByRole('article')).toHaveCount(2);
+  const current = history.getByRole('article').filter({ hasText: 'Effective allocation set' });
+  await expect(current).toContainText('5.00');
+  await expect(current).toContainText('10.00');
+  await expect(history.getByRole('article').filter({ hasText: 'Historical allocation set' })).toContainText('No excess');
+
   await expect.poll(async () => {
     const response = await apiJSON<{ realized: Array<{ commodity_id: number; realized_gain_value: string; realized_gain_scale: number }> }>(page, 'GET', '/api/v1/investments/gains');
     const gain = response.realized.find((g) => g.commodity_id === instrument.commodity_id);

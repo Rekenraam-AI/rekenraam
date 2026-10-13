@@ -52,8 +52,10 @@ Replay reconstructs the pool at the action's own dated slot. A later average
 disposal still treats the whole unresolved pool as unknown.
 
 Numeric excess on a known effect remains outside gains and income, as in the
-existing return-of-capital contract. Its recorded inspection workflow remains
-[#171](https://github.com/sergeyfarin/rekenraam/issues/171).
+existing return-of-capital contract. Its recorded inspection workflow ships in
+[#171](https://github.com/sergeyfarin/rekenraam/issues/171) (2026-10-13); the
+[slice 5 contract](investment-operation-slice-5-contract.md#return-of-capital)
+defines effective allocation reads and immutable history.
 
 ## Resolution, correction and trust boundaries
 
