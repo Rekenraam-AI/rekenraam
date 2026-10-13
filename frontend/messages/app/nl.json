@@ -318,6 +318,8 @@
   "import_connections_delete_error": "De koppeling kon niet worden verwijderd.",
   "import_connections_import": "Importeren",
   "import_connections_refresh": "Verversen",
+  "import_connections_refetch": "Volledige historie opnieuw ophalen",
+  "import_connections_refetch_help": "Verversen controleert recente activiteit. Haal de volledige historie opnieuw op om oudere wijzigingen en ontbrekende transacties te vinden. Bestaande transacties worden niet dubbel geïmporteerd; gewijzigde transacties moet je beoordelen. Een grote historie kan langer duren.",
   "import_connections_starting": "Starten…",
   "import_connections_fetch_error": "De ophaalactie kon niet worden gestart. Controleer de koppeling en probeer het opnieuw.",
   "import_fetching_title": "Ophalen bij Trading 212…",

@@ -8,9 +8,8 @@ import { requireTrading212Stub, setTrading212Fills, type StubFill, type StubInst
  * T-128: browser evidence for the two gain-review families the Go service
  * tests already pin — imported acquisitions and Trading 212 source
  * revisions. Fills come from the provider stub through the real fetch
- * worker; every later fetch uses the connection's own Refresh, which is
- * incremental, so each scenario only revises or adds fills at or after the
- * saved cursor, as the provider would.
+ * worker. Refresh covers incremental fills; Re-fetch full history (#152)
+ * reaches revisions older than the connection's saved cursor.
  */
 
 requireTrading212Stub();
@@ -57,9 +56,9 @@ async function broker(page: Page, label: string, fills: StubFill[]): Promise<Bro
 
 /**
  * Starts the connection's fetch from the import page ("Import" the first
- * time, "Refresh" after) and waits for the fetched rows.
+ * time, "Refresh" or "Re-fetch full history" after) and waits for the fetched rows.
  */
-async function fetchFromConnection(page: Page, b: Broker, action: 'Import' | 'Refresh') {
+async function fetchFromConnection(page: Page, b: Broker, action: 'Import' | 'Refresh' | 'Re-fetch full history') {
   await page.goto('/app/import');
   await page.getByRole('row').filter({ hasText: b.connection }).getByRole('button', { name: action, exact: true }).click();
   await expect(page.getByRole('button', { name: 'Commit to ledger' })).toBeVisible({ timeout: 15_000 });
@@ -185,6 +184,44 @@ test.describe('on a phone', () => {
     await apply.click();
     await expect(page.getByText('Source trade corrected')).toBeVisible();
     await expect.poll(() => gainsFor(page, b)).toEqual(['15000']);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+
+  test('a revised buy older than the cursor is re-fetched and corrected only after accepting changed gains', async ({ page }) => {
+    const purchase = buy(1, 30, '10', '20', '-200');
+    const sale = sell(2, 10, '5', '30', '150');
+    const b = await broker(page, 'OLDREV', [purchase, sale]);
+    await fetchFromConnection(page, b, 'Import');
+    await page.getByRole('button', { name: 'Commit to ledger' }).click();
+    await expect(page.getByText('Import complete')).toBeVisible();
+    await expect.poll(() => gainsFor(page, b)).toEqual(['5000']);
+
+    await setTrading212Fills(b.apiKey, b.instrument, [buy(1, 30, '10', '10', '-100'), sale]);
+    await fetchFromConnection(page, b, 'Refresh');
+    await expect(page.getByRole('button', { name: 'Correct buy from source' })).toHaveCount(0);
+    await expect.poll(() => gainsFor(page, b)).toEqual(['5000']);
+
+    await fetchFromConnection(page, b, 'Re-fetch full history');
+    await page.getByRole('button', { name: 'Correct buy from source' }).click();
+    await page.getByLabel('Reason for correction').fill('broker revised older purchase');
+    await page.getByRole('button', { name: 'Preview reconciliation impact' }).click();
+    await expect(page.getByText(`Sale on ${daysFromTodayISO(-10)}: basis 100.00 → 50.00, gain 50.00 → 100.00`)).toBeVisible();
+    const apply = page.getByRole('button', { name: 'Apply source correction' });
+    await expect(apply).toBeDisabled();
+    await expect.poll(() => gainsFor(page, b)).toEqual(['5000']);
+    await page.getByRole('checkbox', { name: 'Accept changed gains' }).check();
+    await expect(apply).toBeEnabled();
+    await apply.click();
+    await expect(page.getByText('Source trade corrected')).toBeVisible();
+    await expect.poll(() => gainsFor(page, b)).toEqual(['10000']);
+
+    // Re-fetching the accepted source again must neither offer another
+    // correction nor post the unchanged buy and sale a second time.
+    await fetchFromConnection(page, b, 'Re-fetch full history');
+    await expect(page.getByRole('button', { name: 'Correct buy from source' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Commit to ledger' }).click();
+    await expect(page.getByText('Import complete')).toBeVisible();
+    await expect.poll(() => gainsFor(page, b)).toEqual(['10000']);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 });

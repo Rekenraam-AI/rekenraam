@@ -318,6 +318,8 @@
   "import_connections_delete_error": "La connexion n'a pas pu être supprimée.",
   "import_connections_import": "Importer",
   "import_connections_refresh": "Actualiser",
+  "import_connections_refetch": "Récupérer tout l’historique",
+  "import_connections_refetch_help": "Actualiser vérifie l’activité récente. Récupérez tout l’historique pour trouver les anciennes modifications et les opérations manquantes. Les transactions existantes ne sont pas importées deux fois ; les opérations modifiées nécessitent une vérification. Un historique volumineux peut prendre plus de temps.",
   "import_connections_starting": "Démarrage…",
   "import_connections_fetch_error": "La récupération n'a pas pu démarrer. Vérifiez la connexion et réessayez.",
   "import_fetching_title": "Récupération depuis Trading 212…",

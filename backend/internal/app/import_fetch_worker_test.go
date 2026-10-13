@@ -200,6 +200,54 @@ func TestStartOnlineImport_WorkerStagesRowsAndUpdatesCursor(t *testing.T) {
 	assert.Equal(t, "ready", updatedConn.LastFetchStatus)
 }
 
+func TestStartOnlineImportFullRefetchIgnoresSavedEndpointCursors(t *testing.T) {
+	t.Parallel()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/equity/history/transactions" {
+			writeFakeT212JSON(w, nil)
+			return
+		}
+		writeFakeT212JSON(w, []fakeT212Movement{
+			{ID: "older", Type: "DEPOSIT", DateTime: "2024-01-01T00:00:00Z", Amount: "10.00", Currency: "EUR"},
+			{ID: "boundary", Type: "DEPOSIT", DateTime: "2024-02-01T00:00:00Z", Amount: "20.00", Currency: "EUR"},
+			{ID: "newer", Type: "DEPOSIT", DateTime: "2024-03-01T00:00:00Z", Amount: "30.00", Currency: "EUR"},
+		})
+	}))
+	defer server.Close()
+	svc, connService, importRepo, database := newImportFetchTestService(t)
+	conn := createTestTrading212Connection(t, svc, connService, server.URL)
+	ctx := context.Background()
+	boundary := "2024-02-01T00:00:00Z"
+	require.NoError(t, connService.UpdateFetchCursor(ctx, conn.ID, boundary, boundary, boundary, "ready", "2024-02-02T00:00:00Z"))
+
+	full, err := svc.StartOnlineImport(ctx, StartOnlineImportInput{OwnerUserID: 1, ConnectionID: conn.ID})
+	require.NoError(t, err)
+	var rawPayload string
+	require.NoError(t, database.QueryRowContext(ctx, `SELECT payload_json FROM background_work_items WHERE kind = ? ORDER BY id DESC LIMIT 1`, trading212FetchWorkKind).Scan(&rawPayload))
+	var payload trading212FetchWorkPayload
+	require.NoError(t, json.Unmarshal([]byte(rawPayload), &payload))
+	assert.Empty(t, payload.TransactionsCursor)
+	assert.Empty(t, payload.OrdersCursor)
+	assert.Empty(t, payload.DividendsCursor)
+	svc.runDueTrading212Fetches(ctx, testWorkerLogger(), "full-history")
+	rows, err := importRepo.ListAllImportStagedRows(ctx, full.Batch.ID)
+	require.NoError(t, err)
+	require.Len(t, rows, 3, "full history includes older, boundary and newer movements")
+	require.Equal(t, "ready", sourceMetaOf(t, importRepo, full.Batch.ID).FetchStatus)
+	updated, err := connService.GetImportConnection(ctx, conn.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "2024-03-01T00:00:00Z", updated.TransactionsCursor)
+
+	// The full re-fetch does not turn future Refresh calls into full scans.
+	refresh, err := svc.RefreshImportConnection(ctx, RefreshImportConnectionInput{OwnerUserID: 1, ConnectionID: conn.ID})
+	require.NoError(t, err)
+	svc.runDueTrading212Fetches(ctx, testWorkerLogger(), "incremental")
+	rows, err = importRepo.ListAllImportStagedRows(ctx, refresh.Batch.ID)
+	require.NoError(t, err)
+	require.Len(t, rows, 1)
+	assert.Contains(t, rows[0].RawJSON, "newer", "only the exact saved cursor boundary is re-scanned")
+}
+
 // A started fetch wakes the worker rather than waiting up to a minute for its
 // ticker (T-128): the e2e provider stub and the user both see a batch fill
 // in seconds.

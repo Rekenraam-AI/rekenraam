@@ -318,6 +318,8 @@
   "import_connections_delete_error": "Die Verbindung konnte nicht gelöscht werden.",
   "import_connections_import": "Importieren",
   "import_connections_refresh": "Aktualisieren",
+  "import_connections_refetch": "Gesamten Verlauf erneut abrufen",
+  "import_connections_refetch_help": "Aktualisieren prüft die neuesten Aktivitäten. Rufen Sie den gesamten Verlauf erneut ab, um ältere Änderungen und fehlende Ausführungen zu finden. Bestehende Transaktionen werden nicht doppelt importiert; geänderte Trades müssen geprüft werden. Ein großer Verlauf kann länger dauern.",
   "import_connections_starting": "Wird gestartet…",
   "import_connections_fetch_error": "Der Abruf konnte nicht gestartet werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
   "import_fetching_title": "Abruf von Trading 212…",

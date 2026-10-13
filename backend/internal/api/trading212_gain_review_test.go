@@ -124,8 +124,18 @@ func newTrading212APIFixture(t *testing.T, stubURL string) trading212APIFixture 
 // numbers each order 1000 above its fill).
 func (f trading212APIFixture) importFromStub(t *testing.T) (int64, map[string]importStagedRowResponse) {
 	t.Helper()
-	res := doInvestmentRequest(t, f.handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/imports",
-		startOnlineImportRequest{Source: "trading212", ConnectionID: f.connectionID}, http.StatusAccepted)
+	return f.fetchFromStub(t, false)
+}
+
+func (f trading212APIFixture) fetchFromStub(t *testing.T, incremental bool) (int64, map[string]importStagedRowResponse) {
+	t.Helper()
+	path := "/api/v1/imports"
+	var request any = startOnlineImportRequest{Source: "trading212", ConnectionID: f.connectionID}
+	if incremental {
+		path = "/api/v1/import-connections/" + strconv.FormatInt(f.connectionID, 10) + "/refresh"
+		request = nil
+	}
+	res := doInvestmentRequest(t, f.handler, f.sessionCookie, f.csrfToken, http.MethodPost, path, request, http.StatusAccepted)
 	var started startOnlineImportResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&started))
 	batchPath := "/api/v1/imports/" + strconv.FormatInt(started.Batch.ID, 10)
@@ -232,6 +242,9 @@ func TestTrading212ImportHoldsBackdatedBuyForGainReviewAPI(t *testing.T) {
 
 	// A backdated cheaper buy arrives later: FIFO now sells it first.
 	stub.setFill(trading212StubFill{ID: 101, Side: "BUY", Quantity: "10", Price: "2.00", NetValue: "-20.00", FilledAt: "2026-01-01T10:00:00Z"})
+	_, incrementalRows := f.fetchFromStub(t, true)
+	require.Len(t, incrementalRows, 1, "Refresh re-scans the sale at the cursor and omits older acquisitions")
+	require.Equal(t, "duplicate", incrementalRows["1301"].DedupeStatus)
 	batchID, rows := f.importFromStub(t)
 	backdated := rows["1101"]
 	require.Equal(t, "new", backdated.DedupeStatus)
@@ -288,7 +301,14 @@ func TestTrading212BuySourceRevisionRequiresGainAcknowledgementAPI(t *testing.T)
 
 	// The broker revises the buy's net value: the sale's basis halves.
 	stub.setFill(trading212StubFill{ID: 201, Side: "BUY", Quantity: "10", Price: "10.00", NetValue: "-100.00", FilledAt: "2026-02-01T10:00:00Z"})
+	_, incrementalRows := f.fetchFromStub(t, true)
+	require.Len(t, incrementalRows, 1, "Refresh includes the exact cursor boundary, but not the older revised buy")
+	require.Equal(t, "duplicate", incrementalRows["1301"].DedupeStatus)
+	require.False(t, incrementalRows["1301"].SourceChanged)
 	batchID, rows := f.importFromStub(t)
+	require.Len(t, rows, 2, "full re-fetch includes fills older than the saved cursor")
+	require.Equal(t, "duplicate", rows["1301"].DedupeStatus)
+	require.False(t, rows["1301"].SourceChanged)
 	revised := rows["1201"]
 	require.True(t, revised.SourceChanged)
 	require.True(t, revised.SourceBuyOperation)
@@ -314,6 +334,25 @@ func TestTrading212BuySourceRevisionRequiresGainAcknowledgementAPI(t *testing.T)
 	request.GainImpactAcknowledgement = impact.GainImpact.Acknowledgement
 	doInvestmentRequest(t, f.handler, f.sessionCookie, f.csrfToken, http.MethodPost, path, request, http.StatusCreated)
 	assert.Equal(t, []string{"2026-03-01 100.00"}, f.realizedGains(t))
+
+	// Accepting a revision updates the existing source identity. Re-fetching
+	// full history again stages duplicates and cannot post either trade twice.
+	repeatedBatchID, repeatedRows := f.importFromStub(t)
+	require.Len(t, repeatedRows, 2)
+	for _, row := range repeatedRows {
+		assert.Equal(t, "duplicate", row.DedupeStatus)
+		assert.False(t, row.SourceChanged)
+	}
+	repeated := f.commit(t, repeatedBatchID, nil)
+	assert.Zero(t, repeated.CommittedCount)
+	assert.Equal(t, 2, repeated.SkippedCount)
+	assert.Zero(t, repeated.FailedCount)
+	assert.Equal(t, []string{"2026-03-01 100.00"}, f.realizedGains(t))
+
+	// A full re-fetch still leaves subsequent Refresh incremental.
+	_, afterRefetch := f.fetchFromStub(t, true)
+	require.Len(t, afterRefetch, 1)
+	assert.Equal(t, "duplicate", afterRefetch["1301"].DedupeStatus)
 }
 
 func TestTrading212SaleSourceRevisionRequiresGainAcknowledgementAPI(t *testing.T) {

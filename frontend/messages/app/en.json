@@ -354,6 +354,8 @@
   "import_connections_delete_error": "Could not delete the connection.",
   "import_connections_import": "Import",
   "import_connections_refresh": "Refresh",
+  "import_connections_refetch": "Re-fetch full history",
+  "import_connections_refetch_help": "Refresh checks recent activity. Re-fetch full history checks for older changes and missing fills. Existing transactions are not imported twice; changed trades need review. Large histories may take longer.",
   "import_connections_starting": "Starting…",
   "import_connections_fetch_error": "Could not start the fetch. Check the connection and try again.",
   "import_fetching_title": "Fetching from Trading 212…",

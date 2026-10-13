@@ -154,6 +154,31 @@ through T-17 — see `docs/backlog.md`).
 
 ---
 
+## Full history re-fetch for older source changes (#152, 2026-10-13)
+
+The import page exposes **Re-fetch full history** for an already-fetched
+Trading 212 connection. It uses the existing JSON `POST /api/v1/imports`
+with that connection ID: all three endpoint cursors start empty, and the
+durable worker follows history through its existing pagination continuations.
+Ordinary **Refresh** and scheduled refresh keep their incremental cursors,
+including the exact-timestamp rescan at each endpoint's boundary.
+
+An explicit full re-fetch is chosen over a fixed lookback window: an older
+revised buy or a late-reported acquisition can be arbitrarily far behind a
+later fill, so a bounded window would still leave corrections unreachable.
+Full re-fetch opens a fresh preview batch, preserves provider-ID deduplication,
+and stages changed source trades for the existing correction workflow. It
+never silently corrects posted trades; reconciliation and changed-gain
+acknowledgements still apply. Accepting a correction updates the existing
+source identity, so fetching the accepted source again is a duplicate.
+
+The UI explains that this checks older changes and missing fills and may take
+longer for large histories. Both actions share the existing in-flight guard,
+retry/rate-limit handling, failure display, and preview polling. Subsequent
+Refresh calls use the newest timestamps from the completed history fetch.
+This can recover only history the provider currently returns; it does not
+infer cancellations from absent fills or promise archived provider coverage.
+
 ## What already exists (reuse, do not rebuild)
 
 The implementer must treat this as a **thin adapter + fetch driver** over shipped

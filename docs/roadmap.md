@@ -14,7 +14,7 @@ Other questions have exactly one home each:
 Do not restate shipped detail here; when a focus item ships, delete it and
 record the capability in `implemented.md`.
 
-Last reviewed: 2026-10-12. The current order is R16, R11 price management,
+Last reviewed: 2026-10-13. The current order is R16, R11 price management,
 R17 quotes and crypto, R18 gains projections, then R13 returns analytics.
 Cross-border input and date correctness run in parallel. Prior roadmap detail
 is retained in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md).
@@ -109,19 +109,8 @@ below is execution order, not a chain of hard dependencies.
 
 **Now**
 
-1. Compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115), split on 2026-10-10 into
-   share exchange core [#177](https://github.com/sergeyfarin/rekenraam/issues/177) (delivered 2026-10-10),
-   its reads and mobile entry [#178](https://github.com/sergeyfarin/rekenraam/issues/178) (delivered 2026-10-10), its correction and
-   backdating [#179](https://github.com/sergeyfarin/rekenraam/issues/179) (delivered 2026-10-10, API), spin-off
-   [#180](https://github.com/sergeyfarin/rekenraam/issues/180) (delivered 2026-10-10: in-order core, reads and
-   mobile entry), its correction and backdating [#183](https://github.com/sergeyfarin/rekenraam/issues/183)
-   (delivered 2026-10-10), and cash-and-stock merger with exchange
-   fractions [#181](https://github.com/sergeyfarin/rekenraam/issues/181) (delivered 2026-10-10: design gate, date
-   sequence, cash in lieu of exchange and spin-off fractions, in-order merger API), and the merger's own
-   correction, backdating and browser entry [#184](https://github.com/sergeyfarin/rekenraam/issues/184) (delivered 2026-10-11),
-   which completes #115. Tender, rights and provider corporate-action mappings are outside the #115 bar.
-   The rest of the R16 bar is Refresh reach [#152](https://github.com/sergeyfarin/rekenraam/issues/152), then zero-delta
-   splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146).
+1. Zero-delta splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146),
+   the remaining R16 completion gate.
 2. Daily-use parallel work: the shared transaction workspace
    [#185](https://github.com/sergeyfarin/rekenraam/issues/185) (slices 1 and 2 delivered 2026-10-11: entry from account and
    category screens, same-day reorder everywhere or in one account), then investment entry from holding accounts and

@@ -1104,6 +1104,7 @@
       {:else if connections.length === 0 && !showAddConnection}
         <p class="mt-4 text-sm text-muted">{m.import_connections_empty()}</p>
       {:else if connections.length > 0}
+        <p class="mt-3 text-sm leading-6 text-muted">{m.import_connections_refetch_help()}</p>
         <div class="mt-4 overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
@@ -1159,7 +1160,7 @@
                     </select>
                   </td>
                   <td class="py-2.5">
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                     {#if confirmDeleteConnectionId !== conn.id}
                       <button
                         type="button"
@@ -1168,7 +1169,7 @@
                           conn.last_fetch_status
                             ? handleRefreshConnection(conn.id)
                             : handleStartOnlineImport(conn.id)}
-                        disabled={startingOnlineConnectionId === conn.id}
+                        disabled={startingOnlineConnectionId !== null || conn.last_fetch_status === 'fetching'}
                       >
                         {#if startingOnlineConnectionId === conn.id}
                           {m.import_connections_starting()}
@@ -1178,6 +1179,16 @@
                           {m.import_connections_import()}
                         {/if}
                       </button>
+                      {#if conn.last_fetch_status}
+                        <button
+                          type="button"
+                          class="inline-flex items-center gap-1 rounded-(--radius-control) border border-border px-2.5 py-1 text-xs font-medium text-foreground transition hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
+                          onclick={() => handleStartOnlineImport(conn.id)}
+                          disabled={startingOnlineConnectionId !== null || conn.last_fetch_status === 'fetching'}
+                        >
+                          {m.import_connections_refetch()}
+                        </button>
+                      {/if}
                     {/if}
                     {#if confirmDeleteConnectionId === conn.id}
                       <div class="flex items-center gap-2">

@@ -318,6 +318,8 @@
   "import_connections_delete_error": "No se ha podido eliminar la conexión.",
   "import_connections_import": "Importar",
   "import_connections_refresh": "Actualizar",
+  "import_connections_refetch": "Volver a obtener todo el historial",
+  "import_connections_refetch_help": "Actualizar comprueba la actividad reciente. Vuelve a obtener todo el historial para encontrar cambios antiguos y operaciones que faltan. Las transacciones existentes no se importan dos veces; los cambios requieren revisión. Los historiales grandes pueden tardar más.",
   "import_connections_starting": "Iniciando…",
   "import_connections_fetch_error": "No se ha podido iniciar la descarga. Revisa la conexión e inténtalo de nuevo.",
   "import_fetching_title": "Descargando de Trading 212…",
