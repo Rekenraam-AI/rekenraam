@@ -305,6 +305,10 @@ non-trivial diff (yours or reviewed):
     correction. Browser regression: the currency-changing case in
     `investments-cash-in-lieu.spec.ts` visits the overview afterward and opens
     both positions, checking that each shows only its own lots.
+    Entry requests must carry that selection through the application and
+    disposal command too, including zero-proceeds write-offs with no cash
+    currency. Named regression: `TestWriteOffMixedCurrenciesEachMethodConsumesOnlySelectedCurrency`
+    (#199); historical entry and native correction retain the same pin.
 
 30. **Position identity dropping side** — `investment_lots`, decisions and the
     method-family lock carry `position_side`. Before #173 every lot was long,

@@ -474,6 +474,7 @@ type investmentWriteOffRequest struct {
 	TransactionDate  string                           `json:"transaction_date"`
 	CommodityID      int64                            `json:"commodity_id"`
 	HoldingAccountID int64                            `json:"holding_account_id"`
+	CostCommodityID  int64                            `json:"cost_commodity_id,omitempty"`
 	QuantityValue    exact.Coefficient                `json:"quantity_value"`
 	QuantityScale    int                              `json:"quantity_scale"`
 	Reason           string                           `json:"reason"`
@@ -2141,7 +2142,8 @@ func toInvestmentWriteOffInput(owner app.Owner, r *http.Request, request investm
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionDate: request.TransactionDate, CommodityID: request.CommodityID, HoldingAccountID: request.HoldingAccountID,
 		QuantityValue: request.QuantityValue, QuantityScale: request.QuantityScale, Reason: request.Reason,
-		Memo: request.Memo, PayeeID: request.PayeeID, Status: request.Status, LotAllocations: allocations,
+		CostCommodityID: request.CostCommodityID,
+		Memo:            request.Memo, PayeeID: request.PayeeID, Status: request.Status, LotAllocations: allocations,
 		ChangeReason: request.ChangeReason, CostBasisMethod: request.CostBasisMethod,
 		ReconciliationOverride:    request.ReconciliationOverride,
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,

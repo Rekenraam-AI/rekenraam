@@ -243,8 +243,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
   });
 }
 
-// #199: the API has no way to pin the selected position's cost currency.
-test('mixed-currency write-off reports the existing API refusal without writing', async ({ page }) => {
+test('[acceptance] mixed-currency write-off consumes the selected dated position at 390 px', async ({ page }) => {
   const s = await setup(page, 'womc');
   await s.trade('buy', 40, '3', '3000');
   const eurID = await ensureCurrency(page, s.csrfToken, 'EUR', 'Euro');
@@ -254,13 +253,36 @@ test('mixed-currency write-off reports the existing API refusal without writing'
   });
   const dialog = await open(page, s, 20);
   await dialog.locator('#write-off-quantity').fill('1');
-  const refusal = page.waitForResponse(response => response.url().endsWith('/write-off/preview'));
+  const preview = page.waitForResponse(response => response.url().endsWith('/write-off/preview'));
   await dialog.getByRole('button', { name: 'Preview write-off', exact: true }).click();
-  const response = await refusal;
-  expect(response.status()).toBe(400);
+  const response = await preview;
+  expect(response.status()).toBe(200);
+  expect(response.request().postDataJSON().cost_commodity_id).toBe(s.currencyID);
   const body = await response.json();
-  expect(body.error.code).toBe('VALIDATION_FAILED');
-  expect(body.error.message).toContain('multiple currencies');
-  await expect(dialog.getByRole('alert')).toBeVisible();
+  expect(body.disposal_decision.cost_commodity_id).toBe(s.currencyID);
+  await expect(dialog.getByRole('region', { name: 'Write-off preview' })).toContainText('-10.00 USD');
   expect(await gains(page, s)).toEqual([]);
+  const commit = page.waitForResponse(response => response.url().endsWith('/write-off'));
+  await dialog.getByRole('button', { name: 'Record write-off', exact: true }).click();
+  expect((await commit).request().postDataJSON().cost_commodity_id).toBe(s.currencyID);
+  await expect(dialog).toBeHidden();
+  expect(await gains(page, s)).toEqual(['-1000']);
+  const dated = await apiJSON<{ holdings: Array<{ account_id: number; commodity_id: number; cost_commodity_id: number; quantity_value: string }> }>(page, 'GET', `/api/v1/investments/dated-holdings?as_of=${ago(20)}`);
+  const positions = dated.holdings.filter(position => position.account_id === s.holding.id && position.commodity_id === s.instrument.commodity_id);
+  expect(positions.find(position => position.cost_commodity_id === s.currencyID)?.quantity_value).toBe('2');
+  expect(positions.find(position => position.cost_commodity_id === eurID)?.quantity_value).toBe('2');
+  // Select the other position, including its own specific-lot election.
+  const euroDialog = await open(page, s, 10);
+  await euroDialog.locator('#write-off-holding').selectOption(`${s.holding.id}:${s.instrument.commodity_id}:${eurID}`);
+  await euroDialog.locator('#write-off-quantity').fill('1');
+  await euroDialog.locator('#write-off-method').selectOption('specific_lot');
+  await euroDialog.locator('input[id^="write-off-lot-"]').fill('1');
+  await euroDialog.getByRole('button', { name: 'Preview write-off', exact: true }).click();
+  await expect(euroDialog.getByRole('region', { name: 'Write-off preview' })).toContainText('-10.00 EUR');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+  const accessibility = await new AxeBuilder({ page }).include('dialog[open]').analyze();
+  expect(accessibility.violations).toEqual([]);
+  await euroDialog.getByRole('button', { name: 'Record write-off', exact: true }).click();
+  await expect(euroDialog).toBeHidden();
+  expect(await gains(page, s)).toEqual(['-1000', '-1000']);
 });

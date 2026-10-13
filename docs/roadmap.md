@@ -166,8 +166,9 @@ with effective allocations and immutable history in transaction detail and
 the investment summary. The separately specified reporting decision remains
 in #118. Write-off mobile entry [#172](https://github.com/sergeyfarin/rekenraam/issues/172)
 is delivered (2026-10-13), with dated lot selection, exact/unresolved loss
-preview and shared gain/checkpoint review. The existing mixed-cost-currency
-API refusal is tracked separately in [#199](https://github.com/sergeyfarin/rekenraam/issues/199).
+preview and shared gain/checkpoint review. Mixed-cost-currency write-off selection
+[#199](https://github.com/sergeyfarin/rekenraam/issues/199) is delivered (2026-10-13),
+including historical entry and native replacement.
 Neither follow-up reopens #114/#160 or expands R16’s bounded bar.
 Unresolved non-sale results [#169](https://github.com/sergeyfarin/rekenraam/issues/169)
 are delivered (2026-10-13); see the [non-sale contract](plans/investment-unresolved-non-sale-plan.md).
@@ -217,7 +218,6 @@ their stated scope and placement; R11 remains the next ordered initiative.
 
 | Issue | Remaining gap | Disposition |
 |---|---|---|
-| [#199](https://github.com/sergeyfarin/rekenraam/issues/199) | Write-off cost-currency selection for mixed-currency holdings | API follow-up found during #172 |
 | [#145](https://github.com/sergeyfarin/rekenraam/issues/145) | Trading 212 split mapping | Blocked on verified provider semantics and representative payloads |
 | [#136](https://github.com/sergeyfarin/rekenraam/issues/136) | Provider execution cancellations | Blocked on provider evidence |
 | [#176](https://github.com/sergeyfarin/rekenraam/issues/176) | Provider short/cover import | Blocked on provider evidence |

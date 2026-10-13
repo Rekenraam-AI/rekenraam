@@ -26847,6 +26847,11 @@ export interface components {
             commodity_id: number;
             /** Format: int64 */
             holding_account_id: number;
+            /**
+             * Format: int64
+             * @description Optional cost currency of the long position to consume. Filters every cost-basis method and specific-lot election to this currency; creates no cash leg. Omission infers a single currency and refuses ambiguous mixed-currency holdings. Replacement in the same holding/instrument retains the recorded currency when omitted; an explicit selector may change it, subject to replay and gain acknowledgement.
+             */
+            cost_commodity_id?: number;
             /** @description Lossless exact integer coefficient normalized to quantity_scale. Must be positive and no larger than the remaining holding. */
             quantity_value: string;
             quantity_scale: number;

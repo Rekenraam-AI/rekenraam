@@ -152,6 +152,9 @@ func (s *InvestmentService) validateTradeRoles(ctx context.Context, input Invest
 		return err
 	}
 	if input.WriteOff {
+		if input.CostCommodityID != 0 {
+			return s.requireCommodityKind(ctx, input.CostCommodityID, date, "cost commodity", true)
+		}
 		return nil
 	}
 	settlementDate := input.TransactionDate

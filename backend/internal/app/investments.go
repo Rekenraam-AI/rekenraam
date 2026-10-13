@@ -252,6 +252,9 @@ type InvestmentTradeInput struct {
 	CashAmountValue  int64
 	CashAmountScale  int
 	CashCommodityID  int64
+	// CostCommodityID pins a write-off's basis currency without a cash leg.
+	// Other trades use CashCommodityID for their disposal currency.
+	CostCommodityID int64
 	// Gross and net are signed owner-perspective source amounts. Nil gross
 	// keeps the existing net-only command, whose gross remains unknown.
 	GrossAmountValue   *int64
@@ -316,8 +319,11 @@ type InvestmentWriteOffInput struct {
 	TransactionDate  string
 	CommodityID      int64
 	HoldingAccountID int64
-	QuantityValue    exact.Coefficient
-	QuantityScale    int
+	// Zero keeps single-currency inference; an explicit currency selects only
+	// that long position, including its historically closed lots (#199).
+	CostCommodityID int64
+	QuantityValue   exact.Coefficient
+	QuantityScale   int
 	// Reason is required: "delisted", "fund closed", "issuer liquidated". A
 	// position declared worthless without a stated cause is not auditable.
 	Reason          string
@@ -352,6 +358,7 @@ func (input InvestmentWriteOffInput) asTradeInput() InvestmentTradeInput {
 		TransactionDate:  input.TransactionDate,
 		CommodityID:      input.CommodityID,
 		HoldingAccountID: input.HoldingAccountID,
+		CostCommodityID:  input.CostCommodityID,
 		QuantityValue:    input.QuantityValue,
 		QuantityScale:    input.QuantityScale,
 		LotAllocations:   input.LotAllocations,
@@ -1323,6 +1330,8 @@ func mapDisposalWriteError(err error, writeOff bool) error {
 		return InvestmentSaleDependencyError{OperationID: dependency.OperationID, DecisionID: dependency.DecisionID}
 	case errors.Is(err, db.ErrInsufficientLots):
 		return ErrInvestmentLotsInsufficient
+	case errors.Is(err, db.ErrNotFound):
+		return ValidationError{Message: "selected lot is not eligible for this disposal"}
 	case errors.Is(err, db.ErrInvalidDisposalParams), errors.Is(err, db.ErrInvestmentBasisRange):
 		return ValidationError{Message: err.Error()}
 	case errors.Is(err, db.ErrOutOfOrderPositionEvent), errors.Is(err, db.ErrGainImpactAcknowledgementRequired),
@@ -1663,6 +1672,9 @@ func (s *InvestmentService) prepareSellWrite(ctx context.Context, input Investme
 		Operation:         "investment.lot.dispose",
 		ChangeReason:      disposalChangeReason(input.WriteOff),
 		MetadataJSON:      metadataJSON,
+	}
+	if input.WriteOff {
+		disposalParams.CostCommodityID = input.CostCommodityID
 	}
 	if plan.TradeEconomics != nil {
 		disposalParams.ProceedsValue = plan.TradeEconomics.ClearingValue
@@ -2487,6 +2499,9 @@ func validateTradeInput(input InvestmentTradeInput) error {
 	}
 	if !input.WriteOff && (input.CashAccountID <= 0 || input.CashCommodityID <= 0) {
 		return ValidationError{Message: "investment trade references are required"}
+	}
+	if input.WriteOff && input.CostCommodityID < 0 {
+		return ValidationError{Message: "cost commodity is invalid"}
 	}
 	if input.QuantityValue.Sign() <= 0 {
 		return ValidationError{Message: "quantity is required"}

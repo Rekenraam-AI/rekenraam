@@ -132,6 +132,7 @@
     const payload: InvestmentWriteOffRequest = {
       transaction_date: transactionDate, commodity_id: source.commodity_id,
       holding_account_id: Number(holdingAccountID),
+      cost_commodity_id: source.cost_commodity_id,
       quantity_value: quantity.field.value, quantity_scale: quantity.field.scale,
       reason: writeOffReason.trim(), cost_basis_method: method,
       lot_allocations: lots?.ok ? lots.allocations : undefined, payee_id: source.payee_id
@@ -212,6 +213,7 @@
   </div>
 
   <p class="text-sm text-foreground">{m.investments_form_instrument()}: <strong>{source.commodity_code}</strong></p>
+  <p class="text-sm text-foreground">{m.investments_transfer_basis_currency()}: <strong>{currenciesByID.get(source.cost_commodity_id)?.code ?? `#${source.cost_commodity_id}`}</strong></p>
 
   <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
     <div>

@@ -340,6 +340,12 @@ Goal: add power-user workflows after the core ledger is stable.
   average cost, and specific lot. A committed disposal preserves the resolved
   method and policy provenance; alternative methods are read-side projections,
   not destructive rematching of the operational lots.
+- A zero-proceeds write-off may explicitly select the long position's cost
+  currency, including for historical entry and native replacement. All four
+  cost-basis methods consume only that currency's eligible lots; mixed-currency
+  inference and cross-currency elections refuse atomically. The selector never
+  creates a cash leg. Entry without it retains single-currency inference, and
+  replacement in the same holding/instrument retains its recorded currency.
 - Out-of-order imports may temporarily create a negative dated quantity of a
   countable commodity. Preserve the entry and flag the position in historical
   self-checks and net-worth reports until it is corrected. A genuine short sale

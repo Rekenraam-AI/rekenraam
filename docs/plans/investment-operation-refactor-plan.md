@@ -284,6 +284,26 @@ position quantity or basis change. Do not manufacture a sale. A broker's
 "add/remove shares" is a review category until its cause and carried basis
 are known; otherwise it can conceal a transfer or corporate action.
 
+### Write-off cost currency (#199)
+
+The optional `cost_commodity_id` in `InvestmentWriteOffRequest` pins the
+long position independently of settlement currency. FIFO, LIFO, average cost
+and specific-lot selection use only that currency's eligible lots at the
+command's dated slot, including lots closed since. Missing or ineligible
+elections refuse the complete command; no cash journal, source economics or
+trade-implied price is introduced. Creation sends the selected dated
+position's currency, and the correction form explicitly retains its recorded
+currency.
+
+Omitted entry selectors retain single-currency inference and refuse ambiguous
+holdings. An omitted native replacement selector retains the recorded currency
+in the same holding/instrument, or infers it in a moved holding. An explicit
+replacement selector can change the currency through the existing source and
+target replay, with each before/after gain named in its own currency. Writer
+previews, gain acknowledgement and checkpoint netting retain their shared
+transaction boundary. Decisions, replay, export, backup/restore and self-check
+preserve the pinned currency without a schema change.
+
 ### Dates, external transfers, and basis limits
 
 An action can have distinct entitlement/ex/record, effective, trade,

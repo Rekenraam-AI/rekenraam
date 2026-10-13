@@ -133,6 +133,7 @@
     }
     return {
       transaction_date: transactionDate, holding_account_id: holding.account_id, commodity_id: holding.commodity_id,
+      cost_commodity_id: holding.cost_commodity_id,
       quantity_value: parsed.field.value, quantity_scale: parsed.field.scale, reason: reason.trim(),
       cost_basis_method: method, lot_allocations: choices?.ok ? choices.allocations : undefined
     };

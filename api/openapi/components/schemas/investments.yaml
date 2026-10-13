@@ -519,6 +519,17 @@ InvestmentWriteOffRequest:
     holding_account_id:
       type: integer
       format: int64
+    cost_commodity_id:
+      type: integer
+      format: int64
+      minimum: 1
+      description: >-
+        Optional cost currency of the long position to consume. Filters every
+        cost-basis method and specific-lot election to this currency; creates no
+        cash leg. Omission infers a single currency and refuses ambiguous
+        mixed-currency holdings. Replacement in the same holding/instrument
+        retains the recorded currency when omitted; an explicit selector may
+        change it, subject to replay and gain acknowledgement.
     quantity_value:
       type: string
       pattern: '^-?(0|[1-9][0-9]{0,37})$'
