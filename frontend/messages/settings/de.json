@@ -1542,5 +1542,6 @@
   "investments_write_off_success": "Abschreibung erfasst.",
   "investments_write_off_lots_help": "Verteilen Sie die gesamte abzuschreibende Stückzahl auf die am gewählten Datum verfügbaren Posten.",
   "investments_write_off_lot_mismatch": "Die ausgewählten Stückzahlen müssen der abzuschreibenden Stückzahl entsprechen.",
-  "investments_write_off_exceeds": "Die Stückzahl übersteigt den am gewählten Datum verfügbaren Bestand oder Posten."
+  "investments_write_off_exceeds": "Die Stückzahl übersteigt den am gewählten Datum verfügbaren Bestand oder Posten.",
+  "currencies_provider_assignment_label": "Wechselkursanbieter für {base}/{quote}"
 }

@@ -1542,5 +1542,6 @@
   "investments_write_off_success": "Dépréciation enregistrée.",
   "investments_write_off_lots_help": "Répartissez la quantité totale à déprécier entre les lots disponibles à la date choisie.",
   "investments_write_off_lot_mismatch": "Les quantités des lots sélectionnés doivent égaler la quantité à déprécier.",
-  "investments_write_off_exceeds": "La quantité dépasse la position ou le lot disponible à la date choisie."
+  "investments_write_off_exceeds": "La quantité dépasse la position ou le lot disponible à la date choisie.",
+  "currencies_provider_assignment_label": "Fournisseur du taux de change pour {base}/{quote}"
 }

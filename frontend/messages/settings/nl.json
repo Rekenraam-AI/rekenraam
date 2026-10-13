@@ -1542,5 +1542,6 @@
   "investments_write_off_success": "Afboeking vastgelegd.",
   "investments_write_off_lots_help": "Verdeel het volledige af te boeken aantal over de op de gekozen datum beschikbare lots.",
   "investments_write_off_lot_mismatch": "De gekozen aantallen per lot moeten gelijk zijn aan het af te boeken aantal.",
-  "investments_write_off_exceeds": "Het aantal overschrijdt de op de gekozen datum beschikbare positie of het beschikbare lot."
+  "investments_write_off_exceeds": "Het aantal overschrijdt de op de gekozen datum beschikbare positie of het beschikbare lot.",
+  "currencies_provider_assignment_label": "Wisselkoersaanbieder voor {base}/{quote}"
 }

@@ -1542,5 +1542,6 @@
   "investments_write_off_success": "Baja registrada.",
   "investments_write_off_lots_help": "Distribuye la cantidad total de la baja entre los lotes disponibles en la fecha elegida.",
   "investments_write_off_lot_mismatch": "Las cantidades de los lotes seleccionados deben igualar la cantidad de la baja.",
-  "investments_write_off_exceeds": "La cantidad supera la posición o el lote disponible en la fecha elegida."
+  "investments_write_off_exceeds": "La cantidad supera la posición o el lote disponible en la fecha elegida.",
+  "currencies_provider_assignment_label": "Proveedor del tipo de cambio para {base}/{quote}"
 }

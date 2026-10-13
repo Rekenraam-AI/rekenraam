@@ -1542,5 +1542,6 @@
   "investments_write_off_success": "Списание записано.",
   "investments_write_off_lots_help": "Распределите всё списываемое количество по партиям, доступным на выбранную дату.",
   "investments_write_off_lot_mismatch": "Сумма выбранных количеств по партиям должна равняться списываемому количеству.",
-  "investments_write_off_exceeds": "Количество превышает доступную на выбранную дату позицию или партию."
+  "investments_write_off_exceeds": "Количество превышает доступную на выбранную дату позицию или партию.",
+  "currencies_provider_assignment_label": "Поставщик курса для {base}/{quote}"
 }

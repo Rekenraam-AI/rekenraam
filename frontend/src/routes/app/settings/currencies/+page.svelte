@@ -753,6 +753,7 @@
                         <div>
                           <p class="mb-1 text-xs font-semibold text-muted">{currency.code}/{defaultCurrency.code}</p>
                           <select
+                            aria-label={m.currencies_provider_assignment_label({ base: currency.code, quote: defaultCurrency.code })}
                             value={assignmentFor(currency.id, defaultCurrency.id)?.source_id
                               ? String(assignmentFor(currency.id, defaultCurrency.id)?.source_id)
                               : ''}
@@ -777,6 +778,7 @@
                         <div>
                           <p class="mb-1 text-xs font-semibold text-muted">{defaultCurrency.code}/{currency.code}</p>
                           <select
+                            aria-label={m.currencies_provider_assignment_label({ base: defaultCurrency.code, quote: currency.code })}
                             value={assignmentFor(defaultCurrency.id, currency.id)?.source_id
                               ? String(assignmentFor(defaultCurrency.id, currency.id)?.source_id)
                               : ''}

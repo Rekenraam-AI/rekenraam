@@ -1570,5 +1570,6 @@
   "investments_write_off_success": "Write-off recorded.",
   "investments_write_off_lots_help": "Allocate the full write-off quantity across lots available on the chosen date.",
   "investments_write_off_lot_mismatch": "Selected lot quantities must equal the write-off quantity.",
-  "investments_write_off_exceeds": "The quantity exceeds the holding or lot available on the chosen date."
+  "investments_write_off_exceeds": "The quantity exceeds the holding or lot available on the chosen date.",
+  "currencies_provider_assignment_label": "Exchange rate provider for {base}/{quote}"
 }
