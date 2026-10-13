@@ -1,6 +1,6 @@
 import type { InvestmentTradeRequest } from '#lib/api/investments.ts';
 import { parseMagnitude, parseMoneyMagnitude, type AmountFieldError } from '#lib/investments/form-amounts.ts';
-import { formatLedgerAmount } from '#lib/money/amount.ts';
+import { formatEditableAmount } from '#lib/money/amount.ts';
 import type { InvestmentTradeCorrectionContextResponse } from '#lib/api/investments.ts';
 
 export type TradeChargeDraft = {
@@ -24,9 +24,9 @@ export function newTradeCharge(commodityID?: number): TradeChargeDraft {
 // precision and could silently change a historical trade.
 export function correctionTradeDraft(source: InvestmentTradeCorrectionContextResponse) {
   const magnitude = (value: string, scale: number) =>
-    formatLedgerAmount(value.startsWith('-') ? value.slice(1) : value, scale);
+    formatEditableAmount(value.startsWith('-') ? value.slice(1) : value, scale);
   return {
-    quantity: formatLedgerAmount(source.quantity_value, source.quantity_scale),
+    quantity: formatEditableAmount(source.quantity_value, source.quantity_scale),
     net: magnitude(source.net_value, source.net_scale),
     exactMode: source.gross_value !== undefined,
     gross: source.gross_value !== undefined && source.gross_scale !== undefined
@@ -49,7 +49,7 @@ export type CorrectionLotDraft = { lotID: string; quantity: string };
 
 export function correctionLotDrafts(source: InvestmentTradeCorrectionContextResponse): CorrectionLotDraft[] {
   return source.effective_elected_lots.map((choice) => ({
-    lotID: String(choice.lot_id), quantity: formatLedgerAmount(choice.quantity_value, choice.quantity_scale)
+    lotID: String(choice.lot_id), quantity: formatEditableAmount(choice.quantity_value, choice.quantity_scale)
   }));
 }
 

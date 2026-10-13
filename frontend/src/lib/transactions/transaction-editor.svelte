@@ -48,7 +48,7 @@
   import { APIClientError } from '#lib/api/client.ts';
   import {
     commodityImbalance,
-    formatLedgerAmount,
+    formatEditableAmount,
     inflowPositiveAmount,
     negateCoefficient,
     parseDecimalAmount
@@ -263,7 +263,7 @@
       tier = postings.length ? 'split' : 'simple';
       if (postings.length) splitLegs = postings.map((p: JournalEntryPostingRequest) => ({
         accountID: String(p.account_id), commodityID: String(p.commodity_id),
-        amountStr: formatLedgerAmount(p.quantity_value ?? '0', p.quantity_scale ?? 0),
+        amountStr: formatEditableAmount(p.quantity_value ?? '0', p.quantity_scale ?? 0),
         memo: p.memo ?? '', lineKey: p.line_key
       }));
       return;
@@ -333,7 +333,7 @@
       splitLegs = (preservePostings ? postings : nonSystemPostings).map((p: PostingResponse) => ({
         accountID: String(p.account_id),
         commodityID: String(p.commodity_id),
-        amountStr: formatLedgerAmount(p.quantity_value, p.quantity_scale),
+        amountStr: formatEditableAmount(p.quantity_value, p.quantity_scale),
         memo: p.memo ?? '',
         lineKey: p.line_key
       }));
@@ -625,13 +625,13 @@
         {
           accountID: String(accountID),
           commodityID: inferredCommodityID ? String(inferredCommodityID) : '',
-          amountStr: formatLedgerAmount(assetLedger, scale),
+          amountStr: formatEditableAmount(assetLedger, scale),
           memo: ''
         },
         {
           accountID: categoryID ? String(categoryID) : '',
           commodityID: inferredCommodityID ? String(inferredCommodityID) : '',
-          amountStr: formatLedgerAmount(negateCoefficient(assetLedger), scale),
+          amountStr: formatEditableAmount(negateCoefficient(assetLedger), scale),
           memo: ''
         }
       ];
@@ -927,7 +927,7 @@
           bind:value={amountStr}
           class={inputClass}
           inputmode="decimal"
-          placeholder="0.00"
+          placeholder={formatEditableAmount('0', 2)}
           required={tier === 'simple'}
           disabled={isVoided && mode === 'edit'}
         />
@@ -1059,7 +1059,7 @@
                 oninput={(e) => { const ls = [...splitLegs]; ls[i] = { ...ls[i], amountStr: (e.target as HTMLInputElement).value }; splitLegs = ls; }}
                 class={inputClass}
                 inputmode="decimal"
-                placeholder="0.00"
+                placeholder={formatEditableAmount('0', 2)}
               />
             </label>
 

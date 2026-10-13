@@ -20,7 +20,7 @@
   import { parseMoneyMagnitude } from './form-amounts';
   import { basisFractionPercent, parseElectionPercent, parseExchangeRatio } from './split-ratio';
   import { TranslatedFormError } from '#lib/form-errors.ts';
-  import { coefficientSign, formatLedgerAmount } from '#lib/money/amount.ts';
+  import { coefficientSign, formatEditableAmount } from '#lib/money/amount.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
 
@@ -62,8 +62,8 @@
   let oldUnits = $state(initialTerms ? String(initialTerms.plan.ratio_denominator) : '');
   let cashAccountID = $state(initialTerms ? String(initialTerms.cash_account_id) : '');
   let chosenCurrencyID = $state<string | null>(initialTerms ? String(initialTerms.currency_id) : null);
-  let cashAmount = $state(initialTerms ? formatLedgerAmount(initialTerms.cash_value, initialTerms.cash_scale) : '');
-  let electionPercent = $state(initialPercent ? formatLedgerAmount(initialPercent.value, initialPercent.scale) : '');
+  let cashAmount = $state(initialTerms ? formatEditableAmount(initialTerms.cash_value, initialTerms.cash_scale) : '');
+  let electionPercent = $state(initialPercent ? formatEditableAmount(initialPercent.value, initialPercent.scale) : '');
   // The recorded evidence pre-fills the reference it was entered with;
   // sending it back unchanged is not a correction.
   const initialEvidence = (initialTerms?.source_evidence ?? {}) as Record<string, unknown>;

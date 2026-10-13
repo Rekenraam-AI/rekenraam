@@ -6,7 +6,7 @@
   import PageHeader from '#lib/components/page-header.svelte';
   import Panel from '#lib/components/panel.svelte';
   import StatePanel from '#lib/components/state-panel.svelte';
-  import { formatLedgerAmount, parseDecimalAmount } from '#lib/money/amount.ts';
+  import { formatEditableAmount, parseDecimalAmount } from '#lib/money/amount.ts';
   import { formatQuantity, joinCommodityAmount } from '#lib/money/format.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import { m } from '#lib/paraglide/messages.js';
@@ -38,7 +38,7 @@
   function targetInput(category: (typeof rows)[number]) {
     if (drafts[category.id] !== undefined) return drafts[category.id];
     const target = amountFor(category)?.target;
-    return target ? formatLedgerAmount(target.quantity_value, target.quantity_scale) : '';
+    return target ? formatEditableAmount(target.quantity_value, target.quantity_scale) : '';
   }
   function categoryLabel(category: (typeof rows)[number]) { return category.name || category.code || ''; }
   async function saveTarget(categoryID: number) {

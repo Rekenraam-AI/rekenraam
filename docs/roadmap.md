@@ -17,7 +17,7 @@ record the capability in `implemented.md`.
 Last reviewed: 2026-10-13. R16’s agreed gates and R11 price management are
 delivered. The current order is R17 quotes and crypto, R18 gains projections,
 then R13 returns analytics.
-Cross-border input and date correctness run in parallel. Prior roadmap detail
+Owner-local date correctness and catalog review run in parallel. Prior roadmap detail
 is retained in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md).
 
 ## Slice index
@@ -247,11 +247,10 @@ current reports.
 ### Parallel trust work for cross-border entry
 
 Before presenting the five drafted non-English catalogs as complete or using
-them in a migration demo, close #100 (locale-aware amount input), #101
-(owner-local default dates), and #102 (catalog parity and native review).
+them in a migration demo, close #101 (owner-local default dates) and #102
+(catalog parity and native review).
 These are independently shippable correctness and communication fixes; they do
-not require waiting for R16 or R11: [#100](https://github.com/sergeyfarin/rekenraam/issues/100),
-[#101](https://github.com/sergeyfarin/rekenraam/issues/101), [#102](https://github.com/sergeyfarin/rekenraam/issues/102).
+not require waiting for R16 or R11: [#101](https://github.com/sergeyfarin/rekenraam/issues/101), [#102](https://github.com/sergeyfarin/rekenraam/issues/102).
 
 ### R17 — crypto instrument type
 
@@ -362,8 +361,8 @@ The 2026-09-27 primary-source recheck in
 `docs/competitor-comparison.md` supports the following order: complete R16's
 correction, transfer, basis and split workflows; provide the R11 price/FX
 operator surface; add the R17 quote registry and crypto entry; then build
-R18 reproducible gains and R13 returns. #100 locale input and #101 owner-local
-date defaults are parallel correctness work. This ordering is a product
+R18 reproducible gains and R13 returns. #101 owner-local date defaults remain
+parallel correctness work. This ordering is a product
 inference from verified competitor workflows and the present code boundary,
 not a claim of feature uniqueness.
 
@@ -432,8 +431,8 @@ scanning paths before an announcement.
    is European — so the demo the launch rests on must not corrupt dates and
    amounts for exactly the target audience. A correctness-branded finance app
    does not get a second first impression.
-3. **Cross-border entry trust — open.** Close #100's locale-aware amount input
-   and #101's owner-local default dates before a multilingual migration demo.
+3. **Cross-border entry trust — open.** #100’s locale-aware amount input is delivered.
+   Close #101’s owner-local default dates before a multilingual migration demo.
    Fill #102's 65 missing message keys per non-English locale and arrange
    native review before describing those catalogs as complete.
 4. **Personal-access tokens — open** (added 2026-08-05, review §3f). The

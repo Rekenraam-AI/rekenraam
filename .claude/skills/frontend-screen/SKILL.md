@@ -49,11 +49,14 @@ description: SvelteKit frontend rules for Rekenraam - static adapter constraints
   `Intl.DateTimeFormat`, `date-fns` v4) and separate from translation.
   Never use the `Date` constructor or luxon/moment for financial date logic.
 - **All money parsing and exact arithmetic goes through `#lib/money/amount.ts`**
-  (`parseDecimalAmount`, `formatLedgerAmount`, `negateCoefficient`,
+  (`parseDecimalAmount`, `formatEditableAmount`, `negateCoefficient`,
   `inflowPositiveAmount`, `commodityImbalance`) — string/BigInt over the ledger's
   `{ value, scale }` pair, never a `Number`. Never write a private amount helper
   inside a `.svelte` file: every copy that existed had drifted, and two of them
   shipped a silent 100× error (T-45).
+- Editable fields parse and prefill in the active locale with `parseDecimalAmount`
+  and `formatEditableAmount`; `formatLedgerAmount` is locale-independent output
+  for CSV/machines, never form rehydration (#100).
 - **All money display goes through `#lib/money/format.ts`** (`formatQuantity`)
   — locale-aware presentation of read-only figures. There is no money-formatting
   dependency: G-08 settled on `Intl.NumberFormat` and dropped `dinero.js`.

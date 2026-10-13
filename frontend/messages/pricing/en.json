@@ -55,7 +55,7 @@
   "pricing_date": "Valuation date",
   "pricing_price": "Quote amount",
   "pricing_base_quantity": "Priced base quantity",
-  "pricing_amount_hint": "Positive amounts, decimal point input, up to 18 decimal places; maximum coefficient 9223372036854775807.",
+  "pricing_amount_hint": "Enter a positive amount using the selected language’s number format, with up to 18 decimal places.",
   "pricing_reference": "Source reference (optional)",
   "pricing_observed_input": "Observation time in UTC (optional, RFC 3339)",
   "pricing_reason": "Reason (required)",

@@ -4,8 +4,9 @@ import { roundAmountForDisplay } from './amount';
  * The frontend's single money-*display* layer.
  *
  * `#lib/money/amount.ts` is the parsing and exact-arithmetic half: it renders a
- * plain, unlocalised decimal because its output must round-trip back through
- * `parseDecimalAmount` into an editable input. This module is the other half —
+ * exact decimals: `formatEditableAmount` round-trips through the locale-aware
+ * `parseDecimalAmount`, while `formatLedgerAmount` keeps machine-readable values
+ * locale-independent. This module is the other half —
  * locale-aware presentation of **read-only** money: report tables, registers,
  * balances, CSV headers' worth of figures the user reads but never edits.
  *
@@ -31,8 +32,7 @@ import { roundAmountForDisplay } from './amount';
  *   an amount in a currency with a fixed exponent, which is the wrong shape for
  *   a book that stores a 24-scale crypto quantity next to a 2-scale euro.
  *
- * The remaining half of G-08 — resolving the *input* separator from the active
- * locale — is unaffected by this and stays open in `docs/backlog.md`.
+ * Locale-aware editable input is implemented separately in `amount.ts` (#100).
  */
 
 /**

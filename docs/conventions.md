@@ -470,6 +470,10 @@ has actual installations, its migration files are immutable.
   ledger's `{ value, scale }` pair, never a JS `Number`. Do not add a second parser or
   a private copy of a helper to a `.svelte` file; this is the frontend counterpart of
   the backend's `exact.ScaledInt` rule above, and every copy that existed had drifted.
+- Editable inputs use `parseDecimalAmount` and `formatEditableAmount` from that
+  module, defaulting to Paraglide’s active locale. Machine-readable decimal
+  output (including CSV) uses `formatLedgerAmount`; never feed that unlocalized
+  string directly into a localized editable field (#100).
 - All frontend money **display** goes through `frontend/src/lib/money/format.ts`
   (`formatQuantity`) — locale-aware presentation via `Intl.NumberFormat` over a
   `BigInt`, for read-only money only. **No money-formatting dependency**: G-08 was

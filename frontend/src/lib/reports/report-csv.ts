@@ -15,7 +15,7 @@ import { formatLedgerAmount } from '#lib/money/amount.ts';
  *
  * `exactDecimal` delegates the actual digit-shifting to
  * `#lib/money/amount.ts`'s `formatLedgerAmount` — the same plain-decimal
- * formatter every editable amount input round-trips through — rather than
+ * formatter beneath `formatEditableAmount` — rather than
  * reimplementing it here. Duplicated decimal-formatting helpers are a
  * documented recurring bug class in this codebase (T-36/T-45/T-47, a silent
  * 100x error from a second copy drifting out of sync); this module must not

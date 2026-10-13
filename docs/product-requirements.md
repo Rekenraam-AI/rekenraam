@@ -142,6 +142,13 @@ These apply across all feature phases.
 ### Frontend Quality
 
 - UI copy must go through a translation boundary.
+- Editable amounts and their saved-value prefills use the active UI language’s
+  decimal and grouping separators (`en, es, fr, nl, de, ru`). Accept plain digits
+  or complete three-digit groups; reject malformed, mixed or foreign grouping
+  without guessing another locale. French/Russian grouping accepts consistent
+  keyboard spaces, NBSP or narrow NBSP. Preserve every coefficient digit and
+  typed fractional place; API/storage values and CSV decimals remain
+  locale-independent, and import files retain their own separator decision (#100).
 - The app must support multilingual UI from an early stage.
 - English is the initial implementation language; translation boundaries must keep UI copy and built-in data ready to add other languages without reworking UI code or database schema.
 - **Target first-class UI languages (decided 2026-08-19): Spanish, French, Dutch, German, Russian.** They ship after the English translation boundary is in place, and the target set is fixed so the localization strategy can be designed against real locales rather than a placeholder. Russian brings Cyrillic and a three-form plural rule, so plural handling and the font stack must be validated against it rather than assumed from the Latin locales.

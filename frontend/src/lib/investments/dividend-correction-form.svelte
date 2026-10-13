@@ -7,7 +7,7 @@
   import { getLocale } from '#lib/paraglide/runtime.js';
   import { accountsQueryOptions, type AccountResponse } from '#lib/api/accounts.ts';
   import { currenciesQueryOptions, type CurrencyResponse } from '#lib/api/currencies.ts';
-  import { formatLedgerAmount } from '#lib/money/amount.ts';
+  import { formatEditableAmount } from '#lib/money/amount.ts';
   import { parseDividendAmounts, type AmountFieldError } from '#lib/investments/form-amounts.ts';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
   import {
@@ -61,13 +61,13 @@
   const currenciesQuery = createQuery(() => currenciesQueryOptions());
 
   let reason = $state('');
-  let amountStr = $state(formatLedgerAmount(terms.amount_value, terms.amount_scale));
+  let amountStr = $state(formatEditableAmount(terms.amount_value, terms.amount_scale));
   let quantityStr = $state(initialReinvestment
-    ? formatLedgerAmount(initialReinvestment.quantity_value, initialReinvestment.quantity_scale) : '');
+    ? formatEditableAmount(initialReinvestment.quantity_value, initialReinvestment.quantity_scale) : '');
   let incomeAccountID = $state(String(terms.income_account_id));
   let showWithholding = $state(initialDividend?.withholding_value !== undefined);
   let withholdingStr = $state(initialDividend?.withholding_value !== undefined && initialDividend.withholding_scale !== undefined
-    ? formatLedgerAmount(initialDividend.withholding_value, initialDividend.withholding_scale) : '');
+    ? formatEditableAmount(initialDividend.withholding_value, initialDividend.withholding_scale) : '');
   let withholdingAccountID = $state(initialDividend?.withholding_account_id ? String(initialDividend.withholding_account_id) : '');
   let memo = $state(terms.memo ?? '');
   let pending = $state(false);

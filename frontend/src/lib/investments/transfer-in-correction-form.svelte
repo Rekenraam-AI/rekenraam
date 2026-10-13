@@ -6,7 +6,7 @@
   import { getLocale } from '#lib/paraglide/runtime.js';
   import { accountsQueryOptions, type AccountResponse } from '#lib/api/accounts.ts';
   import { currenciesQueryOptions, type CurrencyResponse } from '#lib/api/currencies.ts';
-  import { formatLedgerAmount } from '#lib/money/amount.ts';
+  import { formatEditableAmount } from '#lib/money/amount.ts';
   import { parseTransferInAmounts } from '#lib/investments/form-amounts.ts';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
   import { TranslatedFormError } from '#lib/form-errors.ts';
@@ -56,9 +56,9 @@
   let effectiveOn = $state(source.effective_on);
   let holdingAccountID = $state(String(source.destination_account_id));
   let quantityStr = $state(source.quantity_value !== null && source.quantity_scale !== null
-    ? formatLedgerAmount(source.quantity_value, source.quantity_scale) : '');
+    ? formatEditableAmount(source.quantity_value, source.quantity_scale) : '');
   let carriedBasisStr = $state(source.carried_basis_value !== null && source.carried_basis_scale !== null
-    ? formatLedgerAmount(source.carried_basis_value, source.carried_basis_scale) : '');
+    ? formatEditableAmount(source.carried_basis_value, source.carried_basis_scale) : '');
   // Prefilled from the committed link; unknown is never shown as a zero.
   let basisUnknown = $state(source.basis_knowledge === 'unknown');
   let originalAcquiredOn = $state(source.original_acquired_on ?? '');

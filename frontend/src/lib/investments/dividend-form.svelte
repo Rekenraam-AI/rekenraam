@@ -3,7 +3,7 @@
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { m } from '#lib/paraglide/messages.js';
   import { accountsQueryOptions, type AccountResponse } from '#lib/api/accounts.ts';
-  import { formatLedgerAmount } from '#lib/money/amount.ts';
+  import { formatEditableAmount } from '#lib/money/amount.ts';
   import { parseDividendAmounts, type AmountFieldError } from '#lib/investments/form-amounts.ts';
   import { currenciesQueryOptions, type CurrencyResponse } from '#lib/api/currencies.ts';
   import {
@@ -184,7 +184,7 @@
       withholdingAccountID = String(match.withholding_account_id);
     }
     if (withholdingStr === '' && match.default_withholding_value && match.default_withholding_scale !== undefined) {
-      withholdingStr = formatLedgerAmount(String(match.default_withholding_value), match.default_withholding_scale);
+      withholdingStr = formatEditableAmount(String(match.default_withholding_value), match.default_withholding_scale);
       showWithholding = true;
     }
   }
@@ -487,7 +487,7 @@
         type="text"
         inputmode="decimal"
         bind:value={quantityStr}
-        placeholder="0.000"
+        placeholder={formatEditableAmount('0', 3)}
         class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted"
         required
       />
@@ -507,7 +507,7 @@
       type="text"
       inputmode="decimal"
       bind:value={amountStr}
-      placeholder="0.00"
+      placeholder={formatEditableAmount('0', 2)}
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted"
       required
     />
@@ -554,7 +554,7 @@
             type="text"
             inputmode="decimal"
             bind:value={withholdingStr}
-            placeholder="0.00"
+            placeholder={formatEditableAmount('0', 2)}
             class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted"
           />
         </div>

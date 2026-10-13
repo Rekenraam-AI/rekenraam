@@ -25,9 +25,9 @@ import { fitsInt64Coefficient, parseDecimalAmount, type ScaledAmount } from '#li
  * 2. **`1,50` no longer silently means 150.** The old parsers stripped every
  *    comma before parsing, so a decimal-comma amount became a 100× error — the
  *    same defect as T-45 on the editor side and T-36 on the import side.
- *    `parseDecimalAmount` requires commas to be correct thousands grouping and
- *    rejects `1,50` outright, so the user gets a rejection instead of a
- *    hundredfold overstatement. `1,234.56` still parses as 1234.56.
+ *    `parseDecimalAmount` uses the active locale (#100): `1,50` is 1.50 in
+ *    decimal-comma locales and rejected in English. Grouping must match the
+ *    locale and be well formed; the parser never guesses another convention.
  *
  * No arithmetic happens here beyond what `#lib/money` does. Quantities and
  * money travel as exact coefficient strings; money keeps its backend int64 cap.

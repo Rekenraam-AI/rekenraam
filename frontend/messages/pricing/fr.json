@@ -55,7 +55,7 @@
   "pricing_date": "Date de valorisation",
   "pricing_price": "Montant coté",
   "pricing_base_quantity": "Quantité de base valorisée",
-  "pricing_amount_hint": "Montants positifs avec point décimal, jusqu’à 18 décimales ; coefficient maximal 9223372036854775807.",
+  "pricing_amount_hint": "Saisissez un montant positif au format numérique de la langue sélectionnée, avec jusqu’à 18 décimales.",
   "pricing_reference": "Référence source (facultative)",
   "pricing_observed_input": "Heure d’observation UTC (facultative, RFC 3339)",
   "pricing_reason": "Motif (obligatoire)",

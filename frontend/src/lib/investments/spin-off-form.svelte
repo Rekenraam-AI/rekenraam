@@ -19,7 +19,7 @@
   import SpinOffSummary from './spin-off-summary.svelte';
   import { basisFractionPercent, parseBasisPercent, parseExchangeRatio } from './split-ratio';
   import { TranslatedFormError } from '#lib/form-errors.ts';
-  import { coefficientSign, formatLedgerAmount } from '#lib/money/amount.ts';
+  import { coefficientSign, formatEditableAmount } from '#lib/money/amount.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
 
@@ -57,7 +57,7 @@
       ? 'same' : String(initialTerms.destination_holding_account_id));
   let newUnits = $state(initialTerms ? String(initialTerms.plan.ratio_numerator) : '');
   let parentUnits = $state(initialTerms ? String(initialTerms.plan.ratio_denominator) : '');
-  let basisPercent = $state(initialPercent ? formatLedgerAmount(initialPercent.value, initialPercent.scale) : '');
+  let basisPercent = $state(initialPercent ? formatEditableAmount(initialPercent.value, initialPercent.scale) : '');
   // The recorded evidence pre-fills the ex date and reference it was entered
   // with; sending it back unchanged is not a correction.
   const initialEvidence = (initialTerms?.source_evidence ?? {}) as Record<string, unknown>;

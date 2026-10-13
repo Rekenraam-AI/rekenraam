@@ -55,7 +55,7 @@
   "pricing_date": "Fecha de valoración",
   "pricing_price": "Importe cotizado",
   "pricing_base_quantity": "Cantidad base valorada",
-  "pricing_amount_hint": "Importes positivos con punto decimal, hasta 18 decimales; coeficiente máximo 9223372036854775807.",
+  "pricing_amount_hint": "Introduce un importe positivo con el formato numérico del idioma seleccionado y hasta 18 decimales.",
   "pricing_reference": "Referencia de origen (opcional)",
   "pricing_observed_input": "Hora de observación UTC (opcional, RFC 3339)",
   "pricing_reason": "Motivo (obligatorio)",

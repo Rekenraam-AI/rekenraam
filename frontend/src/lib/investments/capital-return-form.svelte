@@ -17,7 +17,7 @@
   } from './gain-impact';
   import ReconciliationConfirm from './reconciliation-confirm.svelte';
   import { TranslatedFormError } from '#lib/form-errors.ts';
-  import { coefficientSign, formatLedgerAmount } from '#lib/money/amount.ts';
+  import { coefficientSign, formatEditableAmount } from '#lib/money/amount.ts';
   import { formatExactMoney, formatQuantity } from '#lib/money/format.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
@@ -46,12 +46,12 @@
   // sale closed (#166); before a date is chosen, today's.
   const positionsQuery = createQuery(() => datedHoldingsQueryOptions(effectiveOn || new Date().toISOString().slice(0, 10)));
   let paymentOn = $state(initial?.payment_on ?? '');
-  let amount = $state(initial ? formatLedgerAmount(initial.amount_value, initial.amount_scale) : '');
+  let amount = $state(initial ? formatEditableAmount(initial.amount_value, initial.amount_scale) : '');
   let reference = $state(typeof initial?.source_evidence?.reference === 'string' ? initial.source_evidence.reference : '');
   let reason = $state('');
   let explicitEntitlement = $state(!!initial?.lot_entitlements?.length || !!initial?.entitled_lot_ids?.length);
   let eligibleLots = $state<CapitalReturnEffect[]>([]);
-  let quantities = $state<Record<number, string>>(Object.fromEntries((initial?.lot_entitlements ?? []).map((e) => [e.lot_id, formatLedgerAmount(e.quantity_value, e.quantity_scale)])));
+  let quantities = $state<Record<number, string>>(Object.fromEntries((initial?.lot_entitlements ?? []).map((e) => [e.lot_id, formatEditableAmount(e.quantity_value, e.quantity_scale)])));
   let memo = $state(initial?.memo ?? '');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
@@ -176,7 +176,7 @@
         eligibleLots = result.effects;
         if (initial?.entitled_lot_ids?.length && !initial.lot_entitlements?.length) {
           quantities = Object.fromEntries(result.effects.filter((e) => initial.entitled_lot_ids?.includes(e.lot_id))
-            .map((e) => [e.lot_id, formatLedgerAmount(e.entitled_quantity_value, e.entitled_quantity_scale)]));
+            .map((e) => [e.lot_id, formatEditableAmount(e.entitled_quantity_value, e.entitled_quantity_scale)]));
         }
       } catch (error) { formError = error; }
       finally { pending = false; }

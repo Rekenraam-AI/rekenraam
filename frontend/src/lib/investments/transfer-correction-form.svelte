@@ -6,7 +6,7 @@
   import { getLocale } from '#lib/paraglide/runtime.js';
   import { accountsQueryOptions, type AccountResponse } from '#lib/api/accounts.ts';
   import { currenciesQueryOptions, type CurrencyResponse } from '#lib/api/currencies.ts';
-  import { formatLedgerAmount } from '#lib/money/amount.ts';
+  import { formatEditableAmount } from '#lib/money/amount.ts';
   import { parseMagnitude } from '#lib/investments/form-amounts.ts';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
   import { TranslatedFormError } from '#lib/form-errors.ts';
@@ -64,9 +64,9 @@
   let effectiveOn = $state(source.effective_on);
   let destinationAccountID = $state(outbound ? '' : String(source.destination_account_id));
   let quantities = $state<Record<string, string>>(Object.fromEntries(source.lot_allocations.map((lot) =>
-    [String(lot.lot_id), formatLedgerAmount(lot.quantity_value, lot.quantity_scale)])));
+    [String(lot.lot_id), formatEditableAmount(lot.quantity_value, lot.quantity_scale)])));
   let pooledQuantity = $state(source.quantity_value !== null && source.quantity_scale !== null
-    ? formatLedgerAmount(source.quantity_value, source.quantity_scale) : '');
+    ? formatEditableAmount(source.quantity_value, source.quantity_scale) : '');
   let lineage = $state<'pooled_lot' | 'source_lots'>(source.destination_lineage === 'source_lots' ? 'source_lots' : 'pooled_lot');
   let memo = $state(source.memo);
   let pending = $state(false);

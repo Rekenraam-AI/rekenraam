@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatEditableAmount } from '#lib/money/amount.ts';
   // Named short sale and cover (#173/#174). An opening receives cash like a
   // sale but opens a short lot of borrowed units; a cover pays like a buy and
   // closes short lots only. Neither is an ordinary buy or sale, so the form
@@ -407,7 +408,7 @@
     <label for="{idPrefix}-quantity" class="mb-1 block text-sm font-medium text-foreground">
       {cover ? m.investments_short_cover_quantity() : m.investments_short_sale_quantity()}
     </label>
-    <input id="{idPrefix}-quantity" type="text" inputmode="decimal" bind:value={quantityStr} placeholder="0.000" required
+    <input id="{idPrefix}-quantity" type="text" inputmode="decimal" bind:value={quantityStr} placeholder={formatEditableAmount('0', 3)} required
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted" />
   </div>
 
@@ -427,7 +428,7 @@
       {cover ? m.investments_short_cover_cost() : m.investments_short_sale_proceeds()}
       {#if cashCurrencyCode}<span class="ml-1 text-xs font-normal text-muted">({cashCurrencyCode})</span>{/if}
     </label>
-    <input id="{idPrefix}-cash-amount" type="text" inputmode="decimal" bind:value={cashAmountStr} placeholder="0.00" required
+    <input id="{idPrefix}-cash-amount" type="text" inputmode="decimal" bind:value={cashAmountStr} placeholder={formatEditableAmount('0', 2)} required
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted" />
   </div>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatEditableAmount } from '#lib/money/amount.ts';
   import { createQuery } from '@tanstack/svelte-query';
   import { m } from '#lib/paraglide/messages.js';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -146,7 +147,7 @@
           id="reconcile-balance"
           type="text"
           inputmode="decimal"
-          placeholder="0.00"
+          placeholder={formatEditableAmount('0', 2)}
           class={inputClass}
           bind:value={balanceStr}
           disabled={pending}

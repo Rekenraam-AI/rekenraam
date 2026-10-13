@@ -1,3 +1,5 @@
+import { getLocale } from '#lib/paraglide/runtime.js';
+
 /**
  * The frontend's single money-parsing and money-formatting layer.
  *
@@ -31,20 +33,21 @@ export const MAX_COEFFICIENT_DIGITS = 38;
  */
 export const MAX_SUPPORTED_SCALE = 24;
 
-/**
- * A well-formed decimal amount: an optional sign, an integer part that is
- * either plain digits or correctly grouped in threes, and an optional
- * fractional part.
- *
- * The grouping rule matters. The `en` locale this app ships treats "," as a
- * thousands separator, so "1,234.56" is 1234.56. Blindly stripping every comma
- * also turns the decimal-comma input "1,50" into 150 — a silent 100× error,
- * the same class of bug as T-36 on the import side. Requiring three-digit
- * groups makes "1,50" fail to parse so the form rejects it, rather than
- * guessing which separator the user meant. Real locale-aware input is a
- * separate change, tracked as G-08.
- */
-const DECIMAL_AMOUNT = /^-?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/;
+const separatorsByLocale = new Map<string, { decimal: string; group: string }>();
+
+function amountSeparators(locale: string) {
+	let separators = separatorsByLocale.get(locale);
+	if (!separators) {
+		// Only a fixed sample passes through Number; amount digits never do.
+		const parts = new Intl.NumberFormat(locale).formatToParts(12345.6);
+		separators = {
+			decimal: parts.find(part => part.type === 'decimal')!.value,
+			group: parts.find(part => part.type === 'group')!.value
+		};
+		separatorsByLocale.set(locale, separators);
+	}
+	return separators;
+}
 
 /**
  * Parse a user-entered decimal string into a canonical coefficient + scale.
@@ -53,21 +56,39 @@ const DECIMAL_AMOUNT = /^-?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/;
  * backend stores it as-is and does not require it to match the commodity's
  * standard scale. Returns `null` for anything that is not a valid signed
  * decimal so callers can reject the input instead of sending a malformed
- * amount.
+ * amount. The active locale decides decimal/group separators; no fallback to
+ * another locale or separator guessing is permitted. All six shipping locales
+ * group in threes. Space-grouping locales also accept keyboard space, NBSP and
+ * narrow NBSP, but a single amount must use one consistent grouping character.
  */
 export function parseDecimalAmount(
 	input: string,
-	options: { maxScale?: number } = {}
+	options: { maxScale?: number; locale?: string } = {}
 ): ScaledAmount | null {
 	const trimmed = input.trim();
-	if (!trimmed || !DECIMAL_AMOUNT.test(trimmed)) return null;
+	if (!trimmed) return null;
 
 	const isNeg = trimmed.startsWith('-');
-	const abs = (isNeg ? trimmed.slice(1) : trimmed).replace(/,/g, '');
+	const abs = isNeg ? trimmed.slice(1) : trimmed;
+	const { decimal, group } = amountSeparators(options.locale ?? getLocale());
+	const parts = abs.split(decimal);
+	if (parts.length > 2) return null;
+	const [integer, fraction] = parts;
+	if (fraction !== undefined && !/^[0-9]+$/.test(fraction)) return null;
 
-	const dotIdx = abs.indexOf('.');
-	const intStr = dotIdx === -1 ? abs : abs.slice(0, dotIdx);
-	const fracStr = dotIdx === -1 ? '' : abs.slice(dotIdx + 1);
+	let intStr = integer;
+	if (!/^[0-9]+$/.test(intStr)) {
+		const groups = /^[ \u00a0\u202f]$/.test(group) ? [' ', '\u00a0', '\u202f'] : [group];
+		const separator = groups.find(candidate => integer.includes(candidate));
+		if (!separator) return null;
+		const digits = integer.split(separator);
+		if (
+			!/^[0-9]{1,3}$/.test(digits[0]) ||
+			!digits.slice(1).every(part => /^[0-9]{3}$/.test(part))
+		) return null;
+		intStr = digits.join('');
+	}
+	const fracStr = fraction ?? '';
 	const scale = fracStr.length;
 
 	const ceiling = Math.min(options.maxScale ?? MAX_SUPPORTED_SCALE, MAX_SUPPORTED_SCALE);
@@ -85,9 +106,8 @@ export function parseDecimalAmount(
 /**
  * Render a ledger coefficient + scale as a plain decimal string.
  *
- * Deliberately not locale-formatted: this feeds editable form inputs, which
- * must round-trip back through `parseDecimalAmount` unchanged. Locale-aware
- * presentation of read-only money belongs in the Dinero.js display layer.
+ * Locale-independent output for machine-readable values such as CSV. Editable
+ * inputs use `formatEditableAmount`; read-only display belongs in `format.ts`.
  */
 export function formatLedgerAmount(value: string, scale: number): string {
 	const isNeg = value.startsWith('-');
@@ -102,15 +122,20 @@ export function formatLedgerAmount(value: string, scale: number): string {
 	return `${sign}${int}.${frac}`;
 }
 
+/** Exact editable decimal in the active locale, without grouping or rounding. */
+export function formatEditableAmount(value: string, scale: number, locale = getLocale()): string {
+	return formatLedgerAmount(value, scale).replace('.', amountSeparators(locale).decimal);
+}
+
 /**
- * Flip the sign of a coefficient or of a plain decimal string. A zero
- * magnitude stays unsigned, so "0.00" negates to "0.00", never "-0.00".
+ * Flip the sign of a coefficient or an ungrouped editable decimal string. A
+ * zero magnitude stays unsigned, including decimal-comma inputs.
  */
 export function negateCoefficient(value: string): string {
 	if (!value) return '0';
 	const isNeg = value.startsWith('-');
 	const abs = isNeg ? value.slice(1) : value;
-	if (/^0+$/.test(abs.replace('.', ''))) return abs;
+	if (/^0+(?:[.,]0+)?$/.test(abs)) return abs;
 	return isNeg ? abs : `-${abs}`;
 }
 
@@ -138,7 +163,7 @@ export function inflowPositiveAmount(posting: {
 	quantity_scale: number;
 	account_class: string;
 }): string {
-	const raw = formatLedgerAmount(posting.quantity_value, posting.quantity_scale);
+	const raw = formatEditableAmount(posting.quantity_value, posting.quantity_scale);
 	if (
 		posting.account_class === 'liability' ||
 		posting.account_class === 'income' ||
@@ -203,7 +228,7 @@ export function commodityImbalance(legs: AmountLeg[]): { commodityID: string; am
 
 	for (const [commodityID, { total, scale }] of totals) {
 		if (total !== 0n) {
-			return { commodityID, amount: formatLedgerAmount(total.toString(), scale) };
+			return { commodityID, amount: formatEditableAmount(total.toString(), scale) };
 		}
 	}
 	return null;

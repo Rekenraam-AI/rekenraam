@@ -7,7 +7,7 @@
   import { createManualPrice, correctPrice, withdrawPrice, getPriceImpact, invalidatePriceReads, type PriceImpact, type PriceObservation, type PricingWorkspace, type ManualPriceRequest } from '#lib/api/price-management.ts';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { TranslatedFormError } from '#lib/form-errors.ts';
-  import { formatLedgerAmount } from '#lib/money/amount.ts';
+  import { formatEditableAmount } from '#lib/money/amount.ts';
   import { formatQuantity } from '#lib/money/format.ts';
   import { parsePriceAmount } from './form.ts';
   import PriceDetail from './price-detail.svelte';
@@ -23,8 +23,8 @@
   // A dialog owns one working copy; later query refreshes must not overwrite it.
   const initial = untrack(() => ({ base: target?.base_commodity_id ?? initialBase,
     quote: target?.quote_commodity_id ?? initialQuote, date: target?.valuation_date ?? workspace.as_of,
-    price: target ? formatLedgerAmount(target.price_value, target.price_scale) : '',
-    quantity: target ? formatLedgerAmount(target.base_quantity_value, target.base_quantity_scale) : '1' }));
+    price: target ? formatEditableAmount(target.price_value, target.price_scale) : '',
+    quantity: target ? formatEditableAmount(target.base_quantity_value, target.base_quantity_scale) : '1' }));
   let base = $state(initial.base);
   let quote = $state(initial.quote);
   let valuationDate = $state(initial.date);

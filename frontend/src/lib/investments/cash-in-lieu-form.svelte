@@ -8,7 +8,7 @@
     type CashInLieuRequest, type CashInLieuPreviewResponse, type InvestmentTradeCorrectionContextResponse } from '#lib/api/investments.ts';
   import { parseMagnitude, parseMoneyMagnitude } from './form-amounts';
   import { parseCorrectionLotChoices } from './trade-economics';
-  import { compareScaledAmounts, formatLedgerAmount } from '#lib/money/amount.ts';
+  import { compareScaledAmounts, formatEditableAmount } from '#lib/money/amount.ts';
   import { formatExactMoney, formatQuantity } from '#lib/money/format.ts';
   import { invalidateInvestmentReads } from './invalidate';
   import { gainAcknowledgement, gainImpactCurrency, gainImpactRows, hasGainChanges, impactNeedsReview, isGainAcknowledgementRefusal } from './gain-impact';
@@ -34,12 +34,12 @@
   let paymentOn = $state(initial?.settlement_date ?? initialSplit?.effectiveOn ?? '');
   let cashAccountID = $state(initial ? String(initial.cash_account_id) : '');
   let currencyID = $state(initial ? String(initial.cost_commodity_id) : '');
-  let quantity = $state(initial ? formatLedgerAmount(initial.quantity_value, initial.quantity_scale) : '');
-  let proceeds = $state(initial ? formatLedgerAmount(initial.net_value, initial.net_scale) : '');
+  let quantity = $state(initial ? formatEditableAmount(initial.quantity_value, initial.quantity_scale) : '');
+  let proceeds = $state(initial ? formatEditableAmount(initial.net_value, initial.net_scale) : '');
   let method = $state<CashInLieuRequest['cost_basis_method']>(initial?.cost_basis_method as CashInLieuRequest['cost_basis_method'] ?? undefined);
   let memo = $state(initial?.memo ?? '');
   let reason = $state('');
-  let quantities = $state<Record<number,string>>(Object.fromEntries((initial?.effective_elected_lots ?? []).map(e => [e.lot_id,formatLedgerAmount(e.quantity_value,e.quantity_scale)])));
+  let quantities = $state<Record<number,string>>(Object.fromEntries((initial?.effective_elected_lots ?? []).map(e => [e.lot_id,formatEditableAmount(e.quantity_value,e.quantity_scale)])));
   let pending = $state(false);
   let formError = $state<unknown>();
   let firstInput = $state<HTMLInputElement>();

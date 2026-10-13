@@ -82,9 +82,8 @@ describe('display formatting vs editable formatting', () => {
   });
 
   it('en display output is re-parseable, since en groups in threes', () => {
-    // Not a general guarantee — it holds because `en` uses "," as a thousands
-    // separator, which is exactly the grouping parseDecimalAmount accepts. A
-    // decimal-comma locale breaks this, which is the open half of G-08.
+    // Read-only grouping is accepted by the parser for the same locale.
+    // The six-locale matrix is covered by locale-input.test.ts (#100).
     const displayed = formatQuantity('123456789', 2, 'en-US');
     expect(parseDecimalAmount(displayed)).toEqual({ value: '123456789', scale: 2 });
   });

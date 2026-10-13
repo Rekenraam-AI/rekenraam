@@ -6,7 +6,7 @@
   import { getLocale } from '#lib/paraglide/runtime.js';
   import { accountsQueryOptions, type AccountResponse } from '#lib/api/accounts.ts';
   import { currenciesQueryOptions, type CurrencyResponse } from '#lib/api/currencies.ts';
-  import { formatLedgerAmount } from '#lib/money/amount.ts';
+  import { formatEditableAmount } from '#lib/money/amount.ts';
   import { formatScaledValue } from '#lib/investments/investment-labels.ts';
   import { parseMagnitude, type AmountFieldError } from '#lib/investments/form-amounts.ts';
   import { correctionLotDrafts, parseCorrectionLotChoices, type CorrectionLotDraft } from '#lib/investments/trade-economics.ts';
@@ -54,7 +54,7 @@
   let reason = $state('');
   let transactionDate = $state(source.event_date);
   let holdingAccountID = $state(String(source.holding_account_id));
-  let quantityStr = $state(formatLedgerAmount(source.quantity_value, source.quantity_scale));
+  let quantityStr = $state(formatEditableAmount(source.quantity_value, source.quantity_scale));
   let method = $state<Method>((source.cost_basis_method as Method) || 'fifo');
   let lotChoices = $state<CorrectionLotDraft[]>(correctionLotDrafts(source));
   let writeOffReason = $state(source.memo ?? '');

@@ -55,7 +55,7 @@
   "pricing_date": "Bewertungsdatum",
   "pricing_price": "Notierungsbetrag",
   "pricing_base_quantity": "Bewertete Basismenge",
-  "pricing_amount_hint": "Positive Beträge mit Dezimalpunkt, bis zu 18 Nachkommastellen; maximaler Koeffizient 9223372036854775807.",
+  "pricing_amount_hint": "Geben Sie einen positiven Betrag im Zahlenformat der ausgewählten Sprache mit bis zu 18 Nachkommastellen ein.",
   "pricing_reference": "Quellverweis (optional)",
   "pricing_observed_input": "Beobachtungszeit in UTC (optional, RFC 3339)",
   "pricing_reason": "Grund (erforderlich)",

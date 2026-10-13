@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatEditableAmount } from '#lib/money/amount.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { untrack } from 'svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -424,7 +425,7 @@
       type="text"
       inputmode="decimal"
       bind:value={quantityStr}
-      placeholder="0.000"
+      placeholder={formatEditableAmount('0', 3)}
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted"
       required
     />
@@ -461,7 +462,7 @@
       type="text"
       inputmode="decimal"
       bind:value={cashAmountStr}
-      placeholder="0.00"
+      placeholder={formatEditableAmount('0', 2)}
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted"
       required
     />

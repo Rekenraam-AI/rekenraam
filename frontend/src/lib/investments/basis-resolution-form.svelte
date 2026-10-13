@@ -16,7 +16,7 @@
     impactNeedsReview,
     isGainAcknowledgementRefusal
   } from '#lib/investments/gain-impact.ts';
-  import { formatLedgerAmount } from '#lib/money/amount.ts';
+  import { formatEditableAmount } from '#lib/money/amount.ts';
   import {
     previewBasisResolutionReplacement,
     previewTransferBasisResolution,
@@ -56,7 +56,7 @@
   const currenciesQuery = createQuery(() => currenciesQueryOptions());
 
   let basisStr = $state(correcting
-    ? formatLedgerAmount(correcting.basis_value, correcting.basis_scale) : '');
+    ? formatEditableAmount(correcting.basis_value, correcting.basis_scale) : '');
   const initialSource = basisSourceFields(correcting?.source_evidence);
   let sourceKind = $state(correcting ? initialSource.kind : 'statement');
   let reference = $state(initialSource.reference);

@@ -55,7 +55,7 @@
   "pricing_date": "Waarderingsdatum",
   "pricing_price": "Noteringsbedrag",
   "pricing_base_quantity": "Gewaardeerde basishoeveelheid",
-  "pricing_amount_hint": "Positieve bedragen met decimale punt, maximaal 18 decimalen; maximale coëfficiënt 9223372036854775807.",
+  "pricing_amount_hint": "Voer een positief bedrag in met de getalnotatie van de geselecteerde taal en maximaal 18 decimalen.",
   "pricing_reference": "Bronverwijzing (optioneel)",
   "pricing_observed_input": "Waarnemingstijd in UTC (optioneel, RFC 3339)",
   "pricing_reason": "Reden (verplicht)",
