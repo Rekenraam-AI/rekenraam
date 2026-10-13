@@ -43,12 +43,10 @@ type InvestmentReplayMismatch struct {
 	ReferenceID     int64
 }
 
-// InvestmentReplayEquivalence is the verifier's whole result. Skipped counts
-// positions with a lot that has no opening operation (T-133); they cannot be
-// replayed and are not reported as mismatches.
+// InvestmentReplayEquivalence is the verifier's whole result. Every lot has
+// an opening operation, so every position participates in replay (#148).
 type InvestmentReplayEquivalence struct {
 	Positions  int
-	Skipped    int
 	Mismatches []InvestmentReplayMismatch
 }
 
@@ -58,8 +56,7 @@ type InvestmentReplayEquivalence struct {
 // the write lock is held for one position at a time and nothing is stored.
 func (r *SelfCheckRepository) InvestmentReplayEquivalence(ctx context.Context, bookID int64) (InvestmentReplayEquivalence, error) {
 	rows, err := r.database.QueryContext(ctx, `
-		SELECT account_id, commodity_id, cost_commodity_id, position_side,
-			MAX(operation_id IS NULL)
+		SELECT account_id, commodity_id, cost_commodity_id, position_side
 		FROM investment_lots WHERE book_id = ?
 		GROUP BY account_id, commodity_id, cost_commodity_id, position_side
 		ORDER BY account_id, commodity_id, cost_commodity_id, position_side`, bookID)
@@ -67,14 +64,13 @@ func (r *SelfCheckRepository) InvestmentReplayEquivalence(ctx context.Context, b
 		return InvestmentReplayEquivalence{}, fmt.Errorf("read replay-equivalence positions: %w", err)
 	}
 	type position struct {
-		key       investmentReplayPositionKey
-		side      string
-		unmodeled bool
+		key  investmentReplayPositionKey
+		side string
 	}
 	var positions []position
 	for rows.Next() {
 		var p position
-		if err := rows.Scan(&p.key.accountID, &p.key.commodityID, &p.key.costCommodityID, &p.side, &p.unmodeled); err != nil {
+		if err := rows.Scan(&p.key.accountID, &p.key.commodityID, &p.key.costCommodityID, &p.side); err != nil {
 			rows.Close()
 			return InvestmentReplayEquivalence{}, fmt.Errorf("scan replay-equivalence position: %w", err)
 		}
@@ -85,10 +81,6 @@ func (r *SelfCheckRepository) InvestmentReplayEquivalence(ctx context.Context, b
 	}
 	result := InvestmentReplayEquivalence{Positions: len(positions)}
 	for _, p := range positions {
-		if p.unmodeled {
-			result.Skipped++
-			continue
-		}
 		mismatches, err := r.positionReplayEquivalence(ctx, bookID, p.key, p.side)
 		if err != nil {
 			return InvestmentReplayEquivalence{}, err

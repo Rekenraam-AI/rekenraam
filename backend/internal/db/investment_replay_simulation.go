@@ -176,18 +176,6 @@ func resetInvestmentReplayPositionTx(ctx context.Context, tx *sql.Tx, bookID, ac
 	if bookID <= 0 || accountID <= 0 || commodityID <= 0 || costCommodityID <= 0 {
 		return fmt.Errorf("%w: replay position key is incomplete", ErrInvalidDisposalParams)
 	}
-	var unmodeledLotID int64
-	err := tx.QueryRowContext(ctx, `
-		SELECT l.id FROM investment_lots l
-		WHERE l.book_id = ? AND l.account_id = ? AND l.commodity_id = ?
-			AND l.cost_commodity_id = ? AND l.position_side = ? AND l.operation_id IS NULL
-		LIMIT 1`, bookID, accountID, commodityID, costCommodityID, side).Scan(&unmodeledLotID)
-	if err == nil {
-		return fmt.Errorf("%w: lot %d lacks an immutable opening fact", ErrInvalidDisposalParams, unmodeledLotID)
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("check replay opening coverage: %w", err)
-	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO investment_lot_state
 		(lot_id, book_id, status, remaining_quantity_value, remaining_quantity_scale,
 		remaining_cost_basis_value, remaining_cost_basis_scale, updated_at, updated_by_user_id, updated_audit_event_id, basis_knowledge)

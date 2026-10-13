@@ -343,7 +343,7 @@ func (s *SelfCheckService) investmentReplayCheck(ctx context.Context) (SelfCheck
 	}
 	result := SelfCheckResult{CheckID: CheckInvestmentReplay, Status: SelfCheckPassed,
 		Summary: fmt.Sprintf("%d investment positions replay to their stored lots, disposals, splits and transfers",
-			equivalence.Positions-equivalence.Skipped)}
+			equivalence.Positions)}
 	if len(equivalence.Mismatches) > 0 {
 		result.Status = SelfCheckFailed
 		result.FindingCount = int64(len(equivalence.Mismatches))
@@ -368,9 +368,6 @@ func (s *SelfCheckService) investmentReplayCheck(ctx context.Context) (SelfCheck
 		if len(references) > 0 {
 			result.Summary += " (" + strings.Join(references, ", ") + ")"
 		}
-	}
-	if equivalence.Skipped > 0 {
-		result.Summary += fmt.Sprintf("; %d positions with a lot that has no opening operation were not replayed", equivalence.Skipped)
 	}
 	return result, nil
 }

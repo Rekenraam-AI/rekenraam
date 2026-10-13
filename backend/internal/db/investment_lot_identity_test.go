@@ -55,12 +55,35 @@ func TestOperationOpenedLotKeepsCanonicalOpeningFactConstraints(t *testing.T) {
 	for name, err := range map[string]error{
 		"leading zero quantity": insert("010", "100", "7"),
 		"non-canonical basis":   insert("1", "1e2", "7"),
-		"no source transaction": insert("1", "100", "NULL"),
 		"padded basis":          insert("1", "0100", "7"),
 	} {
 		require.ErrorContainsf(t, err, "CHECK constraint failed", name)
 	}
 	require.NoError(t, insert("1", "0", "7"), "a known zero basis stays admissible")
+}
+
+func TestInvestmentLotRequiresOpeningOperationAndSourceTransaction(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	database := seedReplayTestBook(t)
+	before := captureLedgerState(t, database)
+	for _, test := range []struct {
+		name, operation, transaction, constraint string
+	}{
+		{"missing opening operation", "NULL", "7", "investment_lots.operation_id"},
+		{"missing source transaction", "1", "NULL", "investment_lots.source_transaction_id"},
+		{"missing both", "NULL", "NULL", "investment_lots.source_transaction_id"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := database.ExecContext(ctx, `INSERT INTO investment_lots (book_id, account_id, commodity_id,
+				opened_on, source_transaction_id, quantity_value, quantity_scale, cost_basis_value, cost_basis_scale,
+				cost_commodity_id, created_at, created_by_user_id, created_audit_event_id, operation_id)
+				VALUES (1, 15, 2, '2026-02-02', `+test.transaction+`, '1', 0, '100', 2, 1,
+				'2026-10-13T00:00:00Z', 1, 27, `+test.operation+`)`)
+			require.ErrorContains(t, err, "NOT NULL constraint failed: "+test.constraint)
+		})
+	}
+	require.Equal(t, before, captureLedgerState(t, database))
 }
 
 func TestInvestmentLotProjectionUpdatesPreserveOpeningIdentity(t *testing.T) {

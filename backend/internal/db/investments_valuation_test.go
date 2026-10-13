@@ -46,11 +46,11 @@ func TestPositionsWithGainsReportsAnUnpricedPositionAsSuch(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repository := NewInvestmentRepository(database)
 
-	_, err := repository.CreateLot(ctx, CreateInvestmentLotParams{
+	_, err := createPostedBuyLot(t, ctx, repository, CreateInvestmentLotParams{
 		BookID:          1,
 		AccountID:       accountID,
 		CommodityID:     instrument.CommodityID,

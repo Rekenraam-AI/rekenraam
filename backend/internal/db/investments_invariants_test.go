@@ -52,7 +52,7 @@ func seedLots(t *testing.T, database *sql.DB, repo *InvestmentRepository, accoun
 	ctx := context.Background()
 	lots := make([]InvestmentLotRecord, 0, len(specs))
 	for i, spec := range specs {
-		lot, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
+		lot, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 			BookID: 1, AccountID: accountID, CommodityID: commodityID,
 			OpenedOn: spec.openedOn, QuantityValue: exact.New(spec.qty), QuantityScale: spec.qtyScale,
 			CostBasisValue: spec.basis, CostBasisScale: spec.basisScale, CostCommodityID: costCommodityID,
@@ -246,7 +246,7 @@ func TestInvariant_ConservationAcrossMethodsAndScenarios(t *testing.T) {
 			t.Run(sc.name+"/"+method, func(t *testing.T) {
 				ctx := context.Background()
 				database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-				accountID := createInvestmentTestAccount(t, database, currencyID)
+				accountID := createInvestmentTestAccount(t, database, 0)
 				instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 				repo := NewInvestmentRepository(database)
 
@@ -310,13 +310,13 @@ func TestInvariant_InterleavedAcquisitionsAndDisposalsConserveBasis(t *testing.T
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repo := NewInvestmentRepository(database)
 
 	totalAcquired := exact.NewScaledInt()
 	acquire := func(openedOn string, qty int64, basis int64) {
-		_, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
+		_, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 			BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 			OpenedOn: openedOn, QuantityValue: exact.New(qty), QuantityScale: 0,
 			CostBasisValue: basis, CostBasisScale: 2, CostCommodityID: currencyID,
@@ -358,14 +358,14 @@ func TestInvariant_FIFOOrdersByOpenedOnNotInsertionOrder(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repo := NewInvestmentRepository(database)
 
 	// Insert the later-dated lot first, so it gets the lower ID — proves
 	// disposeFIFOOrLIFOTx's "ORDER BY opened_on, id" genuinely sorts by date,
 	// not by insertion/id order.
-	laterLot, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
+	laterLot, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 		BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 		OpenedOn: "2026-03-01", QuantityValue: exact.New(100), QuantityScale: 0,
 		CostBasisValue: 15000, CostBasisScale: 2, CostCommodityID: currencyID,
@@ -374,7 +374,7 @@ func TestInvariant_FIFOOrdersByOpenedOnNotInsertionOrder(t *testing.T) {
 		ChangeReason: "later-dated lot inserted first", EventKind: "acquisition",
 	})
 	require.NoError(t, err)
-	earlierLot, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
+	earlierLot, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 		BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 		OpenedOn: "2026-01-01", QuantityValue: exact.New(100), QuantityScale: 0,
 		CostBasisValue: 10000, CostBasisScale: 2, CostCommodityID: currencyID,
@@ -407,7 +407,7 @@ func TestInvariant_MethodActuallyChangesDisposedBasis(t *testing.T) {
 	newSeed := func(t *testing.T) (*InvestmentRepository, int64, int64) {
 		t.Helper()
 		database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-		accountID := createInvestmentTestAccount(t, database, currencyID)
+		accountID := createInvestmentTestAccount(t, database, 0)
 		instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 		repo := NewInvestmentRepository(database)
 		seedLots(t, database, repo, accountID, instrument.CommodityID, currencyID, ownerID, []lotSpec{
@@ -448,7 +448,7 @@ func TestInvariant_OversellFailsAtomicallyAcrossMethods(t *testing.T) {
 		t.Run(method, func(t *testing.T) {
 			ctx := context.Background()
 			database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-			accountID := createInvestmentTestAccount(t, database, currencyID)
+			accountID := createInvestmentTestAccount(t, database, 0)
 			instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 			repo := NewInvestmentRepository(database)
 			seedLots(t, database, repo, accountID, instrument.CommodityID, currencyID, ownerID, []lotSpec{
@@ -481,7 +481,7 @@ func TestInvariant_AverageCostResidualIsDeterministic(t *testing.T) {
 	// residual-assignment math.
 	run := func(t *testing.T) []LotDisposalRecord {
 		database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-		accountID := createInvestmentTestAccount(t, database, currencyID)
+		accountID := createInvestmentTestAccount(t, database, 0)
 		instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 		repo := NewInvestmentRepository(database)
 		seedLots(t, database, repo, accountID, instrument.CommodityID, currencyID, ownerID, []lotSpec{

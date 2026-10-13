@@ -172,8 +172,7 @@ correction [#197](https://github.com/sergeyfarin/rekenraam/issues/197) is also
 delivered: immutable evidence revisions at unchanged exact basis, without
 financial writes, with transfer history, export and stale-correction guards.
 
-**Placed, not sequenced:** lot-opening `NOT NULL`
-[#148](https://github.com/sergeyfarin/rekenraam/issues/148) before the v0.1.0 tag. Blocked on provider evidence: [#145](https://github.com/sergeyfarin/rekenraam/issues/145), [#136](https://github.com/sergeyfarin/rekenraam/issues/136).
+**Blocked on provider evidence:** [#145](https://github.com/sergeyfarin/rekenraam/issues/145), [#136](https://github.com/sergeyfarin/rekenraam/issues/136).
 
 ### Completed initiatives through R10
 
@@ -213,7 +212,6 @@ their stated scope and placement; R11 remains the next ordered initiative.
 
 | Issue | Remaining gap | Disposition |
 |---|---|---|
-| [#148](https://github.com/sergeyfarin/rekenraam/issues/148) | Require an opening operation on every investment lot | v0.1.0 release gate; outside the agreed R16 bar |
 | [#169](https://github.com/sergeyfarin/rekenraam/issues/169) | Unresolved non-sale action results | Deferred extension; retain safe refusal until each family has a contract |
 | [#171](https://github.com/sergeyfarin/rekenraam/issues/171) | Recorded return-of-capital excess visibility | Parallel trust work; its writers remain delivered |
 | [#172](https://github.com/sergeyfarin/rekenraam/issues/172) | Mobile write-off creation | Deferred workflow; known-basis entry need not wait for #169 |

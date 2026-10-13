@@ -135,8 +135,11 @@ When a feature introduces a durable new rule, update one of those documents in t
   `effective_investment_transfer_links` rather than repeating successor or
   latest-revision predicates (T-124, T-135). Audit
   reads (self-check of original and superseded allocation sets, export) use the
-  base tables, so an effective view never hides damaged history. An
-  operation-opened lot row is that operation's immutable opening fact.
+  base tables, so an effective view never hides damaged history. A
+  lot row is its opening operation's immutable opening fact. Every lot
+  requires non-null `operation_id` and `source_transaction_id`; opening lots
+  goes through the shared posted investment writer, including test fixtures
+  (#148). Journal-free operations never open lots.
 - Replay that crosses positions through internal transfers is scoped to the
   affected-position dependency closure, not a whole-book rebuild (ADR 0013
   refinement). A changed carried basis or corrected source lot appends a

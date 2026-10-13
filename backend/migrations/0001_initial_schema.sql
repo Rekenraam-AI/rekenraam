@@ -1138,7 +1138,7 @@ CREATE TABLE IF NOT EXISTS investment_lots (
   account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
   commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE RESTRICT,
   opened_on TEXT NOT NULL CHECK (opened_on GLOB '????-??-??'),
-  source_transaction_id INTEGER REFERENCES transactions(id) ON DELETE RESTRICT,
+  source_transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE RESTRICT,
   quantity_value TEXT NOT NULL DEFAULT '0' CHECK (instr(quantity_value, char(0)) = 0 AND (length(quantity_value) BETWEEN 1 AND 38 AND quantity_value NOT GLOB '*[^0-9]*' AND quantity_value NOT GLOB '0*')),
   quantity_scale INTEGER NOT NULL DEFAULT 0 CHECK (quantity_scale BETWEEN 0 AND 24),
   cost_basis_value TEXT CHECK (instr(cost_basis_value, char(0)) = 0 AND (cost_basis_value = '0' OR (length(cost_basis_value) BETWEEN 1 AND 38 AND cost_basis_value NOT GLOB '*[^0-9]*' AND cost_basis_value NOT GLOB '0*'))),
@@ -1152,22 +1152,21 @@ CREATE TABLE IF NOT EXISTS investment_lots (
   -- The operation whose effect opened this lot. The row's account, instrument,
   -- side, date, quantity, basis and cost currency are that operation's
   -- immutable opening facts (T-124 merged the former investment_lot_facts
-  -- duplicate). NULL only for a lot with no source transaction, which replay
-  -- refuses as unmodeled; source_transaction_id stays as journal provenance.
-  operation_id INTEGER REFERENCES investment_operations(id) ON DELETE RESTRICT,
+  -- duplicate). Every lot has an opening operation and source journal (#148).
+  operation_id INTEGER NOT NULL REFERENCES investment_operations(id) ON DELETE RESTRICT,
   opening_basis_knowledge TEXT NOT NULL DEFAULT 'known' CHECK (opening_basis_knowledge IN ('known', 'unknown')),
   CHECK ((opening_basis_knowledge = 'known' AND cost_basis_value IS NOT NULL AND cost_basis_scale IS NOT NULL)
     OR (opening_basis_knowledge = 'unknown' AND cost_basis_value IS NULL AND cost_basis_scale IS NULL)),
-  CHECK (operation_id IS NULL OR (
+  CHECK (
     length(quantity_value) BETWEEN 1 AND 38 AND quantity_value NOT GLOB '*[^0-9]*'
     AND substr(quantity_value, 1, 1) BETWEEN '1' AND '9'
     AND (opening_basis_knowledge = 'unknown' OR (length(cost_basis_value) BETWEEN 1 AND 38 AND (cost_basis_value = '0' OR
       (cost_basis_value NOT GLOB '*[^0-9]*' AND substr(cost_basis_value, 1, 1) BETWEEN '1' AND '9'))))
-    AND source_transaction_id IS NOT NULL AND created_audit_event_id IS NOT NULL))
+    AND created_audit_event_id IS NOT NULL)
 );
 
 CREATE INDEX IF NOT EXISTS investment_lots_operation_idx
-  ON investment_lots (operation_id) WHERE operation_id IS NOT NULL;
+  ON investment_lots (operation_id);
 
 -- +goose StatementBegin
 CREATE TRIGGER investment_lots_operation_same_book

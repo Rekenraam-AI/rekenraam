@@ -104,11 +104,11 @@ func TestInvestmentLotsDisposeFIFOAndPreserveRemainingBasis(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repository := NewInvestmentRepository(database)
 
-	firstLot, err := repository.CreateLot(ctx, CreateInvestmentLotParams{
+	firstLot, err := createPostedBuyLot(t, ctx, repository, CreateInvestmentLotParams{
 		BookID:          1,
 		AccountID:       accountID,
 		CommodityID:     instrument.CommodityID,
@@ -127,7 +127,7 @@ func TestInvestmentLotsDisposeFIFOAndPreserveRemainingBasis(t *testing.T) {
 		EventKind:       "acquisition",
 	})
 	require.NoError(t, err)
-	_, err = repository.CreateLot(ctx, CreateInvestmentLotParams{
+	_, err = createPostedBuyLot(t, ctx, repository, CreateInvestmentLotParams{
 		BookID:          1,
 		AccountID:       accountID,
 		CommodityID:     instrument.CommodityID,
@@ -184,7 +184,7 @@ func TestCreateTransactionAndDisposeLotsRollsBackTransactionOnInsufficientLots(t
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repository := NewInvestmentRepository(database)
 	before := countRows(t, database, "transactions")
@@ -226,10 +226,10 @@ func TestInvestmentLotsRejectInsufficientFIFOAndRollBack(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repository := NewInvestmentRepository(database)
-	_, err := repository.CreateLot(ctx, CreateInvestmentLotParams{
+	_, err := createPostedBuyLot(t, ctx, repository, CreateInvestmentLotParams{
 		BookID:          1,
 		AccountID:       accountID,
 		CommodityID:     instrument.CommodityID,
@@ -285,11 +285,11 @@ func TestInvestmentLotsDisposeFIFOAlignsMismatchedQuantityScale(t *testing.T) {
 	// while believing the entire sale had been satisfied.
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repo := NewInvestmentRepository(database)
 
-	lot, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
+	lot, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 		BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 		OpenedOn: "2026-01-01", QuantityValue: exact.New(100000000), QuantityScale: 6,
 		CostBasisValue: 250000, CostBasisScale: 2, CostCommodityID: currencyID,
@@ -338,11 +338,11 @@ func TestInvestmentLotsDisposeFIFOSellsFinerThanTheLotScale(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repo := NewInvestmentRepository(database)
 
-	_, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
+	_, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 		BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 		OpenedOn: "2026-01-01", QuantityValue: exact.New(5), QuantityScale: 0,
 		CostBasisValue: 5000, CostBasisScale: 2, CostCommodityID: currencyID,
@@ -382,10 +382,10 @@ func TestInvestmentLotsProrateRoundingIntoFinalDisposal(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repository := NewInvestmentRepository(database)
-	lot, err := repository.CreateLot(ctx, CreateInvestmentLotParams{
+	lot, err := createPostedBuyLot(t, ctx, repository, CreateInvestmentLotParams{
 		BookID:          1,
 		AccountID:       accountID,
 		CommodityID:     instrument.CommodityID,
@@ -742,7 +742,7 @@ func migratedInvestmentTestDatabase(t *testing.T) (*sql.DB, int64, int64) {
 		OriginType:      "browser_api",
 		Operation:       "currency.create",
 		CreatedAt:       "2026-06-12T08:02:00Z",
-		EffectiveFrom:   "2026-06-12",
+		EffectiveFrom:   CommodityGenesisDate,
 		Spec: CurrencySpec{
 			Code:             "EUR",
 			Name:             "Euro",
@@ -765,7 +765,7 @@ func createInvestmentTestInstrument(t *testing.T, database *sql.DB, ownerID int6
 		OriginType:      "browser_api",
 		Operation:       "investment.instrument.create",
 		CreatedAt:       "2026-06-12T10:00:00Z",
-		EffectiveFrom:   "2026-06-12",
+		EffectiveFrom:   CommodityGenesisDate,
 		ChangeReason:    "test instrument",
 		Spec: InvestmentInstrumentSpec{
 			CommodityCode:      "TEST",
@@ -786,6 +786,10 @@ func createInvestmentTestInstrument(t *testing.T, database *sql.DB, ownerID int6
 
 func createInvestmentTestAccount(t *testing.T, database *sql.DB, defaultCommodityID int64) int64 {
 	t.Helper()
+	kind := "brokerage"
+	if defaultCommodityID == 0 {
+		kind = "security_holding"
+	}
 	result, err := database.ExecContext(context.Background(), `
 		INSERT INTO accounts (
 			book_id, system_role, created_at, created_by_user_id, created_request_id, created_audit_event_id
@@ -803,10 +807,10 @@ func createInvestmentTestAccount(t *testing.T, database *sql.DB, defaultCommodit
 			quantity_scale_override, allows_postings, number_last4, external_ref_hint,
 			comment_markdown, metadata_json, change_audit_event_id
 		)
-		VALUES (?, 1, '2026-06-12', '2026-06-12T09:00:00Z', 1, 'test account',
-			'active', '2026-06-12', NULL, 'BROKERAGE', 'Brokerage', 'asset',
-			'brokerage', NULL, NULL, '', ?, NULL, 1, '', '', '', '{}', NULL)
-	`, accountID, defaultCommodityID)
+		VALUES (?, 1, '0001-01-01', '2026-06-12T09:00:00Z', 1, 'test account',
+			'active', '0001-01-01', NULL, 'BROKERAGE', 'Brokerage', 'asset',
+			?, NULL, NULL, '', ?, NULL, 1, '', '', '', '{}', NULL)
+	`, accountID, kind, nullablePositiveInt64(defaultCommodityID))
 	require.NoError(t, err)
 	return accountID
 }
@@ -860,7 +864,7 @@ func TestInvestmentInstrumentRejectsDuplicateCommodity(t *testing.T) {
 
 func createThreeLots(t *testing.T, database *sql.DB, ownerID, currencyID int64) (int64, int64, []InvestmentLotRecord) {
 	t.Helper()
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repo := NewInvestmentRepository(database)
 	ctx := context.Background()
@@ -875,7 +879,7 @@ func createThreeLots(t *testing.T, database *sql.DB, ownerID, currencyID int64) 
 	}
 	var lots []InvestmentLotRecord
 	for i, d := range lotData {
-		lot, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
+		lot, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 			BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 			OpenedOn: d.date, QuantityValue: exact.New(d.qty), QuantityScale: 0,
 			CostBasisValue: d.basis, CostBasisScale: 2, CostCommodityID: currencyID,
@@ -1038,7 +1042,7 @@ func TestInvestmentLotsAverageCostResidualConservation(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repo := NewInvestmentRepository(database)
 
@@ -1049,7 +1053,7 @@ func TestInvestmentLotsAverageCostResidualConservation(t *testing.T) {
 	//   lot[1]: reportedBasis = residual = 6-3 = 3.
 	// Conserved remaining pool basis: 10-6 = 4.
 	for i, basis := range []int64{4, 3, 3} {
-		_, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
+		_, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 			BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 			OpenedOn:      fmt.Sprintf("2026-%02d-01", i+1),
 			QuantityValue: exact.New(1), QuantityScale: 0,
@@ -1173,11 +1177,11 @@ func TestInvestmentLotsClosedPositionStartsANewCostBasisMethodEpoch(t *testing.T
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repo := NewInvestmentRepository(database)
 	create := func(date string) {
-		_, err := repo.CreateLot(ctx, CreateInvestmentLotParams{BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
+		_, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 			OpenedOn: date, QuantityValue: exact.New(10), QuantityScale: 0, CostBasisValue: 10000, CostBasisScale: 2,
 			CostCommodityID: currencyID, MetadataJSON: `{}`, CreatedAt: date + "T09:00:00Z", CreatedByUserID: ownerID,
 			OriginType: "browser_api", Operation: "investment.lot.acquire", ChangeReason: "epoch", EventKind: "acquisition"})
@@ -1199,11 +1203,11 @@ func TestInvestmentLotsAverageCostClosedLotHasZeroBasis(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repo := NewInvestmentRepository(database)
 
-	_, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
+	_, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 		BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 		OpenedOn: "2026-01-01", QuantityValue: exact.New(10), QuantityScale: 0,
 		CostBasisValue: 5000, CostBasisScale: 2, CostCommodityID: currencyID,
@@ -1239,12 +1243,12 @@ func TestInvestmentLotsAverageCostPoolsLotsRecordedAtDifferentScales(t *testing.
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repo := NewInvestmentRepository(database)
 
-	// Create two lots with different quantity scales (normally prevented by UI, but we test directly)
-	_, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
+	// Record buys at different quantity scales to exercise pool alignment.
+	_, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 		BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 		OpenedOn: "2026-01-01", QuantityValue: exact.New(100), QuantityScale: 0,
 		CostBasisValue: 10000, CostBasisScale: 2, CostCommodityID: currencyID,
@@ -1253,11 +1257,14 @@ func TestInvestmentLotsAverageCostPoolsLotsRecordedAtDifferentScales(t *testing.
 		ChangeReason: "scale mismatch lot 1", EventKind: "acquisition",
 	})
 	require.NoError(t, err)
-	// Manually insert a lot with scale=2 to simulate divergence
-	_, err = database.ExecContext(ctx, `
-		INSERT INTO investment_lots (book_id, account_id, commodity_id, cost_commodity_id, opened_on, quantity_value, quantity_scale, cost_basis_value, cost_basis_scale, metadata_json, created_at, created_by_user_id) VALUES (1, ?, ?, ?, '2026-02-01', 50, 2, 5000, 2, '{}', '2026-02-01T09:00:00Z', ?);
-INSERT INTO investment_lot_state (lot_id, book_id, remaining_quantity_value, remaining_quantity_scale, remaining_cost_basis_value, remaining_cost_basis_scale, status, updated_at, updated_by_user_id) VALUES (last_insert_rowid(), 1, 50, 2, 5000, 2, 'open', '2026-02-01T09:00:00Z', ?)
-	`, accountID, instrument.CommodityID, currencyID, ownerID, ownerID)
+	// A second posted buy retains the deliberately different recorded scale.
+	_, err = createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
+		BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
+		OpenedOn: "2026-02-01", QuantityValue: exact.New(50), QuantityScale: 2,
+		CostBasisValue: 5000, CostBasisScale: 2, CostCommodityID: currencyID,
+		MetadataJSON: "{}", CreatedAt: "2026-02-01T09:00:00Z", CreatedByUserID: ownerID,
+		OriginType: "browser_api", ChangeReason: "mixed-scale opening", EventKind: "acquisition",
+	})
 	require.NoError(t, err)
 
 	// Pool is 100 shares at 100.00 plus 0.50 shares at 50.00 — 100.5 shares for
@@ -1307,11 +1314,11 @@ func TestInvestmentLotsAverageCostPoolsLotsRecordedAtDifferentCostBasisScales(t 
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repo := NewInvestmentRepository(database)
 
-	_, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
+	_, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 		BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 		OpenedOn: "2026-01-01", QuantityValue: exact.New(100), QuantityScale: 0,
 		CostBasisValue: 10000, CostBasisScale: 2, CostCommodityID: currencyID,
@@ -1320,12 +1327,14 @@ func TestInvestmentLotsAverageCostPoolsLotsRecordedAtDifferentCostBasisScales(t 
 		ChangeReason: "cost scale 2 lot", EventKind: "acquisition",
 	})
 	require.NoError(t, err)
-	// Same quantity scale (0), but a different cost basis scale (4) — passes
-	// the existing quantity-scale check but must still be rejected.
-	_, err = database.ExecContext(ctx, `
-		INSERT INTO investment_lots (book_id, account_id, commodity_id, cost_commodity_id, opened_on, quantity_value, quantity_scale, cost_basis_value, cost_basis_scale, metadata_json, created_at, created_by_user_id) VALUES (1, ?, ?, ?, '2026-02-01', 100, 0, 1000000, 4, '{}', '2026-02-01T09:00:00Z', ?);
-INSERT INTO investment_lot_state (lot_id, book_id, remaining_quantity_value, remaining_quantity_scale, remaining_cost_basis_value, remaining_cost_basis_scale, status, updated_at, updated_by_user_id) VALUES (last_insert_rowid(), 1, 100, 0, 1000000, 4, 'open', '2026-02-01T09:00:00Z', ?)
-	`, accountID, instrument.CommodityID, currencyID, ownerID, ownerID)
+	// A second posted buy retains the deliberately different recorded scale.
+	_, err = createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
+		BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
+		OpenedOn: "2026-02-01", QuantityValue: exact.New(100), QuantityScale: 0,
+		CostBasisValue: 1000000, CostBasisScale: 4, CostCommodityID: currencyID,
+		MetadataJSON: "{}", CreatedAt: "2026-02-01T09:00:00Z", CreatedByUserID: ownerID,
+		OriginType: "browser_api", ChangeReason: "mixed-scale opening", EventKind: "acquisition",
+	})
 	require.NoError(t, err)
 
 	// 200 shares for 200.00 pooled; selling 50 takes 50.00 of basis exactly.
@@ -1579,12 +1588,12 @@ func TestListRealizedGainsAggregatesMixedScaleDisposalEvents(t *testing.T) {
 	// events disagree. Aggregation now happens in Go at an aligned scale.
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	accountID := createInvestmentTestAccount(t, database, currencyID)
+	accountID := createInvestmentTestAccount(t, database, 0)
 	instrument := createInvestmentTestInstrument(t, database, ownerID, currencyID)
 	repo := NewInvestmentRepository(database)
 
 	// Lot A: 100.000000 shares (scale 6) at 2500.00 EUR cost (scale 2).
-	_, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
+	_, err := createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 		BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 		OpenedOn: "2026-01-01", QuantityValue: exact.New(100000000), QuantityScale: 6,
 		CostBasisValue: 250000, CostBasisScale: 2, CostCommodityID: currencyID,
@@ -1594,7 +1603,7 @@ func TestListRealizedGainsAggregatesMixedScaleDisposalEvents(t *testing.T) {
 	})
 	require.NoError(t, err)
 	// Lot B: 20 shares (scale 0) at 40.000000 EUR cost (scale 6).
-	_, err = repo.CreateLot(ctx, CreateInvestmentLotParams{
+	_, err = createPostedBuyLot(t, ctx, repo, CreateInvestmentLotParams{
 		BookID: 1, AccountID: accountID, CommodityID: instrument.CommodityID,
 		OpenedOn: "2026-02-01", QuantityValue: exact.New(20), QuantityScale: 0,
 		CostBasisValue: 40000000, CostBasisScale: 6, CostCommodityID: currencyID,

@@ -335,6 +335,8 @@ func captureLedgerState(t *testing.T, database *sql.DB) map[string]string {
 				cost_basis_value || 'e-' || cost_basis_scale || '/' ||
 				COALESCE(remaining_cost_basis_value, 'missing') || 'e-' || COALESCE(remaining_cost_basis_scale, -1)
 			FROM current_investment_lots ORDER BY id`,
+		"lot_openings": `SELECT id || '=' || operation_id || '/' || source_transaction_id || '/' || created_audit_event_id
+			FROM investment_lots ORDER BY id`,
 		"lot_events": `SELECT id || '=' || lot_id || '/' || event_kind || '/' || event_date || '/' ||
 				quantity_value || 'e-' || quantity_scale || '/' || cost_basis_value || 'e-' || cost_basis_scale ||
 				'/' || coalesce(cost_basis_method, '-')

@@ -4,6 +4,8 @@
 -- admission, schema equivalence and preservation of every durable figure.
 -- Reviewed for #192's whole-value canonical CHECKs (2026-10-12): its exact
 -- coefficient data remains valid without changing any financial figures.
+-- Reviewed for #148's required opening operation/source journal (2026-10-13):
+-- every seeded lot already names both; financial rows and IDs are unchanged.
 --
 -- It is frozen on purpose. Regenerating it against a later schema would defeat
 -- the test: the point is to migrate data written by the OLD app, which future

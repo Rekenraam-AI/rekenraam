@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"rekenraam/backend/internal/db"
+	"rekenraam/backend/internal/exact"
 	"rekenraam/backend/internal/testdb"
 )
 
@@ -204,83 +205,31 @@ func TestSelfCheckCatchesEachCorruption(t *testing.T) {
 		"a lot that holds more than its account does": {
 			checkID: CheckLotReconciliation,
 			corrupt: func(t *testing.T, database *sql.DB) {
-				// A lot needs a security commodity and a holding account in the
-				// same book — the schema enforces that much — so the reachable
-				// corruption is a lot whose remaining quantity the ledger does
-				// not back.
-				execRaw(t, database, `
-					INSERT INTO commodities (id, book_id, code, kind, is_builtin, created_at, created_by_user_id)
-					VALUES (2, 1, 'IWDA', 'security', 0, '2026-01-01T00:00:00Z', 1);
-					INSERT INTO commodity_versions (
-						commodity_id, version_seq, effective_from, recorded_at, changed_by_user_id, change_reason,
-						status, symbol, display_symbol, name, standard_scale, max_quantity_scale
-					) VALUES (2, 1, '2026-01-01', '2026-01-01T00:00:00Z', 1, 'seed', 'active', 'IWDA', 'IWDA', 'World ETF', 4, 8);
-					INSERT INTO accounts (id, book_id, created_at, created_by_user_id)
-					VALUES (3, 1, '2026-01-01T00:00:00Z', 1);
-					INSERT INTO account_versions (
-						account_id, version_seq, effective_from, recorded_at, changed_by_user_id, change_reason,
-						status, opened_on, name, account_class, account_kind, allows_postings
-					) VALUES (3, 1, '2026-01-01', '2026-01-01T00:00:00Z', 1, 'seed', 'active', '2026-01-01', 'Holdings', 'asset', 'security_holding', 1);
-					INSERT INTO investment_lots (id, book_id, account_id, commodity_id, opened_on, quantity_value, quantity_scale, cost_basis_value, cost_basis_scale, cost_commodity_id, created_at, created_by_user_id) VALUES (1, 1, 3, 2, '2026-06-01', '100000', 4, 100000, 2, 1, '2026-06-01T00:00:00Z', 1);
-INSERT INTO investment_lot_state (lot_id, book_id, status, remaining_quantity_value, remaining_quantity_scale, remaining_cost_basis_value, remaining_cost_basis_scale, updated_at, updated_by_user_id) VALUES (1, 1, 'open', '100000', 4, 100000, 2, '2026-06-01T00:00:00Z', 1);
-				`)
+				lotID := seedSelfCheckBuyLot(t, database)
+				_, err := database.Exec(`UPDATE investment_lot_state SET remaining_quantity_value = '2' WHERE lot_id = ?`, lotID)
+				require.NoError(t, err)
 			},
 		},
 		"a remaining basis that disagrees with immutable lot events": {
 			checkID: CheckLotReconciliation,
 			corrupt: func(t *testing.T, database *sql.DB) {
-				execRaw(t, database, `
-					INSERT INTO commodities (id, book_id, code, kind, is_builtin, created_at, created_by_user_id)
-					VALUES (2, 1, 'BASIS', 'security', 0, '2026-01-01T00:00:00Z', 1);
-					INSERT INTO commodity_versions (commodity_id, version_seq, effective_from, recorded_at, changed_by_user_id, change_reason,
-						status, symbol, display_symbol, name, standard_scale, max_quantity_scale)
-					VALUES (2, 1, '2026-01-01', '2026-01-01T00:00:00Z', 1, 'seed', 'active', 'BASIS', 'BASIS', 'Basis Test', 0, 6);
-					INSERT INTO accounts (id, book_id, created_at, created_by_user_id) VALUES (3, 1, '2026-01-01T00:00:00Z', 1);
-					INSERT INTO account_versions (account_id, version_seq, effective_from, recorded_at, changed_by_user_id, change_reason,
-						status, opened_on, name, account_class, account_kind, allows_postings)
-					VALUES (3, 1, '2026-01-01', '2026-01-01T00:00:00Z', 1, 'seed', 'active', '2026-01-01', 'Holdings', 'asset', 'security_holding', 1);
-					INSERT INTO investment_lots (id, book_id, account_id, commodity_id, opened_on, quantity_value, quantity_scale, cost_basis_value, cost_basis_scale, cost_commodity_id, created_at, created_by_user_id) VALUES (1, 1, 3, 2, '2026-06-01', '1', 0, 10000, 2, 1, '2026-06-01T00:00:00Z', 1);
-INSERT INTO investment_lot_state (lot_id, book_id, status, remaining_quantity_value, remaining_quantity_scale, remaining_cost_basis_value, remaining_cost_basis_scale, updated_at, updated_by_user_id) VALUES (1, 1, 'open', '1', 0, 12000, 2, '2026-06-01T00:00:00Z', 1);
-					INSERT INTO investment_lot_events (book_id, lot_id, event_kind, event_date, quantity_value, quantity_scale,
-						cost_basis_value, cost_basis_scale, created_at, created_by_user_id)
-					VALUES (1, 1, 'acquisition', '2026-06-01', '1', 0, 10000, 2, '2026-06-01T00:00:00Z', 1);
-				`)
+				lotID := seedSelfCheckBuyLot(t, database)
+				_, err := database.Exec(`UPDATE investment_lot_state SET remaining_cost_basis_value = '12000' WHERE lot_id = ?`, lotID)
+				require.NoError(t, err)
 			},
 		},
 		"a journal-only holding whose lots are all closed": {
 			checkID: CheckLotReconciliation,
 			corrupt: func(t *testing.T, database *sql.DB) {
-				execRaw(t, database, `
-					INSERT INTO commodities (id, book_id, code, kind, is_builtin, created_at, created_by_user_id)
-					VALUES (2, 1, 'CLOSED', 'security', 0, '2026-01-01T00:00:00Z', 1);
-					INSERT INTO commodity_versions (commodity_id, version_seq, effective_from, recorded_at, changed_by_user_id, change_reason,
-						status, symbol, display_symbol, name, standard_scale, max_quantity_scale)
-					VALUES (2, 1, '2026-01-01', '2026-01-01T00:00:00Z', 1, 'seed', 'active', 'CLOSED', 'CLOSED', 'Closed Test', 0, 6);
-					INSERT INTO accounts (id, book_id, created_at, created_by_user_id) VALUES
-						(3, 1, '2026-01-01T00:00:00Z', 1), (4, 1, '2026-01-01T00:00:00Z', 1);
-					INSERT INTO account_versions (account_id, version_seq, effective_from, recorded_at, changed_by_user_id, change_reason,
-						status, opened_on, name, account_class, account_kind, allows_postings) VALUES
-						(3, 1, '2026-01-01', '2026-01-01T00:00:00Z', 1, 'seed', 'active', '2026-01-01', 'Holdings', 'asset', 'security_holding', 1),
-						(4, 1, '2026-01-01', '2026-01-01T00:00:00Z', 1, 'seed', 'active', '2026-01-01', 'Trading', 'equity', 'equity', 1);
-					INSERT INTO investment_lots (id, book_id, account_id, commodity_id, opened_on, quantity_value, quantity_scale, cost_basis_value, cost_basis_scale, cost_commodity_id, created_at, created_by_user_id) VALUES (1, 1, 3, 2, '2026-05-01', '1', 0, 10000, 2, 1, '2026-05-01T00:00:00Z', 1);
-INSERT INTO investment_lot_state (lot_id, book_id, status, remaining_quantity_value, remaining_quantity_scale, remaining_cost_basis_value, remaining_cost_basis_scale, updated_at, updated_by_user_id) VALUES (1, 1, 'closed', '0', 0, 0, 2, '2026-06-01T00:00:00Z', 1);
-					INSERT INTO investment_lot_events (book_id, lot_id, event_kind, event_date, quantity_value, quantity_scale,
-						cost_basis_value, cost_basis_scale, created_at, created_by_user_id) VALUES
-						(1, 1, 'acquisition', '2026-05-01', '1', 0, 10000, 2, '2026-05-01T00:00:00Z', 1),
-						(1, 1, 'disposal', '2026-06-01', '-1', 0, -10000, 2, '2026-06-01T00:00:00Z', 1);
-					INSERT INTO transactions (id, book_id, created_at, created_by_user_id) VALUES (2, 1, '2026-07-01T00:00:00Z', 1);
-					INSERT INTO transaction_versions (id, book_id, transaction_id, version_seq, status, transaction_kind,
-						transaction_date, recorded_at, changed_by_user_id, change_reason)
-					VALUES (2, 1, 2, 1, 'posted', 'investment', '2026-07-01', '2026-07-01T00:00:00Z', 1, 'corrupt');
-					INSERT INTO journal_entries (id, book_id, transaction_version_id, entry_seq, entry_date, entry_kind)
-					VALUES (2, 1, 2, 1, '2026-07-01', 'investment');
-					INSERT INTO posting_lines (id, book_id, transaction_id, line_key, created_at, created_by_user_id) VALUES
-						(3, 1, 2, 'holding', '2026-07-01T00:00:00Z', 1), (4, 1, 2, 'trading', '2026-07-01T00:00:00Z', 1);
-					INSERT INTO posting_versions (book_id, transaction_version_id, journal_entry_id, posting_line_id, line_seq,
-						account_id, quantity_value, quantity_scale, commodity_id, reconciliation_status) VALUES
-						(1, 2, 2, 3, 1, 3, '1', 0, 2, 'uncleared'),
-						(1, 2, 2, 4, 2, 4, '-1', 0, 2, 'uncleared');
-				`)
+				lotID := seedSelfCheckBuyLot(t, database)
+				// Close the subledger without disposing the posted holding. Its
+				// complete lot history still nets to the now-closed projection.
+				_, err := database.Exec(`UPDATE investment_lot_state SET status = 'closed',
+					remaining_quantity_value = '0', remaining_cost_basis_value = '0' WHERE lot_id = ?;
+					INSERT INTO investment_lot_events (book_id, lot_id, event_kind, event_date, quantity_value,
+						quantity_scale, cost_basis_value, cost_basis_scale, created_at, created_by_user_id)
+					VALUES (1, ?, 'disposal', '2026-06-02', '-1', 0, '-10000', 2, '2026-06-02T00:00:00Z', 1)`, lotID, lotID)
+				require.NoError(t, err)
 			},
 		},
 		"a checkpoint that no longer sums to its statement": {
@@ -541,4 +490,36 @@ func execRaw(t *testing.T, database *sql.DB, statements string) {
 
 	_, err := database.ExecContext(context.Background(), statements)
 	require.NoError(t, err)
+}
+
+// Seed a valid posted buy before introducing damage, so opening constraints
+// and replay coverage remain active in these self-check regressions (#148).
+func seedSelfCheckBuyLot(t *testing.T, database *sql.DB) int64 {
+	t.Helper()
+	ctx := context.Background()
+	holdingID := seedTestAccountWithClass(t, database, "active", true, "asset", "security_holding")
+	seedCommodityTradingAccount(t, database)
+	repository := db.NewInvestmentRepository(database)
+	instrument, err := repository.CreateInstrument(ctx, db.CreateInvestmentInstrumentParams{
+		BookID: 1, CreatedByUserID: 1, CreatedAt: "2026-01-01T00:00:00Z", EffectiveFrom: "2026-01-01",
+		OriginType: "internal", Operation: "investment.instrument.create", ChangeReason: "self-check fixture",
+		Spec: db.InvestmentInstrumentSpec{CommodityCode: "LOT_CHECK", InstrumentType: "stock", DisplayName: "Lot check",
+			QuantityScale: 6, PriceScale: 2, QuoteCommodityID: sql.NullInt64{Int64: 1, Valid: true},
+			TradingCommodityID: sql.NullInt64{Int64: 1, Valid: true}, IdentifiersJSON: "{}", MetadataJSON: "{}"},
+	})
+	require.NoError(t, err)
+	accounts := db.NewAccountRepository(database)
+	transactions := NewTransactionService(db.NewTransactionRepository(database), db.NewPayeeRepository(database), accounts, db.NewCommodityRepository(database))
+	service := NewInvestmentService(repository, NewAccountService(accounts, db.NewInstitutionRepository(database), nil), transactions, nil)
+	buy, err := service.Buy(ctx, InvestmentTradeInput{
+		OwnerUserID: 1, TransactionDate: "2026-06-01", CommodityID: instrument.CommodityID,
+		HoldingAccountID: holdingID, CashAccountID: 1, QuantityValue: exact.New(1), QuantityScale: 0,
+		CashAmountValue: 10000, CashAmountScale: 2, CashCommodityID: 1,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, buy.LotID)
+	check, err := NewSelfCheckService(db.NewSelfCheckRepository(database, database)).RunSelfCheck(ctx, "manual")
+	require.NoError(t, err)
+	require.Equal(t, SelfCheckPassed, check.Status, "the operation-backed buy must be healthy before corruption")
+	return *buy.LotID
 }

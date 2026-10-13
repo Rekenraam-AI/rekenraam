@@ -129,6 +129,9 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
 - External market data is untrusted: provider dividends/corporate actions
   become **suggestions** unless an automation rule explicitly permits
   auto-posting.
+- Every lot requires its immutable opening operation and source journal
+  (`operation_id`/`source_transaction_id` are `NOT NULL`, #148), including test
+  fixtures. Journal-free operations never open lots.
 - Lots and lot events are durable accounting facts. Cost-basis method is
   resolved 3-tier (per-transaction → account → global default → fifo) in
   `resolveCostBasisMethod` (`app/investments.go`). Explicit lot allocations are

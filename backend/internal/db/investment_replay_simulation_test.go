@@ -70,29 +70,6 @@ func TestInvestmentReplaySimulationNamesImpossibleDependentDisposal(t *testing.T
 	assertOriginalReplayRowsUnchanged(t, tx, 4)
 }
 
-func TestInvestmentReplaySimulationRefusesLotWithoutOpeningFact(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	database := seedReplayTestBook(t)
-	repo := NewInvestmentRepository(database)
-	_, err := repo.CreateLot(ctx, CreateInvestmentLotParams{
-		BookID: 1, AccountID: 15, CommodityID: 2, CostCommodityID: 1,
-		OpenedOn: "2026-06-01", QuantityValue: exact.New(1),
-		CostBasisValue: 10000, CostBasisScale: 2, MetadataJSON: "{}",
-		CreatedAt: "2026-06-01T10:00:00Z", CreatedByUserID: 1,
-		OriginType: "internal", Operation: "investment.test.opening", EventKind: "acquisition",
-	})
-	require.NoError(t, err)
-	tx, err := database.BeginTx(ctx, nil)
-	require.NoError(t, err)
-	defer rollbackTx(ctx, tx)
-	intents, err := investmentReplayIntentsQuery(ctx, tx, 1, 15, 2, 1, "long")
-	require.NoError(t, err)
-	_, err = simulateInvestmentReplayTx(ctx, tx, 1, 15, 2, 1, intents)
-	require.ErrorContains(t, err, "lacks an immutable opening fact")
-	assertOriginalReplayRowsUnchanged(t, tx, 5)
-}
-
 func TestInvestmentReplaySimulationRejectsPositionBasisOverflow(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

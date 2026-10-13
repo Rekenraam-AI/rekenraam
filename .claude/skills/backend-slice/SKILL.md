@@ -116,6 +116,9 @@ strings to the client.
 - Good reference tests: `app/import_fetch_worker_test.go` (worker + concurrency),
   `app/investments_test.go` (financial cases), `api/transactions_test.go`
   (HTTP-level with auth/CSRF helpers).
+- Lot fixtures use posted operations through the shared investment writer or
+  the frozen candidate seed (#148). `investment_lots.operation_id` and
+  `source_transaction_id` are required; do not insert unmodeled openings.
 - Financial invariants, reconciliation behavior, imports, and calculations
   require **named** test cases — a regression must fail loudly by name.
 - Bug fixes: write the failing test first, confirm it fails, then fix

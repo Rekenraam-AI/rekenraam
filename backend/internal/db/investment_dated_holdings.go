@@ -51,7 +51,7 @@ func (r *InvestmentRepository) DatedLongHoldings(ctx context.Context, bookID int
 	}
 	defer rollbackTx(ctx, tx)
 	rows, err := tx.QueryContext(ctx, `
-		SELECT l.account_id, l.commodity_id, l.cost_commodity_id, MAX(l.operation_id IS NULL),
+		SELECT l.account_id, l.commodity_id, l.cost_commodity_id,
 			COALESCE((SELECT state.method_family FROM investment_position_basis_state state
 				WHERE state.book_id = l.book_id AND state.account_id = l.account_id
 					AND state.commodity_id = l.commodity_id AND state.cost_commodity_id = l.cost_commodity_id
@@ -64,14 +64,13 @@ func (r *InvestmentRepository) DatedLongHoldings(ctx context.Context, bookID int
 		return nil, fmt.Errorf("read dated holding positions: %w", err)
 	}
 	type position struct {
-		key       investmentReplayPositionKey
-		unmodeled bool
-		family    string
+		key    investmentReplayPositionKey
+		family string
 	}
 	var positions []position
 	for rows.Next() {
 		var p position
-		if err := rows.Scan(&p.key.accountID, &p.key.commodityID, &p.key.costCommodityID, &p.unmodeled, &p.family); err != nil {
+		if err := rows.Scan(&p.key.accountID, &p.key.commodityID, &p.key.costCommodityID, &p.family); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("scan dated holding position: %w", err)
 		}
@@ -82,11 +81,6 @@ func (r *InvestmentRepository) DatedLongHoldings(ctx context.Context, bookID int
 	}
 	holdings := make([]DatedHolding, 0, len(positions))
 	for _, p := range positions {
-		// A lot without an opening fact cannot be replayed (T-133); its
-		// position is not offered for dated entry.
-		if p.unmodeled {
-			continue
-		}
 		holding, ok, err := datedLongHoldingTx(ctx, tx, bookID, p.key, asOf)
 		if err != nil {
 			return nil, err

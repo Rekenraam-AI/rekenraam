@@ -599,6 +599,18 @@ redo owner setup. No installed v0.1 database exists. Candidate seed rows remain 
 schema equivalence and a fresh HTTP-built release seed validate the stricter
 baseline without regenerating historical financial figures.
 
+**BREAKING DEV DATABASE, required lot openings (#148, 2026-10-13):**
+`0001` now requires `investment_lots.operation_id` and `source_transaction_id`
+to be `NOT NULL`. Repository fixtures use posted buys through the shared writer;
+replay and dated reads no longer skip lots without openings. The checksum and
+candidate seed review change together; its existing opening IDs and financial
+figures remain unchanged, with fresh/seeded equivalence preserving those links.
+Stop the app, export anything worth keeping, remove the disposable database
+named by `DATABASE_URL` and its `-wal`/`-shm` sidecars as above, restart and redo
+owner setup. Existing development databases and backups from the prior baseline
+are incompatible; do not use restore across this rewrite. No installed v0.1
+release exists. Forward migration `0002` remains unchanged.
+
 The final pre-`v0.1.0` consolidation changed the highest schema version from 8
 to 1. Databases and backups made before that consolidation are incompatible in
 both directions: export anything worth keeping before updating, then recreate
@@ -607,7 +619,8 @@ cross that boundary.
 
 Forward migration `0002_basis_resolution_provenance.sql` (#197, 2026-10-13)
 adds immutable evidence revision history without rewriting `0001` or resetting
-current baseline databases. Startup upgrades schema 1 to 2 while preserving all
+databases made with the same `0001` baseline. It does not bridge a baseline
+rewrite such as #148. Startup upgrades schema 1 to 2 while preserving all
 financial rows and original declarations. Bundle schema 10 adds
 `investment-basis-resolution-provenance.csv`; backups retain every revision.
 

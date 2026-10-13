@@ -388,17 +388,19 @@ func TestBuyGainImpactLeavesRowsUnchangedWhenReplayEvidenceIsMissing(t *testing.
 	input.GainImpactAcknowledgement = previewBuyGainImpact(t, f, input).Acknowledgement
 
 	// Simulate damaged history, which the schema normally forbids: the
-	// February lot loses its immutable opening fact. Replay cannot prove the sale's inputs, so even a valid
-	// acknowledgement must not let any part of the buy survive.
-	_, err = f.database.Exec(`DROP TRIGGER investment_lots_opening_no_update`)
+	// February lot keeps its required opening operation, but loses the link
+	// to its opening effect. Even a valid gain acknowledgement must not let
+	// any part of the buy survive this missing replay evidence (#148).
+	_, err = f.database.Exec(`DROP TRIGGER investment_operation_lot_effects_no_delete`)
 	require.NoError(t, err)
-	_, err = f.database.Exec(`UPDATE investment_lots SET operation_id = NULL WHERE id = ?`, *february.LotID)
+	_, err = f.database.Exec(`DELETE FROM investment_operation_lot_effects
+		WHERE lot_event_id IN (SELECT id FROM investment_lot_events WHERE lot_id = ? AND event_kind = 'acquisition')`, *february.LotID)
 	require.NoError(t, err)
 	before := buyReplacementPreviewSnapshot(t, f.database)
 	_, err = f.investmentService.TradeReconciliationImpact(ctx, InvestmentImpactBuy, input)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "has no immutable operation effect")
 	_, err = f.investmentService.Buy(ctx, input)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "has no immutable operation effect")
 	require.NotErrorIs(t, err, ErrGainImpactAcknowledgementStale)
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 }

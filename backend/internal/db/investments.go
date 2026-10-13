@@ -1099,45 +1099,6 @@ func (r *InvestmentRepository) SaveDividendDefault(ctx context.Context, params S
 	return record, nil
 }
 
-func (r *InvestmentRepository) CreateLot(ctx context.Context, params CreateInvestmentLotParams) (InvestmentLotRecord, error) {
-	tx, err := r.database.BeginTx(ctx, nil)
-	if err != nil {
-		return InvestmentLotRecord{}, fmt.Errorf("begin create investment lot: %w", err)
-	}
-	committed := false
-	defer func() {
-		if !committed {
-			rollbackTx(ctx, tx)
-		}
-	}()
-	record, err := createLotTx(ctx, tx, params)
-	if err != nil {
-		return InvestmentLotRecord{}, err
-	}
-	if err := tx.Commit(); err != nil {
-		return InvestmentLotRecord{}, fmt.Errorf("commit create investment lot: %w", err)
-	}
-	committed = true
-	return record, nil
-}
-
-func createLotTx(ctx context.Context, tx *sql.Tx, params CreateInvestmentLotParams) (InvestmentLotRecord, error) {
-	auditEventID, err := insertAuditEvent(ctx, tx, AuditEventParams{
-		BookID:        params.BookID,
-		ActorUserID:   params.CreatedByUserID,
-		AuthSessionID: params.AuthSessionID,
-		OccurredAt:    params.CreatedAt,
-		RequestID:     params.RequestID,
-		OriginType:    params.OriginType,
-		Operation:     params.Operation,
-		Reason:        params.ChangeReason,
-	})
-	if err != nil {
-		return InvestmentLotRecord{}, err
-	}
-	return createLotWithAuditTx(ctx, tx, params, auditEventID, false)
-}
-
 // rescaleQuantity re-expresses a coefficient at a higher scale. Only widening
 // is supported: narrowing would discard quantity, which is never something this
 // package may do silently.
@@ -1187,25 +1148,21 @@ func createLotWithAuditTx(ctx context.Context, tx *sql.Tx, params CreateInvestme
 	// drops market value and gain entirely when the result no longer fits in an
 	// int64. Widening on demand keeps the precision where it is needed without
 	// making every position pay for it.
-	// A journal-backed lot records the operation that opened it; its own row
-	// is that operation's immutable opening fact (T-124).
-	var operationID int64
-	if params.SourceTransactionID > 0 {
-		id, err := investmentOperationIDTx(ctx, tx, params.BookID, params.SourceTransactionID)
-		if err != nil {
-			return InvestmentLotRecord{}, err
-		}
-		operationID = id
+	// Every lot records its opening operation and journal. Its row is that
+	// operation's immutable opening fact (#148).
+	operationID, err := investmentOperationIDTx(ctx, tx, params.BookID, params.SourceTransactionID)
+	if err != nil {
+		return InvestmentLotRecord{}, err
 	}
 	result, err := tx.ExecContext(ctx, `INSERT INTO investment_lots (
 		book_id, account_id, commodity_id, opened_on, source_transaction_id,
 		quantity_value, quantity_scale, cost_basis_value, cost_basis_scale,
 		cost_commodity_id, metadata_json, created_at, created_by_user_id, created_audit_event_id, operation_id, opening_basis_knowledge, position_side
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		params.BookID, params.AccountID, params.CommodityID, params.OpenedOn, nullablePositiveInt64(params.SourceTransactionID),
+		params.BookID, params.AccountID, params.CommodityID, params.OpenedOn, params.SourceTransactionID,
 		params.QuantityValue, params.QuantityScale, nullableBasisValue(params.CostBasisValue, knowledge), nullableBasisScale(params.CostBasisScale, knowledge),
 		params.CostCommodityID, params.MetadataJSON, params.CreatedAt, params.CreatedByUserID, auditEventID,
-		nullablePositiveInt64(operationID), knowledge, side)
+		operationID, knowledge, side)
 	if err != nil {
 		return InvestmentLotRecord{}, fmt.Errorf("insert investment lot: %w", err)
 	}
@@ -1228,18 +1185,16 @@ func createLotWithAuditTx(ctx context.Context, tx *sql.Tx, params CreateInvestme
 			cost_basis_value, cost_basis_scale, metadata_json, created_at, created_by_user_id, created_audit_event_id, basis_knowledge
 		)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, params.BookID, lotID, params.EventKind, nullablePositiveInt64(params.SourceTransactionID), params.OpenedOn, params.QuantityValue, params.QuantityScale, nullableBasisValue(params.CostBasisValue, knowledge), nullableBasisScale(params.CostBasisScale, knowledge), params.MetadataJSON, params.CreatedAt, params.CreatedByUserID, auditEventID, knowledge)
+	`, params.BookID, lotID, params.EventKind, params.SourceTransactionID, params.OpenedOn, params.QuantityValue, params.QuantityScale, nullableBasisValue(params.CostBasisValue, knowledge), nullableBasisScale(params.CostBasisScale, knowledge), params.MetadataJSON, params.CreatedAt, params.CreatedByUserID, auditEventID, knowledge)
 	if err != nil {
 		return InvestmentLotRecord{}, fmt.Errorf("insert investment lot event: %w", err)
 	}
-	if operationID > 0 {
-		eventID, err := eventResult.LastInsertId()
-		if err != nil {
-			return InvestmentLotRecord{}, fmt.Errorf("read acquisition event id: %w", err)
-		}
-		if err := linkLotEffectTx(ctx, tx, operationID, eventID); err != nil {
-			return InvestmentLotRecord{}, err
-		}
+	eventID, err := eventResult.LastInsertId()
+	if err != nil {
+		return InvestmentLotRecord{}, fmt.Errorf("read acquisition event id: %w", err)
+	}
+	if err := linkLotEffectTx(ctx, tx, operationID, eventID); err != nil {
+		return InvestmentLotRecord{}, err
 	}
 	if !replayAdmission {
 		// #182: an acquisition checks the known subtotal whatever its own
