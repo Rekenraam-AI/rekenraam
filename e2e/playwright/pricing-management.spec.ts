@@ -21,6 +21,7 @@ async function setup(page: Page, locale = 'en') {
 for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
   test(`[acceptance] exact manual entry, correction and withdrawal at 390px in ${locale}`, async ({ page }) => {
     const s = await setup(page, locale);
+    const editable = (value: string) => value.replace('.', locale === 'en' ? '.' : ',');
     const m = messages(locale);
     const appMessages = JSON.parse(readFileSync(new URL(`../../frontend/messages/settings/${locale}.json`, import.meta.url), 'utf8'));
     if (locale === 'en') await page.getByRole('button', { name: appMessages.theme_switch_to_dark }).click();
@@ -28,8 +29,8 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     await add.focus(); await page.keyboard.press('Enter');
     const dialog = page.getByRole('dialog', { name: m.pricing_add, exact: true });
     await expect(dialog.locator('#price-base')).toBeFocused();
-    await dialog.locator('#price-amount').fill('0.009007199254740993');
-    await dialog.locator('#price-quantity').fill('0.005');
+    await dialog.locator('#price-amount').fill(editable('0.009007199254740993'));
+    await dialog.locator('#price-quantity').fill(editable('0.005'));
     await dialog.locator('#price-reference').fill(`Synthetic statement ${locale}`);
     const review = dialog.getByRole('button', { name: m.pricing_review, exact: true });
     await expect(review).toBeDisabled();
@@ -42,7 +43,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     // Cancel the review with Escape: no write, and input remains available.
     const before = await apiJSON<{prices: unknown[]}>(page, 'GET', `/api/v1/pricing/history?base_commodity_id=${s.base}&quote_commodity_id=${s.quote}&include_voided=true&limit=100`);
     await page.keyboard.press('Escape');
-    await expect(dialog.locator('#price-amount')).toHaveValue('0.009007199254740993');
+    await expect(dialog.locator('#price-amount')).toHaveValue(editable('0.009007199254740993'));
     expect((await apiJSON<{prices: unknown[]}>(page, 'GET', `/api/v1/pricing/history?base_commodity_id=${s.base}&quote_commodity_id=${s.quote}&include_voided=true&limit=100`)).prices.length).toBe(before.prices.length);
     await review.click();
     const createdResponse = page.waitForResponse(res => res.url().endsWith('/pricing/manual') && res.request().method() === 'POST');
@@ -55,9 +56,9 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     const row = page.locator(`[data-price-id="${created.id}"]`);
     await row.getByRole('button', { name: m.pricing_correct, exact: true }).click();
     const correct = page.getByRole('dialog', { name: m.pricing_correct, exact: true });
-    await expect(correct.locator('#price-amount')).toHaveValue('0.009007199254740993');
+    await expect(correct.locator('#price-amount')).toHaveValue(editable('0.009007199254740993'));
     await expect(correct.locator('#price-date')).toBeDisabled();
-    await correct.locator('#price-amount').fill('0.009007199254740995');
+    await correct.locator('#price-amount').fill(editable('0.009007199254740995'));
     await correct.locator('#price-reason').fill('Correct synthetic statement');
     await correct.getByRole('button', { name: m.pricing_review, exact: true }).click();
     await expect(correct).toContainText(m.pricing_retire_list);
