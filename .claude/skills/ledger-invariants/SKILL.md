@@ -165,12 +165,14 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   its lot ID and quantity never change (T-135). Read a transferred lot's basis
   or original date through `effective_investment_transfer_links`.
 - Basis knowledge is explicit (`known`/`unknown`, NULL amount pairs; known
-  zero stays numeric). Only a sale or an in-kind transfer may consume unknown
-  basis (`AdmitUnknownBasis`); a sale's gain is unresolved — NULL with
+  zero stays numeric). Sales, write-offs, cash in lieu and in-kind transfers
+  may consume unknown basis (`AdmitUnknownBasis`); a disposal's result is unresolved — NULL with
   `basis_knowledge`, never a gain against a partial or zero basis — and an
   outbound with any unknown link posts no bridge. Unknown inbound basis is
   resolved only by an appended sourced resolution (complete omitted bridge at
-  the transfer date); revisions may go unknown→known, never known→unknown.
+  the transfer date); transfer-link revisions may go unknown→known, never
+  known→unknown. Disposal/action results may return to unknown after resolution
+  withdrawal, with gain acknowledgement.
   A resolution is corrected by its own replace/reverse commands (#168), with
   at most one effective resolution per link. A reversal that would return a
   known outbound or onward link to unknown refuses with that operation named.
@@ -184,7 +186,10 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   still retires the source, and every nonzero inverse remains journal-linked.
   Cash-in-lieu and import identities pin the split operation without inventing
   a primary transaction.
-  Other depletions refuse unknown basis until they have their own contract.
+  Return-of-capital cash/entitlement stay exact; unknown reduction and excess
+  remain NULL. Known explicit entitlement beside independent unknown lots is
+  supported; an established unknown average pool never supplies a known rate
+  from its known subset. See the #169 non-sale plan.
 - Named shorts (#173): a short lot holds owed units at a positive quantity
   and its exact opening proceeds in the basis columns; a cover's decision is
   `position_side = 'short'` with signed (negative) proceeds, so its result is

@@ -1097,18 +1097,21 @@ CashInLieuRequest:
 
 CashInLieuPreviewResponse:
   type: object
-  required: [allocations, impact, disposed_basis_value, disposed_basis_scale, realized_gain_value, realized_gain_scale, cost_basis_method]
+  required: [allocations, impact, disposed_basis_value, disposed_basis_scale, realized_gain_value, realized_gain_scale, cost_basis_method, basis_knowledge]
   properties:
-    disposed_basis_value:
+    basis_knowledge:
       type: string
+      enum: [known, unknown]
+    disposed_basis_value:
+      type: [string, "null"]
       description: Total exact basis of the fraction taken by the dated writer.
     disposed_basis_scale:
-      type: integer
+      type: [integer, "null"]
     realized_gain_value:
-      type: string
+      type: [string, "null"]
       description: Signed proceeds minus disposed basis, computed on the server.
     realized_gain_scale:
-      type: integer
+      type: [integer, "null"]
     cost_basis_method:
       type: string
       enum: [fifo, lifo, average_cost, specific_lot]
@@ -1187,8 +1190,12 @@ CapitalReturnRequest:
 CapitalReturnEffect:
   type: object
   required: [lot_id, entitled_quantity_value, entitled_quantity_scale, allocated_value, allocated_scale,
-    reduction_value, reduction_scale, excess_value, excess_scale]
+    reduction_value, reduction_scale, excess_value, excess_scale, basis_knowledge]
   properties:
+    basis_knowledge:
+      type: string
+      enum: [known, unknown]
+      description: Unknown leaves reduction and excess amount pairs null; entitlement and allocation remain exact.
     lot_id:
       type: integer
       format: int64
@@ -1202,15 +1209,15 @@ CapitalReturnEffect:
     allocated_scale:
       type: integer
     reduction_value:
-      type: string
+      type: [string, "null"]
       description: Minimum of allocated cash and eligible basis (proportional to entitled quantity for explicit_quantities).
     reduction_scale:
-      type: integer
+      type: [integer, "null"]
     excess_value:
-      type: string
+      type: [string, "null"]
       description: Unresolved amount beyond the lot's basis; never income or negative basis.
     excess_scale:
-      type: integer
+      type: [integer, "null"]
 
 CapitalReturnResponse:
   type: object

@@ -1247,7 +1247,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(2), version, "the head adds immutable basis-resolution provenance to the consolidated baseline")
+	assert.Equal(t, int64(3), version, "the head admits unresolved capital return effects")
 
 	ctx := context.Background()
 	database, err := Open(ctx, "file:"+filepath.Join(t.TempDir(), "schema.sqlite"))

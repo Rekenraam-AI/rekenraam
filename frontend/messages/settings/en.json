@@ -930,6 +930,7 @@
   "investments_capital_return_preview": "Preview return",
   "investments_capital_return_preview_title": "Cost basis reduced",
   "investments_capital_return_effect": "Lot #{lot}: cost basis reduced by {reduction} {currency}",
+  "investments_capital_return_effect_unknown": "Lot #{lot}: allocated {allocated} {currency}; basis reduction and excess unresolved (cost basis unknown).",
   "investments_capital_return_effect_excess": "Lot #{lot}: cost basis reduced by {reduction} {currency}, {excess} {currency} beyond it unresolved",
   "investments_capital_return_excess_note": "Cost basis never goes below zero. The amount beyond it is kept unresolved, not booked as income; check how your tax rules treat it.",
   "investments_capital_return_submit": "Record return of capital",

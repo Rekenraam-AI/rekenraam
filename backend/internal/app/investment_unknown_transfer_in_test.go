@@ -92,7 +92,7 @@ func TestBackdatedUnknownTransferInLeavesLaterSaleUnresolvedWithDisclosure(t *te
 
 // A later write-off has no unresolved-result contract, so a backdated
 // unknown inbound it would have to consume is refused, naming it.
-func TestBackdatedUnknownTransferInRefusesLaterWriteOffDependency(t *testing.T) {
+func TestBackdatedUnknownTransferInDisclosesLaterUnresolvedWriteOff(t *testing.T) {
 	t.Parallel()
 	f := newInvestmentsTestFixture(t)
 	ctx := context.Background()
@@ -102,11 +102,17 @@ func TestBackdatedUnknownTransferInRefusesLaterWriteOffDependency(t *testing.T) 
 	require.NoError(t, err)
 	before := buyReplacementPreviewSnapshot(t, f.database)
 	input := unknownTransferInInput(f, "2026-06-01", "2020-03-01")
-	input.ReconciliationOverride = true
+	impact, err := f.investmentService.PreviewExternalTransferInReconciliationImpact(ctx, input)
+	require.NoError(t, err)
+	require.Len(t, impact.GainImpact.Changes, 1)
+	require.Equal(t, db.InvestmentBasisUnknown, impact.GainImpact.Changes[0].After.BasisKnowledge)
 	_, err = f.investmentService.ExternalTransferIn(ctx, input)
-	var dependency InvestmentBuyDependencyError
-	require.ErrorAs(t, err, &dependency, "the later write-off is named")
-	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "nothing is written")
+	require.ErrorIs(t, err, ErrGainImpactAcknowledgementRequired)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	input.GainImpactAcknowledgement = impact.GainImpact.Acknowledgement
+	_, err = f.investmentService.ExternalTransferIn(ctx, input)
+	require.NoError(t, err)
+	requireHealthyUnresolvedBook(t, f)
 }
 
 // A split moves no basis: an unknown lot keeps its unknown basis across the

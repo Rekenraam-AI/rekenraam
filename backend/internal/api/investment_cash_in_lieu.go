@@ -30,10 +30,11 @@ type cashInLieuRequest struct {
 }
 
 type cashInLieuPreviewResponse struct {
-	DisposedBasisValue exact.Coefficient               `json:"disposed_basis_value"`
-	DisposedBasisScale int                             `json:"disposed_basis_scale"`
-	RealizedGainValue  exact.Coefficient               `json:"realized_gain_value"`
-	RealizedGainScale  int                             `json:"realized_gain_scale"`
+	BasisKnowledge     string                          `json:"basis_knowledge"`
+	DisposedBasisValue *exact.Coefficient              `json:"disposed_basis_value"`
+	DisposedBasisScale *int                            `json:"disposed_basis_scale"`
+	RealizedGainValue  *exact.Coefficient              `json:"realized_gain_value"`
+	RealizedGainScale  *int                            `json:"realized_gain_scale"`
 	CostBasisMethod    string                          `json:"cost_basis_method"`
 	Allocations        []investmentLotDisposalResponse `json:"allocations"`
 	Impact             reconciliationImpactResponse    `json:"impact"`
@@ -103,7 +104,7 @@ func cashInLieuPreview(logger *slog.Logger, authService *app.AuthService, invest
 		response.GainImpact = gainImpact
 		writeJSON(w, http.StatusOK, cashInLieuPreviewResponse{
 			Allocations: toInvestmentLotDisposalResponses(result.Allocations), Impact: response,
-			DisposedBasisValue: result.DisposalDecision.DisposedBasisValue, DisposedBasisScale: result.DisposalDecision.DisposedBasisScale, RealizedGainValue: result.RealizedGainValue, RealizedGainScale: result.RealizedGainScale, CostBasisMethod: result.DisposalDecision.CostBasisMethod,
+			BasisKnowledge: responseKnowledge(result.DisposalDecision.BasisKnowledge), DisposedBasisValue: knownCoefficient(result.DisposalDecision.DisposedBasisValue, result.DisposalDecision.BasisKnowledge), DisposedBasisScale: projectedBasisScale(result.DisposalDecision.DisposedBasisScale, result.DisposalDecision.BasisKnowledge), RealizedGainValue: knownCoefficient(result.RealizedGainValue, result.DisposalDecision.BasisKnowledge), RealizedGainScale: projectedBasisScale(result.RealizedGainScale, result.DisposalDecision.BasisKnowledge), CostBasisMethod: result.DisposalDecision.CostBasisMethod,
 		})
 	}
 }
@@ -159,7 +160,7 @@ func replaceCashInLieuPreview(logger *slog.Logger, auth *app.AuthService, servic
 			writeAPIError(w, http.StatusUnprocessableEntity, "LEDGER_OVERFLOW", "gain impact exceeds coefficient range")
 			return
 		}
-		writeJSON(w, http.StatusOK, cashInLieuPreviewResponse{Allocations: toInvestmentLotDisposalResponses(result.Allocations), Impact: response, DisposedBasisValue: result.DisposalDecision.DisposedBasisValue, DisposedBasisScale: result.DisposalDecision.DisposedBasisScale, RealizedGainValue: result.RealizedGainValue, RealizedGainScale: result.RealizedGainScale, CostBasisMethod: result.DisposalDecision.CostBasisMethod})
+		writeJSON(w, http.StatusOK, cashInLieuPreviewResponse{Allocations: toInvestmentLotDisposalResponses(result.Allocations), Impact: response, BasisKnowledge: responseKnowledge(result.DisposalDecision.BasisKnowledge), DisposedBasisValue: knownCoefficient(result.DisposalDecision.DisposedBasisValue, result.DisposalDecision.BasisKnowledge), DisposedBasisScale: projectedBasisScale(result.DisposalDecision.DisposedBasisScale, result.DisposalDecision.BasisKnowledge), RealizedGainValue: knownCoefficient(result.RealizedGainValue, result.DisposalDecision.BasisKnowledge), RealizedGainScale: projectedBasisScale(result.RealizedGainScale, result.DisposalDecision.BasisKnowledge), CostBasisMethod: result.DisposalDecision.CostBasisMethod})
 	}
 }
 

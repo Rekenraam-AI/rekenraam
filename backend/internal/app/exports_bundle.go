@@ -22,7 +22,7 @@ import (
 // BundleSchemaVersion is the archive's own version, carried in manifest.json.
 // Columns are appended within a version; a change that cannot be made by
 // appending increments this and needs an ADR (ADR 0011).
-const BundleSchemaVersion = 10
+const BundleSchemaVersion = 11
 
 // bundleFile is one entry of the archive, recorded in the manifest with the
 // checksum computed while it was written.
@@ -238,7 +238,7 @@ func (s *ExportService) WriteBundle(ctx context.Context, out io.Writer, filter E
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "capital-return-facts", []string{"operation_id", "account_id", "commodity_id", "cost_commodity_id", "cash_account_id", "effective_on", "payment_on", "amount_value", "amount_scale", "entitlement_rule", "source_evidence_json", "audit_event_id"})
 		}},
 		{"investment-capital-return-effects.csv", func(w io.Writer) (int64, error) {
-			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "capital-return-effects", []string{"operation_id", "effect_seq", "lot_id", "lot_event_id", "entitled_quantity_value", "entitled_quantity_scale", "allocated_value", "allocated_scale", "reduction_value", "reduction_scale", "excess_value", "excess_scale"})
+			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "capital-return-effects", []string{"operation_id", "effect_seq", "lot_id", "lot_event_id", "entitled_quantity_value", "entitled_quantity_scale", "allocated_value", "allocated_scale", "reduction_value", "reduction_scale", "excess_value", "excess_scale", "basis_knowledge"})
 		}},
 		{"investment-capital-return-entitlements.csv", func(w io.Writer) (int64, error) {
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "capital-return-entitlements", []string{"operation_id", "entitlement_seq", "lot_id", "quantity_value", "quantity_scale"})
@@ -247,7 +247,7 @@ func (s *ExportService) WriteBundle(ctx context.Context, out io.Writer, filter E
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "capital-return-revisions", []string{"revision_id", "operation_id", "revision_seq", "caused_by_operation_id", "supersedes_revision_id", "created_at", "audit_event_id"})
 		}},
 		{"investment-capital-return-revision-effects.csv", func(w io.Writer) (int64, error) {
-			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "capital-return-revision-effects", []string{"revision_id", "effect_seq", "lot_id", "entitled_quantity_value", "entitled_quantity_scale", "allocated_value", "allocated_scale", "reduction_value", "reduction_scale", "excess_value", "excess_scale"})
+			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "capital-return-revision-effects", []string{"revision_id", "effect_seq", "lot_id", "entitled_quantity_value", "entitled_quantity_scale", "allocated_value", "allocated_scale", "reduction_value", "reduction_scale", "excess_value", "excess_scale", "basis_knowledge"})
 		}},
 		{"investment-fee-policies.csv", func(w io.Writer) (int64, error) {
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "fee-policies", []string{"policy_id", "account_id", "charge_kind", "created_at", "audit_event_id"})
@@ -932,10 +932,10 @@ value in this archive was ever a floating-point number.`,
   investment-split-revision-effects.csv  per-lot quantity changes for those revisions
   investment-cash-in-lieu-facts.csv  cash-in-lieu disposals and the operation each settles, with payment dates
   investment-capital-return-facts.csv  returns of capital: receipt, payment and effective dates, entitlement rule
-  investment-capital-return-effects.csv  per-lot allocated receipt, basis reduction and unresolved excess
+  investment-capital-return-effects.csv  exact receipt allocation, nullable reduction/excess and basis knowledge
   investment-capital-return-entitlements.csv  lots an explicit entitlement names, with quantities held at commit
   investment-capital-return-revisions.csv  replay revisions of return-of-capital effects
-  investment-capital-return-revision-effects.csv  per-lot effects of those revisions
+  investment-capital-return-revision-effects.csv  per-lot effects and knowledge of those revisions
   investment-fee-policies.csv  book and account charge policy identities
   investment-fee-policy-versions.csv  dated, immutable charge policy versions
   import-identities.csv  committed source-row fingerprints and provenance
@@ -1000,6 +1000,11 @@ Both lots.csv and investment-lot-state.csv carry basis_knowledge for remaining
 projected basis. Unknown basis has empty amount/scale fields, never numeric
 zero; known zero remains explicit. Quantity and immutable opening facts remain
 separate from that current knowledge state.
+Bundle schema 11 appends basis_knowledge to original and revised return-of-capital
+effects. Receipt allocations and entitled quantities remain exact; unknown
+reduction/excess amount pairs are blank. Later sourced resolution appends known
+revisions without editing those original unknown effects. Write-off and cash-in-lieu
+disposal results use the same unknown basis rules as sales.
 Bundle schema 10 adds investment-basis-resolution-provenance.csv. Evidence corrections
 retain the original resolution and economic lineage, with numbered successors and
 actor, request, timestamp and reason. Schema 9 appends opening_basis_knowledge to lots.csv and the immutable
@@ -1008,8 +1013,8 @@ blank independently of the remaining projection's knowledge. Disposal
 decisions, allocations and their replay revisions append basis_knowledge; an
 unknown allocation leaves its basis blank and makes its decision or revision
 total blank, while quantity and proceeds stay populated. Transfer-link
-revisions and their pooled depletions append basis_knowledge; a revision never
-changes its link's knowledge, and unknown amounts are blank.
+revisions and their pooled depletions append basis_knowledge; sourced resolution
+may move their knowledge from unknown to known, and unknown amounts are blank.
 The investment-operation, lot-fact, and lot-event files preserve the source
 and projection evidence separately. A net-only trade explicitly marks gross
 unknown. A trade-implied price derived from net cash remains usable for

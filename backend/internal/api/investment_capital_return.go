@@ -34,15 +34,16 @@ type capitalReturnEntitlementRequest struct {
 }
 
 type capitalReturnEffectResponse struct {
-	LotID                 int64             `json:"lot_id"`
-	EntitledQuantityValue exact.Coefficient `json:"entitled_quantity_value"`
-	EntitledQuantityScale int               `json:"entitled_quantity_scale"`
-	AllocatedValue        exact.Coefficient `json:"allocated_value"`
-	AllocatedScale        int               `json:"allocated_scale"`
-	ReductionValue        exact.Coefficient `json:"reduction_value"`
-	ReductionScale        int               `json:"reduction_scale"`
-	ExcessValue           exact.Coefficient `json:"excess_value"`
-	ExcessScale           int               `json:"excess_scale"`
+	BasisKnowledge        string             `json:"basis_knowledge"`
+	LotID                 int64              `json:"lot_id"`
+	EntitledQuantityValue exact.Coefficient  `json:"entitled_quantity_value"`
+	EntitledQuantityScale int                `json:"entitled_quantity_scale"`
+	AllocatedValue        exact.Coefficient  `json:"allocated_value"`
+	AllocatedScale        int                `json:"allocated_scale"`
+	ReductionValue        *exact.Coefficient `json:"reduction_value"`
+	ReductionScale        *int               `json:"reduction_scale"`
+	ExcessValue           *exact.Coefficient `json:"excess_value"`
+	ExcessScale           *int               `json:"excess_scale"`
 }
 
 type capitalReturnResponse struct {
@@ -83,7 +84,12 @@ func capitalReturnInput(owner app.Owner, r *http.Request, request capitalReturnR
 func toCapitalReturnEffectResponses(effects []app.CapitalReturnEffect) []capitalReturnEffectResponse {
 	out := make([]capitalReturnEffectResponse, 0, len(effects))
 	for _, effect := range effects {
-		out = append(out, capitalReturnEffectResponse(effect))
+		out = append(out, capitalReturnEffectResponse{
+			LotID: effect.LotID, EntitledQuantityValue: effect.EntitledQuantityValue, EntitledQuantityScale: effect.EntitledQuantityScale,
+			AllocatedValue: effect.AllocatedValue, AllocatedScale: effect.AllocatedScale, BasisKnowledge: responseKnowledge(effect.BasisKnowledge),
+			ReductionValue: knownCoefficient(effect.ReductionValue, effect.BasisKnowledge), ReductionScale: projectedBasisScale(effect.ReductionScale, effect.BasisKnowledge),
+			ExcessValue: knownCoefficient(effect.ExcessValue, effect.BasisKnowledge), ExcessScale: projectedBasisScale(effect.ExcessScale, effect.BasisKnowledge),
+		})
 	}
 	return out
 }

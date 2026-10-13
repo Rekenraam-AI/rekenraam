@@ -509,7 +509,7 @@ func revisedPooledTransferMovements(ctx context.Context, source queryer, bookID 
 func revisedCapitalReturnMovements(ctx context.Context, source queryer, bookID int64, filter EffectiveMovementFilter) ([]EffectiveLotMovement, error) {
 	rows, err := source.QueryContext(ctx, `
 		SELECT e.lot_id, l.account_id, l.commodity_id, l.cost_commodity_id, l.position_side,
-			e.reduction_value, e.reduction_scale, fact.effective_on, revision.operation_id,
+			e.reduction_value, e.reduction_scale, e.basis_knowledge, fact.effective_on, revision.operation_id,
 			revision.id, revision.revision_seq, e.effect_seq
 		FROM latest_investment_capital_return_revisions revision
 		JOIN effective_investment_operations operation ON operation.id = revision.operation_id
@@ -524,20 +524,21 @@ func revisedCapitalReturnMovements(ctx context.Context, source queryer, bookID i
 	var movements []EffectiveLotMovement
 	for rows.Next() {
 		movement := EffectiveLotMovement{Source: MovementSourceCapitalReturnRevision, Kind: "basis_reduction",
-			BasisKnowledge: InvestmentBasisKnown, QuantityValue: "0"}
-		var reduction exact.Coefficient
+			QuantityValue: "0"}
+		var reduction sql.NullString
+		var scale sql.NullInt64
 		if err := rows.Scan(&movement.LotID, &movement.AccountID, &movement.CommodityID, &movement.CostCommodityID,
-			&movement.PositionSide, &reduction, &movement.CostBasisScale, &movement.EventDate,
+			&movement.PositionSide, &reduction, &scale, &movement.BasisKnowledge, &movement.EventDate,
 			&movement.OperationID, &movement.RevisionID, &movement.RevisionSeq, &movement.RevisionEffectSeq); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("scan revised capital return: %w", err)
 		}
-		value, err := exact.ScaledIntFromCoefficient(reduction, movement.CostBasisScale).Negated().Int64()
+		value, valueScale, err := revisionBasis(reduction, scale, movement.BasisKnowledge)
 		if err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("invalid revised capital return reduction for lot %d", movement.LotID)
 		}
-		movement.CostBasisValue = value
+		movement.CostBasisValue, movement.CostBasisScale = -value, valueScale
 		movements = append(movements, movement)
 	}
 	if err := errors.Join(rows.Err(), rows.Close()); err != nil {

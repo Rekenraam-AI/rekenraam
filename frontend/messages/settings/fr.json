@@ -931,6 +931,7 @@
   "investments_capital_return_preview": "Prévisualiser le remboursement",
   "investments_capital_return_preview_title": "Prix de revient réduit",
   "investments_capital_return_effect": "Lot #{lot} : prix de revient réduit de {reduction} {currency}",
+  "investments_capital_return_effect_unknown": "Lot #{lot} : montant attribué {allocated} {currency} ; réduction du prix de revient et excédent indéterminés (prix de revient inconnu).",
   "investments_capital_return_effect_excess": "Lot #{lot} : prix de revient réduit de {reduction} {currency}, {excess} {currency} au-delà non résolus",
   "investments_capital_return_excess_note": "Le prix de revient ne descend jamais sous zéro. Le montant au-delà reste non résolu et n’est pas comptabilisé comme revenu ; vérifiez son traitement fiscal.",
   "investments_capital_return_submit": "Enregistrer le remboursement",

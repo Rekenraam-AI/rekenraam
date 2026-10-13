@@ -369,9 +369,11 @@ lineage and audit attribution independently of basis/journal checks. The
 six-locale correction form remains reachable from the transfer and refreshes
 the shared investment reads after saving.
 
-**Deliberately later.** Unresolved write-off, cash-in-lieu and return-of-capital
-results are not #160 acceptance and need their own contract
-([#169](https://github.com/sergeyfarin/rekenraam/issues/169)).
+**Extension delivered (#169, 2026-10-13).** Unresolved write-off, cash-in-lieu
+and return-of-capital results ship under the separate
+[non-sale contract](investment-unresolved-non-sale-plan.md). The historical
+#160 boundaries below retain their original acceptance scope; their non-sale
+refusal fences are superseded by that contract.
 
 
 1. **Immutable knowledge.** Add explicit knowledge with paired nullable basis
@@ -458,8 +460,8 @@ results are not #160 acceptance and need their own contract
 | `backend/internal/app/investment_basis_resolution.go`, `backend/internal/api/investment_basis_resolution.go`, OpenAPI | Atomic sourced resolution and rolled-back writer preview, with gain acknowledgement and reconciliation guards. |
 | Export bundle writers and investment forms | Nullable API amounts and CSV blanks preserve unknown knowledge; bundle exports resolution facts; six-locale forms and labels support unknown entry and sourced resolution. |
 
-Cash in lieu, write-off and return of capital still require known basis; their
-unresolved-result contracts remain deliberately later, as described above.
+Cash in lieu, write-off and return of capital now admit unresolved results
+under the separate #169 contract linked above.
 
 Named #197 regressions: `TestSameBasisChangedEvidenceCorrectionPostsNoJournals`,
 `TestProvenanceCorrectionAdmitsExactScaledEqualityKnownZeroAndLegacy`,

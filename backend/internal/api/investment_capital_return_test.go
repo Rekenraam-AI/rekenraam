@@ -37,7 +37,7 @@ func TestCapitalReturnAPIPreviewMatchesCommitAndNamesNoHoldings(t *testing.T) {
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&posted))
 	assert.Equal(t, preview.Effects, posted.Effects, "preview equals commit")
 	assert.Equal(t, "2026-02-10", posted.Transaction.TransactionDate, "cash posts on the payment date")
-	assert.Zero(t, exact.ScaledIntFromCoefficient(posted.Effects[0].ExcessValue, posted.Effects[0].ExcessScale).Cmp(
+	assert.Zero(t, exact.ScaledIntFromCoefficient(*posted.Effects[0].ExcessValue, *posted.Effects[0].ExcessScale).Cmp(
 		exact.ScaledIntFromInt64(300, 2)), "10.00 on a 7.00 lot leaves 3.00 unresolved")
 }
 

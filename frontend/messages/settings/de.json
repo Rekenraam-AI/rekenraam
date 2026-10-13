@@ -931,6 +931,7 @@
   "investments_capital_return_preview": "Rückzahlung prüfen",
   "investments_capital_return_preview_title": "Verminderte Anschaffungskosten",
   "investments_capital_return_effect": "Posten #{lot}: Anschaffungskosten um {reduction} {currency} vermindert",
+  "investments_capital_return_effect_unknown": "Posten #{lot}: zugeteilt {allocated} {currency}; Minderung der Anschaffungskosten und Überschuss ungeklärt (Anschaffungskosten unbekannt).",
   "investments_capital_return_effect_excess": "Posten #{lot}: Anschaffungskosten um {reduction} {currency} vermindert, {excess} {currency} darüber hinaus ungeklärt",
   "investments_capital_return_excess_note": "Anschaffungskosten fallen nie unter null. Der darüber hinausgehende Betrag bleibt ungeklärt und wird nicht als Ertrag gebucht; prüfen Sie die steuerliche Behandlung.",
   "investments_capital_return_submit": "Kapitalrückzahlung buchen",

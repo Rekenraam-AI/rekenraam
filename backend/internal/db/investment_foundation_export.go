@@ -98,11 +98,11 @@ func (r *ExportRepository) ExportInvestmentFoundation(ctx context.Context, tx *s
 			FROM investment_capital_return_revisions r WHERE r.book_id = ? ORDER BY r.operation_id, r.revision_seq`,
 		"capital-return-revision-effects": `SELECT e.revision_id, e.effect_seq, e.lot_id,
 			e.entitled_quantity_value, e.entitled_quantity_scale, e.allocated_value, e.allocated_scale,
-			e.reduction_value, e.reduction_scale, e.excess_value, e.excess_scale
+			e.reduction_value, e.reduction_scale, e.excess_value, e.excess_scale, e.basis_knowledge
 			FROM investment_capital_return_revision_effects e WHERE e.book_id = ? ORDER BY e.revision_id, e.effect_seq`,
 		"capital-return-effects": `SELECT e.operation_id, e.effect_seq, e.lot_id, e.lot_event_id,
 			e.entitled_quantity_value, e.entitled_quantity_scale, e.allocated_value, e.allocated_scale,
-			e.reduction_value, e.reduction_scale, e.excess_value, e.excess_scale
+			e.reduction_value, e.reduction_scale, e.excess_value, e.excess_scale, e.basis_knowledge
 			FROM investment_capital_return_effects e WHERE e.book_id = ? ORDER BY e.operation_id, e.effect_seq`,
 		"fee-policies": `SELECT p.id, p.account_id, p.charge_kind, p.created_at, p.created_audit_event_id
 			FROM investment_fee_policies p WHERE p.book_id = ? ORDER BY p.id`,

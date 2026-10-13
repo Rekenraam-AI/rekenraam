@@ -391,6 +391,14 @@ pnpm test:release-preflight
 
 ## Migrations And Resetting Your Database
 
+Forward migration `0003_unresolved_capital_return.sql` (#169, 2026-10-13)
+preserves known original/revised return-of-capital effects and adds explicit
+knowledge with nullable reduction/excess pairs. Startup upgrades existing
+schema-2 databases without a reset. Downgrade refuses unknown evidence; use the
+verified backup/restore workflow for rollback. The baseline checksums remain
+unchanged. Bundle schema 11 includes the new effect knowledge.
+
+
 The governing rule is **Project Lifecycle And Migration Immutability** in
 `docs/conventions.md`; this section is only how to carry it out. The unused
 v0.1 candidate baseline may be redesigned under ADR 0013; installed release

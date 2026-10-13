@@ -123,6 +123,9 @@ type CashInLieuPreviewResult struct {
 func cashInLieuPreviewResult(allocations []db.LotDisposalRecord, record db.DisposalDecisionRecord) (CashInLieuPreviewResult, error) {
 	decision := toDisposalDecision(record)
 	gain := exact.ScaledIntFromInt64(decision.ProceedsValue, decision.ProceedsScale)
+	if decision.BasisKnowledge == db.InvestmentBasisUnknown {
+		return CashInLieuPreviewResult{InvestmentTradeResult: InvestmentTradeResult{Allocations: toInvestmentLotDisposals(allocations), DisposalDecision: &decision}}, nil
+	}
 	gain.SubScaled(exact.ScaledIntFromCoefficient(decision.DisposedBasisValue, decision.DisposedBasisScale))
 	value, err := gain.Coefficient()
 	if err != nil {

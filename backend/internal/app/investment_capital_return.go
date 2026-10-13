@@ -44,6 +44,7 @@ type CapitalReturnInput struct {
 type CapitalReturnEntitlement = db.CapitalReturnEntitlement
 
 type CapitalReturnEffect struct {
+	BasisKnowledge        string
 	LotID                 int64
 	EntitledQuantityValue exact.Coefficient
 	EntitledQuantityScale int
@@ -199,7 +200,7 @@ func (s *InvestmentService) CapitalReturn(ctx context.Context, input CapitalRetu
 func toCapitalReturnEffects(effects []db.CapitalReturnEffect) []CapitalReturnEffect {
 	out := make([]CapitalReturnEffect, 0, len(effects))
 	for _, effect := range effects {
-		out = append(out, CapitalReturnEffect{LotID: effect.LotID,
+		out = append(out, CapitalReturnEffect{LotID: effect.LotID, BasisKnowledge: effect.BasisKnowledge,
 			EntitledQuantityValue: effect.EntitledQuantityValue, EntitledQuantityScale: effect.EntitledQuantityScale,
 			AllocatedValue: effect.AllocatedValue, AllocatedScale: effect.AllocatedScale,
 			ReductionValue: effect.ReductionValue, ReductionScale: effect.ReductionScale,

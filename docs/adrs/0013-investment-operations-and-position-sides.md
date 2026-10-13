@@ -707,3 +707,18 @@ valid declarations, separate reasons, genuine changes and no-ops. An economic
 basis change still follows decisions 1 and 5's operation replacement and replay
 contract. Replacing a source declaration never verifies its truth or selects a
 tax rule.
+
+
+## Unresolved Non-Sale Result Refinement (2026-10-13, #169)
+
+The [non-sale contract](../plans/investment-unresolved-non-sale-plan.md) extends
+unresolved disposal admission to write-off and cash in lieu, preserving exact
+quantity/proceeds with NULL basis/result. Return of capital preserves exact
+cash and entitlement while its unknown effects keep reduction/excess NULL;
+an explicit independent known lot remains calculable beside unknown lots,
+while an established unresolved average pool supplies no known subset rate.
+This supersedes earlier non-sale refusal fences in the knowledge refinements.
+Sourced resolution appends revisions through dated replay even after quantity
+closes. Original evidence, native correction lineage, gain acknowledgement and
+checkpoint guards retain their existing contracts. Forward migration 3
+preserves known effect history; bundle schema 11 exports effect knowledge.

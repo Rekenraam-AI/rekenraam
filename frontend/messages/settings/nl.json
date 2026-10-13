@@ -931,6 +931,7 @@
   "investments_capital_return_preview": "Teruggave bekijken",
   "investments_capital_return_preview_title": "Verlaagde kostprijs",
   "investments_capital_return_effect": "Partij #{lot}: kostprijs verlaagd met {reduction} {currency}",
+  "investments_capital_return_effect_unknown": "Partij #{lot}: toegewezen {allocated} {currency}; vermindering van de kostprijs en overschot onbepaald (kostprijs onbekend).",
   "investments_capital_return_effect_excess": "Partij #{lot}: kostprijs verlaagd met {reduction} {currency}, {excess} {currency} daarboven onopgelost",
   "investments_capital_return_excess_note": "De kostprijs wordt nooit negatief. Het bedrag daarboven blijft onopgelost en wordt niet als inkomen geboekt; controleer hoe uw belastingregels het behandelen.",
   "investments_capital_return_submit": "Kapitaalteruggave vastleggen",

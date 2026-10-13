@@ -234,16 +234,18 @@ func TestUnknownOpeningWriterRefusesInventedAmountAndCurrencyJournalAtomically(t
 
 // Sales and transfers may consume an unknown opening (T-145); a write-off,
 // which has no unresolved-result contract, stays gated.
-func TestUnknownImmutableOpeningKeepsNonSaleDepletionsGated(t *testing.T) {
+func TestUnknownImmutableOpeningAdmitsWriteOffWithoutInventingLoss(t *testing.T) {
 	t.Parallel()
 	f := newInvestmentsTestFixture(t)
 	seedUnknownTransferOpening(t, f)
 	before := buyReplacementPreviewSnapshot(t, f.database)
 	writeOff := backdatedWriteOff(f, "2026-07-01", 1)
-	_, err := f.investmentService.PreviewWriteOff(context.Background(), writeOff)
-	require.ErrorContains(t, err, "basis is unknown")
+	preview, err := f.investmentService.PreviewWriteOff(context.Background(), writeOff)
+	require.NoError(t, err)
+	require.Equal(t, db.InvestmentBasisUnknown, preview.BasisKnowledge)
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
-	_, err = f.investmentService.WriteOff(context.Background(), writeOff)
-	require.ErrorContains(t, err, "basis is unknown")
-	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	result, err := f.investmentService.WriteOff(context.Background(), writeOff)
+	require.NoError(t, err)
+	require.Equal(t, db.InvestmentBasisUnknown, result.DisposalDecision.BasisKnowledge)
+	requireHealthyUnresolvedBook(t, f)
 }

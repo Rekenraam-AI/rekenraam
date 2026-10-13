@@ -64,8 +64,8 @@ func TestCashInLieuAPICorrectReverseAndReleaseSplitFence(t *testing.T) {
 	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, "/api/v1/investments/cash-in-lieu/preview", input, http.StatusOK)
 	var initialPreview cashInLieuPreviewResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&initialPreview))
-	require.Zero(t, exact.ScaledIntFromCoefficient(initialPreview.DisposedBasisValue, initialPreview.DisposedBasisScale).Cmp(exact.ScaledIntFromInt64(3333333, 6)))
-	require.Zero(t, exact.ScaledIntFromCoefficient(initialPreview.RealizedGainValue, initialPreview.RealizedGainScale).Cmp(exact.ScaledIntFromInt64(4666667, 6)))
+	require.Zero(t, exact.ScaledIntFromCoefficient(*initialPreview.DisposedBasisValue, *initialPreview.DisposedBasisScale).Cmp(exact.ScaledIntFromInt64(3333333, 6)))
+	require.Zero(t, exact.ScaledIntFromCoefficient(*initialPreview.RealizedGainValue, *initialPreview.RealizedGainScale).Cmp(exact.ScaledIntFromInt64(4666667, 6)))
 	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/cash-in-lieu", input, http.StatusCreated)
 	var posted investmentTradeResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&posted))

@@ -357,7 +357,9 @@
         <h3 id="capital-return-preview-title" class="text-sm font-semibold text-foreground">{m.investments_capital_return_preview_title()}</h3>
         <ul class="space-y-1 text-sm text-foreground">
           {#each preview.effects as effect (effect.lot_id)}
-            <li class="break-words">{coefficientSign(effect.excess_value) > 0
+            <li class="break-words">{effect.basis_knowledge === 'unknown' || effect.reduction_value === null || effect.reduction_scale === null || effect.excess_value === null || effect.excess_scale === null
+              ? m.investments_capital_return_effect_unknown({ lot: String(effect.lot_id), allocated: money(effect.allocated_value, effect.allocated_scale), currency: currency?.code ?? '' })
+              : coefficientSign(effect.excess_value) > 0
               ? m.investments_capital_return_effect_excess({ lot: String(effect.lot_id),
                 reduction: money(effect.reduction_value, effect.reduction_scale),
                 excess: money(effect.excess_value, effect.excess_scale), currency: currency?.code ?? '' })
@@ -365,7 +367,7 @@
                 reduction: money(effect.reduction_value, effect.reduction_scale), currency: currency?.code ?? '' })}</li>
           {/each}
         </ul>
-        {#if preview.effects.some((effect) => coefficientSign(effect.excess_value) > 0)}
+        {#if preview.effects.some((effect) => effect.excess_value !== null && coefficientSign(effect.excess_value) > 0)}
           <p class="text-xs text-muted" role="note">{m.investments_capital_return_excess_note()}</p>
         {/if}
       </section>

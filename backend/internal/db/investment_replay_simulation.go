@@ -239,7 +239,7 @@ func applyInvestmentReplayIntentTx(ctx context.Context, tx *sql.Tx, bookID, acco
 			CostBasisMethod: intent.CostBasisMethod, Allocations: intent.SpecificLots,
 			CreatedAt: intent.CreatedAt, ActorUserID: intent.CreatedByUserID,
 			MetadataJSON: "{}", PositionSide: side,
-			AdmitUnknownBasis: side == PositionSideLong && (intent.AdmitUnknownBasis || intent.OperationKind == "sell")}
+			AdmitUnknownBasis: side == PositionSideLong && (intent.AdmitUnknownBasis || intent.OperationKind == "sell" || intent.OperationKind == "write_off" || intent.OperationKind == "cash_in_lieu")}
 		if !intent.AmountValue.BigInt().IsInt64() {
 			return ErrInvestmentBasisRange
 		}

@@ -383,6 +383,13 @@ Goal: add power-user workflows after the core ledger is stable.
 - Market-data extensibility starts with built-in adapters for trusted sources,
   then declarative HTTP adapters for simple source mappings, and only later
   external process plugins for complex/community providers.
+- Write-off and cash-in-lieu quantities/proceeds remain recordable when basis
+  is unknown; basis and result remain NULL until sourced resolution. Return of
+  capital likewise preserves known receipt/entitlement with unresolved
+  reduction/excess, admitting independent known entitlement beside unknown lots
+  without inferring a rate from an unknown average pool. Resolution appends
+  effective revisions while preserving original evidence and all correction,
+  gain-review and reconciliation guards (the #169 non-sale contract).
 - Realized gain/loss reporting.
 - Reproducible investment reporting with an explicit as-of date, price-knowledge
   cutoff, basis profile, valuation/FX method, staleness policy, reporting currency,

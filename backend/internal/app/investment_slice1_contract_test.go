@@ -69,7 +69,7 @@ func TestInvestmentSlice1FreshAndSeededBundleContract(t *testing.T) {
 				} `json:"files"`
 			}
 			require.NoError(t, json.Unmarshal(files["manifest.json"], &manifest))
-			require.Equal(t, 10, manifest.SchemaVersion)
+			require.Equal(t, 11, manifest.SchemaVersion)
 			manifestRows := map[string]int64{}
 			for _, file := range manifest.Files {
 				manifestRows[file.Name] = file.Rows
@@ -95,9 +95,9 @@ func TestInvestmentSlice1FreshAndSeededBundleContract(t *testing.T) {
 				"investment-cash-in-lieu-facts.csv":                {"operation_id", "split_operation_id", "payment_on", "audit_event_id", "settled_operation_id"},
 				"investment-capital-return-entitlements.csv":       {"operation_id", "entitlement_seq", "lot_id", "quantity_value", "quantity_scale"},
 				"investment-capital-return-revisions.csv":          {"revision_id", "operation_id", "revision_seq", "caused_by_operation_id", "supersedes_revision_id", "created_at", "audit_event_id"},
-				"investment-capital-return-revision-effects.csv":   {"revision_id", "effect_seq", "lot_id", "entitled_quantity_value", "entitled_quantity_scale", "allocated_value", "allocated_scale", "reduction_value", "reduction_scale", "excess_value", "excess_scale"},
+				"investment-capital-return-revision-effects.csv":   {"revision_id", "effect_seq", "lot_id", "entitled_quantity_value", "entitled_quantity_scale", "allocated_value", "allocated_scale", "reduction_value", "reduction_scale", "excess_value", "excess_scale", "basis_knowledge"},
 				"investment-capital-return-facts.csv":              {"operation_id", "account_id", "commodity_id", "cost_commodity_id", "cash_account_id", "effective_on", "payment_on", "amount_value", "amount_scale", "entitlement_rule", "source_evidence_json", "audit_event_id"},
-				"investment-capital-return-effects.csv":            {"operation_id", "effect_seq", "lot_id", "lot_event_id", "entitled_quantity_value", "entitled_quantity_scale", "allocated_value", "allocated_scale", "reduction_value", "reduction_scale", "excess_value", "excess_scale"},
+				"investment-capital-return-effects.csv":            {"operation_id", "effect_seq", "lot_id", "lot_event_id", "entitled_quantity_value", "entitled_quantity_scale", "allocated_value", "allocated_scale", "reduction_value", "reduction_scale", "excess_value", "excess_scale", "basis_knowledge"},
 				"investment-split-revisions.csv":                   {"revision_id", "operation_id", "cost_commodity_id", "revision_seq", "caused_by_operation_id", "supersedes_revision_id", "created_at", "audit_event_id", "adjustment_transaction_version_id"},
 				"investment-split-revision-effects.csv":            {"revision_id", "effect_seq", "lot_id", "quantity_delta_value", "quantity_delta_scale"},
 				"investment-fee-policies.csv":                      {"policy_id", "account_id", "charge_kind", "created_at", "audit_event_id"},

@@ -3147,7 +3147,7 @@ func basisFitsInt64At(recorded []recordedBasis, scale int) bool {
 // and put a single position's projection rows back at mixed scales, which is
 // the state T-97 removed.
 func positionBasisAllocationScaleTx(ctx context.Context, tx *sql.Tx, params DisposeLotsParams) (int, error) {
-	// Unknown basis has no amount to split. A sale admitting it resolves the
+	// Unknown basis has no amount to split. An admitting command resolves the
 	// scale over the known lots; every other path still refuses on scan.
 	rows, err := tx.QueryContext(ctx, `
 		SELECT remaining_cost_basis_value, remaining_cost_basis_scale

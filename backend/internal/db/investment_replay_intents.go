@@ -37,8 +37,8 @@ type InvestmentReplayIntent struct {
 	// correction-root lineage is resolved from.
 	transferSource transferSourceOpening
 	DecisionID     int64 // disposal only
-	// AdmitUnknownBasis marks a proposed sale that has no operation kind yet;
-	// a committed sale is admitted by its kind (T-145).
+	// AdmitUnknownBasis marks a proposed long disposal without an operation kind;
+	// committed sales, write-offs and cash in lieu are admitted by kind (#169).
 	AdmitUnknownBasis bool
 	// QuantityValue is the opening, disposal or transfer quantity. For a split
 	// it is the signed holding delta the split's effective effects moved in

@@ -27185,12 +27185,14 @@ export interface components {
             gain_impact_acknowledgement?: string;
         } & (unknown | unknown);
         CashInLieuPreviewResponse: {
+            /** @enum {string} */
+            basis_knowledge: "known" | "unknown";
             /** @description Total exact basis of the fraction taken by the dated writer. */
-            disposed_basis_value: string;
-            disposed_basis_scale: number;
+            disposed_basis_value: string | null;
+            disposed_basis_scale: number | null;
             /** @description Signed proceeds minus disposed basis, computed on the server. */
-            realized_gain_value: string;
-            realized_gain_scale: number;
+            realized_gain_value: string | null;
+            realized_gain_scale: number | null;
             /** @enum {string} */
             cost_basis_method: "fifo" | "lifo" | "average_cost" | "specific_lot";
             allocations: components["schemas"]["InvestmentLotDisposalResponse"][];
@@ -27251,6 +27253,11 @@ export interface components {
             gain_impact_acknowledgement?: string;
         };
         CapitalReturnEffect: {
+            /**
+             * @description Unknown leaves reduction and excess amount pairs null; entitlement and allocation remain exact.
+             * @enum {string}
+             */
+            basis_knowledge: "known" | "unknown";
             /** Format: int64 */
             lot_id: number;
             entitled_quantity_value: string;
@@ -27259,11 +27266,11 @@ export interface components {
             allocated_value: string;
             allocated_scale: number;
             /** @description Minimum of allocated cash and eligible basis (proportional to entitled quantity for explicit_quantities). */
-            reduction_value: string;
-            reduction_scale: number;
+            reduction_value: string | null;
+            reduction_scale: number | null;
             /** @description Unresolved amount beyond the lot's basis; never income or negative basis. */
-            excess_value: string;
-            excess_scale: number;
+            excess_value: string | null;
+            excess_scale: number | null;
         };
         CapitalReturnResponse: {
             transaction: components["schemas"]["TransactionResponse"];

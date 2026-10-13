@@ -931,6 +931,7 @@
   "investments_capital_return_preview": "Предпросмотр возврата",
   "investments_capital_return_preview_title": "Уменьшение себестоимости",
   "investments_capital_return_effect": "Партия #{lot}: себестоимость уменьшена на {reduction} {currency}",
+  "investments_capital_return_effect_unknown": "Партия #{lot}: распределено {allocated} {currency}; уменьшение себестоимости и превышение не определены (себестоимость неизвестна).",
   "investments_capital_return_effect_excess": "Партия #{lot}: себестоимость уменьшена на {reduction} {currency}, {excess} {currency} сверх неё не определено",
   "investments_capital_return_excess_note": "Себестоимость не опускается ниже нуля. Сумма сверх неё остаётся неопределённой и не учитывается как доход; проверьте её налоговую трактовку.",
   "investments_capital_return_submit": "Записать возврат капитала",

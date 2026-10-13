@@ -1464,17 +1464,15 @@ func (s *InvestmentService) PreviewWriteOff(ctx context.Context, input Investmen
 	if err != nil {
 		return SellPreviewResult{}, err
 	}
-	disposedBasis := exact.NewScaledInt()
-	for _, disposal := range disposals {
-		disposedBasis.AddInt64(disposal.CostBasisValue, disposal.CostBasisScale)
-	}
-	// Proceeds are zero by definition, so the realized gain is the whole
-	// disposed basis as a loss.
+	disposedBasis, known := knownDisposedBasis(disposals)
 	gain := exact.NewScaledInt()
-	gain.SubScaled(disposedBasis)
-	gainValue, err := gain.Int64()
-	if err != nil {
-		return SellPreviewResult{}, LedgerOverflowError{CommodityID: input.CommodityID}
+	var gainValue int64
+	if known {
+		gain.SubScaled(disposedBasis)
+		gainValue, err = gain.Int64()
+		if err != nil {
+			return SellPreviewResult{}, LedgerOverflowError{CommodityID: input.CommodityID}
+		}
 	}
 	decision, err := previewDisposalDecision(input.asTradeInput(), method, source, disposals)
 	if err != nil {
@@ -1486,6 +1484,7 @@ func (s *InvestmentService) PreviewWriteOff(ctx context.Context, input Investmen
 		Allocations:       toInvestmentLotDisposals(disposals),
 		RealizedGain:      gainValue,
 		RealizedGainScale: gain.Scale(),
+		BasisKnowledge:    basisKnowledgeCode(known),
 		CashAmountValue:   0,
 		CashAmountScale:   0,
 	}, nil
@@ -1654,9 +1653,8 @@ func (s *InvestmentService) prepareSellWrite(ctx context.Context, input Investme
 		Allocations:     allocations,
 		CostBasisMethod: method,
 		DecisionSource:  source,
-		// Only a sale may leave its gain unresolved; a write-off or cash in
-		// lieu over unknown basis is refused until its own contract (T-145).
-		AdmitUnknownBasis: !input.WriteOff && !input.CashInLieu,
+		// Sales, write-offs and cash in lieu preserve unresolved results (#169).
+		AdmitUnknownBasis: true,
 		CreatedAt:         s.now().UTC().Format(time.RFC3339),
 		ActorUserID:       input.OwnerUserID,
 		AuthSessionID:     input.AuthSessionID,

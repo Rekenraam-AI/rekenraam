@@ -160,12 +160,13 @@ Every bounded #114 child is delivered; #114 is closed following the
 The audit found historical-entry and resolution-recovery gaps; these are
 separate R16 completion gates above, rather than reopening delivered children.
 
-**Later extensions and parallel trust follow-ups from that audit:** unresolved
-non-sale action results [#169](https://github.com/sergeyfarin/rekenraam/issues/169),
+**Later extensions and parallel trust follow-ups from that audit:**
 recorded return-of-capital excess visibility [#171](https://github.com/sergeyfarin/rekenraam/issues/171),
 and write-off mobile entry [#172](https://github.com/sergeyfarin/rekenraam/issues/172).
 These do not reopen #114/#160 or expand the bounded R16 completion bar;
-#171 can run alongside the ordered work, while #169/#172 remain later.
+#171 can run alongside the ordered work, while #172 remains later.
+Unresolved non-sale results [#169](https://github.com/sergeyfarin/rekenraam/issues/169)
+are delivered (2026-10-13); see the [non-sale contract](plans/investment-unresolved-non-sale-plan.md).
 Basis-resolution provenance declarations [#170](https://github.com/sergeyfarin/rekenraam/issues/170)
 are delivered (2026-10-13), with typed source entry and history. Provenance-only
 correction [#197](https://github.com/sergeyfarin/rekenraam/issues/197) is also

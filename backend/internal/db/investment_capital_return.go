@@ -19,7 +19,9 @@ import (
 // basis by min(r_i, basis_i). The rest, r_i − reduction_i, is an unresolved
 // excess: never negative basis, never income. Each effect is an immutable
 // replay output with a basis_reduction lot event; history that changes them
-// appends a revision of the whole effect set (T-148).
+// appends a revision of the whole effect set (T-148). With unknown basis,
+// allocation stays exact while reduction/excess and remaining basis stay NULL
+// until sourced resolution recomputes a revision (#169).
 
 var (
 	// ErrCapitalReturnNoHoldings means no lot is open on the effective date.
@@ -56,6 +58,8 @@ type CapitalReturnEntitlement struct {
 
 // CapitalReturnEffect is one entitled lot's share of the receipt.
 type CapitalReturnEffect struct {
+	// Unknown reduction and excess have paired NULL amounts in storage and APIs.
+	BasisKnowledge        string
 	LotID                 int64
 	EntitledQuantityValue exact.Coefficient
 	EntitledQuantityScale int
@@ -121,11 +125,12 @@ func capitalReturnEffectsTx(ctx context.Context, tx *sql.Tx, bookID, accountID, 
 		if lot.effect.EntitledQuantityValue.Sign() <= 0 || (len(named) > 0 && !named[lot.effect.LotID]) {
 			continue
 		}
-		// An unknown basis cannot yield a definitive reduction/excess split.
-		if knowledge != InvestmentBasisKnown || !basisValue.Valid || !basisScale.Valid {
+		value, scale, err := projectedBasis(basisValue, basisScale, knowledge)
+		if err != nil {
 			rows.Close()
-			return nil, ErrUnknownInvestmentBasis
+			return nil, err
 		}
+		lot.effect.BasisKnowledge = knowledge
 		lot.held = exact.ScaledIntFromCoefficient(lot.effect.EntitledQuantityValue, lot.effect.EntitledQuantityScale)
 		if entitlement, ok := fixed[lot.effect.LotID]; ok {
 			quantity := exact.ScaledIntFromCoefficient(entitlement.QuantityValue, entitlement.QuantityScale)
@@ -135,7 +140,9 @@ func capitalReturnEffectsTx(ctx context.Context, tx *sql.Tx, bookID, accountID, 
 			}
 			lot.effect.EntitledQuantityValue, lot.effect.EntitledQuantityScale = entitlement.QuantityValue, entitlement.QuantityScale
 		}
-		lot.basis = exact.ScaledIntFromInt64(basisValue.Int64, int(basisScale.Int64))
+		if knowledge == InvestmentBasisKnown {
+			lot.basis = exact.ScaledIntFromInt64(value, scale)
+		}
 		quantityScale = max(quantityScale, lot.effect.EntitledQuantityScale)
 		lots = append(lots, lot)
 	}
@@ -148,9 +155,21 @@ func capitalReturnEffectsTx(ctx context.Context, tx *sql.Tx, bookID, accountID, 
 	if len(lots) == 0 {
 		return nil, ErrCapitalReturnNoHoldings
 	}
+	var unknownPool bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS (
+		SELECT 1 FROM investment_position_basis_state p
+		WHERE p.book_id = ? AND p.account_id = ? AND p.commodity_id = ? AND p.cost_commodity_id = ?
+			AND p.position_side = 'long' AND p.method_family = 'average_cost'
+			AND EXISTS (SELECT 1 FROM current_investment_lots l WHERE l.book_id = p.book_id
+				AND l.account_id = p.account_id AND l.commodity_id = p.commodity_id
+				AND l.cost_commodity_id = p.cost_commodity_id AND l.position_side = 'long'
+				AND l.status = 'open' AND l.opened_on <= ? AND l.basis_knowledge = 'unknown'))`,
+		bookID, accountID, commodityID, costCommodityID, effectiveOn).Scan(&unknownPool); err != nil {
+		return nil, fmt.Errorf("read return of capital pool knowledge: %w", err)
+	}
 	allocationScale, err := positionBasisAllocationScaleTx(ctx, tx, DisposeLotsParams{
 		BookID: bookID, AccountID: accountID, CommodityID: commodityID,
-		CostCommodityID: costCommodityID, EventDate: effectiveOn,
+		CostCommodityID: costCommodityID, EventDate: effectiveOn, AdmitUnknownBasis: true,
 	})
 	if err != nil {
 		return nil, err
@@ -181,6 +200,22 @@ func capitalReturnEffectsTx(ctx context.Context, tx *sql.Tx, bookID, accountID, 
 			allocatedSoFar.Add(allocatedSoFar, share)
 		}
 		allocated := exact.ScaledIntFromBig(share, allocationScale)
+		effect := lot.effect
+		var err error
+		if effect.AllocatedValue, err = allocated.Coefficient(); err != nil {
+			// Deepening an integer receipt may exceed 38 digits solely in
+			// trailing zeros. Keep the exact normalized representation then.
+			allocated = allocated.Normalized()
+			if effect.AllocatedValue, err = allocated.Coefficient(); err != nil {
+				return nil, fmt.Errorf("%w: return of capital allocation exceeds coefficient range", ErrInvestmentBasisRange)
+			}
+		}
+		effect.AllocatedScale = allocated.Scale()
+		if effect.BasisKnowledge == InvestmentBasisUnknown || unknownPool {
+			effect.BasisKnowledge = InvestmentBasisUnknown
+			effects = append(effects, effect)
+			continue
+		}
 		cap := lot.basis
 		if _, ok := fixed[lot.effect.LotID]; ok {
 			// Only the named units' proportional basis is eligible for reduction.
@@ -203,17 +238,6 @@ func capitalReturnEffectsTx(ctx context.Context, tx *sql.Tx, bookID, accountID, 
 		excess.SubScaled(reduction)
 		newBasis := exact.ScaledIntFromBig(lot.basis.BigInt(), lot.basis.Scale())
 		newBasis.SubScaled(reduction)
-		effect := lot.effect
-		var err error
-		if effect.AllocatedValue, err = allocated.Coefficient(); err != nil {
-			// Deepening an integer receipt may exceed 38 digits solely in
-			// trailing zeros. Keep the exact normalized representation then.
-			allocated = allocated.Normalized()
-			if effect.AllocatedValue, err = allocated.Coefficient(); err != nil {
-				return nil, fmt.Errorf("%w: return of capital allocation exceeds coefficient range", ErrInvestmentBasisRange)
-			}
-		}
-		effect.AllocatedScale = allocated.Scale()
 		normalizedReduction := reduction.Normalized()
 		if effect.ReductionValue, err = normalizedReduction.Coefficient(); err != nil {
 			return nil, err
@@ -234,15 +258,20 @@ func capitalReturnEffectsTx(ctx context.Context, tx *sql.Tx, bookID, accountID, 
 func applyCapitalReturnEffectsTx(ctx context.Context, tx *sql.Tx, bookID int64, effects []CapitalReturnEffect,
 	at string, actorUserID, auditEventID int64) error {
 	for _, effect := range effects {
-		basis, err := effect.newBasis.Int64()
-		if err != nil || basis < 0 {
-			return ErrInvestmentBasisRange
+		var basisValue, basisScale any
+		knowledge := normalizedBasisKnowledge(effect.BasisKnowledge)
+		if knowledge == InvestmentBasisKnown {
+			basis, err := effect.newBasis.Int64()
+			if err != nil || basis < 0 {
+				return ErrInvestmentBasisRange
+			}
+			basisValue, basisScale = basis, effect.newBasis.Scale()
 		}
 		result, err := tx.ExecContext(ctx, `UPDATE investment_lot_state
-			SET remaining_cost_basis_value = ?, remaining_cost_basis_scale = ?,
+			SET remaining_cost_basis_value = ?, remaining_cost_basis_scale = ?, basis_knowledge = ?,
 				updated_at = ?, updated_by_user_id = ?, updated_audit_event_id = NULLIF(?, 0)
-			WHERE lot_id = ? AND book_id = ? AND status = 'open' AND basis_knowledge = 'known'`,
-			basis, effect.newBasis.Scale(), at, actorUserID, auditEventID, effect.LotID, bookID)
+			WHERE lot_id = ? AND book_id = ? AND status = 'open'`,
+			basisValue, basisScale, knowledge, at, actorUserID, auditEventID, effect.LotID, bookID)
 		if err != nil {
 			return fmt.Errorf("reduce lot %d basis: %w", effect.LotID, err)
 		}
@@ -264,11 +293,12 @@ func sameCapitalReturnEffects(replayed, recorded []CapitalReturnEffect) bool {
 	}
 	for index := range replayed {
 		r, c := replayed[index], recorded[index]
-		if r.LotID != c.LotID ||
+		if normalizedBasisKnowledge(r.BasisKnowledge) != normalizedBasisKnowledge(c.BasisKnowledge) || r.LotID != c.LotID ||
 			!equal(r.EntitledQuantityValue, r.EntitledQuantityScale, c.EntitledQuantityValue, c.EntitledQuantityScale) ||
 			!equal(r.AllocatedValue, r.AllocatedScale, c.AllocatedValue, c.AllocatedScale) ||
-			!equal(r.ReductionValue, r.ReductionScale, c.ReductionValue, c.ReductionScale) ||
-			!equal(r.ExcessValue, r.ExcessScale, c.ExcessValue, c.ExcessScale) {
+			(normalizedBasisKnowledge(r.BasisKnowledge) == InvestmentBasisKnown &&
+				(!equal(r.ReductionValue, r.ReductionScale, c.ReductionValue, c.ReductionScale) ||
+					!equal(r.ExcessValue, r.ExcessScale, c.ExcessValue, c.ExcessScale))) {
 			return false
 		}
 	}
@@ -388,16 +418,19 @@ func writeCapitalReturnTx(ctx context.Context, tx *sql.Tx, journal CreateTransac
 		return CapitalReturnResult{}, fmt.Errorf("record return of capital effective date: %w", err)
 	}
 	for index, effect := range effects {
-		reduction := exact.ScaledIntFromCoefficient(effect.ReductionValue, effect.ReductionScale).Negated()
-		reductionValue, err := reduction.Coefficient()
-		if err != nil {
-			return CapitalReturnResult{}, err
+		var reductionValue exact.Coefficient
+		if effect.BasisKnowledge == InvestmentBasisKnown {
+			var err error
+			reductionValue, err = exact.ScaledIntFromCoefficient(effect.ReductionValue, effect.ReductionScale).Negated().Coefficient()
+			if err != nil {
+				return CapitalReturnResult{}, err
+			}
 		}
 		result, err := tx.ExecContext(ctx, `INSERT INTO investment_lot_events (
 			book_id, lot_id, event_kind, transaction_id, event_date, quantity_value, quantity_scale,
-			cost_basis_value, cost_basis_scale, metadata_json, created_at, created_by_user_id, created_audit_event_id
-		) VALUES (?, ?, 'basis_reduction', ?, ?, '0', 0, ?, ?, '{}', ?, ?, ?)`,
-			params.BookID, effect.LotID, transaction.ID, params.EffectiveOn, reductionValue, reduction.Scale(),
+			cost_basis_value, cost_basis_scale, basis_knowledge, metadata_json, created_at, created_by_user_id, created_audit_event_id
+		) VALUES (?, ?, 'basis_reduction', ?, ?, '0', 0, ?, ?, ?, '{}', ?, ?, ?)`,
+			params.BookID, effect.LotID, transaction.ID, params.EffectiveOn, nullableCapitalReturnAmount(reductionValue, effect.BasisKnowledge), nullableBasisScale(effect.ReductionScale, effect.BasisKnowledge), normalizedBasisKnowledge(effect.BasisKnowledge),
 			journal.CreatedAt, journal.ActorUserID, auditEventID)
 		if err != nil {
 			return CapitalReturnResult{}, fmt.Errorf("record basis reduction for lot %d: %w", effect.LotID, err)
@@ -412,11 +445,11 @@ func writeCapitalReturnTx(ctx context.Context, tx *sql.Tx, journal CreateTransac
 		if _, err := tx.ExecContext(ctx, `INSERT INTO investment_capital_return_effects
 			(operation_id, effect_seq, book_id, lot_id, lot_event_id,
 			 entitled_quantity_value, entitled_quantity_scale, allocated_value, allocated_scale,
-			 reduction_value, reduction_scale, excess_value, excess_scale)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 reduction_value, reduction_scale, excess_value, excess_scale, basis_knowledge)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			operationID, index+1, params.BookID, effect.LotID, eventID,
 			effect.EntitledQuantityValue, effect.EntitledQuantityScale, effect.AllocatedValue, effect.AllocatedScale,
-			effect.ReductionValue, effect.ReductionScale, effect.ExcessValue, effect.ExcessScale); err != nil {
+			nullableCapitalReturnAmount(effect.ReductionValue, effect.BasisKnowledge), nullableBasisScale(effect.ReductionScale, effect.BasisKnowledge), nullableCapitalReturnAmount(effect.ExcessValue, effect.BasisKnowledge), nullableBasisScale(effect.ExcessScale, effect.BasisKnowledge), normalizedBasisKnowledge(effect.BasisKnowledge)); err != nil {
 			return CapitalReturnResult{}, fmt.Errorf("record return of capital effect: %w", err)
 		}
 	}
@@ -434,8 +467,8 @@ func writeCapitalReturnTx(ctx context.Context, tx *sql.Tx, journal CreateTransac
 		journal.ActorUserID, auditEventID); err != nil {
 		return CapitalReturnResult{}, err
 	}
-	if err := requirePositionBasisRangeTx(ctx, tx, params.BookID, params.AccountID, params.CommodityID,
-		params.CostCommodityID); err != nil {
+	if err := requirePositionBasisRangeQueryTx(ctx, tx, params.BookID, params.AccountID, params.CommodityID,
+		params.CostCommodityID, true, PositionSideLong); err != nil {
 		return CapitalReturnResult{}, err
 	}
 	return CapitalReturnResult{Effects: effects}, nil
@@ -497,7 +530,7 @@ func capitalReturnIntentsQuery(ctx context.Context, reader queryer, bookID, acco
 func effectiveCapitalReturnEffectsQuery(ctx context.Context, reader queryer, operationID int64) ([]CapitalReturnEffect, int64, error) {
 	var revisionID int64
 	query := `SELECT lot_id, entitled_quantity_value, entitled_quantity_scale, allocated_value, allocated_scale,
-		reduction_value, reduction_scale, excess_value, excess_scale
+		reduction_value, reduction_scale, excess_value, excess_scale, basis_knowledge
 		FROM investment_capital_return_effects WHERE operation_id = ? ORDER BY effect_seq`
 	args := []any{operationID}
 	revisions, err := reader.QueryContext(ctx, `SELECT id FROM latest_investment_capital_return_revisions
@@ -516,7 +549,7 @@ func effectiveCapitalReturnEffectsQuery(ctx context.Context, reader queryer, ope
 	}
 	if revisionID > 0 {
 		query = `SELECT lot_id, entitled_quantity_value, entitled_quantity_scale, allocated_value, allocated_scale,
-			reduction_value, reduction_scale, excess_value, excess_scale
+			reduction_value, reduction_scale, excess_value, excess_scale, basis_knowledge
 			FROM investment_capital_return_revision_effects WHERE revision_id = ? ORDER BY effect_seq`
 		args = []any{revisionID}
 	}
@@ -528,10 +561,18 @@ func effectiveCapitalReturnEffectsQuery(ctx context.Context, reader queryer, ope
 	var effects []CapitalReturnEffect
 	for rows.Next() {
 		var effect CapitalReturnEffect
+		var reduction, excess sql.NullString
+		var reductionScale, excessScale sql.NullInt64
 		if err := rows.Scan(&effect.LotID, &effect.EntitledQuantityValue, &effect.EntitledQuantityScale,
-			&effect.AllocatedValue, &effect.AllocatedScale, &effect.ReductionValue, &effect.ReductionScale,
-			&effect.ExcessValue, &effect.ExcessScale); err != nil {
+			&effect.AllocatedValue, &effect.AllocatedScale, &reduction, &reductionScale,
+			&excess, &excessScale, &effect.BasisKnowledge); err != nil {
 			return nil, 0, fmt.Errorf("scan return of capital effect: %w", err)
+		}
+		if effect.ReductionValue, effect.ReductionScale, err = capitalReturnAmount(reduction, reductionScale, effect.BasisKnowledge); err != nil {
+			return nil, 0, err
+		}
+		if effect.ExcessValue, effect.ExcessScale, err = capitalReturnAmount(excess, excessScale, effect.BasisKnowledge); err != nil {
+			return nil, 0, err
 		}
 		effects = append(effects, effect)
 	}
@@ -576,10 +617,10 @@ func persistCapitalReturnRevisionTx(ctx context.Context, tx *sql.Tx, bookID, cau
 	for index, effect := range revision.Effects {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO investment_capital_return_revision_effects
 			(revision_id, effect_seq, book_id, lot_id, entitled_quantity_value, entitled_quantity_scale,
-			 allocated_value, allocated_scale, reduction_value, reduction_scale, excess_value, excess_scale)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, revisionID, index+1, bookID, effect.LotID,
+			 allocated_value, allocated_scale, reduction_value, reduction_scale, excess_value, excess_scale, basis_knowledge)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, revisionID, index+1, bookID, effect.LotID,
 			effect.EntitledQuantityValue, effect.EntitledQuantityScale, effect.AllocatedValue, effect.AllocatedScale,
-			effect.ReductionValue, effect.ReductionScale, effect.ExcessValue, effect.ExcessScale); err != nil {
+			nullableCapitalReturnAmount(effect.ReductionValue, effect.BasisKnowledge), nullableBasisScale(effect.ReductionScale, effect.BasisKnowledge), nullableCapitalReturnAmount(effect.ExcessValue, effect.BasisKnowledge), nullableBasisScale(effect.ExcessScale, effect.BasisKnowledge), normalizedBasisKnowledge(effect.BasisKnowledge)); err != nil {
 			return fmt.Errorf("append return of capital revision effect: %w", err)
 		}
 	}
@@ -838,4 +879,25 @@ func (r *InvestmentRepository) CapitalReturnTerms(ctx context.Context, bookID, o
 		}
 	}
 	return CreateCapitalReturnParams{}, ErrNotFound
+}
+
+func nullableCapitalReturnAmount(value exact.Coefficient, knowledge string) any {
+	if knowledge == InvestmentBasisUnknown {
+		return nil
+	}
+	return value
+}
+
+func capitalReturnAmount(value sql.NullString, scale sql.NullInt64, knowledge string) (exact.Coefficient, int, error) {
+	if knowledge == InvestmentBasisUnknown && !value.Valid && !scale.Valid {
+		return "", 0, nil
+	}
+	if knowledge != InvestmentBasisKnown || !value.Valid || !scale.Valid {
+		return "", 0, fmt.Errorf("invalid capital return knowledge/amount pair")
+	}
+	parsed, err := exact.Parse(value.String)
+	if err != nil || parsed.Sign() < 0 {
+		return "", 0, fmt.Errorf("invalid capital return amount")
+	}
+	return parsed, int(scale.Int64), nil
 }

@@ -248,12 +248,20 @@ When a feature introduces a durable new rule, update one of those documents in t
   read as one tuple and never filled from the original snapshot. Read models
   that cannot yet present an unresolved result refuse with
   `ErrUnknownInvestmentBasis`; they never read unknown as zero.
-- Only a sale or an in-kind transfer may consume unknown basis (`AdmitUnknownBasis`). A sale's gain is
-  unresolved: NULL basis and gain with `basis_knowledge` on every result, and
-  a currency's realized total is NULL while any entry in it is unresolved.
-  An average pool holding unknown basis has no rate, so every disposal from it
-  is unresolved. Every other depletion refuses unknown basis until it has its
-  own unresolved-result contract.
+- Sales, write-offs, cash in lieu and in-kind transfers may consume unknown
+  basis (`AdmitUnknownBasis`). Disposal basis and result are NULL when any
+  allocation is unknown; independently known allocations remain numeric and
+  quantity/proceeds remain exact. A currency's realized total is NULL while
+  any entry in it is unresolved. An average pool holding unknown basis has no
+  rate, so every disposal from it is unresolved.
+- Return-of-capital entitlement and receipt allocation stay exact while an
+  unknown effect has paired NULL reduction/excess amounts and leaves remaining
+  basis unknown. Explicit entitlement to an independently known lot can remain
+  known beside unrelated unknown lots. An established unknown average pool
+  cannot supply a rate from a known subset. Sourced resolution appends revised
+  calculations without changing original evidence; native correction and
+  withdrawal preserve those knowledge transitions. See the
+  [#169 contract](plans/investment-unresolved-non-sale-plan.md).
 - Unknown inbound basis is stated, never inferred: `basis_knowledge: unknown`
   with no amount posts security legs only. A form or prefill must show unknown,
   never a known zero.

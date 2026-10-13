@@ -931,6 +931,7 @@
   "investments_capital_return_preview": "Previsualizar devolución",
   "investments_capital_return_preview_title": "Coste de adquisición reducido",
   "investments_capital_return_effect": "Lote #{lot}: coste de adquisición reducido en {reduction} {currency}",
+  "investments_capital_return_effect_unknown": "Lote #{lot}: asignados {allocated} {currency}; reducción del coste de adquisición y exceso pendientes (coste de adquisición desconocido).",
   "investments_capital_return_effect_excess": "Lote #{lot}: coste de adquisición reducido en {reduction} {currency}, {excess} {currency} por encima sin resolver",
   "investments_capital_return_excess_note": "El coste de adquisición nunca baja de cero. El importe que lo supera queda sin resolver y no se contabiliza como ingreso; compruebe cómo lo tratan sus normas fiscales.",
   "investments_capital_return_submit": "Registrar devolución de capital",

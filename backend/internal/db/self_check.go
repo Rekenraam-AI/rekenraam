@@ -1118,8 +1118,8 @@ type SelfCheckCapitalReturn struct {
 func (r *SelfCheckRepository) SelfCheckCapitalReturns(ctx context.Context, transaction *sql.Tx, bookID int64) ([]SelfCheckCapitalReturn, error) {
 	rows, err := transaction.QueryContext(ctx, `
 		SELECT f.operation_id, 0 AS revision_id, f.amount_value, f.amount_scale, COALESCE(e.allocated_value, '0'), COALESCE(e.allocated_scale, 0),
-			COALESCE(e.reduction_value, '0'), COALESCE(e.reduction_scale, 0), COALESCE(e.excess_value, '0'), COALESCE(e.excess_scale, 0),
-			COALESCE(ev.cost_basis_value, '0'), COALESCE(ev.cost_basis_scale, 0), e.lot_id IS NULL OR ev.id IS NULL
+			e.reduction_value, e.reduction_scale, e.excess_value, e.excess_scale,
+			ev.cost_basis_value, ev.cost_basis_scale, e.basis_knowledge, ev.basis_knowledge, e.lot_id IS NULL OR ev.id IS NULL
 		FROM investment_capital_return_facts f
 		LEFT JOIN investment_capital_return_effects e ON e.operation_id = f.operation_id
 		LEFT JOIN investment_lot_events ev ON ev.id = e.lot_event_id
@@ -1128,8 +1128,8 @@ func (r *SelfCheckRepository) SelfCheckCapitalReturns(ctx context.Context, trans
 		-- A revised return has no lot events for its effects: the event check
 		-- compares the reduction with itself.
 		SELECT f.operation_id, revision.id AS revision_id, f.amount_value, f.amount_scale, COALESCE(e.allocated_value, '0'), COALESCE(e.allocated_scale, 0),
-			COALESCE(e.reduction_value, '0'), COALESCE(e.reduction_scale, 0), COALESCE(e.excess_value, '0'), COALESCE(e.excess_scale, 0),
-			CASE WHEN e.reduction_value = '0' THEN '0' ELSE '-' || COALESCE(e.reduction_value, '0') END, COALESCE(e.reduction_scale, 0), e.lot_id IS NULL
+			e.reduction_value, e.reduction_scale, e.excess_value, e.excess_scale,
+			CASE WHEN e.reduction_value = '0' THEN '0' ELSE '-' || e.reduction_value END, e.reduction_scale, e.basis_knowledge, e.basis_knowledge, e.lot_id IS NULL
 		FROM investment_capital_return_facts f
 		JOIN investment_capital_return_revisions revision ON revision.operation_id = f.operation_id
 		LEFT JOIN investment_capital_return_revision_effects e ON e.revision_id = revision.id
@@ -1144,10 +1144,12 @@ func (r *SelfCheckRepository) SelfCheckCapitalReturns(ctx context.Context, trans
 	for rows.Next() {
 		var operationID, revisionID int64
 		var missing bool
-		var amount, allocated, reduction, excess, event exact.Coefficient
-		var amountScale, allocatedScale, reductionScale, excessScale, eventScale int
+		var amount, allocated exact.Coefficient
+		var amountScale, allocatedScale int
+		var reduction, excess, event, knowledge, eventKnowledge sql.NullString
+		var reductionScale, excessScale, eventScale sql.NullInt64
 		if err := rows.Scan(&operationID, &revisionID, &amount, &amountScale, &allocated, &allocatedScale,
-			&reduction, &reductionScale, &excess, &excessScale, &event, &eventScale, &missing); err != nil {
+			&reduction, &reductionScale, &excess, &excessScale, &event, &eventScale, &knowledge, &eventKnowledge, &missing); err != nil {
 			return nil, fmt.Errorf("scan self-check return of capital: %w", err)
 		}
 		if len(returns) == 0 || returns[len(returns)-1].OperationID != operationID || priorRevisionID != revisionID {
@@ -1157,10 +1159,20 @@ func (r *SelfCheckRepository) SelfCheckCapitalReturns(ctx context.Context, trans
 		}
 		current := &returns[len(returns)-1]
 		current.Allocated.AddCoefficient(allocated, allocatedScale)
-		parts := exact.ScaledIntFromCoefficient(reduction, reductionScale)
-		parts.AddCoefficient(excess, excessScale)
-		if missing || parts.Cmp(exact.ScaledIntFromCoefficient(allocated, allocatedScale)) != 0 ||
-			exact.ScaledIntFromCoefficient(event, eventScale).Cmp(exact.ScaledIntFromCoefficient(reduction, reductionScale).Negated()) != 0 {
+		r, rs, reductionErr := capitalReturnAmount(reduction, reductionScale, knowledge.String)
+		x, xs, excessErr := capitalReturnAmount(excess, excessScale, knowledge.String)
+		ev, es, eventErr := revisionBasis(event, eventScale, eventKnowledge.String)
+		if missing || reductionErr != nil || excessErr != nil || eventErr != nil || knowledge.String != eventKnowledge.String {
+			current.Mismatched = true
+			continue
+		}
+		if knowledge.String == InvestmentBasisUnknown {
+			continue // Allocation conservation remains checked; reduction/excess are unresolved.
+		}
+		parts := exact.ScaledIntFromCoefficient(r, rs)
+		parts.AddCoefficient(x, xs)
+		if parts.Cmp(exact.ScaledIntFromCoefficient(allocated, allocatedScale)) != 0 ||
+			exact.ScaledIntFromInt64(ev, es).Cmp(exact.ScaledIntFromCoefficient(r, rs).Negated()) != 0 {
 			current.Mismatched = true
 		}
 	}
