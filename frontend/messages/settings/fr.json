@@ -1526,5 +1526,21 @@
   "investments_roc_revision_cause": "Révisé par l’opération #{operation}",
   "investments_roc_open_receipt": "Ouvrir la transaction de réception",
   "investments_roc_period_note": "Utilise la période de paiement sélectionnée. Les allocations effectives sont présentées séparément des gains de cession.",
-  "investments_roc_empty": "Aucun remboursement de capital effectif dans cette période de paiement."
+  "investments_roc_empty": "Aucun remboursement de capital effectif dans cette période de paiement.",
+  "investments_record_write_off": "Enregistrer une dépréciation",
+  "investments_write_off_title": "Enregistrer une dépréciation",
+  "investments_write_off_help": "Retirez les titres sans valeur sans paiement en espèces. Vérifiez la perte calculée par le serveur avant l’enregistrement.",
+  "investments_write_off_choose_date": "Choisissez une date pour voir les positions et les lots disponibles à cette date.",
+  "investments_write_off_empty": "Aucune position longue n’est disponible à cette date.",
+  "investments_write_off_available": "Disponible à cette date : {quantity}",
+  "investments_write_off_lot": "Lot nº {lot} · {date} · disponible : {quantity}",
+  "investments_write_off_quantity_error": "Saisissez une quantité positive respectant la précision de l’instrument.",
+  "investments_write_off_preview_title": "Aperçu de la dépréciation",
+  "investments_write_off_preview": "Prévisualiser la dépréciation",
+  "investments_write_off_result": "Résultat réalisé : {result} {currency}",
+  "investments_write_off_unresolved_help": "Le prix de revient est inconnu. La perte reste indéterminée jusqu’à l’enregistrement d’un coût documenté.",
+  "investments_write_off_success": "Dépréciation enregistrée.",
+  "investments_write_off_lots_help": "Répartissez la quantité totale à déprécier entre les lots disponibles à la date choisie.",
+  "investments_write_off_lot_mismatch": "Les quantités des lots sélectionnés doivent égaler la quantité à déprécier.",
+  "investments_write_off_exceeds": "La quantité dépasse la position ou le lot disponible à la date choisie."
 }

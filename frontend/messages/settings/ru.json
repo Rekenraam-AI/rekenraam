@@ -1526,5 +1526,21 @@
   "investments_roc_revision_cause": "Пересмотрено операцией №{operation}",
   "investments_roc_open_receipt": "Открыть транзакцию выплаты",
   "investments_roc_period_note": "Используется выбранный период по датам выплат. Действующие распределения показаны отдельно от прибыли при выбытии.",
-  "investments_roc_empty": "За этот период выплат нет действующих возвратов капитала."
+  "investments_roc_empty": "За этот период выплат нет действующих возвратов капитала.",
+  "investments_record_write_off": "Записать списание",
+  "investments_write_off_title": "Записать списание",
+  "investments_write_off_help": "Спишите обесценившиеся единицы без денежного платежа. Проверьте рассчитанный сервером убыток перед записью.",
+  "investments_write_off_choose_date": "Выберите дату, чтобы увидеть доступные на тот момент позиции и лоты.",
+  "investments_write_off_empty": "На эту дату нет доступных длинных позиций.",
+  "investments_write_off_available": "Доступно на эту дату: {quantity}",
+  "investments_write_off_lot": "Партия № {lot} · {date} · доступно: {quantity}",
+  "investments_write_off_quantity_error": "Введите положительное количество в пределах точности инструмента.",
+  "investments_write_off_preview_title": "Предпросмотр списания",
+  "investments_write_off_preview": "Предпросмотр списания",
+  "investments_write_off_result": "Реализованный результат: {result} {currency}",
+  "investments_write_off_unresolved_help": "Себестоимость неизвестна. Убыток остаётся неопределённым до записи себестоимости с указанием источника.",
+  "investments_write_off_success": "Списание записано.",
+  "investments_write_off_lots_help": "Распределите всё списываемое количество по партиям, доступным на выбранную дату.",
+  "investments_write_off_lot_mismatch": "Сумма выбранных количеств по партиям должна равняться списываемому количеству.",
+  "investments_write_off_exceeds": "Количество превышает доступную на выбранную дату позицию или партию."
 }

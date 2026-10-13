@@ -14,6 +14,30 @@ Independently known allocations remain numeric. Average cost consumes an
 unknown pool without a definitive rate, exactly as an unresolved sale does.
 Closing the quantity does not relabel historical basis or loss as known zero.
 
+**Creation surface (#172, delivered 2026-10-13).** The portfolio offers
+"Record write-off" in a native dialog with keyboard focus containment, Escape
+cancellation and focus restoration. A deliberate entry date selects the
+composed dated long holdings and lot quantities, including positions sold
+since. The user enters a positive quantity, required worthless-holding reason,
+and holding-default or explicit FIFO/LIFO/average/specific-lot method. Explicit
+elections must sum to the entered quantity and fit the dated availability.
+No cash account, proceeds or ordinary-sale workaround is offered.
+
+The loss and lot allocations come from the actual write-off writer preview.
+Unknown basis is shown as an unresolved result with an explanation, never a
+zero or partial loss. A separate writer impact preview supplies the shared
+gain/checkpoint confirmation. Cancellation leaves durable state unchanged;
+a stale gain acknowledgement re-previews and asks for acceptance of the current
+set. Editing entry fields discards the preview. Success announces completion
+and invalidates investment, register and forecast reads. All states and copy
+are present in six locales; named 390 px browser cases cover exact known loss,
+specific lots, historical disclosure/refusal, checkpoints and unresolved loss.
+
+The pre-existing request cannot pin a cost currency for a holding whose lots
+span currencies. Such previews refuse atomically; [#199](https://github.com/sergeyfarin/rekenraam/issues/199)
+owns adding the selector across API, writer and creation/correction surfaces.
+It is retained independently of #172's bounded entry delivery.
+
 ## Cash in lieu
 
 A fractional settlement can consume unknown basis. Its pinned split, exchange,
@@ -95,8 +119,9 @@ effect files, with blank unresolved reduction/excess amounts. Existing disposal
 exports retain NULL knowledge through blank basis amounts. SQLite backup and
 restore retain both original evidence and effective revisions. Six-locale
 previews label unresolved results and keep exact cash/entitlement visible;
-write-off gains use the existing six-locale gains display. The separate
-write-off entry surface remains [#172](https://github.com/sergeyfarin/rekenraam/issues/172).
+write-off gains use the existing six-locale gains display. The
+[#172](https://github.com/sergeyfarin/rekenraam/issues/172) entry surface also
+previews and records unresolved write-offs in all six locales.
 
 ## Validation
 

@@ -1526,5 +1526,21 @@
   "investments_roc_revision_cause": "Überarbeitet durch Vorgang #{operation}",
   "investments_roc_open_receipt": "Eingangstransaktion öffnen",
   "investments_roc_period_note": "Verwendet den ausgewählten Zahlungszeitraum. Wirksame Zuteilungen werden getrennt von Veräußerungsgewinnen angezeigt.",
-  "investments_roc_empty": "Keine wirksamen Kapitalrückzahlungen in diesem Zahlungszeitraum."
+  "investments_roc_empty": "Keine wirksamen Kapitalrückzahlungen in diesem Zahlungszeitraum.",
+  "investments_record_write_off": "Abschreibung erfassen",
+  "investments_write_off_title": "Eine Abschreibung erfassen",
+  "investments_write_off_help": "Buchen Sie wertlose Stücke ohne Barzahlung aus. Prüfen Sie den vom Server berechneten Verlust vor der Erfassung.",
+  "investments_write_off_choose_date": "Wählen Sie ein Datum, um die damals verfügbaren Bestände und Lose zu sehen.",
+  "investments_write_off_empty": "Für dieses Datum sind keine Longpositionen verfügbar.",
+  "investments_write_off_available": "An diesem Datum verfügbar: {quantity}",
+  "investments_write_off_lot": "Posten Nr. {lot} · {date} · verfügbar: {quantity}",
+  "investments_write_off_quantity_error": "Geben Sie eine positive Stückzahl innerhalb der Genauigkeit des Instruments ein.",
+  "investments_write_off_preview_title": "Abschreibungsvorschau",
+  "investments_write_off_preview": "Abschreibung prüfen",
+  "investments_write_off_result": "Realisiertes Ergebnis: {result} {currency}",
+  "investments_write_off_unresolved_help": "Die Anschaffungskosten sind unbekannt. Der Verlust bleibt unbestimmt, bis belegte Anschaffungskosten erfasst werden.",
+  "investments_write_off_success": "Abschreibung erfasst.",
+  "investments_write_off_lots_help": "Verteilen Sie die gesamte abzuschreibende Stückzahl auf die am gewählten Datum verfügbaren Posten.",
+  "investments_write_off_lot_mismatch": "Die ausgewählten Stückzahlen müssen der abzuschreibenden Stückzahl entsprechen.",
+  "investments_write_off_exceeds": "Die Stückzahl übersteigt den am gewählten Datum verfügbaren Bestand oder Posten."
 }

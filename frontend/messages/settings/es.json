@@ -1526,5 +1526,21 @@
   "investments_roc_revision_cause": "Revisado por la operación #{operation}",
   "investments_roc_open_receipt": "Abrir la transacción del cobro",
   "investments_roc_period_note": "Usa el intervalo de fechas de pago seleccionado. Las asignaciones vigentes se muestran por separado de las ganancias por venta.",
-  "investments_roc_empty": "No hay devoluciones de capital vigentes en este intervalo de fechas de pago."
+  "investments_roc_empty": "No hay devoluciones de capital vigentes en este intervalo de fechas de pago.",
+  "investments_record_write_off": "Registrar baja",
+  "investments_write_off_title": "Registrar una baja",
+  "investments_write_off_help": "Retira unidades sin valor sin un pago en efectivo. Revisa la pérdida calculada por el servidor antes de registrar.",
+  "investments_write_off_choose_date": "Elige una fecha para ver las posiciones y los lotes disponibles entonces.",
+  "investments_write_off_empty": "No hay posiciones largas disponibles en esta fecha.",
+  "investments_write_off_available": "Disponible en esta fecha: {quantity}",
+  "investments_write_off_lot": "Lote n.º {lot} · {date} · disponible: {quantity}",
+  "investments_write_off_quantity_error": "Introduce una cantidad positiva dentro de la precisión del instrumento.",
+  "investments_write_off_preview_title": "Vista previa de la baja",
+  "investments_write_off_preview": "Previsualizar baja",
+  "investments_write_off_result": "Resultado realizado: {result} {currency}",
+  "investments_write_off_unresolved_help": "El coste de adquisición es desconocido. La pérdida queda sin resolver hasta que se registre un coste documentado.",
+  "investments_write_off_success": "Baja registrada.",
+  "investments_write_off_lots_help": "Distribuye la cantidad total de la baja entre los lotes disponibles en la fecha elegida.",
+  "investments_write_off_lot_mismatch": "Las cantidades de los lotes seleccionados deben igualar la cantidad de la baja.",
+  "investments_write_off_exceeds": "La cantidad supera la posición o el lote disponible en la fecha elegida."
 }

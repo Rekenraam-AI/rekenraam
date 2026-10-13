@@ -1554,5 +1554,21 @@
   "investments_roc_revision_cause": "Revised by operation #{operation}",
   "investments_roc_open_receipt": "Open receipt transaction",
   "investments_roc_period_note": "Uses the selected payment-date range. Effective allocations are shown separately from disposal gains.",
-  "investments_roc_empty": "No effective return-of-capital receipts in this payment-date range."
+  "investments_roc_empty": "No effective return-of-capital receipts in this payment-date range.",
+  "investments_record_write_off": "Record write-off",
+  "investments_write_off_title": "Record a write-off",
+  "investments_write_off_help": "Remove worthless units without a cash payment. Review the server-computed loss before recording.",
+  "investments_write_off_choose_date": "Choose a date to see the holdings and lots available then.",
+  "investments_write_off_empty": "No long holdings are available on this date.",
+  "investments_write_off_available": "Available on this date: {quantity}",
+  "investments_write_off_lot": "Lot #{lot} · {date} · available: {quantity}",
+  "investments_write_off_quantity_error": "Enter a positive quantity within the instrument’s precision.",
+  "investments_write_off_preview_title": "Write-off preview",
+  "investments_write_off_preview": "Preview write-off",
+  "investments_write_off_result": "Realized result: {result} {currency}",
+  "investments_write_off_unresolved_help": "Cost basis is unknown. The loss remains unresolved until sourced basis is recorded.",
+  "investments_write_off_success": "Write-off recorded.",
+  "investments_write_off_lots_help": "Allocate the full write-off quantity across lots available on the chosen date.",
+  "investments_write_off_lot_mismatch": "Selected lot quantities must equal the write-off quantity.",
+  "investments_write_off_exceeds": "The quantity exceeds the holding or lot available on the chosen date."
 }

@@ -18,6 +18,7 @@
   } from '#lib/api/investments.ts';
   import BuyForm from '#lib/investments/buy-form.svelte';
   import SellForm from '#lib/investments/sell-form.svelte';
+  import WriteOffForm from '#lib/investments/write-off-form.svelte';
   import DividendForm from '#lib/investments/dividend-form.svelte';
   import ExternalTransferInForm from '#lib/investments/external-transfer-in-form.svelte';
   import InternalTransferForm from '#lib/investments/internal-transfer-form.svelte';
@@ -130,10 +131,12 @@
   }
 
   // Trade form modal
-  type TradeModal = 'buy' | 'sell' | 'short-open' | 'short-cover' | 'dividend' | 'reinvested' | 'external-transfer-in' | 'external-transfer-out' | 'internal-transfer' | 'split' | 'share-exchange' | 'cash-and-stock-merger' | 'spin-off' | 'capital-return' | null;
+  type TradeModal = 'write-off' | 'buy' | 'sell' | 'short-open' | 'short-cover' | 'dividend' | 'reinvested' | 'external-transfer-in' | 'external-transfer-out' | 'internal-transfer' | 'split' | 'share-exchange' | 'cash-and-stock-merger' | 'spin-off' | 'capital-return' | null;
   let activeModal = $state<TradeModal>(null);
+  let writeOffSaved = $state(false);
 
   function openModal(modal: TradeModal) {
+    writeOffSaved = false;
     activeModal = modal;
   }
 
@@ -142,6 +145,7 @@
   }
 
   function onTradeSaved() {
+    writeOffSaved = activeModal === 'write-off';
     closeModal();
   }
 
@@ -189,6 +193,9 @@
 
     <!-- Portfolio tab action buttons -->
     {#if activeTab === 'portfolio'}
+    {#if writeOffSaved}
+      <p role="status" class="mb-4 text-sm text-foreground">{m.investments_write_off_success()}</p>
+    {/if}
     <!-- Action buttons -->
     <div class="mb-4 flex flex-wrap gap-2">
       <button
@@ -205,6 +212,10 @@
         class="inline-flex items-center gap-2 rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-control-hover"
       >
         {m.investments_record_sell()}
+      </button>
+      <button type="button" onclick={() => openModal('write-off')}
+        class="inline-flex min-h-10 items-center rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-control-hover">
+        {m.investments_record_write_off()}
       </button>
       <button
         type="button"
@@ -463,7 +474,9 @@
 </div>
 
 <!-- Trade form modal -->
-{#if activeModal !== null}
+{#if activeModal === 'write-off'}
+  <WriteOffForm {csrfToken} onSaved={onTradeSaved} onCancel={closeModal} />
+{:else if activeModal !== null}
   <!-- Backdrop -->
   <div
     class="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm"

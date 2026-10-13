@@ -104,6 +104,7 @@ consumer products than *conciliado*, which is already taken by "reconciled";
 |---|---|---|---|---|---|
 | Register (account) | Registro | Registre | Dagboek | Kontobuch | Журнал счёта |
 | Lot (tax lot) | Lote | Lot | Lot | Posten | Партия |
+| Write-off (worthless investment units) | Baja | Dépréciation | Afboeking | Abschreibung | Списание |
 | Cost basis | Coste de adquisición | Prix de revient | Kostprijs | Anschaffungskosten | Себестоимость |
 | Proceeds | Importe de la venta | Produit de cession | Opbrengst | Verkaufserlös | Выручка |
 | Realized / unrealized | Realizada / no realizada | Réalisée / latente | Gerealiseerd / ongerealiseerd | Realisiert / nicht realisiert | Реализованная / нереализованная |

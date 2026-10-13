@@ -1526,5 +1526,21 @@
   "investments_roc_revision_cause": "Herzien door bewerking #{operation}",
   "investments_roc_open_receipt": "Ontvangsttransactie openen",
   "investments_roc_period_note": "Gebruikt de geselecteerde betaaldatums. Effectieve toewijzingen staan afzonderlijk van verkoopwinsten.",
-  "investments_roc_empty": "Geen effectieve kapitaalteruggaven in deze periode van betaaldatums."
+  "investments_roc_empty": "Geen effectieve kapitaalteruggaven in deze periode van betaaldatums.",
+  "investments_record_write_off": "Afboeking vastleggen",
+  "investments_write_off_title": "Een afboeking vastleggen",
+  "investments_write_off_help": "Boek waardeloze eenheden af zonder contante betaling. Controleer het door de server berekende verlies voordat u het vastlegt.",
+  "investments_write_off_choose_date": "Kies een datum om de toen beschikbare posities en partijen te zien.",
+  "investments_write_off_empty": "Op deze datum zijn geen longposities beschikbaar.",
+  "investments_write_off_available": "Beschikbaar op deze datum: {quantity}",
+  "investments_write_off_lot": "Lot #{lot} · {date} · beschikbaar: {quantity}",
+  "investments_write_off_quantity_error": "Voer een positief aantal in binnen de precisie van het instrument.",
+  "investments_write_off_preview_title": "Voorbeeld van afboeking",
+  "investments_write_off_preview": "Afboeking bekijken",
+  "investments_write_off_result": "Gerealiseerd resultaat: {result} {currency}",
+  "investments_write_off_unresolved_help": "De kostprijs is onbekend. Het verlies blijft onbepaald totdat een onderbouwde kostprijs is vastgelegd.",
+  "investments_write_off_success": "Afboeking vastgelegd.",
+  "investments_write_off_lots_help": "Verdeel het volledige af te boeken aantal over de op de gekozen datum beschikbare lots.",
+  "investments_write_off_lot_mismatch": "De gekozen aantallen per lot moeten gelijk zijn aan het af te boeken aantal.",
+  "investments_write_off_exceeds": "Het aantal overschrijdt de op de gekozen datum beschikbare positie of het beschikbare lot."
 }
