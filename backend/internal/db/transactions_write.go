@@ -227,28 +227,22 @@ func requireAccountRuleDependenciesTx(ctx context.Context, tx *sql.Tx, spec Tran
 			return fmt.Errorf("%w: account %d was prepared without a version", ErrPostingAccountVersionStale, dependency.AccountID)
 		}
 		prepared[dependency.AccountID] = dependency.LatestVersionID
+		// An audit-only investment header has no postings, but its account
+		// role checks still depend on the version the service read (#146).
+		var latestVersionID sql.NullInt64
+		if err := tx.QueryRowContext(ctx, `SELECT MAX(id) FROM account_versions WHERE account_id = ?`,
+			dependency.AccountID).Scan(&latestVersionID); err != nil {
+			return fmt.Errorf("read account version for posting dependency: %w", err)
+		}
+		if !latestVersionID.Valid || latestVersionID.Int64 != dependency.LatestVersionID {
+			return fmt.Errorf("%w: account %d was checked against version %d, current is %d",
+				ErrPostingAccountVersionStale, dependency.AccountID, dependency.LatestVersionID, latestVersionID.Int64)
+		}
 	}
-
 	for _, entry := range spec.JournalEntries {
 		for _, posting := range entry.Postings {
-			expected, ok := prepared[posting.AccountID]
-			if !ok {
-				// A write path that reaches here without naming the account
-				// versions its checks were decided against has no guard at
-				// all, which is the state this check exists to end. Refusing
-				// is the only answer that does not quietly restore it.
+			if _, ok := prepared[posting.AccountID]; !ok {
 				return fmt.Errorf("%w: account %d was not named by the prepared write", ErrPostingAccountVersionStale, posting.AccountID)
-			}
-			var latestVersionID sql.NullInt64
-			if err := tx.QueryRowContext(ctx, `
-				SELECT MAX(id)
-				FROM account_versions
-				WHERE account_id = ?
-			`, posting.AccountID).Scan(&latestVersionID); err != nil {
-				return fmt.Errorf("read account version for posting dependency: %w", err)
-			}
-			if !latestVersionID.Valid || latestVersionID.Int64 != expected {
-				return fmt.Errorf("%w: account %d was checked against version %d, current is %d", ErrPostingAccountVersionStale, posting.AccountID, expected, latestVersionID.Int64)
 			}
 		}
 	}

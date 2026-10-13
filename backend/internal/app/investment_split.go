@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -11,7 +12,7 @@ import (
 )
 
 var (
-	// ErrInvestmentSplitNoHoldings means nothing was held on the split date.
+	// ErrInvestmentSplitNoHoldings fences a replacement with no primary journal (#196).
 	ErrInvestmentSplitNoHoldings = db.ErrSplitNoEligibleHoldings
 	// ErrInvestmentSplitFraction means a lot's split quantity needs more
 	// decimal places than the security permits; a cash-in-lieu event would
@@ -96,6 +97,8 @@ type InvestmentSplitPreview struct {
 }
 
 type InvestmentSplitResult struct {
+	OperationID int64
+	// Transaction has ID 0 for a journal-free split. The API returns null.
 	Transaction Transaction
 	Plan        InvestmentSplitPlan
 }
@@ -104,7 +107,7 @@ func (s *InvestmentService) prepareSplitWrite(ctx context.Context, input Investm
 	return s.prepareSplitWriteWith(ctx, input, 0)
 }
 
-// prepareSplitWriteWith plans a split journal. replacesOperationID names the
+// prepareSplitWriteWith plans a split journal or audit-only header. replacesOperationID names the
 // split a replacement supersedes (T-129): the plan then replays without it.
 func (s *InvestmentService) prepareSplitWriteWith(ctx context.Context, input InvestmentSplitInput, replacesOperationID int64) (db.CreateTransactionParams, db.CreateSplitParams, InvestmentSplitPlan, error) {
 	fail := func(err error) (db.CreateTransactionParams, db.CreateSplitParams, InvestmentSplitPlan, error) {
@@ -159,6 +162,26 @@ func (s *InvestmentService) prepareSplitWriteWith(ctx context.Context, input Inv
 		return fail(mapInvestmentSplitError(err))
 	}
 	split.ExpectedDeltaValue, split.ExpectedDeltaScale = planned.DeltaValue, planned.DeltaScale
+	if planned.DeltaValue.Sign() == 0 {
+		// Transaction-addressed correction commands still require a primary journal.
+		if replacesOperationID > 0 {
+			return fail(ErrInvestmentSplitNoHoldings)
+		}
+		reason, err := cleanChangeReason(input.ChangeReason, "")
+		if err != nil {
+			return fail(err)
+		}
+		header := s.journalFreeInvestmentHeader(input.OwnerUserID, input.AuthSessionID, input.RequestID,
+			defaultString(input.Operation, "investment.split"), reason, "split", date, input.ReconciliationOverride)
+		header.OriginType = defaultString(input.OriginType, "browser_api")
+		metadata, err := json.Marshal(map[string]string{"memo": memo})
+		if err != nil {
+			return fail(err)
+		}
+		header.Spec.MetadataJSON = string(metadata)
+		header.AccountRuleDependencies = dependencies.list()
+		return header, split, toInvestmentSplitPlan(numerator, denominator, planned), nil
+	}
 	plan := investmentTransactionPlan{
 		Date: date, MetadataJSON: evidence, AccountRuleDependencies: dependencies,
 		Create: CreateTransactionInput{
@@ -206,7 +229,7 @@ func (s *InvestmentService) PreviewSplit(ctx context.Context, input InvestmentSp
 	return InvestmentSplitPreview{Plan: plan, Impact: impact}, nil
 }
 
-// Split commits the split journal, sourced ratio, per-lot effects and any
+// Split commits the optional split journal, sourced ratio, per-lot effects and any
 // dependent replay under one audit event. A backdated split that revises a
 // committed disposal's gain needs the preview's acknowledgement (T-114).
 func (s *InvestmentService) Split(ctx context.Context, input InvestmentSplitInput) (InvestmentSplitResult, error) {
@@ -220,6 +243,7 @@ func (s *InvestmentService) Split(ctx context.Context, input InvestmentSplitInpu
 		return InvestmentSplitResult{}, mapInvestmentSplitError(err)
 	}
 	return InvestmentSplitResult{
+		OperationID: committed.OperationID,
 		Transaction: toTransaction(transaction),
 		Plan:        toInvestmentSplitPlan(split.RatioNumerator, split.RatioDenominator, committed),
 	}, nil

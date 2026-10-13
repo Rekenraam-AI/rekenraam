@@ -28,13 +28,16 @@ The external workflow evidence retains the 2026-09-27 review date.
 
 ## Priority decisions from this review
 
-1. **Complete R16 before more investment producers.** The competing investment
-   workflows name correction, transfer, return of capital and splits as normal
-   operations. Rekenraam now safely amends long-trade/action history and carries
-   known or explicitly unknown basis between holdings/brokers. That closes the
-   bounded #114 gap; historical-entry and resolution-recovery limits are tracked
-   in #166–#168. Follow the roadmap for named shorts, those completion gates
-   and compound actions. Provider/tax-policy completeness remains separate.
+1. **R16's agreed delivery bar is complete (2026-10-13).** #146 adds
+   journal-free sourced splits and entitlement replay to the shipped long,
+   short and compound-action workflows. This gains zero-delta split recording;
+   inspecting/correcting/settling initially journal-free splits by operation
+   identity is a deliberate remaining gap (#196). Continue with the roadmap's
+   R11 operator surface before more investment producers. The competing
+   investment workflows treat corrections, transfers, basis actions and splits
+   as ordinary operations. Rekenraam's bounded #114 and #166–#168 gates, named
+   shorts and compound actions are delivered; provider/tax-policy completeness
+   remains separate.
 2. **Promote R11 price management UI after R16 and before R17.** Rekenraam has
    price storage and voiding, but no complete operator surface. A user needs to
    inspect provenance, correct a quote and see valuation coverage before

@@ -36,7 +36,16 @@ func requireEffectiveMovementsConsistent(t *testing.T, f *investmentsTestFixture
 	all := effectiveMovements(t, f, db.EffectiveMovementFilter{})
 	var short, disposals []db.EffectiveLotMovement
 	for _, movement := range all {
-		if movement.OperationID > 0 {
+		if movement.Source == db.MovementSourceSplitRevision && movement.OriginEventID == 0 {
+			var date string
+			require.NoError(t, f.database.QueryRow(`SELECT effective_on FROM investment_split_facts
+				WHERE operation_id = ? AND account_id = ? AND commodity_id = ?`,
+				movement.OperationID, movement.AccountID, movement.CommodityID).Scan(&date))
+			require.Equal(t, date, movement.EventDate)
+			require.Positive(t, movement.OrderOperationID)
+			require.Equal(t, 1, movement.EffectSeq)
+			require.False(t, movement.TransactionID.Valid)
+		} else if movement.OperationID > 0 {
 			var sequence int
 			var transactionID sql.NullInt64
 			require.NoError(t, f.database.QueryRow(`SELECT x.effect_seq, e.transaction_id
@@ -89,6 +98,10 @@ func requireEffectiveMovementsConsistent(t *testing.T, f *investmentsTestFixture
 			continue
 		}
 		var originals int
+		if movement.Source == db.MovementSourceSplitRevision && movement.OriginEventID == 0 {
+			// Its sourced fact is the dated evidence, already checked above.
+			continue
+		}
 		if movement.Source == db.MovementSourceDisposalRevision {
 			require.NoError(t, f.database.QueryRow(`SELECT COUNT(*) FROM investment_disposal_allocations a
 				JOIN investment_lot_events e ON e.id = a.lot_event_id

@@ -138,3 +138,24 @@ test('reversing a split a later sale depends on is refused with a translated rea
   await page.getByRole('button', { name: 'Review and reverse' }).click();
   await expect(page.getByRole('alertdialog')).toContainText('would no longer be possible after this split');
 });
+
+
+test('an empty holding records a zero-delta split and a later backdated acquisition applies it on mobile', async ({ page }) => {
+  const s = await setup(page);
+  await page.goto('/app/investments');
+  await page.getByRole('button', { name: 'Record split' }).click();
+  await page.getByLabel('Holding', { exact: true }).selectOption({ label: s.holdingLabel });
+  await page.getByLabel('Split effective date').fill(daysFromTodayISO(-20));
+  await page.getByLabel('New shares').fill('2');
+  await page.getByLabel('For old shares').fill('1');
+  await page.getByRole('button', { name: 'Preview split' }).click();
+  await expect(page.getByRole('region', { name: 'What changes' })).toContainText('Holding change: 0');
+  const response = page.waitForResponse((r) => r.url().endsWith('/api/v1/investments/splits') && r.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Record split' }).last().click();
+  const saved = await (await response).json();
+  expect(saved.transaction).toBeNull();
+  expect(saved.operation_id).toBeGreaterThan(0);
+  await s.trade('buy', 30, '10', '10000');
+  await page.goto(`/app/accounts/${s.holdingID}/register`);
+  await expect(page.getByText('Split adjustment')).toBeVisible();
+});

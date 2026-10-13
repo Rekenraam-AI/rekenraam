@@ -750,10 +750,11 @@ func transferRevisionDepletionsQuery(ctx context.Context, reader queryer, revisi
 func investmentReplaySplitIntentsQuery(ctx context.Context, reader queryer, bookID, accountID, commodityID, costCommodityID int64) ([]InvestmentReplayIntent, error) {
 	rows, err := reader.QueryContext(ctx, `
 		SELECT f.operation_id, o.operation_kind, f.effective_on, f.ratio_numerator, f.ratio_denominator,
-			f.created_audit_event_id, e.transaction_id, e.created_by_user_id, e.created_at
+			f.created_audit_event_id, e.transaction_id, a.actor_user_id, o.created_at
 		FROM investment_split_facts f
 		JOIN effective_investment_operations o ON o.id = f.operation_id
-		JOIN investment_lot_events e ON e.id = (SELECT x.lot_event_id FROM investment_operation_lot_effects x
+		JOIN audit_events a ON a.id = f.created_audit_event_id
+		LEFT JOIN investment_lot_events e ON e.id = (SELECT x.lot_event_id FROM investment_operation_lot_effects x
 			WHERE x.operation_id = f.operation_id ORDER BY x.effect_seq LIMIT 1)
 		WHERE f.book_id = ? AND f.account_id = ? AND f.commodity_id = ?
 		ORDER BY f.operation_id`, bookID, accountID, commodityID)

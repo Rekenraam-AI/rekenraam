@@ -191,19 +191,55 @@ func TestSplitRefusesUnrepresentableFractionWithoutWriting(t *testing.T) {
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(10, 0)))
 }
 
-func TestSplitRefusesNoHoldingsAndOneForOne(t *testing.T) {
+func TestSplitWithNoHoldingsIsJournalFree(t *testing.T) {
+	t.Parallel()
+	f := newInvestmentsTestFixture(t)
+	ctx := context.Background()
+	before := journalCounts(t, f)
+	counts := countSplitRows(t, f.database)
+	preview, err := f.investmentService.PreviewSplit(ctx, splitInput(f, "2026-03-01", 2, 1))
+	require.NoError(t, err)
+	require.Empty(t, preview.Plan.Effects)
+	require.Equal(t, "0", preview.Plan.DeltaValue.String())
+	require.Equal(t, counts, countSplitRows(t, f.database), "preview rolls back")
+	result, err := f.investmentService.Split(ctx, splitInput(f, "2026-03-01", 2, 1))
+	require.NoError(t, err)
+	require.Zero(t, result.Transaction.ID)
+	require.Equal(t, before, journalCounts(t, f))
+	_, kind, links := newestOperation(t, f)
+	require.Equal(t, "split", kind)
+	require.Zero(t, links)
+	var metadata string
+	require.NoError(t, f.database.QueryRow(`SELECT metadata_json FROM audit_events WHERE operation = 'investment.split'`).Scan(&metadata))
+	require.JSONEq(t, `{"memo":"split"}`, metadata)
+	require.Equal(t, counts.audits+1, countSplitRows(t, f.database).audits)
+	requireSelfCheckPasses(t, f)
+	// A later opening is not entitled, including one on the split's date
+	// entered after the split's same-day slot.
+	buyOn(t, f, "2026-03-01", 10, 10000)
+	require.Zero(t, holdingQuantity(t, f).Cmp(scaled(10, 0)))
+	requireSelfCheckPasses(t, f)
+	var validation ValidationError
+	_, err = f.investmentService.Split(ctx, splitInput(f, "2026-05-01", 3, 3))
+	require.ErrorAs(t, err, &validation)
+}
+
+func TestBackdatedAcquisitionEntitledToJournalFreeSplitPostsAdjustment(t *testing.T) {
 	t.Parallel()
 	f := newInvestmentsTestFixture(t)
 	ctx := context.Background()
 	_, err := f.investmentService.Split(ctx, splitInput(f, "2026-03-01", 2, 1))
-	require.ErrorIs(t, err, ErrInvestmentSplitNoHoldings)
-	// A lot opened after the effective date is not entitled.
-	buyOn(t, f, "2026-04-01", 10, 10000)
-	_, err = f.investmentService.Split(ctx, splitInput(f, "2026-03-01", 2, 1))
-	require.ErrorIs(t, err, ErrInvestmentSplitNoHoldings)
-	var validation ValidationError
-	_, err = f.investmentService.Split(ctx, splitInput(f, "2026-05-01", 3, 3))
-	require.ErrorAs(t, err, &validation)
+	require.NoError(t, err)
+	buyOn(t, f, "2026-04-01", 5, 5000)
+	buyOn(t, f, "2026-02-01", 10, 10000)
+	require.Zero(t, holdingQuantity(t, f).Cmp(scaled(25, 0)))
+	require.Zero(t, holdingBasis(t, f).Cmp(scaled(15000, 2)))
+	adjustments := splitAdjustments(t, f)
+	require.Len(t, adjustments, 1)
+	require.Equal(t, "10", adjustments[0].holding)
+	require.Equal(t, "-10", adjustments[0].trading)
+	require.Equal(t, "2026-03-01", adjustments[0].date)
+	requireSelfCheckPasses(t, f)
 }
 
 func TestLaterSaleAfterSplitUsesSplitAdjustedPerShareBasis(t *testing.T) {

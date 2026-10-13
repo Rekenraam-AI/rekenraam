@@ -6,7 +6,12 @@ post:
     Remaining basis is unchanged, so aggregate basis is conserved and only
     per-share basis moves. The journal posts the aggregate quantity delta to the
     holding account and its opposite to commodity_trading in the security; no cash
-    is posted. A split dated before later disposals replays them; when that
+    is posted. With no eligible lots, records a journal-free split operation and
+    returns a null transaction plus its operation_id. Its sourced ratio and date
+    remain replay inputs: a later entitled backdated acquisition appends the
+    split's revised lot effects and a split_adjustment journal dated to the split,
+    under the triggering command's audit, gain and reconciliation guards (#146).
+    A split dated before later disposals replays them; when that
     changes a committed disposal's operational basis or gain, the preview's
     gain_impact acknowledgement token is required (T-114).
   parameters:
@@ -47,7 +52,7 @@ post:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
       description: >
-        INVESTMENT_SPLIT_NO_HOLDINGS, INVESTMENT_SPLIT_CHANGED (preview again),
+        INVESTMENT_SPLIT_CHANGED (preview again),
         INVESTMENT_SPLIT_DEPENDENCY (a later operation becomes impossible),
         reconciliation override or gain-impact acknowledgement required or stale
       content:

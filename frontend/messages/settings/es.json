@@ -1213,6 +1213,7 @@
   "investments_gain_impact_confirm_with_reconciliation": "Invalidar y aceptar ganancias modificadas",
   "investments_record_split": "Registrar desdoblamiento",
   "investments_split_title": "Registrar un desdoblamiento o contrasplit",
+  "investments_split_holding_hint": "También se incluyen las cuentas vacías. Si no hay lotes con derecho al desdoblamiento, solo se registran la fecha y la proporción. Una compra con derecho registrada después aplica el desdoblamiento.",
   "investments_split_help": "Cada lote mantenido en la fecha del desdoblamiento se multiplica por la proporción. Cada lote conserva su coste total; no se registra efectivo ni resultado.",
   "investments_split_holding": "Posición",
   "investments_split_select_holding": "Selecciona una posición",

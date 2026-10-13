@@ -245,6 +245,12 @@ non-trivial diff (yours or reviewed):
     `TestSplitReversalInvertsPrimaryPlusAdjustmentDelta`,
     `TestReversalsBeforeSplitPostAdjustmentJournals`,
     `TestEarlierAcquisitionBasisCorrectionReplaysThroughSplit`.
+    A sourced split initially without eligible lots is journal-free (#146),
+    but must remain in replay and activity-date admission. Revised movements
+    anchor to its sourced fact when there is no original event. Named cases:
+    `TestBackdatedAcquisitionEntitledToJournalFreeSplitPostsAdjustment`,
+    `TestJournalFreeSplitAdjustmentUsesGainAndCheckpointGuards`,
+    `TestJournalFreeSplitExemptionDoesNotHideMissingJournals`.
 25. **A replay branch that omits a side effect its writer performs** —
     replay re-derives a position from intents, so anything the commit path
     writes besides lot effects (the method-family lock, a link's original

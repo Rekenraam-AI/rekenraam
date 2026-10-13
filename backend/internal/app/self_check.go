@@ -427,12 +427,18 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 		{"journal-backed operation missing a posted version link", `
 			SELECT o.id FROM investment_operations o WHERE o.book_id = ?
 			-- Investment operations require a posted journal. The declared
-			-- exemption (#168): a known-zero basis resolution has no bridge to
-			-- post, and neither does the reversal of one. Its fact and its
+			-- exemption for basis resolutions (#168): a known-zero basis resolution has no bridge to
+			-- post, and neither does the reversal of one. Their facts and their
 			-- absence of journals are checked with the resolution below.
 			AND NOT EXISTS (SELECT 1 FROM investment_basis_resolutions zero
 				WHERE zero.basis_value = '0' AND (zero.operation_id = o.id
 					OR (o.operation_kind = 'reversal' AND zero.operation_id = o.correction_of_operation_id)))
+			-- #146: a sourced split with no original lot effects starts at
+			-- zero delta. Split journal/effect conservation below still requires
+			-- every nonzero replay effect to have a posted adjustment journal.
+			AND NOT (o.operation_kind = 'split' AND EXISTS (
+				SELECT 1 FROM investment_split_facts f WHERE f.operation_id = o.id AND f.book_id = o.book_id)
+				AND NOT EXISTS (SELECT 1 FROM investment_operation_lot_effects x WHERE x.operation_id = o.id))
 			AND NOT EXISTS (SELECT 1 FROM investment_operation_journal_links l
 				JOIN transaction_versions v ON v.id = l.transaction_version_id
 				JOIN transactions t ON t.id = v.transaction_id
@@ -825,12 +831,12 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 			AND o.operation_kind = 'split'
 			AND (NOT EXISTS (SELECT 1 FROM investment_split_facts f
 				WHERE f.operation_id = o.id AND f.book_id = o.book_id AND f.effective_on = o.event_date)
-			OR NOT EXISTS (SELECT 1 FROM investment_operation_lot_effects x
-				JOIN investment_lot_events e ON e.id = x.lot_event_id AND e.event_kind = 'split_adjustment'
+			OR EXISTS (SELECT 1 FROM investment_operation_lot_effects x
+				JOIN investment_lot_events e ON e.id = x.lot_event_id
 				JOIN investment_lots l ON l.id = e.lot_id
 				JOIN investment_split_facts f ON f.operation_id = o.id
-				WHERE x.operation_id = o.id AND e.event_date = f.effective_on
-					AND l.account_id = f.account_id AND l.commodity_id = f.commodity_id)
+				WHERE x.operation_id = o.id AND (e.event_date <> f.effective_on
+					OR l.account_id <> f.account_id OR l.commodity_id <> f.commodity_id))
 			OR EXISTS (SELECT 1 FROM investment_operation_lot_effects x
 				JOIN investment_lot_events e ON e.id = x.lot_event_id
 				WHERE x.operation_id = o.id AND e.event_kind <> 'split_adjustment'))`},

@@ -1213,6 +1213,7 @@
   "investments_gain_impact_confirm_with_reconciliation": "Invalider et accepter les plus-values modifiées",
   "investments_record_split": "Enregistrer une division",
   "investments_split_title": "Enregistrer une division ou un regroupement d'actions",
+  "investments_split_holding_hint": "Les comptes vides sont aussi proposés. Sans lot admissible, seuls la date et le ratio de division sont enregistrés. Une acquisition admissible saisie plus tard applique la division.",
   "investments_split_help": "Chaque lot détenu à la date de la division est multiplié par le rapport. Chaque lot conserve son coût total ; aucun mouvement de trésorerie ni résultat n'est enregistré.",
   "investments_split_holding": "Position",
   "investments_split_select_holding": "Choisir une position",

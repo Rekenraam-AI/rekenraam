@@ -30,9 +30,9 @@ import (
 // split (H +e, T -e), linked to the split operation and the revision (T-129).
 
 var (
-	// ErrSplitNoEligibleHoldings means no lot is open on the effective date, so
-	// the split would change nothing. Zero-delta splits need a journal-free
-	// operation path that does not exist yet.
+	// ErrSplitNoEligibleHoldings fences a transaction-addressed replacement
+	// whose corrected split would have no primary journal (#196). New sourced
+	// splits with no eligible lots are admitted journal-free (#146).
 	ErrSplitNoEligibleHoldings = errors.New("no holdings are open on the split effective date")
 	// ErrSplitFractionUnrepresentable means a lot's split quantity has more
 	// decimal places than the security permits.
@@ -77,10 +77,11 @@ type SplitLotEffect struct {
 // SplitPlan is the split's effect at its replay slot. Replayed reports that
 // a later depletion exists, so dependent disposals are replayed too.
 type SplitPlan struct {
-	Effects    []SplitLotEffect
-	DeltaValue exact.Coefficient
-	DeltaScale int
-	Replayed   bool
+	OperationID int64
+	Effects     []SplitLotEffect
+	DeltaValue  exact.Coefficient
+	DeltaScale  int
+	Replayed    bool
 }
 
 type splitPositionPlan struct {
@@ -314,9 +315,6 @@ func planSplitTx(ctx context.Context, tx *sql.Tx, params CreateSplitParams, oper
 		plan.Effects = append(plan.Effects, position.effects...)
 		plan.positions = append(plan.positions, position)
 	}
-	if len(plan.Effects) == 0 {
-		return splitWritePlan{}, ErrSplitNoEligibleHoldings
-	}
 	total := sumSplitEffects(plan.Effects)
 	if plan.DeltaValue, err = total.Coefficient(); err != nil {
 		return splitWritePlan{}, err
@@ -340,7 +338,7 @@ func (r *InvestmentRepository) PlanSplit(ctx context.Context, params CreateSplit
 	return plan.SplitPlan, nil
 }
 
-// CreateSplit commits the split journal, sourced terms, per-lot effects, any
+// CreateSplit commits the optional split journal, sourced terms, per-lot effects, any
 // dependent replay, checkpoint invalidation and audit together.
 func (r *InvestmentRepository) CreateSplit(ctx context.Context, journal CreateTransactionParams, params CreateSplitParams) (TransactionRecord, SplitPlan, error) {
 	return r.createSplit(ctx, journal, params, false)
@@ -362,7 +360,11 @@ func (r *InvestmentRepository) createSplit(ctx context.Context, journal CreateTr
 		write = previewInvestmentWriteTx[SplitPlan]
 	}
 	return write(ctx, r.database, journal, func(tx *sql.Tx, transaction TransactionRecord, auditEventID int64) (SplitPlan, error) {
-		return writeSplitEffectsTx(ctx, tx, params, transaction, auditEventID, journal.ActorUserID, journal.CreatedAt)
+		operationID, err := investmentCommandOperationTx(ctx, tx, journal, transaction, auditEventID)
+		if err != nil {
+			return SplitPlan{}, err
+		}
+		return writeSplitEffectsForOperationTx(ctx, tx, params, transaction, operationID, auditEventID, journal.ActorUserID, journal.CreatedAt)
 	}, nil)
 }
 
@@ -375,13 +377,19 @@ func writeSplitEffectsTx(ctx context.Context, tx *sql.Tx, params CreateSplitPara
 	if err != nil {
 		return SplitPlan{}, err
 	}
+	return writeSplitEffectsForOperationTx(ctx, tx, params, transaction, operationID, auditEventID, actorUserID, createdAt)
+}
+
+func writeSplitEffectsForOperationTx(ctx context.Context, tx *sql.Tx, params CreateSplitParams, transaction TransactionRecord,
+	operationID, auditEventID, actorUserID int64, createdAt string) (SplitPlan, error) {
 	plan, err := planSplitTx(ctx, tx, params, operationID, auditEventID, actorUserID, createdAt)
 	if err != nil {
 		return SplitPlan{}, err
 	}
+	plan.OperationID = operationID
 	// Recomputed at the slot inside this write: a position that moved since
 	// the journal was planned must not commit a stale holding delta.
-	if exact.ScaledIntFromCoefficient(plan.DeltaValue, plan.DeltaScale).Cmp(
+	if (plan.DeltaValue.Sign() == 0) != (transaction.ID == 0) || exact.ScaledIntFromCoefficient(plan.DeltaValue, plan.DeltaScale).Cmp(
 		exact.ScaledIntFromCoefficient(params.ExpectedDeltaValue, params.ExpectedDeltaScale)) != 0 {
 		return SplitPlan{}, ErrSplitPositionChanged
 	}

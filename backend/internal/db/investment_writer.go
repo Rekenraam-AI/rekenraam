@@ -270,7 +270,7 @@ func openInvestmentCommandAuditTx(ctx context.Context, tx *sql.Tx, params Create
 	return insertAuditEvent(ctx, tx, AuditEventParams{
 		BookID: params.BookID, ActorUserID: params.ActorUserID, AuthSessionID: params.AuthSessionID,
 		OccurredAt: params.CreatedAt, RequestID: params.RequestID, OriginType: params.OriginType,
-		Operation: params.Operation, Reason: params.ChangeReason,
+		Operation: params.Operation, Reason: params.ChangeReason, MetadataJSON: params.Spec.MetadataJSON,
 	})
 }
 
@@ -308,4 +308,14 @@ func insertJournalFreeInvestmentOperationTx(ctx context.Context, tx *sql.Tx, par
 		return 0, fmt.Errorf("record journal-free investment operation date: %w", err)
 	}
 	return operationID, nil
+}
+
+// investmentCommandOperationTx is the operation an investment command's header names: a
+// journal-free operation for an audit-only header, else the journal's own.
+func investmentCommandOperationTx(ctx context.Context, tx *sql.Tx, header CreateTransactionParams,
+	transaction TransactionRecord, auditEventID int64) (int64, error) {
+	if header.AuditOnly {
+		return insertJournalFreeInvestmentOperationTx(ctx, tx, header, auditEventID)
+	}
+	return investmentOperationIDTx(ctx, tx, header.BookID, transaction.ID)
 }

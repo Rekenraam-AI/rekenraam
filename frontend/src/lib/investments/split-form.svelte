@@ -79,6 +79,15 @@
       const key = `${position.account_id}:${position.commodity_id}`;
       if (!seen.has(key)) seen.set(key, { accountID: position.account_id, commodityID: position.commodity_id });
     }
+    // An empty holding can still record a sourced split (#146). Include
+    // its configured instrument even when it has no entitled long lots.
+    for (const account of accounts) {
+      const instrument = (instrumentsQuery.data?.instruments ?? []).find((item) =>
+        item.commodity_id === account.default_commodity_id && item.status === 'active');
+      if (!instrument) continue;
+      const key = `${account.id}:${instrument.commodity_id}`;
+      if (!seen.has(key)) seen.set(key, { accountID: account.id, commodityID: instrument.commodity_id });
+    }
     return [...seen.entries()].map(([key, value]) => ({ key, ...value }));
   });
   // A corrected split's holding may since have been sold out; it stays fixed.
@@ -257,7 +266,7 @@
           </option>
         {/each}
       </select>
-      <p id="split-holding-hint" class="mt-1 text-xs text-muted">{m.investments_dated_holdings_hint()}</p>
+      <p id="split-holding-hint" class="mt-1 text-xs text-muted">{m.investments_split_holding_hint()}</p>
       {/if}
     </div>
     <div>

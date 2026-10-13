@@ -300,9 +300,35 @@ refuse an impossible later disposal with it named, and use the shared
 correction fences, gain acknowledgement and checkpoint guard. A corrected
 split's facts, effects, revisions and journals stay immutable; self-check
 includes its inverse journal and expects no effects from a split that is no
-longer effective. Deferred: zero-delta splits (no eligible holdings, refused
-with `INVESTMENT_SPLIT_NO_HOLDINGS` until a zero-delta split defines its own
-journal-free contract, which may reuse #168's audit-only command header; [T-131 #146](https://github.com/sergeyfarin/rekenraam/issues/146)), verified Trading 212 mapping ([T-130 #145](https://github.com/sergeyfarin/rekenraam/issues/145)). Linked cash in lieu is implemented as described below.
+longer effective. Verified Trading 212 mapping remains deferred
+([T-130 #145](https://github.com/sergeyfarin/rekenraam/issues/145)). Linked cash
+in lieu is implemented as described below.
+
+**Journal-free admission (#146, 2026-10-13).** A new split with no eligible
+long lots records the same named `split` operation and sourced fact, with an
+empty original effect set and no journal. Preview runs its audit-only writer
+and rolls back; commit returns `operation_id` and `transaction: null`.
+Eligibility still follows the correction-root same-day slot; a later-entered
+acquisition on that date is not entitled. Replay reads attribution from the
+operation's audit and includes the sourced split even without a lot event.
+Activity-date admission includes effective split dates, so an entitled
+backdated acquisition replays it. A changed effect set appends revisions and
+posts the #144 quantity adjustment, under the acquisition's gain and checkpoint
+guards; an unrepresentable fraction refuses with the split named.
+
+Self-check declares the journal-link exemption for sourced splits without
+original lot effects, while journal/effect conservation still demands posted
+journals for every nonzero effective delta. The effective-movement reader uses
+the sourced fact's slot when a cost currency has no original split event.
+Bundle exports retain a blank transaction summary, source ratio/date and audit,
+and every later revision and adjustment link. Backup/restore retains that
+entitlement behavior. The mobile form lists configured empty holdings and
+explains the journal-free result in all six catalogs.
+
+Transaction-addressed correction, cash-in-lieu and import-link commands still
+require a primary journal. Their operation-addressed extension for initially
+journal-free splits, including replacement across zero, is tracked in
+[#196](https://github.com/sergeyfarin/rekenraam/issues/196).
 
 ## Cash in lieu
 

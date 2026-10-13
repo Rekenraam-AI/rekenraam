@@ -83,6 +83,7 @@ type EffectiveLotMovement struct {
 	RevisionSeq int
 	// OriginEventID is the immutable event anchoring the movement's slot.
 	// A revision may move a different lot or number of lots than its anchor.
+	// A split initially without effects anchors to its sourced fact instead (0).
 	OriginEventID int64
 }
 
@@ -226,6 +227,13 @@ func effectiveMovementProvenance(ctx context.Context, source queryer, bookID int
 			anchor = anchors[key]
 			m.OriginEventID, m.TransactionID = anchor.eventID, anchor.transactionID
 			m.TransferOperationID = anchor.transferOperationID
+		}
+		// Split revisions are read through investment_split_facts. A split
+		// can initially have no effects, or no effects in this cost currency;
+		// its sourced fact anchors the same slot as replay's split intent.
+		if m.Source == MovementSourceSplitRevision && anchor.eventID == 0 && m.OrderOperationID > 0 {
+			m.EffectSeq = 1
+			continue
 		}
 		if m.OrderOperationID <= 0 || anchor.eventID == 0 {
 			return fmt.Errorf("effective %s movement of operation %d has no immutable order anchor", m.Source, m.OperationID)

@@ -1213,6 +1213,7 @@
   "investments_gain_impact_confirm_with_reconciliation": "Aufheben und geänderte Gewinne akzeptieren",
   "investments_record_split": "Aktiensplit erfassen",
   "investments_split_title": "Aktiensplit oder Reverse Split erfassen",
+  "investments_split_holding_hint": "Die Liste enthält auch leere Konten. Ohne berechtigte Lots werden nur Datum und Splitverhältnis erfasst. Ein später eingetragener berechtigter Kauf wendet den Split an.",
   "investments_split_help": "Jedes am Stichtag gehaltene Lot wird mit dem Verhältnis multipliziert. Jedes Lot behält seine gesamten Anschaffungskosten; es wird weder Geld noch ein Ergebnis gebucht.",
   "investments_split_holding": "Bestand",
   "investments_split_select_holding": "Bestand auswählen",

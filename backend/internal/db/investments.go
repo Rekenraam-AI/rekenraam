@@ -1389,12 +1389,17 @@ func latestPositionRewriteDateTx(ctx context.Context, tx *sql.Tx, bookID int64, 
 	}
 	var latest string
 	if err := tx.QueryRowContext(ctx, `
-		SELECT COALESCE(MAX(e.event_date), '')
+		SELECT COALESCE(MAX(event_date), '') FROM (
+		SELECT e.event_date
 		FROM investment_lot_events e
 		JOIN current_investment_lots l ON l.id = e.lot_id
 		WHERE l.book_id = ? AND l.account_id = ? AND l.commodity_id = ?
 			AND e.event_kind NOT IN (`+placeholders+`)
-	`, args...).Scan(&latest); err != nil {
+		UNION ALL
+		SELECT f.effective_on FROM investment_split_facts f
+		JOIN effective_investment_operations o ON o.id = f.operation_id
+		WHERE f.book_id = ? AND f.account_id = ? AND f.commodity_id = ?)
+	`, append(args, bookID, accountID, commodityID)...).Scan(&latest); err != nil {
 		return "", fmt.Errorf("read latest position rewrite date: %w", err)
 	}
 	return latest, nil

@@ -109,8 +109,9 @@ below is execution order, not a chain of hard dependencies.
 
 **Now**
 
-1. Zero-delta splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146),
-   the remaining R16 completion gate.
+1. R11 price and FX management UI
+   [#116](https://github.com/sergeyfarin/rekenraam/issues/116), after R16's
+   agreed completion gates delivered with #146 (2026-10-13).
 2. Daily-use parallel work: the shared transaction workspace
    [#185](https://github.com/sergeyfarin/rekenraam/issues/185) (slices 1 and 2 delivered 2026-10-11: entry from account and
    category screens, same-day reorder everywhere or in one account), then investment entry from holding accounts and
@@ -125,6 +126,14 @@ application race execution 962.65 → 85.71 seconds, same named regression cohor
 Cold compilation needs a C toolchain and takes longer. See the
 [delivery review](reviews/native-sqlite-driver-2026-10-12.md) for all runs,
 validation and the native C-engine race-coverage boundary.
+
+**Delivered zero-delta split gate (2026-10-13):**
+[#146](https://github.com/sergeyfarin/rekenraam/issues/146) records sourced splits
+without eligible lots journal-free, with entitled backdated acquisition replay,
+guarded quantity adjustments, export/restore and self-check. Operation-addressed
+correction, settlement and import linking for these splits remain a bounded
+follow-up [#196](https://github.com/sergeyfarin/rekenraam/issues/196), outside the
+agreed admission gate.
 
 **Delivered historical-entry and recovery gates:** dated holdings/lot selection
 [#166](https://github.com/sergeyfarin/rekenraam/issues/166) (2026-10-09),
@@ -183,7 +192,8 @@ events remain unclassified warnings. The
 [slice 5 contract](plans/investment-operation-slice-5-contract.md) govern
 design; [implemented](implemented.md) records the shipped boundary.
 
-R16 is complete when these issues are closed: historical-entry selection
+R16's agreed completion gates are delivered (2026-10-13). The bounded issues
+are historical-entry selection
 [#166](https://github.com/sergeyfarin/rekenraam/issues/166), backdated
 internal transfer admission [#167](https://github.com/sergeyfarin/rekenraam/issues/167),
 sourced resolution recovery [#168](https://github.com/sergeyfarin/rekenraam/issues/168),
@@ -200,8 +210,10 @@ release gate, not an R16 one; the evidence-blocked provider mappings
 [#176](https://github.com/sergeyfarin/rekenraam/issues/176), wait on provider evidence and do not hold R16 open; write-off entry UI (#172),
 unresolved non-sale results (#169), provenance declarations (#170), excess
 visibility (#171), and provider return-of-capital/cash-in-lieu suggestions
-remain follow-ups. #114's delivered transfer/basis-action family is closed
-under the audit above; this does not close the remaining R16 families.
+remain follow-ups, as does operation-addressed correction/settlement of
+initially journal-free splits (#196). #114's delivered transfer/basis-action
+family is closed under the audit above; the other agreed R16 gates were
+delivered separately.
 
 ### R11 — price and FX management UI, promoted after R16
 

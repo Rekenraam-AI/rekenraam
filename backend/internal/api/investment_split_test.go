@@ -50,8 +50,11 @@ func TestInvestmentSplitAPIPreviewCommitAndNamedRefusals(t *testing.T) {
 	empty := createHoldingAccountForSession(t, handler, f, instrument.ID)
 	request.HoldingAccountID, request.RatioNumerator, request.RatioDenominator = empty.ID, 2, 1
 	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost,
-		"/api/v1/investments/splits", request, http.StatusConflict)
-	assert.Contains(t, res.Body.String(), "INVESTMENT_SPLIT_NO_HOLDINGS")
+		"/api/v1/investments/splits", request, http.StatusCreated)
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&split))
+	require.Nil(t, split.Transaction)
+	require.Positive(t, split.OperationID)
+	require.Equal(t, "0", split.Plan.QuantityDeltaValue.String())
 }
 
 func TestInvestmentSplitCorrectionAPIReplaceReverseAndLabels(t *testing.T) {

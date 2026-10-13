@@ -128,12 +128,14 @@ func init() {
 			reversal:    exercised(TestReverseCapitalReturnRestoresBasisAndRevisesLaterSale),
 			export:      exercised(TestCapitalReturnBundlePreservesOriginalReplacementAndQuantityRevision),
 			selfCheck:   allKinds},
+		// Journal-free admission shares the split kind; its operation-addressed
+		// correction/settlement surface is tracked separately in #196.
 		{kind: "split", exportedIn: []string{"investment-split-facts.csv"},
-			replay:      exercised(TestBackdatedSplitReplaysLaterSaleBehindGainAcknowledgement),
+			replay:      exercised(TestBackdatedAcquisitionEntitledToJournalFreeSplitPostsAdjustment),
 			replacement: exercised(TestSplitReplacementCorrectsRatioAndRevisesLaterGain),
 			reversal:    exercised(TestSplitReversalPostsExactInverseAndRestoresUnsplitHolding),
-			export:      exercised(TestSplitCorrectionsAndAdjustmentsExportTheirLinks),
-			selfCheck:   allKinds},
+			export:      exercised(TestJournalFreeSplitExportsAndSurvivesRestore),
+			selfCheck:   exercised(TestJournalFreeSplitExemptionDoesNotHideMissingJournals)},
 		{kind: "short_sale", exportedIn: []string{lotFactsFile},
 			replay:      exercised(TestBackdatedShortOpeningRevisesLaterLIFOCoverWithAcknowledgement),
 			replacement: exercised(TestReplaceShortSaleRevisesLaterCoverWithAcknowledgement),

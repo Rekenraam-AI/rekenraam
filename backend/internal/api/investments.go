@@ -2543,7 +2543,8 @@ type investmentSplitPreviewResponse struct {
 }
 
 type investmentSplitResponse struct {
-	Transaction transactionResponse         `json:"transaction"`
+	OperationID int64                       `json:"operation_id"`
+	Transaction *transactionResponse        `json:"transaction"`
 	Plan        investmentSplitPlanResponse `json:"plan"`
 }
 
@@ -2593,8 +2594,12 @@ func investmentSplit(logger *slog.Logger, authService *app.AuthService, investme
 			writeInvestmentServiceError(w, r, logger, "investment split", err)
 			return
 		}
+		var transaction *transactionResponse
+		if result.Transaction.ID > 0 {
+			transaction = optionalTransactionResponse(&result.Transaction)
+		}
 		writeJSON(w, http.StatusCreated, investmentSplitResponse{
-			Transaction: toTransactionResponse(result.Transaction), Plan: toInvestmentSplitPlanResponse(result.Plan),
+			OperationID: result.OperationID, Transaction: transaction, Plan: toInvestmentSplitPlanResponse(result.Plan),
 		})
 	}))
 }

@@ -615,6 +615,35 @@ with an audit-only header, which opens the audit event and runs guards,
 replay, checkpoint netting and gain acknowledgement without posting a
 transaction. Replacing a bridged resolution with zero posts only the inverse
 bridge; replacing zero posts only the successor bridge. A zero is reversed by
-a journal-free reversal. Self-check names this as the only exemption from
-the journal-link rule. Other journal-free kinds, such as #146's zero-delta
-split, must declare their own exemption.
+a journal-free reversal. Self-check declares this exemption from the journal-link rule. Other
+journal-free kinds must declare their own exemption; #146's split does so below.
+
+
+## Journal-Free Split Refinement (2026-10-13, #146)
+
+A sourced `split` operation with no eligible long lots records its date, ratio,
+source evidence and audit with an audit-only command header, without a journal
+or fabricated zero lot event. The API returns its operation ID and a null
+transaction. Empty holding accounts can record it through the existing form.
+A 1:1 ratio remains refused.
+
+The sourced split fact anchors replay and same-day ordering even before any
+lot exists. Activity-date admission includes effective split facts, so a later
+entitled backdated acquisition replays the split. Effects are appended as
+per-cost-currency split revisions; a nonzero change posts the #144 adjustment
+journal at the split date under the triggering command's audit, gain disclosure
+and checkpoint guard. An unrepresentable fraction names the split and rolls the
+entire command back. A same-day acquisition entered after the split is not
+entitled.
+
+The journal-link check explicitly exempts sourced splits without original lot
+effects. The separate per-operation journal/effect conservation and replay
+checks remain active: neither an ordinary split missing its primary journal nor
+a revised split missing its adjustment journal passes. Export retains the
+operation with a blank transaction summary, its ratio/date and every later
+revision/journal link; backup and restore preserve the replay contract.
+
+Existing transaction-addressed split correction, settlement and import-link
+routes require a primary journal. Addressing initially journal-free splits by
+operation identity is bounded follow-up #196; replacement of an ordinary split
+with a journal-free one remains refused until that correction contract ships.

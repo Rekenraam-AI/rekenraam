@@ -1213,6 +1213,7 @@
   "investments_gain_impact_confirm_with_reconciliation": "Ongeldig maken en gewijzigde winsten accepteren",
   "investments_record_split": "Splitsing vastleggen",
   "investments_split_title": "Aandelensplitsing of omgekeerde splitsing vastleggen",
+  "investments_split_holding_hint": "Ook lege rekeningen staan in de lijst. Zonder in aanmerking komende lots worden alleen de datum en de splitsingsverhouding vastgelegd. Een later ingevoerde aankoop die recht heeft op de splitsing, past deze alsnog toe.",
   "investments_split_help": "Elk lot dat op de splitsingsdatum wordt aangehouden, wordt met de verhouding vermenigvuldigd. Elk lot houdt zijn totale kostprijs; er wordt geen geld of resultaat geboekt.",
   "investments_split_holding": "Positie",
   "investments_split_select_holding": "Kies een positie",

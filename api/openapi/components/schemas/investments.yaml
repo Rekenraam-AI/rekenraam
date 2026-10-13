@@ -1354,10 +1354,17 @@ InvestmentSplitPreviewResponse:
 
 InvestmentSplitResponse:
   type: object
-  required: [transaction, plan]
+  required: [operation_id, transaction, plan]
   properties:
+    operation_id:
+      type: integer
+      format: int64
+      description: Durable split operation, including a journal-free zero-delta split.
     transaction:
-      $ref: "../schemas/transactions.yaml#/TransactionResponse"
+      description: Null when no eligible lots exist; the sourced split records no zero journal.
+      oneOf:
+        - $ref: "../schemas/transactions.yaml#/TransactionResponse"
+        - type: "null"
     plan:
       $ref: "../schemas/investments.yaml#/InvestmentSplitPlan"
 

@@ -5,7 +5,8 @@ post:
     dependent replay, in a rolled-back transaction. Returns each eligible lot's
     exact quantity before and after, the holding delta the journal would post,
     every active checkpoint the writer would invalidate, and gain_impact for
-    committed disposals whose operational result would change. No durable change
+    committed disposals whose operational result would change. No eligible lots
+    yield an empty effect set and zero delta, without a journal. No durable change
     or temporary ID escapes; commit rechecks everything.
   requestBody:
     required: true
@@ -33,7 +34,7 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
-      description: INVESTMENT_SPLIT_NO_HOLDINGS or INVESTMENT_SPLIT_DEPENDENCY
+      description: INVESTMENT_SPLIT_CHANGED or INVESTMENT_SPLIT_DEPENDENCY
       content:
         application/json:
           schema:

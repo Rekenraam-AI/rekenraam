@@ -16175,7 +16175,7 @@ export interface paths {
         put?: never;
         /**
          * Record a split or reverse split of one holding
-         * @description Multiplies the remaining quantity of every long lot open on effective_on, at the operation's same-day slot, by ratio_numerator/ratio_denominator exactly. Remaining basis is unchanged, so aggregate basis is conserved and only per-share basis moves. The journal posts the aggregate quantity delta to the holding account and its opposite to commodity_trading in the security; no cash is posted. A split dated before later disposals replays them; when that changes a committed disposal's operational basis or gain, the preview's gain_impact acknowledgement token is required (T-114).
+         * @description Multiplies the remaining quantity of every long lot open on effective_on, at the operation's same-day slot, by ratio_numerator/ratio_denominator exactly. Remaining basis is unchanged, so aggregate basis is conserved and only per-share basis moves. The journal posts the aggregate quantity delta to the holding account and its opposite to commodity_trading in the security; no cash is posted. With no eligible lots, records a journal-free split operation and returns a null transaction plus its operation_id. Its sourced ratio and date remain replay inputs: a later entitled backdated acquisition appends the split's revised lot effects and a split_adjustment journal dated to the split, under the triggering command's audit, gain and reconciliation guards (#146). A split dated before later disposals replays them; when that changes a committed disposal's operational basis or gain, the preview's gain_impact acknowledgement token is required (T-114).
          */
         post: {
             parameters: {
@@ -16228,7 +16228,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description INVESTMENT_SPLIT_NO_HOLDINGS, INVESTMENT_SPLIT_CHANGED (preview again), INVESTMENT_SPLIT_DEPENDENCY (a later operation becomes impossible), reconciliation override or gain-impact acknowledgement required or stale */
+                /** @description INVESTMENT_SPLIT_CHANGED (preview again), INVESTMENT_SPLIT_DEPENDENCY (a later operation becomes impossible), reconciliation override or gain-impact acknowledgement required or stale */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -16274,7 +16274,7 @@ export interface paths {
         put?: never;
         /**
          * Preview a split or reverse split
-         * @description Plans the split at its slot and runs its complete writer, including any dependent replay, in a rolled-back transaction. Returns each eligible lot's exact quantity before and after, the holding delta the journal would post, every active checkpoint the writer would invalidate, and gain_impact for committed disposals whose operational result would change. No durable change or temporary ID escapes; commit rechecks everything.
+         * @description Plans the split at its slot and runs its complete writer, including any dependent replay, in a rolled-back transaction. Returns each eligible lot's exact quantity before and after, the holding delta the journal would post, every active checkpoint the writer would invalidate, and gain_impact for committed disposals whose operational result would change. No eligible lots yield an empty effect set and zero delta, without a journal. No durable change or temporary ID escapes; commit rechecks everything.
          */
         post: {
             parameters: {
@@ -16316,7 +16316,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description INVESTMENT_SPLIT_NO_HOLDINGS or INVESTMENT_SPLIT_DEPENDENCY */
+                /** @description INVESTMENT_SPLIT_CHANGED or INVESTMENT_SPLIT_DEPENDENCY */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -26834,7 +26834,13 @@ export interface components {
             impact: components["schemas"]["ReconciliationImpactResponse"];
         };
         InvestmentSplitResponse: {
-            transaction: components["schemas"]["TransactionResponse"];
+            /**
+             * Format: int64
+             * @description Durable split operation, including a journal-free zero-delta split.
+             */
+            operation_id: number;
+            /** @description Null when no eligible lots exist; the sourced split records no zero journal. */
+            transaction: components["schemas"]["TransactionResponse"] | null;
             plan: components["schemas"]["InvestmentSplitPlan"];
         };
         /** @description A share exchange (#177): an all-stock merger, fund merger or class conversion of the whole long holding of commodity_id in holding_account_id. */

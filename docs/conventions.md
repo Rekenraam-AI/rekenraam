@@ -266,6 +266,15 @@ When a feature introduces a durable new rule, update one of those documents in t
   onward link to unknown: it refuses with that operation named (#168). A
   sourced known zero is journal-free, never a fabricated zero journal; any
   other journal-free operation kind must declare its own self-check exemption.
+- A sourced split with no eligible long lots is a journal-free `split`
+  operation (#146), with its date, ratio and audit retained. Replay reads its
+  sourced fact even without an original lot event. A later entitled acquisition
+  appends per-cost-currency effects and a dated `split_adjustment` journal under
+  the triggering command's gain and checkpoint guards. The journal-link
+  self-check exempts only sourced splits with no original lot effects; split
+  journal/effect conservation still requires every nonzero effective delta to
+  have posted journals. Operation-addressed correction and settlement of an
+  initially journal-free split are tracked in #196.
 - Projected investment basis has explicit `known`/`unknown` knowledge. Unknown
   coefficient and scale are NULL in storage and on the API, and empty in CSV;
   known zero remains numeric. Numeric read-model fields are usable only when

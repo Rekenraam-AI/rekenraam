@@ -1241,6 +1241,7 @@
   "investments_gain_impact_confirm_with_reconciliation": "Invalidate and accept changed gains",
   "investments_record_split": "Record split",
   "investments_split_title": "Record a split or reverse split",
+  "investments_split_holding_hint": "Holdings include empty accounts. With no eligible lots, only the dated split ratio is recorded. An entitled acquisition entered later applies the split.",
   "investments_split_help": "Every lot held on the split date is multiplied by the ratio. Each lot keeps its total cost basis; no cash or gain is recorded.",
   "investments_split_holding": "Holding",
   "investments_split_select_holding": "Select a holding",

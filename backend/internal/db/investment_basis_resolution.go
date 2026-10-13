@@ -101,7 +101,7 @@ func unknownTransferBasisQuery(ctx context.Context, reader queryer, bookID, oper
 func (r *InvestmentRepository) ResolveTransferBasis(ctx context.Context, journal CreateTransactionParams, params ResolveTransferBasisParams) (TransactionRecord, error) {
 	transaction, _, err := executeInvestmentWriteTx(ctx, r.database, journal,
 		func(tx *sql.Tx, transaction TransactionRecord, auditEventID int64) (struct{}, error) {
-			operationID, err := basisResolutionOperationTx(ctx, tx, journal, transaction, auditEventID)
+			operationID, err := investmentCommandOperationTx(ctx, tx, journal, transaction, auditEventID)
 			if err != nil {
 				return struct{}{}, err
 			}
@@ -110,22 +110,12 @@ func (r *InvestmentRepository) ResolveTransferBasis(ctx context.Context, journal
 	return transaction, err
 }
 
-// basisResolutionOperationTx is the operation a resolution's header names: a
-// journal-free operation for an audit-only header, else the journal's own.
-func basisResolutionOperationTx(ctx context.Context, tx *sql.Tx, header CreateTransactionParams,
-	transaction TransactionRecord, auditEventID int64) (int64, error) {
-	if header.AuditOnly {
-		return insertJournalFreeInvestmentOperationTx(ctx, tx, header, auditEventID)
-	}
-	return investmentOperationIDTx(ctx, tx, header.BookID, transaction.ID)
-}
-
 // SimulateTransferBasisResolution runs the complete resolution, replay and
 // gain comparison, then rolls back.
 func (r *InvestmentRepository) SimulateTransferBasisResolution(ctx context.Context, journal CreateTransactionParams, params ResolveTransferBasisParams) (SimulatedInvestmentWrite, error) {
 	transaction, _, err := previewInvestmentWriteTx(ctx, r.database, journal,
 		func(tx *sql.Tx, transaction TransactionRecord, auditEventID int64) (struct{}, error) {
-			operationID, err := basisResolutionOperationTx(ctx, tx, journal, transaction, auditEventID)
+			operationID, err := investmentCommandOperationTx(ctx, tx, journal, transaction, auditEventID)
 			if err != nil {
 				return struct{}{}, err
 			}
@@ -324,7 +314,7 @@ func (r *InvestmentRepository) reverseTransferBasisResolution(ctx context.Contex
 		return checkBasisResolutionForCorrectionTx(ctx, tx, params.BookID, expected)
 	}
 	effect := func(tx *sql.Tx, transaction TransactionRecord, auditEventID int64) (struct{}, error) {
-		operationID, err := basisResolutionOperationTx(ctx, tx, params, transaction, auditEventID)
+		operationID, err := investmentCommandOperationTx(ctx, tx, params, transaction, auditEventID)
 		if err != nil {
 			return struct{}{}, err
 		}
@@ -423,7 +413,7 @@ func (r *InvestmentRepository) replaceTransferBasisResolution(ctx context.Contex
 			if !successor.AuditOnly {
 				successorJournal = records[len(records)-1]
 			}
-			opID, err := basisResolutionOperationTx(ctx, tx, successor, successorJournal, auditID)
+			opID, err := investmentCommandOperationTx(ctx, tx, successor, successorJournal, auditID)
 			if err != nil {
 				return struct{}{}, err
 			}
