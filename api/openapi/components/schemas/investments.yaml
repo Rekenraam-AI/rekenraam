@@ -4125,6 +4125,18 @@ InvestmentBasisResolutionRequest:
   additionalProperties: false
   required: [basis_value, basis_scale, source_evidence, reason]
   properties:
+    preserve_source_metadata:
+      type: boolean
+      description: Defaults to false. On correction, retain additional existing metadata using exact server-side JSON; supplied fields override it. Declaration fields are replaced explicitly.
+    expected_resolution_operation_id:
+      type: integer
+      format: int64
+      minimum: 1
+      description: Required for provenance-only corrections; identifies the resolution read by the caller.
+    expected_provenance_revision:
+      type: integer
+      minimum: 0
+      description: Required with the expected operation; 0 means original evidence. Stale corrections return conflict.
     basis_value:
       type: string
       pattern: '^(0|[1-9][0-9]{0,18})$'
@@ -4132,7 +4144,9 @@ InvestmentBasisResolutionRequest:
         The transfer's total sourced basis in its own cost currency, never a
         conversion. A sourced known zero is journal-free: it records the fact
         without a bridge journal (#168). A replacement keeps the pinned
-        transfer and currency and must differ from the effective basis.
+        transfer and currency. An exactly equal basis with changed evidence records
+        a journal-free provenance revision (#197), requiring both expected fields.
+        Repeating the effective evidence at the same basis is refused.
     basis_scale:
       type: integer
       minimum: 0
@@ -4164,12 +4178,12 @@ InvestmentBasisResolutionReplacementResponse:
   required: [inverse, replacement, transfer_transaction_id]
   properties:
     inverse:
-      description: The inverse of the replaced bridge; null when the replaced resolution was a journal-free known zero.
+      description: The inverse of the replaced bridge; null when the replaced resolution was a journal-free known zero or the correction changes provenance only.
       oneOf:
         - $ref: "../schemas/transactions.yaml#/TransactionResponse"
         - type: 'null'
     replacement:
-      description: The successor's bridge journal; null when the successor is a journal-free known zero.
+      description: The successor's bridge journal; null when the successor is a journal-free known zero or the correction changes provenance only.
       oneOf:
         - $ref: "../schemas/transactions.yaml#/TransactionResponse"
         - type: 'null'
@@ -4179,8 +4193,12 @@ InvestmentBasisResolutionReplacementResponse:
 
 InvestmentCorrectionBasisResolutionTerms:
   type: object
-  required: [operation_id, transaction_id, cost_commodity_id, basis_value, basis_scale, source_evidence]
+  required: [operation_id, transaction_id, cost_commodity_id, basis_value, basis_scale, source_evidence, provenance_revision]
   properties:
+    provenance_revision:
+      type: integer
+      minimum: 0
+      description: Current evidence revision; 0 identifies the resolution's original declaration.
     operation_id:
       type: integer
       format: int64
@@ -4216,8 +4234,16 @@ InvestmentBasisResolutionReversalResponse:
 
 InvestmentBasisResolutionHistoryEntry:
   type: object
-  required: [operation_id, transaction_id, basis_value, basis_scale, source_evidence, reason, created_at, status]
+  required: [operation_id, transaction_id, basis_value, basis_scale, source_evidence, source_evidence_json, reason, created_at, status, provenance_corrections]
   properties:
+    source_evidence_json:
+      type: string
+      description: Exact saved JSON, including arbitrary numeric metadata that browser object parsing can round.
+    provenance_corrections:
+      type: array
+      description: Immutable evidence revisions, oldest first. The last declaration is effective for this economic resolution.
+      items:
+        $ref: '#/InvestmentBasisProvenanceHistoryEntry'
     operation_id:
       type: integer
       format: int64
@@ -4298,3 +4324,17 @@ InvestmentSplitActivityResponse:
       type: array
       items: {$ref: "../schemas/investments.yaml#/InvestmentSplitActivity"}
     next_cursor: {type: [string, "null"]}
+
+InvestmentBasisProvenanceHistoryEntry:
+  type: object
+  required: [id, revision_seq, source_evidence, source_evidence_json, audit_event_id, actor_user_id, request_id, created_at, reason]
+  properties:
+    source_evidence_json: {type: string, description: Exact saved evidence JSON.}
+    id: {type: integer, format: int64}
+    revision_seq: {type: integer, minimum: 1}
+    source_evidence: {type: object, additionalProperties: true}
+    audit_event_id: {type: integer, format: int64}
+    actor_user_id: {type: integer, format: int64}
+    request_id: {type: string}
+    created_at: {type: string, format: date-time}
+    reason: {type: string}

@@ -110,4 +110,6 @@ No legacy databases exist. The pre-release schema is consolidated into
 links, separate immutable lot identity/mutable lot state, and immutable disposal
 proceeds portions tied to clearing postings. Projected basis has explicit
 known/unknown knowledge and nullable unknown amounts. The checksum and seeded equivalence
-tests are updated together; see [the migration workflow](docs/developer-workflow.md#migrations-and-resetting-your-database).
+tests are updated together. Forward migration `0002` adds immutable basis-resolution
+provenance history and preserves existing baseline data; it does not require a
+reset. See [the migration workflow](docs/developer-workflow.md#migrations-and-resetting-your-database).

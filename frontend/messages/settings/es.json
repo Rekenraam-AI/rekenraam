@@ -1338,7 +1338,7 @@
   "transactions_investment_withdraw_basis_title": "Retirar el coste registrado",
   "transactions_investment_withdraw_basis_copy": "Revierte el asiento de coste. El coste de las acciones vuelve a ser desconocido y las ventas que resolvía muestran una ganancia sin determinar. El registro retirado queda en el historial.",
   "investments_basis_resolution_correct_title": "Corregir coste de adquisición",
-  "investments_basis_resolution_correct_copy": "Introduce el coste total corregido según tu fuente. El registro anterior queda en el historial y se recalcula cada venta y traspaso de estas acciones.",
+  "investments_basis_resolution_correct_copy": "Corrige el coste total o la declaración de su fuente. Si mantienes el mismo importe, solo se corrigen las pruebas; los saldos y resultados no cambian. Las pruebas anteriores quedan en el historial.",
   "investments_basis_resolution_correct_submit": "Revisar y corregir",
   "investments_basis_resolution_history_title": "Costes registrados",
   "investments_basis_resolution_history_amount": "{amount} {currency}",
@@ -1504,5 +1504,8 @@
   "investments_basis_source_history_owner": "Declaración del propietario, conocida el {date}: {rationale}",
   "investments_basis_source_history_legacy": "Pruebas anteriores, registradas sin declaración de fuente.",
   "investments_basis_source_history_evidence": "Pruebas de la fuente registradas",
-  "investments_basis_source_too_long": "Use como máximo {count} caracteres para la referencia de la fuente o la justificación."
+  "investments_basis_source_too_long": "Use como máximo {count} caracteres para la referencia de la fuente o la justificación.",
+  "investments_basis_provenance_original": "Pruebas originales",
+  "investments_basis_provenance_revision": "Corrección de pruebas {revision}",
+  "investments_basis_provenance_actor": "Propietario #{actor} · Auditoría #{audit}"
 }

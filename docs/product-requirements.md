@@ -163,6 +163,10 @@ These apply across all feature phases.
   and correction history must be inspectable even when the ledger has no
   transaction row for the operation; a sourced zero-delta split remains
   correctable and reversible by its operation identity.
+- Correcting only a sourced basis declaration at unchanged exact basis appends
+  immutable, attributed evidence history. It preserves financial operation
+  lineage, quantity, currency, basis, journals, gains and active checkpoints.
+  Original and revised declarations remain inspectable and exportable.
 - Investment settlement facts belong to the canonical journal; lot relationships,
   basis adjustments, corporate actions, and actual lot elections belong to an
   auditable investment subledger. They must share one atomic lifecycle so editing,

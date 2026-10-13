@@ -4,7 +4,7 @@
   import { getLocale } from '#lib/paraglide/runtime.js';
   import { basisSourceFields } from './basis-provenance';
 
-  let { evidence }: { evidence: Record<string, unknown> } = $props();
+  let { evidence, recordedJSON }: { evidence: Record<string, unknown>; recordedJSON?: string } = $props();
   const source = $derived(basisSourceFields(evidence));
   const knownDate = $derived(parseISO(source.knownOn));
   const knownOn = $derived(isValid(knownDate)
@@ -23,6 +23,6 @@
   {/if}
   <details class="mt-1">
     <summary class="cursor-pointer">{m.investments_basis_source_history_evidence()}</summary>
-    <pre class="mt-1 whitespace-pre-wrap break-words">{JSON.stringify(evidence, null, 2)}</pre>
+    <pre class="mt-1 whitespace-pre-wrap break-words">{recordedJSON ?? JSON.stringify(evidence, null, 2)}</pre>
   </details>
 </div>

@@ -167,7 +167,10 @@ and write-off mobile entry [#172](https://github.com/sergeyfarin/rekenraam/issue
 These do not reopen #114/#160 or expand the bounded R16 completion bar;
 #171 can run alongside the ordered work, while #169/#172 remain later.
 Basis-resolution provenance declarations [#170](https://github.com/sergeyfarin/rekenraam/issues/170)
-are delivered (2026-10-13), with typed source entry and history.
+are delivered (2026-10-13), with typed source entry and history. Provenance-only
+correction [#197](https://github.com/sergeyfarin/rekenraam/issues/197) is also
+delivered: immutable evidence revisions at unchanged exact basis, without
+financial writes, with transfer history, export and stale-correction guards.
 
 **Placed, not sequenced:** lot-opening `NOT NULL`
 [#148](https://github.com/sergeyfarin/rekenraam/issues/148) before the v0.1.0 tag. Blocked on provider evidence: [#145](https://github.com/sergeyfarin/rekenraam/issues/145), [#136](https://github.com/sergeyfarin/rekenraam/issues/136).
@@ -217,7 +220,6 @@ their stated scope and placement; R11 remains the next ordered initiative.
 | [#145](https://github.com/sergeyfarin/rekenraam/issues/145) | Trading 212 split mapping | Blocked on verified provider semantics and representative payloads |
 | [#136](https://github.com/sergeyfarin/rekenraam/issues/136) | Provider execution cancellations | Blocked on provider evidence |
 | [#176](https://github.com/sergeyfarin/rekenraam/issues/176) | Provider short/cover import | Blocked on provider evidence |
-| [#197](https://github.com/sergeyfarin/rekenraam/issues/197) | Correct provenance without changing the basis amount | Independent follow-up; requires an audited correction contract |
 
 Provider return-of-capital/cash-in-lieu suggestions also remain follow-ups.
 

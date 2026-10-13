@@ -22,7 +22,7 @@ import (
 // BundleSchemaVersion is the archive's own version, carried in manifest.json.
 // Columns are appended within a version; a change that cannot be made by
 // appending increments this and needs an ADR (ADR 0011).
-const BundleSchemaVersion = 9
+const BundleSchemaVersion = 10
 
 // bundleFile is one entry of the archive, recorded in the manifest with the
 // checksum computed while it was written.
@@ -215,6 +215,9 @@ func (s *ExportService) WriteBundle(ctx context.Context, out io.Writer, filter E
 		}},
 		{"investment-transfer-link-revision-depletions.csv", func(w io.Writer) (int64, error) {
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "transfer-link-revision-depletions", []string{"revision_id", "depletion_seq", "source_lot_id", "quantity_value", "quantity_scale", "cost_basis_value", "cost_basis_scale", "basis_knowledge"})
+		}},
+		{"investment-basis-resolution-provenance.csv", func(w io.Writer) (int64, error) {
+			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "basis-resolution-provenance", []string{"id", "resolution_operation_id", "revision_seq", "source_evidence_json", "audit_event_id", "actor_user_id", "request_id", "created_at", "reason"})
 		}},
 		{"investment-basis-resolutions.csv", func(w io.Writer) (int64, error) {
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "basis-resolutions", []string{"operation_id", "transfer_operation_id", "link_seq", "lot_id", "quantity_value", "quantity_scale", "cost_commodity_id", "basis_value", "basis_scale", "source_evidence_json", "audit_event_id"})
@@ -922,7 +925,8 @@ value in this archive was ever a floating-point number.`,
   investment-transfer-lot-links.csv  sourced lot lineage, dates, and basis knowledge
   investment-transfer-link-revisions.csv  replayed carried basis of internal transfer links
   investment-transfer-link-revision-depletions.csv  replayed source depletions of pooled-lot transfers
-  investment-basis-resolutions.csv  sourced resolutions of unknown inbound transfer basis
+  investment-basis-resolutions.csv  original sourced resolutions of unknown inbound transfer basis
+  investment-basis-resolution-provenance.csv  immutable evidence corrections and audit attribution
   investment-split-facts.csv  sourced split and reverse-split ratios and dates
   investment-split-revisions.csv  replay revisions of split lot effects per cost currency, with any adjustment journal
   investment-split-revision-effects.csv  per-lot quantity changes for those revisions
@@ -996,7 +1000,9 @@ Both lots.csv and investment-lot-state.csv carry basis_knowledge for remaining
 projected basis. Unknown basis has empty amount/scale fields, never numeric
 zero; known zero remains explicit. Quantity and immutable opening facts remain
 separate from that current knowledge state.
-Bundle schema 9 appends opening_basis_knowledge to lots.csv and the immutable
+Bundle schema 10 adds investment-basis-resolution-provenance.csv. Evidence corrections
+retain the original resolution and economic lineage, with numbered successors and
+actor, request, timestamp and reason. Schema 9 appends opening_basis_knowledge to lots.csv and the immutable
 opening facts, and basis_knowledge to lot events. Original unknown amounts are
 blank independently of the remaining projection's knowledge. Disposal
 decisions, allocations and their replay revisions append basis_knowledge; an

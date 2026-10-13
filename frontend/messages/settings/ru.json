@@ -1338,7 +1338,7 @@
   "transactions_investment_withdraw_basis_title": "Отозвать указанную себестоимость",
   "transactions_investment_withdraw_basis_copy": "Сторнирует запись себестоимости. Себестоимость бумаг снова неизвестна, а продажи, которые она определяла, снова показывают неопределённый результат. Отозванная запись остаётся в истории.",
   "investments_basis_resolution_correct_title": "Исправить себестоимость",
-  "investments_basis_resolution_correct_copy": "Введите исправленную общую себестоимость по данным источника. Прежняя запись остаётся в истории, и каждая продажа и перевод этих бумаг пересчитываются.",
+  "investments_basis_resolution_correct_copy": "Исправьте общую себестоимость или сведения об источнике. При той же сумме исправляются только подтверждения; остатки и результаты не меняются. Прежние подтверждения остаются в истории.",
   "investments_basis_resolution_correct_submit": "Проверить и исправить",
   "investments_basis_resolution_history_title": "Записи себестоимости",
   "investments_basis_resolution_history_amount": "{amount} {currency}",
@@ -1504,5 +1504,8 @@
   "investments_basis_source_history_owner": "Заявление владельца, сведения получены {date}: {rationale}",
   "investments_basis_source_history_legacy": "Ранее сохранённые сведения без указания типа источника.",
   "investments_basis_source_history_evidence": "Сохранённые сведения об источнике",
-  "investments_basis_source_too_long": "Используйте не более {count} символов для ссылки на источник или обоснования."
+  "investments_basis_source_too_long": "Используйте не более {count} символов для ссылки на источник или обоснования.",
+  "investments_basis_provenance_original": "Исходные подтверждения",
+  "investments_basis_provenance_revision": "Исправление подтверждений {revision}",
+  "investments_basis_provenance_actor": "Владелец №{actor} · Аудит №{audit}"
 }

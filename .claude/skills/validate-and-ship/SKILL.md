@@ -396,6 +396,19 @@ non-trivial diff (yours or reviewed):
     `TestBasisResolutionRequiresSourceDeclarationWithoutWriting`,
     `TestBasisResolutionSourceTextUsesUnicodeCharacterLimit`.
 
+38. **Treating source corrections as amount corrections** — comparing only an
+    exact basis amount refused a genuinely changed declaration (#197). Evidence
+    changes at equal basis append their own immutable, attributed revisions,
+    without inverse journals, economic replacement or replay. Pin both the
+    effective resolution and evidence revision in the form and recheck inside
+    the writer. JSON layout/key order or a reason alone is a no-op. Preserve
+    additional metadata server-side as raw JSON: browser object parsing can
+    round numeric tokens, and rebuilding only typed fields drops metadata.
+    History renders the exact saved JSON. Named cases:
+    `TestProvenanceCorrectionPreservesDownstreamSalesTransfersAndCheckpoints`,
+    `TestProvenanceCorrectionRefusesNoOpsInvalidDeclarationsAndStaleWrites`,
+    `TestProvenanceCorrectionPreservesExactAdditionalMetadataOnServer`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

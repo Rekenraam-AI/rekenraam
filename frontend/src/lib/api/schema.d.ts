@@ -19814,7 +19814,7 @@ export interface paths {
         put?: never;
         /**
          * Replace a sourced basis resolution
-         * @description Corrects a wrong sourced basis (#168). Under one audit event the old resolution's bridge is inverted and a successor basis_resolution operation, chained to it as a replacement, appends a new immutable fact pinned to the same transfer link, lot, quantity and cost currency and posts its complete bridge at the transfer date. The superseded fact, the link and the opening stay evidence. Replay of the dependency closure revises every sale, onward link and average pool the lot reached; an outbound already bridged posts a dated adjustment. A non-empty gain change set requires the preview's exact gain_impact_acknowledgement.
+         * @description Corrects a wrong sourced basis (#168). Under one audit event the old resolution's bridge is inverted and a successor basis_resolution operation, chained to it as a replacement, appends a new immutable fact pinned to the same transfer link, lot, quantity and cost currency and posts its complete bridge at the transfer date. The superseded fact, the link and the opening stay evidence. Replay of the dependency closure revises every sale, onward link and average pool the lot reached; an outbound already bridged posts a dated adjustment. A non-empty gain change set requires the preview's exact gain_impact_acknowledgement. At an exactly equal scaled basis, changed evidence instead appends an audited immutable provenance revision without journals or replay (#197). Both expected_resolution_operation_id and expected_provenance_revision are required for this branch and rechecked inside the write. Economic operation lineage and all financial facts and checkpoints remain unchanged. JSON layout/key order alone or a changed reason is a no-op.
          */
         post: {
             parameters: {
@@ -19834,7 +19834,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Resolution replaced and every reached position replayed */
+                /** @description Resolution replaced and every reached position replayed, or evidence corrected without financial changes */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -19843,7 +19843,7 @@ export interface paths {
                         "application/json": components["schemas"]["InvestmentBasisResolutionReplacementResponse"];
                     };
                 };
-                /** @description Invalid request, missing reason, a negative basis, or a basis repeating the effective one */
+                /** @description Invalid request, missing reason, a negative basis, or identical basis and evidence */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -28133,7 +28133,16 @@ export interface components {
             [key: string]: unknown;
         });
         InvestmentBasisResolutionRequest: {
-            /** @description The transfer's total sourced basis in its own cost currency, never a conversion. A sourced known zero is journal-free: it records the fact without a bridge journal (#168). A replacement keeps the pinned transfer and currency and must differ from the effective basis. */
+            /** @description Defaults to false. On correction, retain additional existing metadata using exact server-side JSON; supplied fields override it. Declaration fields are replaced explicitly. */
+            preserve_source_metadata?: boolean;
+            /**
+             * Format: int64
+             * @description Required for provenance-only corrections; identifies the resolution read by the caller.
+             */
+            expected_resolution_operation_id?: number;
+            /** @description Required with the expected operation; 0 means original evidence. Stale corrections return conflict. */
+            expected_provenance_revision?: number;
+            /** @description The transfer's total sourced basis in its own cost currency, never a conversion. A sourced known zero is journal-free: it records the fact without a bridge journal (#168). A replacement keeps the pinned transfer and currency. An exactly equal basis with changed evidence records a journal-free provenance revision (#197), requiring both expected fields. Repeating the effective evidence at the same basis is refused. */
             basis_value: string;
             basis_scale: number;
             source_evidence: components["schemas"]["InvestmentBasisResolutionSourceDeclaration"];
@@ -28148,9 +28157,9 @@ export interface components {
             resolved_transaction_id: number;
         };
         InvestmentBasisResolutionReplacementResponse: {
-            /** @description The inverse of the replaced bridge; null when the replaced resolution was a journal-free known zero. */
+            /** @description The inverse of the replaced bridge; null when the replaced resolution was a journal-free known zero or the correction changes provenance only. */
             inverse: components["schemas"]["TransactionResponse"] | null;
-            /** @description The successor's bridge journal; null when the successor is a journal-free known zero. */
+            /** @description The successor's bridge journal; null when the successor is a journal-free known zero or the correction changes provenance only. */
             replacement: components["schemas"]["TransactionResponse"] | null;
             /** Format: int64 */
             transfer_transaction_id: number;
@@ -28161,7 +28170,29 @@ export interface components {
             /** Format: int64 */
             transfer_transaction_id: number;
         };
+        InvestmentBasisProvenanceHistoryEntry: {
+            /** @description Exact saved evidence JSON. */
+            source_evidence_json: string;
+            /** Format: int64 */
+            id: number;
+            revision_seq: number;
+            source_evidence: {
+                [key: string]: unknown;
+            };
+            /** Format: int64 */
+            audit_event_id: number;
+            /** Format: int64 */
+            actor_user_id: number;
+            request_id: string;
+            /** Format: date-time */
+            created_at: string;
+            reason: string;
+        };
         InvestmentBasisResolutionHistoryEntry: {
+            /** @description Exact saved JSON, including arbitrary numeric metadata that browser object parsing can round. */
+            source_evidence_json: string;
+            /** @description Immutable evidence revisions, oldest first. The last declaration is effective for this economic resolution. */
+            provenance_corrections: components["schemas"]["InvestmentBasisProvenanceHistoryEntry"][];
             /** Format: int64 */
             operation_id: number;
             /**
@@ -28189,6 +28220,8 @@ export interface components {
             reversal_reason?: string;
         };
         InvestmentCorrectionBasisResolutionTerms: {
+            /** @description Current evidence revision; 0 identifies the resolution's original declaration. */
+            provenance_revision: number;
             /**
              * Format: int64
              * @description The effective basis_resolution operation.

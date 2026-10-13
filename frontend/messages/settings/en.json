@@ -1366,7 +1366,7 @@
   "transactions_investment_withdraw_basis_title": "Withdraw the cost basis",
   "transactions_investment_withdraw_basis_copy": "Reverses the cost-basis entry. The shares' cost basis becomes unknown again, and the sales it resolved show an unresolved gain. The withdrawn resolution stays in the history.",
   "investments_basis_resolution_correct_title": "Correct cost basis",
-  "investments_basis_resolution_correct_copy": "Enter the corrected total cost basis from your source. The earlier resolution stays in the history, and every sale and transfer of these shares is recalculated.",
+  "investments_basis_resolution_correct_copy": "Correct the total cost basis or its source declaration. Keeping the same amount records an evidence-only correction and leaves balances and gains unchanged. Earlier evidence stays in the history.",
   "investments_basis_resolution_correct_submit": "Review and correct",
   "investments_basis_resolution_history_title": "Cost basis resolutions",
   "investments_basis_resolution_history_amount": "{amount} {currency}",
@@ -1532,5 +1532,8 @@
   "investments_basis_source_history_owner": "Owner assertion, known on {date}: {rationale}",
   "investments_basis_source_history_legacy": "Earlier evidence, recorded without a source declaration.",
   "investments_basis_source_history_evidence": "Recorded source evidence",
-  "investments_basis_source_too_long": "Use at most {count} characters for the source reference or rationale."
+  "investments_basis_source_too_long": "Use at most {count} characters for the source reference or rationale.",
+  "investments_basis_provenance_original": "Original evidence",
+  "investments_basis_provenance_revision": "Evidence correction {revision}",
+  "investments_basis_provenance_actor": "Owner #{actor} · Audit #{audit}"
 }

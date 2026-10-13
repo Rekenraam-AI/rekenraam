@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"unicode/utf8"
 )
@@ -83,4 +84,46 @@ func cleanBasisSourceText(value, field string, multiline bool) (string, error) {
 		return cleanOptionalMultilineText(value, field, 500*utf8.UTFMax)
 	}
 	return cleanOptionalText(value, field, 500*utf8.UTFMax)
+}
+
+// UseNumber preserves arbitrary metadata numbers without float rounding.
+// Comparing decoded objects ignores layout, key order and string escaping.
+func sameBasisResolutionEvidence(a, b string) bool {
+	decode := func(value string) (any, error) {
+		d := json.NewDecoder(strings.NewReader(value))
+		d.UseNumber()
+		var result any
+		err := d.Decode(&result)
+		return result, err
+	}
+	left, leftErr := decode(a)
+	right, rightErr := decode(b)
+	return leftErr == nil && rightErr == nil && reflect.DeepEqual(left, right)
+}
+
+// Merge on the server using raw fields: browser JSON numbers cannot preserve
+// arbitrary exact metadata coefficients. Editable declaration fields replace
+// the old declaration; additional metadata is retained unless supplied anew.
+func mergeBasisResolutionEvidence(previous, declaration string) (string, error) {
+	var original, replacement map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(previous), &original); err != nil {
+		return "", ValidationError{Message: "original source evidence must be a JSON object"}
+	}
+	if err := json.Unmarshal([]byte(declaration), &replacement); err != nil {
+		return "", err
+	}
+	if original == nil {
+		original = make(map[string]json.RawMessage)
+	}
+	for _, key := range []string{"kind", "reference", "rationale", "known_on"} {
+		delete(original, key)
+	}
+	for key, value := range replacement {
+		original[key] = value
+	}
+	merged, err := json.Marshal(original)
+	if err != nil {
+		return "", err
+	}
+	return cleanBasisResolutionEvidence(string(merged))
 }

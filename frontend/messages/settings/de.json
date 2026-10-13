@@ -1338,7 +1338,7 @@
   "transactions_investment_withdraw_basis_title": "Erfasste Anschaffungskosten zurückziehen",
   "transactions_investment_withdraw_basis_copy": "Storniert die Kostenbuchung. Die Anschaffungskosten der Anteile sind wieder unbekannt, und die dadurch bestimmten Verkäufe zeigen wieder einen ungeklärten Gewinn. Die zurückgezogene Erfassung bleibt im Verlauf.",
   "investments_basis_resolution_correct_title": "Anschaffungskosten korrigieren",
-  "investments_basis_resolution_correct_copy": "Geben Sie die korrigierten gesamten Anschaffungskosten laut Ihrer Quelle ein. Die frühere Erfassung bleibt im Verlauf, und jeder Verkauf und jede Übertragung dieser Anteile wird neu berechnet.",
+  "investments_basis_resolution_correct_copy": "Korrigieren Sie die gesamten Anschaffungskosten oder die Quellenangabe. Bei gleichem Betrag werden nur die Nachweise korrigiert; Salden und Ergebnisse bleiben unverändert. Frühere Nachweise bleiben im Verlauf.",
   "investments_basis_resolution_correct_submit": "Prüfen und korrigieren",
   "investments_basis_resolution_history_title": "Erfasste Anschaffungskosten",
   "investments_basis_resolution_history_amount": "{amount} {currency}",
@@ -1504,5 +1504,8 @@
   "investments_basis_source_history_owner": "Erklärung des Eigentümers, bekannt seit {date}: {rationale}",
   "investments_basis_source_history_legacy": "Frühere Belege, ohne Quellenerklärung erfasst.",
   "investments_basis_source_history_evidence": "Erfasste Quellenbelege",
-  "investments_basis_source_too_long": "Verwenden Sie höchstens {count} Zeichen für die Quellenreferenz oder Begründung."
+  "investments_basis_source_too_long": "Verwenden Sie höchstens {count} Zeichen für die Quellenreferenz oder Begründung.",
+  "investments_basis_provenance_original": "Ursprüngliche Nachweise",
+  "investments_basis_provenance_revision": "Nachweiskorrektur {revision}",
+  "investments_basis_provenance_actor": "Eigentümer #{actor} · Audit #{audit}"
 }

@@ -97,7 +97,12 @@
     }
     return {
       basis_value: basis.field.value, basis_scale: basis.field.scale, reason: reason.trim(),
-      source_evidence: declaration
+      source_evidence: declaration,
+      ...(correcting ? {
+        expected_resolution_operation_id: correcting.operation_id,
+        expected_provenance_revision: correcting.provenance_revision,
+        preserve_source_metadata: true
+      } : {})
     };
   }
 

@@ -189,6 +189,7 @@ type InvestmentCorrectionTransferTerms struct {
 // InvestmentCorrectionBasisResolutionTerms are an effective resolution's
 // sourced basis; the transfer, lot, quantity and currency are pinned.
 type InvestmentCorrectionBasisResolutionTerms struct {
+	ProvenanceRevision int
 	OperationID        int64
 	TransactionID      int64
 	CostCommodityID    int64
@@ -353,7 +354,7 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 				}
 				chain.CanCorrectBasisResolution = true
 				chain.EffectiveBasisResolution = &InvestmentCorrectionBasisResolutionTerms{
-					OperationID: resolution.OperationID, TransactionID: resolution.TransactionID,
+					OperationID: resolution.OperationID, TransactionID: resolution.TransactionID, ProvenanceRevision: resolution.ProvenanceRevision,
 					CostCommodityID: resolution.CostCommodityID, BasisValue: resolution.BasisValue,
 					BasisScale: resolution.BasisScale, SourceEvidenceJSON: resolution.SourceEvidenceJSON,
 				}

@@ -208,6 +208,7 @@ type BasisResolutionOperationRecord struct {
 	BasisValue            exact.Coefficient
 	BasisScale            int
 	SourceEvidenceJSON    string
+	ProvenanceRevision    int
 	AlreadyCorrected      bool
 }
 
@@ -227,10 +228,11 @@ func basisResolutionOperationQuery(ctx context.Context, reader saleOperationRead
 	var corrected int
 	err := reader.QueryRowContext(ctx, `SELECT o.id, COALESCE(linked_version.transaction_id, 0),
 		COALESCE(link.transaction_version_id, 0), COALESCE(current.id, 0), o.event_date, r.transfer_operation_id, transfer_version.transaction_id, r.link_seq, r.lot_id,
-		l.account_id, l.commodity_id, r.cost_commodity_id, r.basis_value, r.basis_scale, r.source_evidence_json,
+		l.account_id, l.commodity_id, r.cost_commodity_id, r.basis_value, r.basis_scale, COALESCE(provenance.source_evidence_json, r.source_evidence_json), COALESCE(provenance.revision_seq, 0),
 		EXISTS(SELECT 1 FROM investment_operations successor WHERE successor.correction_of_operation_id = o.id)
 		FROM investment_operations o
 		JOIN investment_basis_resolutions r ON r.operation_id = o.id
+		LEFT JOIN latest_investment_basis_resolution_provenance provenance ON provenance.resolution_operation_id = o.id
 		JOIN investment_lots l ON l.id = r.lot_id
 		LEFT JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
 		LEFT JOIN transaction_versions linked_version ON linked_version.id = link.transaction_version_id
@@ -242,7 +244,7 @@ func basisResolutionOperationQuery(ctx context.Context, reader saleOperationRead
 		bookID, argument).Scan(&record.OperationID, &record.TransactionID, &record.TransactionVersionID,
 		&record.CurrentVersionID, &record.EventDate, &record.TransferOperationID, &record.TransferTransactionID,
 		&record.LinkSeq, &record.LotID, &record.AccountID, &record.CommodityID, &record.CostCommodityID,
-		&record.BasisValue, &record.BasisScale, &record.SourceEvidenceJSON, &corrected)
+		&record.BasisValue, &record.BasisScale, &record.SourceEvidenceJSON, &record.ProvenanceRevision, &corrected)
 	if errors.Is(err, sql.ErrNoRows) {
 		return BasisResolutionOperationRecord{}, ErrNotFound
 	}
@@ -341,8 +343,9 @@ type BasisResolutionReplacementRecord struct {
 // predecessor. Successor is the new bridge journal, or an audit-only header
 // for a known-zero successor, which is journal-free (#168).
 type BasisResolutionReplacement struct {
-	Inverse   *CreateTransactionParams
-	Successor CreateTransactionParams
+	Inverse        *CreateTransactionParams
+	Successor      CreateTransactionParams
+	ProvenanceOnly bool
 }
 
 // ReplaceTransferBasisResolution atomically cancels a resolution's bridge and
@@ -362,6 +365,9 @@ func (r *InvestmentRepository) SimulateTransferBasisResolutionReplacement(ctx co
 	if err != nil {
 		return SimulatedInvestmentWrite{}, err
 	}
+	if write.ProvenanceOnly {
+		return simulatedInvestmentWrite(record.Replacement), nil
+	}
 	// The command's first journal carries the gain impact.
 	var journals []TransactionRecord
 	for _, journal := range []TransactionRecord{record.Inverse, record.Replacement} {
@@ -375,6 +381,9 @@ func (r *InvestmentRepository) SimulateTransferBasisResolutionReplacement(ctx co
 func (r *InvestmentRepository) replaceTransferBasisResolution(ctx context.Context, expected BasisResolutionOperationRecord,
 	write BasisResolutionReplacement, params ResolveTransferBasisParams, preview bool,
 ) (BasisResolutionReplacementRecord, error) {
+	if write.ProvenanceOnly {
+		return r.correctBasisResolutionProvenance(ctx, expected, write.Successor, params, preview)
+	}
 	successor := write.Successor
 	predecessorJournalFree := expected.TransactionID == 0
 	if expected.OperationID <= 0 || successor.BookID != params.BookID || successor.ActorUserID <= 0 ||
@@ -455,7 +464,8 @@ type BasisResolutionHistoryRecord struct {
 	CreatedAt          string
 	Status             string
 	// ReversalReason is why a reversed resolution was withdrawn.
-	ReversalReason string
+	ReversalReason        string
+	ProvenanceCorrections []BasisResolutionProvenanceRecord
 }
 
 // TransferBasisResolutionHistory lists every resolution fact pinned to an
@@ -491,6 +501,16 @@ func (r *InvestmentRepository) TransferBasisResolutionHistory(ctx context.Contex
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate basis resolution history: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	corrections, err := r.transferBasisProvenanceHistory(ctx, bookID, transferOperationID)
+	if err != nil {
+		return nil, err
+	}
+	for index := range history {
+		history[index].ProvenanceCorrections = corrections[history[index].OperationID]
 	}
 	return history, nil
 }

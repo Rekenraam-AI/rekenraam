@@ -1338,7 +1338,7 @@
   "transactions_investment_withdraw_basis_title": "De vastgelegde kostprijs intrekken",
   "transactions_investment_withdraw_basis_copy": "Boekt de kostprijsboeking terug. De kostprijs van de aandelen is weer onbekend en de verkopen die erdoor bepaald waren, tonen weer een onbepaalde winst. De ingetrokken vastlegging blijft in de geschiedenis.",
   "investments_basis_resolution_correct_title": "Kostprijs corrigeren",
-  "investments_basis_resolution_correct_copy": "Vul de gecorrigeerde totale kostprijs uit je bron in. De eerdere vastlegging blijft in de geschiedenis en elke verkoop en overboeking van deze aandelen wordt herberekend.",
+  "investments_basis_resolution_correct_copy": "Corrigeer de totale kostprijs of de bronverklaring. Bij hetzelfde bedrag wordt alleen het bewijs gecorrigeerd; saldi en resultaten blijven gelijk. Eerder bewijs blijft in de geschiedenis.",
   "investments_basis_resolution_correct_submit": "Controleren en corrigeren",
   "investments_basis_resolution_history_title": "Vastgelegde kostprijzen",
   "investments_basis_resolution_history_amount": "{amount} {currency}",
@@ -1504,5 +1504,8 @@
   "investments_basis_source_history_owner": "Verklaring van de eigenaar, bekend op {date}: {rationale}",
   "investments_basis_source_history_legacy": "Eerder bewijs, vastgelegd zonder bronverklaring.",
   "investments_basis_source_history_evidence": "Vastgelegd bronbewijs",
-  "investments_basis_source_too_long": "Gebruik maximaal {count} tekens voor de bronreferentie of onderbouwing."
+  "investments_basis_source_too_long": "Gebruik maximaal {count} tekens voor de bronreferentie of onderbouwing.",
+  "investments_basis_provenance_original": "Oorspronkelijk bewijs",
+  "investments_basis_provenance_revision": "Bewijscorrectie {revision}",
+  "investments_basis_provenance_actor": "Eigenaar #{actor} · Audit #{audit}"
 }

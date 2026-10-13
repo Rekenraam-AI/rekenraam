@@ -58,6 +58,10 @@ func (r *ExportRepository) ExportInvestmentFoundation(ctx context.Context, tx *s
 			r.original_date_knowledge, r.original_acquired_on, r.basis_knowledge
 			FROM investment_transfer_link_revisions r WHERE r.book_id = ?
 			ORDER BY r.operation_id, r.link_seq, r.revision_seq`,
+		"basis-resolution-provenance": `SELECT p.id, p.resolution_operation_id, p.revision_seq,
+			p.source_evidence_json, p.created_audit_event_id, a.actor_user_id, a.request_id, a.occurred_at, a.reason
+			FROM investment_basis_resolution_provenance p JOIN audit_events a ON a.id = p.created_audit_event_id
+			WHERE p.book_id = ? ORDER BY p.resolution_operation_id, p.revision_seq`,
 		"basis-resolutions": `SELECT r.operation_id, r.transfer_operation_id, r.link_seq, r.lot_id,
 			r.quantity_value, r.quantity_scale, r.cost_commodity_id, r.basis_value, r.basis_scale,
 			r.source_evidence_json, r.created_audit_event_id

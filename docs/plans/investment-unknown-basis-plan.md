@@ -326,12 +326,48 @@ coverage in `investments-unknown-basis.spec.ts` includes statement entry,
 provider replacement, owner assertion, disabled incomplete forms, history,
 withdrawal and accessibility.
 
-**Provenance-only correction follow-up.** Changing a resolution's declaration
-while keeping its exact basis unchanged is currently refused by the replacement
-command. [#197](https://github.com/sergeyfarin/rekenraam/issues/197) owns the
-explicit audited correction contract for this gap, including legacy-to-typed
-source upgrades and known zero. A provenance change must not require an
-artificial amount change or silently overwrite original evidence.
+### Provenance-only correction contract (#197)
+
+Delivered 2026-10-13. The existing `replace-basis-resolution` command and its rolled-back preview
+also accept changed evidence at an exactly equal scaled basis (80, 80.0 and
+80.00 are equal). This branch appends an immutable provenance revision to the
+effective resolution, under one `investment.basis_resolution.provenance`
+audit event. It does not supersede the economic operation, invert or append
+journals, replay projections, invalidate checkpoints, or introduce an unknown
+basis interval. The transfer, link, lot, quantity, currency, basis coefficient
+and scale, gains and financial operation lineage remain unchanged. This applies
+to journal-free known zero and upgrades of legacy untyped evidence too.
+
+The caller must supply `expected_resolution_operation_id` and
+`expected_provenance_revision` (0 means the original evidence). Both are checked
+inside the write, before its audit or revision is created. A replacement or
+withdrawal of that economic resolution, or a newer evidence correction, makes
+the request stale. Each revision names its pinned resolution and consecutive
+revision number; at most one successor exists at each revision. No original
+fact or evidence revision may be updated or deleted. An economic correction
+retains this evidence history on its predecessor; its successor has its own
+declaration and revision sequence.
+
+A genuine evidence change changes a source field or additional JSON metadata.
+Object key order, JSON whitespace and equivalent string escaping are ignored;
+number tokens in additional metadata retain their exact JSON representation.
+Changing only the reason or the basis representation is a no-op and refused.
+Every successor must have a valid typed declaration and a separate nonblank
+correction reason. Evidence is stored as supplied, without inferring or
+silently relabeling legacy sources. Correction forms set
+`preserve_source_metadata: true`: the server retains additional original fields
+using exact raw JSON, while explicitly replacing declaration fields. API callers
+may instead replace the complete evidence object (the default). The composed
+history supplies `source_evidence_json` alongside the parsed declaration so
+browser history can display exact numeric metadata without rounding it.
+
+Effective correction terms use the latest evidence. The transfer's composed
+history retains original evidence and every revision with actor, timestamp,
+request, audit identity and reason. Exports retain the original resolution CSV
+and add the full provenance revision CSV. Self-check verifies consecutive
+lineage and audit attribution independently of basis/journal checks. The
+six-locale correction form remains reachable from the transfer and refreshes
+the shared investment reads after saving.
 
 **Deliberately later.** Unresolved write-off, cash-in-lieu and return-of-capital
 results are not #160 acceptance and need their own contract
@@ -424,3 +460,15 @@ results are not #160 acceptance and need their own contract
 
 Cash in lieu, write-off and return of capital still require known basis; their
 unresolved-result contracts remain deliberately later, as described above.
+
+Named #197 regressions: `TestSameBasisChangedEvidenceCorrectionPostsNoJournals`,
+`TestProvenanceCorrectionAdmitsExactScaledEqualityKnownZeroAndLegacy`,
+`TestProvenanceCorrectionPreservesDownstreamSalesTransfersAndCheckpoints`,
+`TestProvenanceCorrectionRefusesNoOpsInvalidDeclarationsAndStaleWrites`,
+`TestProvenanceCorrectionLateFailureRollsBackAuditAndEvidence`,
+`TestProvenanceCorrectionPreservesExactAdditionalMetadataOnServer`,
+`TestProvenanceCorrectionImmutableHistoryExportsAndSurvivesRestore`,
+`TestSelfCheckDetectsProvenanceRevisionLineageDamage`, and
+`TestCorrectBasisProvenanceAPIAuthenticatesPreviewsAndPinsEvidenceRevision`.
+Browser coverage: “basis provenance is corrected without changing gains on
+mobile” in `investments-unknown-basis.spec.ts` (390 px).

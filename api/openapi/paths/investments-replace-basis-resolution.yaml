@@ -10,6 +10,12 @@ post:
     revises every sale, onward link and average pool the lot reached; an
     outbound already bridged posts a dated adjustment. A non-empty gain
     change set requires the preview's exact gain_impact_acknowledgement.
+    At an exactly equal scaled basis, changed evidence instead appends an
+    audited immutable provenance revision without journals or replay (#197).
+    Both expected_resolution_operation_id and expected_provenance_revision
+    are required for this branch and rechecked inside the write. Economic
+    operation lineage and all financial facts and checkpoints remain unchanged.
+    JSON layout/key order alone or a changed reason is a no-op.
   parameters:
     - in: path
       name: transaction_id
@@ -28,13 +34,13 @@ post:
           $ref: "../openapi.yaml#/components/schemas/InvestmentBasisResolutionRequest"
   responses:
     "201":
-      description: Resolution replaced and every reached position replayed
+      description: Resolution replaced and every reached position replayed, or evidence corrected without financial changes
       content:
         application/json:
           schema:
             $ref: "../openapi.yaml#/components/schemas/InvestmentBasisResolutionReplacementResponse"
     "400":
-      description: Invalid request, missing reason, a negative basis, or a basis repeating the effective one
+      description: Invalid request, missing reason, a negative basis, or identical basis and evidence
       content:
         application/json:
           schema:

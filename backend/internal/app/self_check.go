@@ -751,6 +751,16 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 		// transfer date, and nothing else (T-145). A known zero has no primary
 		// journal at all (#168). The pinned facts are checked against the
 		// still-unknown link it resolves.
+		{"basis resolution provenance has broken lineage or audit attribution", `
+			SELECT p.resolution_operation_id FROM investment_basis_resolution_provenance p
+			LEFT JOIN investment_basis_resolutions r ON r.operation_id = p.resolution_operation_id
+			LEFT JOIN audit_events a ON a.id = p.created_audit_event_id
+			WHERE p.book_id = ? AND (r.operation_id IS NULL OR r.book_id <> p.book_id
+				OR a.id IS NULL OR a.book_id <> p.book_id OR a.actor_user_id IS NULL
+				OR a.operation <> 'investment.basis_resolution.provenance' OR length(trim(a.reason)) = 0
+				OR p.revision_seq <> (SELECT COUNT(*) FROM investment_basis_resolution_provenance prior
+					WHERE prior.resolution_operation_id = p.resolution_operation_id AND prior.revision_seq <= p.revision_seq)
+				OR NOT json_valid(p.source_evidence_json))`},
 		{"basis resolution disagrees with its bridge or pinned transfer", `
 			SELECT o.id FROM investment_operations o
 			WHERE o.book_id = ? AND o.operation_kind = 'basis_resolution'

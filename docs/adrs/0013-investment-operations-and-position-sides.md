@@ -687,3 +687,23 @@ Export and restored replay preserve the correction graph and both journal
 shapes. The capability matrix covers crossing zero, both reversal shapes and
 export/restore; named guard, damaged-data, late-rollback and mobile cases cover
 the wider contract.
+
+## Resolution Provenance-Only Correction Refinement (2026-10-13, #197)
+
+Decision 1's named financial operation contract does not require a new economic
+operation for a correction of evidence alone. The existing basis-resolution
+replacement command, at exactly equal scaled basis, appends a numbered immutable
+provenance revision pinned to its effective resolution and one stable
+`investment.basis_resolution.provenance` audit event. This is an evidence
+command: it creates no operation, dates, journal links, postings or replay
+intents, and does not supersede the original financial operation. It retains
+its original basis representation, quantity, currency, lineage, gains and
+checkpoints. Known-zero resolutions follow the same rule.
+
+The expected economic resolution and evidence revision are checked atomically;
+original and revised evidence remain inspectable and exportable, including
+after economic replacement or withdrawal. The unknown-basis plan defines
+valid declarations, separate reasons, genuine changes and no-ops. An economic
+basis change still follows decisions 1 and 5's operation replacement and replay
+contract. Replacing a source declaration never verifies its truth or selects a
+tax rule.

@@ -437,7 +437,28 @@
               {#if entry.reason}
                 <p class="mt-1 text-xs text-foreground">{entry.reason}</p>
               {/if}
-              <BasisProvenanceSummary evidence={entry.source_evidence} />
+              {#if entry.provenance_corrections.length > 0}
+                <p class="mt-2 text-xs font-medium text-muted">{m.investments_basis_provenance_original()}</p>
+              {/if}
+              <BasisProvenanceSummary evidence={entry.source_evidence} recordedJSON={entry.source_evidence_json} />
+              {#each entry.provenance_corrections as correction, index (correction.id)}
+                <div class="mt-2 border-t border-border pt-2">
+                  <p class="text-xs font-medium text-foreground">
+                    {m.investments_basis_provenance_revision({ revision: correction.revision_seq })}
+                    {#if entry.status === 'effective' && index === entry.provenance_corrections.length - 1}
+                      · {m.transactions_investment_history_current()}
+                    {:else}
+                      · {m.transactions_investment_history_superseded()}
+                    {/if}
+                  </p>
+                  <p class="mt-1 text-xs text-muted">
+                    {m.investments_basis_resolution_history_recorded({ date: formatDate(correction.created_at) })}
+                    · {m.investments_basis_provenance_actor({ actor: correction.actor_user_id, audit: correction.audit_event_id })}
+                  </p>
+                  <p class="mt-1 break-words text-xs text-foreground">{correction.reason}</p>
+                  <BasisProvenanceSummary evidence={correction.source_evidence} recordedJSON={correction.source_evidence_json} />
+                </div>
+              {/each}
               {#if entry.reversal_reason}
                 <p class="mt-1 text-xs text-foreground">
                   {m.investments_basis_resolution_history_withdrawn({ reason: entry.reversal_reason })}

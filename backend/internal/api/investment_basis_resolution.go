@@ -13,12 +13,15 @@ import (
 // investmentBasisResolutionRequest resolves an external transfer in's unknown
 // basis with its sourced total in the transfer's cost currency (T-145).
 type investmentBasisResolutionRequest struct {
-	BasisValue                *moneyCoefficient `json:"basis_value"`
-	BasisScale                int               `json:"basis_scale"`
-	SourceEvidence            json.RawMessage   `json:"source_evidence"`
-	Reason                    string            `json:"reason"`
-	ReconciliationOverride    bool              `json:"reconciliation_override"`
-	GainImpactAcknowledgement string            `json:"gain_impact_acknowledgement,omitempty"`
+	PreserveSourceMetadata        bool              `json:"preserve_source_metadata,omitempty"`
+	ExpectedResolutionOperationID int64             `json:"expected_resolution_operation_id,omitempty"`
+	ExpectedProvenanceRevision    *int              `json:"expected_provenance_revision,omitempty"`
+	BasisValue                    *moneyCoefficient `json:"basis_value"`
+	BasisScale                    int               `json:"basis_scale"`
+	SourceEvidence                json.RawMessage   `json:"source_evidence"`
+	Reason                        string            `json:"reason"`
+	ReconciliationOverride        bool              `json:"reconciliation_override"`
+	GainImpactAcknowledgement     string            `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 // investmentBasisResolutionResponse has a null transaction for a journal-free
@@ -113,7 +116,8 @@ func resolveInvestmentTransferBasisReconciliationImpact(logger *slog.Logger, aut
 // investmentCorrectionBasisResolutionTerms pre-fill a resolution replacement:
 // the sourced basis in the pinned transfer's cost currency (#168).
 type investmentCorrectionBasisResolutionTerms struct {
-	OperationID int64 `json:"operation_id"`
+	ProvenanceRevision int   `json:"provenance_revision"`
+	OperationID        int64 `json:"operation_id"`
 	// TransactionID is null for a journal-free known zero (#168).
 	TransactionID   *int64            `json:"transaction_id"`
 	CostCommodityID int64             `json:"cost_commodity_id"`
@@ -130,7 +134,7 @@ func toInvestmentCorrectionBasisResolutionTerms(terms *app.InvestmentCorrectionB
 	if terms.TransactionID != 0 {
 		transactionID = &terms.TransactionID
 	}
-	return &investmentCorrectionBasisResolutionTerms{OperationID: terms.OperationID, TransactionID: transactionID,
+	return &investmentCorrectionBasisResolutionTerms{OperationID: terms.OperationID, TransactionID: transactionID, ProvenanceRevision: terms.ProvenanceRevision,
 		CostCommodityID: terms.CostCommodityID, BasisValue: terms.BasisValue, BasisScale: terms.BasisScale,
 		SourceEvidence: json.RawMessage(defaultJSONObject(terms.SourceEvidenceJSON))}
 }
@@ -156,6 +160,7 @@ func basisResolutionCorrectionInput(owner app.Owner, r *http.Request, transactio
 	}
 	return app.CorrectTransferBasisResolutionInput{
 		OwnerUserID: resolution.OwnerUserID, AuthSessionID: resolution.AuthSessionID, RequestID: resolution.RequestID,
+		ExpectedResolutionOperationID: request.ExpectedResolutionOperationID, ExpectedProvenanceRevision: request.ExpectedProvenanceRevision, PreserveSourceMetadata: request.PreserveSourceMetadata,
 		TransactionID: transactionID, Reason: resolution.Reason, ReconciliationOverride: resolution.ReconciliationOverride,
 		GainImpactAcknowledgement: resolution.GainImpactAcknowledgement,
 		BasisValue:                resolution.BasisValue, BasisScale: resolution.BasisScale, SourceEvidenceJSON: resolution.SourceEvidenceJSON,
@@ -259,17 +264,31 @@ func reverseInvestmentBasisResolutionReconciliationImpact(logger *slog.Logger, a
 
 // investmentBasisResolutionHistoryEntry is one resolution fact of a transfer
 // and its standing: effective, superseded or reversed (#168).
+type investmentBasisProvenanceHistoryEntry struct {
+	SourceEvidenceJSON string          `json:"source_evidence_json"`
+	ID                 int64           `json:"id"`
+	RevisionSeq        int             `json:"revision_seq"`
+	SourceEvidence     json.RawMessage `json:"source_evidence"`
+	AuditEventID       int64           `json:"audit_event_id"`
+	ActorUserID        int64           `json:"actor_user_id"`
+	RequestID          string          `json:"request_id"`
+	CreatedAt          string          `json:"created_at"`
+	Reason             string          `json:"reason"`
+}
+
 type investmentBasisResolutionHistoryEntry struct {
-	OperationID    int64             `json:"operation_id"`
-	TransactionID  *int64            `json:"transaction_id"`
-	BasisValue     exact.Coefficient `json:"basis_value"`
-	BasisScale     int               `json:"basis_scale"`
-	SourceEvidence json.RawMessage   `json:"source_evidence"`
-	CorrectionMode string            `json:"correction_mode,omitempty"`
-	Reason         string            `json:"reason"`
-	CreatedAt      string            `json:"created_at"`
-	Status         string            `json:"status"`
-	ReversalReason string            `json:"reversal_reason,omitempty"`
+	SourceEvidenceJSON    string                                  `json:"source_evidence_json"`
+	ProvenanceCorrections []investmentBasisProvenanceHistoryEntry `json:"provenance_corrections"`
+	OperationID           int64                                   `json:"operation_id"`
+	TransactionID         *int64                                  `json:"transaction_id"`
+	BasisValue            exact.Coefficient                       `json:"basis_value"`
+	BasisScale            int                                     `json:"basis_scale"`
+	SourceEvidence        json.RawMessage                         `json:"source_evidence"`
+	CorrectionMode        string                                  `json:"correction_mode,omitempty"`
+	Reason                string                                  `json:"reason"`
+	CreatedAt             string                                  `json:"created_at"`
+	Status                string                                  `json:"status"`
+	ReversalReason        string                                  `json:"reversal_reason,omitempty"`
 }
 
 func toBasisResolutionHistory(records []db.BasisResolutionHistoryRecord) []investmentBasisResolutionHistoryEntry {
@@ -277,9 +296,17 @@ func toBasisResolutionHistory(records []db.BasisResolutionHistoryRecord) []inves
 	for _, record := range records {
 		entry := investmentBasisResolutionHistoryEntry{OperationID: record.OperationID,
 			BasisValue: record.BasisValue, BasisScale: record.BasisScale,
-			SourceEvidence: json.RawMessage(defaultJSONObject(record.SourceEvidenceJSON)),
+			SourceEvidence: json.RawMessage(defaultJSONObject(record.SourceEvidenceJSON)), SourceEvidenceJSON: record.SourceEvidenceJSON,
 			CorrectionMode: record.CorrectionMode, Reason: record.Reason, CreatedAt: record.CreatedAt,
 			Status: record.Status, ReversalReason: record.ReversalReason}
+		entry.ProvenanceCorrections = make([]investmentBasisProvenanceHistoryEntry, 0, len(record.ProvenanceCorrections))
+		for _, p := range record.ProvenanceCorrections {
+			entry.ProvenanceCorrections = append(entry.ProvenanceCorrections, investmentBasisProvenanceHistoryEntry{
+				ID: p.ID, RevisionSeq: p.RevisionSeq, SourceEvidence: json.RawMessage(p.SourceEvidenceJSON), SourceEvidenceJSON: p.SourceEvidenceJSON,
+				AuditEventID: p.AuditEventID, ActorUserID: p.ActorUserID, RequestID: p.RequestID,
+				CreatedAt: p.CreatedAt, Reason: p.Reason,
+			})
+		}
 		if record.TransactionID != 0 {
 			id := record.TransactionID
 			entry.TransactionID = &id

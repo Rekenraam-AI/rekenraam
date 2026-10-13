@@ -256,3 +256,62 @@ test('an explicit owner assertion resolves basis with source history on mobile',
   await expect(history).toContainText('Owner assertion, known on');
   await expect(history).toContainText('Original purchase records establish the total');
 });
+
+// #197: keep the exact basis while correcting its declaration through the transfer.
+test('basis provenance is corrected without changing gains on mobile', async ({ page }) => {
+  const { csrfToken, instrument, arrived } = await seedUnknownArrivalWithSale(page, 'prov');
+  const base = `/api/v1/investments/transactions/${arrived.transaction.id}`;
+  const resolution = { basis_value: '8000', basis_scale: 2, reason: 'statement found',
+    source_evidence: { kind: 'statement', reference: 'Synthetic original statement', record_id: 'keep-42', exact_metadata: 'metadata-number-token' } };
+  const impact = await apiJSON<{ gain_impact: { acknowledgement: string } }>(page, 'POST',
+    `${base}/resolve-basis/reconciliation-impact`, csrfToken, resolution);
+  const body = JSON.stringify({ ...resolution, gain_impact_acknowledgement: impact.gain_impact.acknowledgement })
+    .replace('"metadata-number-token"', '9007199254740993');
+  const status = await page.evaluate(async ({ path, token, body }) => {
+    const response = await fetch(path, { method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token }, body });
+    return response.status;
+  }, { path: `${base}/resolve-basis`, token: csrfToken, body });
+  expect(status).toBe(201);
+  const beforeGain = await realizedGainCents(page, instrument.commodity_id);
+  await page.goto(`/app/transactions?transaction_id=${arrived.transaction.id}`);
+  await page.getByRole('button', { name: 'Correct cost basis…' }).click();
+  const form = page.getByRole('dialog', { name: 'Correct cost basis' });
+  await expect(form.getByLabel(/^Total cost basis/)).toHaveValue('80.00');
+  await expect(form).toContainText('Keeping the same amount records an evidence-only correction');
+  await form.getByLabel('Basis source').selectOption('provider');
+  await form.getByLabel('Statement or provider reference').fill('Synthetic corrected provider row');
+  await form.getByLabel('Reason', { exact: true }).fill('corrected the source reference');
+  const accessibility = await new AxeBuilder({ page }).include('[role="dialog"]').analyze();
+  expect(accessibility.violations).toEqual([]);
+  await form.getByRole('button', { name: 'Review and correct' }).click();
+  await expect(form).toBeHidden();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  expect(await realizedGainCents(page, instrument.commodity_id)).toBe(beforeGain);
+  await page.goto(`/app/transactions?transaction_id=${arrived.transaction.id}`);
+  const history = page.getByRole('group', { name: 'Cost basis resolutions' });
+  await expect(history).toContainText('Original evidence');
+  await expect(history).toContainText('Synthetic original statement');
+  await expect(history).toContainText('Evidence correction 1');
+  await expect(history).toContainText('Synthetic corrected provider row');
+  await expect(history).toContainText('corrected the source reference');
+  await expect(history).toContainText('Audit #');
+  await history.getByText('Recorded source evidence', { exact: true }).last().click();
+  await expect(history).toContainText('keep-42');
+  await expect(history).toContainText('9007199254740993');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.getByRole('button', { name: 'Correct cost basis…' }).click();
+  await expect(form.getByLabel('Basis source')).toHaveValue('provider');
+  await expect(form.getByLabel('Statement or provider reference')).toHaveValue('Synthetic corrected provider row');
+  await form.getByLabel('Basis source').selectOption('owner_assertion');
+  await form.getByLabel('Why you assert this basis').fill('Reconstructed from purchase records');
+  await form.getByLabel('Date you obtained this basis knowledge').fill(todayISO());
+  await form.getByLabel('Reason', { exact: true }).fill('better evidence was found');
+  await form.getByRole('button', { name: 'Review and correct' }).click();
+  await expect(form).toBeHidden();
+  await page.goto(`/app/transactions?transaction_id=${arrived.transaction.id}`);
+  await expect(history).toContainText('Evidence correction 2');
+  await expect(history).toContainText('Reconstructed from purchase records');
+  expect(await realizedGainCents(page, instrument.commodity_id)).toBe(beforeGain);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});

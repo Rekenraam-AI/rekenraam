@@ -1338,7 +1338,7 @@
   "transactions_investment_withdraw_basis_title": "Retirer le prix de revient renseigné",
   "transactions_investment_withdraw_basis_copy": "Contrepasse l’écriture de prix de revient. Le prix de revient des titres redevient inconnu et les ventes qu’il déterminait affichent une plus-value non déterminée. Le renseignement retiré reste dans l’historique.",
   "investments_basis_resolution_correct_title": "Corriger le prix de revient",
-  "investments_basis_resolution_correct_copy": "Saisissez le prix de revient total corrigé d’après votre source. Le renseignement précédent reste dans l’historique, et chaque vente et transfert de ces titres est recalculé.",
+  "investments_basis_resolution_correct_copy": "Corrigez le prix de revient total ou la déclaration de sa source. À montant égal, seules les preuves sont corrigées ; les soldes et résultats restent inchangés. Les preuves précédentes restent dans l’historique.",
   "investments_basis_resolution_correct_submit": "Vérifier et corriger",
   "investments_basis_resolution_history_title": "Prix de revient renseignés",
   "investments_basis_resolution_history_amount": "{amount} {currency}",
@@ -1504,5 +1504,8 @@
   "investments_basis_source_history_owner": "Déclaration du propriétaire, connue le {date} : {rationale}",
   "investments_basis_source_history_legacy": "Éléments antérieurs, enregistrés sans déclaration de source.",
   "investments_basis_source_history_evidence": "Éléments de source enregistrés",
-  "investments_basis_source_too_long": "Utilisez au maximum {count} caractères pour la référence de la source ou la justification."
+  "investments_basis_source_too_long": "Utilisez au maximum {count} caractères pour la référence de la source ou la justification.",
+  "investments_basis_provenance_original": "Preuves originales",
+  "investments_basis_provenance_revision": "Correction des preuves {revision}",
+  "investments_basis_provenance_actor": "Propriétaire nº {actor} · Audit nº {audit}"
 }

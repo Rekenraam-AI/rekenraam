@@ -169,13 +169,16 @@ var (
 // effective. A replacement keeps the pinned transfer, lot, quantity and cost
 // currency; only the sourced basis and its evidence change.
 type CorrectTransferBasisResolutionInput struct {
-	OwnerUserID               int64
-	AuthSessionID             int64
-	RequestID                 string
-	TransactionID             int64
-	Reason                    string
-	ReconciliationOverride    bool
-	GainImpactAcknowledgement string
+	OwnerUserID                   int64
+	AuthSessionID                 int64
+	RequestID                     string
+	TransactionID                 int64
+	Reason                        string
+	ReconciliationOverride        bool
+	GainImpactAcknowledgement     string
+	ExpectedResolutionOperationID int64
+	ExpectedProvenanceRevision    *int
+	PreserveSourceMetadata        bool
 	// BasisValue, BasisScale and SourceEvidenceJSON are the replacement's;
 	// a reversal ignores them.
 	BasisValue         int64
@@ -185,34 +188,42 @@ type CorrectTransferBasisResolutionInput struct {
 
 // ReplaceTransferBasisResolutionResult has no Inverse when the replaced
 // resolution was a journal-free zero, and no Replacement when the successor is
-// one (#168).
+// one (#168). Both are nil for a provenance-only correction (#197).
 type ReplaceTransferBasisResolutionResult struct {
 	Inverse               *Transaction
 	Replacement           *Transaction
 	TransferTransactionID int64
 }
 
-func (s *InvestmentService) prepareBasisResolutionReversal(ctx context.Context, input CorrectTransferBasisResolutionInput) (db.BasisResolutionOperationRecord, db.CreateTransactionParams, error) {
+func (s *InvestmentService) basisResolutionCorrectionTarget(ctx context.Context, input CorrectTransferBasisResolutionInput) (db.BasisResolutionOperationRecord, string, error) {
 	if input.OwnerUserID <= 0 || input.TransactionID <= 0 {
-		return db.BasisResolutionOperationRecord{}, db.CreateTransactionParams{}, ValidationError{Message: "owner and basis resolution id are required"}
+		return db.BasisResolutionOperationRecord{}, "", ValidationError{Message: "owner and basis resolution id are required"}
 	}
 	reason, err := cleanChangeReason(input.Reason, "")
 	if err != nil || reason == "" {
-		return db.BasisResolutionOperationRecord{}, db.CreateTransactionParams{}, ValidationError{Message: "basis resolution correction reason is required"}
+		return db.BasisResolutionOperationRecord{}, "", ValidationError{Message: "basis resolution correction reason is required"}
 	}
 	transfer, err := s.repository.TransferOperationByTransactionID(ctx, BookID, input.TransactionID)
 	if err != nil {
-		return db.BasisResolutionOperationRecord{}, db.CreateTransactionParams{}, mapTransferCorrectionError(err)
+		return db.BasisResolutionOperationRecord{}, "", mapTransferCorrectionError(err)
 	}
 	if transfer.TransferKind != "external_in" || transfer.AlreadyCorrected {
-		return db.BasisResolutionOperationRecord{}, db.CreateTransactionParams{}, ErrInvestmentTransferBasisNotResolved
+		return db.BasisResolutionOperationRecord{}, "", ErrInvestmentTransferBasisNotResolved
 	}
 	operation, err := s.repository.EffectiveTransferBasisResolution(ctx, BookID, transfer.OperationID)
 	if errors.Is(err, db.ErrNotFound) {
-		return db.BasisResolutionOperationRecord{}, db.CreateTransactionParams{}, ErrInvestmentTransferBasisNotResolved
+		return db.BasisResolutionOperationRecord{}, "", ErrInvestmentTransferBasisNotResolved
 	}
 	if err != nil {
-		return db.BasisResolutionOperationRecord{}, db.CreateTransactionParams{}, err
+		return db.BasisResolutionOperationRecord{}, "", err
+	}
+	return operation, reason, nil
+}
+
+func (s *InvestmentService) prepareBasisResolutionReversal(ctx context.Context, input CorrectTransferBasisResolutionInput) (db.BasisResolutionOperationRecord, db.CreateTransactionParams, error) {
+	operation, reason, err := s.basisResolutionCorrectionTarget(ctx, input)
+	if err != nil {
+		return operation, db.CreateTransactionParams{}, err
 	}
 	if operation.TransactionID == 0 {
 		// A journal-free known zero is reversed without a journal.
@@ -282,17 +293,50 @@ func (s *InvestmentService) ReverseTransferBasisResolutionImpact(ctx context.Con
 }
 
 func (s *InvestmentService) prepareBasisResolutionReplacement(ctx context.Context, input CorrectTransferBasisResolutionInput) (db.BasisResolutionOperationRecord, db.BasisResolutionReplacement, db.ResolveTransferBasisParams, error) {
-	operation, inverse, err := s.prepareBasisResolutionReversal(ctx, input)
+	operation, reason, err := s.basisResolutionCorrectionTarget(ctx, input)
 	if err != nil {
 		return operation, db.BasisResolutionReplacement{}, db.ResolveTransferBasisParams{}, err
 	}
-	if input.BasisScale >= 0 && exact.ScaledIntFromCoefficient(exact.New(input.BasisValue), input.BasisScale).Cmp(
+	if input.ExpectedResolutionOperationID != 0 && (input.ExpectedResolutionOperationID != operation.OperationID ||
+		input.ExpectedProvenanceRevision == nil || *input.ExpectedProvenanceRevision != operation.ProvenanceRevision) {
+		return operation, db.BasisResolutionReplacement{}, db.ResolveTransferBasisParams{}, ErrInvestmentBasisResolutionChanged
+	}
+	if input.BasisValue < 0 || input.BasisScale < 0 || input.BasisScale > 12 {
+		return operation, db.BasisResolutionReplacement{}, db.ResolveTransferBasisParams{}, ValidationError{Message: "a resolution needs a nonnegative known basis at a money scale"}
+	}
+	evidence, err := cleanBasisResolutionEvidence(input.SourceEvidenceJSON)
+	if err != nil {
+		return operation, db.BasisResolutionReplacement{}, db.ResolveTransferBasisParams{}, err
+	}
+	if input.PreserveSourceMetadata {
+		evidence, err = mergeBasisResolutionEvidence(operation.SourceEvidenceJSON, evidence)
+		if err != nil {
+			return operation, db.BasisResolutionReplacement{}, db.ResolveTransferBasisParams{}, err
+		}
+	}
+	if exact.ScaledIntFromCoefficient(exact.New(input.BasisValue), input.BasisScale).Cmp(
 		exact.ScaledIntFromCoefficient(operation.BasisValue, operation.BasisScale)) == 0 {
-		return operation, db.BasisResolutionReplacement{}, db.ResolveTransferBasisParams{}, ValidationError{Message: "the replacement repeats the effective resolution"}
+		if sameBasisResolutionEvidence(evidence, operation.SourceEvidenceJSON) {
+			return operation, db.BasisResolutionReplacement{}, db.ResolveTransferBasisParams{}, ValidationError{Message: "the replacement repeats the effective resolution"}
+		}
+		if input.ExpectedResolutionOperationID <= 0 || input.ExpectedProvenanceRevision == nil {
+			return operation, db.BasisResolutionReplacement{}, db.ResolveTransferBasisParams{}, ValidationError{Message: "a provenance correction requires the expected resolution and evidence revision"}
+		}
+		header := s.journalFreeInvestmentHeader(input.OwnerUserID, input.AuthSessionID, input.RequestID,
+			"investment.basis_resolution.provenance", reason, "", operation.EventDate, input.ReconciliationOverride)
+		header.GainImpact = gainImpactPolicy(input.GainImpactAcknowledgement)
+		return operation, db.BasisResolutionReplacement{Successor: header, ProvenanceOnly: true}, db.ResolveTransferBasisParams{
+			BookID: BookID, TransferOperationID: operation.TransferOperationID,
+			BasisValue: operation.BasisValue, BasisScale: operation.BasisScale, SourceEvidenceJSON: evidence,
+		}, nil
+	}
+	_, inverse, err := s.prepareBasisResolutionReversal(ctx, input)
+	if err != nil {
+		return operation, db.BasisResolutionReplacement{}, db.ResolveTransferBasisParams{}, err
 	}
 	successor, params, err := s.transferBasisResolutionJournal(ctx, ResolveTransferBasisInput{
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID, RequestID: input.RequestID,
-		BasisValue: input.BasisValue, BasisScale: input.BasisScale, SourceEvidenceJSON: input.SourceEvidenceJSON,
+		BasisValue: input.BasisValue, BasisScale: input.BasisScale, SourceEvidenceJSON: evidence,
 		Reason: input.Reason, ReconciliationOverride: input.ReconciliationOverride,
 	}, operation.TransferOperationID, operation.CostCommodityID, operation.EventDate)
 	if err != nil {
@@ -324,6 +368,8 @@ func (s *InvestmentService) prepareBasisResolutionReplacement(ctx context.Contex
 // bridge is inverted, the successor posts its complete bridge at the transfer
 // date, and replay revises every sale, onward link and outbound bridge the
 // lot reached. The original resolution stays as superseded evidence (#168).
+// At equal exact basis, changed evidence instead appends an audit-only
+// provenance revision without changing economic operation lineage (#197).
 func (s *InvestmentService) ReplaceTransferBasisResolution(ctx context.Context, input CorrectTransferBasisResolutionInput) (ReplaceTransferBasisResolutionResult, error) {
 	operation, write, params, err := s.prepareBasisResolutionReplacement(ctx, input)
 	if err != nil {

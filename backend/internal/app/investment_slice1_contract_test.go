@@ -69,7 +69,7 @@ func TestInvestmentSlice1FreshAndSeededBundleContract(t *testing.T) {
 				} `json:"files"`
 			}
 			require.NoError(t, json.Unmarshal(files["manifest.json"], &manifest))
-			require.Equal(t, 9, manifest.SchemaVersion)
+			require.Equal(t, 10, manifest.SchemaVersion)
 			manifestRows := map[string]int64{}
 			for _, file := range manifest.Files {
 				manifestRows[file.Name] = file.Rows
@@ -89,6 +89,7 @@ func TestInvestmentSlice1FreshAndSeededBundleContract(t *testing.T) {
 				"investment-transfer-lot-links.csv":                {"operation_id", "link_seq", "source_lot_id", "destination_lot_id", "quantity_value", "quantity_scale", "basis_knowledge", "carried_basis_value", "carried_basis_scale", "cost_commodity_id", "original_date_knowledge", "original_acquired_on", "source_evidence_json"},
 				"investment-transfer-link-revisions.csv":           {"revision_id", "operation_id", "link_seq", "revision_seq", "caused_by_operation_id", "supersedes_revision_id", "source_lot_id", "carried_basis_value", "carried_basis_scale", "created_at", "audit_event_id", "original_date_knowledge", "original_acquired_on", "basis_knowledge"},
 				"investment-transfer-link-revision-depletions.csv": {"revision_id", "depletion_seq", "source_lot_id", "quantity_value", "quantity_scale", "cost_basis_value", "cost_basis_scale", "basis_knowledge"},
+				"investment-basis-resolution-provenance.csv":       {"id", "resolution_operation_id", "revision_seq", "source_evidence_json", "audit_event_id", "actor_user_id", "request_id", "created_at", "reason"},
 				"investment-basis-resolutions.csv":                 {"operation_id", "transfer_operation_id", "link_seq", "lot_id", "quantity_value", "quantity_scale", "cost_commodity_id", "basis_value", "basis_scale", "source_evidence_json", "audit_event_id"},
 				"investment-split-facts.csv":                       {"operation_id", "account_id", "commodity_id", "effective_on", "ratio_numerator", "ratio_denominator", "source_evidence_json", "audit_event_id"},
 				"investment-cash-in-lieu-facts.csv":                {"operation_id", "split_operation_id", "payment_on", "audit_event_id", "settled_operation_id"},

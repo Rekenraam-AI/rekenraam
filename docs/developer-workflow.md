@@ -605,7 +605,13 @@ both directions: export anything worth keeping before updating, then recreate
 the development database from the consolidated baseline. Do not use restore to
 cross that boundary.
 
-Then start the app and redo owner setup. The e2e database resets itself on every
+Forward migration `0002_basis_resolution_provenance.sql` (#197, 2026-10-13)
+adds immutable evidence revision history without rewriting `0001` or resetting
+current baseline databases. Startup upgrades schema 1 to 2 while preserving all
+financial rows and original declarations. Bundle schema 10 adds
+`investment-basis-resolution-provenance.csv`; backups retain every revision.
+
+Then start the app and redo owner setup after a baseline rewrite. The e2e database resets itself on every
 run and needs nothing.
 
 - Keep nothing in a local database you would be sorry to lose. Reproducible
@@ -621,7 +627,7 @@ run and needs nothing.
 - CI validates the fresh-install path on every run. Candidate seeded equivalence
   is covered by `TestMigrateSeededBaselineMatchesFreshSchema` in `internal/db`:
   it loads `internal/db/testdata/v01_seed.sql` into the consolidated baseline,
-  repeats migration admission, and checks schema equivalence and every durable
+  upgrades through forward migrations, repeats migration admission, and checks schema equivalence and every durable
   figure — row counts, exact coefficients/scales, lifecycle states, lot and
   checkpoint conservation, per-commodity balance and `foreign_key_check`.
   Legacy upgrade fixtures are added once installed releases actually exist.

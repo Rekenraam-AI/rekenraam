@@ -271,6 +271,8 @@ func TestMigrateSeededBaselineMatchesFreshSchema(t *testing.T) {
 	after := captureLedgerState(t, seeded)
 	// Re-running migration admission must preserve every seeded durable row.
 	assert.Equal(t, "0", after["count:import_source_revisions"])
+	assert.Equal(t, "0", after["count:investment_basis_resolution_provenance"])
+	delete(after, "count:investment_basis_resolution_provenance")
 	delete(before, "count:goose_db_version")
 	delete(after, "count:goose_db_version")
 
@@ -1243,7 +1245,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(1), version, "the consolidated baseline includes source revisions and immutable lot opening guards")
+	assert.Equal(t, int64(2), version, "the head adds immutable basis-resolution provenance to the consolidated baseline")
 
 	ctx := context.Background()
 	database, err := Open(ctx, "file:"+filepath.Join(t.TempDir(), "schema.sqlite"))
@@ -1273,9 +1275,9 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 	}
 	assert.Equal(t, map[string]int{
 		"index":   107,
-		"table":   110,
-		"trigger": 142,
-		"view":    14,
+		"table":   111,
+		"trigger": 145,
+		"view":    15,
 	}, objectCounts, "the migrated head must retain every schema object")
 	assert.Equal(t, "table", objects["investment_capital_return_effects"])
 	assert.Equal(t, "trigger", objects["investment_capital_return_facts_valid"])
