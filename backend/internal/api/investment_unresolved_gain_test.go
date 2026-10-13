@@ -119,7 +119,7 @@ func TestResolveTransferBasisAPI(t *testing.T) {
 	require.Equal(t, true, chain()["can_resolve_basis"])
 
 	basis := moneyCoefficient(8000)
-	request := investmentBasisResolutionRequest{BasisValue: &basis, BasisScale: 2, Reason: "statement found"}
+	request := investmentBasisResolutionRequest{SourceEvidence: json.RawMessage(`{"kind":"statement","reference":"Synthetic statement 2020"}`), BasisValue: &basis, BasisScale: 2, Reason: "statement found"}
 	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, base+"/resolve-basis/reconciliation-impact", request, http.StatusOK)
 	var impact map[string]any
 	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &impact))
@@ -177,7 +177,7 @@ func TestCorrectTransferBasisResolutionAPI(t *testing.T) {
 	require.Contains(t, res.Body.String(), "INVESTMENT_TRANSFER_BASIS_NOT_RESOLVED")
 
 	basis := moneyCoefficient(8000)
-	resolve := investmentBasisResolutionRequest{BasisValue: &basis, BasisScale: 2, Reason: "statement found"}
+	resolve := investmentBasisResolutionRequest{SourceEvidence: json.RawMessage(`{"kind":"statement","reference":"Synthetic statement 2020"}`), BasisValue: &basis, BasisScale: 2, Reason: "statement found"}
 	resolve.GainImpactAcknowledgement = acknowledgement(base+"/resolve-basis", resolve)
 	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, base+"/resolve-basis", resolve, http.StatusCreated)
 	var resolved investmentBasisResolutionResponse
@@ -189,7 +189,7 @@ func TestCorrectTransferBasisResolutionAPI(t *testing.T) {
 	require.Equal(t, float64(resolved.Transaction.ID), effective["transaction_id"])
 
 	corrected := moneyCoefficient(6000)
-	replace := investmentBasisResolutionRequest{BasisValue: &corrected, BasisScale: 2, Reason: "statement mistyped"}
+	replace := investmentBasisResolutionRequest{SourceEvidence: json.RawMessage(`{"kind":"statement","reference":"Synthetic statement 2020"}`), BasisValue: &corrected, BasisScale: 2, Reason: "statement mistyped"}
 	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, base+"/replace-basis-resolution", replace, http.StatusConflict)
 	require.Contains(t, res.Body.String(), "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED")
 	replace.GainImpactAcknowledgement = acknowledgement(base+"/replace-basis-resolution", replace)
@@ -235,7 +235,7 @@ func TestKnownZeroBasisResolutionAPI(t *testing.T) {
 	base := "/api/v1/investments/transactions/" + strconv.FormatInt(transfer.Transaction.ID, 10)
 
 	zero := moneyCoefficient(0)
-	resolve := investmentBasisResolutionRequest{BasisValue: &zero, BasisScale: 2, Reason: "gifted shares, statement shows nil cost"}
+	resolve := investmentBasisResolutionRequest{SourceEvidence: json.RawMessage(`{"kind":"statement","reference":"Synthetic statement 2020"}`), BasisValue: &zero, BasisScale: 2, Reason: "gifted shares, statement shows nil cost"}
 	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, base+"/resolve-basis/reconciliation-impact", resolve, http.StatusOK)
 	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, base+"/resolve-basis", resolve, http.StatusCreated)
 	var body map[string]any

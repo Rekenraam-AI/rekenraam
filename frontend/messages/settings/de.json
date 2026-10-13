@@ -1489,5 +1489,19 @@
   "transactions_reorder_later": "Später am Tag",
   "transactions_reorder_earlier": "Früher am Tag",
   "transactions_reorder_override": "Diese Verschiebung ändert einen abgestimmten Saldo. Danach gilt diese Abstimmung als ungültig.",
-  "transactions_reorder_override_confirm": "Trotzdem verschieben"
+  "transactions_reorder_override_confirm": "Trotzdem verschieben",
+  "investments_basis_source_kind": "Quelle der Anschaffungskosten",
+  "investments_basis_source_choose": "Quelle wählen",
+  "investments_basis_source_statement": "Brokerabrechnung",
+  "investments_basis_source_provider": "Datensatz eines Anbieters",
+  "investments_basis_source_owner": "Erklärung des Eigentümers",
+  "investments_basis_source_help": "Halten Sie fest, worauf diese Anschaffungskosten beruhen, getrennt vom Änderungsgrund. Die App überprüft Ihre Erklärung nicht.",
+  "investments_basis_source_reference": "Referenz der Abrechnung oder des Anbieters",
+  "investments_basis_source_rationale": "Begründung Ihrer Angabe der Anschaffungskosten",
+  "investments_basis_source_known_on": "Datum, an dem Sie diese Anschaffungskosten erfahren haben",
+  "investments_basis_source_history_statement": "Abrechnungsreferenz: {reference}",
+  "investments_basis_source_history_provider": "Anbieterreferenz: {reference}",
+  "investments_basis_source_history_owner": "Erklärung des Eigentümers, bekannt seit {date}: {rationale}",
+  "investments_basis_source_history_legacy": "Frühere Belege, ohne Quellenerklärung erfasst.",
+  "investments_basis_source_history_evidence": "Erfasste Quellenbelege"
 }

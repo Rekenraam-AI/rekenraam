@@ -11,7 +11,7 @@ import (
 
 func resolveInput(f *investmentsTestFixture, transactionID, basis int64) ResolveTransferBasisInput {
 	return ResolveTransferBasisInput{OwnerUserID: f.ownerUserID, TransactionID: transactionID,
-		BasisValue: basis, BasisScale: 2, SourceEvidenceJSON: `{"statement":"old broker 2020"}`,
+		BasisValue: basis, BasisScale: 2, SourceEvidenceJSON: `{"kind":"statement","reference":"Synthetic old broker 2020"}`,
 		Reason: "old broker statement found"}
 }
 

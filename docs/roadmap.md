@@ -162,11 +162,12 @@ separate R16 completion gates above, rather than reopening delivered children.
 
 **Later extensions and parallel trust follow-ups from that audit:** unresolved
 non-sale action results [#169](https://github.com/sergeyfarin/rekenraam/issues/169),
-basis-resolution provenance declarations [#170](https://github.com/sergeyfarin/rekenraam/issues/170),
 recorded return-of-capital excess visibility [#171](https://github.com/sergeyfarin/rekenraam/issues/171),
 and write-off mobile entry [#172](https://github.com/sergeyfarin/rekenraam/issues/172).
 These do not reopen #114/#160 or expand the bounded R16 completion bar;
-#170/#171 can run alongside the ordered work, while #169/#172 remain later.
+#171 can run alongside the ordered work, while #169/#172 remain later.
+Basis-resolution provenance declarations [#170](https://github.com/sergeyfarin/rekenraam/issues/170)
+are delivered (2026-10-13), with typed source entry and history.
 
 **Placed, not sequenced:** lot-opening `NOT NULL`
 [#148](https://github.com/sergeyfarin/rekenraam/issues/148) before the v0.1.0 tag. Blocked on provider evidence: [#145](https://github.com/sergeyfarin/rekenraam/issues/145), [#136](https://github.com/sergeyfarin/rekenraam/issues/136).
@@ -208,7 +209,7 @@ release gate, not an R16 one; the evidence-blocked provider mappings
 [#145](https://github.com/sergeyfarin/rekenraam/issues/145) and
 [#136](https://github.com/sergeyfarin/rekenraam/issues/136), and verified provider short/cover import
 [#176](https://github.com/sergeyfarin/rekenraam/issues/176), wait on provider evidence and do not hold R16 open; write-off entry UI (#172),
-unresolved non-sale results (#169), provenance declarations (#170), excess
+unresolved non-sale results (#169), excess
 visibility (#171), and provider return-of-capital/cash-in-lieu suggestions
 remain follow-ups. Operation-addressed correction/settlement of initially
 journal-free splits is delivered (#196). #114's delivered transfer/basis-action

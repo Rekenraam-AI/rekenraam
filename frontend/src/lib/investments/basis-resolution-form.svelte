@@ -28,6 +28,7 @@
     type ReconciliationImpactResponse
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
+  import { basisSourceDeclaration, basisSourceFields } from './basis-provenance';
 
   // Resolves an external transfer in whose basis was recorded unknown (T-145),
   // or, given the effective resolution, corrects it (#168). The basis is the
@@ -56,7 +57,11 @@
 
   let basisStr = $state(correcting
     ? formatLedgerAmount(correcting.basis_value, correcting.basis_scale) : '');
-  let reference = $state('');
+  const initialSource = basisSourceFields(correcting?.source_evidence);
+  let sourceKind = $state(correcting ? initialSource.kind : 'statement');
+  let reference = $state(initialSource.reference);
+  let rationale = $state(initialSource.rationale);
+  let knownOn = $state(initialSource.knownOn);
   let reason = $state('');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
@@ -78,9 +83,11 @@
   const basisCurrency = $derived(currenciesByID.get(costCommodityID));
   const gainRows = $derived(review?.gainImpact
     ? gainImpactRows(review.gainImpact.changes, gainImpactCurrency(currenciesByID), getLocale()) : []);
-  const canSubmit = $derived(!!basisStr.trim() && !!reason.trim());
+  const declaration = $derived(basisSourceDeclaration(sourceKind, reference, rationale, knownOn));
+  const canSubmit = $derived(!!basisStr.trim() && !!reason.trim() && declaration !== null);
 
   function buildPayload(): InvestmentBasisResolutionRequest | null {
+    if (!declaration) return null;
     const basis = parseMoneyMagnitude(basisStr, { maxScale: 12 });
     if (!basis.ok) {
       formError = new TranslatedFormError(basis.reason === 'too_large'
@@ -89,7 +96,7 @@
     }
     return {
       basis_value: basis.field.value, basis_scale: basis.field.scale, reason: reason.trim(),
-      ...(reference.trim() ? { source_evidence: { reference: reference.trim() } } : {})
+      source_evidence: declaration
     };
   }
 
@@ -181,12 +188,43 @@
   </div>
 
   <div>
-    <label for="basis-resolution-reference" class="mb-1 block text-sm font-medium text-foreground">
-      {m.investments_transfer_source_reference()}
+    <label for="basis-resolution-source-kind" class="mb-1 block text-sm font-medium text-foreground">
+      {m.investments_basis_source_kind()}
     </label>
-    <input id="basis-resolution-reference" type="text" bind:value={reference} maxlength="200"
-      class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
+    <select id="basis-resolution-source-kind" bind:value={sourceKind} required aria-describedby="basis-source-help"
+      class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground">
+      <option value="" disabled>{m.investments_basis_source_choose()}</option>
+      <option value="statement">{m.investments_basis_source_statement()}</option>
+      <option value="provider">{m.investments_basis_source_provider()}</option>
+      <option value="owner_assertion">{m.investments_basis_source_owner()}</option>
+    </select>
+    <p id="basis-source-help" class="mt-1 text-xs text-muted">{m.investments_basis_source_help()}</p>
   </div>
+
+  {#if sourceKind === 'owner_assertion'}
+    <div>
+      <label for="basis-resolution-rationale" class="mb-1 block text-sm font-medium text-foreground">
+        {m.investments_basis_source_rationale()}
+      </label>
+      <textarea id="basis-resolution-rationale" bind:value={rationale} maxlength="500" required rows="2"
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground"></textarea>
+    </div>
+    <div>
+      <label for="basis-resolution-known-on" class="mb-1 block text-sm font-medium text-foreground">
+        {m.investments_basis_source_known_on()}
+      </label>
+      <input id="basis-resolution-known-on" type="date" bind:value={knownOn} required
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
+    </div>
+  {:else}
+    <div>
+      <label for="basis-resolution-reference" class="mb-1 block text-sm font-medium text-foreground">
+        {m.investments_basis_source_reference()}
+      </label>
+      <input id="basis-resolution-reference" type="text" bind:value={reference} maxlength="500" required
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
+    </div>
+  {/if}
 
   <div>
     <label for="basis-resolution-reason" class="mb-1 block text-sm font-medium text-foreground">

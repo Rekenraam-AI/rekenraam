@@ -15,7 +15,7 @@ import (
 type investmentBasisResolutionRequest struct {
 	BasisValue                *moneyCoefficient `json:"basis_value"`
 	BasisScale                int               `json:"basis_scale"`
-	SourceEvidence            json.RawMessage   `json:"source_evidence,omitempty"`
+	SourceEvidence            json.RawMessage   `json:"source_evidence"`
 	Reason                    string            `json:"reason"`
 	ReconciliationOverride    bool              `json:"reconciliation_override"`
 	GainImpactAcknowledgement string            `json:"gain_impact_acknowledgement,omitempty"`

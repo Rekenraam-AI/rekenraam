@@ -1313,6 +1313,8 @@ components:
       $ref: "./components/schemas/investments.yaml#/InvestmentSaleReversalRequest"
     InvestmentSaleReversalResponse:
       $ref: "./components/schemas/investments.yaml#/InvestmentSaleReversalResponse"
+    InvestmentBasisResolutionSourceDeclaration:
+      $ref: "./components/schemas/investments.yaml#/InvestmentBasisResolutionSourceDeclaration"
     InvestmentBasisResolutionRequest:
       $ref: "./components/schemas/investments.yaml#/InvestmentBasisResolutionRequest"
     InvestmentBasisResolutionResponse:

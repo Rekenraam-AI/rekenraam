@@ -1489,5 +1489,19 @@
   "transactions_reorder_later": "Later op de dag zetten",
   "transactions_reorder_earlier": "Eerder op de dag zetten",
   "transactions_reorder_override": "Deze verplaatsing wijzigt een afgestemd saldo. Daarna is die afstemming niet meer geldig.",
-  "transactions_reorder_override_confirm": "Toch verplaatsen"
+  "transactions_reorder_override_confirm": "Toch verplaatsen",
+  "investments_basis_source_kind": "Bron van de kostprijs",
+  "investments_basis_source_choose": "Kies een bron",
+  "investments_basis_source_statement": "Brokeroverzicht",
+  "investments_basis_source_provider": "Record van een aanbieder",
+  "investments_basis_source_owner": "Verklaring van de eigenaar",
+  "investments_basis_source_help": "Leg vast waarop u deze kostprijs baseert, los van de reden voor de wijziging. De app verifieert uw verklaring niet.",
+  "investments_basis_source_reference": "Referentie van overzicht of aanbieder",
+  "investments_basis_source_rationale": "Waarom u deze kostprijs verklaart",
+  "investments_basis_source_known_on": "Datum waarop u deze kostprijs te weten kwam",
+  "investments_basis_source_history_statement": "Overzichtreferentie: {reference}",
+  "investments_basis_source_history_provider": "Aanbiederreferentie: {reference}",
+  "investments_basis_source_history_owner": "Verklaring van de eigenaar, bekend op {date}: {rationale}",
+  "investments_basis_source_history_legacy": "Eerder bewijs, vastgelegd zonder bronverklaring.",
+  "investments_basis_source_history_evidence": "Vastgelegd bronbewijs"
 }

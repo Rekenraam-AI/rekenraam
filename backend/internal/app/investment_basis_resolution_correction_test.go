@@ -11,7 +11,7 @@ import (
 
 func correctResolutionInput(f *investmentsTestFixture, transactionID, basis int64) CorrectTransferBasisResolutionInput {
 	return CorrectTransferBasisResolutionInput{OwnerUserID: f.ownerUserID, TransactionID: transactionID,
-		BasisValue: basis, BasisScale: 2, SourceEvidenceJSON: `{"statement":"corrected broker statement"}`,
+		BasisValue: basis, BasisScale: 2, SourceEvidenceJSON: `{"kind":"statement","reference":"Synthetic corrected broker statement"}`,
 		Reason: "statement total was mistyped"}
 }
 

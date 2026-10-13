@@ -4083,10 +4083,47 @@ DatedHoldingLot:
       description: Remaining basis at the slot; null when unknown.
     remaining_cost_basis_scale: { type: [integer, 'null'] }
 
+InvestmentBasisResolutionSourceDeclaration:
+  description: >-
+    Owner-supplied provenance for the resolved basis, separate from the change
+    reason. The app records this declaration without verifying its truth.
+    Extra metadata is retained as immutable evidence. Attachments are out of scope.
+  oneOf:
+    - type: object
+      required: [kind, reference]
+      properties:
+        kind:
+          type: string
+          enum: [statement, provider]
+        reference:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+          description: A nonblank statement or provider record reference.
+      additionalProperties: true
+    - type: object
+      required: [kind, rationale, known_on]
+      properties:
+        kind:
+          type: string
+          const: owner_assertion
+        rationale:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+          description: Why the owner asserts this basis, not merely why it changed.
+        known_on:
+          type: string
+          format: date
+          description: Calendar date on which the owner obtained this basis knowledge.
+      additionalProperties: true
+
 InvestmentBasisResolutionRequest:
   type: object
   additionalProperties: false
-  required: [basis_value, basis_scale, reason]
+  required: [basis_value, basis_scale, source_evidence, reason]
   properties:
     basis_value:
       type: string
@@ -4101,9 +4138,7 @@ InvestmentBasisResolutionRequest:
       minimum: 0
       maximum: 12
     source_evidence:
-      type: object
-      additionalProperties: true
-      description: Where the basis comes from, such as a broker statement reference.
+      $ref: '#/InvestmentBasisResolutionSourceDeclaration'
     reason:
       type: string
     reconciliation_override:

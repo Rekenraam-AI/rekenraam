@@ -28111,14 +28111,32 @@ export interface components {
             /** Format: int64 */
             corrected_transaction_id: number;
         };
+        /** @description Owner-supplied provenance for the resolved basis, separate from the change reason. The app records this declaration without verifying its truth. Extra metadata is retained as immutable evidence. Attachments are out of scope. */
+        InvestmentBasisResolutionSourceDeclaration: ({
+            /** @enum {string} */
+            kind: "statement" | "provider";
+            /** @description A nonblank statement or provider record reference. */
+            reference: string;
+        } & {
+            [key: string]: unknown;
+        }) | ({
+            /** @constant */
+            kind: "owner_assertion";
+            /** @description Why the owner asserts this basis, not merely why it changed. */
+            rationale: string;
+            /**
+             * Format: date
+             * @description Calendar date on which the owner obtained this basis knowledge.
+             */
+            known_on: string;
+        } & {
+            [key: string]: unknown;
+        });
         InvestmentBasisResolutionRequest: {
             /** @description The transfer's total sourced basis in its own cost currency, never a conversion. A sourced known zero is journal-free: it records the fact without a bridge journal (#168). A replacement keeps the pinned transfer and currency and must differ from the effective basis. */
             basis_value: string;
             basis_scale: number;
-            /** @description Where the basis comes from, such as a broker statement reference. */
-            source_evidence?: {
-                [key: string]: unknown;
-            };
+            source_evidence: components["schemas"]["InvestmentBasisResolutionSourceDeclaration"];
             reason: string;
             reconciliation_override?: boolean;
             gain_impact_acknowledgement?: string;

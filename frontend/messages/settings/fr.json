@@ -1489,5 +1489,19 @@
   "transactions_reorder_later": "Déplacer plus tard dans la journée",
   "transactions_reorder_earlier": "Déplacer plus tôt dans la journée",
   "transactions_reorder_override": "Ce déplacement modifie un solde rapproché. Après le déplacement, ce rapprochement n’est plus valide.",
-  "transactions_reorder_override_confirm": "Déplacer quand même"
+  "transactions_reorder_override_confirm": "Déplacer quand même",
+  "investments_basis_source_kind": "Source du coût de revient",
+  "investments_basis_source_choose": "Choisir une source",
+  "investments_basis_source_statement": "Relevé du courtier",
+  "investments_basis_source_provider": "Enregistrement du fournisseur",
+  "investments_basis_source_owner": "Déclaration du propriétaire",
+  "investments_basis_source_help": "Indiquez sur quoi repose ce coût de revient, séparément du motif de modification. L’application ne vérifie pas votre déclaration.",
+  "investments_basis_source_reference": "Référence du relevé ou du fournisseur",
+  "investments_basis_source_rationale": "Justification de ce coût de revient",
+  "investments_basis_source_known_on": "Date à laquelle vous avez pris connaissance de ce coût de revient",
+  "investments_basis_source_history_statement": "Référence du relevé : {reference}",
+  "investments_basis_source_history_provider": "Référence du fournisseur : {reference}",
+  "investments_basis_source_history_owner": "Déclaration du propriétaire, connue le {date} : {rationale}",
+  "investments_basis_source_history_legacy": "Éléments antérieurs, enregistrés sans déclaration de source.",
+  "investments_basis_source_history_evidence": "Éléments de source enregistrés"
 }

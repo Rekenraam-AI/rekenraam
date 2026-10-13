@@ -246,6 +246,7 @@ func TestKnownZeroResolutionExportsAndSurvivesRestore(t *testing.T) {
 	resolutions := csvRows("investment-basis-resolutions.csv")
 	require.Len(t, resolutions, 2)
 	require.Equal(t, "0", resolutions[1][7], "the known zero is numeric, never blank")
+	require.JSONEq(t, resolveInput(f, transfer.Transaction.ID, 0).SourceEvidenceJSON, resolutions[1][9], "the immutable declaration is exported")
 	var exported bool
 	for _, row := range csvRows("investment-operations.csv")[1:] {
 		if row[0] == strconv.FormatInt(zeroID, 10) {

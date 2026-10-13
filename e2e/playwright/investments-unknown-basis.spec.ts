@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 import { apiJSON } from './support/api';
 import { readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
@@ -149,8 +150,11 @@ test('a sourced statement resolves an unknown basis and its sale gain on mobile'
   await page.getByRole('button', { name: 'Resolve cost basis…' }).click();
   const form = page.getByRole('dialog', { name: 'Resolve cost basis' });
   await form.getByLabel(/^Total cost basis/).fill('80.00');
-  await form.getByLabel('Broker or statement reference (optional)').fill('2020 statement');
+  await form.getByLabel('Statement or provider reference').fill('2020 statement');
   await form.getByLabel('Reason').fill('old broker statement found');
+  await form.getByLabel('Statement or provider reference').fill('   ');
+  await expect(form.getByRole('button', { name: 'Review and resolve' })).toBeDisabled();
+  await form.getByLabel('Statement or provider reference').fill('2020 statement');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await form.getByRole('button', { name: 'Review and resolve' }).click();
 
@@ -168,7 +172,8 @@ test('a sourced statement resolves an unknown basis and its sale gain on mobile'
 test('a sourced basis resolution is corrected and withdrawn on mobile', async ({ page }) => {
   const { csrfToken, instrument, arrived } = await seedUnknownArrivalWithSale(page, 'cor');
   const resolvePath = `/api/v1/investments/transactions/${arrived.transaction.id}/resolve-basis`;
-  const resolution = { basis_value: '8000', basis_scale: 2, reason: 'old broker statement found' };
+  const resolution = { basis_value: '8000', basis_scale: 2, reason: 'old broker statement found',
+    source_evidence: { kind: 'statement', reference: 'Synthetic statement 2020' } };
   const impact = await apiJSON<{ gain_impact: { acknowledgement: string } }>(
     page, 'POST', `${resolvePath}/reconciliation-impact`, csrfToken, resolution);
   await apiJSON(page, 'POST', resolvePath, csrfToken,
@@ -179,6 +184,9 @@ test('a sourced basis resolution is corrected and withdrawn on mobile', async ({
   const form = page.getByRole('dialog', { name: 'Correct cost basis' });
   await expect(form.getByLabel(/^Total cost basis/)).toHaveValue('80.00');
   await form.getByLabel(/^Total cost basis/).fill('60.00');
+  await expect(form.getByLabel('Statement or provider reference')).toHaveValue('Synthetic statement 2020');
+  await form.getByLabel('Basis source').selectOption('provider');
+  await form.getByLabel('Statement or provider reference').fill('Synthetic export row 42');
   await form.getByLabel('Reason').fill('statement total was mistyped');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await form.getByRole('button', { name: 'Review and correct' }).click();
@@ -195,6 +203,8 @@ test('a sourced basis resolution is corrected and withdrawn on mobile', async ({
   await expect(history.getByRole('listitem')).toHaveCount(2);
   await expect(history.getByRole('listitem').first()).toContainText('Superseded');
   await expect(history.getByRole('listitem').last()).toContainText('Current');
+  await expect(history.getByRole('listitem').first()).toContainText('Statement reference: Synthetic statement 2020');
+  await expect(history.getByRole('listitem').last()).toContainText('Provider reference: Synthetic export row 42');
 
   await page.getByRole('button', { name: 'Withdraw cost basis' }).click();
   const withdraw = page.getByRole('alertdialog', { name: 'Withdraw the cost basis' });
@@ -208,4 +218,33 @@ test('a sourced basis resolution is corrected and withdrawn on mobile', async ({
   await expect(history.getByRole('listitem').last()).toContainText('Reversed');
   await expect(history.getByRole('listitem').last()).toContainText('Withdrawn: statement belonged to another account');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+// #170: an owner declaration requires both a rationale and a knowledge date;
+// a change reason alone cannot stand in for provenance.
+test('an explicit owner assertion resolves basis with source history on mobile', async ({ page }) => {
+  const { arrived } = await seedUnknownArrivalWithSale(page, 'owner');
+  await page.goto(`/app/transactions?transaction_id=${arrived.transaction.id}`);
+  await page.getByRole('button', { name: 'Resolve cost basis…' }).click();
+  const form = page.getByRole('dialog', { name: 'Resolve cost basis' });
+  await form.getByLabel(/^Total cost basis/).fill('80.00');
+  await form.getByLabel('Reason', { exact: true }).fill('basis reconstructed');
+  await form.getByLabel('Basis source').selectOption('owner_assertion');
+  const submit = form.getByRole('button', { name: 'Review and resolve' });
+  await expect(submit).toBeDisabled();
+  await form.getByLabel('Why you assert this basis').fill('Original purchase records establish the total.\nIncludes original fees.');
+  await expect(submit).toBeDisabled();
+  await form.getByLabel('Date you obtained this basis knowledge').fill(todayISO());
+  await expect(submit).toBeEnabled();
+  await expect(form).toContainText('The app does not verify your declaration.');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const accessibility = await new AxeBuilder({ page }).include('[role="dialog"]').analyze();
+  expect(accessibility.violations).toEqual([]);
+  await submit.click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Accept changed gains' }).click();
+  await expect(form).toBeHidden();
+  await page.goto(`/app/transactions?transaction_id=${arrived.transaction.id}`);
+  const history = page.getByRole('group', { name: 'Cost basis resolutions' });
+  await expect(history).toContainText('Owner assertion, known on');
+  await expect(history).toContainText('Original purchase records establish the total');
 });

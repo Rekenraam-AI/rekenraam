@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BasisProvenanceSummary from '#lib/investments/basis-provenance-summary.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { parseISO } from 'date-fns';
   import AlertTriangle from '@lucide/svelte/icons/triangle-alert';
@@ -436,6 +437,7 @@
               {#if entry.reason}
                 <p class="mt-1 text-xs text-foreground">{entry.reason}</p>
               {/if}
+              <BasisProvenanceSummary evidence={entry.source_evidence} />
               {#if entry.reversal_reason}
                 <p class="mt-1 text-xs text-foreground">
                   {m.investments_basis_resolution_history_withdrawn({ reason: entry.reversal_reason })}

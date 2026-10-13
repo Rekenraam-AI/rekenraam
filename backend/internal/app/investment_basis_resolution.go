@@ -65,7 +65,7 @@ func (s *InvestmentService) transferBasisResolutionJournal(ctx context.Context, 
 	if err != nil || reason == "" {
 		return db.CreateTransactionParams{}, db.ResolveTransferBasisParams{}, ValidationError{Message: "resolution reason is required"}
 	}
-	evidence, err := cleanSizedJSONObject(input.SourceEvidenceJSON, "source evidence", investmentJSONMaxBytes)
+	evidence, err := cleanBasisResolutionEvidence(input.SourceEvidenceJSON)
 	if err != nil {
 		return db.CreateTransactionParams{}, db.ResolveTransferBasisParams{}, err
 	}

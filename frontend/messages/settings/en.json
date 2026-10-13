@@ -1517,5 +1517,19 @@
   "transactions_reorder_later": "Move later in the day",
   "transactions_reorder_earlier": "Move earlier in the day",
   "transactions_reorder_override": "This move changes a reconciled balance. Moving it marks that reconciliation as no longer valid.",
-  "transactions_reorder_override_confirm": "Move anyway"
+  "transactions_reorder_override_confirm": "Move anyway",
+  "investments_basis_source_kind": "Basis source",
+  "investments_basis_source_choose": "Choose a source",
+  "investments_basis_source_statement": "Broker statement",
+  "investments_basis_source_provider": "Provider record",
+  "investments_basis_source_owner": "Owner assertion",
+  "investments_basis_source_help": "Record what you relied on for this basis, separately from the change reason. The app does not verify your declaration.",
+  "investments_basis_source_reference": "Statement or provider reference",
+  "investments_basis_source_rationale": "Why you assert this basis",
+  "investments_basis_source_known_on": "Date you obtained this basis knowledge",
+  "investments_basis_source_history_statement": "Statement reference: {reference}",
+  "investments_basis_source_history_provider": "Provider reference: {reference}",
+  "investments_basis_source_history_owner": "Owner assertion, known on {date}: {rationale}",
+  "investments_basis_source_history_legacy": "Earlier evidence, recorded without a source declaration.",
+  "investments_basis_source_history_evidence": "Recorded source evidence"
 }

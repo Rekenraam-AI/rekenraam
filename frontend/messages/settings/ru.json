@@ -1489,5 +1489,19 @@
   "transactions_reorder_later": "Переместить позже в течение дня",
   "transactions_reorder_earlier": "Переместить раньше в течение дня",
   "transactions_reorder_override": "Это перемещение меняет сверенный остаток. После него эта сверка станет недействительной.",
-  "transactions_reorder_override_confirm": "Всё равно переместить"
+  "transactions_reorder_override_confirm": "Всё равно переместить",
+  "investments_basis_source_kind": "Источник себестоимости",
+  "investments_basis_source_choose": "Выберите источник",
+  "investments_basis_source_statement": "Отчёт брокера",
+  "investments_basis_source_provider": "Запись поставщика",
+  "investments_basis_source_owner": "Заявление владельца",
+  "investments_basis_source_help": "Укажите, на чём основана эта себестоимость, отдельно от причины изменения. Приложение не проверяет ваше заявление.",
+  "investments_basis_source_reference": "Ссылка на отчёт или запись поставщика",
+  "investments_basis_source_rationale": "Обоснование заявленной себестоимости",
+  "investments_basis_source_known_on": "Дата получения сведений об этой себестоимости",
+  "investments_basis_source_history_statement": "Ссылка на отчёт: {reference}",
+  "investments_basis_source_history_provider": "Ссылка на поставщика: {reference}",
+  "investments_basis_source_history_owner": "Заявление владельца, сведения получены {date}: {rationale}",
+  "investments_basis_source_history_legacy": "Ранее сохранённые сведения без указания типа источника.",
+  "investments_basis_source_history_evidence": "Сохранённые сведения об источнике"
 }

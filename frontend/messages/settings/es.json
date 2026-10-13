@@ -1489,5 +1489,19 @@
   "transactions_reorder_later": "Mover más tarde en el día",
   "transactions_reorder_earlier": "Mover más temprano en el día",
   "transactions_reorder_override": "Este cambio altera un saldo conciliado. Al moverlo, esa conciliación deja de ser válida.",
-  "transactions_reorder_override_confirm": "Mover de todos modos"
+  "transactions_reorder_override_confirm": "Mover de todos modos",
+  "investments_basis_source_kind": "Fuente del coste de adquisición",
+  "investments_basis_source_choose": "Elegir una fuente",
+  "investments_basis_source_statement": "Extracto del bróker",
+  "investments_basis_source_provider": "Registro del proveedor",
+  "investments_basis_source_owner": "Declaración del propietario",
+  "investments_basis_source_help": "Indique en qué se basa este coste de adquisición, por separado del motivo del cambio. La aplicación no verifica su declaración.",
+  "investments_basis_source_reference": "Referencia del extracto o del proveedor",
+  "investments_basis_source_rationale": "Justificación de este coste de adquisición",
+  "investments_basis_source_known_on": "Fecha en que conoció este coste de adquisición",
+  "investments_basis_source_history_statement": "Referencia del extracto: {reference}",
+  "investments_basis_source_history_provider": "Referencia del proveedor: {reference}",
+  "investments_basis_source_history_owner": "Declaración del propietario, conocida el {date}: {rationale}",
+  "investments_basis_source_history_legacy": "Pruebas anteriores, registradas sin declaración de fuente.",
+  "investments_basis_source_history_evidence": "Pruebas de la fuente registradas"
 }

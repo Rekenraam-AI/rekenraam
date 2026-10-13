@@ -282,12 +282,47 @@ Slice 3 is delivered (2026-10-10), the operator surface, which completes #168:
   case "a sourced basis resolution is corrected and withdrawn on mobile" runs
   in `investments-unknown-basis.spec.ts` (390 px).
 
-**Deliberately later.** These are not #160 acceptance; each needs its own
-contract:
-- unresolved write-off, cash-in-lieu and return-of-capital results ([#169](https://github.com/sergeyfarin/rekenraam/issues/169));
-- mandatory provenance declarations: the current API/UI source reference is
-  optional; [#170](https://github.com/sergeyfarin/rekenraam/issues/170)
-  defines the statement or explicit owner-assertion contract.
+### Resolution provenance declarations (#170, 2026-10-13)
+
+New resolutions and replacements require a typed `source_evidence` declaration,
+separate from the required change `reason`. This hardens provenance without
+changing the delivered #160/#168 accounting and replay rules.
+
+- `kind: statement` or `kind: provider` requires a nonblank `reference` to the
+  statement or provider record (at most 500 UTF-8 bytes, no control characters).
+- `kind: owner_assertion` is explicitly permitted. It requires a nonblank
+  `rationale` (at most 500 UTF-8 bytes; line breaks and tabs are allowed)
+  explaining the basis asserted, and a valid ISO
+  calendar knowledge date `known_on`, when the owner obtained that knowledge.
+  This is distinct from the transfer date and the app's recorded-at timestamp.
+- These are owner-supplied declarations. The app does not verify a statement's
+  truth, fetch provider records, attach documents, infer a source from the
+  change reason, or apply a jurisdiction's tax rule. Attachments remain out of
+  scope. Additional JSON metadata remains part of the immutable evidence.
+- The shared service rejects missing, null, empty, untyped or incomplete
+  declarations in both previews and commits, including replacements and
+  journal-free known zero. Invalid declarations leave no durable writes.
+  Withdrawal retains the original source and needs only its correction reason.
+- Existing evidence is not rewritten or retroactively relabeled. Older untyped
+  declarations remain readable, exportable and healthy under self-check.
+  Replacing one requires the owner to choose an explicit source kind.
+- Six-locale mobile entry asks for the source and its required fields; correction
+  pre-fills a typed source. Resolution history explains each statement/provider
+  reference or owner rationale and knowledge date, and exposes the exact saved
+  JSON for every effective, superseded and reversed resolution. The existing
+  bundle exports that JSON unchanged in `investment-basis-resolutions.csv`.
+
+Named regressions: `TestBasisResolutionRequiresSourceDeclarationWithoutWriting`,
+`TestBasisResolutionAcceptsDeclaredSourcesAndPreservesOriginalEvidence`, and
+`TestBasisResolutionDeclarationAPIRefusesIncompleteEvidence`; the existing
+known-zero export/restore test also checks the declaration. Mobile browser
+coverage in `investments-unknown-basis.spec.ts` includes statement entry,
+provider replacement, owner assertion, disabled incomplete forms, history,
+withdrawal and accessibility.
+
+**Deliberately later.** Unresolved write-off, cash-in-lieu and return-of-capital
+results are not #160 acceptance and need their own contract
+([#169](https://github.com/sergeyfarin/rekenraam/issues/169)).
 
 
 1. **Immutable knowledge.** Add explicit knowledge with paired nullable basis
