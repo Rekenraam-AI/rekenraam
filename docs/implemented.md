@@ -224,9 +224,9 @@ governs the journal/subledger boundary and ADR 0013 the R16 operation model.
 | Demand-driven FX coverage (activate currency / backdated posting) | ✅ | Drafts/previews do not trigger downloads. |
 | Price observations (manual, provider, FX, trade-implied) | ✅ | Source/quote-type/adjustment-basis series; valuation date preserved. Derived FX routes through up to `triangulation_max_hops` intermediate currencies, shortest chain first (T-40). |
 | Price observation voiding | ✅ | `POST /pricing/prices/{price_id}/void` (T-37). Retires a poisoned observation with a required reason instead of editing or deleting it; **cascades** to every rate triangulated from it (`derivation_json`'s `legs[].observation_id`, breadth-first, bounded by `maxVoidCascadeDepth`), one `audit_events` row per void referenced from each retired row (`voided_audit_event_id`). Voided rows leave all valuations and are listed only with `include_voided=true`. Not idempotent — a second void is 409. Proven by `TestVoidPrice_CascadesToRatesTriangulatedFromTheVoidedLeg` (`backend/internal/app/pricing_test.go`). |
-| Pricing sources, policy, source assignments, health | 🟡 | Full API (`/pricing/*`); no management UI. |
-| Manual/scheduled refresh runs + history | 🟡 | API only. |
-| **Pricing/FX management UI** | ⬜ | R11. |
+| Pricing sources, policy, source assignments, health | 🟦 | Full API (`/pricing/*`); FX policy, sources, health, refresh and retry remain in currency settings. R11 adds observation management separately. |
+| Manual/scheduled refresh runs + history | 🟦 | API and existing currency settings; no new R11 provider adapter. |
+| **Pricing/FX management UI** | ✅ | [#116](https://github.com/sergeyfarin/rekenraam/issues/116), via #200–#202 (2026-10-13): `/app/pricing` composes dated pair coverage and source/commodity choices, including unpriced configured instruments and open-position cost currencies. Cursor history in recording order reaches all observations, including retired evidence. Exact string DTOs preserve int64 prices/base quantities past the browser safe-integer bound; manual entry uses the seeded manual source and required reason. Source/quote/adjustment basis, four dates/times, approximation, trade linkage, derivation, reference, supersession and void reasons are inspectable. Correction and withdrawal review the full bounded derived closure and recheck its token inside one audited writer transaction; correction retires the closure and appends a same-pair/date manual replacement. Stale, repeated, over-depth and late-failure cases leave no partial effects. Six-locale mobile/keyboard states, cancellation, fresh-review recovery and cache invalidation ship. No posting, operational basis or checkpoint changes. [Contract](plans/pricing-management-plan.md); existing consumer selection/age differences remain explicit and are tracked by [#203](https://github.com/sergeyfarin/rekenraam/issues/203). |
 
 ## Recurring transactions (R9) — ✅ complete; acceptance closed 2026-08-31
 
@@ -357,7 +357,7 @@ knowledge. Forward migration 3 preserves existing known history.
 
 XLSX/OFX/QFX import adapters, per-split import mapping and batch rollback,
 budgets, loan/liability
-helpers, report snapshots, and pricing-management UI. CSV import, profiles and
+helpers and report snapshots. CSV import, profiles and
 minimal rules are shipped. Reporting-currency conversion is shipped. Recurring
 templates, generation and dedicated review/discard screens are shipped.
 Production scheduling and R9 acceptance are complete. R10's detailed plan is

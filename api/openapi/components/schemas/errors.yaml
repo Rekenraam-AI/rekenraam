@@ -11,6 +11,7 @@ ErrorBody:
         - UNAUTHENTICATED
         - FORBIDDEN
         - NOT_FOUND
+        - PRICE_IMPACT_STALE
         - CONFLICT
         - CSRF_INVALID
         - RATE_LIMITED

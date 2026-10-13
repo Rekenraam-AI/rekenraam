@@ -75,31 +75,33 @@ type PriceSeriesSpec struct {
 }
 
 type PriceObservationRecord struct {
-	ID                      int64
-	BookID                  int64
-	SeriesID                int64
-	BaseCommodityID         int64
-	QuoteCommodityID        int64
-	QuoteType               string
-	AdjustmentBasis         string
-	PriceValue              int64
-	PriceScale              int
-	BaseQuantityValue       int64
-	BaseQuantityScale       int
-	ValuationDate           string
-	ObservedAt              sql.NullString
-	SourcePublishedAt       sql.NullString
-	SourceID                sql.NullInt64
-	ProviderObservationID   sql.NullString
-	IsManual                bool
-	IsDerived               bool
-	SupersedesObservationID sql.NullInt64
-	DerivationJSON          string
-	MetadataJSON            string
-	VoidedAt                sql.NullString
-	VoidReason              string
-	RecordedAt              string
-	CreatedByUserID         int64
+	ID                         int64
+	BookID                     int64
+	SeriesID                   int64
+	BaseCommodityID            int64
+	QuoteCommodityID           int64
+	QuoteType                  string
+	AdjustmentBasis            string
+	PriceValue                 int64
+	PriceScale                 int
+	BaseQuantityValue          int64
+	BaseQuantityScale          int
+	ValuationDate              string
+	ObservedAt                 sql.NullString
+	SourcePublishedAt          sql.NullString
+	SourceID                   sql.NullInt64
+	ProviderObservationID      sql.NullString
+	IsManual                   bool
+	IsDerived                  bool
+	IsApproximate              bool
+	SourceTransactionVersionID sql.NullInt64
+	SupersedesObservationID    sql.NullInt64
+	DerivationJSON             string
+	MetadataJSON               string
+	VoidedAt                   sql.NullString
+	VoidReason                 string
+	RecordedAt                 string
+	CreatedByUserID            int64
 }
 
 type PriceObservationSpec struct {
@@ -495,6 +497,20 @@ func (r *PricingRepository) CreatePriceObservation(ctx context.Context, params C
 	if err != nil {
 		return PriceObservationRecord{}, err
 	}
+	record, err := insertPriceObservationTx(ctx, tx, params, auditEventID)
+	if err != nil {
+		return PriceObservationRecord{}, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return PriceObservationRecord{}, fmt.Errorf("commit create price observation: %w", err)
+	}
+	committed = true
+	return record, nil
+}
+
+// insertPriceObservationTx shares the immutable insert with reviewed correction.
+func insertPriceObservationTx(ctx context.Context, tx *sql.Tx, params CreatePriceObservationParams, auditEventID int64) (PriceObservationRecord, error) {
 	seriesID := params.Spec.SeriesID.Int64
 	if seriesID == 0 {
 		series, err := ensurePriceSeriesTx(ctx, tx, params.BookID, PriceSeriesSpec{
@@ -533,24 +549,21 @@ func (r *PricingRepository) CreatePriceObservation(ctx context.Context, params C
 	if err != nil {
 		return PriceObservationRecord{}, err
 	}
-	if err := tx.Commit(); err != nil {
-		return PriceObservationRecord{}, fmt.Errorf("commit create price observation: %w", err)
-	}
-	committed = true
 	return record, nil
 }
 
 type VoidPriceObservationParams struct {
-	BookID        int64
-	ObservationID int64
-	ActorUserID   int64
-	AuthSessionID int64
-	RequestID     string
-	OriginType    string
-	Operation     string
-	VoidedAt      string
-	VoidReason    string
-	ChangeReason  string
+	BookID         int64
+	ObservationID  int64
+	ActorUserID    int64
+	AuthSessionID  int64
+	RequestID      string
+	OriginType     string
+	Operation      string
+	VoidedAt       string
+	VoidReason     string
+	ChangeReason   string
+	ExpectedImpact string
 }
 
 // maxVoidCascadeDepth bounds how far a void follows derivation chains. A
@@ -586,6 +599,16 @@ func (r *PricingRepository) VoidPriceObservation(ctx context.Context, params Voi
 		return nil, ErrPriceObservationAlreadyVoided
 	}
 
+	if params.ExpectedImpact != "" {
+		impact, err := priceImpactTx(ctx, tx, params.BookID, params.ObservationID)
+		if err != nil {
+			return nil, err
+		}
+		if impact.Token != params.ExpectedImpact {
+			return nil, ErrPriceImpactStale
+		}
+	}
+
 	auditEventID, err := insertAuditEvent(ctx, tx, AuditEventParams{
 		BookID:        params.BookID,
 		ActorUserID:   params.ActorUserID,
@@ -613,35 +636,13 @@ func (r *PricingRepository) VoidPriceObservation(ctx context.Context, params Voi
 // voidPriceObservationWithAuditTx lets a larger financial command retire its
 // trade price and derived observations under the command's one audit event.
 func voidPriceObservationWithAuditTx(ctx context.Context, tx *sql.Tx, params VoidPriceObservationParams, auditEventID int64) ([]PriceObservationRecord, error) {
-	voidedIDs := []int64{params.ObservationID}
-	frontier := []int64{params.ObservationID}
-	seen := map[int64]bool{params.ObservationID: true}
-	// depth is the derivation level of the observations `next` collects: the
-	// target is level 0 and observations derived directly from it are level 1.
-	// The walk runs until the frontier empties, so a cycle terminates on `seen`
-	// rather than on the depth bound; only genuinely deeper-than-bound graphs
-	// abort. A chain of exactly maxVoidCascadeDepth levels is voided in full.
-	for depth := 1; len(frontier) > 0; depth++ {
-		var next []int64
-		for _, observationID := range frontier {
-			derived, err := activeDerivedObservationIDsTx(ctx, tx, params.BookID, observationID)
-			if err != nil {
-				return nil, err
-			}
-			for _, derivedID := range derived {
-				if seen[derivedID] {
-					continue
-				}
-				seen[derivedID] = true
-				next = append(next, derivedID)
-			}
-		}
-		if len(next) > 0 && depth > maxVoidCascadeDepth {
-			return nil, fmt.Errorf("%w: observation %d in book %d has derived observations beyond %d levels",
-				ErrPriceVoidCascadeTooDeep, params.ObservationID, params.BookID, maxVoidCascadeDepth)
-		}
-		voidedIDs = append(voidedIDs, next...)
-		frontier = next
+	impact, err := priceImpactTx(ctx, tx, params.BookID, params.ObservationID)
+	if err != nil {
+		return nil, err
+	}
+	voidedIDs := make([]int64, 0, len(impact.Prices))
+	for _, price := range impact.Prices {
+		voidedIDs = append(voidedIDs, price.ID)
 	}
 
 	records := make([]PriceObservationRecord, 0, len(voidedIDs))
@@ -834,7 +835,7 @@ func (r *PricingRepository) listLegacyPriceObservations(ctx context.Context, boo
 			observation_kind AS quote_type, 'raw' AS adjustment_basis, price_value, price_scale,
 			1 AS base_quantity_value, 0 AS base_quantity_scale, price_date AS valuation_date,
 			NULL AS observed_at, NULL AS source_published_at, source_id, provider_observation_id,
-			is_manual, is_derived, supersedes_observation_id, '{}' AS derivation_json, metadata_json,
+			is_manual, is_derived, 0 AS is_approximate, NULL AS source_transaction_version_id, supersedes_observation_id, '{}' AS derivation_json, metadata_json,
 			voided_at, '' AS void_reason, created_at AS recorded_at, created_by_user_id
 		FROM price_observations
 		WHERE `+where+`
@@ -1306,7 +1307,7 @@ func priceObservationSelect(whereClause string) string {
 		SELECT id, book_id, series_id, base_commodity_id, quote_commodity_id, quote_type,
 			adjustment_basis, price_value, price_scale, base_quantity_value, base_quantity_scale,
 			valuation_date, observed_at, source_published_at, source_id, provider_observation_id,
-			is_manual, is_derived, supersedes_observation_id, derivation_json, metadata_json,
+			is_manual, is_derived, is_approximate, source_transaction_version_id, supersedes_observation_id, derivation_json, metadata_json,
 			voided_at, void_reason, recorded_at, created_by_user_id
 		FROM price_observations
 	` + whereClause
@@ -1316,7 +1317,7 @@ func scanPriceObservationRow(row rowScanner) (PriceObservationRecord, error) {
 	var record PriceObservationRecord
 	var isManual int
 	var isDerived int
-	if err := row.Scan(&record.ID, &record.BookID, &record.SeriesID, &record.BaseCommodityID, &record.QuoteCommodityID, &record.QuoteType, &record.AdjustmentBasis, &record.PriceValue, &record.PriceScale, &record.BaseQuantityValue, &record.BaseQuantityScale, &record.ValuationDate, &record.ObservedAt, &record.SourcePublishedAt, &record.SourceID, &record.ProviderObservationID, &isManual, &isDerived, &record.SupersedesObservationID, &record.DerivationJSON, &record.MetadataJSON, &record.VoidedAt, &record.VoidReason, &record.RecordedAt, &record.CreatedByUserID); err != nil {
+	if err := row.Scan(&record.ID, &record.BookID, &record.SeriesID, &record.BaseCommodityID, &record.QuoteCommodityID, &record.QuoteType, &record.AdjustmentBasis, &record.PriceValue, &record.PriceScale, &record.BaseQuantityValue, &record.BaseQuantityScale, &record.ValuationDate, &record.ObservedAt, &record.SourcePublishedAt, &record.SourceID, &record.ProviderObservationID, &isManual, &isDerived, &record.IsApproximate, &record.SourceTransactionVersionID, &record.SupersedesObservationID, &record.DerivationJSON, &record.MetadataJSON, &record.VoidedAt, &record.VoidReason, &record.RecordedAt, &record.CreatedByUserID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return PriceObservationRecord{}, ErrNotFound
 		}

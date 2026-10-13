@@ -14,8 +14,9 @@ Other questions have exactly one home each:
 Do not restate shipped detail here; when a focus item ships, delete it and
 record the capability in `implemented.md`.
 
-Last reviewed: 2026-10-13. The current order is R16, R11 price management,
-R17 quotes and crypto, R18 gains projections, then R13 returns analytics.
+Last reviewed: 2026-10-13. R16’s agreed gates and R11 price management are
+delivered. The current order is R17 quotes and crypto, R18 gains projections,
+then R13 returns analytics.
 Cross-border input and date correctness run in parallel. Prior roadmap detail
 is retained in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md).
 
@@ -39,7 +40,7 @@ Statuses: ✅ shipped · ◐ partly shipped ahead of its slice · ▶ current ·
 | R8 | Budgets | ✅ | `docs/plans/budgets-plan.md` |
 | R9 | Recurring transactions | ✅ | `docs/plans/recurring-transactions-plan.md` |
 | R10 | Projected balances / forecasting | ✅ | `docs/plans/projected-balances-plan.md` |
-| R11 | Pricing/FX management UI | ▶ | this file |
+| R11 | Pricing/FX management UI | ✅ | `docs/plans/pricing-management-plan.md` |
 | R12 | Investments UI + gains reporting | ✅ | `docs/plans/investments-plan.md` |
 | R12a | Investment journal/subledger integrity correction | ✅ | `docs/plans/investment-integrity-plan.md`, ADR 0012 |
 | R13 | Investment return analytics (TWR/MWR) | ⏭ | this file |
@@ -47,7 +48,7 @@ Statuses: ✅ shipped · ◐ partly shipped ahead of its slice · ▶ current ·
 | R14a | Attachment storage + manual attach (after R5) | ⏭ | `docs/plans/receipts-plan.md` |
 | R15 | Connections expansion (IBKR Flex → GoCardless → #111 producer) | ⏸ | `docs/plans/connections-plan.md` |
 | R16 | Investment lifecycle completeness (correction, transfers, basis actions, splits, short sales) | ✅ agreed gates; related work open | `docs/plans/investment-operation-refactor-plan.md`; ADR 0013 |
-| R17 | Crypto instrument type + `PriceProvider` registry and quote adapters | ⏭ | this file |
+| R17 | Crypto instrument type + `PriceProvider` registry and quote adapters | ▶ | this file |
 | R18 | Reproducible investment basis + gains projections | ⏭ | ADR 0012; plan required after R16/R17 |
 
 ## Decisions adopted 2026-08-05
@@ -109,9 +110,9 @@ below is execution order, not a chain of hard dependencies.
 
 **Now**
 
-1. R11 price and FX management UI
-   [#116](https://github.com/sergeyfarin/rekenraam/issues/116), after R16's
-   agreed completion gates delivered with #146 (2026-10-13).
+1. R17 quote-provider registry and crypto, after R11
+   [#116](https://github.com/sergeyfarin/rekenraam/issues/116) delivered its
+   bounded operator surface via #200–#202 (2026-10-13).
 2. Daily-use parallel work: the shared transaction workspace
    [#185](https://github.com/sergeyfarin/rekenraam/issues/185) (slices 1 and 2 delivered 2026-10-11: entry from account and
    category screens, same-day reorder everywhere or in one account), then investment entry from holding accounts and
@@ -217,7 +218,8 @@ and Refresh reach for revised fills
 
 **Remaining R16-related work.** Delivery of the agreed gates does not mean
 that every investment-lifecycle issue is closed. These retained issues keep
-their stated scope and placement; R11 remains the next ordered initiative.
+their stated scope and placement. R11’s bounded operator surface is delivered;
+the next initiative is R17.
 
 | Issue | Remaining gap | Disposition |
 |---|---|---|
@@ -232,15 +234,15 @@ journal-free splits is delivered (#196). #114's delivered transfer/basis-action
 family is closed under the audit above; the other agreed R16 gates were
 delivered separately.
 
-### R11 — price and FX management UI, promoted after R16
+### R11 — price and FX management UI, delivered
 
-Give the existing price/FX repository and price-void operation an operator
-surface before R17 adds more quote providers. The screen must show observation
-source, as-of date, trust/approximation and age; permit manual entry,
-correction/void with a dependency preview; and explain when no usable price
-exists. Keep historical source observations auditable. Write the detailed
-acceptance plan when R11 becomes current. This is a valuation-trust gate, not a
-new automatic provider or a change to ledger postings.
+The bounded operator surface (#116, #200–#202) is delivered. Its durable
+contract is [price management](plans/pricing-management-plan.md); shipped
+scope is in [the capability ledger](implemented.md). Existing valuation-reader
+selection and age differences are recorded in
+[#203](https://github.com/sergeyfarin/rekenraam/issues/203), under R18's named
+reporting policy. They do not reopen R11 or claim that its diagnostic changed
+current reports.
 
 ### Parallel trust work for cross-border entry
 

@@ -15,7 +15,9 @@ PriceObservationResponse:
     - valuation_date
     - is_manual
     - is_derived
+    - is_approximate
     - derivation
+    - derivation_text
     - metadata
     - recorded_at
   properties:
@@ -40,19 +42,17 @@ PriceObservationResponse:
     adjustment_basis:
       type: string
     price_value:
-      type: integer
-      format: int64
-      description: Exact quote amount integer.
+      type: string
+      pattern: '^[1-9][0-9]*$'
+      description: Exact positive int64 coefficient as a decimal string.
     price_scale:
       type: integer
-      description: Decimal scale for price_value.
     base_quantity_value:
-      type: integer
-      format: int64
-      description: Exact base quantity integer for the observed price.
+      type: string
+      pattern: '^[1-9][0-9]*$'
+      description: Exact positive int64 base quantity coefficient as a decimal string.
     base_quantity_scale:
       type: integer
-      description: Decimal scale for base_quantity_value.
     valuation_date:
       type: string
       format: date
@@ -71,12 +71,20 @@ PriceObservationResponse:
       type: boolean
     is_derived:
       type: boolean
+    is_approximate:
+      type: boolean
+    source_transaction_version_id:
+      type: integer
+      format: int64
     supersedes_observation_id:
       type: integer
       format: int64
     derivation:
       type: object
       additionalProperties: true
+    derivation_text:
+      type: string
+      description: Original stored derivation JSON for lossless inspection of nested exact numeric evidence.
     metadata:
       type: object
       additionalProperties: true
@@ -99,6 +107,11 @@ PriceObservationVoidRequest:
   required:
     - void_reason
   properties:
+    expected_impact:
+      type: string
+      minLength: 64
+      maxLength: 64
+      description: Optional legacy compatibility; the operator UI supplies a fresh impact token.
     void_reason:
       type: string
       minLength: 1
@@ -582,3 +595,301 @@ PricingSourceHealthListResponse:
       description: Pricing background work that gave up after its maximum attempts.
       items:
         $ref: "#/PricingBackgroundWorkResponse"
+
+PricingCommodityResponse:
+  type: object
+  required:
+  - id
+  - code
+  - name
+  - kind
+  - status
+  properties:
+    id:
+      type: integer
+      format: int64
+      minimum: 1
+    code:
+      type: string
+    name:
+      type: string
+    kind:
+      type: string
+    status:
+      type: string
+  additionalProperties: false
+PricingCoverageResponse:
+  type: object
+  required:
+  - base_commodity_id
+  - quote_commodity_id
+  - status
+  properties:
+    base_commodity_id:
+      type: integer
+      format: int64
+      minimum: 1
+    quote_commodity_id:
+      type: integer
+      format: int64
+      minimum: 1
+    status:
+      type: string
+      enum:
+      - usable
+      - stale
+      - missing
+    age_days:
+      type: integer
+      minimum: 0
+    observation:
+      $ref: ../../openapi.yaml#/components/schemas/PriceObservationResponse
+  additionalProperties: false
+PricingWorkspaceResponse:
+  type: object
+  required:
+  - as_of
+  - staleness_max_days
+  - commodities
+  - sources
+  - coverage
+  properties:
+    as_of:
+      type: string
+      format: date
+    staleness_max_days:
+      type: integer
+    commodities:
+      type: array
+      items:
+        $ref: ../../openapi.yaml#/components/schemas/PricingCommodityResponse
+    sources:
+      type: array
+      items:
+        $ref: ../../openapi.yaml#/components/schemas/MarketDataSourceResponse
+    coverage:
+      type: array
+      items:
+        $ref: ../../openapi.yaml#/components/schemas/PricingCoverageResponse
+  additionalProperties: false
+PriceHistoryResponse:
+  type: object
+  required:
+  - prices
+  properties:
+    prices:
+      type: array
+      items:
+        $ref: ../../openapi.yaml#/components/schemas/PriceObservationResponse
+    next_cursor:
+      type: string
+  additionalProperties: false
+ManualPriceRequest:
+  type: object
+  required:
+  - base_commodity_id
+  - quote_commodity_id
+  - valuation_date
+  - price_value
+  - price_scale
+  - base_quantity_value
+  - base_quantity_scale
+  - reason
+  properties:
+    base_commodity_id:
+      type: integer
+      format: int64
+      minimum: 1
+    quote_commodity_id:
+      type: integer
+      format: int64
+      minimum: 1
+    valuation_date:
+      type: string
+      format: date
+    price_value:
+      type: string
+      pattern: ^[1-9][0-9]*$
+      maxLength: 19
+      description: Positive int64 coefficient, canonical decimal string. Maximum 9223372036854775807.
+    price_scale:
+      type: integer
+      minimum: 0
+      maximum: 18
+    base_quantity_value:
+      type: string
+      pattern: ^[1-9][0-9]*$
+      maxLength: 19
+      description: Positive int64 coefficient, canonical decimal string. Maximum 9223372036854775807.
+    base_quantity_scale:
+      type: integer
+      minimum: 0
+      maximum: 18
+    observed_at:
+      type: string
+      format: date-time
+    reference:
+      type: string
+      maxLength: 500
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 500
+  additionalProperties: false
+CorrectPriceRequest:
+  type: object
+  required:
+  - price_value
+  - price_scale
+  - base_quantity_value
+  - base_quantity_scale
+  - reason
+  - expected_impact
+  properties:
+    price_value:
+      type: string
+      pattern: ^[1-9][0-9]*$
+      maxLength: 19
+      description: Positive int64 coefficient, canonical decimal string. Maximum 9223372036854775807.
+    price_scale:
+      type: integer
+      minimum: 0
+      maximum: 18
+    base_quantity_value:
+      type: string
+      pattern: ^[1-9][0-9]*$
+      maxLength: 19
+      description: Positive int64 coefficient, canonical decimal string. Maximum 9223372036854775807.
+    base_quantity_scale:
+      type: integer
+      minimum: 0
+      maximum: 18
+    observed_at:
+      type: string
+      format: date-time
+    reference:
+      type: string
+      maxLength: 500
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 500
+    expected_impact:
+      type: string
+      minLength: 64
+      maxLength: 64
+  additionalProperties: false
+PriceImpactResponse:
+  type: object
+  required:
+  - prices
+  - token
+  properties:
+    prices:
+      type: array
+      minItems: 1
+      items:
+        $ref: ../../openapi.yaml#/components/schemas/PriceObservationResponse
+    token:
+      type: string
+      minLength: 64
+      maxLength: 64
+  additionalProperties: false
+CorrectPriceResponse:
+  type: object
+  required:
+  - replacement
+  - retired
+  properties:
+    replacement:
+      $ref: ../../openapi.yaml#/components/schemas/PriceObservationResponse
+    retired:
+      type: array
+      items:
+        $ref: ../../openapi.yaml#/components/schemas/PriceObservationResponse
+  additionalProperties: false
+
+PriceObservationRequest:
+  type: object
+  required:
+    - quote_commodity_id
+    - price_value
+    - price_scale
+    - derivation
+    - series_metadata
+    - metadata
+  properties:
+    base_commodity_id: &id001
+      type: integer
+      format: int64
+    commodity_id:
+      type: integer
+      format: int64
+      description: Legacy alias for base_commodity_id.
+    quote_commodity_id: *id001
+    quote_type:
+      type: string
+    adjustment_basis:
+      type: string
+    price_value:
+      type: integer
+      format: int64
+      minimum: 1
+      description: Legacy numeric coefficient. Browser entry uses /pricing/manual with exact strings.
+    price_scale: &id002
+      type: integer
+      minimum: 0
+      maximum: 18
+    base_quantity_value:
+      type: integer
+      format: int64
+      minimum: 0
+      default: 1
+    base_quantity_scale: *id002
+    valuation_date:
+      type: string
+      format: date
+    price_date:
+      type: string
+      format: date
+      description: Legacy alias for valuation_date.
+    observed_at:
+      type: string
+      format: date-time
+    source_published_at:
+      type: string
+      format: date-time
+    source_id:
+      type:
+        - integer
+        - 'null'
+      format: int64
+    market_code:
+      type: string
+    provider_series_id:
+      type: string
+    provider_observation_id:
+      type: string
+    is_manual:
+      type: boolean
+    is_derived:
+      type: boolean
+    supersedes_observation_id:
+      type:
+        - integer
+        - 'null'
+      format: int64
+      deprecated: true
+      description: Non-null IDs are refused. Use the reviewed /pricing/prices/{price_id}/correct command.
+    derivation:
+      type: object
+      additionalProperties: true
+    series_metadata:
+      type: object
+      additionalProperties: true
+    metadata:
+      type: object
+      additionalProperties: true
+    change_reason:
+      type: string
+  additionalProperties: false

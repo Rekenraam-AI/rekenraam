@@ -35,39 +35,42 @@ type MarketDataSource struct {
 }
 
 type PriceObservation struct {
-	ID                      int64
-	BookID                  int64
-	SeriesID                int64
-	BaseCommodityID         int64
-	QuoteCommodityID        int64
-	QuoteType               string
-	AdjustmentBasis         string
-	PriceValue              int64
-	PriceScale              int
-	BaseQuantityValue       int64
-	BaseQuantityScale       int
-	ValuationDate           string
-	ObservedAt              string
-	SourcePublishedAt       string
-	SourceID                *int64
-	ProviderObservationID   string
-	IsManual                bool
-	IsDerived               bool
-	SupersedesObservationID *int64
-	DerivationJSON          string
-	MetadataJSON            string
-	VoidedAt                string
-	VoidReason              string
-	RecordedAt              string
+	ID                         int64
+	BookID                     int64
+	SeriesID                   int64
+	BaseCommodityID            int64
+	QuoteCommodityID           int64
+	QuoteType                  string
+	AdjustmentBasis            string
+	PriceValue                 int64
+	PriceScale                 int
+	BaseQuantityValue          int64
+	BaseQuantityScale          int
+	ValuationDate              string
+	ObservedAt                 string
+	SourcePublishedAt          string
+	SourceID                   *int64
+	ProviderObservationID      string
+	IsManual                   bool
+	IsDerived                  bool
+	IsApproximate              bool
+	SourceTransactionVersionID *int64
+	SupersedesObservationID    *int64
+	DerivationJSON             string
+	MetadataJSON               string
+	VoidedAt                   string
+	VoidReason                 string
+	RecordedAt                 string
 }
 
 type VoidPriceInput struct {
-	OwnerUserID   int64
-	AuthSessionID int64
-	RequestID     string
-	ObservationID int64
-	VoidReason    string
-	ChangeReason  string
+	OwnerUserID    int64
+	AuthSessionID  int64
+	RequestID      string
+	ObservationID  int64
+	ExpectedImpact string
+	VoidReason     string
+	ChangeReason   string
 }
 
 type PriceObservationInput struct {
@@ -250,6 +253,9 @@ func (s *PricingService) CreatePrice(ctx context.Context, input PriceObservation
 	if input.OwnerUserID <= 0 {
 		return PriceObservation{}, ValidationError{Message: "owner user is required"}
 	}
+	if input.SupersedesObservationID != nil {
+		return PriceObservation{}, ValidationError{Message: "use the reviewed price correction command"}
+	}
 	spec, err := cleanPriceObservationSpec(input)
 	if err != nil {
 		return PriceObservation{}, err
@@ -303,16 +309,17 @@ func (s *PricingService) VoidPrice(ctx context.Context, input VoidPriceInput) ([
 		return nil, err
 	}
 	records, err := s.repository.VoidPriceObservation(ctx, db.VoidPriceObservationParams{
-		BookID:        BookID,
-		ObservationID: input.ObservationID,
-		ActorUserID:   input.OwnerUserID,
-		AuthSessionID: input.AuthSessionID,
-		RequestID:     input.RequestID,
-		OriginType:    "browser_api",
-		Operation:     "pricing.price.void",
-		VoidedAt:      s.now().UTC().Format(time.RFC3339),
-		VoidReason:    voidReason,
-		ChangeReason:  changeReason,
+		BookID:         BookID,
+		ObservationID:  input.ObservationID,
+		ActorUserID:    input.OwnerUserID,
+		AuthSessionID:  input.AuthSessionID,
+		RequestID:      input.RequestID,
+		OriginType:     "browser_api",
+		Operation:      "pricing.price.void",
+		VoidedAt:       s.now().UTC().Format(time.RFC3339),
+		VoidReason:     voidReason,
+		ChangeReason:   changeReason,
+		ExpectedImpact: input.ExpectedImpact,
 	})
 	if err != nil {
 		switch {
@@ -320,6 +327,8 @@ func (s *PricingService) VoidPrice(ctx context.Context, input VoidPriceInput) ([
 			return nil, ErrPriceObservationNotFound
 		case errors.Is(err, db.ErrPriceObservationAlreadyVoided):
 			return nil, ErrPriceObservationAlreadyVoided
+		case errors.Is(err, db.ErrPriceImpactStale):
+			return nil, ErrPriceImpactStale
 		case errors.Is(err, db.ErrPriceVoidCascadeTooDeep):
 			return nil, ErrPriceVoidCascadeTooDeep
 		default:
@@ -698,30 +707,32 @@ func toMarketDataSources(records []db.MarketDataSourceRecord) []MarketDataSource
 
 func toPriceObservation(record db.PriceObservationRecord) PriceObservation {
 	return PriceObservation{
-		ID:                      record.ID,
-		BookID:                  record.BookID,
-		SeriesID:                record.SeriesID,
-		BaseCommodityID:         record.BaseCommodityID,
-		QuoteCommodityID:        record.QuoteCommodityID,
-		QuoteType:               record.QuoteType,
-		AdjustmentBasis:         record.AdjustmentBasis,
-		PriceValue:              record.PriceValue,
-		PriceScale:              record.PriceScale,
-		BaseQuantityValue:       record.BaseQuantityValue,
-		BaseQuantityScale:       record.BaseQuantityScale,
-		ValuationDate:           record.ValuationDate,
-		ObservedAt:              nullableString(record.ObservedAt),
-		SourcePublishedAt:       nullableString(record.SourcePublishedAt),
-		SourceID:                nullableSQLInt64Ptr(record.SourceID),
-		ProviderObservationID:   nullableString(record.ProviderObservationID),
-		IsManual:                record.IsManual,
-		IsDerived:               record.IsDerived,
-		SupersedesObservationID: nullableSQLInt64Ptr(record.SupersedesObservationID),
-		DerivationJSON:          record.DerivationJSON,
-		MetadataJSON:            record.MetadataJSON,
-		VoidedAt:                nullableString(record.VoidedAt),
-		VoidReason:              record.VoidReason,
-		RecordedAt:              record.RecordedAt,
+		ID:                         record.ID,
+		BookID:                     record.BookID,
+		SeriesID:                   record.SeriesID,
+		BaseCommodityID:            record.BaseCommodityID,
+		QuoteCommodityID:           record.QuoteCommodityID,
+		QuoteType:                  record.QuoteType,
+		AdjustmentBasis:            record.AdjustmentBasis,
+		PriceValue:                 record.PriceValue,
+		PriceScale:                 record.PriceScale,
+		BaseQuantityValue:          record.BaseQuantityValue,
+		BaseQuantityScale:          record.BaseQuantityScale,
+		ValuationDate:              record.ValuationDate,
+		ObservedAt:                 nullableString(record.ObservedAt),
+		SourcePublishedAt:          nullableString(record.SourcePublishedAt),
+		SourceID:                   nullableSQLInt64Ptr(record.SourceID),
+		ProviderObservationID:      nullableString(record.ProviderObservationID),
+		IsManual:                   record.IsManual,
+		IsDerived:                  record.IsDerived,
+		IsApproximate:              record.IsApproximate,
+		SourceTransactionVersionID: nullableSQLInt64Ptr(record.SourceTransactionVersionID),
+		SupersedesObservationID:    nullableSQLInt64Ptr(record.SupersedesObservationID),
+		DerivationJSON:             record.DerivationJSON,
+		MetadataJSON:               record.MetadataJSON,
+		VoidedAt:                   nullableString(record.VoidedAt),
+		VoidReason:                 record.VoidReason,
+		RecordedAt:                 record.RecordedAt,
 	}
 }
 

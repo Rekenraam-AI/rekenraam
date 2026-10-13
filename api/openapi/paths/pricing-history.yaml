@@ -1,0 +1,100 @@
+get:
+  summary: Read price history in descending recording ID order
+  responses:
+    '200':
+      description: Read price history in descending recording ID order
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/PriceHistoryResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '400':
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '401':
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '403':
+      description: CSRF or same-origin validation failed
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '404':
+      description: Observation not found
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '409':
+      description: Observation retired, dependency graph changed or cascade exceeds depth bound
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '500':
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+  parameters:
+    - in: query
+      name: base_commodity_id
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    - in: query
+      name: quote_commodity_id
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    - in: query
+      name: include_voided
+      required: false
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: cursor
+      required: false
+      schema:
+        type: string
+    - in: query
+      name: limit
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50

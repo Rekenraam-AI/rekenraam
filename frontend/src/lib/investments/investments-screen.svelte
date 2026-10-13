@@ -166,6 +166,7 @@
 
 <div>
   <div class="p-4 sm:p-6 lg:p-8">
+    <a href="/app/pricing" class="mb-3 inline-block min-h-11 text-sm font-semibold underline underline-offset-4">{m.pricing_title()}</a>
     <!-- Tab navigation -->
     <div class="mb-5 flex items-center gap-1 overflow-x-auto border-b border-border">
       {#each (['portfolio', 'gains', 'splits', 'suggestions'] as const) as tab}

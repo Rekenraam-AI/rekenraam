@@ -321,7 +321,14 @@ Goal: add power-user workflows after the core ledger is stable.
   preserve valuation date separately from recorded-at time so historical reports
   can be reproduced with the price knowledge available at report time.
   Corrections supersede or void prior observations rather than mutating them in
-  place.
+  place. Owners can inspect source/timestamps, approximation, derivation and
+  correction lineage, enter exact manual observations with a reason, and review
+  all derived observations affected by correction or withdrawal. Confirmation
+  rechecks the reviewed dependency set atomically; a stale review writes nothing.
+  This changes market valuations only, never posted trades, cost basis or active
+  reconciliation. Dated management coverage is explicit about its age rule and
+  does not replace each report's valuation policy. See
+  `docs/plans/pricing-management-plan.md`.
 - FX coverage is demand-driven and restart-safe. Activating a currency or durably
   posting an older transaction extends required provider history from the
   earliest needed date through today. Persisted producer drafts do not enqueue

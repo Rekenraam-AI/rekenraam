@@ -1,0 +1,74 @@
+get:
+  summary: Preview target and every active derived dependency without writes
+  responses:
+    '200':
+      description: Preview target and every active derived dependency without writes
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/PriceImpactResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '400':
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '401':
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '403':
+      description: CSRF or same-origin validation failed
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '404':
+      description: Observation not found
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '409':
+      description: Observation retired, dependency graph changed or cascade exceeds depth bound
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '500':
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+  parameters:
+    - in: path
+      name: price_id
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1

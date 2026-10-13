@@ -247,6 +247,16 @@ paths:
     $ref: "./paths/reconciliation-void.yaml"
   /api/v1/reconciliation-checkpoints/{checkpoint_id}/void:
     $ref: "./paths/reconciliation-checkpoint-void.yaml"
+  /api/v1/pricing/workspace:
+    $ref: "./paths/pricing-workspace.yaml"
+  /api/v1/pricing/history:
+    $ref: "./paths/pricing-history.yaml"
+  /api/v1/pricing/manual:
+    $ref: "./paths/pricing-manual.yaml"
+  /api/v1/pricing/prices/{price_id}/impact:
+    $ref: "./paths/pricing-price-impact.yaml"
+  /api/v1/pricing/prices/{price_id}/correct:
+    $ref: "./paths/pricing-price-correct.yaml"
   /api/v1/pricing/prices:
     $ref: "./paths/pricing-prices.yaml"
   /api/v1/pricing/prices/{price_id}/void:
@@ -933,6 +943,24 @@ components:
       $ref: "./components/schemas/reports.yaml#/CashflowReportBucket"
     CashflowReportResponse:
       $ref: "./components/schemas/reports.yaml#/CashflowReportResponse"
+    PricingCommodityResponse:
+      $ref: "./components/schemas/pricing.yaml#/PricingCommodityResponse"
+    PricingCoverageResponse:
+      $ref: "./components/schemas/pricing.yaml#/PricingCoverageResponse"
+    PricingWorkspaceResponse:
+      $ref: "./components/schemas/pricing.yaml#/PricingWorkspaceResponse"
+    PriceHistoryResponse:
+      $ref: "./components/schemas/pricing.yaml#/PriceHistoryResponse"
+    ManualPriceRequest:
+      $ref: "./components/schemas/pricing.yaml#/ManualPriceRequest"
+    CorrectPriceRequest:
+      $ref: "./components/schemas/pricing.yaml#/CorrectPriceRequest"
+    PriceImpactResponse:
+      $ref: "./components/schemas/pricing.yaml#/PriceImpactResponse"
+    CorrectPriceResponse:
+      $ref: "./components/schemas/pricing.yaml#/CorrectPriceResponse"
+    PriceObservationRequest:
+      $ref: "./components/schemas/pricing.yaml#/PriceObservationRequest"
     PriceObservationResponse:
       $ref: "./components/schemas/pricing.yaml#/PriceObservationResponse"
     PriceObservationsResponse:
