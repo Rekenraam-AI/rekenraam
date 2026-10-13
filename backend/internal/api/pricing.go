@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"rekenraam/backend/internal/app"
+	"rekenraam/backend/internal/exact"
 )
 
 type marketDataSourceResponse struct {
@@ -27,30 +28,33 @@ type marketDataSourcesResponse struct {
 }
 
 type priceObservationResponse struct {
-	ID                      int64           `json:"id"`
-	BookID                  int64           `json:"book_id"`
-	SeriesID                int64           `json:"series_id"`
-	BaseCommodityID         int64           `json:"base_commodity_id"`
-	QuoteCommodityID        int64           `json:"quote_commodity_id"`
-	QuoteType               string          `json:"quote_type"`
-	AdjustmentBasis         string          `json:"adjustment_basis"`
-	PriceValue              int64           `json:"price_value"`
-	PriceScale              int             `json:"price_scale"`
-	BaseQuantityValue       int64           `json:"base_quantity_value"`
-	BaseQuantityScale       int             `json:"base_quantity_scale"`
-	ValuationDate           string          `json:"valuation_date"`
-	ObservedAt              string          `json:"observed_at,omitempty"`
-	SourcePublishedAt       string          `json:"source_published_at,omitempty"`
-	SourceID                *int64          `json:"source_id,omitempty"`
-	ProviderObservationID   string          `json:"provider_observation_id,omitempty"`
-	IsManual                bool            `json:"is_manual"`
-	IsDerived               bool            `json:"is_derived"`
-	SupersedesObservationID *int64          `json:"supersedes_observation_id,omitempty"`
-	Derivation              json.RawMessage `json:"derivation"`
-	Metadata                json.RawMessage `json:"metadata"`
-	VoidedAt                string          `json:"voided_at,omitempty"`
-	VoidReason              string          `json:"void_reason,omitempty"`
-	RecordedAt              string          `json:"recorded_at"`
+	ID                         int64           `json:"id"`
+	BookID                     int64           `json:"book_id"`
+	SeriesID                   int64           `json:"series_id"`
+	BaseCommodityID            int64           `json:"base_commodity_id"`
+	QuoteCommodityID           int64           `json:"quote_commodity_id"`
+	QuoteType                  string          `json:"quote_type"`
+	AdjustmentBasis            string          `json:"adjustment_basis"`
+	PriceValue                 string          `json:"price_value"`
+	PriceScale                 int             `json:"price_scale"`
+	BaseQuantityValue          string          `json:"base_quantity_value"`
+	BaseQuantityScale          int             `json:"base_quantity_scale"`
+	ValuationDate              string          `json:"valuation_date"`
+	ObservedAt                 string          `json:"observed_at,omitempty"`
+	SourcePublishedAt          string          `json:"source_published_at,omitempty"`
+	SourceID                   *int64          `json:"source_id,omitempty"`
+	ProviderObservationID      string          `json:"provider_observation_id,omitempty"`
+	IsManual                   bool            `json:"is_manual"`
+	IsDerived                  bool            `json:"is_derived"`
+	IsApproximate              bool            `json:"is_approximate"`
+	SourceTransactionVersionID *int64          `json:"source_transaction_version_id,omitempty"`
+	SupersedesObservationID    *int64          `json:"supersedes_observation_id,omitempty"`
+	Derivation                 json.RawMessage `json:"derivation"`
+	DerivationText             string          `json:"derivation_text"`
+	Metadata                   json.RawMessage `json:"metadata"`
+	VoidedAt                   string          `json:"voided_at,omitempty"`
+	VoidReason                 string          `json:"void_reason,omitempty"`
+	RecordedAt                 string          `json:"recorded_at"`
 }
 
 type priceObservationsResponse struct {
@@ -58,8 +62,9 @@ type priceObservationsResponse struct {
 }
 
 type priceObservationVoidRequest struct {
-	VoidReason   string `json:"void_reason"`
-	ChangeReason string `json:"change_reason"`
+	ExpectedImpact string `json:"expected_impact,omitempty"`
+	VoidReason     string `json:"void_reason"`
+	ChangeReason   string `json:"change_reason"`
 }
 
 // priceObservationVoidResponse returns every observation the void retired: the
@@ -283,7 +288,7 @@ func voidPrice(logger *slog.Logger, authService *app.AuthService, pricingService
 		}
 		prices, err := pricingService.VoidPrice(r.Context(), app.VoidPriceInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-			ObservationID: priceID, VoidReason: request.VoidReason, ChangeReason: request.ChangeReason,
+			ObservationID: priceID, ExpectedImpact: request.ExpectedImpact, VoidReason: request.VoidReason, ChangeReason: request.ChangeReason,
 		})
 		if err != nil {
 			writePricingServiceError(w, r, logger, "void price", err)
@@ -529,8 +534,12 @@ func toPricingBackgroundWorkResponse(item app.PricingBackgroundWorkItem) pricing
 func writePricingServiceError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, action string, err error) {
 	var validationError app.ValidationError
 	switch {
+	case errors.Is(err, exact.ErrInt64Range):
+		writeAPIError(w, http.StatusUnprocessableEntity, "LEDGER_OVERFLOW", "price coefficient exceeds the int64 range")
 	case errors.As(err, &validationError):
 		writeAPIError(w, http.StatusBadRequest, "VALIDATION_FAILED", validationError.Error())
+	case errors.Is(err, app.ErrPriceImpactStale):
+		writeAPIError(w, http.StatusConflict, "PRICE_IMPACT_STALE", "price dependencies changed; review again")
 	case errors.Is(err, app.ErrPriceObservationNotFound):
 		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "price observation not found")
 	case errors.Is(err, app.ErrPriceObservationAlreadyVoided):
@@ -561,30 +570,33 @@ func toMarketDataSourceResponses(sources []app.MarketDataSource) []marketDataSou
 
 func toPriceObservationResponse(price app.PriceObservation) priceObservationResponse {
 	return priceObservationResponse{
-		ID:                      price.ID,
-		BookID:                  price.BookID,
-		SeriesID:                price.SeriesID,
-		BaseCommodityID:         price.BaseCommodityID,
-		QuoteCommodityID:        price.QuoteCommodityID,
-		QuoteType:               price.QuoteType,
-		AdjustmentBasis:         price.AdjustmentBasis,
-		PriceValue:              price.PriceValue,
-		PriceScale:              price.PriceScale,
-		BaseQuantityValue:       price.BaseQuantityValue,
-		BaseQuantityScale:       price.BaseQuantityScale,
-		ValuationDate:           price.ValuationDate,
-		ObservedAt:              price.ObservedAt,
-		SourcePublishedAt:       price.SourcePublishedAt,
-		SourceID:                price.SourceID,
-		ProviderObservationID:   price.ProviderObservationID,
-		IsManual:                price.IsManual,
-		IsDerived:               price.IsDerived,
-		SupersedesObservationID: price.SupersedesObservationID,
-		Derivation:              json.RawMessage(price.DerivationJSON),
-		Metadata:                json.RawMessage(price.MetadataJSON),
-		VoidedAt:                price.VoidedAt,
-		VoidReason:              price.VoidReason,
-		RecordedAt:              price.RecordedAt,
+		ID:                         price.ID,
+		BookID:                     price.BookID,
+		SeriesID:                   price.SeriesID,
+		BaseCommodityID:            price.BaseCommodityID,
+		QuoteCommodityID:           price.QuoteCommodityID,
+		QuoteType:                  price.QuoteType,
+		AdjustmentBasis:            price.AdjustmentBasis,
+		PriceValue:                 strconv.FormatInt(price.PriceValue, 10),
+		PriceScale:                 price.PriceScale,
+		BaseQuantityValue:          strconv.FormatInt(price.BaseQuantityValue, 10),
+		BaseQuantityScale:          price.BaseQuantityScale,
+		ValuationDate:              price.ValuationDate,
+		ObservedAt:                 price.ObservedAt,
+		SourcePublishedAt:          price.SourcePublishedAt,
+		SourceID:                   price.SourceID,
+		ProviderObservationID:      price.ProviderObservationID,
+		IsManual:                   price.IsManual,
+		IsDerived:                  price.IsDerived,
+		IsApproximate:              price.IsApproximate,
+		SourceTransactionVersionID: price.SourceTransactionVersionID,
+		SupersedesObservationID:    price.SupersedesObservationID,
+		Derivation:                 json.RawMessage(price.DerivationJSON),
+		DerivationText:             price.DerivationJSON,
+		Metadata:                   json.RawMessage(price.MetadataJSON),
+		VoidedAt:                   price.VoidedAt,
+		VoidReason:                 price.VoidReason,
+		RecordedAt:                 price.RecordedAt,
 	}
 }
 

@@ -99,8 +99,9 @@
   const isForecastRoute = $derived(page.url.pathname.startsWith('/app/forecast'));
   const isBudgetsRoute = $derived(page.url.pathname.startsWith('/app/budgets'));
 
+  const isPricingRoute = $derived(page.url.pathname.startsWith('/app/pricing'));
   const headerTitle = $derived(
-    isBudgetsRoute ? m.budgets_title() : isRecurringRoute ? m.recurring_title() : isAccountsRoute
+    isPricingRoute ? m.pricing_title() : isBudgetsRoute ? m.budgets_title() : isRecurringRoute ? m.recurring_title() : isAccountsRoute
       ? m.accounts_title()
       : isCategoriesRoute
         ? m.categories_title()
@@ -121,7 +122,7 @@
                   : m.app_shell_header_title()
   );
   const headerCopy = $derived(
-    isBudgetsRoute ? m.budgets_copy() : isRecurringRoute ? m.recurring_shell_copy() : isAccountsRoute
+    isPricingRoute ? m.pricing_copy() : isBudgetsRoute ? m.budgets_copy() : isRecurringRoute ? m.recurring_shell_copy() : isAccountsRoute
       ? m.accounts_shell_copy()
       : isCategoriesRoute
         ? m.categories_shell_copy()
@@ -325,6 +326,11 @@
         >
           <TrendingUp size={16} aria-hidden="true" />
           {m.investments_nav()}
+        </a>
+        <a href="/app/pricing" aria-current={isPricingRoute ? 'page' : undefined}
+          class:bg-selected={isPricingRoute} class:text-selected-foreground={isPricingRoute}
+          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover">
+          <TrendingUp size={16} aria-hidden="true" />{m.pricing_title()}
         </a>
         <a
           href="/app/forecast"

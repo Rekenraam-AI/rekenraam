@@ -7,6 +7,7 @@ const apiErrorMessageByCode: Record<APIErrorCode, () => string> = {
   UNAUTHENTICATED: () => m.api_error_unauthenticated(),
   FORBIDDEN: () => m.api_error_forbidden(),
   NOT_FOUND: () => m.api_error_not_found(),
+  PRICE_IMPACT_STALE: () => m.pricing_stale_review(),
   CONFLICT: () => m.api_error_conflict(),
   CSRF_INVALID: () => m.api_error_csrf_invalid(),
   EXPORT_SCOPE_UNSUPPORTED: () => m.api_error_export_scope_unsupported(),

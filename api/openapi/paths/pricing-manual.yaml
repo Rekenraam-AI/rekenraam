@@ -1,0 +1,87 @@
+post:
+  summary: Record an exact manual observation without changing ledger postings
+  responses:
+    '201':
+      description: Record an exact manual observation without changing ledger postings
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/PriceObservationResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '400':
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '401':
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '403':
+      description: CSRF or same-origin validation failed
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '404':
+      description: Observation not found
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '409':
+      description: Observation retired, dependency graph changed or cascade exceeds depth bound
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '500':
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+    '422':
+      description: Coefficient exceeds stored price range
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../openapi.yaml#/components/schemas/ManualPriceRequest
+  parameters:
+    - in: header
+      name: X-CSRF-Token
+      required: true
+      schema:
+        type: string

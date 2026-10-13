@@ -30,6 +30,7 @@
   import StatePanel from '#lib/components/state-panel.svelte';
   import StatusBadge from '#lib/components/status-badge.svelte';
   import { localizedCurrencyCatalog, type LocalizedCurrencyCatalogEntry } from '#lib/install-gate/currency-options.ts';
+  import { priceManagementQueryKey } from '#lib/api/price-management.ts';
   import { m } from '#lib/paraglide/messages.js';
 
   type RateDirection = 'currency_default' | 'default_currency' | 'both';
@@ -188,7 +189,8 @@
   async function refreshAfterMutation() {
     await Promise.all([
       pageQuery.refetch(),
-      queryClient.invalidateQueries({ queryKey: forecastQueryKey })
+      queryClient.invalidateQueries({ queryKey: forecastQueryKey }),
+      queryClient.invalidateQueries({ queryKey: priceManagementQueryKey })
     ]);
   }
 
@@ -424,6 +426,8 @@
     return 10n ** BigInt(exponent);
   }
 </script>
+
+<a href="/app/pricing" class="mb-4 inline-block min-h-11 text-sm font-semibold underline underline-offset-4">{m.pricing_title()}</a>
 
 {#if isLoading}
   <StatePanel title={m.currencies_loading_title()} copy={m.currencies_loading_copy()} />

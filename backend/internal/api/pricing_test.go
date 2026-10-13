@@ -68,7 +68,7 @@ func TestCreatePrice_HTTP(t *testing.T) {
 	}, http.StatusCreated)
 	var created priceObservationResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&created))
-	assert.Equal(t, int64(10800), created.PriceValue)
+	assert.Equal(t, "10800", created.PriceValue)
 	assert.True(t, created.IsManual)
 
 	listRes := doPricingRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/pricing/prices?base_commodity_id="+itoa(f.eurCommodity)+"&quote_commodity_id="+itoa(f.usdCommodity), nil, http.StatusOK)

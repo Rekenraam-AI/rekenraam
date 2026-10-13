@@ -17,7 +17,8 @@
     "pathPattern": [
       "./messages/app/{locale}.json",
       "./messages/settings/{locale}.json",
-      "./messages/budgets/{locale}.json"
+      "./messages/budgets/{locale}.json",
+      "./messages/pricing/{locale}.json"
     ]
   }
 }

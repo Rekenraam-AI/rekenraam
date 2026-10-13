@@ -67,3 +67,66 @@ get:
         application/json:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+
+post:
+  summary: Record an observation through the legacy numeric entry contract
+  description: Browser manual entry uses /pricing/manual. This route cannot supersede an observation;
+    correction requires a fresh dependency review.
+  parameters:
+    - in: header
+      name: X-CSRF-Token
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../openapi.yaml#/components/schemas/PriceObservationRequest
+  responses:
+    '201':
+      description: Observation recorded
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/PriceObservationResponse
+    '400':
+      description: Invalid observation or non-null supersession ID
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+    '401':
+      description: Authentication required
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+    '403':
+      description: CSRF or same-origin validation failed
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+    '500':
+      description: Internal server error
+      headers:
+        X-Request-ID:
+          $ref: ../openapi.yaml#/components/headers/XRequestID
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse

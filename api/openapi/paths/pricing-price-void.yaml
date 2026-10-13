@@ -79,7 +79,7 @@ post:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
       description: >-
-        Price observation is already voided, or its derived observations go
+        Price observation is already voided, the expected impact is stale, or its derived observations go
         deeper than the maximum cascade depth and nothing was voided
       headers:
         X-Request-ID:

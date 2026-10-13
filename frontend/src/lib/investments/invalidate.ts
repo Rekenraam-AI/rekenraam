@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/svelte-query';
+import { priceManagementQueryKey } from '#lib/api/price-management.ts';
 import { forecastQueryKey } from '#lib/api/forecast.ts';
 import {
   cashInLieuLotsQueryKey, datedHoldingsQueryKey, investmentCorrectionChainQueryKey, investmentGainsQueryKey, investmentInstrumentsQueryKey,
@@ -13,6 +14,7 @@ export const investmentMutationQueryKeys = [
   transactionsQueryKey,
   accountRegisterQueryKey,
   forecastQueryKey,
+  priceManagementQueryKey,
   investmentPositionsQueryKey,
   investmentSplitsQueryKey,
   investmentLotsQueryKey,
