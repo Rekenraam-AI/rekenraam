@@ -28,7 +28,7 @@
     type ReconciliationImpactResponse
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
-  import { basisSourceDeclaration, basisSourceFields } from './basis-provenance';
+  import { basisSourceDeclaration, basisSourceFields, basisSourceTextMaxLength, basisSourceTextTooLong } from './basis-provenance';
 
   // Resolves an external transfer in whose basis was recorded unknown (T-145),
   // or, given the effective resolution, corrects it (#168). The basis is the
@@ -84,6 +84,7 @@
   const gainRows = $derived(review?.gainImpact
     ? gainImpactRows(review.gainImpact.changes, gainImpactCurrency(currenciesByID), getLocale()) : []);
   const declaration = $derived(basisSourceDeclaration(sourceKind, reference, rationale, knownOn));
+  const sourceTextTooLong = $derived(basisSourceTextTooLong(sourceKind === 'owner_assertion' ? rationale : reference));
   const canSubmit = $derived(!!basisStr.trim() && !!reason.trim() && declaration !== null);
 
   function buildPayload(): InvestmentBasisResolutionRequest | null {
@@ -206,7 +207,8 @@
       <label for="basis-resolution-rationale" class="mb-1 block text-sm font-medium text-foreground">
         {m.investments_basis_source_rationale()}
       </label>
-      <textarea id="basis-resolution-rationale" bind:value={rationale} maxlength="500" required rows="2"
+      <textarea id="basis-resolution-rationale" bind:value={rationale} required rows="2"
+        aria-invalid={sourceTextTooLong} aria-describedby={sourceTextTooLong ? "basis-resolution-error" : undefined}
         class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground"></textarea>
     </div>
     <div>
@@ -221,7 +223,8 @@
       <label for="basis-resolution-reference" class="mb-1 block text-sm font-medium text-foreground">
         {m.investments_basis_source_reference()}
       </label>
-      <input id="basis-resolution-reference" type="text" bind:value={reference} maxlength="500" required
+      <input id="basis-resolution-reference" type="text" bind:value={reference} required
+        aria-invalid={sourceTextTooLong} aria-describedby={sourceTextTooLong ? "basis-resolution-error" : undefined}
         class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
     </div>
   {/if}
@@ -234,7 +237,9 @@
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
   </div>
 
-  <APIFormError error={formError} id="basis-resolution-error" />
+  <APIFormError error={sourceTextTooLong
+    ? new TranslatedFormError(m.investments_basis_source_too_long({ count: basisSourceTextMaxLength }))
+    : formError} id="basis-resolution-error" />
 
   <div class="flex flex-wrap justify-end gap-3">
     <button type="button" onclick={onCancel} disabled={pending}

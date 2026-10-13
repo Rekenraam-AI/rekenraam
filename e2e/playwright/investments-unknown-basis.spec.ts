@@ -154,7 +154,12 @@ test('a sourced statement resolves an unknown basis and its sale gain on mobile'
   await form.getByLabel('Reason').fill('old broker statement found');
   await form.getByLabel('Statement or provider reference').fill('   ');
   await expect(form.getByRole('button', { name: 'Review and resolve' })).toBeDisabled();
-  await form.getByLabel('Statement or provider reference').fill('2020 statement');
+  await form.getByLabel('Statement or provider reference').fill('я'.repeat(501));
+  await expect(form.getByRole('button', { name: 'Review and resolve' })).toBeDisabled();
+  await expect(form).toContainText('Use at most 500 characters');
+  const reference = 'Synthetic ' + 'я'.repeat(490);
+  await form.getByLabel('Statement or provider reference').fill(reference);
+  await expect(form.getByRole('button', { name: 'Review and resolve' })).toBeEnabled();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await form.getByRole('button', { name: 'Review and resolve' }).click();
 
@@ -165,6 +170,9 @@ test('a sourced statement resolves an unknown basis and its sale gain on mobile'
   await expect(form).toBeHidden();
   await expect.poll(() => realizedGainCents(page, instrument.commodity_id)).toBe('1000');
   await expect(page.getByRole('button', { name: 'Resolve cost basis…' })).toHaveCount(0);
+  await page.goto(`/app/transactions?transaction_id=${arrived.transaction.id}`);
+  await expect(page.getByRole('group', { name: 'Cost basis resolutions' })).toContainText(reference);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
 // #168: a mistyped statement total is corrected, then the resolution is

@@ -1503,5 +1503,6 @@
   "investments_basis_source_history_provider": "Aanbiederreferentie: {reference}",
   "investments_basis_source_history_owner": "Verklaring van de eigenaar, bekend op {date}: {rationale}",
   "investments_basis_source_history_legacy": "Eerder bewijs, vastgelegd zonder bronverklaring.",
-  "investments_basis_source_history_evidence": "Vastgelegd bronbewijs"
+  "investments_basis_source_history_evidence": "Vastgelegd bronbewijs",
+  "investments_basis_source_too_long": "Gebruik maximaal {count} tekens voor de bronreferentie of onderbouwing."
 }

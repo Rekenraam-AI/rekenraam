@@ -2,10 +2,29 @@ package app
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestBasisResolutionSourceTextUsesUnicodeCharacterLimit(t *testing.T) {
+	t.Parallel()
+	for _, character := range []string{"я", "😀"} {
+		for _, kind := range []string{"statement", "owner_assertion"} {
+			evidence := func(count int) string {
+				if kind == "statement" {
+					return `{"kind":"statement","reference":"` + strings.Repeat(character, count) + `"}`
+				}
+				return `{"kind":"owner_assertion","rationale":"` + strings.Repeat(character, count) + `","known_on":"2026-10-13"}`
+			}
+			_, err := cleanBasisResolutionEvidence(evidence(500))
+			require.NoError(t, err, "500 Unicode characters must fit the documented source limit")
+			_, err = cleanBasisResolutionEvidence(evidence(501))
+			require.ErrorAs(t, err, new(ValidationError))
+		}
+	}
+}
 
 // Both preview and commit must refuse incomplete declarations before any
 // journal, audit, resolution or replay projection becomes durable.
@@ -23,6 +42,9 @@ func TestBasisResolutionRequiresSourceDeclarationWithoutWriting(t *testing.T) {
 		{"owner_invalid_date", `{"kind":"owner_assertion","rationale":"original purchase records","known_on":"2026-02-30"}`},
 		{"wrong_type", `{"kind":"statement","reference":5}`},
 		{"control_character", `{"kind":"statement","reference":"statement\u0000"}`},
+		{"case_alias_bypasses_blank_reference", `{"kind":"statement","reference":"","Reference":"Synthetic statement 42"}`},
+		{"case_alias_missing_kind", `{"Kind":"statement","reference":"Synthetic statement 42"}`},
+		{"case_alias_owner_rationale", `{"kind":"owner_assertion","rationale":"","Rationale":"records","known_on":"2026-10-13"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

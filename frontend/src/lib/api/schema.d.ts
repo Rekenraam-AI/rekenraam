@@ -28115,14 +28115,14 @@ export interface components {
         InvestmentBasisResolutionSourceDeclaration: ({
             /** @enum {string} */
             kind: "statement" | "provider";
-            /** @description A nonblank statement or provider record reference. */
+            /** @description A nonblank statement or provider record reference, at most 500 Unicode characters after trimming. */
             reference: string;
         } & {
             [key: string]: unknown;
         }) | ({
             /** @constant */
             kind: "owner_assertion";
-            /** @description Why the owner asserts this basis, not merely why it changed. */
+            /** @description Why the owner asserts this basis, not merely why it changed; at most 500 Unicode characters after trimming. */
             rationale: string;
             /**
              * Format: date

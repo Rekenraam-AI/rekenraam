@@ -39,14 +39,14 @@ Statuses: ✅ shipped · ◐ partly shipped ahead of its slice · ▶ current ·
 | R8 | Budgets | ✅ | `docs/plans/budgets-plan.md` |
 | R9 | Recurring transactions | ✅ | `docs/plans/recurring-transactions-plan.md` |
 | R10 | Projected balances / forecasting | ✅ | `docs/plans/projected-balances-plan.md` |
-| R11 | Pricing/FX management UI | ⏭ | this file |
+| R11 | Pricing/FX management UI | ▶ | this file |
 | R12 | Investments UI + gains reporting | ✅ | `docs/plans/investments-plan.md` |
 | R12a | Investment journal/subledger integrity correction | ✅ | `docs/plans/investment-integrity-plan.md`, ADR 0012 |
 | R13 | Investment return analytics (TWR/MWR) | ⏭ | this file |
 | R14 | Receipts & attachments (capture, OCR, inbox) | ⏸ | `docs/plans/receipts-plan.md` |
 | R14a | Attachment storage + manual attach (after R5) | ⏭ | `docs/plans/receipts-plan.md` |
 | R15 | Connections expansion (IBKR Flex → GoCardless → #111 producer) | ⏸ | `docs/plans/connections-plan.md` |
-| R16 | Investment lifecycle completeness (correction, transfers, basis actions, splits, short sales) | ▶ | `docs/plans/investment-operation-refactor-plan.md`; ADR 0013 |
+| R16 | Investment lifecycle completeness (correction, transfers, basis actions, splits, short sales) | ✅ agreed gates; related work open | `docs/plans/investment-operation-refactor-plan.md`; ADR 0013 |
 | R17 | Crypto instrument type + `PriceProvider` registry and quote adapters | ⏭ | this file |
 | R18 | Reproducible investment basis + gains projections | ⏭ | ADR 0012; plan required after R16/R17 |
 
@@ -202,16 +202,26 @@ short sale/cover [#103](https://github.com/sergeyfarin/rekenraam/issues/103) (de
 compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115),
 zero-delta splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146)
 and Refresh reach for revised fills
-[#152](https://github.com/sergeyfarin/rekenraam/issues/152). Outside that
-bar: the lot-opening `NOT NULL` constraint
-[#148](https://github.com/sergeyfarin/rekenraam/issues/148) is a v0.1.0
-release gate, not an R16 one; the evidence-blocked provider mappings
-[#145](https://github.com/sergeyfarin/rekenraam/issues/145) and
-[#136](https://github.com/sergeyfarin/rekenraam/issues/136), and verified provider short/cover import
-[#176](https://github.com/sergeyfarin/rekenraam/issues/176), wait on provider evidence and do not hold R16 open; write-off entry UI (#172),
-unresolved non-sale results (#169), excess
-visibility (#171), and provider return-of-capital/cash-in-lieu suggestions
-remain follow-ups. Operation-addressed correction/settlement of initially
+[#152](https://github.com/sergeyfarin/rekenraam/issues/152).
+
+**Remaining R16-related work.** Delivery of the agreed gates does not mean
+that every investment-lifecycle issue is closed. These retained issues keep
+their stated scope and placement; R11 remains the next ordered initiative.
+
+| Issue | Remaining gap | Disposition |
+|---|---|---|
+| [#148](https://github.com/sergeyfarin/rekenraam/issues/148) | Require an opening operation on every investment lot | v0.1.0 release gate; outside the agreed R16 bar |
+| [#169](https://github.com/sergeyfarin/rekenraam/issues/169) | Unresolved non-sale action results | Deferred extension; retain safe refusal until each family has a contract |
+| [#171](https://github.com/sergeyfarin/rekenraam/issues/171) | Recorded return-of-capital excess visibility | Parallel trust work; its writers remain delivered |
+| [#172](https://github.com/sergeyfarin/rekenraam/issues/172) | Mobile write-off creation | Deferred workflow; known-basis entry need not wait for #169 |
+| [#145](https://github.com/sergeyfarin/rekenraam/issues/145) | Trading 212 split mapping | Blocked on verified provider semantics and representative payloads |
+| [#136](https://github.com/sergeyfarin/rekenraam/issues/136) | Provider execution cancellations | Blocked on provider evidence |
+| [#176](https://github.com/sergeyfarin/rekenraam/issues/176) | Provider short/cover import | Blocked on provider evidence |
+| [#197](https://github.com/sergeyfarin/rekenraam/issues/197) | Correct provenance without changing the basis amount | Independent follow-up; requires an audited correction contract |
+
+Provider return-of-capital/cash-in-lieu suggestions also remain follow-ups.
+
+Operation-addressed correction/settlement of initially
 journal-free splits is delivered (#196). #114's delivered transfer/basis-action
 family is closed under the audit above; the other agreed R16 gates were
 delivered separately.

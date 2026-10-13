@@ -1503,5 +1503,6 @@
   "investments_basis_source_history_provider": "Referencia del proveedor: {reference}",
   "investments_basis_source_history_owner": "Declaración del propietario, conocida el {date}: {rationale}",
   "investments_basis_source_history_legacy": "Pruebas anteriores, registradas sin declaración de fuente.",
-  "investments_basis_source_history_evidence": "Pruebas de la fuente registradas"
+  "investments_basis_source_history_evidence": "Pruebas de la fuente registradas",
+  "investments_basis_source_too_long": "Use como máximo {count} caracteres para la referencia de la fuente o la justificación."
 }

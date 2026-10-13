@@ -1503,5 +1503,6 @@
   "investments_basis_source_history_provider": "Référence du fournisseur : {reference}",
   "investments_basis_source_history_owner": "Déclaration du propriétaire, connue le {date} : {rationale}",
   "investments_basis_source_history_legacy": "Éléments antérieurs, enregistrés sans déclaration de source.",
-  "investments_basis_source_history_evidence": "Éléments de source enregistrés"
+  "investments_basis_source_history_evidence": "Éléments de source enregistrés",
+  "investments_basis_source_too_long": "Utilisez au maximum {count} caractères pour la référence de la source ou la justification."
 }

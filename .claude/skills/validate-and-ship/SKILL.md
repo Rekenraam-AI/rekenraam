@@ -384,6 +384,18 @@ non-trivial diff (yours or reviewed):
     boundaries and nullable amounts.
     Named regression: `TestExactNumberColumnChecks`.
 
+37. **Validating a different representation from the one readers consume** —
+    Go struct JSON decoding matches keys case-insensitively, while immutable
+    source JSON and browser readers keep exact keys. `Reference` could override
+    a blank `reference` during validation, then history displayed the blank
+    canonical value (#198). Read required keys exactly when preserving raw
+    JSON. Also align text limits: JSON Schema counts Unicode characters,
+    HTML maxlength counts UTF-16 units, and Go len counts UTF-8 bytes. Source
+    forms count Unicode characters explicitly rather than depending on a
+    native maxlength. Named cases:
+    `TestBasisResolutionRequiresSourceDeclarationWithoutWriting`,
+    `TestBasisResolutionSourceTextUsesUnicodeCharacterLimit`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

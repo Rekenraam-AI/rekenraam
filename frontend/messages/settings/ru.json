@@ -1503,5 +1503,6 @@
   "investments_basis_source_history_provider": "Ссылка на поставщика: {reference}",
   "investments_basis_source_history_owner": "Заявление владельца, сведения получены {date}: {rationale}",
   "investments_basis_source_history_legacy": "Ранее сохранённые сведения без указания типа источника.",
-  "investments_basis_source_history_evidence": "Сохранённые сведения об источнике"
+  "investments_basis_source_history_evidence": "Сохранённые сведения об источнике",
+  "investments_basis_source_too_long": "Используйте не более {count} символов для ссылки на источник или обоснования."
 }

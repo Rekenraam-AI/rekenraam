@@ -289,9 +289,11 @@ separate from the required change `reason`. This hardens provenance without
 changing the delivered #160/#168 accounting and replay rules.
 
 - `kind: statement` or `kind: provider` requires a nonblank `reference` to the
-  statement or provider record (at most 500 UTF-8 bytes, no control characters).
+  statement or provider record (at most 500 Unicode characters after trimming,
+  no control characters).
 - `kind: owner_assertion` is explicitly permitted. It requires a nonblank
-  `rationale` (at most 500 UTF-8 bytes; line breaks and tabs are allowed)
+  `rationale` (at most 500 Unicode characters after trimming; line breaks and
+  tabs are allowed)
   explaining the basis asserted, and a valid ISO
   calendar knowledge date `known_on`, when the owner obtained that knowledge.
   This is distinct from the transfer date and the app's recorded-at timestamp.
@@ -301,7 +303,11 @@ changing the delivered #160/#168 accounting and replay rules.
   scope. Additional JSON metadata remains part of the immutable evidence.
 - The shared service rejects missing, null, empty, untyped or incomplete
   declarations in both previews and commits, including replacements and
-  journal-free known zero. Invalid declarations leave no durable writes.
+  journal-free known zero. Required source fields use their exact lowercase JSON
+  names; differently cased metadata cannot substitute for or override them.
+  The form and service count Unicode characters, including astral characters,
+  rather than UTF-8 bytes or UTF-16 units (#198). Invalid declarations leave
+  no durable writes.
   Withdrawal retains the original source and needs only its correction reason.
 - Existing evidence is not rewritten or retroactively relabeled. Older untyped
   declarations remain readable, exportable and healthy under self-check.
@@ -319,6 +325,13 @@ known-zero export/restore test also checks the declaration. Mobile browser
 coverage in `investments-unknown-basis.spec.ts` includes statement entry,
 provider replacement, owner assertion, disabled incomplete forms, history,
 withdrawal and accessibility.
+
+**Provenance-only correction follow-up.** Changing a resolution's declaration
+while keeping its exact basis unchanged is currently refused by the replacement
+command. [#197](https://github.com/sergeyfarin/rekenraam/issues/197) owns the
+explicit audited correction contract for this gap, including legacy-to-typed
+source upgrades and known zero. A provenance change must not require an
+artificial amount change or silently overwrite original evidence.
 
 **Deliberately later.** Unresolved write-off, cash-in-lieu and return-of-capital
 results are not #160 acceptance and need their own contract

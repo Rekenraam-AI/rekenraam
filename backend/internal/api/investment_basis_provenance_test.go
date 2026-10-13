@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -36,6 +37,9 @@ func TestBasisResolutionDeclarationAPIRefusesIncompleteEvidence(t *testing.T) {
 			{"missing", ""}, {"null", "null"}, {"empty", "{}"},
 			{"whitespace", `{"kind":"statement","reference":"  "}`},
 			{"untyped", `{"reference":"statement"}`},
+			{"case_alias_blank_reference", `{"kind":"statement","reference":"","Reference":"statement"}`},
+			{"case_alias_missing_kind", `{"Kind":"statement","reference":"statement"}`},
+			{"unicode_over_limit", `{"kind":"statement","reference":"` + strings.Repeat("я", 501) + `"}`},
 			{"owner_missing_date", `{"kind":"owner_assertion","rationale":"purchase records"}`},
 		} {
 			t.Run(path+"/"+tc.name, func(t *testing.T) {
@@ -53,7 +57,7 @@ func TestBasisResolutionDeclarationAPIRefusesIncompleteEvidence(t *testing.T) {
 		}
 	}
 	assertRefusals("/resolve-basis", "8000")
-	statement := map[string]any{"kind": "statement", "reference": "Synthetic broker statement 2020"}
+	statement := map[string]any{"kind": "statement", "reference": "Synthetic " + strings.Repeat("я", 490)}
 	request := map[string]any{"basis_value": "8000", "basis_scale": 2, "reason": "statement found", "source_evidence": statement}
 	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, base+"/resolve-basis/reconciliation-impact", request, http.StatusOK)
 	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, base+"/resolve-basis", request, http.StatusCreated)

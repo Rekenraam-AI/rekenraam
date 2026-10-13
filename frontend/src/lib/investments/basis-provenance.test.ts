@@ -18,6 +18,15 @@ describe('basis source declarations', () => {
     });
   });
 
+  it('counts Unicode characters rather than UTF-8 bytes or UTF-16 units', () => {
+    for (const character of ['я', '😀']) {
+      expect(basisSourceDeclaration('statement', character.repeat(500), '', '')).not.toBeNull();
+      expect(basisSourceDeclaration('statement', character.repeat(501), '', '')).toBeNull();
+      expect(basisSourceDeclaration('owner_assertion', '', character.repeat(500), '2026-10-13')).not.toBeNull();
+      expect(basisSourceDeclaration('owner_assertion', '', character.repeat(501), '2026-10-13')).toBeNull();
+    }
+  });
+
   it('prefills historical references without claiming a typed declaration', () => {
     expect(basisSourceFields({ statement: 'legacy statement' })).toEqual({
       kind: '', reference: 'legacy statement', rationale: '', knownOn: ''

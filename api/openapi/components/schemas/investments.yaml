@@ -4100,7 +4100,7 @@ InvestmentBasisResolutionSourceDeclaration:
           minLength: 1
           maxLength: 500
           pattern: '\S'
-          description: A nonblank statement or provider record reference.
+          description: A nonblank statement or provider record reference, at most 500 Unicode characters after trimming.
       additionalProperties: true
     - type: object
       required: [kind, rationale, known_on]
@@ -4113,7 +4113,7 @@ InvestmentBasisResolutionSourceDeclaration:
           minLength: 1
           maxLength: 500
           pattern: '\S'
-          description: Why the owner asserts this basis, not merely why it changed.
+          description: Why the owner asserts this basis, not merely why it changed; at most 500 Unicode characters after trimming.
         known_on:
           type: string
           format: date

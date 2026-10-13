@@ -1531,5 +1531,6 @@
   "investments_basis_source_history_provider": "Provider reference: {reference}",
   "investments_basis_source_history_owner": "Owner assertion, known on {date}: {rationale}",
   "investments_basis_source_history_legacy": "Earlier evidence, recorded without a source declaration.",
-  "investments_basis_source_history_evidence": "Recorded source evidence"
+  "investments_basis_source_history_evidence": "Recorded source evidence",
+  "investments_basis_source_too_long": "Use at most {count} characters for the source reference or rationale."
 }

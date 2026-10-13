@@ -2,13 +2,19 @@ import type { components } from '#lib/api/schema.js';
 
 export type BasisSourceDeclaration = components['schemas']['InvestmentBasisResolutionSourceDeclaration'];
 
+export const basisSourceTextMaxLength = 500;
+
+export function basisSourceTextTooLong(text: string): boolean {
+  return [...text.trim()].length > basisSourceTextMaxLength;
+}
+
 export function basisSourceDeclaration(
   kind: string, reference: string, rationale: string, knownOn: string
 ): BasisSourceDeclaration | null {
-  if ((kind === 'statement' || kind === 'provider') && reference.trim()) {
+  if ((kind === 'statement' || kind === 'provider') && reference.trim() && !basisSourceTextTooLong(reference)) {
     return { kind, reference: reference.trim() };
   }
-  if (kind === 'owner_assertion' && rationale.trim() && /^\d{4}-\d{2}-\d{2}$/.test(knownOn)) {
+  if (kind === 'owner_assertion' && rationale.trim() && !basisSourceTextTooLong(rationale) && /^\d{4}-\d{2}-\d{2}$/.test(knownOn)) {
     return { kind, rationale: rationale.trim(), known_on: knownOn };
   }
   return null;
