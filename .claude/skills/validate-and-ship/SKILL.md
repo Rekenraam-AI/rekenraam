@@ -413,6 +413,16 @@ non-trivial diff (yours or reviewed):
     `TestProvenanceCorrectionRefusesNoOpsInvalidDeclarationsAndStaleWrites`,
     `TestProvenanceCorrectionPreservesExactAdditionalMetadataOnServer`.
 
+39. **Browser “today” and refreshes rewriting working copies** — financial
+    defaults come from session `owner_today` (#101), including report years,
+    investment discovery and provider-assignment dates. Search the whole
+    frontend for private current-date helpers. Editable initializer effects
+    must not track the shared date. Keep dialogs outside loading branches and
+    retain their opening snapshot, so a refreshed workspace date cannot remount
+    them and discard selected dates/amounts. Check an opposite-midnight browser,
+    year rollover and refresh followed by reopening; see
+    `owner-local-dates.spec.ts` and `owner-local-date-contract.spec.ts`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { untrack, tick } from 'svelte';
   import { page } from '$app/state';
   import { createQuery, createInfiniteQuery } from '@tanstack/svelte-query';
-  import { pricingWorkspaceQueryOptions, priceHistoryQueryOptions, type PriceObservation } from '#lib/api/price-management.ts';
+  import { pricingWorkspaceQueryOptions, priceHistoryQueryOptions, type PriceObservation, type PricingWorkspace } from '#lib/api/price-management.ts';
   import Panel from '#lib/components/panel.svelte';
   import StatePanel from '#lib/components/state-panel.svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -12,22 +13,27 @@
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
 
+  const ownerToday = useOwnerToday();
+
   function pairID(value: string | null) { const id = Number(value); return Number.isSafeInteger(id) && id > 0 ? id : 0; }
   let asOf = $state('');
   let base = $state(untrack(() => pairID(page.url.searchParams.get('base_commodity_id'))));
   let quote = $state(untrack(() => pairID(page.url.searchParams.get('quote_commodity_id'))));
   let includeVoided = $state(true);
-  let modal = $state<{ mode: 'create' | 'correct' | 'void'; target: PriceObservation | null } | null>(null);
+  let modal = $state<{ mode: 'create' | 'correct' | 'void'; target: PriceObservation | null; workspace: PricingWorkspace } | null>(null);
   let trigger = $state<HTMLElement | null>(null);
   let success = $state(false);
-  const workspaceQuery = createQuery(() => pricingWorkspaceQueryOptions(asOf));
+  const workspaceQuery = createQuery(() => pricingWorkspaceQueryOptions(asOf || ownerToday()));
   const historyQuery = createInfiniteQuery(() => priceHistoryQueryOptions(base, quote, includeVoided));
   const workspace = $derived(workspaceQuery.data);
   const codes = $derived(new Map((workspace?.commodities ?? []).map(item => [item.id, item.code])));
   const history = $derived(historyQuery.data?.pages.flatMap(item => item.prices) ?? []);
   const locale = $derived(getLocale());
   function open(mode: 'create' | 'correct' | 'void', target: PriceObservation | null = null) {
-    trigger = document.activeElement as HTMLElement; success = false; modal = { mode, target };
+    if (!workspace) return;
+    trigger = document.activeElement as HTMLElement; success = false;
+    // The dialog keeps its opening snapshot while server today/coverage refresh.
+    modal = { mode, target, workspace };
   }
   function close() { modal = null; void tick().then(() => trigger?.focus()); }
   function saved(savedBase: number, savedQuote: number) { base = savedBase; quote = savedQuote; success = true; close(); }
@@ -87,6 +93,6 @@
         {#if historyQuery.hasNextPage}<button type="button" onclick={() => historyQuery.fetchNextPage()} disabled={historyQuery.isFetchingNextPage} class="mt-4 min-h-11 rounded-(--radius-control) border border-border bg-control px-4 text-sm font-semibold disabled:opacity-50">{historyQuery.isFetchingNextPage ? m.pricing_loading() : m.pricing_load_more()}</button>{/if}
       {/if}
     </Panel>
-    {#if modal}<PriceForm {workspace} mode={modal.mode} target={modal.target} initialBase={base} initialQuote={quote} onSaved={saved} onCancel={close} />{/if}
   {/if}
+  {#if modal}<PriceForm workspace={modal.workspace} mode={modal.mode} target={modal.target} initialBase={base} initialQuote={quote} onSaved={saved} onCancel={close} />{/if}
 </div>

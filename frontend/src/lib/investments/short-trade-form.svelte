@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { formatEditableAmount } from '#lib/money/amount.ts';
   // Named short sale and cover (#173/#174). An opening receives cash like a
   // sale but opens a short lot of borrowed units; a cover pays like a buy and
@@ -46,6 +47,8 @@
   import { formatScaledValue, costBasisMethodLabel } from '#lib/investments/investment-labels.ts';
   import { coefficientSign, negateCoefficient } from '#lib/money/amount.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
+
+  const ownerToday = useOwnerToday();
 
   let {
     mode,
@@ -109,7 +112,7 @@
   // The recorded instrument stays selected until the user picks another.
   const commodityID = $derived(selectedInstrument?.commodity_id ??
     (initialCorrection && instrumentSearch === initialCorrection.commodity_code ? initialCorrection.commodity_id : undefined));
-  let transactionDate = $state(initialCorrection?.event_date ?? new Date().toISOString().slice(0, 10));
+  let transactionDate = $state(initialCorrection?.event_date ?? ownerToday());
   let holdingAccountID = $state(String(initialCorrection?.holding_account_id ?? ''));
   let cashAccountID = $state(String(initialCorrection?.cash_account_id ?? ''));
   let quantityStr = $state(correctionDraft?.quantity ?? '');

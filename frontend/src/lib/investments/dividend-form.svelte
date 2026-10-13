@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { m } from '#lib/paraglide/messages.js';
@@ -32,6 +33,8 @@
     isGainAcknowledgementRefusal
   } from '#lib/investments/gain-impact.ts';
   import type { GainImpact } from '#lib/api/investments.ts';
+
+  const ownerToday = useOwnerToday();
 
   let {
     mode = 'cash',
@@ -87,7 +90,7 @@
   }
 
   // Form fields
-  let transactionDate = $state(todayISO());
+  let transactionDate = $state(ownerToday());
   // cash dividend only
   let cashAccountID = $state('');
   let incomeAccountID = $state('');
@@ -116,10 +119,6 @@
     gainRefreshed: boolean;
     pending: PendingDividend;
   } | null>(null);
-
-  function todayISO(): string {
-    return new Date().toISOString().slice(0, 10);
-  }
 
   const cashAccounts = $derived(
     (accountsQuery.data?.accounts ?? []).filter(

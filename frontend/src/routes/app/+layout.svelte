@@ -28,10 +28,15 @@
   import { APIClientError } from '#lib/api/client.ts';
   import { m } from '#lib/paraglide/messages.js';
 
+  import { provideOwnerToday } from '#lib/dates/owner-date-context.ts';
+  import { sessionOwnerToday } from '#lib/dates/owner-date.ts';
+
   let { children } = $props();
 
   const setupQuery = createQuery(() => setupStatusQueryOptions());
   const sessionQuery = createQuery(() => authSessionQueryOptions());
+
+  provideOwnerToday(() => sessionOwnerToday(sessionQuery.data!));
 
   let logoutError = $state<unknown>(undefined);
   let logoutPending = $state(false);

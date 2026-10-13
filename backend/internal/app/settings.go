@@ -45,6 +45,22 @@ func (s *SettingsService) Preferences(ctx context.Context, userID int64) (UserPr
 	return UserPreferences{UserID: userID, TimeZone: "UTC"}, nil
 }
 
+// OwnerToday resolves financial defaults from the saved owner zone and server clock.
+func (s *SettingsService) OwnerToday(ctx context.Context, userID int64) (string, error) {
+	if s == nil {
+		return "", errors.New("settings service is required")
+	}
+	preferences, err := s.Preferences(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	location, err := time.LoadLocation(preferences.TimeZone)
+	if err != nil {
+		return "", fmt.Errorf("load owner time zone: %w", err)
+	}
+	return s.now().In(location).Format(time.DateOnly), nil
+}
+
 func (s *SettingsService) SavePreferences(ctx context.Context, input SaveUserPreferencesInput) (UserPreferences, error) {
 	timeZone, err := cleanTimeZone(input.TimeZone)
 	if err != nil {

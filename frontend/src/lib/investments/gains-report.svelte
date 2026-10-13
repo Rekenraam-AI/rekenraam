@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery } from '@tanstack/svelte-query';
   import CapitalReturnSummary from '#lib/investments/capital-return-summary.svelte';
   import Panel from '#lib/components/panel.svelte';
@@ -14,10 +15,12 @@
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
 
+  const ownerToday = useOwnerToday();
+
   const locale = $derived(getLocale());
 
   // Date range filter (default: current calendar year)
-  const currentYear = new Date().getFullYear();
+  const currentYear = ownerToday().slice(0, 4);
   let fromDate = $state(`${currentYear}-01-01`);
   let toDate = $state(`${currentYear}-12-31`);
   let appliedFrom = $state(`${currentYear}-01-01`);

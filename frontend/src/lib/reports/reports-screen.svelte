@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { browser } from '$app/env';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -48,6 +49,8 @@
   import { reportErrorState } from './report-error';
   import SpendingView from './spending-view.svelte';
 
+  const ownerToday = useOwnerToday();
+
   type ReportView = 'net-worth' | 'spending' | 'cashflow';
 
   const locale = $derived(getLocale());
@@ -55,18 +58,8 @@
     new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric' })
   );
 
-  function todayISO(): string {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).formatToParts();
-    const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
-    return `${value('year')}-${value('month')}-${value('day')}`;
-  }
-
   function defaultFilters(): NetWorthSeriesOptions {
-    return defaultReportRange(todayISO());
+    return defaultReportRange(ownerToday());
   }
 
   function parseFilters(): NetWorthSeriesOptions | null {
@@ -128,7 +121,7 @@
     if (!browser || activeFilters !== null) {
       return;
     }
-    const repaired = repairReportRange(page.url.searchParams, todayISO());
+    const repaired = repairReportRange(page.url.searchParams, ownerToday());
     if (repaired) {
       void goto(`/app/reports?${repaired.toString()}`, {
         replaceState: true,

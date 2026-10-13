@@ -7,6 +7,13 @@ AuthSessionResponse:
       type: boolean
     user:
       $ref: "../../openapi.yaml#/components/schemas/OwnerResponse"
+    owner_today:
+      type: string
+      format: date
+      description: >-
+        Current calendar date computed from the server clock in the owner's saved
+        IANA time zone (UTC when preferences are absent). Present only when
+        authenticated. Shared financial-date default; explicit dates are preserved.
     csrf_token:
       type: string
       description: Session-bound CSRF token for authenticated mutating requests.

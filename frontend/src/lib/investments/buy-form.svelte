@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { formatEditableAmount } from '#lib/money/amount.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { untrack } from 'svelte';
@@ -33,6 +34,8 @@
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
+
+  const ownerToday = useOwnerToday();
 
   let {
     csrfToken,
@@ -89,7 +92,7 @@
   }
 
   // Form fields
-  let transactionDate = $state(initialCorrection?.event_date ?? todayISO());
+  let transactionDate = $state(initialCorrection?.event_date ?? ownerToday());
   let holdingAccountID = $state(String(initialCorrection?.holding_account_id ?? ''));
   let cashAccountID = $state(String(initialCorrection?.cash_account_id ?? ''));
   let quantityStr = $state(correctionDraft?.quantity ?? '');
@@ -122,11 +125,6 @@
     payload: InvestmentTradeRequest;
     reason: string;
   } | null>(null);
-
-
-  function todayISO(): string {
-    return new Date().toISOString().slice(0, 10);
-  }
 
   // Holding accounts: security_holding or fund_holding kinds
   const holdingAccounts = $derived(

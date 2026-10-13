@@ -30,7 +30,7 @@ func RegisterRoutesWithAuth(mux *http.ServeMux, logger *slog.Logger, services Se
 		return
 	}
 
-	mux.HandleFunc("GET /api/v1/auth/session", sessionStatus(logger, services.Auth))
+	mux.HandleFunc("GET /api/v1/auth/session", sessionStatus(logger, services.Auth, services.Settings))
 	mux.HandleFunc("POST /api/v1/auth/login", requireSameOrigin(options, login(logger, services.Auth, options)))
 	mux.HandleFunc("POST /api/v1/auth/login/mfa", requireSameOrigin(options, completeLoginMFA(logger, services.Auth, options)))
 	mux.HandleFunc("POST /api/v1/auth/logout", logout(logger, services.Auth, options))

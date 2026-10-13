@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { untrack } from 'svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -23,6 +24,8 @@
   import { coefficientSign, formatEditableAmount } from '#lib/money/amount.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
+
+  const ownerToday = useOwnerToday();
 
   // Cash-and-stock merger entry (#184): the whole holding becomes a new
   // instrument at a fixed ratio and the holder also receives cash. The cash
@@ -86,7 +89,7 @@
   const locale = getLocale();
   // Holdings as they stood on the effective date (#166); before a date is
   // chosen, today's.
-  const holdingsDate = $derived(effectiveOn || new Date().toISOString().slice(0, 10));
+  const holdingsDate = $derived(effectiveOn || ownerToday());
   const positionsQuery = createQuery(() => datedHoldingsQueryOptions(holdingsDate));
 
   const accounts = $derived((accountsQuery.data?.accounts ?? []).filter((account) =>

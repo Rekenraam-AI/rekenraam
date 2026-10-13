@@ -1,3 +1,4 @@
+import { sessionOwnerToday } from '#lib/dates/owner-date.ts';
 import type { components } from '#lib/api/schema.js';
 import { APIClientError, apiClient, toAPIClientError, toNetworkError } from '#lib/api/client.ts';
 
@@ -219,7 +220,9 @@ export function authSessionQueryOptions() {
   return {
     queryKey: authSessionQueryKey,
     queryFn: getAuthSession,
-    staleTime: 10_000
+    staleTime: 10_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: 'always' as const
   };
 }
 
@@ -260,6 +263,7 @@ export async function getAuthSession(): Promise<AuthSessionResponse> {
     const { data, error, response } = await apiClient.GET('/api/v1/auth/session');
 
     if (data !== undefined) {
+      if (data.authenticated) sessionOwnerToday(data);
       return data;
     }
 

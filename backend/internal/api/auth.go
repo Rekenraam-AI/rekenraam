@@ -29,6 +29,7 @@ type authSessionResponse struct {
 	Authenticated bool           `json:"authenticated"`
 	User          *OwnerResponse `json:"user,omitempty"`
 	CSRFToken     string         `json:"csrf_token,omitempty"`
+	OwnerToday    string         `json:"owner_today,omitempty"`
 }
 
 type loginRequest struct {
@@ -45,7 +46,7 @@ type loginResponse struct {
 	MFARequired bool           `json:"mfa_required,omitempty"`
 }
 
-func sessionStatus(logger *slog.Logger, authService *app.AuthService) http.HandlerFunc {
+func sessionStatus(logger *slog.Logger, authService *app.AuthService, settingsService *app.SettingsService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := readSessionToken(r)
 		status, err := authService.Session(r.Context(), token)
@@ -61,6 +62,12 @@ func sessionStatus(logger *slog.Logger, authService *app.AuthService) http.Handl
 				Username: status.User.Username,
 			}
 			response.CSRFToken = deriveCSRFToken(token)
+			today, err := settingsService.OwnerToday(r.Context(), status.User.ID)
+			if err != nil {
+				writeServiceInternalError(w, r, logger, "read owner date", err)
+				return
+			}
+			response.OwnerToday = today
 		}
 
 		writeJSON(w, http.StatusOK, response)

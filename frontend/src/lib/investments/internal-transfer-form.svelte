@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { parseISO } from 'date-fns';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -22,6 +23,8 @@
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
 
+  const ownerToday = useOwnerToday();
+
   let { csrfToken, onSaved, onCancel }: {
     csrfToken: string;
     onSaved: () => void;
@@ -37,7 +40,7 @@
   // Holdings and lots as they stood on the transfer date, including ones a
   // later sale closed (#166). A transfer behind later history is admitted
   // by replay; the writer rechecks everything at commit (#167).
-  const positionsQuery = createQuery(() => datedHoldingsQueryOptions(effectiveOn || new Date().toISOString().slice(0, 10)));
+  const positionsQuery = createQuery(() => datedHoldingsQueryOptions(effectiveOn || ownerToday()));
   let sourceKey = $state('');
   let destinationAccountID = $state('');
   let quantities = $state<Record<string, string>>({});

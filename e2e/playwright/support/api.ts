@@ -18,7 +18,7 @@ import type { Page } from '@playwright/test';
  */
 export async function apiJSON<T = unknown>(
   page: Page,
-  method: 'GET' | 'POST',
+  method: 'GET' | 'POST' | 'PUT',
   path: string,
   csrfTokenOrExpected?: string | number[],
   body?: unknown,

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { untrack } from 'svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -22,6 +23,8 @@
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
 
+  const ownerToday = useOwnerToday();
+
   // Records a return of capital (T-146/T-148): cash on the payment date, and a
   // per-share basis reduction on every lot open on the effective date. The
   // reduction and any unresolved excess are the server's outputs, previewed
@@ -44,7 +47,7 @@
   let effectiveOn = $state(initial?.effective_on ?? '');
   // Holdings as they stood on the effective date, including ones a later
   // sale closed (#166); before a date is chosen, today's.
-  const positionsQuery = createQuery(() => datedHoldingsQueryOptions(effectiveOn || new Date().toISOString().slice(0, 10)));
+  const positionsQuery = createQuery(() => datedHoldingsQueryOptions(effectiveOn || ownerToday()));
   let paymentOn = $state(initial?.payment_on ?? '');
   let amount = $state(initial ? formatEditableAmount(initial.amount_value, initial.amount_scale) : '');
   let reference = $state(typeof initial?.source_evidence?.reference === 'string' ? initial.source_evidence.reference : '');

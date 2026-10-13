@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { transactionTitle } from '#lib/transactions/transaction-title.ts';
   import { systemLabelText } from '#lib/transactions/system-label.ts';
   import { untrack, type Snippet } from 'svelte';
@@ -53,6 +54,8 @@
     negateCoefficient,
     parseDecimalAmount
   } from '#lib/money/amount.ts';
+
+  const ownerToday = useOwnerToday();
 
   // ── Tier types ────────────────────────────────────────────────────
   type Tier = 'simple' | 'split';
@@ -140,7 +143,7 @@
   let tier = $state<Tier>('simple');
 
   // Tier 1 / shared fields
-  let transactionDate = $state(todayISO());
+  let transactionDate = $state(ownerToday());
   let payeeID = $state<number | undefined>(undefined);
   let description = $state('');
 
@@ -252,7 +255,7 @@
   $effect(() => {
     tagIDs = [...(transaction?.tag_ids ?? initialValues?.tag_ids ?? [])];
     if (mode === 'template' && initialValues) {
-      transactionDate = initialValues.transaction_date ?? todayISO();
+      transactionDate = initialValues.transaction_date ?? untrack(ownerToday);
       payeeID = initialValues.payee_id ?? undefined;
       payeeSearch = initialValues.payee_name ?? '';
       initialPayeeName = initialValues.payee_name ?? '';
@@ -269,7 +272,8 @@
       return;
     }
     if (!transaction) {
-      transactionDate = todayISO();
+      // A shared session refresh must preserve this unsaved entry.
+      transactionDate = untrack(ownerToday);
       payeeID = undefined;
       payeeSearch = '';
       initialPayeeName = '';
@@ -581,9 +585,6 @@
   }
 
   // ── Helpers ───────────────────────────────────────────────────────
-  function todayISO(): string {
-    return new Date().toISOString().slice(0, 10);
-  }
 
   function isReconciliationOverrideRequired(error: unknown): boolean {
     return (

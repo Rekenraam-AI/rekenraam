@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { formatEditableAmount } from '#lib/money/amount.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { untrack } from 'svelte';
@@ -41,6 +42,8 @@
   import { formatScaledValue, costBasisMethodLabel } from '#lib/investments/investment-labels.ts';
   import { coefficientSign } from '#lib/money/amount.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
+
+  const ownerToday = useOwnerToday();
 
   let {
     csrfToken,
@@ -99,7 +102,7 @@
   }
 
   // Form fields
-  let transactionDate = $state(initialCorrection?.event_date ?? todayISO());
+  let transactionDate = $state(initialCorrection?.event_date ?? ownerToday());
   let holdingAccountID = $state(String(initialCorrection?.holding_account_id ?? ''));
   let cashAccountID = $state(String(initialCorrection?.cash_account_id ?? ''));
   let quantityStr = $state(correctionDraft?.quantity ?? '');
@@ -137,10 +140,6 @@
   let previewPending = $state(false);
   let previewError = $state<unknown>(undefined);
   let previewDebounceTimer: ReturnType<typeof setTimeout> | undefined;
-
-  function todayISO(): string {
-    return new Date().toISOString().slice(0, 10);
-  }
 
   function clearPreview() {
     preview = null;

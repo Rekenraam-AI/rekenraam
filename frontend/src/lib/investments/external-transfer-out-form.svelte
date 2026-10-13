@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { parseISO } from 'date-fns';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -22,6 +23,8 @@
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
 
+  const ownerToday = useOwnerToday();
+
   // An outbound in-kind transfer (T-142): the same lot or pooled-quantity
   // selection as an internal move, with no destination in this book. The
   // basis that leaves is computed by the server from the depletion; a
@@ -40,7 +43,7 @@
   let effectiveOn = $state('');
   // Holdings and lots as they stood on the transfer date, including ones a
   // later sale closed (#166). The writer replays and rechecks at commit.
-  const positionsQuery = createQuery(() => datedHoldingsQueryOptions(effectiveOn || new Date().toISOString().slice(0, 10)));
+  const positionsQuery = createQuery(() => datedHoldingsQueryOptions(effectiveOn || ownerToday()));
   let sourceKey = $state('');
   let quantities = $state<Record<string, string>>({});
   let pooledQuantity = $state('');

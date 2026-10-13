@@ -246,11 +246,13 @@ current reports.
 
 ### Parallel trust work for cross-border entry
 
-Before presenting the five drafted non-English catalogs as complete or using
-them in a migration demo, close #101 (owner-local default dates) and #102
-(catalog parity and native review).
-These are independently shippable correctness and communication fixes; they do
-not require waiting for R16 or R11: [#101](https://github.com/sergeyfarin/rekenraam/issues/101), [#102](https://github.com/sergeyfarin/rekenraam/issues/102).
+[#101](https://github.com/sergeyfarin/rekenraam/issues/101) owner-local default
+dates are delivered (2026-10-13): shared authenticated server date, preserved
+explicit dates and opposite-midnight browser coverage. Before presenting the
+five drafted non-English catalogs as complete or using them in a migration
+demo, close [#102](https://github.com/sergeyfarin/rekenraam/issues/102)
+(catalog parity and native review). That communication work remains
+independently shippable and does not require waiting for R16 or R11.
 
 ### R17 — crypto instrument type
 
@@ -361,8 +363,8 @@ The 2026-09-27 primary-source recheck in
 `docs/competitor-comparison.md` supports the following order: complete R16's
 correction, transfer, basis and split workflows; provide the R11 price/FX
 operator surface; add the R17 quote registry and crypto entry; then build
-R18 reproducible gains and R13 returns. #101 owner-local date defaults remain
-parallel correctness work. This ordering is a product
+R18 reproducible gains and R13 returns. #101 owner-local date defaults are
+delivered parallel correctness work. This ordering is a product
 inference from verified competitor workflows and the present code boundary,
 not a claim of feature uniqueness.
 
@@ -431,8 +433,8 @@ scanning paths before an announcement.
    is European — so the demo the launch rests on must not corrupt dates and
    amounts for exactly the target audience. A correctness-branded finance app
    does not get a second first impression.
-3. **Cross-border entry trust — open.** #100’s locale-aware amount input is delivered.
-   Close #101’s owner-local default dates before a multilingual migration demo.
+3. **Cross-border entry trust — open.** #100’s locale-aware amount input and
+   #101’s owner-local default dates are delivered.
    Fill #102's 65 missing message keys per non-English locale and arrange
    native review before describing those catalogs as complete.
 4. **Personal-access tokens — open** (added 2026-08-05, review §3f). The

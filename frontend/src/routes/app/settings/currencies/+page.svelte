@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
   import Plus from '@lucide/svelte/icons/plus';
@@ -32,6 +33,8 @@
   import { localizedCurrencyCatalog, type LocalizedCurrencyCatalogEntry } from '#lib/install-gate/currency-options.ts';
   import { priceManagementQueryKey } from '#lib/api/price-management.ts';
   import { m } from '#lib/paraglide/messages.js';
+
+  const ownerToday = useOwnerToday();
 
   type RateDirection = 'currency_default' | 'default_currency' | 'both';
   type RatePair = {
@@ -327,7 +330,7 @@
       source_id: sourceID,
       priority: 10,
       status,
-      effective_from: todayISO(),
+      effective_from: ownerToday(),
       change_reason: 'saved currency exchange rate provider'
     };
   }
@@ -389,10 +392,6 @@
 
   function numberOrUndefined(value: string): number | undefined {
     return value === '' ? undefined : Number(value);
-  }
-
-  function todayISO(): string {
-    return new Date().toISOString().slice(0, 10);
   }
 
   function scaledRatioToDecimalText(

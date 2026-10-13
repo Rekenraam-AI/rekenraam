@@ -204,7 +204,7 @@
         await csrfToken()
       );
       preferencesSuccess = m.settings_preferences_saved();
-      await preferencesQuery.refetch();
+      await Promise.all([preferencesQuery.refetch(), sessionQuery.refetch()]);
     } catch (error) {
       preferencesError = error;
     } finally {

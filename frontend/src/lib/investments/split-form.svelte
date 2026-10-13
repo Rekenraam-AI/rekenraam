@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { untrack } from 'svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -22,6 +23,8 @@
   import { formatQuantity } from '#lib/money/format.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
+
+  const ownerToday = useOwnerToday();
 
   // With correction set, the form replaces that posted split (T-129): the
   // holding is fixed, the current terms are pre-filled and a reason is required.
@@ -61,7 +64,7 @@
   let reviewModal = $state<{ gainRefreshed: boolean } | null>(null);
   // Holdings as they stood at the split's date, including ones a later sale
   // closed (#166); before a date is chosen, today's.
-  const holdingsDate = $derived(effectiveOn || new Date().toISOString().slice(0, 10));
+  const holdingsDate = $derived(effectiveOn || ownerToday());
   const positionsQuery = createQuery(() => datedHoldingsQueryOptions(holdingsDate));
 
   const locale = $derived(getLocale());

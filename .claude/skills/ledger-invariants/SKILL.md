@@ -250,6 +250,10 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
 
 - Financial facts: calendar dates (`YYYY-MM-DD` strings on the wire; Go uses a
   plain string or validated date type, **not** `time.Time` which marshals RFC 3339).
+- Financial date defaults use the authenticated session's server-owned
+  `owner_today`, shared by the app shell (#101). Never derive “today” from the
+  browser clock. Capture editable defaults once; session refresh, midnight and
+  owner-zone changes preserve explicit form/correction dates and report URLs.
 - System facts: UTC timestamps (RFC 3339).
 - User-facing recurring schedules: local wall-clock + IANA zone stored; actual
   runs recorded as UTC.

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { untrack } from 'svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -22,6 +23,8 @@
   import { coefficientSign } from '#lib/money/amount.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
+
+  const ownerToday = useOwnerToday();
 
   // Share exchange entry (#178): a merger, fund merger or class conversion
   // turns the whole long holding of one instrument into another at an exact
@@ -71,7 +74,7 @@
   let reviewModal = $state<{ gainRefreshed: boolean } | null>(null);
   // Holdings as they stood on the exchange date (#166); before a date is
   // chosen, today's.
-  const holdingsDate = $derived(effectiveOn || new Date().toISOString().slice(0, 10));
+  const holdingsDate = $derived(effectiveOn || ownerToday());
   const positionsQuery = createQuery(() => datedHoldingsQueryOptions(holdingsDate));
 
   const locale = $derived(getLocale());

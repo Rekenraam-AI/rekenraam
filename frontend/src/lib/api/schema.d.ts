@@ -27195,6 +27195,11 @@ export interface components {
         AuthSessionResponse: {
             authenticated: boolean;
             user?: components["schemas"]["OwnerResponse"];
+            /**
+             * Format: date
+             * @description Current calendar date computed from the server clock in the owner's saved IANA time zone (UTC when preferences are absent). Present only when authenticated. Shared financial-date default; explicit dates are preserved.
+             */
+            owner_today?: string;
             /** @description Session-bound CSRF token for authenticated mutating requests. */
             csrf_token?: string;
         };

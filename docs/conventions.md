@@ -201,6 +201,23 @@ When a feature introduces a durable new rule, update one of those documents in t
   `max_backfill_days` is an execution chunk bound and must not silently truncate
   the required history.
 
+## Financial Date Defaults
+
+- Use the authenticated session's server-owned `owner_today` (`YYYY-MM-DD`)
+  for financial entry defaults, report ranges/year and unchosen dated
+  investment discovery. The settings service resolves it from the server clock
+  and saved owner IANA zone; absent preferences follow the existing UTC default.
+- Share the date through the app shell; missing/invalid authenticated date
+  data is an error, never a browser-clock fallback. Session focus/minute refresh
+  and preference saves update the shared date for newly opened forms.
+- Capture editable defaults once; initializer effects must not track session
+  date changes. Preserve selected dates, correction source dates and valid
+  report URL ranges. Dated discovery follows an explicitly selected date;
+  deliberately blank corporate-action/write-off dates remain deliberate.
+- Pricing's composed workspace uses the shared date when its as-of field is
+  blank and the explicit as-of value otherwise; the manual form captures that
+  workspace date and corrections retain their source valuation date.
+
 ## Exact Quantity Precision
 
 - Quantity coefficients are canonical signed decimal strings in SQLite and

@@ -121,6 +121,14 @@ Use calendar dates for financial facts and timestamps for system facts.
 - Audit, import, backup, sync, and edit events are timestamps.
 - Store timestamps in UTC.
 - Let frontend formatting be locale-aware.
+- Financial “today” defaults come from the server clock in the owner's saved
+  IANA time zone, exposed as `owner_today` on authenticated session reads
+  (#101). The app shell shares that calendar date with financial forms and
+  report/discovery defaults; it never substitutes the browser clock. Refresh
+  the shared session on focus, once per minute while visible, and after saving
+  owner preferences. Editable defaults are captured when a form opens; a
+  refresh, midnight or zone change preserves explicit dates and report URLs.
+  Deliberately required operation dates remain blank until chosen.
 
 ## Localization
 
