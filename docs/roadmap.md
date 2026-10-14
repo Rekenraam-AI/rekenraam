@@ -118,7 +118,8 @@ below is execution order, not a chain of hard dependencies.
    The shared transaction workspace [#185](https://github.com/sergeyfarin/rekenraam/issues/185)
    is delivered (2026-10-14): contextual entry, same-day reorder and row actions
    on the journal, account and category screens. Approval preserves the journal
-   (#219); the independent guarded lifecycle-preview repair remains #220.
+   (#219); guarded void/unvoid/delete/restore preview their own impact (#220,
+   2026-10-14) and register rows are per posting line (#221).
 
 **Delivered native SQLite and test-feedback improvement (2026-10-12):**
 [#195](https://github.com/sergeyfarin/rekenraam/issues/195) installs the bundled

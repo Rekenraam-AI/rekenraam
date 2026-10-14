@@ -345,11 +345,13 @@ Approving review is metadata-only: it clears `needs_review` in an appended
 version with the complete existing journal, posting-line identities, exact
 amounts, ordering, tags and reconciliation state. It does not promote a persisted
 system draft or change a balance/checkpoint. Repeating approval is a no-op.
-Unvoid uses the existing reason and explicit reconciliation-override flow;
-the lifecycle-specific impact-preview repair is tracked in
-[#220](https://github.com/sergeyfarin/rekenraam/issues/220), because the current
-update-spec preview cannot describe a lifecycle-only operation. The server
-continues to refuse a guarded change without override.
+Unvoid uses the existing reason and explicit reconciliation-override flow. A
+refused void, unvoid, soft delete or restore previews its own impact through
+`GET /transactions/{id}/{action}/reconciliation-impact`
+([#220](https://github.com/sergeyfarin/rekenraam/issues/220), 2026-10-14), built
+from the same plan as the write; the update-spec preview cannot describe a
+lifecycle-only operation. The server still refuses a guarded change without
+override.
 
 ## Version Links
 

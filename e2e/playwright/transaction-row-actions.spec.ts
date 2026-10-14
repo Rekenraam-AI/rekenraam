@@ -135,9 +135,9 @@ test('unvoid asks before retrying a reconciliation refusal with override', async
     if (override) await route.continue();
     else await route.fulfill({ status: 409, json: { error: { code: 'CONFLICT', message: 'reconciliation override is required' } } });
   });
-  // Isolate the existing lifecycle dialog's override negotiation. The real
-  // update-preview request is invalid for lifecycle actions (tracked in #220).
-  await page.route(`**/api/v1/transactions/${s.transaction.id}/reconciliation-impact`, route => route.fulfill({
+  // Isolate the lifecycle dialog's override negotiation; the real unvoid
+  // preview is covered in transactions-lifecycle-reconciliation.spec.ts (#220).
+  await page.route(`**/api/v1/transactions/${s.transaction.id}/unvoid/reconciliation-impact`, route => route.fulfill({
     json: { affected_checkpoints: [{ checkpoint_id: 1, account_id: s.account.id, account_label: s.account.name,
       commodity_id: 1, commodity_code: 'USD', statement_date: todayISO(), statement_account_sequence: 1, entry_date: todayISO() }] }
   }));
