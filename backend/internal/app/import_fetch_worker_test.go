@@ -622,8 +622,8 @@ func TestImportFetchWork_RestartReclaimsExpiredLease(t *testing.T) {
 // will page through (trading212.maxPages), verifying the worker's
 // continuation mechanism recovers the full history across multiple chunks
 // instead of silently truncating it (the gap fixed alongside this test).
+// serial: mutates Trading 212's process-wide page-budget override.
 func TestStartOnlineImport_ContinuesPastPageBudgetWithoutTruncatingOrDuplicating(t *testing.T) {
-	t.Parallel()
 	restore := trading212.SetMaxPagesForTest(3)
 	defer restore()
 
