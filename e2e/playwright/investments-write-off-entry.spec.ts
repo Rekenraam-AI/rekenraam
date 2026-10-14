@@ -86,7 +86,8 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     await expect(dialog.getByRole('alert')).toBeVisible();
     await dialog.locator('#write-off-date').fill(todayISO());
     await dialog.locator('#write-off-holding').selectOption(s.key);
-    await dialog.locator('#write-off-quantity').fill('1.25');
+    // Editable amounts parse in the active locale (#100).
+    await dialog.locator('#write-off-quantity').fill(new Intl.NumberFormat(locale).format(1.25));
     const previewButton = dialog.getByRole('button', { name: m.investments_write_off_preview, exact: true });
     await expect(previewButton).toBeDisabled(); // mandatory cause
     await dialog.locator('#write-off-reason').fill('Issuer liquidated');

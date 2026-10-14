@@ -42,7 +42,8 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     await page.goto(`/app/transactions?transaction_id=${split.transaction.id}`);
     await page.getByRole('button', { name: settings.investments_cash_in_lieu_entry_action, exact: true }).click();
     const cil = page.locator('[role="dialog"]').filter({ has: page.locator('#cil-quantity') });
-    await cil.locator('#cil-quantity').fill('0.5');
+    // Editable amounts parse in the active locale (#100).
+    await cil.locator('#cil-quantity').fill(new Intl.NumberFormat(locale).format(0.5));
     await cil.locator('#cil-payment').fill(ago(25));
     await cil.locator('#cil-cash').selectOption(String(cash.id));
     await cil.locator('#cil-proceeds').fill('8');

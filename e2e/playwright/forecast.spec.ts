@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { apiJSON, csrfTokenFor } from './support/api';
 import { daysFromTodayISO, todayISO } from './support/dates';
-import { createCashAccount, readyForLedger } from './support/ledger';
+import { createCashAccount, ensureCurrency, readyForLedger } from './support/ledger';
 import { expectNoAccessibilityViolations } from './support/a11y';
 
 test('[acceptance] forecasts recorded and recurring movements without posting', async ({ page }) => {
@@ -268,10 +268,10 @@ test('forecast exposes loading empty error and excluded-assumption states', asyn
 test('forecast keeps exact currencies when constant FX is unavailable', async ({ page }) => {
   const { csrfToken, currencyID } = await readyForLedger(page);
   const code = 'EUR';
-  const eur = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/currencies', csrfToken, {
-    code,
-    name: 'Forecast test euro'
-  }, [201]);
+  // The e2e database is shared, so an earlier spec may already hold EUR; none
+  // records an EUR rate, so constant FX stays unavailable either way.
+  const eurID = await ensureCurrency(page, csrfToken, code, 'Euro');
+  const eur = { id: eurID };
   const account = await createCashAccount(page, csrfToken, `EUR forecast ${Date.now()}`, eur.id);
   const categories = await apiJSON<{ categories: Array<{ id: number; code?: string; allows_postings: boolean }> }>(page, 'GET', '/api/v1/categories');
   const expense = categories.categories.find((item) => item.code === 'expense_food_groceries' && item.allows_postings);
