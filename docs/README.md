@@ -49,11 +49,12 @@ or sequencing change.
   a translation; it is far shorter than the message catalogs it governs.
 - [adrs/](adrs/) — accepted decision records (numbered, immutable).
 
-## Current execution plan
+## Initiative and design references
 
-R16 investment lifecycle completeness is the current initiative. Its
+The [roadmap](roadmap.md#current-focus) owns the current initiative and focus.
+R16's agreed investment lifecycle gates are delivered; its
 [operation plan](plans/investment-operation-refactor-plan.md) and slice
-contracts govern design; the [roadmap](roadmap.md) holds its current focus.
+contracts remain design references for shipped behavior and related extensions.
 
 The [native SQLite driver migration plan](plans/native-sqlite-driver-migration-plan.md)
 and [ADR 0014](adrs/0014-native-sqlite-driver.md) record the accepted driver
@@ -114,7 +115,7 @@ of scope until an accepted ADR changes the product decision.
 
 Earlier cross-document code reconciliation:
 [2026-08-31 documentation review](reviews/documentation-code-review-2026-08-31.md).
-It records findings at that date; T-79 has since closed and T-80 remains open.
+It records findings at that date; use GitHub Issues for their current status.
 
 Provider evidence:
 [2026-10-13 Trading 212 split recheck and collection guide](reviews/trading212-split-evidence-2026-10-13.md)
@@ -140,3 +141,9 @@ They distinguish reproduced defects from R16 work still tracked in open issues.
 4. Code and docs reference these files by full path (`docs/plans/...`) — when
    moving or renaming, update references repo-wide (README.md, AGENTS.md,
    `.claude/`, backend and frontend source comments).
+
+Superseded sections extracted from active documents:
+[pre-release baseline rewrite notices](archive/pre-release-baseline-rewrites.md)
+and [the original investment ledger sketch](archive/investment-ledger-sketch.md).
+Their historical wording is preserved; current migration guidance and investment
+contracts remain in the workflow, plans and ADRs.

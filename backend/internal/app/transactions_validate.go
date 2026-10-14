@@ -23,10 +23,10 @@ const (
 
 // transactionStatuses is the persisted transaction lifecycle. An unsaved entry
 // (an in-progress UI working copy with no row) is deliberately NOT a status: it
-// has no database row and triggers no side effects until it is saved as a draft
-// or posted transaction. "draft" here always means a persisted, durable draft
-// (autosave, scheduled generation, committed import awaiting review) excluded
-// from the ledger — never the unsaved working copy. Background FX coverage
+// has no database row and triggers no side effects until it is saved. Manual
+// entry and import commit save posted transactions. "draft" means a persisted,
+// durable recurring-producer draft excluded from the ledger; future producers
+// require their own review/discard surfaces. Background FX coverage
 // fires on posted versions only; a promoted draft's foreign-currency dates get
 // coverage at promotion. Soft-delete is the separate deleted_at flag, not a
 // status value. See docs/plans/transaction-ledger-core-plan.md.

@@ -7,9 +7,9 @@ a static SvelteKit frontend from one binary; SQLite is the primary database.
 Docker Compose runs the same app shape.
 
 The app is still a pre-release candidate. Investment buy, sell, dividend,
-reinvestment, and write-off workflows exist. Investment-native correction,
-in-kind transfers, basis actions, and named short sales (shipped; provider import
-pending) are still being built;
+reinvestment, write-off, native correction, in-kind transfers, basis actions,
+and named short sale/cover workflows ship within R16's agreed scope. Provider
+import for additional operation kinds and other extensions remain tracked;
 see the [R16 plan](docs/plans/investment-operation-refactor-plan.md) and the
 [feature ledger](docs/implemented.md) for the exact boundary.
 
@@ -98,18 +98,3 @@ Product and architecture decisions live in the
 [conventions](docs/conventions.md), and [ADRs](docs/adrs/).
 The [tracking policy](docs/conventions.md#work-tracking) defines issue readiness,
 progress updates and closure; new work uses GitHub numbers without local IDs.
-
-### Consolidated development schema
-
-The T-148 return-of-capital quantity entitlement change (2026-10-07) revises
-the pre-release baseline. Reset disposable development databases before using
-it; see [database reset guidance](docs/developer-workflow.md#migrations-and-resetting-your-database).
-
-No legacy databases exist. The pre-release schema is consolidated into
-`0001_initial_schema.sql`, including source revisions, authoritative journal
-links, separate immutable lot identity/mutable lot state, and immutable disposal
-proceeds portions tied to clearing postings. Projected basis has explicit
-known/unknown knowledge and nullable unknown amounts. The checksum and seeded equivalence
-tests are updated together. Forward migration `0002` adds immutable basis-resolution
-provenance history and preserves existing baseline data; it does not require a
-reset. See [the migration workflow](docs/developer-workflow.md#migrations-and-resetting-your-database).

@@ -3,8 +3,8 @@ import { roundAmountForDisplay } from './amount';
 /**
  * The frontend's single money-*display* layer.
  *
- * `#lib/money/amount.ts` is the parsing and exact-arithmetic half: it renders a
- * exact decimals: `formatEditableAmount` round-trips through the locale-aware
+ * `#lib/money/amount.ts` owns parsing, exact arithmetic and editable decimals:
+ * `formatEditableAmount` round-trips through the locale-aware
  * `parseDecimalAmount`, while `formatLedgerAmount` keeps machine-readable values
  * locale-independent. This module is the other half —
  * locale-aware presentation of **read-only** money: report tables, registers,

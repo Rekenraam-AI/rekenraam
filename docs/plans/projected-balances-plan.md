@@ -1,9 +1,9 @@
 # Projected Balances Plan (R10)
 
 Status: **accepted — core slices 1–8 and learning M1–M4 complete**. Written 2026-08-31 against `b28c5d57`,
-after R9 acceptance. This is the execution specification for the next initiative
-in `docs/roadmap.md`: **R9 → R10 → R8**. Planning is complete when this document
-lands; the forecast API, optional conversion and read-only screen now ship.
+after R9 acceptance. Retained as the shipped R10 design contract; the forecast
+API, optional conversion and read-only screen ship. Current sequencing lives
+in `docs/roadmap.md`.
 
 Implementation update (2026-09-09): all eight core slices are accepted in
 `docs/reviews/r10-core-acceptance-review-2026-09-07.md`. The coherent snapshot,
@@ -11,7 +11,7 @@ exact projection, authenticated balances/events API, complete-coverage
 constant-as-of FX, responsive screen, basis-safe details and adversarial
 cross-system evidence ship. Learning M1–M4, including the opt-in estimated-
 spending surface, are accepted in
-`docs/reviews/r10-learning-acceptance-review-2026-09-09.md`; R8 planning is next.
+`docs/reviews/r10-learning-acceptance-review-2026-09-09.md`.
 
 Scope amendment (2026-08-31): after these eight **core** slices, execute M1–M4
 in [lightweight learned spending](forecast-learning-plan.md). The owner requested

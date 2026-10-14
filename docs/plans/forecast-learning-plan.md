@@ -1,9 +1,10 @@
 # R10 extension — lightweight learned spending
 
 Status: **accepted — M1–M4 complete**, updated 2026-09-09. Added at the owner's request
-for basic ML/AI within modest hardware limits. Execute M1–M4 below **after the
-eight core slices** in `docs/plans/projected-balances-plan.md`, before R10's
-final closure/R8 planning. The core forecast remains independently usable and
+for basic ML/AI within modest hardware limits. The M1–M4 delivery followed the
+eight core slices in `docs/plans/projected-balances-plan.md`; this document
+retains the shipped extension's design and acceptance evidence. The core
+forecast remains independently usable and
 must not depend on a successful model fit. This extension supersedes only the
 core plan's exclusion of historical-average/learned variable-spending estimates
 and seasonal expense profiles. The owner's cadence clarification is part of this

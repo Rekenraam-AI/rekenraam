@@ -19,7 +19,8 @@ description: SvelteKit frontend rules for Rekenraam - static adapter constraints
   (example: `frontend/src/lib/theme.svelte.ts`). No Svelte 4 stores in new code.
 - **SvelteKit 3 imports**: shared code is `#lib/...` with an explicit extension
   (`#lib/money/amount.ts`, `#lib/components/panel.svelte`; the generated
-  `schema.d.ts` is `#lib/api/schema.js`) — `#lib` no longer exists. Route state
+  `schema.d.ts` is `#lib/api/schema.js`). Use the repository's `#lib/*`
+  subpath imports consistently. Route state
   comes from `$app/state` (`page.url`, `page.params`); `$app/stores` is gone and
   `$app/environment` is now `$app/env`. `page.url.searchParams` is
   `ReadonlyURLSearchParams`, so URL helpers accept that type and copy via

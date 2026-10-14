@@ -348,8 +348,26 @@ knowledge. Forward migration 3 preserves existing known history.
 | **Gains view** | 🟦 | `GET /api/v1/investments/gains` ships an operational view: realized gain from committed disposal events over a disposal-date range, plus current unrealized gain from the latest price. Market value runs through the shared `exact.MulDivRound` (one rounding step, half-up), and is restated at a shallower scale when the trailing zeros a fractional quantity adds would otherwise overflow the response's int64 fields (T-99). An absent valuation always says which it is — `valuation_unavailable` is `no_price` or `unrepresentable` — so an unpriced position and one the read model cannot express no longer look the same. The realized gain carries its own `realized_gain_scale` — the deeper of proceeds and disposed basis — so the figure does not depend on the scale the proceeds happened to be entered at (T-101); format it with that scale, never with `proceeds_scale`, and read `realized_totals` as one exactly-summed row per cost commodity. It is not yet multi-basis, jurisdiction-aware, as-of/knowledge-time reproducible, staleness/source/FX-policy aware, or a tax report. ADR 0012 and R18 own that later projection contract. |
 | **Zero-proceeds write-off** | ✅ | `POST /api/v1/investments/write-off` (+ `/preview`), T-38, R16 slice 1 — a **dedicated** `InvestmentWriteOffInput` type, separate from the shared buy/sell trade type, with no cash account/commodity/amount fields at all and a **required `reason`** distinct from the ordinary `change_reason` — a zero on a sale reads as a typo, so the destructive path is not reachable by clearing one field. `PreviewWriteOff` mirrors sell's preview endpoint. Posts only the two commodity legs (holding credit + `commodity_trading` debit); the whole remaining basis lands in realized gains as a loss. The loss is **not** posted to an expense account: ADR 0012 says a report never posts silently, while R18 may separately scope an explicit linked accounting workflow. Records no trade-implied price (a zero price is rejected by `price_observations` and would corrupt price history). Portfolio creation ships in #172 (2026-10-13): a native mobile/keyboard dialog requires a date, dated long holding, positive quantity and reason, with holding-default/FIFO/LIFO/average/specific-lot election. Writer previews show the exact server-computed loss and allocations, or an unresolved result when basis is unknown (#169). Shared gain/checkpoint confirmation handles cancellation and stale acknowledgement recovery; success invalidates investment, register and forecast reads. Six-locale loading/empty/error/success states and 390 px browser cases ship in `investments-write-off-entry.spec.ts`. #199 (2026-10-13) adds optional `cost_commodity_id`: creation sends the selected dated position’s currency, and correction explicitly retains its recorded currency. Every method consumes only the chosen currency; historical closed lots, native currency-changing replacement, gain/checkpoint guards, export and restored self-check are covered by `investment_write_off_currency_test.go` in app/API and the mixed-currency 390 px journey. Omission retains single-currency inference (or the original currency for same-position replacement); ambiguous inference and ineligible elections refuse atomically. Invalid selected lots return validation errors rather than HTTP 500. |
 | **Backdated investment trades into a reconciled period** | ✅ | Every investment write goes through the transaction reconciliation guard, and `reconciliation_override` is accepted on the buy, sell, dividend, reinvested-dividend, **and write-off** routes (T-53; write-off's own `WriteOffReconciliationImpact` was added during this work since its dedicated request type did not inherit the shared trade type's override field). Six preview routes — `POST /investments/{buy,sell,dividend,reinvested-dividend}/reconciliation-impact` and `POST /investments/write-off/{preview,reconciliation-impact}` — plan the *same* postings the write would, via shared `investmentTransactionPlan` builders, and report which checkpoints would be invalidated without persisting anything. The buy, sell, and dividend forms preview first and raise the transaction editor's own named warning, over the same messages, so invalidating a reconciliation reads identically from either screen. `e2e/playwright/investments-reconciliation.spec.ts` covers it end to end, including that cancelling leaves the checkpoint active. |
-| **Provider-event suggestions UI** | ✅ | Suggestions tab: pending suggestions with Accept/Ignore actions; history section. Accept parses `proposed_transaction_json` and posts a real transaction only for dividend/distribution income; ignore/accept both guard against re-transitioning a non-`suggested` suggestion. Return of capital and cash in lieu are refused as dividend income until their basis workflows exist (T-109). **No producer exists yet** — nothing in the app writes to `investment_provider_events`/`investment_event_suggestions` (verified 2026-07-15), so this UI has nothing to review until a fetcher is built (`docs/backlog.md`). Structural corporate actions (split/merger/spin_off/ticker_change/delisting/`corporate_action`) are explicitly rejected at accept time, not silently dropped — the shared refactor plan exists, but per-kind lot and posting rules are not implemented. |
+| **Provider-event suggestions UI** | ✅ | Suggestions tab: pending suggestions with Accept/Ignore actions; history section. Accept parses `proposed_transaction_json` and posts a real transaction only for dividend/distribution income; ignore/accept both guard against re-transitioning a non-`suggested` suggestion. Return of capital and cash in lieu are refused as dividend income (T-109). Native basis-action and structural-action commands ship, but this suggestion path has no mapping to those writers. **No provider-event producer exists yet** — runtime code does not insert `investment_provider_events`/`investment_event_suggestions`, so this UI has nothing to review until a producer is built. Structural corporate-action proposals remain explicitly rejected at accept time, not silently dropped; see the R16 contract and GitHub Issues for provider-import scope. |
 | **Automation rules list** | ✅ | `GET /api/v1/investments/automation-rules`; rules listed in Suggestions tab (read-only; PUT genuinely replaces the full active set — any existing active rule omitted from a PUT is archived in the same transaction, fixed 2026-07-15). Rule *matching/execution* (auto-post dispatch against incoming provider events) has no consumer yet — moot until a producer exists. |
+
+### Gains precision and range admission (2026-09-20)
+
+Gains-summary monetary values use currency-labelled standard display precision;
+share quantities and detailed lot values retain exact precision. Totals are
+aggregated before display rounding. Same-day sales render independently, and
+unrealized position keys distinguish cost currencies. Investment acquisitions
+and disposals atomically reject a resulting cost-basis projection outside its
+exact int64 range, preserving the journal, lots and audit on rejection (T-104).
+See `docs/reviews/allocation-and-gains-verification-2026-09-20.md` for validation
+and the supported-range limitation.
+
+As of 2026-09-26, investment monetary coefficients cross JSON as exact decimal
+strings in requests, lots, positions, previews, and gains (T-107). The backend
+still computes and stores these fields as checked int64 coefficients. A named
+API regression round-trips a value above JavaScript's safe-integer limit through
+a trade and gains summary; frontend forms keep the backend range without
+converting coefficients to `Number`.
 
 ## Localization — 🟡 translated, not natively reviewed
 
@@ -372,16 +390,13 @@ knowledge. Forward migration 3 preserves existing known history.
 - Mobile-responsive core workflows including transaction entry.
 - Loading / empty / error / success states on shipped screens.
 
-## Not started (see roadmap)
+## Projected balances and learned spending (R10) — ✅ shipped
 
-XLSX/OFX/QFX import adapters, per-split import mapping and batch rollback,
-loan/liability helpers and report snapshots. CSV import, profiles and
-minimal rules are shipped. Reporting-currency conversion is shipped. Recurring
-templates, generation and dedicated review/discard screens are shipped.
-Production scheduling and R9 acceptance are complete. R10's detailed plan is
-written (`docs/plans/projected-balances-plan.md`), with an approved lightweight
-learning extension (`docs/plans/forecast-learning-plan.md`) for daily/weekly,
-monthly and annual seasonal spending. All eight core slices are accepted:
+R10's core forecast and opt-in learned-spending extension are accepted
+(2026-09-09). The shipped contracts are
+`docs/plans/projected-balances-plan.md` and `docs/plans/forecast-learning-plan.md`.
+They cover daily/weekly, monthly and annual seasonal spending. All eight core
+slices are accepted:
 `db.ForecastRepository` takes one `OpenReadOnly` snapshot and bulk-loads current
 posted selected-account legs, full account/commodity versions, relevant
 templates/occurrences, every counterpart of linked current drafts and optional
@@ -484,26 +499,8 @@ converted, and R8 deliberately has no rollover or envelope allocator. The
 responsive screen has loading, empty, error and success states and copy in all
 six locales. `docs/plans/budgets-plan.md` is the shipped contract.
 
-Online import (R7) is fully shipped for Trading 212 (Slices 1–4b: connections,
-fetch, durable worker, online batch flow, scheduled auto-refresh, investment
-lot import — see "Online Connections" above, `docs/plans/trading212-import-plan.md`).
-A second online provider is not started.
+## Not started (see roadmap)
 
-
-### Gains precision and range admission (2026-09-20)
-
-Gains-summary monetary values use currency-labelled standard display precision;
-share quantities and detailed lot values retain exact precision. Totals are
-aggregated before display rounding. Same-day sales render independently, and
-unrealized position keys distinguish cost currencies. Investment acquisitions
-and disposals atomically reject a resulting cost-basis projection outside its
-exact int64 range, preserving the journal, lots and audit on rejection (T-104).
-See `docs/reviews/allocation-and-gains-verification-2026-09-20.md` for validation
-and the supported-range limitation.
-
-As of 2026-09-26, investment monetary coefficients cross JSON as exact decimal
-strings in requests, lots, positions, previews, and gains (T-107). The backend
-still computes and stores these fields as checked int64 coefficients. A named
-API regression round-trips a value above JavaScript's safe-integer limit through
-a trade and gains summary; frontend forms keep the backend range without
-converting coefficients to `Number`.
+XLSX/OFX/QFX import adapters, per-split import mapping and batch rollback,
+a second online provider, loan/liability helpers and report snapshots.
+The [roadmap](roadmap.md) owns sequencing; GitHub Issues own delivery status.

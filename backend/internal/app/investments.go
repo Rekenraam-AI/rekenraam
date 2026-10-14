@@ -2145,12 +2145,12 @@ func (s *InvestmentService) setSuggestionStatus(ctx context.Context, ownerUserID
 // "kind" AcceptSuggestion knows how to post. It covers the cash-income-shaped
 // event families (dividend, distribution) —
 // these reduce to "cash in, income account credited, optional withholding",
-// exactly DividendInput's shape. Structural corporate actions (split,
-// merger, spin_off, ticker_change, delisting, corporate_action) have no
-// lot-mutation design yet and are rejected loudly, not silently ignored —
-// see docs/backlog.md. Return of capital is refused until its basis-adjustment
-// workflow exists; treating it as income would misstate the position. Cash in
-// lieu also needs an explicit basis treatment before it can be accepted.
+// exactly DividendInput's shape. Structural actions, return of capital and
+// cash in lieu cannot use this dividend proposal. Native split, exchange,
+// merger, spin-off and basis-action commands ship, but this suggestion path
+// has no mapping to those writers. Reject unsupported proposals rather than
+// treating them as income; see the R16 operation contract and
+// provider-import boundaries in docs/implemented.md.
 const proposedTransactionKindDividendIncome = "dividend_income"
 
 // proposedDividendTransaction is the contract a future provider-event
