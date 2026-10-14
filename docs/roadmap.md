@@ -136,9 +136,11 @@ validation and the native C-engine race-coverage boundary.
 **Delivered two-process SQLite validation (2026-10-14):**
 [#105](https://github.com/sergeyfarin/rekenraam/issues/105) exercises independent
 process work claims, scheduled backup identity and server/restore refusal.
-This retains one server per database. The separate restore/startup and lock-file
-handoff defects are tracked in [#227](https://github.com/sergeyfarin/rekenraam/issues/227);
-see the [validation review](reviews/two-process-sqlite-guards-2026-10-14.md).
+This retains one server per database. [#227](https://github.com/sergeyfarin/rekenraam/issues/227)
+also closes the restore/startup and lock-file handoff gaps: restore retains its
+lock throughout replacement, and lock files persist between owners. See the
+[#105 validation review](reviews/two-process-sqlite-guards-2026-10-14.md) and
+[#227 review](reviews/restore-process-lock-2026-10-14.md).
 
 **Delivered zero-delta split gate (2026-10-13):**
 [#146](https://github.com/sergeyfarin/rekenraam/issues/146) records sourced splits

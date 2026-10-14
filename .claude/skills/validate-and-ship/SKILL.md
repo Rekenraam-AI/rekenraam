@@ -434,8 +434,11 @@ non-trivial diff (yours or reviewed):
     restore from concurrent startup (#227). A destructive file replacement
     needs ownership throughout the operation, and lock handoffs must preserve
     one lock-file inode: unlinking after unlock can split contenders across
-    different files. #105's subprocess tests cover refusal for an already
-    running server; they do not prove the restore/startup interval is safe.
+    different files. #227 retains ownership and keeps the file in place.
+    `TestTwoProcessRestoreOwnsLockThroughoutReplacement` pauses before/after
+    replacement and refuses startup and another restore;
+    `TestTwoProcessLockHandoffsKeepOneFileIdentity` stages pre-opened contenders;
+    `TestRestoreCommandReleasesLockOnFailure` preserves error-path recovery.
 
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"rekenraam/backend/internal/config"
 	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/lockfile"
 	"rekenraam/backend/internal/secretbox"
@@ -93,8 +95,8 @@ func TestRestoreCommandRefusesWhileTheServerIsRunning(t *testing.T) {
 	exitCode := run(context.Background(), []string{"restore", "--from", backupPath}, strings.NewReader(""), stdout, stderr)
 
 	assert.Equal(t, 1, exitCode)
-	assert.Contains(t, stderr.String(), "the server is still running")
-	assert.Contains(t, stderr.String(), "Stop it before restoring")
+	assert.Contains(t, stderr.String(), "the database is in use")
+	assert.Contains(t, stderr.String(), "Stop the server or wait for the other restore to finish")
 }
 
 // With the server stopped, the restore installs the backup, keeps the previous
@@ -298,4 +300,81 @@ func TestRestoreCommandSaysNothingWasReplacedWhenItRefusesEarly(t *testing.T) {
 
 	require.Equal(t, 1, exitCode)
 	assert.Contains(t, stderr.String(), "nothing was replaced; the database is untouched.")
+}
+
+func TestRestoreCommandReleasesLockOnFailure(t *testing.T) {
+	for _, name := range []string{"unusable_backup", "source_equals_destination", "newer_schema", "cancelled", "after_preserving", "after_installing"} {
+		t.Run(name, func(t *testing.T) {
+			databaseURL, backupPath := backupOf(t)
+			path, err := db.ResolveSQLiteFilePath(databaseURL)
+			require.NoError(t, err)
+			before, err := os.ReadFile(path)
+			require.NoError(t, err)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			switch name {
+			case "unusable_backup":
+				backupPath = filepath.Join(t.TempDir(), "missing.sqlite")
+			case "source_equals_destination":
+				backupPath = path
+			case "newer_schema":
+				backup, err := db.Open(ctx, "file:"+backupPath)
+				require.NoError(t, err)
+				_, err = backup.ExecContext(ctx, `UPDATE goose_db_version SET version_id = 9999 WHERE version_id = (SELECT MAX(version_id) FROM goose_db_version)`)
+				require.NoError(t, err)
+				require.NoError(t, backup.Close())
+			case "cancelled":
+				cancel()
+			case "after_preserving":
+				require.NoError(t, os.Mkdir(path+".restoring", 0o700))
+			}
+			var stdout, stderr bytes.Buffer
+			code := runRestoreWith(ctx, config.Config{DatabaseURL: databaseURL}, []string{"--from", backupPath}, &stdout, &stderr,
+				func(ctx context.Context, source, destination string) (db.RestoreResult, error) {
+					unexpected, err := lockfile.Acquire(path)
+					var locked lockfile.ErrLocked
+					assert.ErrorAs(t, err, &locked, "restore must own the lock even on its failure path")
+					if unexpected != nil {
+						defer unexpected.Close()
+					}
+					result, err := db.RestoreSQLiteDatabase(ctx, source, destination)
+					if name == "after_installing" {
+						require.NoError(t, err)
+						require.True(t, result.Installed)
+						return result, errors.New("injected post-install failure")
+					}
+					return result, err
+				})
+			require.Equalf(t, 1, code, "stderr: %s", stderr.String())
+			assert.Empty(t, stdout.String())
+			require.NoError(t, lockfile.CheckAvailable(path), "every error path must release the lock")
+			info, err := os.Stat(lockfile.Path(path))
+			require.NoError(t, err)
+			assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+			preserved, err := filepath.Glob(path + ".before-restore-*")
+			require.NoError(t, err)
+			switch name {
+			case "after_preserving", "after_installing":
+				require.Len(t, preserved, 1)
+				inspection, err := db.InspectBackup(context.Background(), filepath.Join(preserved[0], filepath.Base(path)))
+				require.NoError(t, err)
+				assert.True(t, inspection.IntegrityOK, "the prior database remains usable")
+				if name == "after_preserving" {
+					assert.NoFileExists(t, path)
+					assert.Contains(t, stderr.String(), "nothing is at "+path)
+					assert.Contains(t, stderr.String(), "move those files beside the database path")
+				} else {
+					assert.FileExists(t, path)
+					assert.Contains(t, stderr.String(), "the restored database is already installed")
+					assert.NotContains(t, stderr.String(), "move those files beside the database path")
+				}
+			default:
+				assert.Empty(t, preserved)
+				after, err := os.ReadFile(path)
+				require.NoError(t, err)
+				assert.True(t, bytes.Equal(before, after), "early refusal leaves the database intact")
+				assert.Contains(t, stderr.String(), "nothing was replaced; the database is untouched")
+			}
+		})
+	}
 }

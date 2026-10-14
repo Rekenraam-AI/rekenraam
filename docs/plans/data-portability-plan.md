@@ -722,7 +722,12 @@ mode is a *set* of files, and every step below treats it as one.
      advisory `flock` on a lock file held by `serve` for the life of the
      process, with the PID recorded in it. An idle SQLite connection or an
      absent `-wal` is not proof of anything; only a lock a live process holds
-     is.
+     is. Restore acquires that same lock and retains it through verification,
+     preservation and installation, releasing it on every success or failure
+     (#227). A second restore or server startup refuses while it is held.
+     The lock file remains in place between owners to preserve one inode for
+     contenders that opened it before a handoff. A saved PID or file's existence
+     alone is not evidence that the database is in use.
   2. Rejects `source == destination` (resolved through symlinks) before
      touching anything.
   3. Rejects a backup whose migration version is newer than the binary.

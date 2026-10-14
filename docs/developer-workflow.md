@@ -69,14 +69,18 @@ The Unix subprocess guard regressions (#105) run in the ordinary backend gate.
 For a focused repeat:
 
 ```sh
-./scripts/go-backend.sh test -race ./cmd/rekenraam -run '^TestTwoProcess' -count=3 -timeout=2m
+./scripts/go-backend.sh test -race ./cmd/rekenraam -run '^TestTwoProcess' -count=3 -timeout=3m
 ```
 
 They re-execute the same test binary with independent SQLite pools and pipe
-barriers, retaining the selected native driver and Go race instrumentation. Local TCP sockets are
-required for the real server/restore cases. These tests do not enable multiple
-servers on one database; see the [review](reviews/two-process-sqlite-guards-2026-10-14.md)
-for coverage and the remaining restore-lock defect (#227).
+barriers, retaining the selected native driver and Go race instrumentation.
+Local TCP sockets are required for the real server/restore cases. #227 adds
+paused-restore lifetime checks and repeated lock-file handoffs; their additional
+child processes have a three-minute bound for this focused three-repeat command.
+The full backend gate retains its five-minute per-package deadline. These tests
+do not enable multiple servers on one database; see the
+[#105 review](reviews/two-process-sqlite-guards-2026-10-14.md) and
+[#227 review](reviews/restore-process-lock-2026-10-14.md).
 
 Checks formatting (`gofmt -l`), runs `go vet ./...`, then the full Go suite with
 the race detector. The formatting and vet gates live inside the wrapper script

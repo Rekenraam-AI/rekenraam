@@ -1,5 +1,5 @@
-// Package lockfile holds the advisory lock that says a server process is using
-// a database.
+// Package lockfile holds the advisory lock that says a server or restore process
+// is using a database.
 //
 // Restore needs to know that the app is stopped, and the ways of guessing are
 // all wrong: an idle SQLite connection proves nothing, an absent -wal file
@@ -21,7 +21,6 @@ import (
 // process exiting, which is the property that makes it trustworthy.
 type Lock struct {
 	file *os.File
-	path string
 }
 
 // ErrLocked means another live process holds the lock.
@@ -42,8 +41,9 @@ func Path(databasePath string) string {
 	return databasePath + ".lock"
 }
 
-// Acquire takes the lock for the life of this process, recording the PID inside
-// it so a human can see who holds it.
+// Acquire takes the lock until Close or process exit, recording the PID inside
+// it so a human can see who holds it. The lock file persists between owners;
+// its existence or saved PID alone does not establish ownership.
 func Acquire(databasePath string) (*Lock, error) {
 	path := Path(databasePath)
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -69,19 +69,18 @@ func Acquire(databasePath string) (*Lock, error) {
 		_ = file.Sync()
 	}
 
-	return &Lock{file: file, path: path}, nil
+	return &Lock{file: file}, nil
 }
 
-// Close releases the lock and removes the file. A failure to remove it is not
-// an error worth propagating: the lock is already released, and a stale empty
-// file locks nobody out.
+// Close releases the lock and keeps the file. A contender may have opened it
+// before this release; unlinking it would let a later contender lock a different
+// inode at the same path while the first still owns the original one.
 func (l *Lock) Close() error {
 	if l == nil || l.file == nil {
 		return nil
 	}
 	err := unlock(l.file)
 	closeErr := l.file.Close()
-	_ = os.Remove(l.path)
 	l.file = nil
 	if err != nil {
 		return err
@@ -89,9 +88,9 @@ func (l *Lock) Close() error {
 	return closeErr
 }
 
-// CheckAvailable reports whether the lock is free — that is, whether the server
-// is stopped. It takes the lock briefly and releases it, which is the only
-// honest way to ask.
+// CheckAvailable reports whether the lock is free at this instant. It takes the
+// lock briefly and releases it. Operations such as restore must instead Acquire
+// and retain ownership throughout their work to exclude concurrent startup.
 //
 // On a platform without advisory locking it returns ErrUnsupported so a caller
 // can refuse rather than assume, because assuming here means restoring over a

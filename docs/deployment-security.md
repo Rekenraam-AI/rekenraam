@@ -229,6 +229,12 @@ preserves the previous database as a complete file set under
 self-contained, and installs the new file atomically with an fsync before
 reporting success. The preserved copy is never deleted by the tool.
 
+Restore holds the same `<database>.lock` throughout verification and replacement,
+so another restore or server startup refuses until it finishes. The lock file
+remains after shutdown or restore; a leftover file or PID does not mean a
+process is running. The OS lock establishes ownership. Leave that file in
+place: removing it can let processes lock different files at the same path.
+
 Restoring onto a host without the original `REKENRAAM_SECRET_KEY` succeeds and
 leaves an intact ledger — and unreadable two-factor enrolment and unusable
 connection credentials. `verify-backup` says so before you commit to it.

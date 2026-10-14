@@ -33,7 +33,9 @@ no `backup` subcommand to reach for instead.
    enrolment and connection credentials.
 3. Stop the running Rekenraam process or container. Everything below, and the
    rollback path, needs it stopped: `restore` refuses while the server holds
-   its lock.
+   its lock. Restore holds that same lock throughout replacement, so startup
+   and another restore refuse until it completes. Leave `<database>.lock` in
+   place between operations; its saved PID or existence is not a live lock.
 4. Keep the existing binary or image tag available for rollback.
 5. Record the release currently running and read the target release notes. Each
    release note must state the highest included migration.

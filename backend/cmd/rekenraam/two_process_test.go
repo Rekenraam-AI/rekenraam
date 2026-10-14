@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"syscall"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 
 	"rekenraam/backend/internal/config"
 	"rekenraam/backend/internal/db"
+	"rekenraam/backend/internal/lockfile"
 	"rekenraam/backend/internal/testdb"
 )
 
@@ -81,6 +83,20 @@ func TestTwoProcessHelper(t *testing.T) {
 	}
 	var work *db.BackgroundWorkRepository
 	var backups *db.BackupRepository
+	var preopened *os.File
+	var held *lockfile.Lock
+	defer func() {
+		if held != nil {
+			require.NoError(t, held.Close())
+		}
+	}()
+	if cfg.Mode == "preopened_lock" {
+		path, err := db.ResolveSQLiteFilePath(cfg.DatabaseURL)
+		require.NoError(t, err)
+		preopened, err = os.OpenFile(lockfile.Path(path), os.O_RDWR, 0o600)
+		require.NoError(t, err)
+		defer preopened.Close()
+	}
 	if cfg.Mode == "database" {
 		database, err := db.Open(ctx, cfg.DatabaseURL)
 		require.NoError(t, err)
@@ -121,12 +137,60 @@ func TestTwoProcessHelper(t *testing.T) {
 				require.NoError(t, err)
 				result.RunID, result.ItemID = run.ID, item.ID
 			}
-		case "restore", "serve":
+		case "lock_preopened", "unlock_preopened":
+			// Model Acquire paused after OpenFile, before its flock. The OS
+			// lock must still share an inode with later production Acquires.
+			operation := syscall.LOCK_EX | syscall.LOCK_NB
+			if request.Operation == "unlock_preopened" {
+				operation = syscall.LOCK_UN
+			}
+			require.NoError(t, syscall.Flock(int(preopened.Fd()), operation))
+		case "acquire_lock":
+			path, err := db.ResolveSQLiteFilePath(cfg.DatabaseURL)
+			require.NoError(t, err)
+			held, err = lockfile.Acquire(path)
+			var locked lockfile.ErrLocked
+			if errors.As(err, &locked) {
+				result.Status = "locked"
+			} else {
+				require.NoError(t, err)
+			}
+		case "release_lock":
+			require.NoError(t, held.Close())
+			held = nil
+		case "restore_paused_before", "restore_paused_after":
+			var stdout, stderr bytes.Buffer
+			pause := func() {
+				require.NoError(t, out.Encode(processResult{PID: os.Getpid(), Status: "paused"}))
+				var resume processRequest
+				require.NoError(t, in.Decode(&resume))
+				require.Equal(t, "resume", resume.Operation)
+			}
+			result.ExitCode = runRestoreWith(ctx, appCfg, []string{"--from", cfg.BackupPath}, &stdout, &stderr,
+				func(ctx context.Context, backupPath, databaseURL string) (db.RestoreResult, error) {
+					if request.Operation == "restore_paused_before" {
+						pause()
+					}
+					restored, err := db.RestoreSQLiteDatabase(ctx, backupPath, databaseURL)
+					require.NoError(t, err)
+					if request.Operation == "restore_paused_after" {
+						pause()
+					}
+					return restored, err
+				})
+			result.Stdout, result.Stderr = stdout.String(), stderr.String()
+		case "restore", "serve", "serve_once":
 			var stdout, stderr bytes.Buffer
 			if request.Operation == "restore" {
 				result.ExitCode = runRestore(ctx, appCfg, []string{"--from", cfg.BackupPath}, &stdout, &stderr)
 			} else {
-				result.ExitCode = runServe(ctx, appCfg, slog.New(slog.NewTextHandler(&stderr, nil)))
+				serveCtx := ctx
+				cancelServe := func() {}
+				if request.Operation == "serve_once" {
+					serveCtx, cancelServe = context.WithTimeout(ctx, time.Second)
+				}
+				result.ExitCode = runServe(serveCtx, appCfg, slog.New(slog.NewTextHandler(&stderr, nil)))
+				cancelServe()
 			}
 			result.Stdout, result.Stderr = stdout.String(), stderr.String()
 		default:
@@ -137,6 +201,85 @@ func TestTwoProcessHelper(t *testing.T) {
 	if commandDone != nil {
 		cancel()
 		require.Zero(t, <-commandDone, "server shutdown")
+	}
+}
+
+func processExchange(t *testing.T, p *testProcess, operation string) processResult {
+	t.Helper()
+	require.NoError(t, p.send.Encode(processRequest{Operation: operation}))
+	var result processResult
+	require.NoError(t, p.receive.Decode(&result))
+	require.Equal(t, p.pid, result.PID)
+	return result
+}
+
+func TestTwoProcessRestoreOwnsLockThroughoutReplacement(t *testing.T) {
+	for _, phase := range []string{"before", "after"} {
+		t.Run(phase, func(t *testing.T) {
+			databaseURL, backupPath := backupOf(t)
+			path, err := db.ResolveSQLiteFilePath(databaseURL)
+			require.NoError(t, err)
+			cfg := processConfig{Mode: "command", DatabaseURL: databaseURL, HTTPAddr: "127.0.0.1:0", BackupPath: backupPath}
+			restorer := startTestProcess(t, cfg)
+			contender := startTestProcess(t, cfg)
+			require.Equal(t, "paused", processExchange(t, restorer, "restore_paused_"+phase).Status)
+			before, err := os.ReadFile(path)
+			require.NoError(t, err)
+			preservedBefore, err := filepath.Glob(path + ".before-restore-*")
+			require.NoError(t, err)
+			for _, operation := range []string{"serve_once", "restore"} {
+				result := processExchange(t, contender, operation)
+				assert.Equal(t, 1, result.ExitCode, operation+" must refuse during restore")
+				assert.Contains(t, result.Stderr, "locked by process "+strconv.Itoa(restorer.pid))
+			}
+			after, err := os.ReadFile(path)
+			require.NoError(t, err)
+			assert.True(t, bytes.Equal(before, after), "refused contenders must leave the database intact")
+			preservedAfter, err := filepath.Glob(path + ".before-restore-*")
+			require.NoError(t, err)
+			assert.Equal(t, preservedBefore, preservedAfter, "a refused second restore must not preserve or replace files")
+			completed := processExchange(t, restorer, "resume")
+			require.Zerof(t, completed.ExitCode, "restore stderr: %s", completed.Stderr)
+			assert.Contains(t, completed.Stdout, "previous data:")
+			inspection, err := db.InspectBackup(context.Background(), path)
+			require.NoError(t, err)
+			assert.True(t, inspection.IntegrityOK)
+			assert.NoError(t, lockfile.CheckAvailable(path), "restore must release its lock")
+			started := processExchange(t, contender, "serve_once")
+			require.Zerof(t, started.ExitCode, "server stderr: %s", started.Stderr)
+			assert.Contains(t, started.Stderr, "server starting")
+		})
+	}
+}
+
+func TestTwoProcessLockHandoffsKeepOneFileIdentity(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "handoff.sqlite")
+	databaseURL := "file:" + path
+	for round := 0; round < 8; round++ {
+		t.Run(fmt.Sprintf("handoff_%02d", round), func(t *testing.T) {
+			first, err := lockfile.Acquire(path)
+			require.NoError(t, err)
+			defer first.Close()
+			identity, err := os.Stat(lockfile.Path(path))
+			require.NoError(t, err)
+			waiter := startTestProcess(t, processConfig{Mode: "preopened_lock", DatabaseURL: databaseURL})
+			contender := startTestProcess(t, processConfig{Mode: "command", DatabaseURL: databaseURL})
+			require.NoError(t, first.Close())
+			// The waiter opened the original inode before release, and takes
+			// its lock only afterwards: no timing window needs to be guessed.
+			require.Equal(t, "ok", processExchange(t, waiter, "lock_preopened").Status)
+			result := processExchange(t, contender, "acquire_lock")
+			assert.Equal(t, "locked", result.Status, "a second process must not acquire a replacement inode")
+			current, err := os.Stat(lockfile.Path(path))
+			require.NoError(t, err)
+			assert.True(t, os.SameFile(identity, current), "handoff must preserve the lock file")
+			if result.Status == "ok" {
+				processExchange(t, contender, "release_lock")
+			}
+			processExchange(t, waiter, "unlock_preopened")
+			require.Equal(t, "ok", processExchange(t, contender, "acquire_lock").Status)
+			processExchange(t, contender, "release_lock")
+		})
 	}
 }
 
@@ -363,7 +506,7 @@ func TestTwoProcessServerAndRestoreGuards(t *testing.T) {
 		assert.Equal(t, 1, result.ExitCode)
 		assert.Contains(t, result.Stderr, "locked by process "+strconv.Itoa(server.pid))
 		if operation == "restore" {
-			assert.Contains(t, result.Stderr, "Stop it before restoring")
+			assert.Contains(t, result.Stderr, "Stop the server or wait for the other restore to finish")
 			assert.Empty(t, result.Stdout)
 		}
 	}

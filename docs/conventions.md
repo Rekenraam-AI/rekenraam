@@ -598,6 +598,11 @@ has actual installations, its migration files are immutable.
 - The Docker production runtime image uses the official Debian 13 slim base: **`debian:trixie-slim`**. The app runs as a non-root numeric user.
 - SQLite data must live in persistent storage outside the container image or binary.
 - Backup and restore instructions are part of product documentation, not only operator folklore.
+- Database restore holds the server's process lock throughout backup verification,
+  preservation and replacement, and releases it on every outcome. Keep the
+  lock file in place across releases and handoffs; its existence or recorded PID
+  is diagnostic metadata, not proof of a current owner. Never unlink a live
+  deployment's lock file to bypass contention (#227).
 - Operator backups do not replace user-facing export features.
 - Live SQLite backups must use SQLite-aware flows: the online backup API as the preferred in-app approach, or `VACUUM INTO` when a compact operator-triggered copy is acceptable. Do not recommend raw live file copy as the normal backup path.
 

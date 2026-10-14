@@ -175,8 +175,9 @@ type RestoreResult struct {
 
 // RestoreSQLiteDatabase installs a verified backup over the live database.
 //
-// The caller must already have proved the server is stopped; this function
-// cannot, and will not pretend to. What it does guarantee: the previous
+// The caller must hold the database process lock until this function returns,
+// excluding server startup and other restores. This function does not acquire
+// that lock itself. What it does guarantee: the previous
 // database is preserved *whole* before anything is replaced, the new file is
 // durable before it is visible, and a failure part-way leaves the preserved
 // copy intact.

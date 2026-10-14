@@ -106,6 +106,13 @@ func reportSealedData(ctx context.Context, cfg config.Config, inspection db.Back
 }
 
 func runRestore(ctx context.Context, cfg config.Config, args []string, stdout io.Writer, stderr io.Writer) int {
+	return runRestoreWith(ctx, cfg, args, stdout, stderr, db.RestoreSQLiteDatabase)
+}
+
+// The restore dependency lets command tests pause at the replacement boundary
+// while a separate process attempts startup or another restore.
+func runRestoreWith(ctx context.Context, cfg config.Config, args []string, stdout io.Writer, stderr io.Writer,
+	restoreDatabase func(context.Context, string, string) (db.RestoreResult, error)) (exitCode int) {
 	flagSet := flag.NewFlagSet("restore", flag.ContinueOnError)
 	flagSet.SetOutput(stderr)
 
@@ -125,19 +132,26 @@ func runRestore(ctx context.Context, cfg config.Config, args []string, stdout io
 		return 2
 	}
 
-	// Proof, not inference: the lock a running server holds for its whole life.
-	// An idle connection or an absent -wal would prove nothing.
-	if err := lockfile.CheckAvailable(databasePath); err != nil {
+	// Own the server's lock throughout verification, preservation and install.
+	// An availability check alone leaves a race with startup or another restore.
+	held, err := lockfile.Acquire(databasePath)
+	if err != nil {
 		var locked lockfile.ErrLocked
 		if errors.As(err, &locked) {
-			fmt.Fprintf(stderr, "the server is still running (%v). Stop it before restoring.\n", locked)
+			fmt.Fprintf(stderr, "the database is in use (%v). Stop the server or wait for the other restore to finish.\n", locked)
 			return 1
 		}
 		fmt.Fprintf(stderr, "cannot confirm the server is stopped: %v\n", err)
 		return 1
 	}
+	defer func() {
+		if err := held.Close(); err != nil {
+			fmt.Fprintf(stderr, "release database restore lock: %v\n", err)
+			exitCode = 1
+		}
+	}()
 
-	result, err := db.RestoreSQLiteDatabase(ctx, backupPath, cfg.DatabaseURL)
+	result, err := restoreDatabase(ctx, backupPath, cfg.DatabaseURL)
 	if err != nil {
 		switch {
 		case errors.Is(err, db.ErrRestoreSourceIsDestination):
