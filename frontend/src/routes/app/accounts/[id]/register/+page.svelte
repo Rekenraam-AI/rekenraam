@@ -7,22 +7,29 @@
   import AccountRegister from '#lib/transactions/account-register.svelte';
   import TransactionWorkspace, { type TransactionWorkspaceCreate } from '#lib/transactions/transaction-workspace.svelte';
   import { accountEntryKind } from '#lib/transactions/entry-account.ts';
+  import { investmentInstrumentsQueryOptions } from '#lib/api/investments.ts';
+  import { holdingAccountPrefill } from '#lib/investments/investment-prefill.ts';
 
   const accountID = $derived(Number(page.params.id));
 
   const accountsQuery = createQuery(() => accountsQueryOptions(false, false));
   const account = $derived(accountsQuery.data?.accounts.find((a) => a.id === accountID));
   const accountName = $derived(account?.name ?? account?.code ?? String(accountID));
+  const instrumentsQuery = createQuery(() => ({
+    ...investmentInstrumentsQueryOptions(),
+    enabled: !!account && accountEntryKind(account) === 'investments'
+  }));
 
   // A new transaction starts in this account (#185). A holding account's
-  // activity is entered as investment commands instead (#186).
+  // activity is entered as investment commands instead, with the holding and
+  // its instrument pre-selected (#186).
   const create = $derived.by<TransactionWorkspaceCreate>(() => {
     if (!account) return { kind: 'none' };
     switch (accountEntryKind(account)) {
       case 'editor':
         return { kind: 'editor', defaults: { accountID: account.id } };
       case 'investments':
-        return { kind: 'link', href: '/app/investments', label: m.register_record_investment_activity() };
+        return { kind: 'investment', prefill: holdingAccountPrefill(account, instrumentsQuery.data?.instruments ?? []) };
       default:
         return { kind: 'none' };
     }

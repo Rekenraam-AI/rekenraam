@@ -65,20 +65,4 @@ test('a transaction entered in a category starts in that category', async ({ pag
   expect(listed.transactions.map((item) => item.description)).toContain(description);
 });
 
-test('a holding account points to investment entry instead of the generic editor', async ({ page }) => {
-  const { csrfToken, currencyID } = await readyForLedger(page);
-  const suffix = Date.now();
-  const instrument = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
-    commodity_code: `WS${suffix}`, instrument_type: 'stock', display_name: `Workspace Co ${suffix}`, symbol: `WS${suffix}`,
-    quote_commodity_id: currencyID, trading_commodity_id: currencyID, quantity_scale: 0, price_scale: 2, effective_from: todayISO()
-  });
-  const holding = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/holding-accounts', csrfToken, {
-    instrument_id: instrument.id, name: `Workspace holding ${suffix}`, opened_on: todayISO(), effective_from: todayISO()
-  });
-
-  await page.goto(`/app/accounts/${holding.id}/register`);
-  await expect(page.getByRole('heading', { name: `Workspace holding ${suffix}` })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'New transaction' })).toHaveCount(0);
-  await page.getByRole('link', { name: 'Record investment activity' }).click();
-  await expect(page).toHaveURL(/\/app\/investments$/);
-});
+// A holding account's own entry is covered by investment-entry-context.spec.ts (#186).

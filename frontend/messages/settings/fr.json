@@ -1573,5 +1573,14 @@
   "security_mfa_title": "Authentification à deux facteurs",
   "security_mfa_unconfigured": "L’authentification à deux facteurs nécessite REKENRAAM_SECRET_KEY sur le serveur pour chiffrer le secret partagé au repos. Configurez-la et redémarrez pour activer cette fonction.",
   "security_mfa_uri_label": "Lien de configuration",
-  "settings_nav_security": "Sécurité"
+  "settings_nav_security": "Sécurité",
+  "investments_instrument_view_back": "Retour aux investissements",
+  "investments_instrument_view_loading": "Chargement de l’instrument…",
+  "investments_instrument_view_not_found_title": "Instrument introuvable",
+  "investments_instrument_view_not_found_copy": "Cet instrument n’existe pas. Choisissez-en un sur l’écran Investissements.",
+  "investments_instrument_view_col_units": "Unités",
+  "investments_instrument_view_col_accounts": "Comptes-titres",
+  "investments_instrument_view_dividend_note": "Les dividendes en espèces ne déplacent aucune unité de l’instrument ; ils apparaissent dans le registre du compte espèces.",
+  "investments_instrument_view_open": "Voir l’activité",
+  "investments_instrument_view_open_aria": "Voir l’activité de {name}"
 }

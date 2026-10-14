@@ -43,21 +43,27 @@
   import { coefficientSign } from '#lib/money/amount.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
 
+  import { usePrefilledInstrument } from '#lib/investments/investment-prefill.svelte.ts';
+  import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
   const ownerToday = useOwnerToday();
 
   let {
     csrfToken,
     onSaved,
     onCancel,
-    correction
+    correction,
+    prefill
   }: {
     csrfToken: string;
     onSaved: () => void;
     onCancel: () => void;
     correction?: InvestmentTradeCorrectionContextResponse;
+    prefill?: InvestmentPrefill;
   } = $props();
 
   const initialCorrection = untrack(() => correction);
+  // A correction pre-fills from the recorded trade, never from the screen.
+  const initialPrefill = untrack(() => correction ? undefined : prefill);
   const correctionDraft = initialCorrection ? correctionTradeDraft(initialCorrection) : null;
 
   const locale = getLocale();
@@ -100,10 +106,11 @@
     instrumentDropdownOpen = false;
     clearPreview();
   }
+  usePrefilledInstrument(initialPrefill, selectInstrument);
 
   // Form fields
   let transactionDate = $state(initialCorrection?.event_date ?? ownerToday());
-  let holdingAccountID = $state(String(initialCorrection?.holding_account_id ?? ''));
+  let holdingAccountID = $state(String(initialCorrection?.holding_account_id ?? initialPrefill?.holdingAccountID ?? ''));
   let cashAccountID = $state(String(initialCorrection?.cash_account_id ?? ''));
   let quantityStr = $state(correctionDraft?.quantity ?? '');
   let cashAmountStr = $state(correctionDraft?.net ?? '');

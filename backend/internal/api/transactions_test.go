@@ -1337,6 +1337,17 @@ func TestCategoryIDFilter(t *testing.T) {
 	var errBody2 errorResponse
 	require.NoError(t, json.NewDecoder(res2.Body).Decode(&errBody2))
 	assert.Equal(t, "VALIDATION_FAILED", errBody2.Error.Code)
+
+	// commodity_id composes the same way (#186): both transactions post EUR.
+	commodityList := listTransactionsForSession(t, handler, sessionCookie, "?commodity_id="+strconvFormatInt(commodityID)+"&category_id="+strconvFormatInt(groceries.ID))
+	require.Len(t, commodityList.Transactions, 1)
+	assert.Equal(t, groceriesTx.ID, commodityList.Transactions[0].ID)
+
+	req3 := httptest.NewRequest(http.MethodGet, "/api/v1/transactions?commodity_id=-1", nil)
+	req3.AddCookie(sessionCookie)
+	res3 := httptest.NewRecorder()
+	handler.ServeHTTP(res3, req3)
+	require.Equal(t, http.StatusBadRequest, res3.Code)
 }
 
 func TestListDeletedTransactionsEndpoint(t *testing.T) {

@@ -16,6 +16,8 @@ export type DeletedTransactionsResponse = components['schemas']['DeletedTransact
 export type TransactionListOptions = {
   accountID?: number;
   categoryID?: number;
+  /** Restricts to transactions with a posting in this commodity (an instrument's activity). */
+  commodityID?: number;
   payeeID?: number;
   q?: string;
   status?: 'draft' | 'posted' | 'voided';
@@ -117,6 +119,7 @@ export async function getTransactions(options: TransactionListOptions = {}): Pro
         query: {
           account_id: options.accountID,
           category_id: options.categoryID,
+          commodity_id: options.commodityID,
           category_type: options.categoryType,
           date_basis: options.dateBasis,
           payee_id: options.payeeID,

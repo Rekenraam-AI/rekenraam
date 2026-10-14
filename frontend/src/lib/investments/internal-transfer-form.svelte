@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { parseISO } from 'date-fns';
@@ -22,14 +23,21 @@
   import { formatExactMoney, formatQuantity } from '#lib/money/format.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
+  import { usePrefilledPosition } from '#lib/investments/investment-prefill.svelte.ts';
+  import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
 
   const ownerToday = useOwnerToday();
 
-  let { csrfToken, onSaved, onCancel }: {
+  let { csrfToken, onSaved, onCancel, prefill }: {
     csrfToken: string;
     onSaved: () => void;
     onCancel: () => void;
+    prefill?: InvestmentPrefill;
   } = $props();
+
+  // Pre-select the position the screen names (#186).
+  usePrefilledPosition(untrack(() => prefill), () => positions,
+    (position) => `${position.account_id}:${position.commodity_id}:${position.cost_commodity_id}`, () => sourceKey, (key) => { sourceKey = key; });
 
   const queryClient = useQueryClient();
   const accountsQuery = createQuery(() => accountsQueryOptions(false, false));

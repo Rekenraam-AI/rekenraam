@@ -21,12 +21,16 @@
   import { getLocale } from '#lib/paraglide/runtime.js';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
   import { m } from '#lib/paraglide/messages.js';
+  import { untrack } from 'svelte';
+  import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
 
-  let { csrfToken, onSaved, onCancel }: {
+  let { csrfToken, onSaved, onCancel, prefill }: {
     csrfToken: string;
     onSaved: () => void;
     onCancel: () => void;
+    prefill?: InvestmentPrefill;
   } = $props();
+  const initialPrefill = untrack(() => prefill);
 
   const queryClient = useQueryClient();
   const accountsQuery = createQuery(() => accountsQueryOptions(false, false));
@@ -34,8 +38,8 @@
   const currenciesQuery = createQuery(() => currenciesQueryOptions());
 
   let effectiveOn = $state('');
-  let instrumentID = $state('');
-  let holdingAccountID = $state('');
+  let instrumentID = $state(initialPrefill?.commodityID === undefined ? '' : String(initialPrefill.commodityID));
+  let holdingAccountID = $state(initialPrefill?.holdingAccountID === undefined ? '' : String(initialPrefill.holdingAccountID));
   let quantityStr = $state('');
   let carriedBasisStr = $state('');
   // Unknown basis is stated explicitly; an empty amount is never unknown.

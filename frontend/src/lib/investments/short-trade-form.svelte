@@ -47,6 +47,8 @@
   import { formatScaledValue, costBasisMethodLabel } from '#lib/investments/investment-labels.ts';
   import { coefficientSign, negateCoefficient } from '#lib/money/amount.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
+  import { usePrefilledInstrument } from '#lib/investments/investment-prefill.svelte.ts';
+  import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
 
   const ownerToday = useOwnerToday();
 
@@ -55,7 +57,8 @@
     csrfToken,
     onSaved,
     onCancel,
-    correction
+    correction,
+    prefill
   }: {
     mode: 'open' | 'cover';
     csrfToken: string;
@@ -64,9 +67,12 @@
     // A native correction (#175) pre-fills the recorded short sale or cover
     // and replaces it; the position replays behind it.
     correction?: InvestmentTradeCorrectionContextResponse;
+    prefill?: InvestmentPrefill;
   } = $props();
 
   const initialCorrection = untrack(() => correction);
+  // A correction pre-fills from the recorded trade, never from the screen.
+  const initialPrefill = untrack(() => correction ? undefined : prefill);
   const correctionDraft = initialCorrection ? correctionTradeDraft(initialCorrection) : null;
 
   const cover = $derived(mode === 'cover');
@@ -108,12 +114,13 @@
     instrumentSearch = inst.display_name;
     instrumentDropdownOpen = false;
   }
+  usePrefilledInstrument(initialPrefill, selectInstrument);
 
   // The recorded instrument stays selected until the user picks another.
   const commodityID = $derived(selectedInstrument?.commodity_id ??
     (initialCorrection && instrumentSearch === initialCorrection.commodity_code ? initialCorrection.commodity_id : undefined));
   let transactionDate = $state(initialCorrection?.event_date ?? ownerToday());
-  let holdingAccountID = $state(String(initialCorrection?.holding_account_id ?? ''));
+  let holdingAccountID = $state(String(initialCorrection?.holding_account_id ?? initialPrefill?.holdingAccountID ?? ''));
   let cashAccountID = $state(String(initialCorrection?.cash_account_id ?? ''));
   let quantityStr = $state(correctionDraft?.quantity ?? '');
   let cashAmountStr = $state(correctionDraft?.net ?? '');

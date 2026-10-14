@@ -22,6 +22,8 @@
   import { formatExactMoney, formatQuantity } from '#lib/money/format.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
+  import { usePrefilledPosition } from '#lib/investments/investment-prefill.svelte.ts';
+  import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
 
   const ownerToday = useOwnerToday();
 
@@ -29,12 +31,17 @@
   // per-share basis reduction on every lot open on the effective date. The
   // reduction and any unresolved excess are the server's outputs, previewed
   // before recording.
-  let { csrfToken, onSaved, onCancel, correction }: {
+  let { csrfToken, onSaved, onCancel, correction, prefill }: {
     correction?: { transactionID: number; terms: CapitalReturnRequest };
     csrfToken: string;
     onSaved: () => void;
     onCancel: () => void;
+    prefill?: InvestmentPrefill;
   } = $props();
+
+  // Pre-select the position the screen names (#186).
+  usePrefilledPosition(untrack(() => correction ? undefined : prefill), () => positions,
+    (position) => `${position.account_id}:${position.commodity_id}:${position.cost_commodity_id}`, () => positionKey, (key) => { positionKey = key; });
 
   const queryClient = useQueryClient();
   const accountsQuery = createQuery(() => accountsQueryOptions(false, false));

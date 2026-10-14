@@ -134,6 +134,10 @@ func readTransactionListInput(w http.ResponseWriter, r *http.Request) (app.ListT
 	if !ok {
 		return app.ListTransactionsInput{}, false
 	}
+	commodityID, ok := parseOptionalPositiveInt64(w, query.Get("commodity_id"), "commodity id")
+	if !ok {
+		return app.ListTransactionsInput{}, false
+	}
 	payeeID, ok := parseOptionalPositiveInt64(w, query.Get("payee_id"), "payee id")
 	if !ok {
 		return app.ListTransactionsInput{}, false
@@ -151,6 +155,7 @@ func readTransactionListInput(w http.ResponseWriter, r *http.Request) (app.ListT
 	return app.ListTransactionsInput{
 		AccountID:    accountID,
 		CategoryID:   categoryID,
+		CommodityID:  commodityID,
 		PayeeID:      payeeID,
 		Status:       query.Get("status"),
 		Kind:         query.Get("kind"),

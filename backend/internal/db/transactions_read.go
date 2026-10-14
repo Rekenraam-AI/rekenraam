@@ -60,6 +60,15 @@ func (r *TransactionRepository) ListTransactions(ctx context.Context, params Lis
 		)`)
 		args = append(args, params.AccountID)
 	}
+	if params.CommodityID > 0 {
+		where = append(where, `EXISTS (
+			SELECT 1
+			FROM posting_versions commodity_pv
+			WHERE commodity_pv.transaction_version_id = tv.id
+				AND commodity_pv.commodity_id = ?
+		)`)
+		args = append(args, params.CommodityID)
+	}
 	if params.NeedsReview {
 		where = append(where, "tv.needs_review = 1")
 	}

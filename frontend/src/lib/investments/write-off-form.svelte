@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { parseISO } from 'date-fns';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { accountsQueryOptions } from '#lib/api/accounts.ts';
@@ -24,10 +24,16 @@
   import { TranslatedFormError } from '#lib/form-errors.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
+  import { usePrefilledPosition } from '#lib/investments/investment-prefill.svelte.ts';
+  import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
 
-  let { csrfToken, onSaved, onCancel }: {
-    csrfToken: string; onSaved: () => void; onCancel: () => void;
+  let { csrfToken, onSaved, onCancel, prefill }: {
+    csrfToken: string; onSaved: () => void; onCancel: () => void; prefill?: InvestmentPrefill;
   } = $props();
+
+  // Pre-select the position the screen names (#186).
+  usePrefilledPosition(untrack(() => prefill), () => holdings,
+    (position) => `${position.account_id}:${position.commodity_id}:${position.cost_commodity_id}`, () => holdingKey, (key) => { holdingKey = key; });
 
   const queryClient = useQueryClient();
   const accountsQuery = createQuery(() => accountsQueryOptions(false, false));

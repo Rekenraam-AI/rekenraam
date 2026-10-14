@@ -13,6 +13,12 @@ get:
         type: integer
         format: int64
     - in: query
+      name: commodity_id
+      description: Filter to transactions with a posting in this commodity, such as an instrument's investment activity.
+      schema:
+        type: integer
+        format: int64
+    - in: query
       name: payee_id
       schema:
         type: integer

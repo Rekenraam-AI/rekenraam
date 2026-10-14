@@ -1573,5 +1573,14 @@
   "investments_write_off_lots_help": "Allocate the full write-off quantity across lots available on the chosen date.",
   "investments_write_off_lot_mismatch": "Selected lot quantities must equal the write-off quantity.",
   "investments_write_off_exceeds": "The quantity exceeds the holding or lot available on the chosen date.",
-  "currencies_provider_assignment_label": "Exchange rate provider for {base}/{quote}"
+  "currencies_provider_assignment_label": "Exchange rate provider for {base}/{quote}",
+  "investments_instrument_view_back": "Back to investments",
+  "investments_instrument_view_loading": "Loading instrument…",
+  "investments_instrument_view_not_found_title": "Instrument not found",
+  "investments_instrument_view_not_found_copy": "This instrument does not exist. Choose one from the Investments screen.",
+  "investments_instrument_view_col_units": "Units",
+  "investments_instrument_view_col_accounts": "Holdings",
+  "investments_instrument_view_dividend_note": "Cash dividends move no units of the instrument, so they appear on the cash account’s register instead.",
+  "investments_instrument_view_open": "View activity",
+  "investments_instrument_view_open_aria": "View activity for {name}"
 }

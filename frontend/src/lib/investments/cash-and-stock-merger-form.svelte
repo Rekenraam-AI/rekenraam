@@ -24,6 +24,8 @@
   import { coefficientSign, formatEditableAmount } from '#lib/money/amount.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
+  import { usePrefilledPosition } from '#lib/investments/investment-prefill.svelte.ts';
+  import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
 
   const ownerToday = useOwnerToday();
 
@@ -36,12 +38,18 @@
   // which the shared gain review discloses. With correction set, the form
   // replaces that posted merger: the merged holding is fixed, the current
   // terms are pre-filled and a reason is required.
-  let { csrfToken, onSaved, onCancel, correction }: {
+  let { csrfToken, onSaved, onCancel, correction, prefill }: {
     csrfToken: string;
     onSaved: () => void;
     onCancel: () => void;
+    prefill?: InvestmentPrefill;
     correction?: { transactionID: number; terms: InvestmentCorrectionCashStockMergerTerms };
   } = $props();
+
+  // Pre-select the holding the screen names (#186); a correction keeps its own.
+  usePrefilledPosition(untrack(() => correction ? undefined : prefill),
+    () => holdings.map((holding) => ({ account_id: holding.accountID, commodity_id: holding.commodityID, key: holding.key })),
+    (holding) => holding.key, () => holdingKey, (key) => { holdingKey = key; });
 
   const queryClient = useQueryClient();
   const accountsQuery = createQuery(() => accountsQueryOptions(false, false));

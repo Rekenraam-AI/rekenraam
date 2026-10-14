@@ -114,11 +114,14 @@ below is execution order, not a chain of hard dependencies.
    [#118](https://github.com/sergeyfarin/rekenraam/issues/118), following the
    delivered [R17 quote/crypto contract](plans/quote-providers-crypto-plan.md)
    [#117](https://github.com/sergeyfarin/rekenraam/issues/117) (2026-10-14).
-2. Daily-use parallel work: investment entry from holding accounts and
-   instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186).
-   The shared transaction workspace [#185](https://github.com/sergeyfarin/rekenraam/issues/185)
-   is delivered (2026-10-14): contextual entry, same-day reorder and row actions
-   on the journal, account and category screens. Approval preserves the journal
+2. Daily-use parallel work. The shared transaction workspace
+   [#185](https://github.com/sergeyfarin/rekenraam/issues/185) is delivered
+   (2026-10-14): contextual entry, same-day reorder and row actions on the
+   journal, account and category screens. Investment entry from holding
+   accounts and instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186)
+   is delivered (2026-10-14) with a per-instrument activity view; cash
+   dividends are not yet linked to their instrument
+   ([#229](https://github.com/sergeyfarin/rekenraam/issues/229)). Approval preserves the journal
    (#219); guarded void/unvoid/delete/restore preview their own impact (#220,
    2026-10-14; trash restore too, #225), register rows are per posting line
    (#221), the register status filter is explicit Posted/Voided (#223) and

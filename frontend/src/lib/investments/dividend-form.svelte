@@ -1,5 +1,6 @@
 <script lang="ts">
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
+  import { untrack } from 'svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { m } from '#lib/paraglide/messages.js';
@@ -34,19 +35,25 @@
   } from '#lib/investments/gain-impact.ts';
   import type { GainImpact } from '#lib/api/investments.ts';
 
+  import { usePrefilledInstrument } from '#lib/investments/investment-prefill.svelte.ts';
+  import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
+
   const ownerToday = useOwnerToday();
 
   let {
     mode = 'cash',
     csrfToken,
     onSaved,
-    onCancel
+    onCancel,
+    prefill
   }: {
     mode?: 'cash' | 'reinvested';
     csrfToken: string;
     onSaved: () => void;
     onCancel: () => void;
+    prefill?: InvestmentPrefill;
   } = $props();
+  const initialPrefill = untrack(() => prefill);
 
   const queryClient = useQueryClient();
   const accountsQuery = createQuery(() => accountsQueryOptions(false, false));
@@ -88,6 +95,7 @@
     instrumentDropdownOpen = false;
     applyDefaultsForInstrument(inst);
   }
+  usePrefilledInstrument(initialPrefill, selectInstrument);
 
   // Form fields
   let transactionDate = $state(ownerToday());
@@ -99,7 +107,7 @@
   let withholdingStr = $state('');
   let showWithholding = $state(false);
   // reinvested only
-  let holdingAccountID = $state('');
+  let holdingAccountID = $state(initialPrefill?.holdingAccountID === undefined ? '' : String(initialPrefill.holdingAccountID));
   let quantityStr = $state('');
   let memo = $state('');
   let pending = $state(false);

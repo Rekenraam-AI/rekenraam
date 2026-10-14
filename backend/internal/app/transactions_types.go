@@ -134,8 +134,11 @@ type AccountRegisterEntry struct {
 }
 
 type ListTransactionsInput struct {
-	AccountID   int64
-	CategoryID  int64
+	AccountID  int64
+	CategoryID int64
+	// CommodityID restricts to transactions with a posting in that commodity,
+	// such as an instrument's investment activity (#186).
+	CommodityID int64
 	PayeeID     int64
 	Status      string
 	Kind        string

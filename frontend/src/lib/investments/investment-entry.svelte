@@ -1,0 +1,161 @@
+<script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query';
+  import Plus from '@lucide/svelte/icons/plus';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
+  import { authSessionQueryOptions } from '#lib/api/auth.ts';
+  import BuyForm from '#lib/investments/buy-form.svelte';
+  import SellForm from '#lib/investments/sell-form.svelte';
+  import WriteOffForm from '#lib/investments/write-off-form.svelte';
+  import DividendForm from '#lib/investments/dividend-form.svelte';
+  import ExternalTransferInForm from '#lib/investments/external-transfer-in-form.svelte';
+  import InternalTransferForm from '#lib/investments/internal-transfer-form.svelte';
+  import ExternalTransferOutForm from '#lib/investments/external-transfer-out-form.svelte';
+  import CapitalReturnForm from '#lib/investments/capital-return-form.svelte';
+  import SplitForm from '#lib/investments/split-form.svelte';
+  import ShareExchangeForm from '#lib/investments/share-exchange-form.svelte';
+  import SpinOffForm from '#lib/investments/spin-off-form.svelte';
+  import CashAndStockMergerForm from '#lib/investments/cash-and-stock-merger-form.svelte';
+  import ShortTradeForm from '#lib/investments/short-trade-form.svelte';
+  import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
+  import { m } from '#lib/paraglide/messages.js';
+
+  // Investment entry (#186): the record buttons and their forms, shared by
+  // the Investments screen, a holding account's register and an instrument's
+  // view. The screen passes what it already knows as `prefill`; every form
+  // takes that one shape. `menu` folds the buttons behind one toggle for a
+  // toolbar; `buttons` shows them all.
+  let {
+    prefill,
+    layout = 'buttons'
+  }: {
+    prefill?: InvestmentPrefill;
+    layout?: 'buttons' | 'menu';
+  } = $props();
+
+  const sessionQuery = createQuery(() => authSessionQueryOptions());
+  const csrfToken = $derived(sessionQuery.data?.csrf_token ?? '');
+
+  type Activity = 'write-off' | 'buy' | 'sell' | 'short-open' | 'short-cover' | 'dividend' | 'reinvested' |
+    'external-transfer-in' | 'external-transfer-out' | 'internal-transfer' | 'split' | 'share-exchange' |
+    'cash-and-stock-merger' | 'spin-off' | 'capital-return';
+
+  const activities: { id: Activity; label: () => string; titleID?: string }[] = [
+    { id: 'buy', label: m.investments_record_buy },
+    { id: 'sell', label: m.investments_record_sell },
+    { id: 'write-off', label: m.investments_record_write_off },
+    { id: 'short-open', label: m.investments_record_short_sale, titleID: 'short-open-title' },
+    { id: 'short-cover', label: m.investments_record_short_cover, titleID: 'short-cover-title' },
+    { id: 'dividend', label: m.investments_record_dividend },
+    { id: 'reinvested', label: m.investments_record_reinvested },
+    { id: 'external-transfer-in', label: m.investments_record_external_transfer_in, titleID: 'external-transfer-in-title' },
+    { id: 'internal-transfer', label: m.investments_record_internal_transfer, titleID: 'internal-transfer-title' },
+    { id: 'external-transfer-out', label: m.investments_record_external_transfer_out, titleID: 'external-transfer-out-title' },
+    { id: 'split', label: m.investments_record_split, titleID: 'split-title' },
+    { id: 'share-exchange', label: m.investments_record_share_exchange, titleID: 'share-exchange-title' },
+    { id: 'cash-and-stock-merger', label: m.investments_record_merger, titleID: 'merger-title' },
+    { id: 'spin-off', label: m.investments_record_spin_off, titleID: 'spin-off-title' },
+    { id: 'capital-return', label: m.investments_record_capital_return, titleID: 'capital-return-title' }
+  ];
+
+  let active = $state<Activity | null>(null);
+  let menuOpen = $state(false);
+  let writeOffSaved = $state(false);
+  const titleID = $derived(activities.find((activity) => activity.id === active)?.titleID);
+
+  function open(activity: Activity) {
+    writeOffSaved = false;
+    menuOpen = false;
+    active = activity;
+  }
+
+  function close() {
+    active = null;
+  }
+
+  // Each form refreshes every investment read itself (invalidateInvestmentReads),
+  // which includes the transaction lists and registers.
+  function saved() {
+    writeOffSaved = active === 'write-off';
+    close();
+  }
+</script>
+
+{#if layout === 'menu'}
+  <button
+    type="button"
+    aria-expanded={menuOpen}
+    aria-controls="investment-entry-menu"
+    onclick={() => (menuOpen = !menuOpen)}
+    class="inline-flex min-h-11 items-center gap-2 rounded-(--radius-control) bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90"
+  >
+    <Plus size={16} aria-hidden="true" />
+    {m.register_record_investment_activity()}
+    <ChevronDown size={14} aria-hidden="true" class={menuOpen ? 'rotate-180' : ''} />
+  </button>
+{/if}
+
+{#if writeOffSaved}
+  <p role="status" class="w-full text-sm text-foreground">{m.investments_write_off_success()}</p>
+{/if}
+
+{#if layout === 'buttons' || menuOpen}
+  <div id="investment-entry-menu" class="flex w-full flex-wrap gap-2">
+    {#each activities as activity, index (activity.id)}
+      <button
+        type="button"
+        onclick={() => open(activity.id)}
+        class={layout === 'buttons' && index === 0
+          ? 'inline-flex min-h-10 items-center gap-2 rounded-(--radius-control) bg-foreground px-3 py-2 text-sm font-semibold text-background transition hover:opacity-90'
+          : 'inline-flex min-h-10 items-center gap-2 rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-control-hover'}
+      >
+        {#if layout === 'buttons' && index === 0}<Plus size={14} aria-hidden="true" />{/if}
+        {activity.label()}
+      </button>
+    {/each}
+  </div>
+{/if}
+
+{#if active === 'write-off'}
+  <WriteOffForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+{:else if active !== null}
+  <div class="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm" role="presentation" onclick={close}></div>
+
+  <div
+    class="fixed inset-x-4 bottom-0 z-50 max-h-[90vh] overflow-y-auto rounded-t-(--radius-panel) border border-border bg-surface shadow-(--shadow-panel) sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-(--radius-panel)"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby={titleID}
+  >
+    <div class="p-6">
+      {#if active === 'buy'}
+        <BuyForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'sell'}
+        <SellForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'short-open'}
+        <ShortTradeForm mode="open" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'short-cover'}
+        <ShortTradeForm mode="cover" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'dividend'}
+        <DividendForm mode="cash" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'reinvested'}
+        <DividendForm mode="reinvested" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'external-transfer-in'}
+        <ExternalTransferInForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'internal-transfer'}
+        <InternalTransferForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'external-transfer-out'}
+        <ExternalTransferOutForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'split'}
+        <SplitForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'share-exchange'}
+        <ShareExchangeForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'cash-and-stock-merger'}
+        <CashAndStockMergerForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'spin-off'}
+        <SpinOffForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'capital-return'}
+        <CapitalReturnForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {/if}
+    </div>
+  </div>
+{/if}

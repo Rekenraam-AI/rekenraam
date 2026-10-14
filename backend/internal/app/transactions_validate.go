@@ -124,6 +124,7 @@ func (s *TransactionService) listParams(ctx context.Context, input ListTransacti
 		BookID:            BookID,
 		AccountID:         input.AccountID,
 		CategoryID:        input.CategoryID,
+		CommodityID:       input.CommodityID,
 		PayeeID:           input.PayeeID,
 		Status:            status,
 		ExcludeDraft:      status == "",

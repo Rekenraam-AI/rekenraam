@@ -1,6 +1,7 @@
 <script lang="ts" module>
   import type { TransactionResponse } from '#lib/api/transactions.ts';
   import type { TransactionRowActionHandler } from './row-action.ts';
+  import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
 
   /** What a screen's list may ask the shared side panel to do. */
   export type TransactionWorkspaceActions = {
@@ -16,12 +17,14 @@
 
   /**
    * How a screen offers a new transaction. `editor` opens the generic editor
-   * with the screen's defaults; `link` points elsewhere (a holding account's
-   * activity is entered on the investments screen); `none` offers nothing.
+   * with the screen's defaults; `investment` offers the investment record
+   * forms pre-filled with the screen's holding or instrument (#186), since the
+   * generic editor never writes an investment-linked posting; `none` offers
+   * nothing.
    */
   export type TransactionWorkspaceCreate =
     | { kind: 'editor'; defaults?: { accountID?: number; categoryID?: number } }
-    | { kind: 'link'; href: string; label: string }
+    | { kind: 'investment'; prefill: InvestmentPrefill }
     | { kind: 'none' };
 </script>
 
@@ -38,6 +41,7 @@
   import type { TransactionRowAction } from './row-action.ts';
   import TransactionDetailPanel from './transaction-detail-panel.svelte';
   import TransactionEditor from './transaction-editor.svelte';
+  import InvestmentEntry from '#lib/investments/investment-entry.svelte';
 
   // The transaction workspace (#185): one list screen plus the shared side
   // panel for detail, edit, correction, creation and undo of a deletion. The
@@ -202,13 +206,10 @@
           <Plus size={16} aria-hidden="true" />
           {m.transactions_new()}
         </button>
-      {:else if create.kind === 'link'}
-        <a
-          href={create.href}
-          class="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-control px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-control-hover"
-        >
-          {create.label}
-        </a>
+      {:else if create.kind === 'investment'}
+        <div class="flex max-w-full flex-wrap items-center justify-end gap-2">
+          <InvestmentEntry layout="menu" prefill={create.prefill} />
+        </div>
       {/if}
     </div>
 

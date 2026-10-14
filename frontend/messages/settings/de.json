@@ -1573,5 +1573,14 @@
   "security_mfa_title": "Zwei-Faktor-Authentifizierung",
   "security_mfa_unconfigured": "Die Zwei-Faktor-Authentifizierung benötigt REKENRAAM_SECRET_KEY auf dem Server, damit das gemeinsame Geheimnis verschlüsselt gespeichert werden kann. Setzen Sie den Schlüssel und starten Sie neu, um die Funktion zu aktivieren.",
   "security_mfa_uri_label": "Einrichtungslink",
-  "settings_nav_security": "Sicherheit"
+  "settings_nav_security": "Sicherheit",
+  "investments_instrument_view_back": "Zurück zur Geldanlage",
+  "investments_instrument_view_loading": "Instrument wird geladen…",
+  "investments_instrument_view_not_found_title": "Instrument nicht gefunden",
+  "investments_instrument_view_not_found_copy": "Dieses Instrument existiert nicht. Wählen Sie eines auf der Seite Geldanlage.",
+  "investments_instrument_view_col_units": "Stück",
+  "investments_instrument_view_col_accounts": "Depots",
+  "investments_instrument_view_dividend_note": "Bardividenden bewegen keine Stücke des Instruments und erscheinen daher im Register des Geldkontos.",
+  "investments_instrument_view_open": "Aktivität anzeigen",
+  "investments_instrument_view_open_aria": "Aktivität für {name} anzeigen"
 }

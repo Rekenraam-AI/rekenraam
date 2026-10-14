@@ -34,6 +34,8 @@
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
+  import { usePrefilledInstrument } from '#lib/investments/investment-prefill.svelte.ts';
+  import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
 
   const ownerToday = useOwnerToday();
 
@@ -41,15 +43,19 @@
     csrfToken,
     onSaved,
     onCancel,
-    correction
+    correction,
+    prefill
   }: {
     csrfToken: string;
     onSaved: () => void;
     onCancel: () => void;
     correction?: InvestmentTradeCorrectionContextResponse;
+    prefill?: InvestmentPrefill;
   } = $props();
 
   const initialCorrection = untrack(() => correction);
+  // A correction pre-fills from the recorded trade, never from the screen.
+  const initialPrefill = untrack(() => correction ? undefined : prefill);
   const correctionDraft = initialCorrection ? correctionTradeDraft(initialCorrection) : null;
 
   const queryClient = useQueryClient();
@@ -90,10 +96,11 @@
     instrumentSearch = inst.display_name;
     instrumentDropdownOpen = false;
   }
+  usePrefilledInstrument(initialPrefill, selectInstrument);
 
   // Form fields
   let transactionDate = $state(initialCorrection?.event_date ?? ownerToday());
-  let holdingAccountID = $state(String(initialCorrection?.holding_account_id ?? ''));
+  let holdingAccountID = $state(String(initialCorrection?.holding_account_id ?? initialPrefill?.holdingAccountID ?? ''));
   let cashAccountID = $state(String(initialCorrection?.cash_account_id ?? ''));
   let quantityStr = $state(correctionDraft?.quantity ?? '');
   let cashAmountStr = $state(correctionDraft?.net ?? '');

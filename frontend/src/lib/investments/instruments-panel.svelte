@@ -93,7 +93,7 @@
     {#if instrumentsQuery.isPending}<p role="status" class="mt-3">{m.investments_loading()}</p>
     {:else if instrumentsQuery.isError}<APIFormError error={instrumentsQuery.error} />
     {:else if instruments.length === 0}<p class="mt-3 text-sm text-muted">{m.quotes_empty()}</p>
-    {:else}<ul class="mt-4 space-y-2">{#each instruments as instrument}<li><button type="button" onclick={() => start(instrument)} class="min-h-11 text-left font-semibold underline underline-offset-4">{instrument.display_name} ({instrument.commodity_code})</button></li>{/each}</ul>{/if}
+    {:else}<ul class="mt-4 space-y-2">{#each instruments as instrument}<li class="flex flex-wrap items-center gap-x-4"><button type="button" onclick={() => start(instrument)} class="min-h-11 text-left font-semibold underline underline-offset-4">{instrument.display_name} ({instrument.commodity_code})</button><a href={`/app/investments/instruments/${instrument.commodity_id}`} aria-label={m.investments_instrument_view_open_aria({ name: instrument.display_name })} class="inline-flex min-h-11 items-center text-sm underline underline-offset-4">{m.investments_instrument_view_open()}</a></li>{/each}</ul>{/if}
   </Panel>
   {#if editing}
   <Panel>

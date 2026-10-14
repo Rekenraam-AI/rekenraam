@@ -1573,5 +1573,14 @@
   "security_mfa_title": "Autenticación de dos factores",
   "security_mfa_unconfigured": "La autenticación de dos factores requiere configurar REKENRAAM_SECRET_KEY en el servidor para cifrar el secreto compartido en reposo. Configúrela y reinicie para habilitarla.",
   "security_mfa_uri_label": "Enlace de configuración",
-  "settings_nav_security": "Seguridad"
+  "settings_nav_security": "Seguridad",
+  "investments_instrument_view_back": "Volver a inversiones",
+  "investments_instrument_view_loading": "Cargando instrumento…",
+  "investments_instrument_view_not_found_title": "Instrumento no encontrado",
+  "investments_instrument_view_not_found_copy": "Este instrumento no existe. Elija uno en la pantalla de inversiones.",
+  "investments_instrument_view_col_units": "Unidades",
+  "investments_instrument_view_col_accounts": "Posiciones",
+  "investments_instrument_view_dividend_note": "Los dividendos en efectivo no mueven unidades del instrumento, por lo que aparecen en el registro de la cuenta de efectivo.",
+  "investments_instrument_view_open": "Ver actividad",
+  "investments_instrument_view_open_aria": "Ver actividad de {name}"
 }

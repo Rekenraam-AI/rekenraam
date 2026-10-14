@@ -1573,5 +1573,14 @@
   "security_mfa_title": "Tweefactorauthenticatie",
   "security_mfa_unconfigured": "Tweefactorauthenticatie vereist REKENRAAM_SECRET_KEY op de server, zodat het gedeelde geheim versleuteld kan worden opgeslagen. Stel deze in en herstart om dit in te schakelen.",
   "security_mfa_uri_label": "Instellink",
-  "settings_nav_security": "Beveiliging"
+  "settings_nav_security": "Beveiliging",
+  "investments_instrument_view_back": "Terug naar beleggingen",
+  "investments_instrument_view_loading": "Instrument laden…",
+  "investments_instrument_view_not_found_title": "Instrument niet gevonden",
+  "investments_instrument_view_not_found_copy": "Dit instrument bestaat niet. Kies er een op het scherm Beleggingen.",
+  "investments_instrument_view_col_units": "Eenheden",
+  "investments_instrument_view_col_accounts": "Rekeningen",
+  "investments_instrument_view_dividend_note": "Contante dividenden verplaatsen geen eenheden van het instrument en staan daarom in het register van de geldrekening.",
+  "investments_instrument_view_open": "Activiteit bekijken",
+  "investments_instrument_view_open_aria": "Activiteit van {name} bekijken"
 }

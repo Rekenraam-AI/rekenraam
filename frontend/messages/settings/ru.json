@@ -1573,5 +1573,14 @@
   "security_mfa_title": "Двухфакторная аутентификация",
   "security_mfa_unconfigured": "Для двухфакторной аутентификации на сервере нужно задать REKENRAAM_SECRET_KEY, чтобы общий секрет хранился в зашифрованном виде. Задайте ключ и перезапустите сервер для включения.",
   "security_mfa_uri_label": "Ссылка настройки",
-  "settings_nav_security": "Безопасность"
+  "settings_nav_security": "Безопасность",
+  "investments_instrument_view_back": "Назад к инвестициям",
+  "investments_instrument_view_loading": "Загрузка инструмента…",
+  "investments_instrument_view_not_found_title": "Инструмент не найден",
+  "investments_instrument_view_not_found_copy": "Такого инструмента нет. Выберите его на экране «Инвестиции».",
+  "investments_instrument_view_col_units": "Единицы",
+  "investments_instrument_view_col_accounts": "Счета",
+  "investments_instrument_view_dividend_note": "Денежные дивиденды не меняют количество единиц инструмента, поэтому они видны в реестре денежного счёта.",
+  "investments_instrument_view_open": "Показать операции",
+  "investments_instrument_view_open_aria": "Показать операции по {name}"
 }
