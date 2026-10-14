@@ -24,6 +24,12 @@ sessions; never edit the users table.
 
 ## Validation matrix (narrowest first — this is the contract; CI runs the same scripts)
 
+Frontend commands must work after a clean install, without generated state from
+an earlier dev/build run. `catalogs:check` first runs `svelte-kit sync` to create
+SvelteKit's `$app/tsconfig` before Vitest transforms catalog tests (#207). Keep
+that bootstrap in the shared gate used by dev/check/build and direct catalog
+checks; CI must not need a separate warm-up or skip catalog validation.
+
 | Changed | Run |
 |---|---|
 | `backend/**` | `./scripts/test-backend.sh` (= `go test -race -p 2 -timeout=5m ./...`), plus `./scripts/go-backend.sh vet ./...`, `gofmt -l .` in `backend/` |

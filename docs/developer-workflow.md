@@ -274,6 +274,13 @@ fetch is staged in seconds rather than on the worker's one-minute tick.
 
 Runs SvelteKit checks and the Vitest unit suite.
 
+The dev, check and build commands first run `catalogs:check`. That gate runs
+`svelte-kit sync` before Vitest so SvelteKit's generated `$app/tsconfig` exists
+on a fresh checkout (#207). After `pnpm install --frozen-lockfile`, no separate
+warm-up command is needed. The same bootstrap applies when running
+`pnpm --dir frontend run catalogs:check` directly; catalog parity and OpenAPI
+generation remain required parts of the normal frontend commands.
+
 ```sh
 ./scripts/test-frontend.sh
 ```
