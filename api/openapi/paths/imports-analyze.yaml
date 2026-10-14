@@ -1,5 +1,10 @@
 post:
   summary: Analyze a CSV file before configuring its column mapping
+  description: >-
+    Accepts files through 50 MiB (52,428,800 bytes), inclusive, within a
+    51 MiB (53,477,376 bytes) multipart request. Excessive multipart fields,
+    parts or headers are also rejected. Oversized uploads are rejected before
+    analyzing the CSV and are never truncated.
   parameters:
     - in: header
       name: X-CSRF-Token
@@ -18,6 +23,7 @@ post:
             file:
               type: string
               format: binary
+              description: At most 50 MiB (52,428,800 bytes), inclusive.
             text_encoding:
               type: string
               default: auto
@@ -48,6 +54,12 @@ post:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "403":
       description: Origin or CSRF validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "413":
+      description: IMPORT_UPLOAD_TOO_LARGE — file or multipart resource limits exceeded
       content:
         application/json:
           schema:

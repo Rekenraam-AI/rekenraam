@@ -164,6 +164,11 @@ These apply across all feature phases.
 
 - Financial changes should be explainable through audit-friendly data and UX.
 - Import workflows must preserve source metadata where practical.
+- File import and CSV header analysis accept files through 50 MiB inclusive.
+  Reject oversized uploads before adapter parsing or batch creation, with a
+  stable translated size error; never import a truncated prefix. Bound the
+  entire multipart request (51 MiB including overhead), multipart memory and
+  part/header resources, and remove temporary files on every outcome (#228).
 - Duplicate detection, reconciliation, and correction behavior must be explicit.
 - Reports and exports must reflect durable accounting semantics rather than ad hoc UI summaries.
 - Journal-free investment operations remain audited source facts. Their source

@@ -30,6 +30,23 @@ Status: **Slices 1 (pipeline + QIF) and 2 (CSV + profiles + minimal rules) shipp
    rows land in the existing `needs_review` queue; every batch is auditable and
    reversible.
 
+### Upload resource boundary (#228)
+
+File staging and CSV header analysis accept files through 50 MiB
+(52,428,800 bytes), inclusive. The complete multipart request is bounded at
+51 MiB (53,477,376 bytes), including fields, headers, extra parts and epilogue,
+even without Content-Length. Multipart parsing keeps at most 1 MiB of file
+content in memory before spilling to temporary storage; the parser's bounded
+non-file field, part-count and header limits also apply. Temporary files are
+removed on success, malformed input, missing file, size refusal and downstream
+service failure.
+
+A file or multipart resource overflow returns HTTP 413 with
+`IMPORT_UPLOAD_TOO_LARGE` in the normal error envelope. Both upload and CSV
+analysis show the translated size message. No adapter parsing, import batch,
+staged row, journal, lot, import audit or background work is created by a size
+refusal. Never pass a truncated prefix to an adapter.
+
 ## Non-goals (deferred)
 
 - Parsing the proprietary MS Money `.mny` (Jet/ESE) database directly. MS Money

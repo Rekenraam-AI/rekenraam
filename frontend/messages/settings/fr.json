@@ -1255,6 +1255,7 @@
   "api_error_investment_split_changed": "La position a changé après la prévisualisation. Prévisualisez de nouveau la division.",
   "api_error_investment_split_dependency": "Une vente ou un transfert ultérieur ne serait plus possible après cette division.",
   "api_error_import_split_link_unavailable": "Cette ligne ne peut plus être liée à cette division. Elle est peut-être déjà liée, ou la division ne concerne plus ce titre.",
+  "api_error_import_upload_too_large": "Le fichier à importer est trop volumineux. Choisissez un fichier de 50 MiB ou moins et réessayez.",
   "transactions_investment_reverse_exchange_action": "Annuler l’échange…",
   "transactions_investment_reverse_exchange_title": "Annuler cet échange d’actions",
   "transactions_investment_reverse_exchange_copy": "Cela comptabilise une opération inverse datée de l’échange. L’ancienne position récupère ses lots et les nouveaux lots sont retirés. Une vente ou un transfert ultérieur des nouvelles parts bloquera l’annulation. L’échange d’origine reste dans l’historique.",

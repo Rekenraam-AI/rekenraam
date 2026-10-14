@@ -440,6 +440,17 @@ non-trivial diff (yours or reviewed):
     `TestTwoProcessLockHandoffsKeepOneFileIdentity` stages pre-opened contenders;
     `TestRestoreCommandReleasesLockOnFailure` preserves error-path recovery.
 
+41. **Upload limits that silently return a prefix** — `ParseMultipartForm`'s
+    argument is a memory threshold, not a request limit, and `LimitReader` alone
+    silently truncates oversized files (#228). Bound the entire request with
+    `MaxBytesReader`, including unknown-length bodies and multipart epilogues;
+    check file size and read at most limit + 1 before accepting. Remove multipart
+    spill files on every path. Prove the exact supported size works and one byte
+    over an independently parseable prefix refuses without durable changes.
+    Both staging and CSV analysis must show the translated size envelope.
+    Named regressions: `TestImportUploadFileSizeBoundary`,
+    `TestImportUploadMultipartResourceLimits`, `import-upload-limit.spec.ts`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

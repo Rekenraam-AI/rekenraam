@@ -31,6 +31,10 @@ post:
     `{ source, connection_id }` enqueues a durable online fetch on the named
     connection and returns immediately (202); poll GET /imports/{batch_id}
     until source_meta's fetch_status is "ready".
+    Multipart files are limited to 50 MiB (52,428,800 bytes), inclusive;
+    the entire multipart request is limited to 51 MiB (53,477,376 bytes).
+    Excessive multipart fields, parts or headers are also rejected.
+    Oversized uploads are rejected before parsing or creating a batch.
   parameters:
     - in: header
       name: X-CSRF-Token
@@ -49,6 +53,7 @@ post:
             file:
               type: string
               format: binary
+              description: At most 50 MiB (52,428,800 bytes), inclusive. Oversized files are never truncated.
             profile_id:
               type: integer
               format: int64
@@ -111,6 +116,12 @@ post:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
       description: An import fetch is already in progress for this connection
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "413":
+      description: IMPORT_UPLOAD_TOO_LARGE — file or multipart resource limits exceeded; no batch is created
       content:
         application/json:
           schema:

@@ -1255,6 +1255,7 @@
   "api_error_investment_split_changed": "La posición cambió tras la previsualización. Vuelve a previsualizar el desdoblamiento.",
   "api_error_investment_split_dependency": "Una venta o transferencia posterior dejaría de ser posible tras este desdoblamiento.",
   "api_error_import_split_link_unavailable": "Esta fila ya no se puede vincular a ese desdoblamiento. Puede que ya esté vinculada o que el desdoblamiento no corresponda a este valor.",
+  "api_error_import_upload_too_large": "El archivo que intentas importar es demasiado grande. Elige un archivo de 50 MiB o menos e inténtalo de nuevo.",
   "transactions_investment_reverse_exchange_action": "Revertir canje…",
   "transactions_investment_reverse_exchange_title": "Revertir este canje de acciones",
   "transactions_investment_reverse_exchange_copy": "Esto registra una transacción inversa con la fecha del canje. La posición antigua recupera sus lotes y los lotes nuevos se retiran. Una venta o traspaso posterior de las nuevas acciones bloqueará la reversión. El canje original queda en el historial.",

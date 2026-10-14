@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"strings"
@@ -264,9 +265,9 @@ func startImport(logger *slog.Logger, authService *app.AuthService, importServic
 			return
 		}
 
-		rawInput, err := readImportUpload(r)
+		rawInput, err := readImportUpload(w, r)
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error())
+			writeImportUploadError(w, err)
 			return
 		}
 
@@ -316,9 +317,9 @@ func analyzeCSVImport(logger *slog.Logger, authService *app.AuthService, importS
 		if _, ok := authenticatedMutationOwner(w, r); !ok {
 			return
 		}
-		rawInput, err := readImportUpload(r)
+		rawInput, err := readImportUpload(w, r)
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error())
+			writeImportUploadError(w, err)
 			return
 		}
 		result, err := importService.AnalyzeCSV(r.Context(), rawInput, r.FormValue("delimiter"))
@@ -336,20 +337,64 @@ func analyzeCSVImport(logger *slog.Logger, authService *app.AuthService, importS
 	}))
 }
 
-const maxImportUploadSize = 50 << 20 // 50 MB
+const (
+	maxImportUploadSize      = 50 << 20                        // 50 MiB per file, inclusive.
+	maxImportRequestSize     = maxImportUploadSize + (1 << 20) // Multipart overhead allowance.
+	maxImportMultipartMemory = 1 << 20                         // Larger files spill to temporary storage.
+)
 
-func readImportUpload(r *http.Request) (app.RawInput, error) {
-	if err := r.ParseMultipartForm(maxImportUploadSize); err != nil {
-		return app.RawInput{}, errors.New("invalid multipart form")
+var errImportUploadTooLarge = errors.New("import upload exceeds resource limits (50 MiB file, 51 MiB request)")
+
+func writeImportUploadError(w http.ResponseWriter, err error) {
+	if errors.Is(err, errImportUploadTooLarge) {
+		writeAPIError(w, http.StatusRequestEntityTooLarge, "IMPORT_UPLOAD_TOO_LARGE", errImportUploadTooLarge.Error())
+		return
+	}
+	writeAPIError(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error())
+}
+
+func importMultipartError(err error) error {
+	var sizeErr *http.MaxBytesError
+	if errors.As(err, &sizeErr) || errors.Is(err, multipart.ErrMessageTooLarge) {
+		return errImportUploadTooLarge
+	}
+	return errors.New("invalid multipart form")
+}
+
+func readImportUpload(w http.ResponseWriter, r *http.Request) (app.RawInput, error) {
+	// Content-Length is only an early rejection. The reader also bounds bodies
+	// with unknown or inaccurate lengths, including all fields and extra parts.
+	r.Body = http.MaxBytesReader(w, r.Body, maxImportRequestSize)
+	defer func() {
+		if r.MultipartForm != nil {
+			_ = r.MultipartForm.RemoveAll()
+		}
+	}()
+	if r.ContentLength > maxImportRequestSize {
+		return app.RawInput{}, errImportUploadTooLarge
+	}
+	if err := r.ParseMultipartForm(maxImportMultipartMemory); err != nil {
+		return app.RawInput{}, importMultipartError(err)
+	}
+	// Multipart parsing stops at its final boundary. Consume any epilogue through
+	// the same bounded reader before allowing adapter parsing or batch creation.
+	if _, err := io.Copy(io.Discard, r.Body); err != nil {
+		return app.RawInput{}, importMultipartError(err)
 	}
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		return app.RawInput{}, errors.New("file field is required")
 	}
 	defer file.Close()
-	fileBytes, err := io.ReadAll(io.LimitReader(file, maxImportUploadSize))
+	if header.Size > maxImportUploadSize {
+		return app.RawInput{}, errImportUploadTooLarge
+	}
+	fileBytes, err := io.ReadAll(io.LimitReader(file, maxImportUploadSize+1))
 	if err != nil {
 		return app.RawInput{}, errors.New("failed to read file")
+	}
+	if len(fileBytes) > maxImportUploadSize {
+		return app.RawInput{}, errImportUploadTooLarge
 	}
 	return app.RawInput{
 		Filename:     header.Filename,

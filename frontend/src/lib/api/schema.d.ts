@@ -9412,7 +9412,7 @@ export interface paths {
         put?: never;
         /**
          * Start import batch
-         * @description Content-negotiated by request body. multipart/form-data starts the existing file-upload pipeline synchronously (201). application/json `{ source, connection_id }` enqueues a durable online fetch on the named connection and returns immediately (202); poll GET /imports/{batch_id} until source_meta's fetch_status is "ready".
+         * @description Content-negotiated by request body. multipart/form-data starts the existing file-upload pipeline synchronously (201). application/json `{ source, connection_id }` enqueues a durable online fetch on the named connection and returns immediately (202); poll GET /imports/{batch_id} until source_meta's fetch_status is "ready". Multipart files are limited to 50 MiB (52,428,800 bytes), inclusive; the entire multipart request is limited to 51 MiB (53,477,376 bytes). Excessive multipart fields, parts or headers are also rejected. Oversized uploads are rejected before parsing or creating a batch.
          */
         post: {
             parameters: {
@@ -9426,7 +9426,10 @@ export interface paths {
             requestBody: {
                 content: {
                     "multipart/form-data": {
-                        /** Format: binary */
+                        /**
+                         * Format: binary
+                         * @description At most 50 MiB (52,428,800 bytes), inclusive. Oversized files are never truncated.
+                         */
                         file: string;
                         /**
                          * Format: int64
@@ -9521,6 +9524,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description IMPORT_UPLOAD_TOO_LARGE — file or multipart resource limits exceeded; no batch is created */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Internal server error */
                 500: {
                     headers: {
@@ -9556,7 +9568,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Analyze a CSV file before configuring its column mapping */
+        /**
+         * Analyze a CSV file before configuring its column mapping
+         * @description Accepts files through 50 MiB (52,428,800 bytes), inclusive, within a 51 MiB (53,477,376 bytes) multipart request. Excessive multipart fields, parts or headers are also rejected. Oversized uploads are rejected before analyzing the CSV and are never truncated.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -9569,7 +9584,10 @@ export interface paths {
             requestBody: {
                 content: {
                     "multipart/form-data": {
-                        /** Format: binary */
+                        /**
+                         * Format: binary
+                         * @description At most 50 MiB (52,428,800 bytes), inclusive.
+                         */
                         file: string;
                         /**
                          * @description Text encoding to detect or apply before reading the header.
@@ -9615,6 +9633,15 @@ export interface paths {
                 };
                 /** @description Origin or CSRF validation failed */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description IMPORT_UPLOAD_TOO_LARGE — file or multipart resource limits exceeded */
+                413: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -30260,7 +30287,7 @@ export interface components {
         };
         ErrorBody: {
             /** @enum {string} */
-            code: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "PRICE_IMPACT_STALE" | "CONFLICT" | "CSRF_INVALID" | "RATE_LIMITED" | "RESOURCE_BUSY" | "LEDGER_OVERFLOW" | "FORECAST_TOO_LARGE" | "FORECAST_BASIS_CHANGED" | "INVESTMENT_WORKFLOW_REQUIRED" | "INVESTMENT_EVENT_OUT_OF_ORDER" | "INVESTMENT_POSITION_SIDE_CONFLICT" | "INVESTMENT_SHORT_DEPENDENCY" | "INVESTMENT_TRANSFER_POOL_REQUIRED" | "INVESTMENT_TRANSFER_POOL_UNAVAILABLE" | "INVESTMENT_SALE_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SALE" | "INVESTMENT_SALE_CHANGED" | "INVESTMENT_SALE_DEPENDENCY" | "INVESTMENT_BUY_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_BUY" | "INVESTMENT_BUY_CHANGED" | "INVESTMENT_BUY_DEPENDENCY" | "INVESTMENT_DIVIDEND_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_DIVIDEND" | "INVESTMENT_DIVIDEND_CHANGED" | "INVESTMENT_WRITE_OFF_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_CHANGED" | "INVESTMENT_TRANSFER_DEPENDENCY" | "INVESTMENT_IMPORTED_TRANSFER" | "INVESTMENT_TRANSFER_BASIS_RESOLVED" | "INVESTMENT_TRANSFER_BASIS_NOT_UNKNOWN" | "INVESTMENT_TRANSFER_BASIS_NOT_RESOLVED" | "INVESTMENT_BASIS_RESOLUTION_ALREADY_CORRECTED" | "INVESTMENT_BASIS_RESOLUTION_CHANGED" | "INVESTMENT_WRITE_OFF_CHANGED" | "INVESTMENT_REINVESTMENT_ALREADY_CORRECTED" | "INVESTMENT_REINVESTMENT_CHANGED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE" | "INVESTMENT_SPLIT_NO_HOLDINGS" | "INVESTMENT_CAPITAL_RETURN_DEPENDENCY" | "INVESTMENT_CAPITAL_RETURN_NO_HOLDINGS" | "INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE" | "INVESTMENT_SPLIT_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPLIT_CHANGED" | "INVESTMENT_SPLIT_DEPENDENCY" | "INVESTMENT_SPLIT_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SPLIT" | "INVESTMENT_EXCHANGE_NO_HOLDINGS" | "INVESTMENT_EXCHANGE_FRACTION_UNREPRESENTABLE" | "INVESTMENT_EXCHANGE_CHANGED" | "INVESTMENT_EXCHANGE_ALREADY_CORRECTED" | "INVESTMENT_SPIN_OFF_NO_HOLDINGS" | "INVESTMENT_SPIN_OFF_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPIN_OFF_CHANGED" | "INVESTMENT_SPIN_OFF_ALREADY_CORRECTED" | "INVESTMENT_MERGER_ALREADY_CORRECTED" | "IMPORT_SPLIT_LINK_UNAVAILABLE" | "TRANSACTION_DRAFT_NOT_USER_CREATABLE" | "TRANSACTION_VERSION_STALE" | "POSTING_ACCOUNT_VERSION_STALE" | "RECURRING_TEMPLATE_UNBALANCED" | "RECURRING_SCHEDULE_INVALID" | "RECURRING_TEMPLATE_ARCHIVED" | "RECURRING_OCCURRENCE_ALREADY_MATERIALIZED" | "SETUP_REQUIRED" | "SETUP_ALREADY_COMPLETE" | "CONFIG_REQUIRED" | "PROVIDER_ERROR" | "EXPORT_SCOPE_UNSUPPORTED" | "QIF_ACCOUNT_UNSUPPORTED" | "INTERNAL_ERROR";
+            code: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "PRICE_IMPACT_STALE" | "CONFLICT" | "CSRF_INVALID" | "RATE_LIMITED" | "RESOURCE_BUSY" | "LEDGER_OVERFLOW" | "FORECAST_TOO_LARGE" | "FORECAST_BASIS_CHANGED" | "INVESTMENT_WORKFLOW_REQUIRED" | "INVESTMENT_EVENT_OUT_OF_ORDER" | "INVESTMENT_POSITION_SIDE_CONFLICT" | "INVESTMENT_SHORT_DEPENDENCY" | "INVESTMENT_TRANSFER_POOL_REQUIRED" | "INVESTMENT_TRANSFER_POOL_UNAVAILABLE" | "INVESTMENT_SALE_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SALE" | "INVESTMENT_SALE_CHANGED" | "INVESTMENT_SALE_DEPENDENCY" | "INVESTMENT_BUY_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_BUY" | "INVESTMENT_BUY_CHANGED" | "INVESTMENT_BUY_DEPENDENCY" | "INVESTMENT_DIVIDEND_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_DIVIDEND" | "INVESTMENT_DIVIDEND_CHANGED" | "INVESTMENT_WRITE_OFF_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_CHANGED" | "INVESTMENT_TRANSFER_DEPENDENCY" | "INVESTMENT_IMPORTED_TRANSFER" | "INVESTMENT_TRANSFER_BASIS_RESOLVED" | "INVESTMENT_TRANSFER_BASIS_NOT_UNKNOWN" | "INVESTMENT_TRANSFER_BASIS_NOT_RESOLVED" | "INVESTMENT_BASIS_RESOLUTION_ALREADY_CORRECTED" | "INVESTMENT_BASIS_RESOLUTION_CHANGED" | "INVESTMENT_WRITE_OFF_CHANGED" | "INVESTMENT_REINVESTMENT_ALREADY_CORRECTED" | "INVESTMENT_REINVESTMENT_CHANGED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE" | "INVESTMENT_SPLIT_NO_HOLDINGS" | "INVESTMENT_CAPITAL_RETURN_DEPENDENCY" | "INVESTMENT_CAPITAL_RETURN_NO_HOLDINGS" | "INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE" | "INVESTMENT_SPLIT_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPLIT_CHANGED" | "INVESTMENT_SPLIT_DEPENDENCY" | "INVESTMENT_SPLIT_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SPLIT" | "INVESTMENT_EXCHANGE_NO_HOLDINGS" | "INVESTMENT_EXCHANGE_FRACTION_UNREPRESENTABLE" | "INVESTMENT_EXCHANGE_CHANGED" | "INVESTMENT_EXCHANGE_ALREADY_CORRECTED" | "INVESTMENT_SPIN_OFF_NO_HOLDINGS" | "INVESTMENT_SPIN_OFF_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPIN_OFF_CHANGED" | "INVESTMENT_SPIN_OFF_ALREADY_CORRECTED" | "INVESTMENT_MERGER_ALREADY_CORRECTED" | "IMPORT_SPLIT_LINK_UNAVAILABLE" | "IMPORT_UPLOAD_TOO_LARGE" | "TRANSACTION_DRAFT_NOT_USER_CREATABLE" | "TRANSACTION_VERSION_STALE" | "POSTING_ACCOUNT_VERSION_STALE" | "RECURRING_TEMPLATE_UNBALANCED" | "RECURRING_SCHEDULE_INVALID" | "RECURRING_TEMPLATE_ARCHIVED" | "RECURRING_OCCURRENCE_ALREADY_MATERIALIZED" | "SETUP_REQUIRED" | "SETUP_ALREADY_COMPLETE" | "CONFIG_REQUIRED" | "PROVIDER_ERROR" | "EXPORT_SCOPE_UNSUPPORTED" | "QIF_ACCOUNT_UNSUPPORTED" | "INTERNAL_ERROR";
             message: string;
         };
         ErrorResponse: {

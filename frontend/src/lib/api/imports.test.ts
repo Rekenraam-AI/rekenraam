@@ -1,4 +1,5 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
+import { getFormErrorState } from '#lib/form-errors.ts';
 import {
   analyzeCSVImport,
   getFullImportBatch,
@@ -47,6 +48,28 @@ function importBatchResponse(rows: { id: number }[], nextCursor: string | null):
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe('oversized import uploads', () => {
+  it.each([
+    ['staging', (file: File) => startImport(file, 'csrf')],
+    ['CSV analysis', (file: File) => analyzeCSVImport(file, 'csrf')]
+  ] as const)('preserves the 413 envelope and translated form error for %s', async (_name, upload) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({
+      error: { code: 'IMPORT_UPLOAD_TOO_LARGE', message: 'server detail must not be displayed' }
+    }), { status: 413, headers: { 'X-Request-ID': 'upload-request' } }));
+    let caught: unknown;
+    try {
+      await upload(new File(['contents'], 'statement.csv'));
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toMatchObject({ status: 413, code: 'IMPORT_UPLOAD_TOO_LARGE' });
+    expect(getFormErrorState(caught)).toEqual({
+      message: 'The import upload is too large. Choose a file of 50 MiB or less and try again.',
+      requestId: 'upload-request'
+    });
+  });
 });
 
 describe('Trading 212 sale source correction', () => {

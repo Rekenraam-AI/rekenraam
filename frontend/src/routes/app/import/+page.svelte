@@ -12,6 +12,7 @@
   import Loader from '@lucide/svelte/icons/loader-circle';
   import Panel from '#lib/components/panel.svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
+  import { APIClientError } from '#lib/api/client.ts';
   import { cryptoCSVSummary } from '#lib/imports/crypto-csv.ts';
   import PayeeResolutionPanel from '#lib/imports/payee-resolution-panel.svelte';
   import ImportRulesPanel from '#lib/imports/import-rules-panel.svelte';
@@ -951,7 +952,11 @@
             {#if analyzingCSV}
               <p class="flex items-center gap-2 text-sm text-muted"><Loader size={14} class="animate-spin" aria-hidden="true" />{m.import_csv_analysis_loading()}</p>
             {:else if csvAnalysisError}
-              <p class="text-sm text-warning" role="alert">{m.import_csv_analysis_error()}</p>
+              {#if csvAnalysisError instanceof APIClientError && csvAnalysisError.code === 'IMPORT_UPLOAD_TOO_LARGE'}
+                <APIFormError error={csvAnalysisError} id="csv-analysis-error" />
+              {:else}
+                <p class="text-sm text-warning" role="alert">{m.import_csv_analysis_error()}</p>
+              {/if}
             {:else if profilesQuery.isLoading}
               <p class="text-sm text-muted">{m.import_csv_profiles_loading()}</p>
             {:else if profilesQuery.isError}

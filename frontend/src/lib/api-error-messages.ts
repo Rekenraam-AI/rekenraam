@@ -67,6 +67,7 @@ const apiErrorMessageByCode: Record<APIErrorCode, () => string> = {
   INVESTMENT_SPIN_OFF_ALREADY_CORRECTED: () => m.api_error_investment_spin_off_already_corrected(),
   INVESTMENT_MERGER_ALREADY_CORRECTED: () => m.api_error_investment_merger_already_corrected(),
   IMPORT_SPLIT_LINK_UNAVAILABLE: () => m.api_error_import_split_link_unavailable(),
+  IMPORT_UPLOAD_TOO_LARGE: () => m.api_error_import_upload_too_large(),
   TRANSACTION_DRAFT_NOT_USER_CREATABLE: () => m.api_error_transaction_draft_not_user_creatable(),
   TRANSACTION_VERSION_STALE: () => m.api_error_transaction_version_stale(),
   POSTING_ACCOUNT_VERSION_STALE: () => m.api_error_posting_account_version_stale(),

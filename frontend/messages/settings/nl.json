@@ -1255,6 +1255,7 @@
   "api_error_investment_split_changed": "De positie is na het voorbeeld gewijzigd. Bekijk de splitsing opnieuw.",
   "api_error_investment_split_dependency": "Een latere verkoop of overboeking zou na deze splitsing niet meer mogelijk zijn.",
   "api_error_import_split_link_unavailable": "Deze rij kan niet meer aan die splitsing worden gekoppeld. Mogelijk is hij al gekoppeld of hoort de splitsing niet bij dit effect.",
+  "api_error_import_upload_too_large": "Het importbestand is te groot. Kies een bestand van maximaal 50 MiB en probeer het opnieuw.",
   "transactions_investment_reverse_exchange_action": "Omwisseling terugdraaien…",
   "transactions_investment_reverse_exchange_title": "Deze aandelenomwisseling terugdraaien",
   "transactions_investment_reverse_exchange_copy": "Dit boekt een tegenboeking op de datum van de omwisseling. De oude positie krijgt haar lots terug en de nieuwe lots vervallen. Een latere verkoop of overboeking van de nieuwe stukken blokkeert het terugdraaien. De oorspronkelijke omwisseling blijft in de geschiedenis.",
