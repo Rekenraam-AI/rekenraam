@@ -429,6 +429,14 @@ non-trivial diff (yours or reviewed):
     year rollover and refresh followed by reopening; see
     `owner-local-dates.spec.ts` and `owner-local-date-contract.spec.ts`.
 
+40. **Checking a process lock without holding it through replacement** —
+    `CheckAvailable` releases its lock immediately; it cannot protect a later
+    restore from concurrent startup (#227). A destructive file replacement
+    needs ownership throughout the operation, and lock handoffs must preserve
+    one lock-file inode: unlinking after unlock can split contenders across
+    different files. #105's subprocess tests cover refusal for an already
+    running server; they do not prove the restore/startup interval is safe.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

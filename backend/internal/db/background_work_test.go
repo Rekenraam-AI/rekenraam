@@ -40,6 +40,11 @@ func TestClaimHandsOneItemToOneWorker(t *testing.T) {
 	// and each claim transaction holds the one connection for its whole length,
 	// so two SELECTs in this process never interleave. The re-check is there for
 	// a second process on the same file, which no in-process test can stage.
+	// #105 adds independent-process coverage in cmd/rekenraam's
+	// TestTwoProcessWorkClaims. With the current deferred WAL transaction,
+	// snapshot/write contention also prevents duplicate ownership; even that
+	// test is not proof of this UPDATE predicate in isolation. Its fault checks
+	// and limits are recorded in docs/reviews/two-process-sqlite-guards-2026-10-14.md.
 	// Said out loud rather than left implied: a test that reads as proof of
 	// something it cannot reach is the defect V-1 found.
 	const workers = 16

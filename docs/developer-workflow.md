@@ -65,6 +65,19 @@ than an untagged raw command. Advanced commands may source the same helper
 after entering `backend/`; its required tags supersede a caller
 `GOFLAGS=-tags=...`.
 
+The Unix subprocess guard regressions (#105) run in the ordinary backend gate.
+For a focused repeat:
+
+```sh
+./scripts/go-backend.sh test -race ./cmd/rekenraam -run '^TestTwoProcess' -count=3 -timeout=2m
+```
+
+They re-execute the same test binary with independent SQLite pools and pipe
+barriers, retaining the selected native driver and Go race instrumentation. Local TCP sockets are
+required for the real server/restore cases. These tests do not enable multiple
+servers on one database; see the [review](reviews/two-process-sqlite-guards-2026-10-14.md)
+for coverage and the remaining restore-lock defect (#227).
+
 Checks formatting (`gofmt -l`), runs `go vet ./...`, then the full Go suite with
 the race detector. The formatting and vet gates live inside the wrapper script
 so CI enforces them too — before they were added, `gofmt` drift could sit in the
