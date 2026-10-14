@@ -290,9 +290,9 @@ now defines the bounded #203 `live_raw_v1` observation slice: shared compatible
 quotes and priority, date/knowledge ceilings and explicit consumer age rules.
 The plan now also fixes the profile contract and research recommendations
 (#118) and splits delivery into slices: `operational_v1` as-of valuation
-[#230](https://github.com/sergeyfarin/rekenraam/issues/230) is delivered
-(2026-10-14); period statement [#231](https://github.com/sergeyfarin/rekenraam/issues/231),
-alternative methods [#232](https://github.com/sergeyfarin/rekenraam/issues/232),
+[#230](https://github.com/sergeyfarin/rekenraam/issues/230) and the period
+statement [#231](https://github.com/sergeyfarin/rekenraam/issues/231) are
+delivered (2026-10-14); alternative methods [#232](https://github.com/sergeyfarin/rekenraam/issues/232),
 reporting-currency FX [#233](https://github.com/sergeyfarin/rekenraam/issues/233),
 reproducible runs [#234](https://github.com/sergeyfarin/rekenraam/issues/234) and
 person-pooled average cost [#235](https://github.com/sergeyfarin/rekenraam/issues/235)

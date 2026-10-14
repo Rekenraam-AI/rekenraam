@@ -3947,6 +3947,150 @@ GainsProfile:
       type: string
       enum: [exact_half_up]
 
+InvestmentGainsStatementResponse:
+  type: object
+  description: >-
+    Period gains statement (R18 slice 2, #231). One row per currency that has a
+    position at either valuation date, a disposal in the period or investment
+    income in the period. Not a tax computation.
+  required:
+    - profile
+    - from
+    - to
+    - currencies
+    - rows
+  properties:
+    profile:
+      $ref: "../../openapi.yaml#/components/schemas/GainsProfile"
+    from:
+      type: string
+      format: date
+    to:
+      type: string
+      format: date
+    currencies:
+      type: array
+      description: Currency labels and standard display scales; figures retain their exact scale.
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/CurrencyResponse"
+    rows:
+      type: array
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/GainsStatementRow"
+
+GainsStatementRow:
+  type: object
+  description: >-
+    One currency's statement. Every figure is exact in that currency. A null
+    figure is absent (a missing price or unresolved basis), never zero; a
+    currency with nothing held at a date has a known zero unrealized gain.
+  required:
+    - commodity_id
+    - opening
+    - closing
+    - realized_gain_value
+    - realized_gain_scale
+    - disposal_count
+    - realized_unresolved_count
+    - income_value
+    - income_scale
+    - income_count
+    - unrealized_change_value
+    - unrealized_change_scale
+    - total_value
+    - total_scale
+  properties:
+    commodity_id:
+      type: integer
+      format: int64
+      description: The cost currency of positions and disposals; the cash currency of income.
+    opening:
+      $ref: "../../openapi.yaml#/components/schemas/GainsStatementValuation"
+    closing:
+      $ref: "../../openapi.yaml#/components/schemas/GainsStatementValuation"
+    realized_gain_value:
+      type: [string, 'null']
+      pattern: '^-?(0|[1-9][0-9]{0,18})$'
+      description: Exact sum of realized gains of disposals dated in the period; null when any of them is unresolved.
+    realized_gain_scale:
+      type: [integer, 'null']
+    disposal_count:
+      type: integer
+      description: Disposals dated in the period in this currency.
+    realized_unresolved_count:
+      type: integer
+      description: Disposals in the period whose basis, and so gain, is unresolved.
+    income_value:
+      type: string
+      pattern: '^-?(0|[1-9][0-9]{0,18})$'
+      description: >-
+        Gross income of effective cash and reinvested dividends dated in the
+        period (before withholding). Return of capital is not income: it
+        reduces basis and shows in unrealized gain.
+    income_scale:
+      type: integer
+    income_count:
+      type: integer
+      description: Effective dividend operations contributing to income_value.
+    unrealized_change_value:
+      type: [string, 'null']
+      pattern: '^-?(0|[1-9][0-9]{0,18})$'
+      description: Closing less opening unrealized gain; null when either is absent.
+    unrealized_change_scale:
+      type: [integer, 'null']
+    total_value:
+      type: [string, 'null']
+      pattern: '^-?(0|[1-9][0-9]{0,18})$'
+      description: Realized gain plus income plus unrealized change; null when any part is absent.
+    total_scale:
+      type: [integer, 'null']
+
+GainsStatementValuation:
+  type: object
+  description: Unrealized gain of one currency's positions at a valuation date, with the price dates that produced it.
+  required:
+    - valuation_as_of
+    - unrealized_gain_value
+    - unrealized_gain_scale
+    - position_count
+    - unpriced_count
+    - unresolved_count
+    - stale_count
+    - unavailable_reason
+    - earliest_price_date
+    - latest_price_date
+  properties:
+    valuation_as_of:
+      type: string
+      format: date
+    unrealized_gain_value:
+      type: [string, 'null']
+      pattern: '^-?(0|[1-9][0-9]{0,18})$'
+      description: Exact sum over positions held at the date; null when any position is unpriced or has unresolved basis.
+    unrealized_gain_scale:
+      type: [integer, 'null']
+    position_count:
+      type: integer
+    unpriced_count:
+      type: integer
+      description: Positions with no usable price on or before the date.
+    unresolved_count:
+      type: integer
+      description: Positions whose remaining basis is unresolved.
+    stale_count:
+      type: integer
+      description: Positions valued with a price older than the profile's stale_after_days; retained, not a gate.
+    unavailable_reason:
+      type: [string, 'null']
+      enum: [unpriced, unresolved_basis, unpriced_and_unresolved, null]
+    earliest_price_date:
+      type: [string, 'null']
+      format: date
+      description: Oldest price date used at this valuation date.
+    latest_price_date:
+      type: [string, 'null']
+      format: date
+
 GainImpact:
   type: object
   description: >-

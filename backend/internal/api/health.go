@@ -323,6 +323,7 @@ func RegisterRoutesWithAuth(mux *http.ServeMux, logger *slog.Logger, services Se
 	mux.HandleFunc("GET /api/v1/investments/automation-rules", listInvestmentAutomationRules(logger, services.Auth, services.Investment))
 	mux.HandleFunc("PUT /api/v1/investments/automation-rules", saveInvestmentAutomationRules(logger, services.Auth, services.Investment, options))
 	mux.HandleFunc("GET /api/v1/investments/gains", listInvestmentGains(logger, services.Auth, services.Investment, services.Currency))
+	mux.HandleFunc("GET /api/v1/investments/gains/statement", investmentGainsStatement(logger, services.Auth, services.Investment, services.Currency))
 	mux.HandleFunc("POST /api/v1/imports", startImport(logger, services.Auth, services.Import, options))
 	mux.HandleFunc("POST /api/v1/imports/analyze", analyzeCSVImport(logger, services.Auth, services.Import, options))
 	mux.HandleFunc("GET /api/v1/imports", listImportBatches(logger, services.Auth, services.Import))

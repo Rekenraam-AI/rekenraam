@@ -67,6 +67,9 @@ export type DividendRequest = components['schemas']['DividendRequest'];
 export type ReinvestedDividendRequest = components['schemas']['ReinvestedDividendRequest'];
 export type CostBasisMethod = components['schemas']['CostBasisMethod'];
 export type InvestmentGainsResponse = components['schemas']['InvestmentGainsResponse'];
+export type InvestmentGainsStatementResponse = components['schemas']['InvestmentGainsStatementResponse'];
+export type GainsStatementRow = components['schemas']['GainsStatementRow'];
+export type GainsStatementValuation = components['schemas']['GainsStatementValuation'];
 export type RealizedGainEntry = components['schemas']['RealizedGainEntry'];
 export type UnrealizedGainEntry = components['schemas']['UnrealizedGainEntry'];
 export type RealizedGainTotal = components['schemas']['RealizedGainTotal'];
@@ -114,6 +117,7 @@ export const datedHoldingsQueryKey = ['api', 'investments', 'dated-holdings'] as
 export const investmentLotsQueryKey = ['api', 'investments', 'lots'] as const;
 export const investmentInstrumentsQueryKey = ['api', 'investments', 'instruments'] as const;
 export const investmentGainsQueryKey = ['api', 'investments', 'gains'] as const;
+export const investmentGainsStatementQueryKey = ['api', 'investments', 'gains', 'statement'] as const;
 export const investmentEventSuggestionsQueryKey = ['api', 'investments', 'event-suggestions'] as const;
 export const investmentAutomationRulesQueryKey = ['api', 'investments', 'automation-rules'] as const;
 export const investmentCorrectionChainQueryKey = ['api', 'investments', 'correction-chain'] as const;
@@ -981,6 +985,14 @@ export function investmentGainsQueryOptions(from?: string, to?: string, valuatio
   };
 }
 
+export function investmentGainsStatementQueryOptions(from: string, to: string) {
+  return {
+    queryKey: [...investmentGainsStatementQueryKey, { from, to }] as const,
+    queryFn: () => getInvestmentGainsStatement(from, to),
+    staleTime: 30_000
+  };
+}
+
 export function investmentEventSuggestionsQueryOptions() {
   return {
     queryKey: investmentEventSuggestionsQueryKey,
@@ -1007,6 +1019,31 @@ export async function getInvestmentGains(
   try {
     const { data, error, response } = await apiClient.GET('/api/v1/investments/gains', {
       params: { query: { from, to, valuation_as_of: valuationAsOf } }
+    });
+
+    if (data !== undefined) {
+      return data;
+    }
+
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) {
+      throw error;
+    }
+
+    throw toNetworkError(error);
+  }
+}
+
+// The R18 period statement (#231): opening and closing unrealized, realized
+// and income per currency for from..to, composed in one backend read.
+export async function getInvestmentGainsStatement(
+  from: string,
+  to: string
+): Promise<InvestmentGainsStatementResponse> {
+  try {
+    const { data, error, response } = await apiClient.GET('/api/v1/investments/gains/statement', {
+      params: { query: { from, to } }
     });
 
     if (data !== undefined) {

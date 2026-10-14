@@ -137,12 +137,26 @@ instant* needs either knowledge-time reconstruction of retirements and
 revisions or a persisted immutable run; that choice is a later slice and no
 current response claims it.
 
+### Period statement (#231)
+
+A period `from..to` reports, per currency and under the same profile:
+opening unrealized gain valued at the day before `from`; realized gain of
+disposals dated in the period; investment income as the gross income-account
+credit of effective cash and reinvested dividends dated in the period
+(withholding is separate; a reversed or replaced dividend is not effective;
+return of capital reduces basis and is not income); closing unrealized gain at
+`to`; their change; and the total of realized, income and change. Each
+valuation states its position, unpriced, unresolved and stale counts and the
+range of price dates used. Any figure resting on a missing price or unresolved
+basis is null with its reason, and so is every figure built from it; a
+currency with nothing held at a date has a known zero.
+
 ### Delivery slices
 
 | Slice | Issue | Scope |
 | --- | --- | --- |
 | 1 | [#230](https://github.com/sergeyfarin/rekenraam/issues/230) | `operational_v1` descriptor and as-of valuation: positions replayed to `valuation_as_of`, priced under `live_raw_v1`, on the gains read and screen. |
-| 2 | [#231](https://github.com/sergeyfarin/rekenraam/issues/231) | Period gains statement: opening/closing unrealized, realized and income per cost currency for a date range. |
+| 2 | [#231](https://github.com/sergeyfarin/rekenraam/issues/231) | Delivered 2026-10-14. Period gains statement: opening unrealized (day before the period), realized, gross dividend income and closing unrealized per currency for a date range; absent figures are null with reason and counts. |
 | 3 | [#232](https://github.com/sergeyfarin/rekenraam/issues/232) | Alternative-method projection (FIFO/LIFO/average) beside the operational result, computed by rolled-back replay. |
 | 4 | [#233](https://github.com/sergeyfarin/rekenraam/issues/233) | Reporting-currency conversion with a named FX method and coverage disclosure. |
 | 5 | [#234](https://github.com/sergeyfarin/rekenraam/issues/234) | Reproducible runs: knowledge-time ledger reconstruction or immutable persisted run, decided by evidence. |

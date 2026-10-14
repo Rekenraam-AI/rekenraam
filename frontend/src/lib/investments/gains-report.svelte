@@ -3,6 +3,7 @@
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery } from '@tanstack/svelte-query';
   import CapitalReturnSummary from '#lib/investments/capital-return-summary.svelte';
+  import GainsStatement from '#lib/investments/gains-statement.svelte';
   import Panel from '#lib/components/panel.svelte';
   import StatePanel from '#lib/components/state-panel.svelte';
   import {
@@ -195,6 +196,8 @@
       </Panel>
     {/if}
   </section>
+
+  <GainsStatement />
 
   <!-- Realized gains -->
   <section>

@@ -24312,6 +24312,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/investments/gains/statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Period gains statement under operational_v1
+         * @description R18 slice 2 (#231). For each currency, reports the unrealized gain of the positions held at the end of the day before `from` (opening), the realized gain of disposals dated in the period, the investment income of effective dividends paid in the period, and the unrealized gain at `to` (closing). Both valuations replay positions under the operational_v1 profile and price them with the latest live_raw_v1 observation on or before their date. A figure that depends on a missing price or an unresolved basis is null with its reason and counts, never zero. Read-only; no FX conversion.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description First day of the period (ISO date, inclusive). */
+                    from: string;
+                    /** @description Last day of the period (ISO date, inclusive, not after owner-local today). */
+                    to: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The period statement */
+                200: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InvestmentGainsStatementResponse"];
+                    };
+                };
+                /** @description A date is missing or malformed, `from` is after `to`, or `to` is after owner-local today */
+                400: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication is required */
+                401: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/investments/operations/{operation_id}/reverse-split": {
         parameters: {
             query?: never;
@@ -30337,6 +30412,69 @@ export interface components {
             fx_method: "none";
             /** @enum {string} */
             rounding: "exact_half_up";
+        };
+        /** @description Period gains statement (R18 slice 2, #231). One row per currency that has a position at either valuation date, a disposal in the period or investment income in the period. Not a tax computation. */
+        InvestmentGainsStatementResponse: {
+            profile: components["schemas"]["GainsProfile"];
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @description Currency labels and standard display scales; figures retain their exact scale. */
+            currencies: components["schemas"]["CurrencyResponse"][];
+            rows: components["schemas"]["GainsStatementRow"][];
+        };
+        /** @description One currency's statement. Every figure is exact in that currency. A null figure is absent (a missing price or unresolved basis), never zero; a currency with nothing held at a date has a known zero unrealized gain. */
+        GainsStatementRow: {
+            /**
+             * Format: int64
+             * @description The cost currency of positions and disposals; the cash currency of income.
+             */
+            commodity_id: number;
+            opening: components["schemas"]["GainsStatementValuation"];
+            closing: components["schemas"]["GainsStatementValuation"];
+            /** @description Exact sum of realized gains of disposals dated in the period; null when any of them is unresolved. */
+            realized_gain_value: string | null;
+            realized_gain_scale: number | null;
+            /** @description Disposals dated in the period in this currency. */
+            disposal_count: number;
+            /** @description Disposals in the period whose basis, and so gain, is unresolved. */
+            realized_unresolved_count: number;
+            /** @description Gross income of effective cash and reinvested dividends dated in the period (before withholding). Return of capital is not income: it reduces basis and shows in unrealized gain. */
+            income_value: string;
+            income_scale: number;
+            /** @description Effective dividend operations contributing to income_value. */
+            income_count: number;
+            /** @description Closing less opening unrealized gain; null when either is absent. */
+            unrealized_change_value: string | null;
+            unrealized_change_scale: number | null;
+            /** @description Realized gain plus income plus unrealized change; null when any part is absent. */
+            total_value: string | null;
+            total_scale: number | null;
+        };
+        /** @description Unrealized gain of one currency's positions at a valuation date, with the price dates that produced it. */
+        GainsStatementValuation: {
+            /** Format: date */
+            valuation_as_of: string;
+            /** @description Exact sum over positions held at the date; null when any position is unpriced or has unresolved basis. */
+            unrealized_gain_value: string | null;
+            unrealized_gain_scale: number | null;
+            position_count: number;
+            /** @description Positions with no usable price on or before the date. */
+            unpriced_count: number;
+            /** @description Positions whose remaining basis is unresolved. */
+            unresolved_count: number;
+            /** @description Positions valued with a price older than the profile's stale_after_days; retained, not a gate. */
+            stale_count: number;
+            /** @enum {string|null} */
+            unavailable_reason: "unpriced" | "unresolved_basis" | "unpriced_and_unresolved" | null;
+            /**
+             * Format: date
+             * @description Oldest price date used at this valuation date.
+             */
+            earliest_price_date: string | null;
+            /** Format: date */
+            latest_price_date: string | null;
         };
         ErrorBody: {
             /** @enum {string} */

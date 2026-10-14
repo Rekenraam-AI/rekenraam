@@ -1,0 +1,63 @@
+get:
+  summary: Period gains statement under operational_v1
+  description: >
+    R18 slice 2 (#231). For each currency, reports the unrealized gain of the
+    positions held at the end of the day before `from` (opening), the realized
+    gain of disposals dated in the period, the investment income of effective
+    dividends paid in the period, and the unrealized gain at `to` (closing).
+    Both valuations replay positions under the operational_v1 profile and
+    price them with the latest live_raw_v1 observation on or before their
+    date. A figure that depends on a missing price or an unresolved basis is
+    null with its reason and counts, never zero. Read-only; no FX conversion.
+  parameters:
+    - name: from
+      in: query
+      required: true
+      description: First day of the period (ISO date, inclusive).
+      schema:
+        type: string
+        format: date
+    - name: to
+      in: query
+      required: true
+      description: Last day of the period (ISO date, inclusive, not after owner-local today).
+      schema:
+        type: string
+        format: date
+  responses:
+    "200":
+      description: The period statement
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/InvestmentGainsStatementResponse"
+    "400":
+      description: A date is missing or malformed, `from` is after `to`, or `to` is after owner-local today
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "401":
+      description: Authentication is required
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "500":
+      description: Internal server error
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
