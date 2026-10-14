@@ -277,3 +277,39 @@ func TestForecastConstantFXStalenessAndTies(t *testing.T) {
 	assert.Equal(t, int64(3), snapshot.Rates[0].ObservationID, "latest recorded active tie wins; voided and future rows cannot win")
 	assert.True(t, snapshot.Rates[0].IsDerived)
 }
+
+func TestForecastUsesSharedManualRawAndKnowledgePriority(t *testing.T) {
+	t.Parallel()
+	database, repository := newForecastTestRepository(t)
+	_, err := database.Exec(`INSERT INTO commodities(id,book_id,code,kind,is_builtin,created_at,created_by_user_id) VALUES(2,1,'USD','currency',1,'2026-01-01T00:00:00Z',1);
+ INSERT INTO commodity_versions(commodity_id,version_seq,effective_from,recorded_at,changed_by_user_id,change_reason,status,symbol,display_symbol,name,standard_scale,max_quantity_scale) VALUES(2,1,'2026-01-01','2026-01-01T00:00:00Z',1,'seed','active','USD','$','Dollar',2,2);`)
+	require.NoError(t, err)
+	prices := NewPricingRepository(database)
+	var manualID int64
+	for _, q := range []struct {
+		kind, basis, date, recorded string
+		manual                      bool
+		value                       int64
+	}{
+		{"manual", "raw", "2026-08-31", "2026-08-31T09:00:00Z", true, 80},
+		{"spot_mid", "not_applicable", "2026-08-31", "2026-08-31T10:00:00Z", false, 90},
+		{"manual", "total_return", "2026-08-31", "2026-08-31T11:00:00Z", true, 99},
+		{"manual", "raw", "2026-09-01", "2026-08-31T11:00:00Z", true, 100},
+		{"manual", "raw", "2026-08-31", "2026-08-31T13:00:00Z", true, 101},
+	} {
+		p, err := prices.CreatePriceObservation(context.Background(), CreatePriceObservationParams{BookID: 1, ActorUserID: 1, OriginType: "browser_api", Operation: "pricing.price.create", CreatedAt: q.recorded, ChangeReason: "forecast selection", Spec: PriceObservationSpec{BaseCommodityID: 2, QuoteCommodityID: 1, QuoteType: q.kind, AdjustmentBasis: q.basis, PriceValue: q.value, PriceScale: 2, BaseQuantityValue: 1, ValuationDate: q.date, IsManual: q.manual, DerivationJSON: "{}", SeriesMetadataJSON: "{}", MetadataJSON: "{}"}})
+		require.NoError(t, err)
+		if q.value == 80 {
+			manualID = p.ID
+		}
+	}
+	insertForecastTransaction(t, database, 70, 70, "posted", "2026-08-31", []PostingSpec{{AccountID: 1, CommodityID: 2, QuantityValue: exact.MustParse("100"), QuantityScale: 2}, {AccountID: 2, CommodityID: 2, QuantityValue: exact.MustParse("-100"), QuantityScale: 2}})
+	quoteID := int64(1)
+	snapshot, err := repository.LoadResolvedSnapshot(context.Background(), forecastSnapshotRequest(1), func(ForecastSnapshot) (ForecastSnapshotResolution, error) {
+		return ForecastSnapshotResolution{AccountIDs: []int64{1}, ThroughDate: "2026-12-31", AsOfDate: "2026-08-31", KnowledgeCutoff: "2026-08-31T12:00:00Z", ReportingCurrencyID: &quoteID}, nil
+	})
+	require.NoError(t, err)
+	require.Len(t, snapshot.Rates, 1)
+	require.Equal(t, manualID, snapshot.Rates[0].ObservationID)
+	require.Equal(t, int64(80), snapshot.Rates[0].PriceValue)
+}

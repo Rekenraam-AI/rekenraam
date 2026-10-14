@@ -63,6 +63,8 @@ type ReportingCurrencyInput struct {
 // RateUse records that a conversion happened and on what: the rate's own
 // observation date, and whether that date was the one asked for.
 type RateUse struct {
+	ObservationID   int64  `json:"observation_id"`
+	Approximate     bool   `json:"approximate"`
 	CommodityID     int64  `json:"commodity_id"`
 	ObservationDate string `json:"observation_date"`
 	RequestedDate   string `json:"requested_date"`
@@ -82,6 +84,9 @@ type RateGap struct {
 
 // ValuationCoverage is what a response says about its own conversions.
 type ValuationCoverage struct {
+	SelectionPolicy  string
+	ValuationAsOf    string
+	KnowledgeCutoff  string
 	CommodityID      int64
 	Code             string
 	Scale            int
@@ -95,19 +100,23 @@ type ValuationCoverage struct {
 	Complete bool
 }
 
+type rateUseKey struct {
+	commodityID, observationID int64
+	requestedDate              string
+}
+
 // RateTable resolves a commodity and a date to a rate, once, for a whole
 // report. Built from one query over the window the report covers.
 type RateTable struct {
+	boundary         db.ObservationBoundary
+	diagnostics      map[[2]int64]string
 	quoteCommodityID int64
 	quoteScale       int
 	stalenessDays    int
 	// byCommodity holds each commodity's observations in date order.
 	byCommodity map[int64][]db.ReportingRateRecord
-	// outside remembers the nearest observation that exists but is too old, so
-	// a gap can say which problem it is.
-	outside map[int64]string
 
-	used map[int64]RateUse
+	used map[rateUseKey]RateUse
 	gaps map[int64]RateGap
 }
 
@@ -145,14 +154,20 @@ func (s *TransactionService) NewRateTable(
 		return nil, ValidationError{Message: "reporting currency must be a currency"}
 	}
 
+	boundary, err := s.pricingRepository.CurrentObservationBoundary(ctx, BookID, s.now())
+	if err != nil {
+		return nil, err
+	}
+	boundary.AsOf = min(boundary.AsOf, toDate)
 	table := &RateTable{
+		boundary:         boundary,
 		quoteCommodityID: reporting.CommodityID,
 		quoteScale:       quote.StandardScale,
 		stalenessDays:    staleness,
 		byCommodity:      map[int64][]db.ReportingRateRecord{},
-		outside:          map[int64]string{},
-		used:             map[int64]RateUse{},
-		gaps:             map[int64]RateGap{},
+
+		used: map[rateUseKey]RateUse{},
+		gaps: map[int64]RateGap{},
 	}
 
 	needed := make([]int64, 0, len(commodityIDs))
@@ -169,7 +184,7 @@ func (s *TransactionService) NewRateTable(
 	if err != nil {
 		return nil, err
 	}
-	rates, err := s.pricingRepository.ReportingRates(ctx, BookID, reporting.CommodityID, needed, windowStart, toDate)
+	rates, err := s.pricingRepository.ReportingRates(ctx, BookID, reporting.CommodityID, needed, windowStart, toDate, boundary)
 	if err != nil {
 		return nil, err
 	}
@@ -177,20 +192,13 @@ func (s *TransactionService) NewRateTable(
 		table.byCommodity[rate.BaseCommodityID] = append(table.byCommodity[rate.BaseCommodityID], rate)
 	}
 
-	// Anything with no observation in the widened window may still have one
-	// further back; knowing which tells a reader whether to add a rate or to
-	// refresh them.
-	for _, commodityID := range needed {
-		if len(table.byCommodity[commodityID]) > 0 {
-			continue
-		}
-		nearest, err := s.pricingRepository.ReportingRates(ctx, BookID, reporting.CommodityID, []int64{commodityID}, "0001-01-01", toDate)
-		if err != nil {
-			return nil, err
-		}
-		if len(nearest) > 0 {
-			table.outside[commodityID] = nearest[len(nearest)-1].ValuationDate
-		}
+	pairs := make([][2]int64, 0, len(needed))
+	for _, id := range needed {
+		pairs = append(pairs, [2]int64{id, reporting.CommodityID})
+	}
+	table.diagnostics, err = s.pricingRepository.ObservationDiagnostics(ctx, BookID, pairs, boundary)
+	if err != nil {
+		return nil, err
 	}
 
 	return table, nil
@@ -234,16 +242,11 @@ func (t *RateTable) Convert(value exact.Coefficient, scale int, commodityID int6
 	}
 
 	stale := rate.ValuationDate != onDate
-	// One record per commodity, keeping the worst case: a reader needs to know
-	// that *some* figure leaned on a stale rate, not that most did not.
-	if existing, ok := t.used[commodityID]; !ok || (stale && !existing.Stale) {
-		t.used[commodityID] = RateUse{
-			CommodityID:     commodityID,
-			ObservationDate: rate.ValuationDate,
-			RequestedDate:   onDate,
-			Stale:           stale,
-			Derived:         rate.IsDerived,
-		}
+	// Preserve each selected observation/date, so a later estimated or stale
+	// use cannot disappear behind the first exact quote of that currency.
+	t.used[rateUseKey{commodityID, rate.ObservationID, onDate}] = RateUse{
+		ObservationID: rate.ObservationID, Approximate: rate.IsApproximate,
+		CommodityID: commodityID, ObservationDate: rate.ValuationDate, RequestedDate: onDate, Stale: stale, Derived: rate.IsDerived,
 	}
 
 	return converted, true
@@ -254,13 +257,13 @@ func (t *RateTable) Convert(value exact.Coefficient, scale int, commodityID int6
 func (t *RateTable) rateFor(commodityID int64, onDate string) (db.ReportingRateRecord, bool) {
 	observations := t.byCommodity[commodityID]
 	if len(observations) == 0 {
-		t.recordGap(commodityID)
+		t.recordGap(commodityID, onDate)
 		return db.ReportingRateRecord{}, false
 	}
 
 	earliestUsable, err := shiftISODate(onDate, -t.stalenessDays)
 	if err != nil {
-		t.recordGap(commodityID)
+		t.recordGap(commodityID, onDate)
 		return db.ReportingRateRecord{}, false
 	}
 
@@ -276,21 +279,31 @@ func (t *RateTable) rateFor(commodityID int64, onDate string) (db.ReportingRateR
 		best, found = observation, true
 	}
 	if !found {
-		t.recordGap(commodityID)
+		t.recordGap(commodityID, onDate)
 		return db.ReportingRateRecord{}, false
 	}
 	return best, true
 }
 
-func (t *RateTable) recordGap(commodityID int64) {
+func (t *RateTable) recordGap(commodityID int64, onDate string) {
 	if _, ok := t.gaps[commodityID]; ok {
 		return
 	}
 	gap := RateGap{CommodityID: commodityID, Reason: RateMissingNoObservation}
-	if nearest, ok := t.outside[commodityID]; ok {
-		gap.NearestObservationDate = nearest
-	} else if observations := t.byCommodity[commodityID]; len(observations) > 0 {
-		gap.NearestObservationDate = observations[len(observations)-1].ValuationDate
+	reason := t.diagnostics[[2]int64{commodityID, t.quoteCommodityID}]
+	if reason != "" && reason != "usable" {
+		gap.Reason = reason
+	}
+	// Never identify an observation after this specific bucket/posting as a
+	// nearest prior rate, even when a later bucket in the same report has one.
+	for _, observation := range t.byCommodity[commodityID] {
+		if observation.ValuationDate > onDate {
+			break
+		}
+		gap.NearestObservationDate = observation.ValuationDate
+	}
+	if gap.NearestObservationDate == "" && reason == "usable" {
+		gap.Reason = "future_only"
 	}
 	t.gaps[commodityID] = gap
 }
@@ -298,6 +311,7 @@ func (t *RateTable) recordGap(commodityID int64) {
 // Coverage reports what the table actually did, for the response to carry.
 func (t *RateTable) Coverage(code string) ValuationCoverage {
 	coverage := ValuationCoverage{
+		SelectionPolicy: "live_raw_v1", ValuationAsOf: t.boundary.AsOf, KnowledgeCutoff: t.boundary.RecordedAt,
 		CommodityID:      t.quoteCommodityID,
 		Code:             code,
 		Scale:            t.quoteScale,
@@ -311,7 +325,13 @@ func (t *RateTable) Coverage(code string) ValuationCoverage {
 	for _, gap := range t.gaps {
 		coverage.Gaps = append(coverage.Gaps, gap)
 	}
-	sort.Slice(coverage.Used, func(i, j int) bool { return coverage.Used[i].CommodityID < coverage.Used[j].CommodityID })
+	sort.Slice(coverage.Used, func(i, j int) bool {
+		a, b := coverage.Used[i], coverage.Used[j]
+		if a.CommodityID != b.CommodityID {
+			return a.CommodityID < b.CommodityID
+		}
+		return a.RequestedDate < b.RequestedDate
+	})
 	sort.Slice(coverage.Gaps, func(i, j int) bool { return coverage.Gaps[i].CommodityID < coverage.Gaps[j].CommodityID })
 	return coverage
 }

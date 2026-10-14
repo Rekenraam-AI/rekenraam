@@ -3345,6 +3345,19 @@ InvestmentPositionResponse:
     - transfer_basis_allocation
     - position_side
   properties:
+    price_status:
+      type: string
+      enum: [usable, stale, no_price, future_only, incompatible_quote_basis, not_known_at_cutoff]
+      description: Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection.
+    valuation_as_of:
+      type: string
+      format: date
+      description: Owner-local current date at read start; positions remain the current operational projection.
+    knowledge_cutoff:
+      type: string
+      format: date-time
+      description: Recorded-at observation admission boundary; current withdrawals still apply.
+
     position_side:
       type: string
       enum: [long, short]
@@ -3716,6 +3729,19 @@ UnrealizedGainEntry:
     - latest_price_approximate
     - position_side
   properties:
+    price_status:
+      type: string
+      enum: [usable, stale, no_price, future_only, incompatible_quote_basis, not_known_at_cutoff]
+      description: Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection.
+    valuation_as_of:
+      type: string
+      format: date
+      description: Owner-local current date at read start; positions remain the current operational projection.
+    knowledge_cutoff:
+      type: string
+      format: date-time
+      description: Recorded-at observation admission boundary; current withdrawals still apply.
+
     position_side:
       type: string
       enum: [long, short]
@@ -3783,7 +3809,7 @@ UnrealizedGainEntry:
       description: Omitted when valuation_unavailable is present.
     valuation_unavailable:
       type: string
-      enum: [no_price, unrepresentable]
+      enum: [no_price, unrepresentable, future_only, incompatible_quote_basis, not_known_at_cutoff]
       description: >-
         Present only when market value and unrealized gain are omitted, saying
         why. no_price means no price observation exists for the position;

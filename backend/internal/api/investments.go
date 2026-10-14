@@ -636,6 +636,9 @@ type investmentLotsResponse struct {
 }
 
 type investmentPositionResponse struct {
+	PriceStatus             string            `json:"price_status"`
+	ValuationAsOf           string            `json:"valuation_as_of"`
+	KnowledgeCutoff         string            `json:"knowledge_cutoff"`
 	AccountID               int64             `json:"account_id"`
 	CommodityID             int64             `json:"commodity_id"`
 	QuantityValue           exact.Coefficient `json:"quantity_value"`
@@ -2270,7 +2273,7 @@ func toInvestmentLotResponses(lots []app.InvestmentLot) []investmentLotResponse 
 func toInvestmentPositionResponses(positions []app.InvestmentPosition) []investmentPositionResponse {
 	responses := make([]investmentPositionResponse, 0, len(positions))
 	for _, position := range positions {
-		responses = append(responses, investmentPositionResponse{AccountID: position.AccountID, CommodityID: position.CommodityID, QuantityValue: position.QuantityValue, QuantityScale: position.QuantityScale, RemainingCostBasisValue: projectedBasisValue(position.RemainingCostBasisValue, position.BasisKnowledge), RemainingCostBasisScale: projectedBasisScale(position.RemainingCostBasisScale, position.BasisKnowledge), BasisKnowledge: position.BasisKnowledge, CostCommodityID: position.CostCommodityID, LatestPriceValue: moneyCoefficientPointer(position.LatestPriceValue), LatestPriceScale: position.LatestPriceScale, LatestPriceDate: position.LatestPriceDate, LatestPriceApproximate: position.LatestPriceApproximate, TransferBasisAllocation: position.TransferBasisAllocation, PositionSide: position.PositionSide})
+		responses = append(responses, investmentPositionResponse{PriceStatus: position.PriceStatus, ValuationAsOf: position.ValuationAsOf, KnowledgeCutoff: position.KnowledgeCutoff, AccountID: position.AccountID, CommodityID: position.CommodityID, QuantityValue: position.QuantityValue, QuantityScale: position.QuantityScale, RemainingCostBasisValue: projectedBasisValue(position.RemainingCostBasisValue, position.BasisKnowledge), RemainingCostBasisScale: projectedBasisScale(position.RemainingCostBasisScale, position.BasisKnowledge), BasisKnowledge: position.BasisKnowledge, CostCommodityID: position.CostCommodityID, LatestPriceValue: moneyCoefficientPointer(position.LatestPriceValue), LatestPriceScale: position.LatestPriceScale, LatestPriceDate: position.LatestPriceDate, LatestPriceApproximate: position.LatestPriceApproximate, TransferBasisAllocation: position.TransferBasisAllocation, PositionSide: position.PositionSide})
 	}
 	return responses
 }
@@ -2340,6 +2343,9 @@ type realizedGainResponse struct {
 }
 
 type unrealizedGainResponse struct {
+	PriceStatus             string            `json:"price_status"`
+	ValuationAsOf           string            `json:"valuation_as_of"`
+	KnowledgeCutoff         string            `json:"knowledge_cutoff"`
 	AccountID               int64             `json:"account_id"`
 	CommodityID             int64             `json:"commodity_id"`
 	CostCommodityID         int64             `json:"cost_commodity_id"`
@@ -2438,6 +2444,7 @@ func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, inve
 				QuantityScale:           e.QuantityScale,
 				RemainingCostBasisValue: projectedBasisValue(e.RemainingCostBasisValue, e.BasisKnowledge),
 				RemainingCostBasisScale: projectedBasisScale(e.RemainingCostBasisScale, e.BasisKnowledge), BasisKnowledge: e.BasisKnowledge,
+				PriceStatus: e.PriceStatus, ValuationAsOf: e.ValuationAsOf, KnowledgeCutoff: e.KnowledgeCutoff,
 				LatestPriceValue:       moneyCoefficientPointer(e.LatestPriceValue),
 				LatestPriceScale:       e.LatestPriceScale,
 				LatestPriceDate:        e.LatestPriceDate,

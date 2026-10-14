@@ -256,7 +256,7 @@ func (s *ForecastService) Balances(ctx context.Context, input ForecastInput) (Fo
 		if err == nil {
 			err = validateForecastLearningCategories(base.AccountVersions, bounds.AsOf, normalized)
 		}
-		resolution := db.ForecastSnapshotResolution{AccountIDs: scope.AccountIDs, ThroughDate: bounds.Through, AsOfDate: bounds.AsOf, ReportingCurrencyID: normalized.ReportingCurrencyID}
+		resolution := db.ForecastSnapshotResolution{KnowledgeCutoff: nowUTC.Format(time.RFC3339Nano), AccountIDs: scope.AccountIDs, ThroughDate: bounds.Through, AsOfDate: bounds.AsOf, ReportingCurrencyID: normalized.ReportingCurrencyID}
 		// The history read joins this same transaction, so a model can never
 		// be trained on one view of the ledger and applied to another.
 		if err == nil && normalized.learningEnabled() {

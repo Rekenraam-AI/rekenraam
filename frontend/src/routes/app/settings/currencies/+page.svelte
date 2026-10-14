@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ObservationStatus from '#lib/valuation/observation-status.svelte';
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
@@ -811,6 +812,7 @@
                         {@const health = healthFor(currency.id, defaultCurrency.id)}
                         <div>
                           <p>{observation ? formatDate(observation.valuation_date) : m.currencies_rate_missing_date()}</p>
+                          <ObservationStatus status={observation?.price_status} />
                           <p class="text-xs">
                             {health?.last_attempt_at
                               ? m.currencies_last_attempt({ time: formatDateTime(health.last_attempt_at) })
@@ -824,6 +826,7 @@
                         {@const health = healthFor(defaultCurrency.id, currency.id)}
                         <div>
                           <p>{observation ? formatDate(observation.valuation_date) : m.currencies_rate_missing_date()}</p>
+                          <ObservationStatus status={observation?.price_status} />
                           <p class="text-xs">
                             {health?.last_attempt_at
                               ? m.currencies_last_attempt({ time: formatDateTime(health.last_attempt_at) })

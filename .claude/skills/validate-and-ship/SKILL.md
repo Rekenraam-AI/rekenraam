@@ -476,3 +476,15 @@ something you want CI to see first). This flips at the `v0.1.0` release — see
 4. Docs updated per the table above.
 5. No violation of `ledger-invariants` (if money/ledger touched).
 6. Focused conventional commit.
+
+
+## Observation selection regression (#203)
+
+Valuation consumers use the shared `db` observation-selection owner
+(`observation_selection.go`, `live_raw_v1`). Never choose an adjusted or future
+quote by sorting all evidence by recording time. Keep same-date manual/override,
+exact and approximate priority (including the existing unadjusted
+`trade_implied` / `not_applicable` fill marker), the valuation/knowledge boundary and each
+consumer's explicit age rule. A live timestamp cutoff does not reconstruct
+past retirements or book state. Validate through real holdings and reporting FX
+(`TestObservationSelection*`), preserving original per-currency amounts.

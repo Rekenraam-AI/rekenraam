@@ -216,7 +216,7 @@ governs the journal/subledger boundary and ADR 0013 the R16 operation model.
 | Valid interactive markup | ✅ | A clickable transactions row carried `role="button"` with `aria-selected` — invalid on that role, and it nested the row's own buttons inside a button (one critical and one serious violation). Left as a row, the markup is valid and the behaviour is unchanged. |
 | Browser-suite ordering | ✅ | `auth.spec.ts` is the bootstrap journey and needs a database with no owner; it ran first only because "auth" sorted before every other filename, which a new spec starting with "a" quietly broke. A Playwright project dependency now states the requirement. |
 
-## FX & Pricing (Phase 6 foundations) — 🟡 Backend only
+## FX & Pricing (Phase 6 foundations) — 🟢 Management UI and live valuation policy shipped
 
 | Capability | Status | Notes |
 |---|---|---|
@@ -227,7 +227,23 @@ governs the journal/subledger boundary and ADR 0013 the R16 operation model.
 | Pricing sources, policy, source assignments, health | 🟦 | Full API (`/pricing/*`); FX policy, sources, health, refresh and retry remain in currency settings. R11 adds observation management separately. |
 | Manual/scheduled refresh runs + history | 🟦 | API and existing currency settings; no new R11 provider adapter. |
 | Currency-provider select names | ✅ | [#205](https://github.com/sergeyfarin/rekenraam/issues/205): per-pair provider controls expose localized purpose and base/quote names in both rate directions and the combined view. A 390 px keyboard/axe `select-name` regression covers the currency workspace. Assignment and date behavior remain unchanged. |
-| **Pricing/FX management UI** | ✅ | [#116](https://github.com/sergeyfarin/rekenraam/issues/116), via #200–#202 (2026-10-13): `/app/pricing` composes dated pair coverage and source/commodity choices, including unpriced configured instruments and open-position cost currencies. Cursor history in recording order reaches all observations, including retired evidence. Exact string DTOs preserve int64 prices/base quantities past the browser safe-integer bound; manual entry uses the seeded manual source and required reason. Source/quote/adjustment basis, four dates/times, approximation, trade linkage, derivation, reference, supersession and void reasons are inspectable. Correction and withdrawal review the full bounded derived closure and recheck its token inside one audited writer transaction; correction retires the closure and appends a same-pair/date manual replacement. Stale, repeated, over-depth and late-failure cases leave no partial effects. Six-locale mobile/keyboard states, cancellation, fresh-review recovery and cache invalidation ship. No posting, operational basis or checkpoint changes. [Contract](plans/pricing-management-plan.md); existing consumer selection/age differences remain explicit and are tracked by [#203](https://github.com/sergeyfarin/rekenraam/issues/203). |
+| **Pricing/FX management UI** | ✅ | [#116](https://github.com/sergeyfarin/rekenraam/issues/116), via #200–#202 (2026-10-13): `/app/pricing` composes dated pair coverage and source/commodity choices, including unpriced configured instruments and open-position cost currencies. Cursor history in recording order reaches all observations, including retired evidence. Exact string DTOs preserve int64 prices/base quantities past the browser safe-integer bound; manual entry uses the seeded manual source and required reason. Source/quote/adjustment basis, four dates/times, approximation, trade linkage, derivation, reference, supersession and void reasons are inspectable. Correction and withdrawal review the full bounded derived closure and recheck its token inside one audited writer transaction; correction retires the closure and appends a same-pair/date manual replacement. Stale, repeated, over-depth and late-failure cases leave no partial effects. Six-locale mobile/keyboard states, cancellation, fresh-review recovery and cache invalidation ship. No posting, operational basis or checkpoint changes. [Contract](plans/pricing-management-plan.md); the shared live selection and intentional consumer age differences are defined by [#203](https://github.com/sergeyfarin/rekenraam/issues/203) in the [R18 policy](plans/investment-reporting-plan.md). |
+
+### Live valuation observation selection (#203)
+
+Holdings/gains, reporting FX, currency settings, pricing diagnostics and
+constant-rate forecasts share `live_raw_v1` compatible raw quote admission and
+same-date manual/override → exact → approximate priority, with deterministic
+recording-time/ID ties. Current values exclude future observations using the
+server owner-local date and captured UTC knowledge boundary. Holdings/settings
+retain dated prices with a seven-day stale warning; reports keep their requested
+window and omit incomplete conversion totals; forecast remains constant-as-of
+with seven-day coverage. Pricing diagnostics retain their configured threshold.
+Missing, future-only, incompatible and not-yet-known evidence has explicit
+reasons; original quantities/currency figures, observations and ledger/basis
+facts remain. The [R18 policy](plans/investment-reporting-plan.md) records these
+contracts and their live, non-snapshot boundary. No tax or frozen historical
+report guarantee is added.
 
 ## Recurring transactions (R9) — ✅ complete; acceptance closed 2026-08-31
 

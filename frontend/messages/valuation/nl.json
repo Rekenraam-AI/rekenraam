@@ -1,0 +1,10 @@
+{
+  "valuation_price_stale": "Verouderde prijs (ouder dan 7 dagen)",
+  "valuation_price_missing": "Geen prijs beschikbaar",
+  "valuation_price_future": "Alleen toekomstige prijzen beschikbaar",
+  "valuation_price_incompatible": "Koerstype of aanpassingsbasis is ongeschikt",
+  "valuation_price_unknown": "Prijs vastgelegd na de kennisgrens",
+  "valuation_price_window": "Geen geschikte prijs binnen de toegestane ouderdom",
+  "valuation_holdings_policy": "Actuele posities gebruiken prijzen tot en met vandaag. Prijzen ouder dan zeven dagen blijven zichtbaar en worden als verouderd gemarkeerd. Aangepaste prijzen en bied-/laatkoersen zijn uitgesloten.",
+  "valuation_report_policy": "De recentste geschikte datum geldt, daarna hebben op dezelfde dag handmatige waarderingen, exacte en geschatte prijzen voorrang. Alleen onaangepaste koersen die bij het lezen bekend zijn worden gebruikt. Historische rapporten blijven actueel berekend."
+}

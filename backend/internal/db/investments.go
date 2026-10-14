@@ -417,6 +417,9 @@ type DisposeLotsParams struct {
 }
 
 type InvestmentPositionRecord struct {
+	PriceStatus             string
+	ValuationAsOf           string
+	KnowledgeCutoff         string
 	AccountID               int64
 	CommodityID             int64
 	QuantityValue           exact.Coefficient
@@ -2245,8 +2248,12 @@ func (r *InvestmentRepository) lotOrigins(ctx context.Context, where []string, a
 	return origins, nil
 }
 
-func (r *InvestmentRepository) Positions(ctx context.Context, bookID int64) ([]InvestmentPositionRecord, error) {
-	rows, err := r.database.QueryContext(ctx, `
+func (r *InvestmentRepository) Positions(ctx context.Context, bookID int64, boundaries ...ObservationBoundary) ([]InvestmentPositionRecord, error) {
+	boundary, err := NewPricingRepository(r.database).observationBoundary(ctx, bookID, boundaries)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.database.QueryContext(ctx, observationSelectionCTE+`
 		SELECT
 			lot.account_id,
 			lot.commodity_id,
@@ -2255,66 +2262,11 @@ func (r *InvestmentRepository) Positions(ctx context.Context, bookID int64) ([]I
 			lot.remaining_cost_basis_value,
 			lot.remaining_cost_basis_scale,
 			lot.cost_commodity_id,
-			(
-				SELECT po.price_value
-				FROM price_observations po
-				WHERE po.book_id = lot.book_id
-					AND po.base_commodity_id = lot.commodity_id
-					AND po.quote_commodity_id = lot.cost_commodity_id
-					AND po.voided_at IS NULL
-				ORDER BY po.valuation_date DESC, CASE WHEN po.is_manual = 1 OR po.quote_type = 'valuation_override' THEN 3 WHEN po.is_approximate = 0 THEN 2 ELSE 1 END DESC, po.recorded_at DESC, po.id DESC
-				LIMIT 1
-			) AS latest_price_value,
-			(
-				SELECT po.price_scale
-				FROM price_observations po
-				WHERE po.book_id = lot.book_id
-					AND po.base_commodity_id = lot.commodity_id
-					AND po.quote_commodity_id = lot.cost_commodity_id
-					AND po.voided_at IS NULL
-				ORDER BY po.valuation_date DESC, CASE WHEN po.is_manual = 1 OR po.quote_type = 'valuation_override' THEN 3 WHEN po.is_approximate = 0 THEN 2 ELSE 1 END DESC, po.recorded_at DESC, po.id DESC
-				LIMIT 1
-			) AS latest_price_scale,
-			(
-				SELECT po.valuation_date
-				FROM price_observations po
-				WHERE po.book_id = lot.book_id
-					AND po.base_commodity_id = lot.commodity_id
-					AND po.quote_commodity_id = lot.cost_commodity_id
-					AND po.voided_at IS NULL
-				ORDER BY po.valuation_date DESC, CASE WHEN po.is_manual = 1 OR po.quote_type = 'valuation_override' THEN 3 WHEN po.is_approximate = 0 THEN 2 ELSE 1 END DESC, po.recorded_at DESC, po.id DESC
-				LIMIT 1
-			) AS latest_price_date,
-			(
-				SELECT po.is_approximate
-				FROM price_observations po
-				WHERE po.book_id = lot.book_id
-					AND po.base_commodity_id = lot.commodity_id
-					AND po.quote_commodity_id = lot.cost_commodity_id
-					AND po.voided_at IS NULL
-				ORDER BY po.valuation_date DESC, CASE WHEN po.is_manual = 1 OR po.quote_type = 'valuation_override' THEN 3 WHEN po.is_approximate = 0 THEN 2 ELSE 1 END DESC, po.recorded_at DESC, po.id DESC
-				LIMIT 1
-			) AS latest_price_approximate,
-			(
-				SELECT po.base_quantity_value
-				FROM price_observations po
-				WHERE po.book_id = lot.book_id
-					AND po.base_commodity_id = lot.commodity_id
-					AND po.quote_commodity_id = lot.cost_commodity_id
-					AND po.voided_at IS NULL
-				ORDER BY po.valuation_date DESC, CASE WHEN po.is_manual = 1 OR po.quote_type = 'valuation_override' THEN 3 WHEN po.is_approximate = 0 THEN 2 ELSE 1 END DESC, po.recorded_at DESC, po.id DESC
-				LIMIT 1
-			) AS latest_price_base_quantity_value,
-			(
-				SELECT po.base_quantity_scale
-				FROM price_observations po
-				WHERE po.book_id = lot.book_id
-					AND po.base_commodity_id = lot.commodity_id
-					AND po.quote_commodity_id = lot.cost_commodity_id
-					AND po.voided_at IS NULL
-				ORDER BY po.valuation_date DESC, CASE WHEN po.is_manual = 1 OR po.quote_type = 'valuation_override' THEN 3 WHEN po.is_approximate = 0 THEN 2 ELSE 1 END DESC, po.recorded_at DESC, po.id DESC
-				LIMIT 1
-			) AS latest_price_base_quantity_scale, lot.basis_knowledge,
+   po.price_value,po.price_scale,po.valuation_date,po.is_approximate,
+   po.base_quantity_value,po.base_quantity_scale,lot.basis_knowledge,
+   CASE WHEN po.id IS NULL THEN COALESCE(diag.reason,'no_price')
+    WHEN po.valuation_date < date(si.as_of,'-7 days') THEN 'stale' ELSE 'usable' END,
+   si.as_of,si.recorded_at,
 			COALESCE((
 				SELECT state.method_family FROM investment_position_basis_state state
 				WHERE state.book_id = lot.book_id AND state.account_id = lot.account_id
@@ -2322,11 +2274,14 @@ func (r *InvestmentRepository) Positions(ctx context.Context, bookID int64) ([]I
 					AND state.cost_commodity_id = lot.cost_commodity_id AND state.position_side = lot.position_side
 			), '') AS method_family, lot.position_side
 		FROM current_investment_lots lot
+  CROSS JOIN selection_input si
+  LEFT JOIN selection_latest po ON po.base_commodity_id=lot.commodity_id AND po.quote_commodity_id=lot.cost_commodity_id
+  LEFT JOIN selection_diagnostics diag ON diag.base_commodity_id=lot.commodity_id AND diag.quote_commodity_id=lot.cost_commodity_id
 		WHERE lot.book_id = ?
 			AND lot.status = 'open'
 			AND lot.remaining_quantity_value <> '0'
 		ORDER BY lot.account_id, lot.commodity_id, lot.id
-	`, bookID)
+	`, bookID, boundary.AsOf, boundary.RecordedAt, bookID)
 	if err != nil {
 		return nil, fmt.Errorf("read investment positions: %w", err)
 	}
@@ -2347,7 +2302,7 @@ func (r *InvestmentRepository) Positions(ctx context.Context, bookID int64) ([]I
 		var quantity exact.Coefficient
 		var quantityScale int
 		var costValue, costScale sql.NullInt64
-		if err := rows.Scan(&record.AccountID, &record.CommodityID, &quantity, &quantityScale, &costValue, &costScale, &record.CostCommodityID, &record.LatestPriceValue, &record.LatestPriceScale, &record.LatestPriceDate, &record.LatestPriceApproximate, &record.LatestPriceBaseQuantityValue, &record.LatestPriceBaseQuantityScale, &record.BasisKnowledge, &record.MethodFamily, &record.PositionSide); err != nil {
+		if err := rows.Scan(&record.AccountID, &record.CommodityID, &quantity, &quantityScale, &costValue, &costScale, &record.CostCommodityID, &record.LatestPriceValue, &record.LatestPriceScale, &record.LatestPriceDate, &record.LatestPriceApproximate, &record.LatestPriceBaseQuantityValue, &record.LatestPriceBaseQuantityScale, &record.BasisKnowledge, &record.PriceStatus, &record.ValuationAsOf, &record.KnowledgeCutoff, &record.MethodFamily, &record.PositionSide); err != nil {
 			return nil, fmt.Errorf("scan investment position: %w", err)
 		}
 		value, scale, err := projectedBasis(costValue, costScale, record.BasisKnowledge)
@@ -3594,6 +3549,9 @@ type proceedsKey struct {
 }
 
 type UnrealizedGainRecord struct {
+	PriceStatus             string
+	ValuationAsOf           string
+	KnowledgeCutoff         string
 	AccountID               int64
 	CommodityID             int64
 	CostCommodityID         int64
@@ -3651,14 +3609,15 @@ func int64AtUsableScale(value *exact.ScaledInt) (int64, int, bool) {
 // PositionsWithGains returns all open positions with unrealized gain computed when a
 // price observation is available. Absent gain fields carry a ValuationUnavailable
 // reason saying whether no price is known or the value cannot be represented.
-func (r *InvestmentRepository) PositionsWithGains(ctx context.Context, bookID int64) ([]UnrealizedGainRecord, error) {
-	positions, err := r.Positions(ctx, bookID)
+func (r *InvestmentRepository) PositionsWithGains(ctx context.Context, bookID int64, boundaries ...ObservationBoundary) ([]UnrealizedGainRecord, error) {
+	positions, err := r.Positions(ctx, bookID, boundaries...)
 	if err != nil {
 		return nil, err
 	}
 	records := make([]UnrealizedGainRecord, 0, len(positions))
 	for _, pos := range positions {
 		record := UnrealizedGainRecord{
+			PriceStatus: pos.PriceStatus, ValuationAsOf: pos.ValuationAsOf, KnowledgeCutoff: pos.KnowledgeCutoff,
 			AccountID:               pos.AccountID,
 			CommodityID:             pos.CommodityID,
 			CostCommodityID:         pos.CostCommodityID,
@@ -3754,7 +3713,7 @@ func (r *InvestmentRepository) PositionsWithGains(ctx context.Context, bookID in
 				record.ValuationUnavailable = ValuationUnrepresentable
 			}
 		} else {
-			record.ValuationUnavailable = ValuationNoPrice
+			record.ValuationUnavailable = pos.PriceStatus
 		}
 		records = append(records, record)
 	}

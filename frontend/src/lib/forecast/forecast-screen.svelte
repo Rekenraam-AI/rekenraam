@@ -363,6 +363,7 @@
         <Panel variant="subtle">
           <h2 class="font-semibold text-foreground">{m.forecast_fx_title({ currency: data.valuation.reporting_currency_code })}</h2>
           {#if data.valuation.complete}
+            <p class="mt-2 text-sm text-muted">{m.valuation_report_policy()}</p>
             <p class="mt-2 text-sm leading-6 text-muted">{m.forecast_fx_complete({ date: formatDate(data.valuation.as_of_date), count: data.valuation.used_rates.length })}</p>
             {#if data.valuation.used_rates.length > 0}
               <ul class="mt-3 space-y-2 text-sm text-muted">

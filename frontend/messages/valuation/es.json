@@ -1,0 +1,10 @@
+{
+  "valuation_price_stale": "Precio antiguo (más de 7 días)",
+  "valuation_price_missing": "Sin precio disponible",
+  "valuation_price_future": "Solo hay precios futuros",
+  "valuation_price_incompatible": "Tipo de cotización o base de ajuste incompatible",
+  "valuation_price_unknown": "Precio registrado después del límite de conocimiento",
+  "valuation_price_window": "Sin precio compatible dentro de la antigüedad permitida",
+  "valuation_holdings_policy": "Las posiciones actuales usan precios con fecha no posterior a hoy. Los de más de siete días siguen visibles y se marcan como antiguos. Se excluyen precios ajustados y cotizaciones de compra/venta.",
+  "valuation_report_policy": "Se usa la fecha válida más reciente y, en el mismo día, se priorizan precios manuales o de valoración, exactos y estimados. Solo se usan cotizaciones sin ajustar conocidas al consultar. Los informes históricos siguen siendo dinámicos."
+}

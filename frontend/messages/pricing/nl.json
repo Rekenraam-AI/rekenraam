@@ -9,7 +9,7 @@
   "pricing_error": "Waarnemingen konden niet worden geladen",
   "pricing_coverage": "Dekking van opgeslagen prijzen",
   "pricing_coverage_copy": "Diagnose op datum met de huidige opgeslagen kennis. Een waarneming ouder dan {days} dagen wordt hier als verouderd gemarkeerd.",
-  "pricing_consumer_limits": "Deze diagnose wijzigt het rapportbeleid niet. Posities gebruiken de laatste opgeslagen prijs zonder leeftijdsgrens; valutarapporten gebruiken hun eigen datumvenster (standaard zeven dagen).",
+  "pricing_consumer_limits": "Posities behouden gemarkeerde oude prijzen; valutarapporten weigeren prijzen buiten hun datumvenster (standaard zeven dagen). Deze dekking gebruikt de ingestelde ouderdomsgrens.",
   "pricing_as_of": "Waarderingsdatum",
   "pricing_coverage_empty": "Nog geen prijsparen ingesteld. Kies een paar voor handmatige invoer.",
   "pricing_pair": "{base} in {quote}",

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ObservationStatus from '#lib/valuation/observation-status.svelte';
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery } from '@tanstack/svelte-query';
   import CapitalReturnSummary from '#lib/investments/capital-return-summary.svelte';
@@ -79,6 +80,7 @@
 </script>
 
 <div class="space-y-6">
+  <p class="text-sm text-muted">{m.valuation_holdings_policy()}</p>
   <!-- Unrealized gains -->
   <section>
     <h2 class="mb-3 text-sm font-semibold text-foreground">{m.investments_gains_unrealized_title()}</h2>
@@ -94,7 +96,8 @@
       <StatePanel title={m.investments_gains_unrealized_empty()} copy="" />
     {:else}
       <Panel padding="none">
-        <div class="overflow-x-auto">
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard users must be able to scroll the bounded table region) -->
+        <div class="overflow-x-auto" role="region" aria-label={m.investments_gains_unrealized_title()} tabindex="0">
           <table class="min-w-full text-sm">
             <thead>
               <tr class="border-b border-border bg-surface-strong/40">
@@ -108,7 +111,7 @@
             <tbody class="divide-y divide-border">
               {#each unrealized as pos (pos.account_id + '_' + pos.commodity_id + '_' + pos.cost_commodity_id + '_' + pos.position_side)}
                 <tr class="hover:bg-surface-strong/20">
-                  <td class="py-3 pl-5 pr-3 font-medium text-foreground">{instrumentName(pos.commodity_id)}<PositionSideBadge side={pos.position_side} /></td>
+                  <td class="py-3 pl-5 pr-3 font-medium text-foreground">{instrumentName(pos.commodity_id)}<PositionSideBadge side={pos.position_side} /><ObservationStatus status={pos.price_status} /></td>
                   <td class="px-3 py-3 text-right font-mono text-foreground">
                     {formatScaledValue(pos.quantity_value, pos.quantity_scale, locale)}
                   </td>
@@ -118,6 +121,7 @@
                   <td class="px-3 py-3 text-right font-mono text-foreground">
                     {#if pos.market_value_value !== undefined && pos.market_value_scale !== undefined}
                       {formatGain(pos.market_value_value, pos.market_value_scale, pos.cost_commodity_id)}
+                      {#if pos.latest_price_approximate}<span class="block text-xs text-muted">{m.investments_trade_price_approximate()}</span>{/if}
                     {:else}
                       <span class="text-muted">{unavailableLabel(pos.valuation_unavailable)}</span>
                     {/if}
@@ -183,7 +187,8 @@
       <StatePanel title={m.investments_gains_realized_empty()} copy="" />
     {:else}
       <Panel padding="none">
-        <div class="overflow-x-auto">
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard users must be able to scroll the bounded table region) -->
+        <div class="overflow-x-auto" role="region" aria-label={m.investments_gains_realized_title()} tabindex="0">
           <table class="min-w-full text-sm">
             <thead>
               <tr class="border-b border-border bg-surface-strong/40">

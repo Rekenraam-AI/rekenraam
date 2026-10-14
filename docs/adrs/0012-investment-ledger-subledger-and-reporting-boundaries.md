@@ -131,3 +131,20 @@ specified; it is not implemented by repeatedly mutating the operational lots.
   historical report.
 - ADR 0008 remains in force for instruments, generic prices, provider trust, and
   ordinary ledger posting. This ADR refines its ledger/lot/reporting boundary.
+
+## Live observation policy refinement — 2026-10-14 (#203)
+
+The first R18 policy slice names `live_raw_v1` in the
+[reporting plan](../plans/investment-reporting-plan.md). Compatible unadjusted
+quotes are selected before date/source/approximation ranking by one shared
+owner. Current values stop at owner-local today; every live read has a UTC
+recorded-at admission boundary. Manual/override, exact and approximate priority
+applies only within the same valuation date and never admits an adjusted quote.
+
+Consumer age semantics remain explicit: holdings retain old prices with a
+seven-day stale warning; reports require their requested dated window;
+constant-rate forecasts require seven-day as-of coverage; pricing diagnostics
+use their configured threshold. Missing or unusable prices never replace the
+original commodity figures with zero. Current retirements still apply: a
+recorded-at cutoff alone does not freeze ledger, basis or withdrawal history,
+and these live reports carry no tax or reproducible historical-report claim.

@@ -637,6 +637,9 @@ type InvestmentLotOrigin struct {
 }
 
 type InvestmentPosition struct {
+	PriceStatus             string
+	ValuationAsOf           string
+	KnowledgeCutoff         string
 	AccountID               int64
 	CommodityID             int64
 	QuantityValue           exact.Coefficient
@@ -1980,7 +1983,11 @@ func (s *InvestmentService) ListLots(ctx context.Context, accountID int64, commo
 }
 
 func (s *InvestmentService) Positions(ctx context.Context) ([]InvestmentPosition, error) {
-	records, err := s.repository.Positions(ctx, BookID)
+	boundary, err := s.repository.CurrentObservationBoundary(ctx, BookID, s.now())
+	if err != nil {
+		return nil, err
+	}
+	records, err := s.repository.Positions(ctx, BookID, boundary)
 	if err != nil {
 		return nil, fmt.Errorf("read investment positions: %w", err)
 	}
@@ -2730,6 +2737,7 @@ func toInvestmentPositions(records []db.InvestmentPositionRecord) []InvestmentPo
 			priceScale = &scale
 		}
 		positions = append(positions, InvestmentPosition{
+			PriceStatus: record.PriceStatus, ValuationAsOf: record.ValuationAsOf, KnowledgeCutoff: record.KnowledgeCutoff,
 			AccountID:               record.AccountID,
 			CommodityID:             record.CommodityID,
 			QuantityValue:           record.QuantityValue,
@@ -2893,6 +2901,9 @@ type RealizedGainEntry struct {
 
 // UnrealizedGainEntry is an open position with unrealized gain when a price is available.
 type UnrealizedGainEntry struct {
+	PriceStatus             string
+	ValuationAsOf           string
+	KnowledgeCutoff         string
 	AccountID               int64
 	CommodityID             int64
 	CostCommodityID         int64
@@ -2946,7 +2957,11 @@ func (s *InvestmentService) ListRealizedGains(ctx context.Context, params GainsR
 }
 
 func (s *InvestmentService) ListUnrealizedGains(ctx context.Context) ([]UnrealizedGainEntry, error) {
-	records, err := s.repository.PositionsWithGains(ctx, BookID)
+	boundary, err := s.repository.CurrentObservationBoundary(ctx, BookID, s.now())
+	if err != nil {
+		return nil, err
+	}
+	records, err := s.repository.PositionsWithGains(ctx, BookID, boundary)
 	if err != nil {
 		return nil, fmt.Errorf("list unrealized gains: %w", err)
 	}
@@ -2958,6 +2973,7 @@ func (s *InvestmentService) ListUnrealizedGains(ctx context.Context) ([]Unrealiz
 			priceScale = &s
 		}
 		entries = append(entries, UnrealizedGainEntry{
+			PriceStatus: r.PriceStatus, ValuationAsOf: r.ValuationAsOf, KnowledgeCutoff: r.KnowledgeCutoff,
 			AccountID:               r.AccountID,
 			CommodityID:             r.CommodityID,
 			CostCommodityID:         r.CostCommodityID,

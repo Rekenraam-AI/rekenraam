@@ -24,6 +24,7 @@ type PricingPairRecord struct {
 }
 
 type PricingWorkspaceRecord struct {
+	Reasons     map[[2]int64]string
 	Commodities []PricingCommodityRecord
 	Pairs       []PricingPairRecord
 	Candidates  []PriceObservationRecord
@@ -32,8 +33,14 @@ type PricingWorkspaceRecord struct {
 // PriceManagementSnapshot returns full reference and candidate sets, never a
 // silently capped observation list. One read transaction keeps pair discovery
 // and candidates together; no provider or durable write participates.
-func (r *PricingRepository) PriceManagementSnapshot(ctx context.Context, bookID int64, asOf string, fxBaseID int64) (PricingWorkspaceRecord, error) {
+func (r *PricingRepository) PriceManagementSnapshot(ctx context.Context, bookID int64, asOf string, fxBaseID int64, boundaries ...ObservationBoundary) (PricingWorkspaceRecord, error) {
 	result := PricingWorkspaceRecord{Commodities: []PricingCommodityRecord{}, Pairs: []PricingPairRecord{}, Candidates: []PriceObservationRecord{}}
+	boundary, err := r.observationBoundary(ctx, bookID, boundaries)
+	if err != nil {
+		return result, err
+	}
+	boundary.AsOf = asOf
+
 	tx, err := r.database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return result, fmt.Errorf("begin price workspace: %w", err)
@@ -99,22 +106,10 @@ func (r *PricingRepository) PriceManagementSnapshot(ctx context.Context, bookID 
 	if err != nil {
 		return result, err
 	}
-	rows, err = tx.QueryContext(ctx, priceObservationSelect(`
-		WHERE id IN (
-			SELECT id FROM (
-				SELECT id, ROW_NUMBER() OVER (
-					PARTITION BY base_commodity_id, quote_commodity_id
-					ORDER BY valuation_date DESC,
-						CASE WHEN is_manual = 1 OR quote_type = 'valuation_override' THEN 3
-							WHEN is_approximate = 0 THEN 2 ELSE 1 END DESC,
-						recorded_at DESC, id DESC
-				) AS candidate_rank
-				FROM price_observations
-				WHERE book_id = ? AND voided_at IS NULL AND valuation_date <= ?
-			) WHERE candidate_rank = 1
-		)
-		ORDER BY base_commodity_id, quote_commodity_id
-	`), bookID, asOf)
+	rows, err = tx.QueryContext(ctx, observationSelectionCTE+priceObservationSelect(`
+  WHERE id IN (SELECT id FROM selection_latest)
+  ORDER BY base_commodity_id,quote_commodity_id
+ `), bookID, boundary.AsOf, boundary.RecordedAt)
 	if err != nil {
 		return result, fmt.Errorf("read price candidates: %w", err)
 	}
@@ -123,6 +118,26 @@ func (r *PricingRepository) PriceManagementSnapshot(ctx context.Context, bookID 
 	if err != nil {
 		return result, err
 	}
+	rows, err = tx.QueryContext(ctx, observationSelectionCTE+`SELECT base_commodity_id,quote_commodity_id,reason FROM selection_diagnostics`, bookID, boundary.AsOf, boundary.RecordedAt)
+	if err != nil {
+		return result, err
+	}
+	result.Reasons = map[[2]int64]string{}
+	for rows.Next() {
+		var pair [2]int64
+		var reason string
+		if err := rows.Scan(&pair[0], &pair[1], &reason); err != nil {
+			rows.Close()
+			return result, err
+		}
+		result.Reasons[pair] = reason
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return result, err
+	}
+
 	return result, nil
 }
 

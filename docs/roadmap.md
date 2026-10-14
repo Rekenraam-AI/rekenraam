@@ -238,11 +238,11 @@ delivered separately.
 
 The bounded operator surface (#116, #200–#202) is delivered. Its durable
 contract is [price management](plans/pricing-management-plan.md); shipped
-scope is in [the capability ledger](implemented.md). Existing valuation-reader
-selection and age differences are recorded in
-[#203](https://github.com/sergeyfarin/rekenraam/issues/203), under R18's named
-reporting policy. They do not reopen R11 or claim that its diagnostic changed
-current reports.
+scope is in [the capability ledger](implemented.md). R18's bounded
+[#203](https://github.com/sergeyfarin/rekenraam/issues/203) slice now shares
+compatible observation selection across readers and records their intentional
+age differences in the [reporting policy](plans/investment-reporting-plan.md).
+That policy refinement does not reopen the R11 operator surface.
 
 ### Parallel trust work for cross-border entry
 
@@ -284,7 +284,10 @@ coverage promise the adapter rule forbids and a maintenance tarpit.
 Build after R12a has trustworthy immutable events, T-76 preserves disposal
 policy provenance, R16 supplies the missing
 corporate-action/basis-adjustment lifecycle, and R17 supplies explicit quote
-provider and staleness policy. Write a dedicated plan before implementation.
+provider and staleness policy. The [R18 reporting plan](plans/investment-reporting-plan.md)
+now defines the bounded #203 `live_raw_v1` observation slice: shared compatible
+quotes and priority, date/knowledge ceilings and explicit consumer age rules.
+It does not deliver the remaining reproducible basis/profile projections.
 
 The plan must specify named basis profiles rather than a tax-engine promise. A
 profile states purpose/scope, cost-basis method, effective period/date basis,

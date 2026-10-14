@@ -14,6 +14,7 @@ import (
 )
 
 type PricingCoverage struct {
+	Reason           string
 	BaseCommodityID  int64
 	QuoteCommodityID int64
 	Status           string
@@ -69,7 +70,13 @@ func (s *PricingService) Workspace(ctx context.Context, asOf string) (PricingWor
 		baseID = base.ID
 	}
 
-	snapshot, err := s.repository.PriceManagementSnapshot(ctx, BookID, asOf, baseID)
+	boundary, err := s.repository.CurrentObservationBoundary(ctx, BookID, s.now())
+	if err != nil {
+		return result, err
+	}
+	// An explicitly selected future management date is a diagnostic, not current value.
+	boundary.AsOf = asOf
+	snapshot, err := s.repository.PriceManagementSnapshot(ctx, BookID, asOf, baseID, boundary)
 	if err != nil {
 		return result, err
 	}
@@ -95,7 +102,7 @@ func (s *PricingService) Workspace(ctx context.Context, asOf string) (PricingWor
 		if pair.BaseCommodityID == pair.QuoteCommodityID {
 			continue
 		}
-		coverage := PricingCoverage{BaseCommodityID: pair.BaseCommodityID, QuoteCommodityID: pair.QuoteCommodityID, Status: "missing"}
+		coverage := PricingCoverage{Reason: snapshot.Reasons[[2]int64{pair.BaseCommodityID, pair.QuoteCommodityID}], BaseCommodityID: pair.BaseCommodityID, QuoteCommodityID: pair.QuoteCommodityID, Status: "missing"}
 		if price, ok := candidates[[2]int64{pair.BaseCommodityID, pair.QuoteCommodityID}]; ok {
 			date, _ := time.Parse(time.DateOnly, price.ValuationDate)
 			age := int((requestedDate.Unix() - date.Unix()) / 86400)

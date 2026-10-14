@@ -1,0 +1,10 @@
+{
+  "valuation_price_stale": "Stale price (over 7 days)",
+  "valuation_price_missing": "No price available",
+  "valuation_price_future": "Only future prices available",
+  "valuation_price_incompatible": "Quote type or adjustment basis is incompatible",
+  "valuation_price_unknown": "Price recorded after the knowledge cutoff",
+  "valuation_price_window": "No compatible price within the allowed age",
+  "valuation_holdings_policy": "Live holdings use prices dated no later than today. Prices over seven days old remain visible and are marked stale. Adjusted prices and bid/ask quotes are excluded.",
+  "valuation_report_policy": "Prices use the latest eligible date, then same-day manual/override, exact and estimated priority. Only unadjusted quotes known at this read are used. Historical reports remain live."
+}

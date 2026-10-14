@@ -759,60 +759,32 @@ func (r *PricingRepository) ListPriceObservations(ctx context.Context, bookID in
 	return scanPriceObservations(rows)
 }
 
-func (r *PricingRepository) ListLatestPriceObservationsForPairs(ctx context.Context, bookID int64, pairs [][2]int64) ([]PriceObservationRecord, error) {
-	if len(pairs) == 0 {
-		return []PriceObservationRecord{}, nil
-	}
-
-	hasCurrentSchema, err := r.tableHasColumn(ctx, "price_observations", "base_commodity_id")
-	if err != nil {
-		return nil, err
-	}
-	if !hasCurrentSchema {
-		records := make([]PriceObservationRecord, 0, len(pairs))
-		for _, pair := range pairs {
-			pairRecords, err := r.listLegacyPriceObservations(ctx, bookID, pair[0], pair[1], 1)
-			if err != nil {
-				return nil, err
-			}
-			if len(pairRecords) > 0 {
-				records = append(records, pairRecords[0])
-			}
-		}
-		return records, nil
-	}
-
+func observationPairClause(pairs [][2]int64) (string, []any) {
 	clauses := make([]string, 0, len(pairs))
-	args := []any{bookID}
+	args := make([]any, 0, len(pairs)*2)
 	for _, pair := range pairs {
-		if pair[0] <= 0 || pair[1] <= 0 {
-			continue
-		}
 		clauses = append(clauses, "(base_commodity_id = ? AND quote_commodity_id = ?)")
 		args = append(args, pair[0], pair[1])
 	}
-	if len(clauses) == 0 {
+	return "(" + strings.Join(clauses, " OR ") + ")", args
+}
+
+func (r *PricingRepository) ListLatestPriceObservationsForPairs(ctx context.Context, bookID int64, pairs [][2]int64, boundaries ...ObservationBoundary) ([]PriceObservationRecord, error) {
+	if len(pairs) == 0 {
 		return []PriceObservationRecord{}, nil
 	}
-
-	rows, err := r.database.QueryContext(ctx, priceObservationSelect(`
-		WHERE id IN (
-			SELECT id
-			FROM (
-				SELECT id,
-					ROW_NUMBER() OVER (
-						PARTITION BY base_commodity_id, quote_commodity_id
-						ORDER BY valuation_date DESC, CASE WHEN is_manual = 1 OR quote_type = 'valuation_override' THEN 3 WHEN is_approximate = 0 THEN 2 ELSE 1 END DESC, recorded_at DESC, id DESC
-					) AS row_number
-				FROM price_observations
-				WHERE book_id = ? AND voided_at IS NULL AND (`+strings.Join(clauses, " OR ")+`)
-			)
-			WHERE row_number = 1
-		)
-		ORDER BY base_commodity_id, quote_commodity_id
-	`), args...)
+	boundary, err := r.observationBoundary(ctx, bookID, boundaries)
 	if err != nil {
-		return nil, fmt.Errorf("list latest price observations for pairs: %w", err)
+		return nil, err
+	}
+	clause, args := observationPairClause(pairs)
+	params := append([]any{bookID, boundary.AsOf, boundary.RecordedAt}, args...)
+	rows, err := r.database.QueryContext(ctx, observationSelectionCTE+priceObservationSelect(`
+  WHERE id IN (SELECT id FROM selection_latest WHERE `+clause+`)
+  ORDER BY base_commodity_id,quote_commodity_id
+ `), params...)
+	if err != nil {
+		return nil, fmt.Errorf("select latest observations: %w", err)
 	}
 	defer rows.Close()
 	return scanPriceObservations(rows)
@@ -1427,6 +1399,8 @@ func scanRefreshRuns(rows *sql.Rows) ([]PricingRefreshRunRecord, error) {
 // reporting currency: the price, what it is quoted per, and the date it was
 // observed on.
 type ReportingRateRecord struct {
+	ObservationID     int64
+	IsApproximate     bool
 	BaseCommodityID   int64
 	PriceValue        int64
 	PriceScale        int
@@ -1447,27 +1421,32 @@ type ReportingRateRecord struct {
 // Voided observations are excluded here rather than filtered later. A voided
 // observation is a statement the book has withdrawn, and a withdrawn rate must
 // not quietly drive a headline figure (T-37).
-func (r *PricingRepository) ReportingRates(ctx context.Context, bookID int64, quoteCommodityID int64, baseCommodityIDs []int64, fromDate string, toDate string) ([]ReportingRateRecord, error) {
+func (r *PricingRepository) ReportingRates(ctx context.Context, bookID int64, quoteCommodityID int64, baseCommodityIDs []int64, fromDate string, toDate string, boundaries ...ObservationBoundary) ([]ReportingRateRecord, error) {
 	if len(baseCommodityIDs) == 0 {
 		return nil, nil
 	}
 
+	boundary, err := r.observationBoundary(ctx, bookID, boundaries)
+	if err != nil {
+		return nil, err
+	}
 	clause, args := inClause("po.base_commodity_id", baseCommodityIDs)
-	queryArgs := append([]any{bookID, quoteCommodityID}, args...)
-	queryArgs = append(queryArgs, fromDate, toDate)
+	queryArgs := append([]any{bookID, boundary.AsOf, boundary.RecordedAt, quoteCommodityID}, args...)
+	queryArgs = append(queryArgs, fromDate, toDate, fromDate)
 
-	rows, err := r.database.QueryContext(ctx, `
-		SELECT po.base_commodity_id, po.price_value, po.price_scale,
-			po.base_quantity_value, po.base_quantity_scale, po.valuation_date, po.is_derived
-		FROM price_observations po
-		WHERE po.book_id = ?
-			AND po.quote_commodity_id = ?
-			AND `+clause+`
-			AND po.voided_at IS NULL
-			AND po.valuation_date >= ?
-			AND po.valuation_date <= ?
-		ORDER BY po.base_commodity_id, po.valuation_date, po.recorded_at, po.id
-	`, queryArgs...)
+	rows, err := r.database.QueryContext(ctx, observationSelectionCTE+`
+  SELECT po.base_commodity_id, po.price_value, po.price_scale,
+   po.base_quantity_value, po.base_quantity_scale, po.valuation_date, po.is_derived,
+   po.id, po.is_approximate
+  FROM selection_daily po
+  WHERE po.quote_commodity_id = ? AND `+clause+`
+   AND (po.valuation_date BETWEEN ? AND ? OR po.id IN (
+    SELECT id FROM (SELECT id, ROW_NUMBER() OVER (
+     PARTITION BY base_commodity_id,quote_commodity_id ORDER BY valuation_date DESC
+    ) AS prior_rank FROM selection_daily WHERE valuation_date < ?) WHERE prior_rank = 1
+   ))
+  ORDER BY po.base_commodity_id, po.valuation_date
+ `, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("read reporting rates: %w", err)
 	}
@@ -1477,7 +1456,7 @@ func (r *PricingRepository) ReportingRates(ctx context.Context, bookID int64, qu
 	for rows.Next() {
 		var rate ReportingRateRecord
 		if err := rows.Scan(&rate.BaseCommodityID, &rate.PriceValue, &rate.PriceScale,
-			&rate.BaseQuantityValue, &rate.BaseQuantityScale, &rate.ValuationDate, &rate.IsDerived); err != nil {
+			&rate.BaseQuantityValue, &rate.BaseQuantityScale, &rate.ValuationDate, &rate.IsDerived, &rate.ObservationID, &rate.IsApproximate); err != nil {
 			return nil, fmt.Errorf("scan reporting rate: %w", err)
 		}
 		rates = append(rates, rate)

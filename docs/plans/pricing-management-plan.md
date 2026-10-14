@@ -28,8 +28,10 @@ excluded. A stale candidate stays inspectable but is not called usable by this
 diagnostic. Same-commodity pairs require no observation and are rejected as
 manual entry. This diagnostic is not a new report engine: current holdings use
 latest-price selection without this age gate; reporting FX uses its named
-window (default seven days). R18 owns their reproducible reporting contract; the independent selection gap
-is tracked by [#203](https://github.com/sergeyfarin/rekenraam/issues/203).
+window (default seven days). #203 now supplies their shared compatible-quote
+selection and explicit date/knowledge ceilings, with seven-day stale warnings
+on retained holdings/settings values. The [R18 policy](investment-reporting-plan.md)
+records the consumer differences and remaining reproducible-profile boundary.
 
 Every observation exposes source, quote type and adjustment basis, valuation,
 observation, publication and recording times, manual/derived/approximate flags,

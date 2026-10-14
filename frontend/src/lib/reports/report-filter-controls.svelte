@@ -179,7 +179,7 @@
 
 <section aria-label={m.reports_filter_legend()} class="space-y-3">
   <div class="flex flex-wrap items-center justify-between gap-2">
-    <h3 class="text-xs font-semibold uppercase tracking-[0.12em] text-muted">{m.reports_filter_legend()}</h3>
+    <h2 class="text-xs font-semibold uppercase tracking-[0.12em] text-muted">{m.reports_filter_legend()}</h2>
     {#if activeCount > 0}
       <button
         type="button"

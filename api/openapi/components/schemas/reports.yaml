@@ -3,6 +3,8 @@ RateUse:
   description: A rate that was used, and whether it came from the date it was asked for.
   required: [commodity_id, observation_date, requested_date, stale, derived]
   properties:
+    observation_id: { type: integer, format: int64 }
+    approximate: { type: boolean }
     commodity_id: { type: integer, format: int64 }
     observation_date: { type: string, format: date }
     requested_date: { type: string, format: date }
@@ -20,7 +22,7 @@ RateGap:
     commodity_id: { type: integer, format: int64 }
     reason:
       type: string
-      enum: [no_observation_in_window, reporting_currency_is_not_a_currency]
+      enum: [no_observation_in_window, reporting_currency_is_not_a_currency, future_only, incompatible_quote_basis, not_known_at_cutoff]
     nearest_observation_date:
       type: string
       format: date
@@ -36,6 +38,18 @@ Valuation:
     figure without this block would be a number with no provenance.
   required: [commodity_id, scale, method, max_staleness_days, complete, rates_used, gaps]
   properties:
+    selection_policy:
+      type: string
+      enum: [live_raw_v1]
+    valuation_as_of:
+      type: string
+      format: date
+      description: Upper observation date, capped at the owner-local date at read start.
+    knowledge_cutoff:
+      type: string
+      format: date-time
+      description: Recorded-at admission boundary for this live read; current retirements still apply. Not a saved historical snapshot.
+
     commodity_id: { type: integer, format: int64 }
     code: { type: string }
     scale:

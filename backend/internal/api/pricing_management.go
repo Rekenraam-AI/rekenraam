@@ -17,6 +17,7 @@ type pricingCommodityResponse struct {
 }
 
 type pricingCoverageResponse struct {
+	Reason           string                    `json:"reason,omitempty"`
 	BaseCommodityID  int64                     `json:"base_commodity_id"`
 	QuoteCommodityID int64                     `json:"quote_commodity_id"`
 	Status           string                    `json:"status"`
@@ -50,7 +51,7 @@ func pricingWorkspace(logger *slog.Logger, auth *app.AuthService, service *app.P
 		}
 
 		for _, row := range result.Coverage {
-			item := pricingCoverageResponse{BaseCommodityID: row.BaseCommodityID, QuoteCommodityID: row.QuoteCommodityID, Status: row.Status, AgeDays: row.AgeDays}
+			item := pricingCoverageResponse{Reason: row.Reason, BaseCommodityID: row.BaseCommodityID, QuoteCommodityID: row.QuoteCommodityID, Status: row.Status, AgeDays: row.AgeDays}
 			if row.Observation != nil {
 				price := toPriceObservationResponse(*row.Observation)
 				item.Observation = &price

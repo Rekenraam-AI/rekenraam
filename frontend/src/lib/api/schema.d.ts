@@ -25600,6 +25600,9 @@ export interface components {
         /** @description A rate that was used, and whether it came from the date it was asked for. */
         RateUse: {
             /** Format: int64 */
+            observation_id?: number;
+            approximate?: boolean;
+            /** Format: int64 */
             commodity_id: number;
             /** Format: date */
             observation_date: string;
@@ -25615,7 +25618,7 @@ export interface components {
             /** Format: int64 */
             commodity_id: number;
             /** @enum {string} */
-            reason: "no_observation_in_window" | "reporting_currency_is_not_a_currency";
+            reason: "no_observation_in_window" | "reporting_currency_is_not_a_currency" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff";
             /**
              * Format: date
              * @description The closest observation outside the staleness window, when one exists. "No rate" and "no rate recently" are different problems with different fixes, so the response distinguishes them.
@@ -25624,6 +25627,18 @@ export interface components {
         };
         /** @description How a response's converted figures were produced and what they could not cover. Present only when a reporting currency was asked for. A converted figure without this block would be a number with no provenance. */
         Valuation: {
+            /** @enum {string} */
+            selection_policy?: "live_raw_v1";
+            /**
+             * Format: date
+             * @description Upper observation date, capped at the owner-local date at read start.
+             */
+            valuation_as_of?: string;
+            /**
+             * Format: date-time
+             * @description Recorded-at admission boundary for this live read; current retirements still apply. Not a saved historical snapshot.
+             */
+            knowledge_cutoff?: string;
             /** Format: int64 */
             commodity_id: number;
             code?: string;
@@ -25988,6 +26003,11 @@ export interface components {
             status: string;
         };
         PricingCoverageResponse: {
+            /**
+             * @description Why no compatible observation was selected; absent for a pair without any live evidence.
+             * @enum {string}
+             */
+            reason?: "usable" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff";
             /** Format: int64 */
             base_commodity_id: number;
             /** Format: int64 */
@@ -26108,6 +26128,15 @@ export interface components {
             change_reason?: string;
         };
         PriceObservationResponse: {
+            /**
+             * @description Present on selected current rates. Stale is older than seven calendar days; the labelled rate remains visible.
+             * @enum {string}
+             */
+            price_status?: "usable" | "stale";
+            /** Format: date */
+            valuation_as_of?: string;
+            /** Format: date-time */
+            knowledge_cutoff?: string;
             /** Format: int64 */
             id: number;
             /**
@@ -29461,6 +29490,21 @@ export interface components {
         };
         InvestmentPositionResponse: {
             /**
+             * @description Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection.
+             * @enum {string}
+             */
+            price_status?: "usable" | "stale" | "no_price" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff";
+            /**
+             * Format: date
+             * @description Owner-local current date at read start; positions remain the current operational projection.
+             */
+            valuation_as_of?: string;
+            /**
+             * Format: date-time
+             * @description Recorded-at observation admission boundary; current withdrawals still apply.
+             */
+            knowledge_cutoff?: string;
+            /**
              * @description Short for owed units: quantity stays positive and the basis amounts are remaining opening proceeds. Each account, instrument, cost currency and side is its own row.
              * @enum {string}
              */
@@ -29639,6 +29683,21 @@ export interface components {
         };
         UnrealizedGainEntry: {
             /**
+             * @description Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection.
+             * @enum {string}
+             */
+            price_status?: "usable" | "stale" | "no_price" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff";
+            /**
+             * Format: date
+             * @description Owner-local current date at read start; positions remain the current operational projection.
+             */
+            valuation_as_of?: string;
+            /**
+             * Format: date-time
+             * @description Recorded-at observation admission boundary; current withdrawals still apply.
+             */
+            knowledge_cutoff?: string;
+            /**
              * @description Short for owed units: market_value is the signed (negative) exposure and unrealized gain is remaining opening proceeds less the cost to cover.
              * @enum {string}
              */
@@ -29683,7 +29742,7 @@ export interface components {
              * @description Present only when market value and unrealized gain are omitted, saying why. no_price means no price observation exists for the position; unrepresentable means one is priced but the value does not fit the response's int64 fields.
              * @enum {string}
              */
-            valuation_unavailable?: "no_price" | "unrepresentable";
+            valuation_unavailable?: "no_price" | "unrepresentable" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff";
             /**
              * @description Gain is omitted when basis is unknown; quantity and any available market value are retained.
              * @enum {string}

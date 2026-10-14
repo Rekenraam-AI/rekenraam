@@ -65,6 +65,8 @@ type spendingDrillDownResponse struct {
 // were used, and which commodities went unconverted. A converted figure
 // without this block would be a number with no provenance.
 type rateUseResponse struct {
+	ObservationID   int64  `json:"observation_id"`
+	Approximate     bool   `json:"approximate"`
 	CommodityID     int64  `json:"commodity_id"`
 	ObservationDate string `json:"observation_date"`
 	RequestedDate   string `json:"requested_date"`
@@ -79,6 +81,9 @@ type rateGapResponse struct {
 }
 
 type valuationResponse struct {
+	SelectionPolicy  string            `json:"selection_policy"`
+	ValuationAsOf    string            `json:"valuation_as_of"`
+	KnowledgeCutoff  string            `json:"knowledge_cutoff"`
 	CommodityID      int64             `json:"commodity_id"`
 	Code             string            `json:"code,omitempty"`
 	Scale            int               `json:"scale"`
@@ -94,6 +99,7 @@ func toValuationResponse(coverage *app.ValuationCoverage) *valuationResponse {
 		return nil
 	}
 	response := valuationResponse{
+		SelectionPolicy: coverage.SelectionPolicy, ValuationAsOf: coverage.ValuationAsOf, KnowledgeCutoff: coverage.KnowledgeCutoff,
 		CommodityID:      coverage.CommodityID,
 		Code:             coverage.Code,
 		Scale:            coverage.Scale,

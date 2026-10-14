@@ -176,5 +176,18 @@ func TestFinancialUnrepresentableAcquisitionIsValidationError(t *testing.T) {
 	rejected := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/buy", buy, http.StatusBadRequest)
 	require.Contains(t, rejected.Body.String(), "VALIDATION_FAILED")
 	after := doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/gains", nil, http.StatusOK)
-	require.JSONEq(t, before.Body.String(), after.Body.String())
+	// The live read's knowledge boundary advances even when durable state does
+	// not. Preserve the financial equality assertion while checking that each
+	// response carries a real cutoff.
+	var beforeGains, afterGains investmentGainsResponse
+	require.NoError(t, json.Unmarshal(before.Body.Bytes(), &beforeGains))
+	require.NoError(t, json.Unmarshal(after.Body.Bytes(), &afterGains))
+	require.Len(t, afterGains.Unrealized, len(beforeGains.Unrealized))
+	for i := range beforeGains.Unrealized {
+		require.NotEmpty(t, beforeGains.Unrealized[i].KnowledgeCutoff)
+		require.NotEmpty(t, afterGains.Unrealized[i].KnowledgeCutoff)
+		beforeGains.Unrealized[i].KnowledgeCutoff = ""
+		afterGains.Unrealized[i].KnowledgeCutoff = ""
+	}
+	require.Equal(t, beforeGains, afterGains)
 }

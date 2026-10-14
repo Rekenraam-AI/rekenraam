@@ -9,7 +9,7 @@
   "pricing_error": "Beobachtungen konnten nicht geladen werden",
   "pricing_coverage": "Abdeckung gespeicherter Preise",
   "pricing_coverage_copy": "Datierte Prüfung mit aktuell gespeicherten Daten. Beobachtungen älter als {days} Tage werden hier als veraltet markiert.",
-  "pricing_consumer_limits": "Diese Prüfung ändert keine Berichtsregeln. Bestände verwenden den letzten gespeicherten Preis ohne Altersgrenze; Devisenberichte nutzen ihr eigenes Datumsfenster (standardmäßig sieben Tage).",
+  "pricing_consumer_limits": "Bestände behalten gekennzeichnete alte Preise; Devisenberichte lehnen Preise außerhalb ihres Datumsfensters ab (standardmäßig sieben Tage). Diese Abdeckung nutzt die eingestellte Altersgrenze.",
   "pricing_as_of": "Bewertungsdatum",
   "pricing_coverage_empty": "Noch keine Preispaare eingerichtet. Wählen Sie ein Paar zur manuellen Erfassung.",
   "pricing_pair": "{base} in {quote}",

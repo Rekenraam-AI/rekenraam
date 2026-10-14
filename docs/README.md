@@ -88,6 +88,8 @@ It evaluates a thin Wails host, required architecture and release work, ongoing
 cost, and repository strategy. It is analysis only; native desktop remains out
 of scope until an accepted ADR changes the product decision.
 
+- [R18 live observation selection policy](plans/investment-reporting-plan.md) — compatible quotes, date/knowledge boundaries and consumer age rules (#203).
+
 ## Folders
 
 - **[plans/](plans/)** — feature plans: design + acceptance criteria for one

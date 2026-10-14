@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ObservationStatus from '#lib/valuation/observation-status.svelte';
   import { m } from '#lib/paraglide/messages.js';
   import { valuationNotice, type Valuation } from './reporting-currency';
 
@@ -30,4 +31,14 @@
       commodities: notice.commodityIDs.map((id) => commodityLabel(id)).join(separator)
     })}
   </p>
+{/if}
+
+{#if valuation}
+  <p class="mt-2 text-sm text-muted">{m.valuation_report_policy()}</p>
+  {#each valuation.gaps as gap (gap.commodity_id)}
+    <p class="mt-1 text-sm text-muted">{commodityLabel(gap.commodity_id)}: <ObservationStatus status={gap.reason} /></p>
+  {/each}
+  {#if valuation.rates_used.some((rate) => rate.approximate)}
+    <p class="mt-1 text-sm text-muted">{m.investments_trade_price_approximate()}</p>
+  {/if}
 {/if}

@@ -35,6 +35,9 @@ type MarketDataSource struct {
 }
 
 type PriceObservation struct {
+	PriceStatus                string
+	ValuationAsOf              string
+	KnowledgeCutoff            string
 	ID                         int64
 	BookID                     int64
 	SeriesID                   int64
@@ -242,11 +245,25 @@ func (s *PricingService) ListPrices(ctx context.Context, commodityID int64, quot
 }
 
 func (s *PricingService) LatestPricesForPairs(ctx context.Context, pairs [][2]int64) ([]PriceObservation, error) {
-	records, err := s.repository.ListLatestPriceObservationsForPairs(ctx, BookID, pairs)
+	boundary, err := s.repository.CurrentObservationBoundary(ctx, BookID, s.now())
+	if err != nil {
+		return nil, err
+	}
+	records, err := s.repository.ListLatestPriceObservationsForPairs(ctx, BookID, pairs, boundary)
 	if err != nil {
 		return nil, fmt.Errorf("list latest price observations for pairs: %w", err)
 	}
-	return toPriceObservations(records), nil
+	prices := toPriceObservations(records)
+	earliest, _ := shiftISODate(boundary.AsOf, -7)
+	for i := range prices {
+		prices[i].ValuationAsOf = boundary.AsOf
+		prices[i].KnowledgeCutoff = boundary.RecordedAt
+		prices[i].PriceStatus = "usable"
+		if prices[i].ValuationDate < earliest {
+			prices[i].PriceStatus = "stale"
+		}
+	}
+	return prices, nil
 }
 
 func (s *PricingService) CreatePrice(ctx context.Context, input PriceObservationInput) (PriceObservation, error) {

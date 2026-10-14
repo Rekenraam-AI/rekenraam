@@ -21,6 +21,13 @@ PriceObservationResponse:
     - metadata
     - recorded_at
   properties:
+    price_status:
+      type: string
+      enum: [usable, stale]
+      description: Present on selected current rates. Stale is older than seven calendar days; the labelled rate remains visible.
+    valuation_as_of: { type: string, format: date }
+    knowledge_cutoff: { type: string, format: date-time }
+
     id:
       type: integer
       format: int64
@@ -625,6 +632,11 @@ PricingCoverageResponse:
   - quote_commodity_id
   - status
   properties:
+    reason:
+      type: string
+      enum: [usable, future_only, incompatible_quote_basis, not_known_at_cutoff]
+      description: Why no compatible observation was selected; absent for a pair without any live evidence.
+
     base_commodity_id:
       type: integer
       format: int64

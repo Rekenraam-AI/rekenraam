@@ -28,6 +28,9 @@ type marketDataSourcesResponse struct {
 }
 
 type priceObservationResponse struct {
+	PriceStatus                string          `json:"price_status,omitempty"`
+	ValuationAsOf              string          `json:"valuation_as_of,omitempty"`
+	KnowledgeCutoff            string          `json:"knowledge_cutoff,omitempty"`
 	ID                         int64           `json:"id"`
 	BookID                     int64           `json:"book_id"`
 	SeriesID                   int64           `json:"series_id"`
@@ -570,6 +573,7 @@ func toMarketDataSourceResponses(sources []app.MarketDataSource) []marketDataSou
 
 func toPriceObservationResponse(price app.PriceObservation) priceObservationResponse {
 	return priceObservationResponse{
+		PriceStatus: price.PriceStatus, ValuationAsOf: price.ValuationAsOf, KnowledgeCutoff: price.KnowledgeCutoff,
 		ID:                         price.ID,
 		BookID:                     price.BookID,
 		SeriesID:                   price.SeriesID,

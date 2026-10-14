@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"rekenraam/backend/internal/exact"
 )
@@ -232,6 +233,7 @@ func (r *ForecastRepository) LoadSnapshot(ctx context.Context, request ForecastS
 }
 
 type ForecastSnapshotResolution struct {
+	KnowledgeCutoff     string
 	AccountIDs          []int64
 	ThroughDate         string
 	AsOfDate            string
@@ -311,7 +313,7 @@ func (r *ForecastRepository) LoadResolvedSnapshot(ctx context.Context, request F
 		}
 		if resolution.ReportingCurrencyID != nil {
 			candidateIDs := forecastCandidateCommodityIDs(resolution.AccountIDs, result.PostedPostings, result.TemplatePostings, result.DraftPostings, result.LearningPostings)
-			result.Rates, err = reader.ratesAtOrBefore(ctx, request.BookID, *resolution.ReportingCurrencyID, candidateIDs, resolution.AsOfDate)
+			result.Rates, err = reader.ratesAtOrBefore(ctx, request.BookID, *resolution.ReportingCurrencyID, candidateIDs, resolution.AsOfDate, resolution.KnowledgeCutoff)
 		}
 		return err
 	})
@@ -321,7 +323,7 @@ func (r *ForecastRepository) LoadResolvedSnapshot(ctx context.Context, request F
 	return result, nil
 }
 
-func (r *ForecastSnapshotReader) ratesAtOrBefore(ctx context.Context, bookID, quoteCommodityID int64, baseCommodityIDs []int64, asOfDate string) ([]ForecastRateRecord, error) {
+func (r *ForecastSnapshotReader) ratesAtOrBefore(ctx context.Context, bookID, quoteCommodityID int64, baseCommodityIDs []int64, asOfDate string, knowledgeCutoff string) ([]ForecastRateRecord, error) {
 	filtered := make([]int64, 0, len(baseCommodityIDs))
 	for _, id := range baseCommodityIDs {
 		if id != quoteCommodityID {
@@ -332,23 +334,17 @@ func (r *ForecastSnapshotReader) ratesAtOrBefore(ctx context.Context, bookID, qu
 	if clause == "" {
 		return []ForecastRateRecord{}, nil
 	}
-	queryArgs := append([]any{bookID, quoteCommodityID, asOfDate}, args...)
-	rows, err := r.transaction.QueryContext(ctx, `
-		WITH ranked AS (
-			SELECT po.id, po.base_commodity_id, po.quote_commodity_id, po.valuation_date,
-				po.recorded_at, po.price_value, po.price_scale, po.base_quantity_value,
-				po.base_quantity_scale, po.is_derived,
-				ROW_NUMBER() OVER (PARTITION BY po.base_commodity_id
-					ORDER BY po.valuation_date DESC, po.recorded_at DESC, po.id DESC) AS rank
-			FROM price_observations po
-			JOIN commodities base ON base.id = po.base_commodity_id AND base.book_id = po.book_id AND base.kind = 'currency'
-			JOIN commodities quote ON quote.id = po.quote_commodity_id AND quote.book_id = po.book_id AND quote.kind = 'currency'
-			WHERE po.book_id = ? AND po.quote_commodity_id = ? AND po.voided_at IS NULL
-				AND po.valuation_date <= ? AND `+clause+`
-		)
-		SELECT id, base_commodity_id, quote_commodity_id, valuation_date, recorded_at,
-			price_value, price_scale, base_quantity_value, base_quantity_scale, is_derived
-		FROM ranked WHERE rank = 1 ORDER BY base_commodity_id`, queryArgs...)
+	if knowledgeCutoff == "" {
+		knowledgeCutoff = time.Now().UTC().Format(time.RFC3339Nano)
+	}
+	queryArgs := append([]any{bookID, asOfDate, knowledgeCutoff, quoteCommodityID}, args...)
+	rows, err := r.transaction.QueryContext(ctx, observationSelectionCTE+`
+  SELECT po.id,po.base_commodity_id,po.quote_commodity_id,po.valuation_date,po.recorded_at,
+   po.price_value,po.price_scale,po.base_quantity_value,po.base_quantity_scale,po.is_derived
+  FROM selection_latest po
+  JOIN commodities base ON base.id=po.base_commodity_id AND base.kind='currency'
+  JOIN commodities quote ON quote.id=po.quote_commodity_id AND quote.kind='currency'
+  WHERE po.quote_commodity_id=? AND `+clause+` ORDER BY po.base_commodity_id`, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("read forecast rates: %w", err)
 	}

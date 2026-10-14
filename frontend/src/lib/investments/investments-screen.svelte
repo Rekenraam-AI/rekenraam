@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ObservationStatus from '#lib/valuation/observation-status.svelte';
   import { untrack } from 'svelte';
   import { page } from '$app/state';
   import { createQuery } from '@tanstack/svelte-query';
@@ -325,6 +326,7 @@
           <Panel padding="none">
             <div class="overflow-x-auto">
               <table class="min-w-full text-sm">
+                <caption class="p-3 text-left text-sm text-muted">{m.valuation_holdings_policy()}</caption>
                 <thead>
                   <tr class="border-b border-border bg-surface-strong/40">
                     <th class="py-3 pl-5 pr-3 text-left font-semibold text-foreground">{m.investments_col_instrument()}</th>
@@ -347,6 +349,7 @@
                         <div class="flex items-center gap-2">
                           <TrendingUp size={14} class="shrink-0 text-muted" aria-hidden="true" />
                           <span class="font-medium text-foreground">{instrumentName(pos.commodity_id)}</span>
+                          <ObservationStatus status={pos.price_status} />
                           <PositionSideBadge side={pos.position_side} />
                         </div>
                       </td>

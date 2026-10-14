@@ -76,6 +76,11 @@ exact per-commodity totals and add optional conversions using
 selector, restated rows, coverage notices, charts, and CSV output ship in
 `frontend/src/lib/reports/` and `/app/reports`.
 
+- *Selection policy (#203):* shared `live_raw_v1` compatible unadjusted quote
+  selection; same-date manual/override then exact then approximate priority.
+  Each read captures a UTC recorded-at ceiling and caps current observation
+  dates at owner-local today. See the [R18 policy](investment-reporting-plan.md).
+  Current retirements still apply; this remains live reporting.
 - *Rate date:* bucket-end for net worth; each posting's entry date for spending
   and cashflow, with converted flows then summed.
 - *Coverage:* use the nearest on-or-before observation within the requested
