@@ -606,6 +606,14 @@ func (r *TransactionRepository) ApproveTransaction(ctx context.Context, params A
 			return records[0], nil
 		}
 
+		// Approval only clears review metadata. Copy the complete current
+		// journal, including stable posting lines and account-day positions.
+		records := []TransactionRecord{current}
+		if err := loadTransactionChildrenTx(ctx, tx, records); err != nil {
+			return TransactionRecord{}, err
+		}
+		current = records[0]
+
 		auditEventID, err := insertAuditEvent(ctx, tx, AuditEventParams{
 			BookID:        params.BookID,
 			ActorUserID:   params.ActorUserID,
