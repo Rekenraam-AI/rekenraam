@@ -1,6 +1,7 @@
 # R8 Budgets Plan
 
-Status: accepted for implementation on 2026-09-09.
+Status: **shipped 2026-09-09**. Retained as the R8 behavior and scope contract;
+current capability status lives in [the feature ledger](../implemented.md).
 
 R8 adds a deliberately small, exact, per-currency monthly planning loop. A
 user chooses targets for income and expense categories, sees posted actuals for

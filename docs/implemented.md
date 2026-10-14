@@ -375,8 +375,7 @@ knowledge. Forward migration 3 preserves existing known history.
 ## Not started (see roadmap)
 
 XLSX/OFX/QFX import adapters, per-split import mapping and batch rollback,
-budgets, loan/liability
-helpers and report snapshots. CSV import, profiles and
+loan/liability helpers and report snapshots. CSV import, profiles and
 minimal rules are shipped. Reporting-currency conversion is shipped. Recurring
 templates, generation and dedicated review/discard screens are shipped.
 Production scheduling and R9 acceptance are complete. R10's detailed plan is
@@ -463,7 +462,7 @@ carry reconciling estimated deltas; a model-only missing rate never changes the
 core conversion's coverage claim. The dated M4 review accepts the extension and
 closes R10.
 
-## Budgets (R8)
+## Budgets (R8) — ✅ shipped 2026-09-09
 
 R8 ships an exact monthly planned-versus-actual workflow at `/app/budgets`.
 Targets are audited book-wide facts keyed by calendar month, posting category,
