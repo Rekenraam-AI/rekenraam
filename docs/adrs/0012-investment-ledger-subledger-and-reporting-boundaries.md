@@ -148,3 +148,17 @@ use their configured threshold. Missing or unusable prices never replace the
 original commodity figures with zero. Current retirements still apply: a
 recorded-at cutoff alone does not freeze ledger, basis or withdrawal history,
 and these live reports carry no tax or reproducible historical-report claim.
+
+## Profile contract refinement — 2026-10-14 (#118)
+
+The [reporting plan](../plans/investment-reporting-plan.md#basis-and-valuation-profiles-118)
+fixes the profile descriptor every projection echoes (name/version, purpose,
+basis method, valuation date, knowledge cutoff, ledger knowledge, quote policy,
+staleness, FX method, rounding). The first profile, `operational_v1` (#230),
+replays positions to a valuation date under today's effective history and
+labels that `ledger_knowledge: current_effective`; it does not claim
+reproduction as known at an earlier instant (#234). The dashboard shows
+point-in-time unrealized figures with their price date; realized gain belongs
+to period reports. Purpose and jurisdiction are user labels on a named
+method, never a compliance claim. Formal gain/revaluation postings (layer 4,
+I-04) are not part of R18 until a user need is evidenced.

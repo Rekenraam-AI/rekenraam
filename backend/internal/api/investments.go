@@ -2379,11 +2379,34 @@ type realizedGainTotalResponse struct {
 }
 
 type investmentGainsResponse struct {
+	Profile        gainsProfileResponse        `json:"profile"`
 	CapitalReturns []capitalReturnReadResponse `json:"capital_returns"`
 	Currencies     []currencyResponse          `json:"currencies"`
 	Realized       []realizedGainResponse      `json:"realized"`
 	Unrealized     []unrealizedGainResponse    `json:"unrealized"`
 	RealizedTotals []realizedGainTotalResponse `json:"realized_totals"`
+}
+
+type gainsProfileResponse struct {
+	Name            string `json:"name"`
+	Purpose         string `json:"purpose"`
+	BasisMethod     string `json:"basis_method"`
+	ValuationAsOf   string `json:"valuation_as_of"`
+	KnowledgeCutoff string `json:"knowledge_cutoff"`
+	LedgerKnowledge string `json:"ledger_knowledge"`
+	QuotePolicy     string `json:"quote_policy"`
+	StaleAfterDays  int    `json:"stale_after_days"`
+	FXMethod        string `json:"fx_method"`
+	Rounding        string `json:"rounding"`
+}
+
+func toGainsProfileResponse(profile app.GainsProfile) gainsProfileResponse {
+	return gainsProfileResponse{
+		Name: profile.Name, Purpose: profile.Purpose, BasisMethod: profile.BasisMethod,
+		ValuationAsOf: profile.ValuationAsOf, KnowledgeCutoff: profile.KnowledgeCutoff,
+		LedgerKnowledge: profile.LedgerKnowledge, QuotePolicy: profile.QuotePolicy,
+		StaleAfterDays: profile.StaleAfterDays, FXMethod: profile.FXMethod, Rounding: profile.Rounding,
+	}
 }
 
 func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, investmentService *app.InvestmentService, currencyService *app.CurrencyService) http.HandlerFunc {
@@ -2410,7 +2433,7 @@ func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, inve
 			writeInvestmentServiceError(w, r, logger, "list capital returns", err)
 			return
 		}
-		unrealized, err := investmentService.ListUnrealizedGains(r.Context())
+		profile, unrealized, err := investmentService.UnrealizedGainsProjection(r.Context(), r.URL.Query().Get("valuation_as_of"))
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "list unrealized gains", err)
 			return
@@ -2503,6 +2526,7 @@ func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, inve
 			})
 		}
 		writeJSON(w, http.StatusOK, investmentGainsResponse{
+			Profile:        toGainsProfileResponse(profile),
 			CapitalReturns: toCapitalReturnReads(capitalReturns),
 			Currencies:     toCurrencyResponses(currencies),
 			Realized:       realizedResponses,

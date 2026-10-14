@@ -81,7 +81,7 @@ func (r *InvestmentRepository) DatedLongHoldings(ctx context.Context, bookID int
 	}
 	holdings := make([]DatedHolding, 0, len(positions))
 	for _, p := range positions {
-		holding, ok, err := datedLongHoldingTx(ctx, tx, bookID, p.key, asOf)
+		holding, ok, err := datedHoldingTx(ctx, tx, bookID, p.key, PositionSideLong, asOf)
 		if err != nil {
 			return nil, err
 		}
@@ -93,8 +93,10 @@ func (r *InvestmentRepository) DatedLongHoldings(ctx context.Context, bookID int
 	return holdings, nil
 }
 
-func datedLongHoldingTx(ctx context.Context, tx *sql.Tx, bookID int64, key investmentReplayPositionKey, asOf string) (DatedHolding, bool, error) {
-	intents, err := investmentReplayIntentsQuery(ctx, tx, bookID, key.accountID, key.commodityID, key.costCommodityID, PositionSideLong)
+// datedHoldingTx replays one side of a position to the slot asOf takes. A
+// short holding's quantity is the owed units and its basis opening proceeds.
+func datedHoldingTx(ctx context.Context, tx *sql.Tx, bookID int64, key investmentReplayPositionKey, side, asOf string) (DatedHolding, bool, error) {
+	intents, err := investmentReplayIntentsQuery(ctx, tx, bookID, key.accountID, key.commodityID, key.costCommodityID, side)
 	if err != nil {
 		return DatedHolding{}, false, err
 	}
@@ -109,7 +111,7 @@ func datedLongHoldingTx(ctx context.Context, tx *sql.Tx, bookID int64, key inves
 			opened[intent.LotID] = intent.EventDate
 		}
 	}
-	projection, err := simulateInvestmentReplayTx(ctx, tx, bookID, key.accountID, key.commodityID, key.costCommodityID, before)
+	projection, err := simulateInvestmentReplaySideTx(ctx, tx, bookID, key.accountID, key.commodityID, key.costCommodityID, side, before)
 	if err != nil {
 		return DatedHolding{}, false, fmt.Errorf("replay dated holding %d/%d/%d: %w", key.accountID, key.commodityID, key.costCommodityID, err)
 	}

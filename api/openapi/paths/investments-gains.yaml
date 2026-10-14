@@ -7,6 +7,10 @@ get:
     exists for the instrument. Effective return-of-capital allocation sets are
     included separately, filtered by payment date. Their unresolved excess is
     not included in disposal gains or totals; viewing does not post income.
+    Unrealized gains are a read-only operational_v1 projection (R18, #230):
+    without `valuation_as_of` they value today's positions; with it, every
+    position is replayed to that date and priced with the latest compatible
+    observation on or before it. `profile` names the rules used.
   parameters:
     - name: from
       in: query
@@ -22,6 +26,16 @@ get:
       schema:
         type: string
         format: date
+    - name: valuation_as_of
+      in: query
+      required: false
+      description: >-
+        Valuation date for unrealized gains (ISO date, not after owner-local
+        today). Positions are replayed to that date under today's effective
+        history; disposal-date filters are independent.
+      schema:
+        type: string
+        format: date
   responses:
     "200":
       description: Realized and unrealized gains
@@ -32,6 +46,15 @@ get:
         application/json:
           schema:
             $ref: "../openapi.yaml#/components/schemas/InvestmentGainsResponse"
+    "400":
+      description: The valuation date is malformed or after owner-local today
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "401":
       description: Authentication is required
       headers:

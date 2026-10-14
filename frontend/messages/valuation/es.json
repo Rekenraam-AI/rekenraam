@@ -6,5 +6,10 @@
   "valuation_price_unknown": "Precio registrado después del límite de conocimiento",
   "valuation_price_window": "Sin precio compatible dentro de la antigüedad permitida",
   "valuation_holdings_policy": "Las posiciones actuales usan precios con fecha no posterior a hoy. Los de más de siete días siguen visibles y se marcan como antiguos. Se excluyen precios ajustados y cotizaciones de compra/venta.",
-  "valuation_report_policy": "Se usa la fecha válida más reciente y, en el mismo día, se priorizan precios manuales o de valoración, exactos y estimados. Solo se usan cotizaciones sin ajustar conocidas al consultar. Los informes históricos siguen siendo dinámicos."
+  "valuation_report_policy": "Se usa la fecha válida más reciente y, en el mismo día, se priorizan precios manuales o de valoración, exactos y estimados. Solo se usan cotizaciones sin ajustar conocidas al consultar. Los informes históricos siguen siendo dinámicos.",
+  "valuation_gains_date": "Fecha de valoración",
+  "valuation_gains_profile": "Las cifras no realizadas usan la base de coste operativa (el método registrado de cada venta) para las posiciones mantenidas el {date}, valoradas con el último precio admisible en esa fecha o antes, en la divisa de coste de cada posición. Las posiciones reflejan el libro tal como está corregido hoy. Esto no es un cálculo fiscal.",
+  "valuation_gains_price_date": "Fecha del precio {date}",
+  "valuation_gains_date_future": "La fecha de valoración no puede ser posterior a hoy.",
+  "valuation_gains_apply": "Revalorizar"
 }

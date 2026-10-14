@@ -1447,6 +1447,8 @@ components:
       $ref: "./components/schemas/investments.yaml#/RealizedGainTotal"
     InvestmentGainsResponse:
       $ref: "./components/schemas/investments.yaml#/InvestmentGainsResponse"
+    GainsProfile:
+      $ref: "./components/schemas/investments.yaml#/GainsProfile"
     ErrorBody:
       $ref: "./components/schemas/errors.yaml#/ErrorBody"
     ErrorResponse:

@@ -3865,7 +3865,10 @@ InvestmentGainsResponse:
     - unrealized
     - realized_totals
     - capital_returns
+    - profile
   properties:
+    profile:
+      $ref: "#/GainsProfile"
     capital_returns:
       type: array
       description: Effective return-of-capital allocations at the latest whole-effect revision, filtered inclusively by payment date using from/to. Separate from realized gains and income.
@@ -3889,6 +3892,60 @@ InvestmentGainsResponse:
       description: Pre-aggregated totals by cost commodity, suitable for display.
       items:
         $ref: "#/RealizedGainTotal"
+
+GainsProfile:
+  type: object
+  description: >-
+    The named read-only rules the unrealized projection ran under (R18,
+    docs/plans/investment-reporting-plan.md). Figures compare only when their
+    profiles match. Not a tax computation.
+  required:
+    - name
+    - purpose
+    - basis_method
+    - valuation_as_of
+    - knowledge_cutoff
+    - ledger_knowledge
+    - quote_policy
+    - stale_after_days
+    - fx_method
+    - rounding
+  properties:
+    name:
+      type: string
+      enum: [operational_v1]
+    purpose:
+      type: string
+      enum: [operational]
+    basis_method:
+      type: string
+      enum: [operational_elections]
+      description: Each committed disposal's recorded method, tier and allocations; no re-election.
+    valuation_as_of:
+      type: string
+      format: date
+      description: Date positions are replayed to and priced at.
+    knowledge_cutoff:
+      type: string
+      format: date-time
+      description: UTC instant limiting admitted price observations (read start).
+    ledger_knowledge:
+      type: string
+      enum: [current_effective]
+      description: Positions use today's effective history; a later correction restates an earlier valuation date.
+    quote_policy:
+      type: string
+      enum: [live_raw_v1]
+    stale_after_days:
+      type: integer
+      description: A selected price older than this many calendar days before valuation_as_of is retained and marked stale.
+    fx_method:
+      type: string
+      enum: [none]
+      description: Figures stay in each position's cost currency.
+    rounding:
+      type: string
+      enum: [exact_half_up]
 
 GainImpact:
   type: object

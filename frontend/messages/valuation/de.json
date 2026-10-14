@@ -6,5 +6,10 @@
   "valuation_price_unknown": "Preis nach dem Wissensstichtag erfasst",
   "valuation_price_window": "Kein geeigneter Preis innerhalb der zulässigen Altersgrenze",
   "valuation_holdings_policy": "Aktuelle Bestände verwenden Preise bis einschließlich heute. Preise, die älter als sieben Tage sind, bleiben sichtbar und werden als veraltet markiert. Bereinigte Preise sowie Geld-/Briefkurse sind ausgeschlossen.",
-  "valuation_report_policy": "Das jüngste geeignete Datum gilt, danach haben am selben Tag manuelle Bewertungen, genaue und geschätzte Preise Vorrang. Nur beim Abruf bekannte unbereinigte Kurse werden verwendet. Historische Berichte bleiben dynamisch."
+  "valuation_report_policy": "Das jüngste geeignete Datum gilt, danach haben am selben Tag manuelle Bewertungen, genaue und geschätzte Preise Vorrang. Nur beim Abruf bekannte unbereinigte Kurse werden verwendet. Historische Berichte bleiben dynamisch.",
+  "valuation_gains_date": "Bewertungsdatum",
+  "valuation_gains_profile": "Nicht realisierte Werte verwenden die operative Kostenbasis (die erfasste Methode jedes Verkaufs) für Positionen, die am {date} gehalten wurden, bewertet mit dem letzten zulässigen Preis an oder vor diesem Datum, in der Kostenwährung jeder Position. Positionen spiegeln das heute korrigierte Buch wider. Dies ist keine Steuerberechnung.",
+  "valuation_gains_price_date": "Preisdatum {date}",
+  "valuation_gains_date_future": "Das Bewertungsdatum darf nicht nach heute liegen.",
+  "valuation_gains_apply": "Neu bewerten"
 }

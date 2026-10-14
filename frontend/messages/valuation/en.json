@@ -6,5 +6,10 @@
   "valuation_price_unknown": "Price recorded after the knowledge cutoff",
   "valuation_price_window": "No compatible price within the allowed age",
   "valuation_holdings_policy": "Live holdings use prices dated no later than today. Prices over seven days old remain visible and are marked stale. Adjusted prices and bid/ask quotes are excluded.",
-  "valuation_report_policy": "Prices use the latest eligible date, then same-day manual/override, exact and estimated priority. Only unadjusted quotes known at this read are used. Historical reports remain live."
+  "valuation_report_policy": "Prices use the latest eligible date, then same-day manual/override, exact and estimated priority. Only unadjusted quotes known at this read are used. Historical reports remain live.",
+  "valuation_gains_date": "Valuation date",
+  "valuation_gains_profile": "Unrealized figures use the operational basis (each sale's recorded method) for positions held on {date}, priced with the latest eligible price on or before that date, in each position's cost currency. Positions reflect the book as corrected today. This is not a tax calculation.",
+  "valuation_gains_price_date": "Price date {date}",
+  "valuation_gains_date_future": "Valuation date cannot be after today.",
+  "valuation_gains_apply": "Revalue"
 }

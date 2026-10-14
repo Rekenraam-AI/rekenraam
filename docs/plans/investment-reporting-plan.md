@@ -77,6 +77,81 @@ ledger/basis knowledge or persist an immutable run/snapshot. A timestamp on
 this live selector alone cannot do that. No alternative profile may rewrite
 operational elections, journal balances, tax liabilities or reconciliation.
 
+## Basis and valuation profiles (#118)
+
+A **profile** is a named, versioned, read-only rule set. Every projection
+response names the profile it ran under and echoes each resolved field, so two
+figures can be compared only when their descriptors match. Profiles never post,
+never change lots, elections, prices or reconciliation, and never claim tax
+compliance.
+
+| Field | Meaning | Values defined so far |
+| --- | --- | --- |
+| `name` / `version` | Stable key; a rule change is a new version, never a silent reinterpretation. | `operational_v1` |
+| `purpose` | What the figure is for. A label, not a compliance claim. | `operational` (later: `alternative_method`, `broker_comparison`, `tax_estimate`) |
+| `basis_method` | How disposals consume basis. | `operational_elections`: each committed disposal's recorded method, tier and allocations (ADR 0012); no re-election. |
+| `valuation_as_of` | Calendar date the open positions are replayed to and priced at. | Any date up to owner-local today; default today. |
+| `positions_as_of` | Which events build the holding. | Every effective event dated on or before `valuation_as_of`, replayed in a rolled-back read (the #166 dated-holdings replay, both sides). |
+| `knowledge_cutoff` | UTC instant limiting admitted **observations**. | Read start. |
+| `ledger_knowledge` | Which book history the replay sees. | `current_effective`: today's effective history — a later correction, reversal or withdrawal restates an earlier valuation date. Not reproducible as known then; see *Reproducibility* below. |
+| `quote_policy` | Observation selection. | `live_raw_v1` (above). |
+| `staleness` | Age rule for the selected price. | Holdings rule: retain the latest compatible price on or before `valuation_as_of`; mark it `stale` past seven calendar days; never a value gate. |
+| `fx_method` / `reporting_currency` | Conversion of results. | `none`: every figure stays in the position's cost currency. |
+| `rounding` | Arithmetic. | Exact; market value is one `exact.MulDivRound` half-up step at the deeper of quantity×price and basis scale. |
+
+### Research recommendations
+
+- **Which measure is authoritative where.** The portfolio dashboard shows the
+  *position* view: market value, remaining operational basis and unrealized
+  gain at a stated valuation date with the price date and stale marker beside
+  it. Realized gain belongs to a *period* report (disposal-date range),
+  alongside income and the change in unrealized gain between the period's
+  start and end valuation dates. The dashboard never mixes a period's realized
+  figure into a point-in-time total.
+- **Jurisdiction or purpose without a tax engine.** Users choose a named
+  profile, whose `purpose` and method are shown with every figure; a profile
+  may carry a free-text jurisdiction note. Rekenraam computes the method the
+  profile names and says which one it is — never "your taxable gain". Regimes
+  whose pool spans accounts (UK s104, Canadian ACB, French PMP) are a separate
+  profile method over the person's positions, not a re-election of the
+  per-account operational lots.
+- **Unrealized movement without flip-flop.** Unrealized gain is always
+  presented *as of a valuation date with the price that produced it*, never as
+  a bare "now" figure. Same-date selection is deterministic (`live_raw_v1`), so
+  a refresh changes a figure only when a newer or higher-priority observation
+  arrives, and the displayed price date says so. Period reports use the
+  period-end date, so later refreshes cannot move a closed period's figure
+  unless evidence for that date changes. Stale prices remain visible and
+  marked rather than disappearing.
+- **I-04 (formal postings).** Out of R18. ADR 0012 already forbids silent
+  posting; an explicit linked reclassification workflow is not scheduled
+  until a user need for formal gain statements is evidenced.
+
+### Reproducibility
+
+`operational_v1` is a *live* projection: rerunning it for the same
+`valuation_as_of` returns the same figures until the book's effective history
+or the admitted observations for that date change, and its descriptor says
+which knowledge it used. Reproducing a figure *as it was known at an earlier
+instant* needs either knowledge-time reconstruction of retirements and
+revisions or a persisted immutable run; that choice is a later slice and no
+current response claims it.
+
+### Delivery slices
+
+| Slice | Issue | Scope |
+| --- | --- | --- |
+| 1 | [#230](https://github.com/sergeyfarin/rekenraam/issues/230) | `operational_v1` descriptor and as-of valuation: positions replayed to `valuation_as_of`, priced under `live_raw_v1`, on the gains read and screen. |
+| 2 | [#231](https://github.com/sergeyfarin/rekenraam/issues/231) | Period gains statement: opening/closing unrealized, realized and income per cost currency for a date range. |
+| 3 | [#232](https://github.com/sergeyfarin/rekenraam/issues/232) | Alternative-method projection (FIFO/LIFO/average) beside the operational result, computed by rolled-back replay. |
+| 4 | [#233](https://github.com/sergeyfarin/rekenraam/issues/233) | Reporting-currency conversion with a named FX method and coverage disclosure. |
+| 5 | [#234](https://github.com/sergeyfarin/rekenraam/issues/234) | Reproducible runs: knowledge-time ledger reconstruction or immutable persisted run, decided by evidence. |
+| 6 | [#235](https://github.com/sergeyfarin/rekenraam/issues/235) | Person-level pooled average-cost profile across accounts (s104/ACB/PMP style), labelled as a method, not tax advice. |
+
+Broker-comparison reads (retained broker-reported basis beside the book's)
+follow slice 3 once a provider supplies that evidence; they are not
+scheduled.
+
 ## Validation evidence
 
 - `TestObservationSelectionThroughHoldingsAndLatestPrices`: future, adjusted,

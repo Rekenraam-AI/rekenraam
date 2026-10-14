@@ -114,7 +114,11 @@ test.describe('on a phone', () => {
 
     // T-138: the gains read is cached before the correction and must not
     // survive it.
-    const saleRow = page.locator('tbody tr', { hasText: name }).filter({ hasText: daysFromTodayISO(-10) });
+    // Scoped to realized gains: an unrealized row also shows its price date (#230).
+    const saleRow = page
+      .getByRole('region', { name: 'Realized gains', exact: true })
+      .locator('tbody tr', { hasText: name })
+      .filter({ hasText: daysFromTodayISO(-10) });
     await page.goto('/app/investments');
     await page.getByRole('button', { name: 'Gains', exact: true }).click();
     await expect(saleRow).toContainText('140.00');

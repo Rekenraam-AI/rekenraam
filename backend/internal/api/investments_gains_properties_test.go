@@ -189,5 +189,8 @@ func TestFinancialUnrepresentableAcquisitionIsValidationError(t *testing.T) {
 		beforeGains.Unrealized[i].KnowledgeCutoff = ""
 		afterGains.Unrealized[i].KnowledgeCutoff = ""
 	}
+	require.NotEmpty(t, beforeGains.Profile.KnowledgeCutoff)
+	require.NotEmpty(t, afterGains.Profile.KnowledgeCutoff)
+	beforeGains.Profile.KnowledgeCutoff, afterGains.Profile.KnowledgeCutoff = "", ""
 	require.Equal(t, beforeGains, afterGains)
 }

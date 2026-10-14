@@ -46,8 +46,8 @@ test('gains show currency units, retain share precision and render same-day sale
   await expect(page.locator('tfoot')).toContainText('EUR 0.01');
   // Exercise keyed-list updates too: duplicate keys can leave stale rows
   // behind even when the initial production render appears correct.
-  await page.locator('input[type="date"]').first().fill(todayISO());
-  await page.locator('input[type="date"]').last().fill(todayISO());
+  await page.getByLabel('From', { exact: true }).fill(todayISO());
+  await page.getByLabel('To', { exact: true }).fill(todayISO());
   await page.getByRole('button', { name: 'Apply', exact: true }).click();
   await expect(page.locator('tbody tr')).toHaveCount(3);
   await expect(page.getByRole('cell', { name: '1.234567', exact: true })).toHaveCount(3);

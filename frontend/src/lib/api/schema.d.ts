@@ -24244,7 +24244,7 @@ export interface paths {
         };
         /**
          * List realized and unrealized investment gains
-         * @description Returns all realized gains (from closed lot disposal events) and unrealized gains (from open positions vs. latest price). Realized gains can be filtered by disposal date. Unrealized gain fields are omitted when no price observation exists for the instrument. Effective return-of-capital allocation sets are included separately, filtered by payment date. Their unresolved excess is not included in disposal gains or totals; viewing does not post income.
+         * @description Returns all realized gains (from closed lot disposal events) and unrealized gains (from open positions vs. latest price). Realized gains can be filtered by disposal date. Unrealized gain fields are omitted when no price observation exists for the instrument. Effective return-of-capital allocation sets are included separately, filtered by payment date. Their unresolved excess is not included in disposal gains or totals; viewing does not post income. Unrealized gains are a read-only operational_v1 projection (R18, #230): without `valuation_as_of` they value today's positions; with it, every position is replayed to that date and priced with the latest compatible observation on or before it. `profile` names the rules used.
          */
         get: {
             parameters: {
@@ -24253,6 +24253,8 @@ export interface paths {
                     from?: string;
                     /** @description End date filter for disposal gains and capital-return payments (ISO date, inclusive) */
                     to?: string;
+                    /** @description Valuation date for unrealized gains (ISO date, not after owner-local today). Positions are replayed to that date under today's effective history; disposal-date filters are independent. */
+                    valuation_as_of?: string;
                 };
                 header?: never;
                 path?: never;
@@ -24268,6 +24270,16 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["InvestmentGainsResponse"];
+                    };
+                };
+                /** @description The valuation date is malformed or after owner-local today */
+                400: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description Authentication is required */
@@ -30278,6 +30290,7 @@ export interface components {
             total_gain_scale: number | null;
         };
         InvestmentGainsResponse: {
+            profile: components["schemas"]["GainsProfile"];
             /** @description Effective return-of-capital allocations at the latest whole-effect revision, filtered inclusively by payment date using from/to. Separate from realized gains and income. */
             capital_returns: components["schemas"]["CapitalReturnRead"][];
             /** @description Currency labels and standard display scales; calculations retain their recorded precision. */
@@ -30286,6 +30299,44 @@ export interface components {
             unrealized: components["schemas"]["UnrealizedGainEntry"][];
             /** @description Pre-aggregated totals by cost commodity, suitable for display. */
             realized_totals: components["schemas"]["RealizedGainTotal"][];
+        };
+        /** @description The named read-only rules the unrealized projection ran under (R18, docs/plans/investment-reporting-plan.md). Figures compare only when their profiles match. Not a tax computation. */
+        GainsProfile: {
+            /** @enum {string} */
+            name: "operational_v1";
+            /** @enum {string} */
+            purpose: "operational";
+            /**
+             * @description Each committed disposal's recorded method, tier and allocations; no re-election.
+             * @enum {string}
+             */
+            basis_method: "operational_elections";
+            /**
+             * Format: date
+             * @description Date positions are replayed to and priced at.
+             */
+            valuation_as_of: string;
+            /**
+             * Format: date-time
+             * @description UTC instant limiting admitted price observations (read start).
+             */
+            knowledge_cutoff: string;
+            /**
+             * @description Positions use today's effective history; a later correction restates an earlier valuation date.
+             * @enum {string}
+             */
+            ledger_knowledge: "current_effective";
+            /** @enum {string} */
+            quote_policy: "live_raw_v1";
+            /** @description A selected price older than this many calendar days before valuation_as_of is retained and marked stale. */
+            stale_after_days: number;
+            /**
+             * @description Figures stay in each position's cost currency.
+             * @enum {string}
+             */
+            fx_method: "none";
+            /** @enum {string} */
+            rounding: "exact_half_up";
         };
         ErrorBody: {
             /** @enum {string} */

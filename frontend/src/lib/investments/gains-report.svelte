@@ -32,9 +32,26 @@
     appliedTo = toDate;
   }
 
+  // Unrealized valuation date (R18 operational_v1, #230). Today is sent as no
+  // date so the server values its current projection at owner-local today.
+  const today = ownerToday();
+  let valuationDate = $state(today);
+  let appliedValuationDate = $state(today);
+  const valuationDateFuture = $derived(valuationDate > today);
+
+  function applyValuationDate() {
+    if (valuationDate === '' || valuationDateFuture) return;
+    appliedValuationDate = valuationDate;
+  }
+
   const gainsQuery = createQuery(() =>
-    investmentGainsQueryOptions(appliedFrom || undefined, appliedTo || undefined)
+    investmentGainsQueryOptions(
+      appliedFrom || undefined,
+      appliedTo || undefined,
+      appliedValuationDate === today ? undefined : appliedValuationDate
+    )
   );
+  const profile = $derived(gainsQuery.data?.profile);
   const instrumentsQuery = createQuery(() => investmentInstrumentsQueryOptions());
 
   const instrumentsByID = $derived.by(() => {
@@ -83,7 +100,41 @@
   <p class="text-sm text-muted">{m.valuation_holdings_policy()}</p>
   <!-- Unrealized gains -->
   <section>
-    <h2 class="mb-3 text-sm font-semibold text-foreground">{m.investments_gains_unrealized_title()}</h2>
+    <div class="mb-3 flex flex-wrap items-center gap-3">
+      <h2 class="text-sm font-semibold text-foreground">{m.investments_gains_unrealized_title()}</h2>
+      <form
+        class="flex flex-wrap items-center gap-2 text-sm"
+        onsubmit={(event) => {
+          event.preventDefault();
+          applyValuationDate();
+        }}
+      >
+        <label class="flex items-center gap-1 text-muted">
+          {m.valuation_gains_date()}
+          <input
+            type="date"
+            bind:value={valuationDate}
+            max={today}
+            aria-invalid={valuationDateFuture}
+            aria-describedby={valuationDateFuture ? 'gains-valuation-date-error' : undefined}
+            class="rounded border border-border bg-control px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-foreground/30"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={valuationDateFuture || valuationDate === ''}
+          class="rounded-(--radius-control) border border-border bg-control px-3 py-1 text-xs font-medium text-foreground hover:bg-control-hover disabled:opacity-50"
+        >
+          {m.valuation_gains_apply()}
+        </button>
+      </form>
+    </div>
+    {#if valuationDateFuture}
+      <p id="gains-valuation-date-error" class="mb-3 text-sm text-destructive">{m.valuation_gains_date_future()}</p>
+    {/if}
+    {#if profile}
+      <p class="mb-3 text-sm text-muted" data-testid="gains-profile">{m.valuation_gains_profile({ date: profile.valuation_as_of })}</p>
+    {/if}
     {#if gainsQuery.isPending}
       <Panel>
         <p class="text-sm text-muted">{m.investments_gains_loading()}</p>
@@ -121,6 +172,7 @@
                   <td class="px-3 py-3 text-right font-mono text-foreground">
                     {#if pos.market_value_value !== undefined && pos.market_value_scale !== undefined}
                       {formatGain(pos.market_value_value, pos.market_value_scale, pos.cost_commodity_id)}
+                      {#if pos.latest_price_date}<span class="block text-xs text-muted">{m.valuation_gains_price_date({ date: pos.latest_price_date })}</span>{/if}
                       {#if pos.latest_price_approximate}<span class="block text-xs text-muted">{m.investments_trade_price_approximate()}</span>{/if}
                     {:else}
                       <span class="text-muted">{unavailableLabel(pos.valuation_unavailable)}</span>

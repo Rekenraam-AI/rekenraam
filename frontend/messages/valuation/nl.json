@@ -6,5 +6,10 @@
   "valuation_price_unknown": "Prijs vastgelegd na de kennisgrens",
   "valuation_price_window": "Geen geschikte prijs binnen de toegestane ouderdom",
   "valuation_holdings_policy": "Actuele posities gebruiken prijzen tot en met vandaag. Prijzen ouder dan zeven dagen blijven zichtbaar en worden als verouderd gemarkeerd. Aangepaste prijzen en bied-/laatkoersen zijn uitgesloten.",
-  "valuation_report_policy": "De recentste geschikte datum geldt, daarna hebben op dezelfde dag handmatige waarderingen, exacte en geschatte prijzen voorrang. Alleen onaangepaste koersen die bij het lezen bekend zijn worden gebruikt. Historische rapporten blijven actueel berekend."
+  "valuation_report_policy": "De recentste geschikte datum geldt, daarna hebben op dezelfde dag handmatige waarderingen, exacte en geschatte prijzen voorrang. Alleen onaangepaste koersen die bij het lezen bekend zijn worden gebruikt. Historische rapporten blijven actueel berekend.",
+  "valuation_gains_date": "Waarderingsdatum",
+  "valuation_gains_profile": "Ongerealiseerde bedragen gebruiken de operationele kostprijs (de vastgelegde methode van elke verkoop) voor posities die op {date} werden gehouden, gewaardeerd tegen de laatste geschikte prijs op of vóór die datum, in de kostenvaluta van elke positie. Posities weerspiegelen de administratie zoals die vandaag is gecorrigeerd. Dit is geen belastingberekening.",
+  "valuation_gains_price_date": "Prijsdatum {date}",
+  "valuation_gains_date_future": "De waarderingsdatum mag niet na vandaag liggen.",
+  "valuation_gains_apply": "Herwaarderen"
 }

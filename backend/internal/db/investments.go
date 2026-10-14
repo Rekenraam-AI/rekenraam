@@ -3614,6 +3614,12 @@ func (r *InvestmentRepository) PositionsWithGains(ctx context.Context, bookID in
 	if err != nil {
 		return nil, err
 	}
+	return valuePositions(positions)
+}
+
+// valuePositions values priced positions and computes their unrealized gain.
+// The current and dated (#230) reads share it, so one arithmetic owns both.
+func valuePositions(positions []InvestmentPositionRecord) ([]UnrealizedGainRecord, error) {
 	records := make([]UnrealizedGainRecord, 0, len(positions))
 	for _, pos := range positions {
 		record := UnrealizedGainRecord{

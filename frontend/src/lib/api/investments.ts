@@ -973,10 +973,10 @@ export async function recordReinvestedDividend(
   }
 }
 
-export function investmentGainsQueryOptions(from?: string, to?: string) {
+export function investmentGainsQueryOptions(from?: string, to?: string, valuationAsOf?: string) {
   return {
-    queryKey: [...investmentGainsQueryKey, { from, to }] as const,
-    queryFn: () => getInvestmentGains(from, to),
+    queryKey: [...investmentGainsQueryKey, { from, to, valuationAsOf }] as const,
+    queryFn: () => getInvestmentGains(from, to, valuationAsOf),
     staleTime: 30_000
   };
 }
@@ -997,10 +997,16 @@ export function investmentAutomationRulesQueryOptions() {
   };
 }
 
-export async function getInvestmentGains(from?: string, to?: string): Promise<InvestmentGainsResponse> {
+// valuationAsOf replays unrealized positions to that date (R18 operational_v1,
+// #230); omitted values today's positions.
+export async function getInvestmentGains(
+  from?: string,
+  to?: string,
+  valuationAsOf?: string
+): Promise<InvestmentGainsResponse> {
   try {
     const { data, error, response } = await apiClient.GET('/api/v1/investments/gains', {
-      params: { query: { from, to } }
+      params: { query: { from, to, valuation_as_of: valuationAsOf } }
     });
 
     if (data !== undefined) {

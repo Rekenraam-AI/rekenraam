@@ -3001,13 +3001,61 @@ func (s *InvestmentService) ListRealizedGains(ctx context.Context, params GainsR
 }
 
 func (s *InvestmentService) ListUnrealizedGains(ctx context.Context) ([]UnrealizedGainEntry, error) {
+	_, entries, err := s.UnrealizedGainsProjection(ctx, "")
+	return entries, err
+}
+
+// GainsProfile names the read-only rules a gains projection ran under (R18,
+// #230). Two figures compare only when their profiles match; see the R18
+// reporting plan for each field's contract.
+type GainsProfile struct {
+	Name            string
+	Purpose         string
+	BasisMethod     string
+	ValuationAsOf   string
+	KnowledgeCutoff string
+	LedgerKnowledge string
+	QuotePolicy     string
+	StaleAfterDays  int
+	FXMethod        string
+	Rounding        string
+}
+
+// operationalGainsProfile is operational_v1 at the given boundary.
+func operationalGainsProfile(boundary db.ObservationBoundary) GainsProfile {
+	return GainsProfile{
+		Name: "operational_v1", Purpose: "operational", BasisMethod: "operational_elections",
+		ValuationAsOf: boundary.AsOf, KnowledgeCutoff: boundary.RecordedAt, LedgerKnowledge: "current_effective",
+		QuotePolicy: "live_raw_v1", StaleAfterDays: 7, FXMethod: "none", Rounding: "exact_half_up",
+	}
+}
+
+// UnrealizedGainsProjection values open positions under operational_v1. An
+// empty valuationAsOf is owner-local today over the current projection; a
+// past date replays each position to that date and prices it then (#230).
+// A date after owner-local today is refused: it would value positions with
+// prices nobody has observed yet.
+func (s *InvestmentService) UnrealizedGainsProjection(ctx context.Context, valuationAsOf string) (GainsProfile, []UnrealizedGainEntry, error) {
 	boundary, err := s.repository.CurrentObservationBoundary(ctx, BookID, s.now())
 	if err != nil {
-		return nil, err
+		return GainsProfile{}, nil, err
 	}
-	records, err := s.repository.PositionsWithGains(ctx, BookID, boundary)
+	var records []db.UnrealizedGainRecord
+	if valuationAsOf == "" {
+		records, err = s.repository.PositionsWithGains(ctx, BookID, boundary)
+	} else {
+		date, dateErr := cleanRequiredDate(valuationAsOf, "valuation date")
+		if dateErr != nil {
+			return GainsProfile{}, nil, dateErr
+		}
+		if date > boundary.AsOf {
+			return GainsProfile{}, nil, ValidationError{Message: "valuation date cannot be after today"}
+		}
+		boundary.AsOf = date
+		records, err = s.repository.DatedPositionsWithGains(ctx, BookID, boundary)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("list unrealized gains: %w", err)
+		return GainsProfile{}, nil, fmt.Errorf("list unrealized gains: %w", err)
 	}
 	entries := make([]UnrealizedGainEntry, 0, len(records))
 	for _, r := range records {
@@ -3039,7 +3087,7 @@ func (s *InvestmentService) ListUnrealizedGains(ctx context.Context) ([]Unrealiz
 			PositionSide:            r.PositionSide,
 		})
 	}
-	return entries, nil
+	return operationalGainsProfile(boundary), entries, nil
 }
 
 // InvestmentImpactKind names which investment write path a reconciliation

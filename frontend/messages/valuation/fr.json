@@ -6,5 +6,10 @@
   "valuation_price_unknown": "Prix enregistré après la limite de connaissance",
   "valuation_price_window": "Aucun prix compatible dans la limite d’ancienneté",
   "valuation_holdings_policy": "Les positions actuelles utilisent des prix datés au plus tard d’aujourd’hui. Les prix de plus de sept jours restent visibles et sont signalés comme anciens. Les prix ajustés et les cours acheteur/vendeur sont exclus.",
-  "valuation_report_policy": "La date admissible la plus récente prévaut puis, à date égale, les prix manuels ou de valorisation, exacts et estimés. Seuls les cours non ajustés connus lors de la consultation sont utilisés. Les rapports historiques restent dynamiques."
+  "valuation_report_policy": "La date admissible la plus récente prévaut puis, à date égale, les prix manuels ou de valorisation, exacts et estimés. Seuls les cours non ajustés connus lors de la consultation sont utilisés. Les rapports historiques restent dynamiques.",
+  "valuation_gains_date": "Date de valorisation",
+  "valuation_gains_profile": "Les montants latents utilisent la base de coût opérationnelle (la méthode enregistrée de chaque vente) pour les positions détenues le {date}, valorisées au dernier prix admissible à cette date ou avant, dans la devise de coût de chaque position. Les positions reflètent le livre tel que corrigé aujourd’hui. Ceci n’est pas un calcul fiscal.",
+  "valuation_gains_price_date": "Date du prix {date}",
+  "valuation_gains_date_future": "La date de valorisation ne peut pas être postérieure à aujourd’hui.",
+  "valuation_gains_apply": "Revaloriser"
 }

@@ -288,7 +288,15 @@ corporate-action/basis-adjustment lifecycle, and R17 supplies explicit quote
 provider and staleness policy. The [R18 reporting plan](plans/investment-reporting-plan.md)
 now defines the bounded #203 `live_raw_v1` observation slice: shared compatible
 quotes and priority, date/knowledge ceilings and explicit consumer age rules.
-It does not deliver the remaining reproducible basis/profile projections.
+The plan now also fixes the profile contract and research recommendations
+(#118) and splits delivery into slices: `operational_v1` as-of valuation
+[#230](https://github.com/sergeyfarin/rekenraam/issues/230) is delivered
+(2026-10-14); period statement [#231](https://github.com/sergeyfarin/rekenraam/issues/231),
+alternative methods [#232](https://github.com/sergeyfarin/rekenraam/issues/232),
+reporting-currency FX [#233](https://github.com/sergeyfarin/rekenraam/issues/233),
+reproducible runs [#234](https://github.com/sergeyfarin/rekenraam/issues/234) and
+person-pooled average cost [#235](https://github.com/sergeyfarin/rekenraam/issues/235)
+remain. I-04 formal postings are out of R18 until a need is evidenced.
 
 The plan must specify named basis profiles rather than a tax-engine promise. A
 profile states purpose/scope, cost-basis method, effective period/date basis,
@@ -498,6 +506,9 @@ Resolve these only when their related slice becomes current work:
   - unrealized figures move with every price refresh, so a naive presentation
     flip-flops and reads as instability rather than information.
 
+  **Recommendation recorded 2026-10-14 (#118)** in the
+  [R18 reporting plan](plans/investment-reporting-plan.md#research-recommendations);
+  the original framing follows.
   The R18 plan must produce a recommendation for: which measure is authoritative
   where, when each is shown, how the jurisdiction difference is expressed
   without turning the app into a tax engine, and how to present unrealized
