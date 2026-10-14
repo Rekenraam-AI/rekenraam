@@ -3,6 +3,8 @@ info:
   title: Rekenraam API
   version: 0.0.0
 paths:
+  /api/v1/pricing/quotes/refresh:
+    $ref: "./paths/pricing-quotes-refresh.yaml"
   /api/v1/budgets/month:
     $ref: "./paths/budget-month.yaml"
   /api/v1/budgets/targets/{category_id}/{commodity_id}:
@@ -991,6 +993,8 @@ components:
       $ref: "./components/schemas/pricing.yaml#/PricingSourceAssignmentsResponse"
     PricingSourceAssignmentRequest:
       $ref: "./components/schemas/pricing.yaml#/PricingSourceAssignmentRequest"
+    QuoteRefreshAccepted:
+      $ref: "./components/schemas/pricing.yaml#/QuoteRefreshAccepted"
     PricingRefreshRunResponse:
       $ref: "./components/schemas/pricing.yaml#/PricingRefreshRunResponse"
     PricingRefreshRunsResponse:

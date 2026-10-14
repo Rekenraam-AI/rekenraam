@@ -280,6 +280,12 @@ func TestMigrateSeededBaselineMatchesFreshSchema(t *testing.T) {
 	delete(before, "count:goose_db_version")
 	delete(after, "count:goose_db_version")
 
+	// #117 adds exactly three built-in quote providers. All pre-existing
+	// financial evidence remains byte-for-byte identical; the seed is frozen.
+	assert.Equal(t, "5", before["count:market_data_sources"])
+	assert.Equal(t, "8", after["count:market_data_sources"])
+	before["count:market_data_sources"] = "8"
+
 	assert.Equal(t, before, after, "upgrading must not change a single durable figure")
 
 	// Stated separately from the snapshot comparison so a failure names what
@@ -1251,7 +1257,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(5), version, "the head indexes derived-price dependencies")
+	assert.Equal(t, int64(6), version, "the head admits crypto instruments and quote providers")
 
 	ctx := context.Background()
 	database, err := Open(ctx, "file:"+filepath.Join(t.TempDir(), "schema.sqlite"))
@@ -1282,7 +1288,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 	assert.Equal(t, map[string]int{
 		"index":   109,
 		"table":   112,
-		"trigger": 148,
+		"trigger": 149,
 		"view":    15,
 	}, objectCounts, "the migrated head must retain every schema object")
 	assert.Equal(t, "table", objects["price_observation_dependencies"])

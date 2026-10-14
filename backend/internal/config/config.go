@@ -22,6 +22,8 @@ type Config struct {
 	TrustProxyHeaders      bool
 	TrustedProxyCIDRs      []netip.Prefix
 	OpenExchangeRatesAppID string
+	CoinGeckoDemoAPIKey    string
+	TwelveDataAPIKey       string
 	// BackupDir is where scheduled backups are written. Empty means the
 	// default beside the database (<database dir>/backups). It is deliberately
 	// an operator setting rather than a stored preference: where a backup lands
@@ -92,6 +94,8 @@ func Load() (Config, error) {
 		TrustProxyHeaders:      trustProxyHeaders,
 		TrustedProxyCIDRs:      trustedProxyCIDRs,
 		OpenExchangeRatesAppID: strings.TrimSpace(os.Getenv("OPEN_EXCHANGE_RATES_APP_ID")),
+		CoinGeckoDemoAPIKey:    strings.TrimSpace(os.Getenv("COINGECKO_DEMO_API_KEY")),
+		TwelveDataAPIKey:       strings.TrimSpace(os.Getenv("TWELVE_DATA_API_KEY")),
 		SecretKey:              secretKey,
 		Trading212BaseURL:      trading212BaseURL,
 	}, nil

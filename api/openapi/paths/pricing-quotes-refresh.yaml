@@ -1,0 +1,40 @@
+post:
+  summary: Queue assigned instrument quote refreshes
+  description: Accepts durable work for active dated instrument/currency/provider assignments. Does not download synchronously. Exact active duplicates coalesce. Inspect refresh runs, source health and failed work for outcomes. The saved daily pricing schedule queues the same work.
+  parameters:
+    - in: header
+      name: X-CSRF-Token
+      required: true
+      schema: { type: string }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { type: object, additionalProperties: false }
+  responses:
+    "202":
+      description: Accepted (including already queued assignments)
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/QuoteRefreshAccepted"
+    "400":
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: "../openapi.yaml#/components/schemas/ErrorResponse" }
+    "401":
+      description: Authentication required
+      content:
+        application/json:
+          schema: { $ref: "../openapi.yaml#/components/schemas/ErrorResponse" }
+    "403":
+      description: Origin or CSRF rejected
+      content:
+        application/json:
+          schema: { $ref: "../openapi.yaml#/components/schemas/ErrorResponse" }
+    "500":
+      description: Failed to queue
+      content:
+        application/json:
+          schema: { $ref: "../openapi.yaml#/components/schemas/ErrorResponse" }

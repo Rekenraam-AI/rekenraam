@@ -121,7 +121,7 @@
   });
 
   const providerSources = $derived.by(() =>
-    (pageQuery.data?.sources ?? []).filter((source) => source.kind === 'provider' && source.status === 'active')
+    (pageQuery.data?.sources ?? []).filter((source) => source.kind === 'provider' && source.status === 'active' && Array.isArray(source.metadata.capabilities) && source.metadata.capabilities.includes('fx_rates'))
   );
 
   const providerByID = $derived.by(() => new Map(providerSources.map((source) => [source.id, source])));

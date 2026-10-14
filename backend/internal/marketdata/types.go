@@ -16,6 +16,7 @@ var (
 )
 
 type ProviderCapabilities struct {
+	Prices            bool
 	FXRates           bool
 	HistoricalFXRates bool
 }
@@ -68,8 +69,18 @@ func NewRegistry(providers ...Provider) *Registry {
 	return registry
 }
 
-func DefaultRegistry(openExchangeRatesAppID string) *Registry {
+func DefaultRegistry(openExchangeRatesAppID string, quoteKeys ...string) *Registry {
+	coingeckoKey, twelveDataKey := "", ""
+	if len(quoteKeys) > 0 {
+		coingeckoKey = quoteKeys[0]
+	}
+	if len(quoteKeys) > 1 {
+		twelveDataKey = quoteKeys[1]
+	}
 	return NewRegistry(
+		NewCoinGeckoProvider(nil, "", coingeckoKey),
+		NewTwelveDataProvider(nil, "", twelveDataKey),
+		NewYahooFinanceProvider(nil, ""),
 		NewECBReferenceRatesProvider(nil, ""),
 		NewFrankfurterProvider(nil, ""),
 		NewExchangeRateAPIOpenAccessProvider(nil, ""),

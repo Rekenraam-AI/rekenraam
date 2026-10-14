@@ -38,6 +38,26 @@ func (s *PricingService) StartBackgroundWorker(ctx context.Context, logger *slog
 	workerID := uuid.NewString()
 	go func() {
 		defer close(done)
+		// Slow historical FX coverage must not delay a manual current quote.
+		// Both loops share the pricing lifecycle and the same durable queue.
+		quoteDone := make(chan struct{})
+		go func() {
+			defer close(quoteDone)
+			s.runDueQuoteRefresh(ctx, logger, workerID)
+			ticker := time.NewTicker(time.Minute)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-s.wake:
+					s.runDueQuoteRefresh(ctx, logger, workerID)
+				case <-ticker.C:
+					s.runDueQuoteRefresh(ctx, logger, workerID)
+				}
+			}
+		}()
+		defer func() { <-quoteDone }()
 		s.runDueFXCoverage(ctx, logger, workerID)
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
@@ -145,6 +165,11 @@ func (s *PricingService) FailedBackgroundWork(ctx context.Context) ([]PricingBac
 	if err != nil {
 		return nil, fmt.Errorf("list failed pricing background work: %w", err)
 	}
+	quotes, err := s.repository.ListBackgroundWorkByStatus(ctx, BookID, quoteRefreshWorkKind, "failed", 50)
+	if err != nil {
+		return nil, err
+	}
+	records = append(records, quotes...)
 	items := make([]PricingBackgroundWorkItem, 0, len(records))
 	for _, record := range records {
 		items = append(items, toPricingBackgroundWorkItem(record))
@@ -158,6 +183,16 @@ func (s *PricingService) RetryBackgroundWork(ctx context.Context, workID int64) 
 	if workID <= 0 {
 		return PricingBackgroundWorkItem{}, ValidationError{Message: "background work id is required"}
 	}
+	item, err := s.repository.BackgroundWorkByID(ctx, workID)
+	if errors.Is(err, db.ErrNotFound) {
+		return PricingBackgroundWorkItem{}, ErrPricingBackgroundWorkNotFound
+	}
+	if err != nil {
+		return PricingBackgroundWorkItem{}, fmt.Errorf("read pricing background work: %w", err)
+	}
+	if item.BookID != BookID || (item.Kind != fxCoverageWorkKind && item.Kind != quoteRefreshWorkKind) {
+		return PricingBackgroundWorkItem{}, ErrPricingBackgroundWorkNotFound
+	}
 	now := s.now().UTC().Format(time.RFC3339)
 	record, err := s.repository.RequeueBackgroundWork(ctx, BookID, workID, now, now)
 	if errors.Is(err, db.ErrNotFound) {
@@ -168,6 +203,10 @@ func (s *PricingService) RetryBackgroundWork(ctx context.Context, workID int64) 
 	}
 	if err != nil {
 		return PricingBackgroundWorkItem{}, fmt.Errorf("requeue pricing background work: %w", err)
+	}
+	select {
+	case s.wake <- struct{}{}:
+	default:
 	}
 	return toPricingBackgroundWorkItem(record), nil
 }

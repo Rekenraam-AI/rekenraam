@@ -208,6 +208,7 @@ type PricingService struct {
 	repository       *db.PricingRepository
 	providerRegistry *marketdata.Registry
 	now              func() time.Time
+	wake             chan struct{}
 }
 
 func NewPricingService(repository *db.PricingRepository, registries ...*marketdata.Registry) *PricingService {
@@ -215,7 +216,7 @@ func NewPricingService(repository *db.PricingRepository, registries ...*marketda
 	if len(registries) > 0 && registries[0] != nil {
 		registry = registries[0]
 	}
-	return &PricingService{repository: repository, providerRegistry: registry, now: time.Now}
+	return &PricingService{repository: repository, providerRegistry: registry, now: time.Now, wake: make(chan struct{}, 1)}
 }
 
 func (s *PricingService) SetNowForTest(now func() time.Time) {
@@ -456,6 +457,9 @@ func (s *PricingService) RunRefresh(ctx context.Context, ownerUserID int64, sour
 	payload, _ := json.Marshal(fxCoverageWorkPayload{Reason: trigger})
 	if _, err := s.repository.EnqueueBackgroundWork(ctx, BookID, fxCoverageWorkKind, string(payload), now); err != nil {
 		return PricingRefreshRun{}, fmt.Errorf("enqueue pricing refresh: %w", err)
+	}
+	if _, err := s.enqueueQuoteRefresh(ctx, sourceID, trigger); err != nil {
+		return PricingRefreshRun{}, fmt.Errorf("enqueue instrument quotes: %w", err)
 	}
 	return s.runFXRefresh(ctx, ownerUserID, sourceID, trigger)
 }

@@ -4,6 +4,87 @@
  */
 
 export interface paths {
+    "/api/v1/pricing/quotes/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue assigned instrument quote refreshes
+         * @description Accepts durable work for active dated instrument/currency/provider assignments. Does not download synchronously. Exact active duplicates coalesce. Inspect refresh runs, source health and failed work for outcomes. The saved daily pricing schedule queues the same work.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CSRF-Token": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            responses: {
+                /** @description Accepted (including already queued assignments) */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["QuoteRefreshAccepted"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Origin or CSRF rejected */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Failed to queue */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/budgets/month": {
         parameters: {
             query?: never;
@@ -9349,9 +9430,24 @@ export interface paths {
                         file: string;
                         /**
                          * Format: int64
-                         * @description Required for CSV; selects a saved column-mapping profile.
+                         * @description Required for bank CSV; selects a saved column-mapping profile.
                          */
                         profile_id?: number;
+                        /**
+                         * @description Explicit crypto CSV mode. Requires existing holding and currency settlement accounts; no profile. UTF-8 comma CSV columns date,side,quantity,amount,external_ref,memo; unsigned dot decimals, BUY/SELL only, ISO dates. Each reference is unique within the chosen holding/cash pair. Preview writes no instruments, lots or journals.
+                         * @enum {string}
+                         */
+                        format?: "crypto_csv";
+                        /**
+                         * Format: int64
+                         * @description Required for crypto_csv; an active crypto holding.
+                         */
+                        holding_account_id?: number;
+                        /**
+                         * Format: int64
+                         * @description Required for crypto_csv; an active currency asset account.
+                         */
+                        cash_account_id?: number;
                         /**
                          * @description QIF or CSV text encoding. Use auto for confidence-gated detection, or the same named encoding used during CSV analysis.
                          * @default auto
@@ -26693,6 +26789,9 @@ export interface components {
             effective_to?: string;
             change_reason?: string;
         };
+        QuoteRefreshAccepted: {
+            queued_count: number;
+        };
         PricingRefreshRunResponse: {
             /** Format: int64 */
             id: number;
@@ -27755,6 +27854,12 @@ export interface components {
             trading_commodity_id?: number;
             quantity_scale: number;
             price_scale: number;
+            /** @description Merge these provider identities on the server, preserving other identifiers as exact JSON. An empty string clears the named identity. Omitted identifiers and metadata are preserved on PATCH; explicit objects replace them. */
+            quote_identifiers?: {
+                coingecko_id?: string;
+                yahoo_symbol?: string;
+                twelve_data_symbol?: string;
+            };
             identifiers?: {
                 [key: string]: unknown;
             };
@@ -30162,11 +30267,11 @@ export interface components {
             error: components["schemas"]["ErrorBody"];
         };
         /**
-         * @description Accepted instrument types, matching `cleanInvestmentInstrumentSpec` in `app/investments.go`. Until 2026-08-06 this enum advertised `equity` and `crypto` — which the backend rejects — and omitted `stock`, `option` and `future`, which it accepts. `crypto` is planned for R17.
+         * @description Crypto instruments use crypto commodities and permit quantity scales through 24; other instruments permit 12.
          * @default stock
          * @enum {string}
          */
-        InstrumentType: "stock" | "etf" | "fund" | "bond" | "option" | "future" | "other";
+        InstrumentType: "stock" | "etf" | "fund" | "bond" | "option" | "future" | "other" | "crypto";
         InvestmentTradeChargeRequest: {
             /** @enum {string} */
             kind: "commission" | "transaction_tax" | "other_fee" | "rebate";

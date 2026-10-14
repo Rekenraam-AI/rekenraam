@@ -51,6 +51,10 @@ or sequencing change.
 
 ## Initiative and design references
 
+The [quote/crypto contract](plans/quote-providers-crypto-plan.md) records #117’s
+instrument identity/precision, provider evidence and entitlements, durable quote
+refresh/recovery, and the fixed crypto CSV interchange format.
+
 The [roadmap](roadmap.md#current-focus) owns the current initiative and focus.
 R16's agreed investment lifecycle gates are delivered; its
 [operation plan](plans/investment-operation-refactor-plan.md) and slice

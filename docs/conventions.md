@@ -62,7 +62,11 @@ When a feature introduces a durable new rule, update one of those documents in t
   "posting" as the canonical ledger term.
 - Transfers are ordinary transactions.
 - Reconciliation status belongs to posting or account-specific ledger state, not only a transaction header.
-- Investment securities are commodities with `kind = 'security'`; security
+- Investment securities are commodities with `kind = 'security'`; crypto
+  instruments use `kind = 'crypto'` and quantity scales through 24 (other
+  instruments through 12). Kind and precision must agree with the commodity.
+  The [quote/crypto contract](plans/quote-providers-crypto-plan.md) defines explicit
+  provider identities, opt-in quote assignments and fixed-format CSV entry. Security
   identity, symbols, identifiers, provider links, and corporate-action metadata
   live in investment-specific tables rather than in account names or ad hoc
   transaction metadata.

@@ -8,11 +8,7 @@ CostBasisMethod:
 
 InstrumentType:
   type: string
-  description: >-
-    Accepted instrument types, matching `cleanInvestmentInstrumentSpec` in
-    `app/investments.go`. Until 2026-08-06 this enum advertised `equity` and
-    `crypto` — which the backend rejects — and omitted `stock`, `option` and
-    `future`, which it accepts. `crypto` is planned for R17.
+  description: Crypto instruments use crypto commodities and permit quantity scales through 24; other instruments permit 12.
   default: stock
   enum:
     - stock
@@ -22,6 +18,7 @@ InstrumentType:
     - option
     - future
     - other
+    - crypto
 
 InvestmentInstrumentResponse:
   type: object
@@ -137,6 +134,14 @@ InvestmentInstrumentRequest:
       type: integer
     price_scale:
       type: integer
+    quote_identifiers:
+      type: object
+      additionalProperties: false
+      description: Merge these provider identities on the server, preserving other identifiers as exact JSON. An empty string clears the named identity. Omitted identifiers and metadata are preserved on PATCH; explicit objects replace them.
+      properties:
+        coingecko_id: { type: string, maxLength: 128 }
+        yahoo_symbol: { type: string, maxLength: 128 }
+        twelve_data_symbol: { type: string, maxLength: 128 }
     identifiers:
       type: object
       additionalProperties: true

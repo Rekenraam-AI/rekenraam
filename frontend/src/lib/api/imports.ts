@@ -71,9 +71,11 @@ export async function startImport(
   file: File,
   csrfToken: string,
   profileId?: number,
-  textEncoding = 'auto'
+  textEncoding = 'auto',
+  crypto?: { holdingAccountId: number; cashAccountId: number }
 ): Promise<StartImportResponse> {
   const form = new FormData();
+  if (crypto) { form.append('format', 'crypto_csv'); form.append('holding_account_id', String(crypto.holdingAccountId)); form.append('cash_account_id', String(crypto.cashAccountId)); }
   form.append('file', file, file.name);
   if (profileId) form.append('profile_id', String(profileId));
   form.append('text_encoding', textEncoding);

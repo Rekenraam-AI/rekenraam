@@ -32,6 +32,7 @@
   import CashAndStockMergerForm from '#lib/investments/cash-and-stock-merger-form.svelte';
   import ShortTradeForm from '#lib/investments/short-trade-form.svelte';
   import PositionSideBadge from '#lib/investments/position-side-badge.svelte';
+  import InstrumentsPanel from '#lib/investments/instruments-panel.svelte';
   import GainsReport from '#lib/investments/gains-report.svelte';
   import EventSuggestions from '#lib/investments/event-suggestions.svelte';
   import { parseISO } from 'date-fns';
@@ -151,8 +152,8 @@
   }
 
   // Tab navigation
-  type Tab = 'portfolio' | 'gains' | 'splits' | 'suggestions';
-  let activeTab = $state<Tab>(untrack(() => page.url.searchParams.get('tab') === 'splits' ? 'splits' : 'portfolio'));
+  type Tab = 'portfolio' | 'gains' | 'splits' | 'suggestions' | 'instruments';
+  let activeTab = $state<Tab>(untrack(() => page.url.searchParams.get('tab') === 'instruments' ? 'instruments' : page.url.searchParams.get('tab') === 'splits' ? 'splits' : 'portfolio'));
 
   // Badge: count pending suggestions
   const suggestionsQuery = createQuery(() => ({
@@ -168,9 +169,10 @@
 <div>
   <div class="p-4 sm:p-6 lg:p-8">
     <a href="/app/pricing" class="mb-3 inline-block min-h-11 text-sm font-semibold underline underline-offset-4">{m.pricing_title()}</a>
+    <p class="mb-3 text-sm text-muted"><a href="https://www.coingecko.com/en/api" target="_blank" rel="noreferrer" class="underline">{m.quotes_attribution()}</a></p>
     <!-- Tab navigation -->
     <div class="mb-5 flex items-center gap-1 overflow-x-auto border-b border-border">
-      {#each (['portfolio', 'gains', 'splits', 'suggestions'] as const) as tab}
+      {#each (['portfolio', 'instruments', 'gains', 'splits', 'suggestions'] as const) as tab}
         <button
           type="button"
           onclick={() => { activeTab = tab; }}
@@ -180,6 +182,7 @@
               : 'text-muted hover:text-foreground'}"
         >
           {#if tab === 'portfolio'}{m.investments_tab_portfolio()}
+          {:else if tab === 'instruments'}{m.quotes_instruments()}
           {:else if tab === 'gains'}{m.investments_tab_gains()}
           {:else if tab === 'splits'}{m.investments_split_history_title()}
           {:else}{m.investments_tab_suggestions()}
@@ -194,6 +197,7 @@
     </div>
 
     <!-- Portfolio tab action buttons -->
+    {#if activeTab === 'instruments'}<InstrumentsPanel {csrfToken} />{/if}
     {#if activeTab === 'portfolio'}
     {#if writeOffSaved}
       <p role="status" class="mb-4 text-sm text-foreground">{m.investments_write_off_success()}</p>

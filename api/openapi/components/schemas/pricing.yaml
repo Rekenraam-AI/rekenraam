@@ -905,3 +905,11 @@ PriceObservationRequest:
     change_reason:
       type: string
   additionalProperties: false
+
+QuoteRefreshAccepted:
+  type: object
+  required: [queued_count]
+  properties:
+    queued_count:
+      type: integer
+      minimum: 0

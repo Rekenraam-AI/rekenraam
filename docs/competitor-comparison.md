@@ -38,11 +38,14 @@ The external workflow evidence retains the 2026-09-27 review date.
    as ordinary operations. Rekenraam's bounded #114 and #166–#168 gates, named
    shorts and compound actions are delivered; provider/tax-policy completeness
    remains separate.
-2. **Promote R11 price management UI after R16 and before R17.** Rekenraam has
-   price storage and voiding, but no complete operator surface. A user needs to
-   inspect provenance, correct a quote and see valuation coverage before
-   additional quote adapters make price history denser. R17 still owns the
-   shared `PriceProvider` registry and crypto instrument entry.
+2. **R11 and R17 now supply pricing operations and instrument entry (2026-10-14).**
+   Users can inspect/correct observations and coverage, create crypto holdings
+   with lots, import their trades through CSV, and opt into a shared quote
+   registry with durable refresh and visible failures. This gains priced crypto
+   entry parity; exchange/DeFi/staking/NFT coverage remains deliberately absent.
+   Provider keys, EU market/display entitlements and unofficial Yahoo availability
+   remain operator boundaries, not product coverage promises. See the
+   [provider evidence and contract](plans/quote-providers-crypto-plan.md).
 3. **Keep R18 gains projections after R17; keep R13 returns after R18.** R18
    needs a named quote/source and staleness policy. R13's TTWROR/IRR and
    allocation views need trustworthy operation history, dated valuation and

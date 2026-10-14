@@ -12,12 +12,14 @@
   import Loader from '@lucide/svelte/icons/loader-circle';
   import Panel from '#lib/components/panel.svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
+  import { cryptoCSVSummary } from '#lib/imports/crypto-csv.ts';
   import PayeeResolutionPanel from '#lib/imports/payee-resolution-panel.svelte';
   import ImportRulesPanel from '#lib/imports/import-rules-panel.svelte';
   import type { PayeeResponse } from '#lib/api/payees.ts';
   import { linkableSplitFill, sourceCorrectionKind, unsupportedSourceFill } from '#lib/imports/source-correction.ts';
   import SplitLinkPanel from '#lib/imports/split-link-panel.svelte';
   import { authSessionQueryOptions } from '#lib/api/auth.ts';
+  import { investmentInstrumentsQueryOptions } from '#lib/api/investments.ts';
   import { accountsQueryOptions } from '#lib/api/accounts.ts';
   import { currenciesQueryOptions } from '#lib/api/currencies.ts';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
@@ -86,6 +88,9 @@
   let step = $state<Step>('upload');
 
   // Upload step
+  let cryptoCSV = $state(false);
+  let cryptoHoldingId = $state(0);
+  let cryptoCashId = $state(0);
   let selectedFile = $state<File | null>(null);
   let textEncoding = $state('auto');
   let uploading = $state(false);
@@ -175,6 +180,8 @@
   const csrfToken = $derived(sessionQuery.data?.csrf_token ?? '');
 
   const accountsQuery = createQuery(() => accountsQueryOptions());
+  const cryptoInstrumentsQuery = createQuery(() => ({ ...investmentInstrumentsQueryOptions(), enabled: cryptoCSV }));
+  const cryptoCommodityIDs = $derived(new Set((cryptoInstrumentsQuery.data?.instruments ?? []).filter(i => i.instrument_type === 'crypto').map(i => i.commodity_id)));
   const currenciesQuery = createQuery(() => currenciesQueryOptions());
   const categoriesQuery = createQuery(() => categoriesQueryOptions());
   const tagsQuery = createQuery(() => tagsQueryOptions());
@@ -191,7 +198,7 @@
   // ── Upload ─────────────────────────────────────────────────────────
   const profilesQuery = createQuery(() => ({ queryKey: importProfilesQueryKey, queryFn: listImportProfiles, retry: false }));
   const csvProfiles = $derived(profilesQuery.data?.profiles.filter((profile) => profile.adapter_kind === 'csv') ?? []);
-  const selectedIsCSV = $derived(selectedFile?.name.toLowerCase().endsWith('.csv') ?? false);
+  const selectedIsCSV = $derived(!cryptoCSV && (selectedFile?.name.toLowerCase().endsWith('.csv') ?? false));
   const selectedIsQIF = $derived(selectedFile?.name.toLowerCase().endsWith('.qif') ?? false);
   const selectedIsTextImport = $derived(selectedIsCSV || selectedIsQIF);
   const rankedCSVProfiles = $derived(selectedFile ? rankCSVProfiles(csvProfiles, selectedFile.name, csvDelimiter, csvHeaders) : []);
@@ -379,7 +386,7 @@
         selectedProfileId = String(profile.id);
         await queryClient.invalidateQueries({ queryKey: importProfilesQueryKey });
       }
-      const result = await startImport(selectedFile, csrfToken, profileId, selectedIsTextImport ? textEncoding : 'auto');
+      const result = await startImport(selectedFile, csrfToken, cryptoCSV ? undefined : profileId, selectedIsTextImport ? textEncoding : 'auto', cryptoCSV ? { holdingAccountId: cryptoHoldingId, cashAccountId: cryptoCashId } : undefined);
       previewData = result;
       batchId = result.batch.id;
       rowResolutions = new Map(result.rows.map((row) => [row.id, parseResolution(row)]));
@@ -894,6 +901,18 @@
 
       <div class="mt-5 space-y-4">
         <div>
+          <label class="mb-4 flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" bind:checked={cryptoCSV} onchange={() => { selectedFile = null; csvAnalysis = null; analyzingCSV = false; csvAnalysisRequest++; }} />{m.quotes_csv()}</label>
+          {#if cryptoCSV}
+            <p class="mb-3 text-sm text-muted">{m.quotes_csv_help()}</p>
+            {#if cryptoInstrumentsQuery.isPending || accountsQuery.isPending}<p role="status">{m.investments_loading()}</p>{/if}
+            {#if cryptoInstrumentsQuery.isError}<APIFormError error={cryptoInstrumentsQuery.error} />{/if}
+            {#if accountsQuery.isError}<APIFormError error={accountsQuery.error} />{/if}
+            <div class="mb-4 grid gap-3 sm:grid-cols-2">
+              <label class="grid gap-1 text-sm">{m.investments_form_holding_account()}<select bind:value={cryptoHoldingId} class="min-h-11 rounded-(--radius-control) border border-border bg-control px-3"><option value={0}>{m.pricing_choose()}</option>{#each accounts.filter(a => a.account_kind === 'security_holding' && a.status === 'active' && cryptoCommodityIDs.has(a.default_commodity_id ?? 0)) as account}<option value={account.id}>{account.name}</option>{/each}</select></label>
+              <label class="grid gap-1 text-sm">{m.investments_form_cash_account()}<select bind:value={cryptoCashId} class="min-h-11 rounded-(--radius-control) border border-border bg-control px-3"><option value={0}>{m.pricing_choose()}</option>{#each accounts.filter(a => a.account_class === 'asset' && a.status === 'active' && a.account_kind !== 'security_holding' && a.account_kind !== 'fund_holding') as account}<option value={account.id}>{account.name}</option>{/each}</select></label>
+            </div>
+            <pre class="mb-4 overflow-x-auto rounded-(--radius-control) border border-border p-3 text-xs">date,side,quantity,amount,external_ref,memo</pre>
+          {/if}
           <label
             class="inline-flex cursor-pointer items-center gap-2 rounded-(--radius-control) border border-border bg-control px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-control-hover"
           >
@@ -1065,7 +1084,7 @@
           type="button"
           class="inline-flex items-center gap-2 rounded-(--radius-control) bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           onclick={handleUpload}
-          disabled={!selectedFile || uploading || analyzingCSV || editingProfileId !== null || (selectedIsCSV && (!!csvAnalysisError || csvHeaders.length === 0 || (!selectedProfileId && !newCSVProfileValid)))}
+          disabled={!selectedFile || (cryptoCSV && (!cryptoHoldingId || !cryptoCashId)) || uploading || analyzingCSV || editingProfileId !== null || (selectedIsCSV && (!!csvAnalysisError || csvHeaders.length === 0 || (!selectedProfileId && !newCSVProfileValid)))}
         >
           {uploading ? m.import_upload_submitting() : m.import_upload_submit()}
         </button>
@@ -1397,6 +1416,7 @@
       </p>
     {/if}
 
+    {#if previewData.batch.source_kind !== 'crypto_csv'}
     <PayeeResolutionPanel
       rows={previewData.rows}
       resolutions={rowResolutions}
@@ -1484,6 +1504,8 @@
       </div>
     </Panel>
 
+    {/if}
+
     <!-- Rows table -->
     {#if sourceCorrectionSuccessID}
       <Panel>
@@ -1512,6 +1534,7 @@
           <tbody>
             {#each previewData.rows as row (row.id)}
               {@const norm = parseNormalized(row)}
+              {@const cryptoSummary = cryptoCSVSummary(row.raw, getLocale())}
               {@const res = getResolution(row.id)}
               {@const isDuplicate = row.dedupe_status === 'duplicate'}
               {@const unsupportedFill = unsupportedSourceFill(row)}
@@ -1523,7 +1546,7 @@
                 class="border-b border-border last:border-b-0"
               >
                 <td class="px-4 py-2.5 tabular-nums text-muted">{norm.date}</td>
-                <td class="px-4 py-2.5 font-medium text-foreground">{res.payee_name || norm.payee_hint || '—'}</td>
+                <td class="px-4 py-2.5 font-medium text-foreground">{cryptoSummary || res.payee_name || norm.payee_hint || '—'}</td>
                 <td class="px-4 py-2.5 tabular-nums text-right text-foreground">{norm.amount}</td>
                 <td class="max-w-xs px-4 py-2.5 text-muted">
                   <span class="block truncate">{norm.memo || '—'}</span>
@@ -1575,7 +1598,7 @@
                   {/if}
                 </td>
                 <td class="px-4 py-2.5">
-                  {#if !isBlocked}
+                  {#if !isBlocked && !cryptoSummary}
                     <select
                       class="rounded-(--radius-control) border border-border bg-control px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"
                       value={res.account_id}
@@ -1590,11 +1613,11 @@
                       {/each}
                     </select>
                   {:else}
-                    <span class="text-xs text-muted">—</span>
+                    <span class="text-xs text-muted">{cryptoSummary ? accounts.find(a => a.id === res.account_id)?.name : '—'}</span>
                   {/if}
                 </td>
                 <td class="px-4 py-2.5">
-                  {#if !isBlocked}
+                  {#if !isBlocked && !cryptoSummary}
                     <select
                       class="rounded-(--radius-control) border border-border bg-control px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"
                       value={res.commodity_id}
@@ -1609,11 +1632,11 @@
                       {/each}
                     </select>
                   {:else}
-                    <span class="text-xs text-muted">—</span>
+                    <span class="text-xs text-muted">{cryptoSummary ? currencies.find(c => c.id === res.commodity_id)?.code : '—'}</span>
                   {/if}
                 </td>
                 <td class="px-4 py-2.5">
-                  {#if !isBlocked}
+                  {#if !isBlocked && !cryptoSummary}
                     {#if isTransfer}
                       <select
                         class="rounded-(--radius-control) border border-border bg-control px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"
@@ -1651,6 +1674,7 @@
                   {#if !isBlocked}
                     <input
                       type="checkbox"
+                      aria-label={m.import_preview_col_exclude()}
                       checked={!!res.exclude}
                       onchange={() => toggleExclude(row)}
                       class="h-4 w-4 rounded border-border text-foreground focus:ring-foreground"

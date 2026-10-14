@@ -14,9 +14,9 @@ Other questions have exactly one home each:
 Do not restate shipped detail here; when a focus item ships, delete it and
 record the capability in `implemented.md`.
 
-Last reviewed: 2026-10-13. R16’s agreed gates and R11 price management are
-delivered. The current order is R17 quotes and crypto, R18 gains projections,
-then R13 returns analytics.
+Last reviewed: 2026-10-14. R16’s agreed gates, R11 price management and R17
+quotes/crypto are delivered. The current order is R18 gains projections, then
+R13 returns analytics.
 Owner-local date correctness is delivered; native catalog review remains
 parallel work. Prior roadmap detail is retained in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md).
 
@@ -48,8 +48,8 @@ Statuses: ✅ shipped · ◐ partly shipped ahead of its slice · ▶ current ·
 | R14a | Attachment storage + manual attach (after R5) | ⏭ | `docs/plans/receipts-plan.md` |
 | R15 | Connections expansion (IBKR Flex → GoCardless → #111 producer) | ⏸ | `docs/plans/connections-plan.md` |
 | R16 | Investment lifecycle completeness (correction, transfers, basis actions, splits, short sales) | ✅ agreed gates; related work open | `docs/plans/investment-operation-refactor-plan.md`; ADR 0013 |
-| R17 | Crypto instrument type + `PriceProvider` registry and quote adapters | ▶ | this file |
-| R18 | Reproducible investment basis + gains projections | ⏭ | ADR 0012; plan required after R16/R17 |
+| R17 | Crypto instrument type + `PriceProvider` registry and quote adapters | ✅ | `docs/plans/quote-providers-crypto-plan.md` |
+| R18 | Reproducible investment basis + gains projections | ▶ | ADR 0012; `docs/plans/investment-reporting-plan.md` |
 
 ## Decisions adopted 2026-08-05
 
@@ -110,9 +110,10 @@ below is execution order, not a chain of hard dependencies.
 
 **Now**
 
-1. R17 quote-provider registry and crypto, after R11
-   [#116](https://github.com/sergeyfarin/rekenraam/issues/116) delivered its
-   bounded operator surface via #200–#202 (2026-10-13).
+1. R18 reproducible investment basis and gains projections
+   [#118](https://github.com/sergeyfarin/rekenraam/issues/118), following the
+   delivered [R17 quote/crypto contract](plans/quote-providers-crypto-plan.md)
+   [#117](https://github.com/sergeyfarin/rekenraam/issues/117) (2026-10-14).
 2. Daily-use parallel work: investment entry from holding accounts and
    instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186).
    The shared transaction workspace [#185](https://github.com/sergeyfarin/rekenraam/issues/185)
@@ -233,7 +234,7 @@ and Refresh reach for revised fills
 **Remaining R16-related work.** Delivery of the agreed gates does not mean
 that every investment-lifecycle issue is closed. These retained issues keep
 their stated scope and placement. R11’s bounded operator surface is delivered;
-the next initiative is R17.
+R17 is also delivered; the next initiative is R18.
 
 | Issue | Remaining gap | Disposition |
 |---|---|---|
@@ -268,30 +269,13 @@ demo, close [#102](https://github.com/sergeyfarin/rekenraam/issues/102)
 (native review; catalog parity and its regression gate are delivered). That
 communication work remains independently shippable and does not require waiting for R16 or R11.
 
-### R17 — crypto instrument type
+### R17 — delivered reference
 
-Decided 2026-08-05 (review §4.1): widen the persona to crypto-holding
-expats, sequenced after R16 and the R11 operator surface. The audits found the lot engine is
-commodity-kind-agnostic and already handles scale-24 crypto commodities end
-to end via the API, so the work is an instrument type and a UI entry point.
-Do not claim that this combination is unique without a separate market-wide
-verification.
-
-**R17 also owns the `PriceProvider` registry** (moved here from R15 on
-2026-08-05). Crypto needs prices, so the registry gets built either way —
-building it once, here, avoids two slices both claiming it. Mirror the
-existing FX registry and evaluate three candidate adapters: **Yahoo Finance**
-(keyless and labeled unofficial), **CoinGecko** (crypto), and one BYO-key equity
-provider (Twelve Data or Alpha Vantage). Verify current API terms, EU-exchange
-coverage, rate limits and key requirements before implementation. Scheduled
-refresh reuses the pricing worker
-and refresh-run bookkeeping wholesale. This also closes the unrealized-gains
-staleness gap the 2026-07-19 audit flagged (§4), well before R15.
-
-**Standing guardrail** (also recorded in `product-requirements.md`): scope is
-manually/CSV-entered, priced holdings with lots. Exchange integrations, DeFi
-positions, staking, and NFTs are **rejected, not deferred** — they are a
-coverage promise the adapter rule forbids and a maintenance tarpit.
+[#117](https://github.com/sergeyfarin/rekenraam/issues/117) delivers quote-provider
+registration/adapters and manual/CSV crypto holdings with lots. Durable behavior,
+provider evidence, operator limits and the rejected exchange/DeFi/staking/NFT
+scope are recorded in the [quote/crypto contract](plans/quote-providers-crypto-plan.md);
+shipped capabilities live in [implemented.md](implemented.md).
 
 ### R18 — reproducible investment basis and gains projections
 

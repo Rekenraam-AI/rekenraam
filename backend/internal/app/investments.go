@@ -51,10 +51,6 @@ type InstrumentSearchProvider interface {
 	SearchInstruments(ctx context.Context, query string) ([]InstrumentSearchCandidate, error)
 }
 
-type PriceProvider interface {
-	FetchPrices(ctx context.Context, request PriceProviderRequest) ([]PriceProviderObservation, error)
-}
-
 type DividendProvider interface {
 	FetchDividends(ctx context.Context, request CorporateEventProviderRequest) ([]ProviderInvestmentEvent, error)
 }
@@ -75,22 +71,6 @@ type InstrumentSearchCandidate struct {
 	QuoteCode            string
 	ConfidenceBPS        int
 	RawJSON              string
-}
-
-type PriceProviderRequest struct {
-	InstrumentID     int64
-	CommodityID      int64
-	QuoteCommodityID int64
-	AfterDate        string
-	BeforeDate       string
-}
-
-type PriceProviderObservation struct {
-	ProviderObservationID string
-	PriceValue            int64
-	PriceScale            int
-	PriceDate             string
-	RawJSON               string
 }
 
 type CorporateEventProviderRequest struct {
@@ -150,6 +130,7 @@ type InvestmentInstrumentInput struct {
 	TradingCommodityID *int64
 	QuantityScale      int
 	PriceScale         int
+	QuoteIdentifiers   map[string]string
 	IdentifiersJSON    string
 	MetadataJSON       string
 	EffectiveFrom      string
@@ -789,8 +770,15 @@ func (s *InvestmentService) CreateInstrument(ctx context.Context, input Investme
 	if err != nil {
 		return InvestmentInstrument{}, err
 	}
+
+	if input.CommodityID != nil {
+		if err := s.validateInstrumentCommodity(ctx, *input.CommodityID, spec); err != nil {
+			return InvestmentInstrument{}, err
+		}
+	}
+
 	now := s.now().UTC()
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	_, err = cleanEffectiveFrom(input.EffectiveFrom, now)
 	if err != nil {
 		return InvestmentInstrument{}, err
 	}
@@ -807,7 +795,7 @@ func (s *InvestmentService) CreateInstrument(ctx context.Context, input Investme
 		Operation:       defaultOperation(input.Operation, "investment.instrument.create"),
 		Spec:            spec,
 		CreatedAt:       now.Format(time.RFC3339),
-		EffectiveFrom:   effectiveFrom,
+		EffectiveFrom:   db.CommodityGenesisDate,
 		ChangeReason:    changeReason,
 	})
 	if err != nil {
@@ -925,10 +913,32 @@ func (s *InvestmentService) UpdateInstrument(ctx context.Context, input Investme
 	if input.InstrumentID <= 0 {
 		return InvestmentInstrument{}, ValidationError{Message: "instrument id is required"}
 	}
+	current, err := s.repository.InstrumentByID(ctx, BookID, input.InstrumentID)
+	if errors.Is(err, db.ErrNotFound) {
+		return InvestmentInstrument{}, ErrInvestmentInstrumentNotFound
+	}
+	if err != nil {
+		return InvestmentInstrument{}, fmt.Errorf("read instrument for update: %w", err)
+	}
+	if strings.TrimSpace(input.IdentifiersJSON) == "" {
+		input.IdentifiersJSON = current.IdentifiersJSON
+	}
+	if strings.TrimSpace(input.MetadataJSON) == "" {
+		input.MetadataJSON = current.MetadataJSON
+	}
+
 	spec, err := cleanInvestmentInstrumentSpec(input)
 	if err != nil {
 		return InvestmentInstrument{}, err
 	}
+
+	if input.CommodityID != nil && *input.CommodityID != current.CommodityID {
+		return InvestmentInstrument{}, ValidationError{Message: "instrument commodity cannot change"}
+	}
+	if err := s.validateInstrumentCommodity(ctx, current.CommodityID, spec); err != nil {
+		return InvestmentInstrument{}, err
+	}
+
 	now := s.now().UTC()
 	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
 	if err != nil {
@@ -2304,7 +2314,7 @@ func cleanInvestmentInstrumentSpec(input InvestmentInstrumentInput) (db.Investme
 	if instrumentType == "" {
 		instrumentType = "stock"
 	}
-	if !map[string]bool{"stock": true, "etf": true, "fund": true, "bond": true, "option": true, "future": true, "other": true}[instrumentType] {
+	if !map[string]bool{"stock": true, "etf": true, "fund": true, "bond": true, "option": true, "future": true, "other": true, "crypto": true}[instrumentType] {
 		return db.InvestmentInstrumentSpec{}, ValidationError{Message: "instrument type is invalid"}
 	}
 	displayName, err := cleanOptionalText(input.DisplayName, "display name", 200)
@@ -2341,7 +2351,11 @@ func cleanInvestmentInstrumentSpec(input InvestmentInstrumentInput) (db.Investme
 			}
 		}
 	}
-	if input.QuantityScale < 0 || input.QuantityScale > 12 {
+	maxScale := exact.MaxStandardScale
+	if instrumentType == "crypto" {
+		maxScale = exact.MaxCryptoScale
+	}
+	if input.QuantityScale < 0 || input.QuantityScale > maxScale {
 		return db.InvestmentInstrumentSpec{}, ValidationError{Message: "quantity scale is invalid"}
 	}
 	if input.PriceScale < 0 || input.PriceScale > 12 {
@@ -2351,6 +2365,36 @@ func cleanInvestmentInstrumentSpec(input InvestmentInstrumentInput) (db.Investme
 	if err != nil {
 		return db.InvestmentInstrumentSpec{}, err
 	}
+	if len(input.QuoteIdentifiers) > 0 {
+		var identifiers map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(identifiersJSON), &identifiers); err != nil {
+			return db.InvestmentInstrumentSpec{}, err
+		}
+		for key, value := range input.QuoteIdentifiers {
+			if key != "coingecko_id" && key != "yahoo_symbol" && key != "twelve_data_symbol" {
+				return db.InvestmentInstrumentSpec{}, ValidationError{Message: "unsupported quote identifier"}
+			}
+			text, err := cleanOptionalText(value, "quote identifier", 128)
+			if err != nil {
+				return db.InvestmentInstrumentSpec{}, err
+			}
+			if text == "" {
+				delete(identifiers, key)
+			} else {
+				encoded, _ := json.Marshal(text)
+				identifiers[key] = encoded
+			}
+		}
+		encoded, err := json.Marshal(identifiers)
+		if err != nil {
+			return db.InvestmentInstrumentSpec{}, err
+		}
+		identifiersJSON, err = cleanSizedJSONObject(string(encoded), "identifiers", investmentJSONMaxBytes)
+		if err != nil {
+			return db.InvestmentInstrumentSpec{}, err
+		}
+	}
+
 	metadataJSON, err := cleanSizedJSONObject(input.MetadataJSON, "metadata", investmentJSONMaxBytes)
 	if err != nil {
 		return db.InvestmentInstrumentSpec{}, err
@@ -3112,4 +3156,22 @@ func normalizedKnowledge(knowledge string) string {
 		return db.InvestmentBasisKnown
 	}
 	return knowledge
+}
+
+func (s *InvestmentService) validateInstrumentCommodity(ctx context.Context, commodityID int64, spec db.InvestmentInstrumentSpec) error {
+	kind, scale, err := s.repository.InstrumentCommodity(ctx, BookID, commodityID)
+	if errors.Is(err, db.ErrNotFound) {
+		return ValidationError{Message: "instrument commodity is unavailable"}
+	}
+	if err != nil {
+		return fmt.Errorf("read instrument commodity: %w", err)
+	}
+	wanted := "security"
+	if spec.InstrumentType == "crypto" {
+		wanted = "crypto"
+	}
+	if kind != wanted || spec.QuantityScale > scale {
+		return ValidationError{Message: "instrument type or precision does not match commodity"}
+	}
+	return nil
 }

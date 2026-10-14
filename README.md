@@ -69,6 +69,11 @@ on port `16888` by default. The provided Compose example binds only to
 docker compose -f deploy/docker/compose.yaml up --build
 ```
 
+Optional quote adapters use operator environment keys `COINGECKO_DEMO_API_KEY`
+and `TWELVE_DATA_API_KEY`. Configure instrument identifiers and quote assignments
+in Investments → Instruments; the [quote/crypto contract](docs/plans/quote-providers-crypto-plan.md)
+records provider entitlements, unofficial Yahoo limits and crypto CSV entry.
+
 For LAN or internet access, put the app behind HTTPS and follow the
 [deployment security guide](docs/deployment-security.md). Before exposing real
 financial data to the public internet, enrol the owner in two-factor

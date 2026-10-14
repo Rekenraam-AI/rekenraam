@@ -52,7 +52,19 @@ post:
             profile_id:
               type: integer
               format: int64
-              description: Required for CSV; selects a saved column-mapping profile.
+              description: Required for bank CSV; selects a saved column-mapping profile.
+            format:
+              type: string
+              enum: [crypto_csv]
+              description: Explicit crypto CSV mode. Requires existing holding and currency settlement accounts; no profile. UTF-8 comma CSV columns date,side,quantity,amount,external_ref,memo; unsigned dot decimals, BUY/SELL only, ISO dates. Each reference is unique within the chosen holding/cash pair. Preview writes no instruments, lots or journals.
+            holding_account_id:
+              type: integer
+              format: int64
+              description: Required for crypto_csv; an active crypto holding.
+            cash_account_id:
+              type: integer
+              format: int64
+              description: Required for crypto_csv; an active currency asset account.
             text_encoding:
               type: string
               default: auto

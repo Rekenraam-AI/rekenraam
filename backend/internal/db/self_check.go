@@ -294,7 +294,7 @@ func (r *SelfCheckRepository) StreamPostedInvestmentPostings(ctx context.Context
 		JOIN current_account_versions av ON av.account_id = pv.account_id
 		JOIN commodities c ON c.id = pv.commodity_id
 		WHERE tv.book_id = ? AND tv.status = 'posted' AND t.deleted_at IS NULL
-			AND av.account_kind = 'security_holding' AND c.kind = 'security'
+			AND av.account_kind = 'security_holding' AND c.kind IN ('security', 'crypto')
 		ORDER BY t.id, je.id, pv.id
 	`, bookID)
 	if err != nil {

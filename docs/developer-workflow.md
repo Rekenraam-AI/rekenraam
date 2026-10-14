@@ -663,3 +663,25 @@ Workflow conventions:
 - `.archive/` is reference only.
 - Do not port archive implementation details directly.
 - If an archive idea is adopted, rewrite it in current-stack terms and add it to active docs.
+
+## Quote provider configuration (#117)
+
+`COINGECKO_DEMO_API_KEY` enables the CoinGecko Demo quote adapter;
+`TWELVE_DATA_API_KEY` enables Twelve Data quotes with the operator's own market
+and display entitlements. Keys belong in deployment environment/secrets, never
+in instrument identifiers. Yahoo Finance is keyless and explicitly unofficial.
+Create/edit instruments and explicit provider identifiers under Investments →
+Instruments, select a quote currency, save, and enable its provider assignment.
+**Refresh quotes** queues durable work; source health and pricing refresh history
+show completion. The saved daily pricing schedule also queues assigned quotes.
+For provider evidence, failure recovery and the fixed crypto CSV columns, see the
+[quote/crypto contract](plans/quote-providers-crypto-plan.md).
+
+Forward migration `0006_crypto_instruments.sql` preserves existing instrument
+versions, IDs and financial evidence, widens instrument/lot commodity guards to
+crypto and registers quote providers. No development reset is required for the
+same baseline. Downgrade preserves a stock-only database with unused quote sources; it
+refuses crypto versions or referenced quote sources. Restore a verified
+pre-upgrade backup when downgrade is refused. Ledger bundle schema is unchanged because instrument type,
+commodity kind, precision, identifiers and generic pricing data were already
+exported fields.

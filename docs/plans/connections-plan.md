@@ -53,10 +53,10 @@ time (free tiers and signup policies shift).
 | **Morningstar** | Analytics/fund data | ❌ retail (commercial licensing only) | Commercial | — | Rejected as a connection. The underlying user needs (quotes, ratings-adjacent metadata, dividends) are served by the free quote/event providers below |
 | **Wikifolio** | Social investing | Trading API exists but automation is ToS-restricted | — | — | No adapter. Wikifolio certificates have ISINs (DE000LS9…) and trade on Lang & Schwarz — they price like any other security once a quote provider covers L&S/German certificates |
 | Alpha Vantage | Quotes + fundamentals | ✅ | Free 25 req/day (verify; adjusted series moved partly to premium) | BYO API key | Quote-provider candidate |
-| Twelve Data | Quotes | ✅ | Free ~800 req/day, 8/min (verify EU-exchange coverage on free tier) | BYO API key | Quote-provider candidate — likely first pick |
+| Twelve Data | Quotes | ✅ | Plan/market/display entitlements apply; free EU coverage is not assumed | BYO API key | Delivered #117; [current provider evidence](quote-providers-crypto-plan.md#provider-review-primary-sources-checked-2026-10-14) |
 | Financial Modeling Prep | Quotes + dividends + splits | ✅ | Free ~250 req/day (verify EU coverage) | BYO API key | **T-34 producer candidate** (dividend/split event feed) |
 | Stooq | EOD quotes + indices (incl. EU) | quasi-official CSV endpoints | Free, keyless | none | Benchmark-series candidate for R13 |
-| CoinGecko | Crypto prices | ✅ | Free demo-key tier | BYO API key | Crypto quote candidate (pairs with the crypto-instrument proposal) |
+| CoinGecko | Crypto prices | ✅ | Demo key; plan limits and attribution apply | BYO API key | Delivered #117; [current provider evidence](quote-providers-crypto-plan.md#provider-review-primary-sources-checked-2026-10-14) |
 | **Yahoo Finance** | Quotes (broadest EU coverage) | ❌ undocumented (public, keyless — no app impersonation) | Free | none | **Adapter — ship** (decided 2026-08-05). Keyless `PriceProvider`, opt-in, labeled "unofficial" in the provider picker; breakage is expected and non-blocking because a BYO-key provider is always available as the fallback |
 
 ## Architecture: what all adapters share
@@ -290,25 +290,21 @@ existing in-flight lock.
 
 ## Analytics providers — the actual plan
 
-"Analytics connections" decomposes into three real needs, all served by the
-existing seams (`PriceProvider`, `DividendProvider`,
-`CorporateActionProvider` interfaces are declared and unimplemented; the FX
-registry shows the adapter pattern):
+"Analytics connections" decomposes into three needs. R17 now implements the
+market-data registry's `PriceProvider` alongside FX. `DividendProvider` and
+`CorporateActionProvider` remain seams for a future event producer.
 
-1. **Security quotes — scheduled for R17, not yet implemented** (decided 2026-08-05;
-   closes the unrealized-gains staleness gap, 2026-07-19 audit §4):
-   implement the `PriceProvider` registry mirroring
-   the FX one; first adapter Twelve Data or Alpha Vantage (BYO free key —
-   decide on measured EU-exchange coverage, which is the persona's actual
-   requirement); Stooq keyless as index/benchmark source; CoinGecko if/when
-   the crypto instrument type ships. **Yahoo Finance ships too** (decided
-   2026-08-05): keyless, broadest EU coverage, so it is the zero-setup
-   default in the registry, labeled "unofficial" in the picker with a
-   one-line note that the endpoint is undocumented and may break. Because
-   the registry is multi-provider, a user who hits breakage switches to a
-   BYO-key provider without losing data — that fallback is what makes the
-   ToS/stability risk acceptable rather than a coverage promise. Scheduled refresh reuses the pricing
-   worker and refresh-run bookkeeping wholesale.
+1. **Security/crypto quotes — delivered in R17 #117 (2026-10-14).**
+   CoinGecko Demo, Twelve Data and explicitly unofficial/keyless Yahoo Finance
+   share one registry. Explicit instrument identities and dated pair assignments
+   opt into fetching; saved daily scheduling, durable work and refresh-run/health
+   history are reused. The original keyless Yahoo decision is retained as an
+   available adapter, without implying a supported API or automated-data rights.
+   Current terms/entitlements require operator review; no symbol/currency guessing
+   or guaranteed free EU coverage is implied. The
+   [quote/crypto contract](quote-providers-crypto-plan.md) records current evidence,
+   exact raw-quote normalization, staleness and recovery. Stooq remains a benchmark
+   candidate for R13 rather than a shipped quote adapter.
 2. **Dividend/corporate-action events — the T-34 producer**: Financial
    Modeling Prep's dividend + split endpoints are the leading free
    candidate (verify EU coverage). Events land as

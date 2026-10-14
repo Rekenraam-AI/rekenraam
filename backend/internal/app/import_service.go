@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -74,7 +75,7 @@ func NewImportService(
 		repository:         repository,
 		transactionService: transactionService,
 		accountRepository:  accountRepository,
-		registry:           newAdapterRegistry(&QIFAdapter{}, &CSVAdapter{}, &Trading212Adapter{}),
+		registry:           newAdapterRegistry(&QIFAdapter{}, &CSVAdapter{}, &Trading212Adapter{}, &CryptoCSVAdapter{}),
 		now:                time.Now,
 		connectionService:  connectionService,
 		backgroundWork:     backgroundWork,
@@ -104,6 +105,11 @@ func (s *ImportService) StartImport(ctx context.Context, input StartImportInput)
 	}
 
 	adapter := s.registry.detect(input.Input)
+	if input.Format == "crypto_csv" {
+		adapter = &CryptoCSVAdapter{}
+	} else if input.Format != "" {
+		return StartImportResult{}, ValidationError{Message: "unsupported import format"}
+	}
 	if adapter == nil {
 		return StartImportResult{}, ValidationError{Message: "no adapter can handle this file format"}
 	}
@@ -129,6 +135,11 @@ func (s *ImportService) StartImport(ctx context.Context, input StartImportInput)
 		return StartImportResult{}, fmt.Errorf("parse import: %w", err)
 	}
 
+	if adapter.Kind() == "crypto_csv" {
+		if err := s.prepareCryptoCSV(ctx, input, &parseResult); err != nil {
+			return StartImportResult{}, err
+		}
+	}
 	nowStr := s.now().UTC().Format(time.RFC3339)
 
 	var profileID sql.NullInt64
@@ -575,6 +586,12 @@ func (s *ImportService) stageParseResult(ctx context.Context, batchID int64, par
 			resolutionJSON = string(encoded)
 		}
 
+		if row.Raw["kind"] == "crypto_csv" {
+			cashID, _ := strconv.ParseInt(row.Raw["cash_account_id"], 10, 64)
+			commodityID, _ := strconv.ParseInt(row.Raw["cash_commodity_id"], 10, 64)
+			encoded, _ := json.Marshal(ImportRowResolution{AccountID: cashID, CommodityID: commodityID})
+			resolutionJSON = string(encoded)
+		}
 		dbRows = append(dbRows, db.CreateImportStagedRowParams{
 			BatchID:           batchID,
 			BookID:            BookID,
@@ -803,6 +820,34 @@ func (s *ImportService) PreviewCommit(ctx context.Context, input PreviewCommitIn
 			result.DuplicateCount++
 			continue
 		}
+		if batch.SourceKind == "crypto_csv" {
+			trade, side, err := s.cryptoCSVTrade(row, input.OwnerUserID, 0, "")
+			if err != nil {
+				return PreviewCommitResult{}, err
+			}
+			kind := InvestmentImpactBuy
+			if side == "SELL" {
+				kind = InvestmentImpactSell
+			}
+			impact, err := s.investmentService.TradeReconciliationImpact(ctx, kind, trade)
+			if err == nil {
+				if impact.GainImpact != nil && len(impact.GainImpact.Changes) > 0 {
+					result.GainImpacts = append(result.GainImpacts, RowGainImpactPreview{RowID: row.ID, RowIndex: row.RowIndex, GainImpact: *impact.GainImpact})
+				}
+				if len(impact.AffectedCheckpoints) > 0 {
+					ids := make([]int64, 0, len(impact.AffectedCheckpoints))
+					for _, cp := range impact.AffectedCheckpoints {
+						ids = append(ids, cp.CheckpointID)
+					}
+					result.ReconciliationIssues = append(result.ReconciliationIssues, ReconciliationIssuePreview{RowIndex: row.RowIndex, CheckpointIDs: ids})
+				}
+			}
+			// Earlier rows in the same batch may supply the lots. Commit uses
+			// the real guarded writer and holds newly changed gains for review.
+			result.IncludableCount++
+			continue
+		}
+
 		gainImpact, err := s.previewTrading212BuyGainImpact(ctx, row, batch, input.OwnerUserID)
 		if err != nil {
 			return PreviewCommitResult{}, fmt.Errorf("preview imported acquisition gains row %d: %w", row.ID, err)
@@ -962,7 +1007,7 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 		// account, invalid posting, a real ledger bug) fails just this row
 		// instead of the whole batch, same as any other per-row commit
 		// failure below.
-		if handled, _, _, err := s.commitTrading212InvestmentRow(ctx, row, batch, input, nowStr); err != nil {
+		if handled, _, _, err := s.commitInvestmentRow(ctx, row, batch, input, nowStr); err != nil {
 			if errors.Is(err, db.ErrCommitIdentityConflict) {
 				if err := s.resolveConcurrentImportCommit(ctx, row); err != nil {
 					return result, fmt.Errorf("resolve concurrent investment commit row %d: %w", row.ID, err)
@@ -1347,7 +1392,7 @@ func investmentRowSortKey(row db.ImportStagedRowRecord) string {
 		return ""
 	}
 	kind := raw[rawKeyKind]
-	if kind != trading212RawKindOrderFill && kind != trading212RawKindDividend {
+	if kind != trading212RawKindOrderFill && kind != trading212RawKindDividend && kind != "crypto_csv" {
 		return ""
 	}
 	if kind == trading212RawKindOrderFill && raw[rawKeyFilledAt] != "" {

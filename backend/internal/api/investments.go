@@ -41,23 +41,24 @@ type investmentInstrumentsResponse struct {
 }
 
 type investmentInstrumentRequest struct {
-	CommodityID        *int64          `json:"commodity_id"`
-	CommodityCode      string          `json:"commodity_code"`
-	InstrumentType     string          `json:"instrument_type"`
-	DisplayName        string          `json:"display_name"`
-	Symbol             string          `json:"symbol"`
-	ExchangeCode       string          `json:"exchange_code"`
-	MIC                string          `json:"mic"`
-	Issuer             string          `json:"issuer"`
-	CountryCode        string          `json:"country_code"`
-	QuoteCommodityID   *int64          `json:"quote_commodity_id"`
-	TradingCommodityID *int64          `json:"trading_commodity_id"`
-	QuantityScale      int             `json:"quantity_scale"`
-	PriceScale         int             `json:"price_scale"`
-	Identifiers        json.RawMessage `json:"identifiers"`
-	Metadata           json.RawMessage `json:"metadata"`
-	EffectiveFrom      string          `json:"effective_from"`
-	ChangeReason       string          `json:"change_reason"`
+	CommodityID        *int64            `json:"commodity_id"`
+	CommodityCode      string            `json:"commodity_code"`
+	InstrumentType     string            `json:"instrument_type"`
+	DisplayName        string            `json:"display_name"`
+	Symbol             string            `json:"symbol"`
+	ExchangeCode       string            `json:"exchange_code"`
+	MIC                string            `json:"mic"`
+	Issuer             string            `json:"issuer"`
+	CountryCode        string            `json:"country_code"`
+	QuoteCommodityID   *int64            `json:"quote_commodity_id"`
+	TradingCommodityID *int64            `json:"trading_commodity_id"`
+	QuantityScale      int               `json:"quantity_scale"`
+	PriceScale         int               `json:"price_scale"`
+	QuoteIdentifiers   map[string]string `json:"quote_identifiers,omitempty"`
+	Identifiers        json.RawMessage   `json:"identifiers"`
+	Metadata           json.RawMessage   `json:"metadata"`
+	EffectiveFrom      string            `json:"effective_from"`
+	ChangeReason       string            `json:"change_reason"`
 }
 
 type holdingAccountRequest struct {
@@ -2066,8 +2067,8 @@ func toInvestmentInstrumentInput(owner app.Owner, r *http.Request, request inves
 		CommodityCode: request.CommodityCode, InstrumentType: request.InstrumentType, DisplayName: request.DisplayName,
 		Symbol: request.Symbol, ExchangeCode: request.ExchangeCode, MIC: request.MIC, Issuer: request.Issuer,
 		CountryCode: request.CountryCode, QuoteCommodityID: request.QuoteCommodityID, TradingCommodityID: request.TradingCommodityID,
-		QuantityScale: request.QuantityScale, PriceScale: request.PriceScale, IdentifiersJSON: rawJSONText(request.Identifiers),
-		MetadataJSON: rawJSONText(request.Metadata), EffectiveFrom: request.EffectiveFrom, ChangeReason: request.ChangeReason,
+		QuantityScale: request.QuantityScale, PriceScale: request.PriceScale, IdentifiersJSON: string(request.Identifiers), QuoteIdentifiers: request.QuoteIdentifiers,
+		MetadataJSON: string(request.Metadata), EffectiveFrom: request.EffectiveFrom, ChangeReason: request.ChangeReason,
 	}
 }
 

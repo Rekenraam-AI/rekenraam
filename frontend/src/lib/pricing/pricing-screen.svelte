@@ -42,6 +42,7 @@
 </script>
 
 <div class="space-y-5">
+  <p class="text-sm text-muted"><a href="https://www.coingecko.com/en/api" target="_blank" rel="noreferrer" class="underline">{m.quotes_attribution()}</a></p>
   <div class="flex flex-wrap items-center gap-3">
     <button type="button" onclick={() => open('create')} disabled={!workspace || workspaceQuery.isError || workspaceQuery.isFetching} class="min-h-11 rounded-(--radius-control) bg-foreground px-4 py-2 text-sm font-semibold text-background disabled:opacity-50">{m.pricing_add()}</button>
     <button type="button" onclick={refresh} disabled={workspaceQuery.isFetching} class="min-h-11 rounded-(--radius-control) border border-border bg-control px-4 py-2 text-sm font-semibold disabled:opacity-50">{m.pricing_refresh()}</button>

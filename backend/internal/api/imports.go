@@ -280,12 +280,27 @@ func startImport(logger *slog.Logger, authService *app.AuthService, importServic
 			profileID = &parsed
 		}
 
+		format := strings.TrimSpace(r.FormValue("format"))
+		var holdingID, cashID int64
+		if format == "crypto_csv" {
+			var parseErr error
+			holdingID, parseErr = strconv.ParseInt(r.FormValue("holding_account_id"), 10, 64)
+			if parseErr == nil {
+				cashID, parseErr = strconv.ParseInt(r.FormValue("cash_account_id"), 10, 64)
+			}
+			if parseErr != nil || holdingID <= 0 || cashID <= 0 {
+				writeAPIError(w, http.StatusBadRequest, "VALIDATION_FAILED", "crypto holding and settlement accounts are required")
+				return
+			}
+		}
+
 		result, err := importService.StartImport(r.Context(), app.StartImportInput{
 			OwnerUserID:   owner.ID,
 			AuthSessionID: authenticatedSessionID(r),
 			RequestID:     RequestIDFromContext(r.Context()),
 			Input:         rawInput,
-			ProfileID:     profileID,
+			Format:        format, HoldingAccountID: holdingID, CashAccountID: cashID,
+			ProfileID: profileID,
 		})
 		if err != nil {
 			writeImportServiceError(w, r, logger, "start import", err)

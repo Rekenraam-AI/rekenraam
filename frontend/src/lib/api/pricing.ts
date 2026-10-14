@@ -361,3 +361,11 @@ export async function retryPricingBackgroundWork(
     throw toNetworkError(error);
   }
 }
+
+export async function queueQuoteRefresh(csrfToken: string) {
+  try {
+    const { data, error, response } = await apiClient.POST('/api/v1/pricing/quotes/refresh', { params: { header: { 'X-CSRF-Token': csrfToken } }, body: {} });
+    if (data) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) { if (error instanceof APIClientError) throw error; throw toNetworkError(error); }
+}

@@ -226,11 +226,14 @@ type ImportRowResolution struct {
 // --- Input types for service methods ---
 
 type StartImportInput struct {
-	OwnerUserID   int64
-	AuthSessionID int64
-	RequestID     string
-	Input         RawInput
-	ProfileID     *int64
+	Format           string
+	HoldingAccountID int64
+	CashAccountID    int64
+	OwnerUserID      int64
+	AuthSessionID    int64
+	RequestID        string
+	Input            RawInput
+	ProfileID        *int64
 }
 
 type StartImportResult struct {

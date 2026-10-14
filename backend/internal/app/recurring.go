@@ -324,7 +324,7 @@ func (s *RecurringService) cleanTemplate(ctx context.Context, spec db.RecurringT
 		}
 	}
 	for _, commodity := range commodities {
-		if commodity.Kind == "security" {
+		if commodity.Kind == "security" || commodity.Kind == "crypto" {
 			return spec, ValidationError{Message: "recurring investment postings are not supported"}
 		}
 	}

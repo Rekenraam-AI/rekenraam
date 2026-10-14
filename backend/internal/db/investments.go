@@ -656,8 +656,8 @@ func (r *InvestmentRepository) CreateInstrument(ctx context.Context, params Crea
 		}
 		result, err := tx.ExecContext(ctx, `
 			INSERT INTO commodities (book_id, code, kind, is_builtin, created_at, created_by_user_id, created_request_id, created_audit_event_id)
-			VALUES (?, ?, 'security', 0, ?, ?, NULLIF(?, ''), ?)
-		`, params.BookID, code, params.CreatedAt, params.CreatedByUserID, params.RequestID, auditEventID)
+			VALUES (?, ?, ?, 0, ?, ?, NULLIF(?, ''), ?)
+		`, params.BookID, code, investmentCommodityKind(params.Spec.InstrumentType), params.CreatedAt, params.CreatedByUserID, params.RequestID, auditEventID)
 		if err != nil {
 			return InvestmentInstrumentRecord{}, mapInvestmentConstraintError(fmt.Errorf("insert security commodity: %w", err))
 		}
@@ -750,7 +750,7 @@ func (r *InvestmentRepository) DeleteUnusedInstrument(ctx context.Context, bookI
 	if _, err := tx.ExecContext(ctx, `DELETE FROM commodity_versions WHERE commodity_id = ?`, commodityID); err != nil {
 		return fmt.Errorf("delete unused security commodity versions: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM commodities WHERE id = ? AND book_id = ? AND kind = 'security'`, commodityID, bookID); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM commodities WHERE id = ? AND book_id = ? AND kind IN ('security', 'crypto')`, commodityID, bookID); err != nil {
 		return fmt.Errorf("delete unused security commodity: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -3781,4 +3781,21 @@ func requirePositionBasisRangeQueryTx(ctx context.Context, tx *sql.Tx, bookID, a
 		return ErrInvestmentBasisRange
 	}
 	return nil
+}
+
+func investmentCommodityKind(instrumentType string) string {
+	if instrumentType == "crypto" {
+		return "crypto"
+	}
+	return "security"
+}
+
+func (r *InvestmentRepository) InstrumentCommodity(ctx context.Context, bookID, commodityID int64) (string, int, error) {
+	var kind string
+	var scale int
+	err := r.database.QueryRowContext(ctx, `SELECT c.kind, cv.max_quantity_scale FROM commodities c JOIN current_commodity_versions cv ON cv.commodity_id = c.id WHERE c.book_id = ? AND c.id = ? AND cv.status = 'active'`, bookID, commodityID).Scan(&kind, &scale)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", 0, ErrNotFound
+	}
+	return kind, scale, err
 }
