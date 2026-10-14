@@ -125,3 +125,24 @@ func postReconciliationImpact(logger *slog.Logger, auth *app.AuthService, servic
 		writeReconciliationImpact(w, impact)
 	}
 }
+
+// lifecycleReconciliationImpact previews a guarded void, unvoid, soft delete or
+// restore (#220). The action comes from the route, never the client body.
+func lifecycleReconciliationImpact(logger *slog.Logger, auth *app.AuthService, service *app.TransactionService, action app.LifecycleAction) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		owner, ok := authenticatedOwner(w, r, logger, auth)
+		if !ok {
+			return
+		}
+		id, ok := readTransactionID(w, r)
+		if !ok {
+			return
+		}
+		impact, err := service.ReconciliationImpactForLifecycle(r.Context(), owner.ID, id, action)
+		if err != nil {
+			writeTransactionServiceError(w, r, logger, "lifecycle reconciliation impact", err)
+			return
+		}
+		writeReconciliationImpact(w, impact)
+	}
+}

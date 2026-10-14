@@ -1247,7 +1247,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(3), version, "the head admits unresolved capital return effects")
+	assert.Equal(t, int64(4), version, "the head keeps one posting per line per version")
 
 	ctx := context.Background()
 	database, err := Open(ctx, "file:"+filepath.Join(t.TempDir(), "schema.sqlite"))
@@ -1276,11 +1276,12 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 		objectCounts[kind]++
 	}
 	assert.Equal(t, map[string]int{
-		"index":   107,
+		"index":   108,
 		"table":   111,
 		"trigger": 145,
 		"view":    15,
 	}, objectCounts, "the migrated head must retain every schema object")
+	assert.Equal(t, "index", objects["posting_versions_line_once_per_version_idx"])
 	assert.Equal(t, "table", objects["investment_capital_return_effects"])
 	assert.Equal(t, "trigger", objects["investment_capital_return_facts_valid"])
 	assert.Equal(t, "table", objects["import_source_revisions"])

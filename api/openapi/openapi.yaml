@@ -29,6 +29,14 @@ paths:
     $ref: "./paths/recurring-template-retry.yaml"
   /api/v1/transactions/{transaction_id}/post/reconciliation-impact:
     $ref: "./paths/transaction-post-reconciliation-impact.yaml"
+  /api/v1/transactions/{transaction_id}/void/reconciliation-impact:
+    $ref: "./paths/transaction-lifecycle-reconciliation-impact.yaml"
+  /api/v1/transactions/{transaction_id}/unvoid/reconciliation-impact:
+    $ref: "./paths/transaction-lifecycle-reconciliation-impact.yaml"
+  /api/v1/transactions/{transaction_id}/soft-delete/reconciliation-impact:
+    $ref: "./paths/transaction-lifecycle-reconciliation-impact.yaml"
+  /api/v1/transactions/{transaction_id}/restore/reconciliation-impact:
+    $ref: "./paths/transaction-lifecycle-reconciliation-impact.yaml"
   /api/v1/recurring/templates:
     $ref: "./paths/recurring-templates.yaml"
   /api/v1/recurring/templates/{template_id}:

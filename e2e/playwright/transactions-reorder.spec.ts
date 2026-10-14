@@ -95,3 +95,39 @@ test('reordering in a category applies in the account both entries share', async
   await expect.poll(() => registerOrder(page, s.category.id)).toEqual([milk.id, bread.id]);
   expect(await registerOrder(page, s.checking.id)).toEqual([milk.id, bread.id]);
 });
+
+test('each posting of a split is its own register row and moves alone', async ({ page }) => {
+  const s: Seeded = await seed(page);
+  // Three checking postings in one transaction. Prefix sums of these amounts
+  // never equal another posting's amount, so each row's text is unique.
+  const split = await s.create(`Split ${s.suffix}`, [
+    s.posting(s.checking.id, '-101'), s.posting(s.checking.id, '-202'), s.posting(s.checking.id, '-404'),
+    s.posting(s.category.id, '707')
+  ]);
+  const lineOrder = async () => {
+    const register = await apiJSON<{ entries: Array<{ transaction_id: number; posting: { posting_line_id: number; quantity_value: string } }> }>(
+      page, 'GET', `/api/v1/accounts/${s.checking.id}/register`);
+    return register.entries.map((entry) => entry.posting.quantity_value).reverse();
+  };
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+
+  await page.goto(`/app/accounts/${s.checking.id}/register`);
+  const rows = page.getByRole('row').filter({ hasText: `Split ${s.suffix}` });
+  await expect(rows).toHaveCount(3);
+  for (const amount of ['1.01', '2.02', '4.04']) await expect(rows.filter({ hasText: amount })).toHaveCount(1);
+  expect(await lineOrder()).toEqual(['-101', '-202', '-404']);
+
+  await page.getByRole('button', { name: 'Reorder' }).click();
+  // The oldest posting is the bottom row; moving it later swaps only it.
+  const earliest = rows.filter({ hasText: '1.01' }).getByRole('button', { name: 'Move later in the day' });
+  await earliest.click();
+  await expect.poll(lineOrder).toEqual(['-202', '-101', '-404']);
+  await expect(rows).toHaveCount(3);
+  // The refreshed register kept the row, so focus stayed on its control.
+  await expect(earliest).toBeFocused();
+  await expect(rows.nth(1)).toContainText('1.01');
+  expect(split.id).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});

@@ -483,7 +483,8 @@ func TestCapitalReturnUnknownAmountPairsAndDowngradeRefusal(t *testing.T) {
 	before := buyReplacementPreviewSnapshot(t, f.database)
 	provider, err := goose.NewProvider(goose.DialectSQLite3, f.database, migrations.FS)
 	require.NoError(t, err)
-	_, err = provider.Down(ctx)
+	// Step below 0003 explicitly so later migrations do not change the target.
+	_, err = provider.DownTo(ctx, 2)
 	require.ErrorContains(t, err, "CHECK constraint failed", "unknown evidence cannot be discarded by downgrade")
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 	_, err = f.database.Exec(`DROP TRIGGER investment_capital_return_effects_no_update`)

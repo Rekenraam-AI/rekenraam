@@ -1,0 +1,49 @@
+get:
+  summary: Preview reconciliation impact of a transaction lifecycle change
+  description: >
+    Returns every active checkpoint that the void, unvoid, soft delete or restore named by the path would refuse on and, with reconciliation_override, invalidate — later checkpoints on the same account and commodity included. It uses the same state checks and posting positions as the write. Does not write. The write always rechecks current state. An action that would change nothing (voiding a voided transaction, restoring a live one) returns an empty impact.
+  parameters:
+    - $ref: "../openapi.yaml#/components/parameters/TransactionID"
+  responses:
+    "200":
+      description: Success
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ReconciliationImpactResponse'
+    "400":
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    "401":
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    "404":
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    "409":
+      description: State changed or action not allowed
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    "422":
+      description: Exact quantity overflow
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    "503":
+      description: Database temporarily busy
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

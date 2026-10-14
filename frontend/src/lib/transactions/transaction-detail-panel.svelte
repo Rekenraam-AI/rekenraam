@@ -15,7 +15,8 @@
     softDeleteTransaction,
     restoreTransaction,
     approveTransaction,
-    reconciliationImpactForUpdate,
+    getLifecycleReconciliationImpact,
+    type TransactionLifecycleAction,
     type TransactionResponse,
     type ReconciliationImpactResponse,
     type TransactionLifecycleRequest
@@ -60,11 +61,11 @@
   let actionPending = $state(false);
   let actionError = $state<unknown>(undefined);
 
-  // Reconciliation override modal (for void/unvoid/restore that hit the period guard)
+  // Reconciliation override modal, for any lifecycle change the period guard refuses.
   let reconciliationModal = $state<{
     open: boolean;
     impacts: ReconciliationImpactResponse['affected_checkpoints'];
-    pendingKind: 'void' | 'unvoid';
+    pendingKind: TransactionLifecycleAction;
     pendingReason: string;
   }>({ open: false, impacts: [], pendingKind: 'void', pendingReason: '' });
 
@@ -116,59 +117,21 @@
     actionPending = true;
     actionError = undefined;
 
-    const input: TransactionLifecycleRequest = { change_reason: reasonInput.trim() || undefined };
-
+    const kind = activeModal;
+    const reason = reasonInput.trim();
     try {
-      switch (activeModal) {
-        case 'void':
-          await runWithReconciliationGuard('void', reasonInput.trim(), async (withOverride) => {
-            return voidTransaction(transaction.id, csrfToken!, {
-              ...input,
-              reconciliation_override: withOverride || undefined
-            });
-          });
-          break;
-        case 'unvoid':
-          await runWithReconciliationGuard('unvoid', reasonInput.trim(), async (withOverride) => {
-            return unvoidTransaction(transaction.id, csrfToken!, {
-              ...input,
-              reconciliation_override: withOverride || undefined
-            });
-          });
-          break;
-        case 'soft-delete': {
-          const result = await softDeleteTransaction(transaction.id, csrfToken!, input);
-          closeModal();
-          onSoftDeleted?.(result);
-          break;
-        }
-        case 'restore': {
-          await restoreTransaction(transaction.id, csrfToken!, input);
-          closeModal();
-          onRefresh?.();
-          break;
-        }
-      }
-    } catch (error) {
-      actionError = error;
-    } finally {
-      actionPending = false;
-    }
-  }
-
-  async function runWithReconciliationGuard(
-    kind: 'void' | 'unvoid',
-    reason: string,
-    fn: (withOverride: boolean) => Promise<TransactionResponse>
-  ) {
-    try {
-      await fn(false);
+      const result = await runLifecycle(kind, reason, false);
       closeModal();
-      onRefresh?.();
+      finishLifecycle(kind, result);
     } catch (error) {
-      if (isReconciliationOverrideRequired(error)) {
-        // Fetch impact and show override modal.
-        const impact = await reconciliationImpactForUpdate(transaction.id, {});
+      if (!isReconciliationOverrideRequired(error)) {
+        actionError = error;
+        return;
+      }
+      // The refusal names no checkpoints; ask for the action's own impact so
+      // the owner sees the full invalidation set before continuing (#220).
+      try {
+        const impact = await getLifecycleReconciliationImpact(transaction.id, kind);
         reconciliationModal = {
           open: true,
           impacts: impact.affected_checkpoints,
@@ -176,30 +139,46 @@
           pendingReason: reason
         };
         closeModal();
-      } else {
-        throw error;
+      } catch (previewError) {
+        actionError = previewError;
       }
+    } finally {
+      actionPending = false;
     }
+  }
+
+  function runLifecycle(kind: TransactionLifecycleAction, reason: string, override: boolean) {
+    const input: TransactionLifecycleRequest = {
+      change_reason: reason || undefined,
+      reconciliation_override: override || undefined
+    };
+    switch (kind) {
+      case 'void': return voidTransaction(transaction.id, csrfToken!, input);
+      case 'unvoid': return unvoidTransaction(transaction.id, csrfToken!, input);
+      case 'soft-delete': return softDeleteTransaction(transaction.id, csrfToken!, input);
+      case 'restore': return restoreTransaction(transaction.id, csrfToken!, input);
+    }
+  }
+
+  function finishLifecycle(kind: TransactionLifecycleAction, result: TransactionResponse) {
+    if (kind === 'soft-delete') onSoftDeleted?.(result);
+    else onRefresh?.();
+  }
+
+  function cancelReconciliationOverride() {
+    reconciliationModal = { ...reconciliationModal, open: false };
   }
 
   async function confirmReconciliationOverride() {
     if (!csrfToken) return;
-    reconciliationModal = { ...reconciliationModal, open: false };
+    const { pendingKind, pendingReason } = reconciliationModal;
     actionPending = true;
     actionError = undefined;
-
-    const input: TransactionLifecycleRequest = {
-      change_reason: reconciliationModal.pendingReason || undefined,
-      reconciliation_override: true
-    };
-
     try {
-      if (reconciliationModal.pendingKind === 'void') {
-        await voidTransaction(transaction.id, csrfToken, input);
-      } else {
-        await unvoidTransaction(transaction.id, csrfToken, input);
-      }
-      onRefresh?.();
+      // The write rechecks the guard itself; the preview is never authority.
+      const result = await runLifecycle(pendingKind, pendingReason, true);
+      reconciliationModal = { ...reconciliationModal, open: false };
+      finishLifecycle(pendingKind, result);
     } catch (error) {
       actionError = error;
     } finally {
@@ -277,11 +256,15 @@
         {/each}
       </ul>
 
+      <div class="px-4">
+        <APIFormError error={actionError} id="recon-modal-error" />
+      </div>
+
       <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
         <button
           type="button"
           class={btnSecondary}
-          onclick={() => (reconciliationModal = { ...reconciliationModal, open: false })}
+          onclick={cancelReconciliationOverride}
         >
           {m.transactions_reconciliation_cancel()}
         </button>

@@ -98,9 +98,15 @@
   const reorder = new ReorderMode(queryClient);
   const entryDay = (entry: AccountRegisterEntryResponse) => entry.entry_date;
 
+  // A register row is one posting, and one transaction can post to this
+  // account more than once (#221), so the transaction is not the row. The
+  // posting line outlives transaction versions, so a row keeps its DOM and
+  // focus when an edit or reorder refreshes the register.
+  const rowKey = (entry: AccountRegisterEntryResponse) => String(entry.posting.posting_line_id);
+
   function neighbor(entry: AccountRegisterEntryResponse, direction: ReorderDirection) {
     // The table hands back a proxy of the row, so find it by identity, not reference.
-    return sameDayNeighbor(rows, rows.findIndex((row) => row.posting.id === entry.posting.id), direction, entryDay);
+    return sameDayNeighbor(rows, rows.findIndex((row) => rowKey(row) === rowKey(entry)), direction, entryDay);
   }
 
   function move(entry: AccountRegisterEntryResponse, direction: ReorderDirection) {
@@ -210,7 +216,7 @@
 
   <TransactionTable
     {rows}
-    rowId={(entry) => `${entry.transaction_id}:${entry.version_id}`}
+    rowId={rowKey}
     columns={[
       { key: 'date', header: m.register_col_date(), priority: 1, width: '9rem', cell: dateCell },
       { key: 'payee', header: m.register_col_payee(), priority: 1, cell: payeeCell },

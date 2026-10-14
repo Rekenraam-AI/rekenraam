@@ -447,6 +447,12 @@ schema-2 databases without a reset. Downgrade refuses unknown evidence; use the
 verified backup/restore workflow for rollback. The baseline checksums remain
 unchanged. Bundle schema 11 includes the new effect knowledge.
 
+Forward migration `0004_posting_line_once_per_version.sql` (#224, 2026-10-14)
+adds a unique index so a posting line has at most one posting per transaction
+version. Startup upgrades existing schema-3 databases without a reset; one that
+already holds such a duplicate fails the migration and must be recreated (no
+installed release is affected). Bundle schema is unchanged.
+
 The e2e database resets itself on every self-managed run and needs no manual reset.
 
 - Keep nothing in a local database you would be sorry to lose. Reproducible

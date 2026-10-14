@@ -144,6 +144,62 @@ func (s *TransactionService) ReconciliationImpactForPost(ctx context.Context, ow
 	return ReconciliationImpact{AffectedCheckpoints: refs}, nil
 }
 
+// LifecycleAction names a guarded transaction lifecycle change.
+type LifecycleAction string
+
+const (
+	LifecycleVoid       LifecycleAction = "void"
+	LifecycleUnvoid     LifecycleAction = "unvoid"
+	LifecycleSoftDelete LifecycleAction = "soft-delete"
+	LifecycleRestore    LifecycleAction = "restore"
+)
+
+// ReconciliationImpactForLifecycle names every checkpoint the lifecycle action
+// would refuse on and, with override, invalidate (#220). It runs the action's
+// own plan, so the preview and the write cannot disagree about candidates. An
+// action that would change nothing has no impact. Advisory only: the write
+// always rechecks the guard.
+func (s *TransactionService) ReconciliationImpactForLifecycle(ctx context.Context, ownerID, transactionID int64, action LifecycleAction) (ReconciliationImpact, error) {
+	if ownerID <= 0 || transactionID <= 0 {
+		return ReconciliationImpact{}, ValidationError{Message: "owner and transaction ids are required"}
+	}
+	var candidates []db.PeriodScopedCheckpointRef
+	switch action {
+	case LifecycleVoid:
+		_, planned, _, err := s.planVoid(ctx, transactionID)
+		if err != nil {
+			return ReconciliationImpact{}, err
+		}
+		candidates = planned
+	case LifecycleUnvoid, LifecycleSoftDelete, LifecycleRestore:
+		current, _, _, err := s.prepareLifecycleChange(ctx, TransactionLifecycleInput{OwnerUserID: ownerID, TransactionID: transactionID}, false)
+		if err != nil {
+			return ReconciliationImpact{}, err
+		}
+		if action == LifecycleUnvoid {
+			candidates, _, err = planUnvoid(current)
+		} else {
+			candidates, _, err = planSetDeleted(current, action == LifecycleSoftDelete)
+		}
+		if err != nil {
+			return ReconciliationImpact{}, err
+		}
+	default:
+		return ReconciliationImpact{}, ValidationError{Message: "lifecycle action is invalid"}
+	}
+	if len(candidates) == 0 {
+		return ReconciliationImpact{}, nil
+	}
+	refs, err := s.resolveCheckpointRefs(ctx, candidates)
+	if err != nil {
+		return ReconciliationImpact{}, err
+	}
+	if err := s.enrichCheckpointRefs(ctx, refs); err != nil {
+		return ReconciliationImpact{}, err
+	}
+	return ReconciliationImpact{AffectedCheckpoints: refs}, nil
+}
+
 // periodScopedCandidatesFromTransaction returns checkpoint candidates for all
 // postings in the transaction that fall within the period of an active
 // reconciliation checkpoint (the period-scoped rule from docs/conventions.md).

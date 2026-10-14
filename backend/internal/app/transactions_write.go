@@ -340,26 +340,13 @@ func (s *TransactionService) VoidTransaction(ctx context.Context, input VoidTran
 	if changeReason == "" {
 		return Transaction{}, ValidationError{Message: "change reason is required"}
 	}
-	current, err := s.repository.TransactionByID(ctx, BookID, input.TransactionID)
+	current, candidates, changes, err := s.planVoid(ctx, input.TransactionID)
 	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			return Transaction{}, ErrTransactionNotFound
-		}
-		return Transaction{}, fmt.Errorf("read transaction: %w", err)
-	}
-	if current.Status == "draft" {
-		// A draft has no ledger footprint to void, and voiding one anyway would
-		// leave it permanently un-hard-deletable (DeleteDraftTransaction refuses
-		// any transaction with a durable posted/voided version) with no valid
-		// lifecycle path back out: unvoid would restore it to draft, but by then
-		// a stale "voided" version already blocks hard delete forever. Post or
-		// delete the draft instead.
-		return Transaction{}, ErrTransactionDraftNotVoidable
-	}
-	if err := s.rejectInvestmentLinkedMutation(ctx, input.TransactionID); err != nil {
 		return Transaction{}, err
 	}
-	candidates := periodScopedCandidatesFromRecord(current)
+	if !changes {
+		return s.enrichOne(ctx, toTransaction(current))
+	}
 	if err := s.rejectIfCheckpointAlreadyInTheWay(ctx, candidates, input.ReconciliationOverride); err != nil {
 		return Transaction{}, err
 	}
@@ -391,13 +378,13 @@ func (s *TransactionService) UnvoidTransaction(ctx context.Context, input Transa
 	if err != nil {
 		return Transaction{}, err
 	}
-	if current.DeletedAt != "" {
-		return Transaction{}, ErrTransactionDeleted
+	candidates, changes, err := planUnvoid(current)
+	if err != nil {
+		return Transaction{}, err
 	}
-	if current.Status != "voided" {
+	if !changes {
 		return current, nil
 	}
-	candidates := periodScopedCandidatesFromTransaction(current)
 	if err := s.rejectIfCheckpointAlreadyInTheWay(ctx, candidates, input.ReconciliationOverride); err != nil {
 		return Transaction{}, err
 	}
@@ -427,16 +414,13 @@ func (s *TransactionService) setTransactionDeleted(ctx context.Context, input Tr
 	if err != nil {
 		return Transaction{}, err
 	}
-	if (current.DeletedAt != "") == deleted {
+	candidates, changes, err := planSetDeleted(current, deleted)
+	if err != nil {
+		return Transaction{}, err
+	}
+	if !changes {
 		return current, nil
 	}
-	if deleted && current.Status == "draft" {
-		return Transaction{}, ErrTransactionPosted
-	}
-	// Both directions of this flag are guarded: soft-deleting removes postings
-	// from a reconciled period, and restoring puts them back — either changes
-	// what a completed reconciliation reflects, symmetric with unvoid's guard.
-	candidates := periodScopedCandidatesFromTransaction(current)
 	if err := s.rejectIfCheckpointAlreadyInTheWay(ctx, candidates, input.ReconciliationOverride); err != nil {
 		return Transaction{}, err
 	}
@@ -457,6 +441,65 @@ func (s *TransactionService) setTransactionDeleted(ctx context.Context, input Tr
 		return Transaction{}, mapTransactionDBError(err)
 	}
 	return s.enrichOne(ctx, toTransaction(record))
+}
+
+// The lifecycle plans below are each action's state checks and checkpoint
+// candidates. The write and its reconciliation-impact preview (#220) share
+// them, so the preview names exactly the checkpoints the write would refuse
+// and, on override, invalidate.
+
+// planVoid reports false for a transaction that is already voided: voiding it
+// again changes nothing, so no checkpoint stands in its way.
+func (s *TransactionService) planVoid(ctx context.Context, transactionID int64) (db.TransactionRecord, []db.PeriodScopedCheckpointRef, bool, error) {
+	current, err := s.repository.TransactionByID(ctx, BookID, transactionID)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			return db.TransactionRecord{}, nil, false, ErrTransactionNotFound
+		}
+		return db.TransactionRecord{}, nil, false, fmt.Errorf("read transaction: %w", err)
+	}
+	if current.Status == "voided" {
+		return current, nil, false, nil
+	}
+	if current.Status == "draft" {
+		// A draft has no ledger footprint to void, and voiding one anyway would
+		// leave it permanently un-hard-deletable (DeleteDraftTransaction refuses
+		// any transaction with a durable posted/voided version) with no valid
+		// lifecycle path back out: unvoid would restore it to draft, but by then
+		// a stale "voided" version already blocks hard delete forever. Post or
+		// delete the draft instead.
+		return db.TransactionRecord{}, nil, false, ErrTransactionDraftNotVoidable
+	}
+	if err := s.rejectInvestmentLinkedMutation(ctx, transactionID); err != nil {
+		return db.TransactionRecord{}, nil, false, err
+	}
+	return current, periodScopedCandidatesFromRecord(current), true, nil
+}
+
+// planUnvoid reports false when the transaction is not voided, so unvoid
+// changes nothing.
+func planUnvoid(current Transaction) ([]db.PeriodScopedCheckpointRef, bool, error) {
+	if current.DeletedAt != "" {
+		return nil, false, ErrTransactionDeleted
+	}
+	if current.Status != "voided" {
+		return nil, false, nil
+	}
+	return periodScopedCandidatesFromTransaction(current), true, nil
+}
+
+// planSetDeleted reports false when the flag already has the requested value.
+func planSetDeleted(current Transaction, deleted bool) ([]db.PeriodScopedCheckpointRef, bool, error) {
+	if (current.DeletedAt != "") == deleted {
+		return nil, false, nil
+	}
+	if deleted && current.Status == "draft" {
+		return nil, false, ErrTransactionPosted
+	}
+	// Both directions of this flag are guarded: soft-deleting removes postings
+	// from a reconciled period, and restoring puts them back — either changes
+	// what a completed reconciliation reflects, symmetric with unvoid's guard.
+	return periodScopedCandidatesFromTransaction(current), true, nil
 }
 
 func (s *TransactionService) prepareLifecycleChange(ctx context.Context, input TransactionLifecycleInput, requireReason bool) (Transaction, string, string, error) {

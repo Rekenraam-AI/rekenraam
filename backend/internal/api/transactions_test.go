@@ -1761,3 +1761,54 @@ func createTransactionResponseForSession(t *testing.T, handler http.Handler, ses
 	require.Equalf(t, wantStatus, res.Code, "response body: %s", res.Body.String())
 	return res
 }
+
+// TestTransactionUpdateRejectsLineKeyUsedTwice is the #224 regression: one
+// line key on two postings once stored two postings on a single line, which
+// then shared reconciliation state and the account register's row identity.
+func TestTransactionUpdateRejectsLineKeyUsedTwice(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newSetupTestHandler(t)
+	sessionCookie, csrfToken, commodityID := setupAccountAPITest(t, handler)
+	checking := createLedgerAccount(t, handler, sessionCookie, csrfToken, "Line Once Checking", "asset", "checking", commodityID, 2)
+	expense := createCategoryForSession(t, handler, sessionCookie, csrfToken, `{"name":"Line Once Expense","category_type":"expense"}`)
+	created := createTransactionForSession(t, handler, sessionCookie, csrfToken, balancedBody("2026-06-07",
+		posting(checking.ID, -10000, 2, commodityID),
+		posting(expense.ID, 10000, 2, commodityID),
+	), http.StatusCreated)
+	lineKey := created.JournalEntries[0].Postings[0].LineKey
+	split := func(key string) string {
+		return `{"line_key":"` + key + `","account_id":` + strconvFormatInt(checking.ID) + `,"quantity_value":-5000,"quantity_scale":2,"commodity_id":` + strconvFormatInt(commodityID) + `}`
+	}
+	body := `{
+		"transaction_date":"2026-06-07",
+		"journal_entries":[{"entry_date":"2026-06-07","postings":[
+			` + split(lineKey) + `,
+			` + split(lineKey) + `,
+			{"account_id":` + strconvFormatInt(expense.ID) + `,"quantity_value":10000,"quantity_scale":2,"commodity_id":` + strconvFormatInt(commodityID) + `}
+		]}]
+	}`
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/transactions/"+strconvFormatInt(created.ID), strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(csrfTokenHeader, csrfToken)
+	setSameOrigin(req)
+	req.AddCookie(sessionCookie)
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	require.Equalf(t, http.StatusBadRequest, res.Code, "response body: %s", res.Body.String())
+	var errBody errorResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&errBody))
+	assert.Equal(t, "VALIDATION_FAILED", errBody.Error.Code)
+	assert.Contains(t, errBody.Error.Message, "used more than once")
+
+	// A split into two new lines is the supported shape and still saves.
+	saved := mutateTransaction(t, handler, sessionCookie, csrfToken, http.MethodPatch, "/api/v1/transactions/"+strconvFormatInt(created.ID),
+		strings.Replace(body, `"line_key":"`+lineKey+`",`, ``, 1), http.StatusOK)
+	lines := map[int64]bool{}
+	for _, p := range saved.JournalEntries[0].Postings {
+		assert.Falsef(t, lines[p.PostingLineID], "line %d appears twice", p.PostingLineID)
+		lines[p.PostingLineID] = true
+	}
+	assert.Len(t, lines, 3)
+}

@@ -253,6 +253,9 @@ func (s *TransactionService) cleanTransactionSpec(ctx context.Context, input Tra
 		}
 		entries = append(entries, entry)
 	}
+	if err := validateLineKeysUnique(entries); err != nil {
+		return db.TransactionSpec{}, err
+	}
 	if len(entries) == 0 {
 		return db.TransactionSpec{}, ValidationError{Message: "transaction requires at least one journal entry"}
 	}
@@ -277,6 +280,22 @@ func (s *TransactionService) cleanTransactionSpec(ctx context.Context, input Tra
 		TagIDs:                  tagIDs,
 		JournalEntries:          entries,
 	}, nil
+}
+
+// validateLineKeysUnique rejects a spec that names one posting line on more
+// than one posting (#224). A line is one posting per version: its
+// reconciliation state, tags and day order belong to exactly one amount.
+func validateLineKeysUnique(entries []db.JournalEntrySpec) error {
+	seen := make(map[string]bool)
+	for _, entry := range entries {
+		for _, posting := range entry.Postings {
+			if seen[posting.LineKey] {
+				return ValidationError{Message: "posting line key is used more than once"}
+			}
+			seen[posting.LineKey] = true
+		}
+	}
+	return nil
 }
 
 func (s *TransactionService) cleanJournalEntry(ctx context.Context, input JournalEntryInput, transactionDate string, status string, options cleanTransactionOptions) (db.JournalEntrySpec, error) {

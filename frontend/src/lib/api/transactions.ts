@@ -490,6 +490,32 @@ async function transactionLifecycleMutation(
   }
 }
 
+export type TransactionLifecycleAction = 'void' | 'unvoid' | 'soft-delete' | 'restore';
+
+const lifecycleImpactPaths = {
+  void: '/api/v1/transactions/{transaction_id}/void/reconciliation-impact',
+  unvoid: '/api/v1/transactions/{transaction_id}/unvoid/reconciliation-impact',
+  'soft-delete': '/api/v1/transactions/{transaction_id}/soft-delete/reconciliation-impact',
+  restore: '/api/v1/transactions/{transaction_id}/restore/reconciliation-impact'
+} as const;
+
+/** Checkpoints a guarded lifecycle change would invalidate on override (#220). */
+export async function getLifecycleReconciliationImpact(
+  transactionID: number,
+  action: TransactionLifecycleAction
+): Promise<ReconciliationImpactResponse> {
+  try {
+    const { data, error, response } = await apiClient.GET(lifecycleImpactPaths[action], {
+      params: { path: { transaction_id: transactionID } }
+    });
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
 export async function getPostReconciliationImpact(transactionID: number): Promise<ReconciliationImpactResponse> {
   try {
     const { data, error, response } = await apiClient.GET('/api/v1/transactions/{transaction_id}/post/reconciliation-impact', {
