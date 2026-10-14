@@ -16,12 +16,12 @@
     restoreTransaction,
     approveTransaction,
     getLifecycleReconciliationImpact,
+    isReconciliationOverrideRequired,
     type TransactionLifecycleAction,
     type TransactionResponse,
     type ReconciliationImpactResponse,
     type TransactionLifecycleRequest
   } from '#lib/api/transactions.ts';
-  import { APIClientError } from '#lib/api/client.ts';
   import { formatQuantity, joinCommodityAmount } from '#lib/money/format.ts';
   import {
     formatSignedAmount,
@@ -198,14 +198,6 @@
     } finally {
       actionPending = false;
     }
-  }
-
-  function isReconciliationOverrideRequired(error: unknown): boolean {
-    return (
-      error instanceof APIClientError &&
-      error.code === 'CONFLICT' &&
-      (error.detail?.includes('reconciliation override') ?? false)
-    );
   }
 
   // ── CSS helpers ───────────────────────────────────────────────────

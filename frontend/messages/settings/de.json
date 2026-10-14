@@ -1131,6 +1131,7 @@
   "trash_restore_confirm_description": "Diese Transaktion wiederherzustellen würde Buchungszeilen erneut in eine abgeglichene Periode einfügen. Die folgenden Prüfpunkte werden dadurch ungültig:",
   "trash_restore_confirm_proceed": "Trotzdem wiederherstellen",
   "trash_restore_confirm_cancel": "Abbrechen",
+  "trash_restore_confirm_loading": "Betroffene Prüfpunkte werden geladen…",
   "trash_restoring": "Wird wiederhergestellt…",
   "trash_restore_error": "Wiederherstellung fehlgeschlagen",
   "trash_investment_restore_locked": "Künftigen Anlagekorrekturablauf verwenden",

@@ -1131,6 +1131,7 @@
   "trash_restore_confirm_description": "Restaurar esta transacción devolvería apuntes a un periodo ya conciliado. Se invalidarán los siguientes puntos de control:",
   "trash_restore_confirm_proceed": "Restaurar de todos modos",
   "trash_restore_confirm_cancel": "Cancelar",
+  "trash_restore_confirm_loading": "Cargando los puntos de control de conciliación afectados…",
   "trash_restoring": "Restaurando…",
   "trash_restore_error": "No se ha podido restaurar",
   "trash_investment_restore_locked": "Usar un futuro flujo de corrección de inversiones",

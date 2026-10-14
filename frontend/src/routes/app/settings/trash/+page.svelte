@@ -14,7 +14,10 @@
     deletedTransactionsQueryKey,
     transactionsQueryKey,
     restoreTransaction,
-    type DeletedTransactionResponse
+    getLifecycleReconciliationImpact,
+    isReconciliationOverrideRequired,
+    type DeletedTransactionResponse,
+    type ReconciliationImpactResponse
   } from '#lib/api/transactions.ts';
   import {
     formatSignedAmount,
@@ -22,7 +25,6 @@
   } from '#lib/transactions/transaction-labels.ts';
   import TransactionTable from '#lib/transactions/transaction-table.svelte';
   import type { Column } from '#lib/transactions/transaction-table-types.ts';
-  import { APIClientError } from '#lib/api/client.ts';
   import { forecastQueryKey } from '#lib/api/forecast.ts';
 
   const queryClient = useQueryClient();
@@ -39,11 +41,18 @@
   let restorePendingID = $state<number | undefined>(undefined);
   let restoreError = $state<unknown>(undefined);
 
-  // Reconciliation override confirmation modal
+  // Reconciliation override confirmation (#225). The list's
+  // restore_blocked_by_reconciliation flag, or a refused plain restore, opens
+  // it; it then names every checkpoint from the restore's own preview before
+  // the owner can confirm. The preview is never authority: confirming sends
+  // the real restore, which rechecks the guard.
   let overrideModal = $state<{
-    open: boolean;
     row: DeletedTransactionResponse | null;
-  }>({ open: false, row: null });
+    impacts: ReconciliationImpactResponse['affected_checkpoints'] | null;
+    loadError: unknown;
+    writeError: unknown;
+    pending: boolean;
+  }>({ row: null, impacts: null, loadError: undefined, writeError: undefined, pending: false });
 
   async function csrfToken(): Promise<string> {
     if (sessionQuery.data?.csrf_token) return sessionQuery.data.csrf_token;
@@ -53,45 +62,64 @@
     return token;
   }
 
-  async function handleRestore(row: DeletedTransactionResponse, withOverride: boolean) {
-    restorePendingID = row.id;
-    restoreError = undefined;
+  async function restore(row: DeletedTransactionResponse, withOverride: boolean) {
+    const token = await csrfToken();
+    await restoreTransaction(row.id, token, {
+      change_reason: 'restored from trash',
+      reconciliation_override: withOverride || undefined
+    });
+    // Invalidate both the trash list and the main transactions list.
+    await queryClient.invalidateQueries({ queryKey: deletedTransactionsQueryKey });
+    await queryClient.invalidateQueries({ queryKey: transactionsQueryKey });
+    await queryClient.invalidateQueries({ queryKey: forecastQueryKey });
+  }
 
+  async function handleRestoreClick(row: DeletedTransactionResponse) {
+    if (row.transaction_kind === 'investment') return;
+    restoreError = undefined;
+    if (row.restore_blocked_by_reconciliation) {
+      void openOverride(row);
+      return;
+    }
+    restorePendingID = row.id;
     try {
-      const token = await csrfToken();
-      await restoreTransaction(row.id, token, {
-        change_reason: 'restored from trash',
-        reconciliation_override: withOverride || undefined
-      });
-      // Invalidate both the trash list and the main transactions list.
-      await queryClient.invalidateQueries({ queryKey: deletedTransactionsQueryKey });
-      await queryClient.invalidateQueries({ queryKey: transactionsQueryKey });
-      await queryClient.invalidateQueries({ queryKey: forecastQueryKey });
+      await restore(row, false);
     } catch (error) {
-      restoreError = error;
+      // The list flag can be stale: a statement finished since it loaded.
+      if (isReconciliationOverrideRequired(error)) void openOverride(row);
+      else restoreError = error;
     } finally {
       restorePendingID = undefined;
     }
   }
 
-  function handleRestoreClick(row: DeletedTransactionResponse) {
-    if (row.transaction_kind === 'investment') return;
-    if (row.restore_blocked_by_reconciliation) {
-      overrideModal = { open: true, row };
-    } else {
-      handleRestore(row, false);
+  async function openOverride(row: DeletedTransactionResponse) {
+    overrideModal = { row, impacts: null, loadError: undefined, writeError: undefined, pending: false };
+    try {
+      const impact = await getLifecycleReconciliationImpact(row.id, 'restore');
+      if (overrideModal.row?.id === row.id) overrideModal.impacts = impact.affected_checkpoints;
+    } catch (error) {
+      if (overrideModal.row?.id === row.id) overrideModal.loadError = error;
     }
   }
 
   async function confirmOverride() {
-    if (!overrideModal.row) return;
     const row = overrideModal.row;
-    overrideModal = { open: false, row: null };
-    await handleRestore(row, true);
+    if (!row || overrideModal.impacts === null) return;
+    overrideModal.pending = true;
+    overrideModal.writeError = undefined;
+    try {
+      await restore(row, true);
+      cancelOverride();
+    } catch (error) {
+      overrideModal.writeError = error;
+    } finally {
+      overrideModal.pending = false;
+    }
   }
 
   function cancelOverride() {
-    overrideModal = { open: false, row: null };
+    overrideModal = { row: null, impacts: null, loadError: undefined, writeError: undefined, pending: false };
   }
 
   // ── Display helpers ──────────────────────────────────────────────────
@@ -207,33 +235,72 @@
   />
 </div>
 
-<!-- Reconciliation override confirmation modal -->
-{#if overrideModal.open && overrideModal.row}
+<!-- Reconciliation override confirmation modal (#225) -->
+{#if overrideModal.row}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="trash-override-title"
+    role="presentation"
+    onkeydown={(e) => { if (e.key === 'Escape' && !overrideModal.pending) cancelOverride(); }}
   >
-    <div class="w-full max-w-md rounded-(--radius-panel) border border-border bg-surface p-6 shadow-lg">
+    <div
+      class="max-h-full w-full max-w-md overflow-y-auto rounded-(--radius-panel) border border-border bg-surface p-6 shadow-lg"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="trash-override-title"
+      aria-describedby="trash-override-description"
+    >
       <h3 id="trash-override-title" class="text-base font-semibold text-foreground">
         {m.trash_restore_confirm_title()}
       </h3>
-      <p class="mt-2 text-sm text-muted">{m.trash_restore_confirm_description()}</p>
-      <div class="mt-4 flex justify-end gap-3">
+      <p id="trash-override-description" class="mt-2 text-sm text-muted">{m.trash_restore_confirm_description()}</p>
+
+      {#if overrideModal.loadError}
+        <div class="mt-3 space-y-2">
+          <APIFormError error={overrideModal.loadError} />
+          <button
+            type="button"
+            onclick={() => overrideModal.row && openOverride(overrideModal.row)}
+            class="rounded-(--radius-control) border border-border bg-control px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-control-hover"
+          >
+            {m.transactions_retry()}
+          </button>
+        </div>
+      {:else if overrideModal.impacts === null}
+        <p class="mt-3 text-sm text-muted" role="status">{m.trash_restore_confirm_loading()}</p>
+      {:else}
+        <ul class="mt-3 divide-y divide-border text-sm">
+          {#each overrideModal.impacts as cp (cp.checkpoint_id)}
+            <li class="py-2 text-foreground">
+              {m.transactions_reconciliation_checkpoint_label({
+                account: cp.account_label,
+                commodity: cp.commodity_code,
+                date: cp.statement_date
+              })}
+            </li>
+          {/each}
+        </ul>
+      {/if}
+
+      {#if overrideModal.writeError}
+        <div class="mt-3"><APIFormError error={overrideModal.writeError} /></div>
+      {/if}
+
+      <div class="mt-4 flex flex-wrap justify-end gap-3">
         <button
           type="button"
           onclick={cancelOverride}
-          class="rounded-(--radius-control) border border-border bg-control px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-control-hover"
+          disabled={overrideModal.pending}
+          class="rounded-(--radius-control) border border-border bg-control px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {m.trash_restore_confirm_cancel()}
         </button>
         <button
           type="button"
           onclick={confirmOverride}
-          class="rounded-(--radius-control) bg-danger px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+          disabled={overrideModal.impacts === null || overrideModal.pending}
+          class="rounded-(--radius-control) bg-danger px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {m.trash_restore_confirm_proceed()}
+          {overrideModal.pending ? m.trash_restoring() : m.trash_restore_confirm_proceed()}
         </button>
       </div>
     </div>

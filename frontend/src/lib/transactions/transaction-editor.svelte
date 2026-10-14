@@ -30,6 +30,7 @@
     correctTransaction,
     reconciliationImpactForCreate,
     reconciliationImpactForUpdate,
+    isReconciliationOverrideRequired,
     type TransactionRequest,
     type TransactionResponse,
     type ReconciliationImpactResponse
@@ -46,7 +47,6 @@
   import { accountDisplayName } from '#lib/accounts/account-labels.ts';
   import { systemRoleLabel } from './transaction-labels';
   import { categoryDisplayName } from '#lib/categories/category-labels.ts';
-  import { APIClientError } from '#lib/api/client.ts';
   import {
     commodityImbalance,
     formatEditableAmount,
@@ -585,14 +585,6 @@
   }
 
   // ── Helpers ───────────────────────────────────────────────────────
-
-  function isReconciliationOverrideRequired(error: unknown): boolean {
-    return (
-      error instanceof APIClientError &&
-      error.code === 'CONFLICT' &&
-      (error.detail?.includes('reconciliation override') ?? false)
-    );
-  }
 
   function selectCategory(cat: CategoryResponse) {
     categoryID = cat.id;

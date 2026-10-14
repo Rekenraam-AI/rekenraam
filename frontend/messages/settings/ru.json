@@ -1131,6 +1131,7 @@
   "trash_restore_confirm_description": "Восстановление этой транзакции вернёт проводки в уже сверенный период. Следующие контрольные точки будут аннулированы:",
   "trash_restore_confirm_proceed": "Всё равно восстановить",
   "trash_restore_confirm_cancel": "Отмена",
+  "trash_restore_confirm_loading": "Загрузка затронутых контрольных точек сверки…",
   "trash_restoring": "Восстанавливаем…",
   "trash_restore_error": "Не удалось восстановить",
   "trash_investment_restore_locked": "Используйте будущий процесс исправления инвестиций",

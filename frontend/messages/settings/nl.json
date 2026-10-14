@@ -1131,6 +1131,7 @@
   "trash_restore_confirm_description": "Deze transactie terugzetten zou boekingsregels opnieuw in een afgestemde periode plaatsen. De volgende ijkpunten worden ongeldig:",
   "trash_restore_confirm_proceed": "Toch terugzetten",
   "trash_restore_confirm_cancel": "Annuleren",
+  "trash_restore_confirm_loading": "Betrokken afstemmingsijkpunten laden…",
   "trash_restoring": "Terugzetten…",
   "trash_restore_error": "Terugzetten mislukt",
   "trash_investment_restore_locked": "Gebruik een toekomstige beleggingscorrectie",

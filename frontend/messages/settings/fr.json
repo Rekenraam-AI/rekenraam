@@ -1131,6 +1131,7 @@
   "trash_restore_confirm_description": "Restaurer cette transaction réintroduirait des écritures dans une période rapprochée. Les points de contrôle suivants seront invalidés :",
   "trash_restore_confirm_proceed": "Restaurer quand même",
   "trash_restore_confirm_cancel": "Annuler",
+  "trash_restore_confirm_loading": "Chargement des points de contrôle de rapprochement concernés…",
   "trash_restoring": "Restauration…",
   "trash_restore_error": "La restauration a échoué",
   "trash_investment_restore_locked": "Utiliser un futur processus de correction d’investissement",

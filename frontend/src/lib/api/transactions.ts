@@ -492,6 +492,18 @@ async function transactionLifecycleMutation(
 
 export type TransactionLifecycleAction = 'void' | 'unvoid' | 'soft-delete' | 'restore';
 
+/**
+ * True when a write was refused only because it would invalidate a finished
+ * reconciliation; the caller previews the impact and may retry with override.
+ */
+export function isReconciliationOverrideRequired(error: unknown): boolean {
+  return (
+    error instanceof APIClientError &&
+    error.code === 'CONFLICT' &&
+    (error.detail?.includes('reconciliation override') ?? false)
+  );
+}
+
 const lifecycleImpactPaths = {
   void: '/api/v1/transactions/{transaction_id}/void/reconciliation-impact',
   unvoid: '/api/v1/transactions/{transaction_id}/unvoid/reconciliation-impact',

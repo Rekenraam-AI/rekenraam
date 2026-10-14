@@ -1131,6 +1131,7 @@
   "trash_restore_confirm_description": "Restoring this transaction would re-enter postings into a reconciled period. The following checkpoints will be invalidated:",
   "trash_restore_confirm_proceed": "Restore anyway",
   "trash_restore_confirm_cancel": "Cancel",
+  "trash_restore_confirm_loading": "Loading affected checkpoints…",
   "trash_restoring": "Restoring…",
   "trash_restore_error": "Restore failed",
   "trash_investment_restore_locked": "Use a future investment correction workflow",
