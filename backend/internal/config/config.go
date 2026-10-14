@@ -39,6 +39,11 @@ type Config struct {
 	// to a stub server. Development only: Load refuses it in production, so a
 	// misconfigured deployment can never send a real API key to another host.
 	Trading212BaseURL string
+	// MarketDataBaseURL points every built-in quote and FX provider at one
+	// stub host, so the e2e harness never depends on live rates (#226).
+	// Development only, for the same reason as Trading212BaseURL: two
+	// providers send API keys.
+	MarketDataBaseURL string
 }
 
 func Load() (Config, error) {
@@ -74,7 +79,11 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	trading212BaseURL, err := loadTrading212BaseURL(appEnv)
+	trading212BaseURL, err := loadDevelopmentBaseURL(appEnv, "TRADING212_BASE_URL")
+	if err != nil {
+		return Config{}, err
+	}
+	marketDataBaseURL, err := loadDevelopmentBaseURL(appEnv, "MARKET_DATA_BASE_URL")
 	if err != nil {
 		return Config{}, err
 	}
@@ -98,24 +107,25 @@ func Load() (Config, error) {
 		TwelveDataAPIKey:       strings.TrimSpace(os.Getenv("TWELVE_DATA_API_KEY")),
 		SecretKey:              secretKey,
 		Trading212BaseURL:      trading212BaseURL,
+		MarketDataBaseURL:      marketDataBaseURL,
 	}, nil
 }
 
-// loadTrading212BaseURL reads TRADING212_BASE_URL, the development-only
-// provider stub override used by the e2e harness (T-128). Outside
-// development it is a startup error rather than silently ignored: the
-// Trading 212 API key travels in the Authorization header of every request.
-func loadTrading212BaseURL(appEnv string) (string, error) {
-	raw := strings.TrimSpace(os.Getenv("TRADING212_BASE_URL"))
+// loadDevelopmentBaseURL reads a development-only provider stub override used
+// by the e2e harness (TRADING212_BASE_URL, T-128; MARKET_DATA_BASE_URL, #226).
+// Outside development it is a startup error rather than silently ignored:
+// provider API keys travel with those requests.
+func loadDevelopmentBaseURL(appEnv, name string) (string, error) {
+	raw := strings.TrimSpace(os.Getenv(name))
 	if raw == "" {
 		return "", nil
 	}
 	if appEnv != "development" {
-		return "", fmt.Errorf("TRADING212_BASE_URL is only allowed when APP_ENV=development")
+		return "", fmt.Errorf("%s is only allowed when APP_ENV=development", name)
 	}
 	parsed, err := url.Parse(raw)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		return "", fmt.Errorf("TRADING212_BASE_URL must be an absolute http or https URL")
+		return "", fmt.Errorf("%s must be an absolute http or https URL", name)
 	}
 	return raw, nil
 }

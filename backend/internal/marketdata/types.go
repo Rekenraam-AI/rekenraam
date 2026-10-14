@@ -70,6 +70,13 @@ func NewRegistry(providers ...Provider) *Registry {
 }
 
 func DefaultRegistry(openExchangeRatesAppID string, quoteKeys ...string) *Registry {
+	return DefaultRegistryAt("", openExchangeRatesAppID, quoteKeys...)
+}
+
+// DefaultRegistryAt is DefaultRegistry with every provider pointed at one base
+// URL; empty keeps each provider's public endpoint. The e2e harness uses it so
+// no browser journey depends on live rates (#226).
+func DefaultRegistryAt(baseURL, openExchangeRatesAppID string, quoteKeys ...string) *Registry {
 	coingeckoKey, twelveDataKey := "", ""
 	if len(quoteKeys) > 0 {
 		coingeckoKey = quoteKeys[0]
@@ -78,13 +85,13 @@ func DefaultRegistry(openExchangeRatesAppID string, quoteKeys ...string) *Regist
 		twelveDataKey = quoteKeys[1]
 	}
 	return NewRegistry(
-		NewCoinGeckoProvider(nil, "", coingeckoKey),
-		NewTwelveDataProvider(nil, "", twelveDataKey),
-		NewYahooFinanceProvider(nil, ""),
-		NewECBReferenceRatesProvider(nil, ""),
-		NewFrankfurterProvider(nil, ""),
-		NewExchangeRateAPIOpenAccessProvider(nil, ""),
-		NewOpenExchangeRatesProvider(nil, "", openExchangeRatesAppID),
+		NewCoinGeckoProvider(nil, baseURL, coingeckoKey),
+		NewTwelveDataProvider(nil, baseURL, twelveDataKey),
+		NewYahooFinanceProvider(nil, baseURL),
+		NewECBReferenceRatesProvider(nil, baseURL),
+		NewFrankfurterProvider(nil, baseURL),
+		NewExchangeRateAPIOpenAccessProvider(nil, baseURL),
+		NewOpenExchangeRatesProvider(nil, baseURL, openExchangeRatesAppID),
 	)
 }
 

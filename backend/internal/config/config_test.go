@@ -165,3 +165,34 @@ func TestLoadRejectsRelativeTrading212BaseURL(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "absolute http or https URL")
 }
+
+// #226: the market-data stub override redirects provider requests that carry
+// API keys, so it is development-only like TRADING212_BASE_URL.
+func TestLoadRefusesMarketDataBaseURLOutsideDevelopment(t *testing.T) {
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("MARKET_DATA_BASE_URL", "http://127.0.0.1:16890/market-data")
+
+	_, err := Load()
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MARKET_DATA_BASE_URL is only allowed when APP_ENV=development")
+}
+
+func TestLoadReadsMarketDataBaseURLInDevelopment(t *testing.T) {
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("MARKET_DATA_BASE_URL", " http://127.0.0.1:16890/market-data ")
+
+	cfg, err := Load()
+
+	require.NoError(t, err)
+	assert.Equal(t, "http://127.0.0.1:16890/market-data", cfg.MarketDataBaseURL)
+}
+
+func TestLoadRejectsRelativeMarketDataBaseURL(t *testing.T) {
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("MARKET_DATA_BASE_URL", "/market-data")
+
+	_, err := Load()
+
+	require.ErrorContains(t, err, "MARKET_DATA_BASE_URL must be an absolute http or https URL")
+}

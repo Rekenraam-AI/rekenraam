@@ -451,6 +451,18 @@ non-trivial diff (yours or reviewed):
     Named regressions: `TestImportUploadFileSizeBoundary`,
     `TestImportUploadMultipartResourceLimits`, `import-upload-limit.spec.ts`.
 
+42. **Browser journeys that depend on live providers or late handlers** —
+    the e2e app runs its background workers, so a real network call can add
+    evidence to the shared book (#226: a live ECB fixing outranked a voided
+    fixture in evening CI runs). Every outbound provider goes through a
+    development-only stub override (`TRADING212_BASE_URL`,
+    `MARKET_DATA_BASE_URL`) refused outside `APP_ENV=development`. A
+    `route.fetch()` handler still reading a refetch when the page closes fails
+    as "Response has been disposed" (#236): unroute with `ignoreErrors` after
+    each test. Named regressions: `TestDefaultRegistryAtSendsEveryProviderToTheOverrideHost`,
+    `TestLoadRefusesMarketDataBaseURLOutsideDevelopment`,
+    `TestRuntimeRefusesMarketDataBaseURLOutsideDevelopment`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

@@ -61,6 +61,9 @@ func openWith(ctx context.Context, cfg config.Config, logger *slog.Logger, deps 
 	if cfg.Trading212BaseURL != "" && cfg.AppEnv != "development" {
 		return nil, errors.New("a Trading 212 base URL override is only allowed in development")
 	}
+	if cfg.MarketDataBaseURL != "" && cfg.AppEnv != "development" {
+		return nil, errors.New("a market data base URL override is only allowed in development")
+	}
 	r := &Runtime{closed: make(chan struct{})}
 	defer func() {
 		if err != nil {
@@ -115,7 +118,7 @@ func openWith(ctx context.Context, cfg config.Config, logger *slog.Logger, deps 
 	payeeRepository := db.NewPayeeRepository(database)
 	payeeService := app.NewPayeeService(payeeRepository, accountRepository)
 	transactionService := app.NewTransactionService(db.NewTransactionRepository(database), payeeRepository, accountRepository, commodityRepository)
-	pricingService := app.NewPricingService(db.NewPricingRepository(database), marketdata.DefaultRegistry(cfg.OpenExchangeRatesAppID, cfg.CoinGeckoDemoAPIKey, cfg.TwelveDataAPIKey))
+	pricingService := app.NewPricingService(db.NewPricingRepository(database), marketdata.DefaultRegistryAt(cfg.MarketDataBaseURL, cfg.OpenExchangeRatesAppID, cfg.CoinGeckoDemoAPIKey, cfg.TwelveDataAPIKey))
 	transactionService.SetPricingRepository(db.NewPricingRepository(database))
 	investmentService := app.NewInvestmentService(db.NewInvestmentRepository(database), accountService, transactionService, pricingService)
 	importConnectionService := app.NewImportConnectionService(db.NewImportConnectionRepository(database), accountService, cfg.SecretKey, app.NewTrading212Prober(nil, cfg.Trading212BaseURL))
