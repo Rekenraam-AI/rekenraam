@@ -27,13 +27,18 @@
   import { placePosition, sameDayNeighbor, type ReorderDirection } from './reorder';
   import type { TransactionFilters } from './transaction-filter-bar.svelte';
 
+  import type { TransactionWorkspaceActions } from './transaction-workspace.svelte';
+  import TransactionRowActions from './transaction-row-actions.svelte';
+
   let {
     categoryID,
     csrfToken,
+    actions,
     onRowClick
   }: {
     categoryID: number;
     csrfToken?: string;
+    actions: TransactionWorkspaceActions;
     onRowClick?: (tx: TransactionResponse) => void;
   } = $props();
 
@@ -196,13 +201,20 @@
   {/snippet}
 
   {#snippet reorderCell(tx: TransactionResponse)}
-    <div class="flex items-center justify-end">
-      <ReorderArrows
-        canMoveLater={!!neighbor(tx, 'later')}
-        canMoveEarlier={!!neighbor(tx, 'earlier')}
-        pending={reorder.pending}
-        onLater={() => move(tx, 'later')}
-        onEarlier={() => move(tx, 'earlier')}
+    <div class="flex items-center justify-end gap-2">
+      {#if reorder.active}
+        <ReorderArrows
+          canMoveLater={!!neighbor(tx, 'later')}
+          canMoveEarlier={!!neighbor(tx, 'earlier')}
+          pending={reorder.pending}
+          onLater={() => move(tx, 'later')}
+          onEarlier={() => move(tx, 'earlier')}
+        />
+      {/if}
+      <TransactionRowActions
+        transaction={tx}
+        onAction={actions.rowAction}
+        disabled={!csrfToken || actions.pending}
       />
     </div>
   {/snippet}
@@ -217,7 +229,7 @@
       { key: 'counterpart', header: m.category_tx_col_counterpart(), priority: 2, cell: counterpartCell },
       { key: 'status', header: m.category_tx_col_status(), priority: 3, width: '7rem', cell: statusCell },
       { key: 'flags', header: m.category_tx_col_flags(), priority: 3, width: '7rem', cell: flagsCell },
-      ...(reorder.active ? [{ key: 'reorder', header: '', priority: 1 as const, width: '6rem', align: 'right' as const, cell: reorderCell }] : [])
+      { key: 'actions', header: m.transactions_detail_actions(), priority: 1, width: '12rem', align: 'right', cell: reorderCell }
     ]}
     isLoading={query.isPending}
     isFetchingNextPage={query.isFetchingNextPage}

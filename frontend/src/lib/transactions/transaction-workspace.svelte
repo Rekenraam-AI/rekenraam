@@ -1,5 +1,6 @@
 <script lang="ts" module>
   import type { TransactionResponse } from '#lib/api/transactions.ts';
+  import type { TransactionRowActionHandler } from './row-action.ts';
 
   /** What a screen's list may ask the shared side panel to do. */
   export type TransactionWorkspaceActions = {
@@ -9,8 +10,8 @@
     showTransaction: (transactionID: number) => Promise<void>;
     edit: (transaction: TransactionResponse) => void;
     correct: (transaction: TransactionResponse) => void;
-    /** A row action changed the transaction: refresh every list and close its detail. */
-    changed: (transaction: TransactionResponse) => Promise<void>;
+    rowAction: TransactionRowActionHandler;
+    readonly pending: boolean;
   };
 
   /**
@@ -32,8 +33,9 @@
   import Panel from '#lib/components/panel.svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { authSessionQueryOptions } from '#lib/api/auth.ts';
-  import { accountRegisterQueryKey, getTransaction, restoreTransaction, transactionsQueryKey } from '#lib/api/transactions.ts';
+  import { accountRegisterQueryKey, approveTransaction, getTransaction, restoreTransaction, transactionsQueryKey } from '#lib/api/transactions.ts';
   import { forecastQueryKey } from '#lib/api/forecast.ts';
+  import type { TransactionRowAction } from './row-action.ts';
   import TransactionDetailPanel from './transaction-detail-panel.svelte';
   import TransactionEditor from './transaction-editor.svelte';
 
@@ -58,7 +60,7 @@
 
   type PanelState =
     | { type: 'none' }
-    | { type: 'detail'; transaction: TransactionResponse }
+    | { type: 'detail'; transaction: TransactionResponse; initialAction?: 'unvoid' }
     | { type: 'edit'; transaction: TransactionResponse }
     | { type: 'correct'; transaction: TransactionResponse }
     | { type: 'create' }
@@ -66,6 +68,7 @@
 
   let panel = $state<PanelState>({ type: 'none' });
   let loadingTransactionID = $state<number | undefined>(undefined);
+  let actionPending = $state(false);
   let loadError = $state<unknown>();
 
   const sessionQuery = createQuery(() => authSessionQueryOptions());
@@ -103,11 +106,38 @@
     showTransaction,
     edit: (transaction) => { panel = { type: 'edit', transaction }; },
     correct: (transaction) => { panel = { type: 'correct', transaction }; },
-    changed: async (transaction) => {
-      await invalidate();
-      if (panel.type === 'detail' && panel.transaction.id === transaction.id) panel = { type: 'none' };
-    }
+    rowAction: (action, transactionID) => { void handleRowAction(action, transactionID); },
+    get pending() { return actionPending; }
   };
+
+  // List summaries are enough for buttons. Fetch the complete transaction only
+  // after a user asks to edit/correct/view it; never fan out per register row.
+  async function handleRowAction(action: TransactionRowAction, transactionID: number) {
+    if (actionPending || !csrfToken) return;
+    actionPending = true;
+    loadingTransactionID = undefined;
+    loadError = undefined;
+    try {
+      if (action === 'approve') {
+        await approveTransaction(transactionID, csrfToken);
+        await invalidate();
+        if (panel.type === 'detail' && panel.transaction.id === transactionID) panel = { type: 'none' };
+      } else {
+        const transaction = await getTransaction(transactionID);
+        if ((action === 'edit' || action === 'correct' || action === 'unvoid') && transaction.transaction_kind === 'investment') {
+          panel = { type: 'detail', transaction };
+        } else if (action === 'edit' || action === 'correct') {
+          panel = { type: action, transaction };
+        } else {
+          panel = { type: 'detail', transaction, initialAction: action === 'unvoid' ? 'unvoid' : undefined };
+        }
+      }
+    } catch (error) {
+      loadError = error;
+    } finally {
+      actionPending = false;
+    }
+  }
 
   async function handleSaved(saved: TransactionResponse) {
     await invalidate();
@@ -154,7 +184,7 @@
 
 <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
   <div class="min-w-0">
-    {#if loadingTransactionID !== undefined && panel.type === 'none'}
+    {#if (loadingTransactionID !== undefined || actionPending) && panel.type === 'none'}
       <p role="status" class="mb-4 text-sm text-muted">{m.transactions_linked_loading()}</p>
     {:else if loadError}
       <div class="mb-4"><APIFormError error={loadError} /></div>
@@ -196,15 +226,18 @@
       <div class="relative lg:sticky lg:top-4">
         <Panel>
           {#if panel.type === 'detail'}
-            <TransactionDetailPanel
-              transaction={panel.transaction}
-              {csrfToken}
-              onClose={() => (panel = { type: 'none' })}
-              onEdit={actions.edit}
-              onCreateCorrection={actions.correct}
-              onSoftDeleted={handleSoftDeleted}
-              onRefresh={handleRefresh}
-            />
+            {#key panel}
+              <TransactionDetailPanel
+                initialAction={panel.initialAction}
+                transaction={panel.transaction}
+                {csrfToken}
+                onClose={() => (panel = { type: 'none' })}
+                onEdit={actions.edit}
+                onCreateCorrection={actions.correct}
+                onSoftDeleted={handleSoftDeleted}
+                onRefresh={handleRefresh}
+              />
+            {/key}
           {:else if panel.type === 'edit'}
             <TransactionEditor mode="edit" transaction={panel.transaction} {csrfToken} onSaved={handleSaved} onCancel={handleCancel} />
           {:else if panel.type === 'correct'}

@@ -113,10 +113,12 @@ below is execution order, not a chain of hard dependencies.
 1. R17 quote-provider registry and crypto, after R11
    [#116](https://github.com/sergeyfarin/rekenraam/issues/116) delivered its
    bounded operator surface via #200–#202 (2026-10-13).
-2. Daily-use parallel work: the shared transaction workspace
-   [#185](https://github.com/sergeyfarin/rekenraam/issues/185) (slices 1 and 2 delivered 2026-10-11: entry from account and
-   category screens, same-day reorder everywhere or in one account), then investment entry from holding accounts and
+2. Daily-use parallel work: investment entry from holding accounts and
    instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186).
+   The shared transaction workspace [#185](https://github.com/sergeyfarin/rekenraam/issues/185)
+   is delivered (2026-10-14): contextual entry, same-day reorder and row actions
+   on the journal, account and category screens. Approval preserves the journal
+   (#219); the independent guarded lifecycle-preview repair remains #220.
 
 **Delivered native SQLite and test-feedback improvement (2026-10-12):**
 [#195](https://github.com/sergeyfarin/rekenraam/issues/195) installs the bundled

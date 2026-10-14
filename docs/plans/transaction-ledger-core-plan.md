@@ -332,6 +332,25 @@ Corrections are separate transactions linked back to the original:
 Do not require the corrected transaction to be `voided`; corrective entries can
 adjust a posted reconciled transaction while preserving the original.
 
+### Shared transaction workspace (#185)
+
+The journal, account register and category transactions use one side-panel
+workspace and the same row actions: Edit, Create correction, Approve review and
+Unvoid as applicable to lifecycle status. Full transaction details are fetched
+on demand for register actions, rather than once per displayed posting. New
+entry keeps the screen's account/category defaults. Investment-linked rows use
+the named investment detail/correction workflows instead of the generic editor.
+
+Approving review is metadata-only: it clears `needs_review` in an appended
+version with the complete existing journal, posting-line identities, exact
+amounts, ordering, tags and reconciliation state. It does not promote a persisted
+system draft or change a balance/checkpoint. Repeating approval is a no-op.
+Unvoid uses the existing reason and explicit reconciliation-override flow;
+the lifecycle-specific impact-preview repair is tracked in
+[#220](https://github.com/sergeyfarin/rekenraam/issues/220), because the current
+update-spec preview cannot describe a lifecycle-only operation. The server
+continues to refuse a guarded change without override.
+
 ## Version Links
 
 `transaction_versions.supersedes_version_id` links one version to the previous

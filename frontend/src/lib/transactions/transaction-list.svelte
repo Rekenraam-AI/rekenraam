@@ -31,26 +31,22 @@
   import type { TransactionQueryFilters } from './transaction-url-filters';
   import type { Column } from './transaction-table-types';
 
+  import type { TransactionWorkspaceActions } from './transaction-workspace.svelte';
+
   let {
     csrfToken,
+    actions,
     initialFilters,
     onFiltersChange,
-    onRowClick,
-    onEdit,
-    onCreateCorrection,
-    onApprove,
-    onUnvoid
+    onRowClick
   }: {
     csrfToken?: string;
+    actions: TransactionWorkspaceActions;
     /** Seeds the bar from the URL, so a drill-down link lands pre-filtered. */
     initialFilters?: TransactionQueryFilters;
     /** Reports each change back so the route can keep the URL in step. */
     onFiltersChange?: (filters: TransactionQueryFilters) => void;
     onRowClick?: (tx: TransactionResponse) => void;
-    onEdit?: (tx: TransactionResponse) => void;
-    onCreateCorrection?: (tx: TransactionResponse) => void;
-    onApprove?: (tx: TransactionResponse) => void;
-    onUnvoid?: (tx: TransactionResponse) => void;
   } = $props();
 
   // Filters the bar cannot set — a drill-down's category and date basis — are
@@ -205,11 +201,8 @@
       {/if}
       <TransactionRowActions
         transaction={tx}
-        onEdit={onEdit}
-        onCreateCorrection={onCreateCorrection}
-        onApprove={onApprove}
-        onUnvoid={onUnvoid}
-        onView={onRowClick}
+        onAction={actions.rowAction}
+        disabled={!csrfToken || actions.pending}
       />
     </div>
   {/snippet}
@@ -223,7 +216,7 @@
       { key: 'amount', header: m.transactions_detail_amount(), priority: 1, align: 'right', width: '10rem', cell: amountCell },
       { key: 'account', header: m.transactions_detail_account(), priority: 2, cell: accountCell },
       { key: 'status', header: m.transactions_filter_status(), priority: 3, width: '7rem', cell: statusCell },
-      { key: 'actions', header: '', priority: 1, width: '12rem', align: 'right', cell: actionsCell }
+      { key: 'actions', header: m.transactions_detail_actions(), priority: 1, width: '12rem', align: 'right', cell: actionsCell }
     ]}
     isLoading={query.isPending}
     isFetchingNextPage={query.isFetchingNextPage}

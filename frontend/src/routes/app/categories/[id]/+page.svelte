@@ -36,6 +36,6 @@
     {/if}
   {/snippet}
   {#snippet list(actions, csrfToken)}
-    <CategoryTransactions {categoryID} {csrfToken} onRowClick={actions.showDetail} />
+    <CategoryTransactions {categoryID} {csrfToken} {actions} onRowClick={actions.showDetail} />
   {/snippet}
 </TransactionWorkspace>

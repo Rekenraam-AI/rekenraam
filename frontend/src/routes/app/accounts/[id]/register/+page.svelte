@@ -43,6 +43,6 @@
     {/if}
   {/snippet}
   {#snippet list(actions, csrfToken)}
-    <AccountRegister {accountID} {csrfToken} onRowClick={(entry) => actions.showTransaction(entry.transaction_id)} />
+    <AccountRegister {accountID} {csrfToken} {actions} onRowClick={(entry) => actions.showTransaction(entry.transaction_id)} />
   {/snippet}
 </TransactionWorkspace>

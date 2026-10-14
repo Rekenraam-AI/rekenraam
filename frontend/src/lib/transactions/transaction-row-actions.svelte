@@ -1,98 +1,53 @@
 <script lang="ts">
   import { m } from '#lib/paraglide/messages.js';
-  import type { TransactionResponse } from '#lib/api/transactions.ts';
+  import type { RowActionTransaction, TransactionRowActionHandler } from './row-action.ts';
 
   let {
     transaction,
-    onEdit,
-    onCreateCorrection,
-    onApprove,
-    onUnvoid,
-    onView
+    onAction,
+    disabled = false
   }: {
-    transaction: TransactionResponse;
-    onEdit?: (tx: TransactionResponse) => void;
-    onCreateCorrection?: (tx: TransactionResponse) => void;
-    onApprove?: (tx: TransactionResponse) => void;
-    onUnvoid?: (tx: TransactionResponse) => void;
-    onView?: (tx: TransactionResponse) => void;
+    transaction: RowActionTransaction;
+    onAction: TransactionRowActionHandler;
+    disabled?: boolean;
   } = $props();
 
-  const isPosted = $derived(transaction.status === 'posted');
+  const isPosted = $derived(transaction.status === 'posted' && transaction.transaction_kind !== 'investment');
   const isVoided = $derived(transaction.status === 'voided');
   const needsReview = $derived(transaction.needs_review);
 
   const btnClass =
-    'rounded-(--radius-control) px-2.5 py-1 text-xs font-medium text-muted ring-1 ring-border transition hover:bg-surface-strong hover:text-foreground focus:outline-none focus:ring-accent';
+    'rounded-(--radius-control) px-2.5 py-1 text-xs font-medium text-muted ring-1 ring-border transition hover:bg-surface-strong hover:text-foreground focus:outline-none focus:ring-accent disabled:cursor-not-allowed disabled:opacity-60';
 </script>
 
-<!--
-  Row actions are light, inline controls only. Tab moves focus into these buttons
-  when the row has focus (no nested interactives; these are siblings to the row's
-  stretched-link in context wrappers). Click events use stopPropagation so they
-  do not bubble to the row's onRowClick handler.
--->
-<div
-  class="flex items-center gap-1"
-  role="group"
-  aria-label="Row actions"
->
+<!-- The row retains its row role; each action handles its own click/key. -->
+<div class="flex flex-wrap items-center justify-end gap-2" role="group" aria-label={m.transactions_detail_actions()}>
   {#if isPosted}
-    {#if onEdit}
-      <button
-        type="button"
-        class={btnClass}
-        onclick={(e) => { e.stopPropagation(); onEdit?.(transaction); }}
-        aria-label={m.transactions_action_edit()}
-      >
-        {m.transactions_action_edit()}
-      </button>
-    {/if}
-
-    {#if onCreateCorrection}
-      <button
-        type="button"
-        class={btnClass}
-        onclick={(e) => { e.stopPropagation(); onCreateCorrection?.(transaction); }}
-        aria-label={m.transactions_action_correct()}
-      >
-        {m.transactions_action_correct()}
-      </button>
-    {/if}
+    <button type="button" {disabled} class={btnClass}
+      onclick={(e) => { e.stopPropagation(); onAction('edit', transaction.id); }}>
+      {m.transactions_action_edit()}
+    </button>
+    <button type="button" {disabled} class={btnClass}
+      onclick={(e) => { e.stopPropagation(); onAction('correct', transaction.id); }}>
+      {m.transactions_action_correct()}
+    </button>
   {/if}
-
   {#if isVoided}
-    {#if onView}
-      <button
-        type="button"
-        class={btnClass}
-        onclick={(e) => { e.stopPropagation(); onView?.(transaction); }}
-        aria-label={m.transactions_action_view()}
-      >
-        {m.transactions_action_view()}
-      </button>
-    {/if}
-
-    {#if onUnvoid}
-      <button
-        type="button"
-        class={btnClass}
-        onclick={(e) => { e.stopPropagation(); onUnvoid?.(transaction); }}
-        aria-label={m.transactions_action_unvoid()}
-      >
+    <button type="button" {disabled} class={btnClass}
+      onclick={(e) => { e.stopPropagation(); onAction('view', transaction.id); }}>
+      {m.transactions_action_view()}
+    </button>
+    {#if transaction.transaction_kind !== 'investment'}
+      <button type="button" {disabled} class={btnClass}
+        onclick={(e) => { e.stopPropagation(); onAction('unvoid', transaction.id); }}>
         {m.transactions_action_unvoid()}
       </button>
     {/if}
   {/if}
-
-  <!-- Approve is shown regardless of lock status when needs_review is set. -->
-  {#if needsReview && onApprove}
-    <button
-      type="button"
-      class="rounded-(--radius-control) px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-accent/30 transition hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-accent"
-      onclick={(e) => { e.stopPropagation(); onApprove?.(transaction); }}
-      aria-label={m.transactions_action_approve()}
-    >
+  {#if needsReview}
+    <button type="button" {disabled}
+      class={`${btnClass} text-accent ring-accent/30`}
+      onclick={(e) => { e.stopPropagation(); onAction('approve', transaction.id); }}>
       {m.transactions_action_approve()}
     </button>
   {/if}

@@ -45,13 +45,10 @@
   {#snippet list(actions, csrfToken)}
     <TransactionList
       {csrfToken}
+      {actions}
       {initialFilters}
       onFiltersChange={handleFiltersChange}
       onRowClick={actions.showDetail}
-      onEdit={actions.edit}
-      onCreateCorrection={actions.correct}
-      onApprove={actions.changed}
-      onUnvoid={actions.changed}
     />
   {/snippet}
 </TransactionWorkspace>

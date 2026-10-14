@@ -1,0 +1,231 @@
+import { readFileSync } from 'node:fs';
+import AxeBuilder from '@axe-core/playwright';
+import { expect, test, type Page } from '@playwright/test';
+import { apiJSON, csrfTokenFor } from './support/api';
+import { todayISO } from './support/dates';
+import { createCashAccount, readyForLedger } from './support/ledger';
+
+test.use({ viewport: { width: 390, height: 844 } });
+
+async function seed(page: Page) {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const suffix = Date.now();
+  const account = await createCashAccount(page, csrfToken, `Row actions ${suffix}`, currencyID);
+  const category = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/categories', csrfToken, {
+    name: `Row category ${suffix}`, category_type: 'expense'
+  });
+  const description = `Review coffee ${suffix}`;
+  const transaction = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/transactions', csrfToken, {
+    transaction_date: todayISO(), transaction_kind: 'ordinary', status: 'posted', needs_review: true, description,
+    journal_entries: [{ entry_date: todayISO(), entry_kind: 'ordinary', postings: [
+      { account_id: account.id, commodity_id: currencyID, quantity_value: '-450', quantity_scale: 2 },
+      { account_id: category.id, commodity_id: currencyID, quantity_value: '450', quantity_scale: 2 }
+    ] }]
+  });
+  const paths = {
+    journal: `/app/transactions?account_id=${account.id}`,
+    account: `/app/accounts/${account.id}/register`,
+    category: `/app/categories/${category.id}`
+  };
+  return { account, category, transaction, description, paths };
+}
+
+const row = (page: Page, description: string) => page.getByRole('row').filter({ hasText: description });
+const readTransaction = (page: Page, id: number) => apiJSON<{ status: string; needs_review: boolean }>(page, 'GET', `/api/v1/transactions/${id}`);
+
+for (const screen of ['journal', 'account', 'category'] as const) {
+  test(`${screen} row actions approve, edit, correct and unvoid the transaction on mobile`, async ({ page }) => {
+    const s = await seed(page);
+    await page.goto(s.paths[screen]);
+    const entry = row(page, s.description);
+    await entry.getByRole('button', { name: 'Approve', exact: true }).click();
+    await expect.poll(async () => (await readTransaction(page, s.transaction.id)).needs_review).toBe(false);
+    await expect(entry.getByRole('button', { name: 'Approve', exact: true })).toHaveCount(0);
+    // Approving must not also open the row's detail panel.
+    await expect(page.getByRole('complementary', { name: 'Actions' })).toHaveCount(0);
+
+    await entry.getByRole('button', { name: 'Edit', exact: true }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { name: 'Edit transaction', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).last().click();
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+
+    await entry.getByRole('button', { name: 'Create correction', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Create correction', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).last().click();
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+
+    await apiJSON(page, 'POST', `/api/v1/transactions/${s.transaction.id}/void`, await csrfTokenFor(page), { change_reason: 'Review duplicate' });
+    await page.reload();
+    // The register API defaults to posted entries; select voided explicitly.
+    if (screen === 'account') await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('voided');
+    await entry.getByRole('button', { name: 'Unvoid', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    expect((await readTransaction(page, s.transaction.id)).status).toBe('voided');
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await entry.getByRole('button', { name: 'Unvoid', exact: true }).click();
+    await dialog.getByRole('textbox').fill('Restore valid entry');
+    await dialog.getByRole('button', { name: 'Unvoid', exact: true }).click();
+    await expect.poll(async () => (await readTransaction(page, s.transaction.id)).status).toBe('posted');
+    if (screen === 'account') await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('posted');
+    await expect(entry.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
+    await expect(entry.getByRole('button', { name: 'Unvoid', exact: true })).toHaveCount(0);
+  });
+}
+
+for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
+  test(`row actions use ${locale} labels and keyboard controls on all three screens at 390px`, async ({ page }) => {
+    const s = await seed(page);
+    const m = JSON.parse(readFileSync(new URL(`../../frontend/messages/settings/${locale}.json`, import.meta.url), 'utf8'));
+    await page.evaluate(value => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
+    for (const path of Object.values(s.paths)) {
+      await page.goto(path);
+      const actions = row(page, s.description).getByRole('group', { name: m.transactions_detail_actions, exact: true });
+      await expect(actions.getByRole('button', { name: m.transactions_action_approve, exact: true })).toBeVisible();
+      await expect(actions.getByRole('button', { name: m.transactions_action_correct, exact: true })).toBeVisible();
+      const edit = actions.getByRole('button', { name: m.transactions_action_edit, exact: true });
+      await edit.focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('heading', { name: m.transactions_form_edit_title, exact: true })).toBeVisible();
+      expect((await new AxeBuilder({ page }).include('main').withRules(['button-name', 'aria-allowed-attr', 'nested-interactive']).analyze()).violations).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    }
+  });
+}
+
+test('row actions show failures, disable repeated commands while pending and allow retry', async ({ page }) => {
+  const s = await seed(page);
+  await page.goto(s.paths.account);
+  const entry = row(page, s.description);
+  let finishRequest!: () => void;
+  const pending = new Promise<void>(resolve => { finishRequest = resolve; });
+  await page.route(`**/api/v1/transactions/${s.transaction.id}/approve`, async route => {
+    await pending;
+    await route.fulfill({ status: 500, json: { error: { code: 'INTERNAL_ERROR', message: 'failure' } } });
+  });
+  await entry.getByRole('button', { name: 'Approve', exact: true }).click();
+  await expect(entry.getByRole('button', { name: 'Approve', exact: true })).toBeDisabled();
+  await expect(entry.getByRole('button', { name: 'Edit', exact: true })).toBeDisabled();
+  finishRequest();
+  await expect(page.getByRole('alert')).toBeVisible();
+  expect((await readTransaction(page, s.transaction.id)).needs_review).toBe(true);
+  await page.unroute(`**/api/v1/transactions/${s.transaction.id}/approve`);
+  await entry.getByRole('button', { name: 'Approve', exact: true }).click();
+  await expect(entry.getByRole('button', { name: 'Approve', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+
+  await page.route(`**/api/v1/transactions/${s.transaction.id}`, route => route.fulfill({ status: 500, json: { error: { code: 'INTERNAL_ERROR', message: 'failure' } } }));
+  await entry.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Edit transaction', exact: true })).toHaveCount(0);
+  await page.unroute(`**/api/v1/transactions/${s.transaction.id}`);
+  await entry.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Edit transaction', exact: true })).toBeVisible();
+});
+
+test('unvoid asks before retrying a reconciliation refusal with override', async ({ page }) => {
+  const s = await seed(page);
+  await apiJSON(page, 'POST', `/api/v1/transactions/${s.transaction.id}/void`, await csrfTokenFor(page), { change_reason: 'Review duplicate' });
+  const overrides: boolean[] = [];
+  await page.route(`**/api/v1/transactions/${s.transaction.id}/unvoid`, async route => {
+    const override = route.request().postDataJSON().reconciliation_override === true;
+    overrides.push(override);
+    if (override) await route.continue();
+    else await route.fulfill({ status: 409, json: { error: { code: 'CONFLICT', message: 'reconciliation override is required' } } });
+  });
+  // Isolate the existing lifecycle dialog's override negotiation. The real
+  // update-preview request is invalid for lifecycle actions (tracked in #220).
+  await page.route(`**/api/v1/transactions/${s.transaction.id}/reconciliation-impact`, route => route.fulfill({
+    json: { affected_checkpoints: [{ checkpoint_id: 1, account_id: s.account.id, account_label: s.account.name,
+      commodity_id: 1, commodity_code: 'USD', statement_date: todayISO(), statement_account_sequence: 1, entry_date: todayISO() }] }
+  }));
+  await page.goto(s.paths.category);
+  const unvoid = row(page, s.description).getByRole('button', { name: 'Unvoid', exact: true });
+  await unvoid.click();
+  await page.getByRole('dialog').getByRole('textbox').fill('Restore valid entry');
+  await page.getByRole('dialog').getByRole('button', { name: 'Unvoid', exact: true }).click();
+  const warning = page.getByRole('alertdialog');
+  await expect(warning).toContainText(s.account.name);
+  expect((await readTransaction(page, s.transaction.id)).status).toBe('voided');
+  await warning.getByRole('button', { name: 'Go back', exact: true }).click();
+  expect(overrides).toEqual([false]);
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await unvoid.click();
+  await page.getByRole('dialog').getByRole('textbox').fill('Restore valid entry');
+  await page.getByRole('dialog').getByRole('button', { name: 'Unvoid', exact: true }).click();
+  await warning.getByRole('button', { name: 'Proceed and invalidate', exact: true }).click();
+  await expect.poll(async () => (await readTransaction(page, s.transaction.id)).status).toBe('posted');
+  expect(overrides).toEqual([false, false, true]);
+});
+
+for (const screen of ['journal', 'account', 'category'] as const) {
+  test(`${screen} retains loading, error, retry and empty list states`, async ({ page }) => {
+    const s = await seed(page);
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    let state: 'loading' | 'empty' | 'success' = 'loading';
+    const listURL = screen === 'account'
+      ? `**/api/v1/accounts/${s.account.id}/register*` : '**/api/v1/transactions?*';
+    await page.route(listURL, async route => {
+      if (state === 'success') return route.continue();
+      if (state === 'loading') {
+        await pending;
+        return route.fulfill({ status: 400, json: { error: { code: 'VALIDATION_FAILED', message: 'failure' } } });
+      }
+      return route.fulfill({ json: screen === 'account' ? { entries: [], next_cursor: null } : { transactions: [], next_cursor: null } });
+    });
+    await page.goto(s.paths[screen]);
+    await expect(page.locator('[data-transaction-table] .animate-pulse').first()).toBeVisible();
+    release();
+    await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
+    state = 'empty';
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await expect(page.getByText('No transactions', { exact: true })).toBeVisible();
+    state = 'success';
+    await page.reload();
+    await expect(row(page, s.description).getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
+  });
+}
+
+test('investment rows offer their detail instead of the generic editor', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const suffix = Date.now();
+  const cash = await createCashAccount(page, csrfToken, `Action cash ${suffix}`, currencyID);
+  const instrument = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
+    commodity_code: `RA${suffix}`, instrument_type: 'stock', display_name: `Action stock ${suffix}`, symbol: `RA${suffix}`,
+    quote_commodity_id: currencyID, trading_commodity_id: currencyID, quantity_scale: 0, price_scale: 2, effective_from: todayISO()
+  });
+  const holding = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/holding-accounts', csrfToken, {
+    instrument_id: instrument.id, name: `Action holding ${suffix}`, opened_on: todayISO(), effective_from: todayISO()
+  });
+  await apiJSON(page, 'POST', '/api/v1/investments/buy', csrfToken, {
+    transaction_date: todayISO(), commodity_id: instrument.commodity_id, holding_account_id: holding.id,
+    cash_account_id: cash.id, quantity_value: '1', quantity_scale: 0, cash_amount_value: '1000',
+    cash_amount_scale: 2, cash_commodity_id: currencyID
+  });
+  for (const path of [`/app/accounts/${holding.id}/register`, `/app/transactions?account_id=${holding.id}`]) {
+    await page.goto(path);
+    const entry = page.locator('[data-table-row]').first();
+    await expect(entry).toBeVisible();
+    await expect(entry.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
+    await expect(entry.getByRole('button', { name: 'Create correction', exact: true })).toHaveCount(0);
+    await entry.click();
+    await expect(page.getByText('Investment postings use named workflows.', { exact: false })).toBeVisible();
+  }
+});
+
+test('a desktop row can reopen unvoid after cancelling while detail stays open', async ({ page }) => {
+  const s = await seed(page);
+  await apiJSON(page, 'POST', `/api/v1/transactions/${s.transaction.id}/void`, await csrfTokenFor(page), { change_reason: 'Review duplicate' });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(s.paths.account);
+  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('voided');
+  const unvoid = row(page, s.description).getByRole('button', { name: 'Unvoid', exact: true });
+  await unvoid.click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await unvoid.click();
+  await expect(page.getByRole('dialog', { name: 'Unvoid transaction' })).toBeVisible();
+});

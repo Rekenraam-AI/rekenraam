@@ -1,6 +1,7 @@
 <script lang="ts">
   import { transactionTitle } from '#lib/transactions/transaction-title.ts';
   import { systemLabelText } from '#lib/transactions/system-label.ts';
+  import { onMount } from 'svelte';
   import X from '@lucide/svelte/icons/x';
   import AlertTriangle from '@lucide/svelte/icons/triangle-alert';
   import { m } from '#lib/paraglide/messages.js';
@@ -33,6 +34,7 @@
   // ── Props ─────────────────────────────────────────────────────────
   let {
     transaction,
+    initialAction,
     csrfToken,
     onClose,
     onEdit,
@@ -41,6 +43,7 @@
     onRefresh
   }: {
     transaction: TransactionResponse;
+    initialAction?: 'unvoid';
     csrfToken?: string;
     onClose: () => void;
     onEdit: (tx: TransactionResponse) => void;
@@ -96,6 +99,10 @@
     reasonInput = '';
     actionError = undefined;
   }
+
+  onMount(() => {
+    if (initialAction === 'unvoid' && isVoided && !isInvestment) openModal('unvoid');
+  });
 
   function closeModal() {
     activeModal = null;

@@ -26,14 +26,19 @@
   import { ReorderMode } from './reorder-mode.svelte.ts';
   import { placePosition, sameDayNeighbor, type ReorderDirection } from './reorder';
 
+  import type { TransactionWorkspaceActions } from './transaction-workspace.svelte';
+  import TransactionRowActions from './transaction-row-actions.svelte';
+
   let {
     accountID,
     csrfToken,
+    actions,
     onRowClick,
     offerOnlyThisAccount = true
   }: {
     accountID: number;
     csrfToken?: string;
+    actions: TransactionWorkspaceActions;
     onRowClick?: (entry: AccountRegisterEntryResponse) => void;
     /** A bank or card statement can list a day in its own order (#185). */
     offerOnlyThisAccount?: boolean;
@@ -185,13 +190,20 @@
   {/snippet}
 
   {#snippet actionsCell(entry: AccountRegisterEntryResponse)}
-    <div class="flex items-center justify-end">
-      <ReorderArrows
-        canMoveLater={!!neighbor(entry, 'later')}
-        canMoveEarlier={!!neighbor(entry, 'earlier')}
-        pending={reorder.pending}
-        onLater={() => move(entry, 'later')}
-        onEarlier={() => move(entry, 'earlier')}
+    <div class="flex items-center justify-end gap-2">
+      {#if reorder.active}
+        <ReorderArrows
+          canMoveLater={!!neighbor(entry, 'later')}
+          canMoveEarlier={!!neighbor(entry, 'earlier')}
+          pending={reorder.pending}
+          onLater={() => move(entry, 'later')}
+          onEarlier={() => move(entry, 'earlier')}
+        />
+      {/if}
+      <TransactionRowActions
+        transaction={{ id: entry.transaction_id, status: entry.status, needs_review: entry.needs_review, transaction_kind: entry.transaction_kind }}
+        onAction={actions.rowAction}
+        disabled={!csrfToken || actions.pending}
       />
     </div>
   {/snippet}
@@ -206,7 +218,7 @@
       { key: 'balance', header: m.register_col_balance(), priority: 1, align: 'right', width: '10rem', cell: balanceCell },
       { key: 'reconciliation', header: m.register_col_reconciliation(), priority: 2, width: '5rem', align: 'right', cell: reconciliationCell },
       { key: 'memo', header: m.register_col_memo(), priority: 3, cell: memoCell },
-      ...(reorder.active ? [{ key: 'actions', header: '', priority: 1 as const, width: '6rem', align: 'right' as const, cell: actionsCell }] : [])
+      { key: 'actions', header: m.transactions_detail_actions(), priority: 1, width: '12rem', align: 'right', cell: actionsCell }
     ]}
     isLoading={query.isPending}
     isFetchingNextPage={query.isFetchingNextPage}
