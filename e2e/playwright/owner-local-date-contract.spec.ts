@@ -2,6 +2,13 @@ import { expect, test } from '@playwright/test';
 import { readyForLedger, ensureCurrency } from './support/ledger';
 import { apiJSON } from './support/api';
 
+// Handlers that read a fetched response can still be running when the page
+// closes (a refetch after the last assertion); without this the test fails
+// with "Response has been disposed" (#236).
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+});
+
 test.use({ timezoneId: 'Pacific/Honolulu', viewport: { width: 390, height: 844 } });
 
 test('[acceptance] server year controls investment entry, gains and unchosen discovery dates', async ({ page }) => {

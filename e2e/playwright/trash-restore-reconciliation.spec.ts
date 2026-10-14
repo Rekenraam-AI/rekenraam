@@ -3,6 +3,13 @@ import { apiJSON } from './support/api';
 import { createCashAccount, readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
 
+// Handlers that read a fetched response can still be running when the page
+// closes (a refetch after the last assertion); without this the test fails
+// with "Response has been disposed" (#236).
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+});
+
 /**
  * #225: restoring a deleted transaction into a reconciled period asked for an
  * override without naming a single checkpoint. The trash dialog now lists

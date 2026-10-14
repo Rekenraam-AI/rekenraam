@@ -4,6 +4,13 @@ import { daysFromTodayISO, todayISO } from './support/dates';
 import { createCashAccount, ensureCurrency, readyForLedger } from './support/ledger';
 import { expectNoAccessibilityViolations } from './support/a11y';
 
+// Handlers that read a fetched response can still be running when the page
+// closes (a refetch after the last assertion); without this the test fails
+// with "Response has been disposed" (#236).
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+});
+
 test('[acceptance] forecasts recorded and recurring movements without posting', async ({ page }) => {
   const { csrfToken, currencyID } = await readyForLedger(page);
   const suffix = Date.now();
