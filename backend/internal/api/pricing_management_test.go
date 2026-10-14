@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -178,4 +179,39 @@ func TestPriceImpactStaleHTTPAndOverflowLeaveEvidenceUnchanged(t *testing.T) {
 	input = manualPricingInput(f)
 	input.BaseCommodityID = 999999
 	doPricingRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/pricing/manual", input, http.StatusBadRequest)
+}
+
+// A derived price must name sources the void cascade can follow (#104): a leg
+// pointing at no observation is a validation error, and nothing is written.
+func TestCreateDerivedPriceRejectsALegNamingNoObservation(t *testing.T) {
+	t.Parallel()
+	handler, database := newSetupTestHandler(t)
+	f := bootstrapPricingAPITest(t, handler)
+	source := doPricingRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/pricing/prices", priceObservationRequest{
+		BaseCommodityID: f.eurCommodity, QuoteCommodityID: f.usdCommodity, PriceValue: 100, PriceScale: 2,
+		ValuationDate: "2026-06-12", IsManual: true, Derivation: json.RawMessage(`{}`), SeriesMetadata: json.RawMessage(`{}`), Metadata: json.RawMessage(`{}`),
+	}, http.StatusCreated)
+	var created priceObservationResponse
+	require.NoError(t, json.Unmarshal(source.Body.Bytes(), &created))
+	var before int
+	require.NoError(t, database.QueryRow(`SELECT count(*) FROM price_observations`).Scan(&before))
+
+	derived := func(legID int64) priceObservationRequest {
+		return priceObservationRequest{
+			BaseCommodityID: f.eurCommodity, QuoteCommodityID: f.usdCommodity, PriceValue: 101, PriceScale: 2,
+			ValuationDate: "2026-06-13", IsDerived: true,
+			Derivation:     json.RawMessage(fmt.Sprintf(`{"legs":[{"observation_id":%d}]}`, legID)),
+			SeriesMetadata: json.RawMessage(`{}`), Metadata: json.RawMessage(`{}`),
+		}
+	}
+	res := doPricingRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/pricing/prices", derived(created.ID+1000), http.StatusBadRequest)
+	assert.Contains(t, res.Body.String(), "VALIDATION_FAILED")
+	var after int
+	require.NoError(t, database.QueryRow(`SELECT count(*) FROM price_observations`).Scan(&after))
+	assert.Equal(t, before, after)
+
+	doPricingRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/pricing/prices", derived(created.ID), http.StatusCreated)
+	var links int
+	require.NoError(t, database.QueryRow(`SELECT count(*) FROM price_observation_dependencies WHERE source_observation_id = ?`, created.ID).Scan(&links))
+	assert.Equal(t, 1, links)
 }

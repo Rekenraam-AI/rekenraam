@@ -173,6 +173,12 @@ When a feature introduces a durable new rule, update one of those documents in t
   observation, or publication timestamps. Store the leg metadata in
   `derivation_json` and surface a user-visible warning anywhere derived FX
   rates are displayed.
+- A derived observation's sources are also indexed in
+  `price_observation_dependencies`, written in the transaction that inserts it
+  (#104). The void cascade and the `price_dependency_integrity` self-check
+  follow that index, never a scan of `derivation_json`; a derived observation
+  whose legs name an observation that does not exist is refused. Links are
+  immutable and always point at an older observation, so the graph is acyclic.
 - Correct a price by superseding or voiding the observation, not by overwriting
   the old value.
 - External market data is untrusted input by default. Provider dividends,

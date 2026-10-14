@@ -293,6 +293,9 @@ func (s *PricingService) CreatePrice(ctx context.Context, input PriceObservation
 		CreatedAt:     now.Format(time.RFC3339),
 		ChangeReason:  changeReason,
 	})
+	if errors.Is(err, db.ErrPriceDerivationSourceNotFound) {
+		return PriceObservation{}, ValidationError{Message: "derivation legs must name existing price observations"}
+	}
 	if err != nil {
 		return PriceObservation{}, fmt.Errorf("persist price observation: %w", err)
 	}

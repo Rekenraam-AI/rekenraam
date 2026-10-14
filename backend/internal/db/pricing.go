@@ -20,6 +20,11 @@ var ErrPriceObservationAlreadyVoided = errors.New("price observation is already 
 // a worse state than the void never having happened.
 var ErrPriceVoidCascadeTooDeep = errors.New("price void cascade exceeds the maximum derivation depth")
 
+// ErrPriceDerivationSourceNotFound is returned when a derived observation's
+// legs name an observation that does not exist in its book. Its dependency
+// could not be indexed, so a void of the real source would never reach it.
+var ErrPriceDerivationSourceNotFound = errors.New("price derivation names an observation that does not exist")
+
 type PricingRepository struct {
 	database *sql.DB
 	*BackgroundWorkRepository
@@ -545,11 +550,53 @@ func insertPriceObservationTx(ctx context.Context, tx *sql.Tx, params CreatePric
 	if err != nil {
 		return PriceObservationRecord{}, fmt.Errorf("read price observation id: %w", err)
 	}
+	if params.Spec.IsDerived {
+		if err := insertPriceDependenciesTx(ctx, tx, params.BookID, observationID, params.Spec.DerivationJSON); err != nil {
+			return PriceObservationRecord{}, err
+		}
+	}
 	record, err := priceObservationByIDTx(ctx, tx, params.BookID, observationID)
 	if err != nil {
 		return PriceObservationRecord{}, err
 	}
 	return record, nil
+}
+
+// derivationLegSourcesSQL lists the source observation ids a derivation's legs
+// name: an integer observation_id in each object of a $.legs array — the shape
+// fxDerivationJSON writes, and the one migration 0005 backfilled from. ?1 is
+// the derivation JSON. Nested CASE (evaluated lazily, unlike AND) keeps JSON
+// functions off text that is not valid JSON and values that are not objects.
+const derivationLegSourcesSQL = `
+	SELECT DISTINCT json_extract(leg.value, '$.observation_id') AS source_id
+	FROM json_each(CASE WHEN CASE WHEN json_valid(?1) THEN json_type(?1, '$.legs') END = 'array' THEN ?1 ELSE '{"legs":[]}' END, '$.legs') leg
+	WHERE CASE WHEN leg.type = 'object' THEN json_type(leg.value, '$.observation_id') END = 'integer'`
+
+// insertPriceDependenciesTx indexes which observations a derived observation
+// was computed from, in the transaction that inserts it (#104). Every named
+// source must already exist in the book; otherwise the link cannot be indexed
+// and the insert is refused rather than leaving an unfollowable dependency.
+func insertPriceDependenciesTx(ctx context.Context, tx *sql.Tx, bookID, observationID int64, derivationJSON string) error {
+	var missing int64
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM (`+derivationLegSourcesSQL+`) legs
+		WHERE NOT EXISTS (
+			SELECT 1 FROM price_observations src
+			WHERE src.id = legs.source_id AND src.book_id = ?2 AND src.id < ?3
+		)
+	`, derivationJSON, bookID, observationID).Scan(&missing); err != nil {
+		return fmt.Errorf("check price derivation sources: %w", err)
+	}
+	if missing > 0 {
+		return ErrPriceDerivationSourceNotFound
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO price_observation_dependencies (book_id, observation_id, source_observation_id)
+		SELECT ?2, ?3, legs.source_id FROM (`+derivationLegSourcesSQL+`) legs
+	`, derivationJSON, bookID, observationID); err != nil {
+		return fmt.Errorf("index price derivation sources: %w", err)
+	}
+	return nil
 }
 
 type VoidPriceObservationParams struct {
@@ -672,23 +719,17 @@ func cascadeVoidReason(reason string, sourceObservationID int64) string {
 	return fmt.Sprintf("derived from voided observation %d: %s", sourceObservationID, reason)
 }
 
-// activeDerivedObservationIDsTx finds not-yet-voided observations whose
-// derivation metadata names observationID as one of its legs. The leg shape is
-// written by fxDerivationJSON in the app layer.
+// activeDerivedObservationIDsTx finds not-yet-voided observations derived
+// directly from observationID, through the dependency index (#104).
 func activeDerivedObservationIDsTx(ctx context.Context, tx *sql.Tx, bookID int64, observationID int64) ([]int64, error) {
 	rows, err := tx.QueryContext(ctx, `
-		SELECT id
-		FROM price_observations
-		WHERE book_id = ?
-			AND voided_at IS NULL
-			AND is_derived = 1
-			AND json_valid(derivation_json)
-			AND EXISTS (
-				SELECT 1
-				FROM json_each(json_extract(derivation_json, '$.legs'))
-				WHERE json_extract(value, '$.observation_id') = ?
-			)
-		ORDER BY id
+		SELECT dependency.observation_id
+		FROM price_observation_dependencies dependency
+		JOIN price_observations derived ON derived.id = dependency.observation_id
+		WHERE dependency.book_id = ?
+			AND dependency.source_observation_id = ?
+			AND derived.voided_at IS NULL
+		ORDER BY dependency.observation_id
 	`, bookID, observationID)
 	if err != nil {
 		return nil, fmt.Errorf("list derived price observations: %w", err)

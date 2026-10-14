@@ -26,6 +26,7 @@ SelfCheckResult:
         - account_version_coverage
         - investment_foundation
         - investment_replay_equivalence
+        - price_dependency_integrity
         - sqlite_integrity
         - attachments
     status:

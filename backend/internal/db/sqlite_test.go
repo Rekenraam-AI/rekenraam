@@ -273,6 +273,10 @@ func TestMigrateSeededBaselineMatchesFreshSchema(t *testing.T) {
 	assert.Equal(t, "0", after["count:import_source_revisions"])
 	assert.Equal(t, "0", after["count:investment_basis_resolution_provenance"])
 	delete(after, "count:investment_basis_resolution_provenance")
+	// The seed has no derived observations, so there is nothing to backfill;
+	// TestPriceDependencyMigrationBackfillsDerivationLegs covers one that does.
+	assert.Equal(t, "0", after["count:price_observation_dependencies"])
+	delete(after, "count:price_observation_dependencies")
 	delete(before, "count:goose_db_version")
 	delete(after, "count:goose_db_version")
 
@@ -1247,7 +1251,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(4), version, "the head keeps one posting per line per version")
+	assert.Equal(t, int64(5), version, "the head indexes derived-price dependencies")
 
 	ctx := context.Background()
 	database, err := Open(ctx, "file:"+filepath.Join(t.TempDir(), "schema.sqlite"))
@@ -1276,11 +1280,16 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 		objectCounts[kind]++
 	}
 	assert.Equal(t, map[string]int{
-		"index":   108,
-		"table":   111,
-		"trigger": 145,
+		"index":   109,
+		"table":   112,
+		"trigger": 148,
 		"view":    15,
 	}, objectCounts, "the migrated head must retain every schema object")
+	assert.Equal(t, "table", objects["price_observation_dependencies"])
+	assert.Equal(t, "index", objects["price_observation_dependencies_source_idx"])
+	assert.Equal(t, "trigger", objects["price_observation_dependencies_valid"])
+	assert.Equal(t, "trigger", objects["price_observation_dependencies_no_update"])
+	assert.Equal(t, "trigger", objects["price_observation_dependencies_no_delete"])
 	assert.Equal(t, "index", objects["posting_versions_line_once_per_version_idx"])
 	assert.Equal(t, "table", objects["investment_capital_return_effects"])
 	assert.Equal(t, "trigger", objects["investment_capital_return_facts_valid"])

@@ -38,6 +38,7 @@ const (
 	CheckAccountVersionCoverage = "account_version_coverage"
 	CheckInvestmentFoundation   = "investment_foundation"
 	CheckInvestmentReplay       = "investment_replay_equivalence"
+	CheckPriceDependencies      = "price_dependency_integrity"
 	CheckSQLiteIntegrity        = "sqlite_integrity"
 	CheckAttachments            = "attachments"
 )
@@ -136,6 +137,10 @@ var checkNarratives = map[string]checkNarrative{
 	CheckInvestmentReplay: {
 		explanation: "Commands replay only the investment positions they affect. This check replays every long and short position from its effective trades, transfers, splits and elections in a rolled-back simulation and compares lot balances, each disposal's allocations, split effects, carried transfer basis and the method lock with what is stored, exactly and per cost currency. A stored result that history no longer produces means a command skipped a replay it needed.",
 		nextStep:    "Note the named lots, disposal decisions or operations and keep a backup. Do not edit the projection by hand: re-entering a correction through the app replays the position, and a refused replay names the operation history no longer supports.",
+	},
+	CheckPriceDependencies: {
+		explanation: "A derived price records which observations it was computed from twice: readably in its derivation, and as indexed links that voiding follows. The two must agree, and a derived price still in use must not depend on a voided observation.",
+		nextStep:    "Void the named derived observations: a voided source means their value came from a retired number. A disagreement between derivation and links means rows were written outside the app; keep a backup before anything else.",
 	},
 	CheckSQLiteIntegrity: {
 		explanation: "The database file itself must pass SQLite's integrity_check and foreign_key_check.",
@@ -312,6 +317,11 @@ func (s *SelfCheckService) executeChecks(ctx context.Context) ([]SelfCheckResult
 		return nil, err
 	}
 
+	prices, err := s.priceDependencyCheck(ctx, snapshot)
+	if err != nil {
+		return nil, err
+	}
+
 	// Replay runs in short write transactions of its own; release the read
 	// snapshot first so it never holds a connection the replay waits on.
 	_ = snapshot.Rollback()
@@ -325,7 +335,7 @@ func (s *SelfCheckService) executeChecks(ctx context.Context) ([]SelfCheckResult
 		return nil, err
 	}
 
-	results := append(balances, structural, lots, positions, checkpoints, coverage, investmentFoundation, replay, integrity, s.attachmentsCheck())
+	results := append(balances, structural, lots, positions, checkpoints, coverage, investmentFoundation, replay, prices, integrity, s.attachmentsCheck())
 	for index := range results {
 		narrative := checkNarratives[results[index].CheckID]
 		results[index].Explanation = narrative.explanation
@@ -1328,6 +1338,82 @@ func (s *SelfCheckService) versionIntegrityCheck(ctx context.Context, snapshot *
 		summaries = append(summaries, fmt.Sprintf("%d %s", anomaly.Count, check.label))
 	}
 
+	if result.Status == SelfCheckFailed {
+		if len(result.Sample) > db.SelfCheckSampleLimit {
+			result.Sample = result.Sample[:db.SelfCheckSampleLimit]
+		}
+		result.Summary = joinSummaries(summaries)
+	}
+	return result, nil
+}
+
+// priceDependencyCheck keeps the derived-price index honest (#104). The void
+// cascade follows price_observation_dependencies, not derivation_json, so a
+// link the derivation names but the index lacks is a void that silently stops
+// short; an active derived price over a voided source is that miss already
+// happened.
+func (s *SelfCheckService) priceDependencyCheck(ctx context.Context, snapshot *sql.Tx) (SelfCheckResult, error) {
+	result := SelfCheckResult{CheckID: CheckPriceDependencies, Status: SelfCheckPassed,
+		Summary: "every derived price's links match its derivation, and none in use depends on a voided observation"}
+	checks := []struct {
+		label string
+		query string
+	}{
+		{
+			label: "derived prices in use that depend on a voided observation",
+			query: `
+				SELECT DISTINCT dependency.observation_id
+				FROM price_observation_dependencies dependency
+				JOIN price_observations derived ON derived.id = dependency.observation_id
+				JOIN price_observations source ON source.id = dependency.source_observation_id
+				WHERE dependency.book_id = ?1
+					AND derived.voided_at IS NULL AND source.voided_at IS NOT NULL
+				ORDER BY dependency.observation_id`,
+		},
+		{
+			// The same leg rule the write path and migration 0005 index by.
+			label: "derived prices whose links disagree with their derivation",
+			query: `
+				WITH derived AS MATERIALIZED (
+					SELECT id, derivation_json FROM price_observations
+					WHERE book_id = ?1 AND is_derived = 1
+						AND CASE WHEN json_valid(derivation_json) THEN json_type(derivation_json, '$.legs') END = 'array'
+				), named AS MATERIALIZED (
+					SELECT DISTINCT d.id AS observation_id, json_extract(leg.value, '$.observation_id') AS source_id
+					FROM derived d
+					JOIN json_each(d.derivation_json, '$.legs') leg
+					WHERE CASE WHEN leg.type = 'object' THEN json_type(leg.value, '$.observation_id') END = 'integer'
+				)
+				SELECT named.observation_id FROM named
+				WHERE NOT EXISTS (
+					SELECT 1 FROM price_observation_dependencies dependency
+					WHERE dependency.observation_id = named.observation_id
+						AND dependency.source_observation_id = named.source_id
+				)
+				UNION
+				SELECT dependency.observation_id FROM price_observation_dependencies dependency
+				WHERE dependency.book_id = ?1 AND NOT EXISTS (
+					SELECT 1 FROM named
+					WHERE named.observation_id = dependency.observation_id
+						AND named.source_id = dependency.source_observation_id
+				)
+				ORDER BY 1`,
+		},
+	}
+	var summaries []string
+	for _, check := range checks {
+		anomaly, err := s.repository.CountStructuralAnomaly(ctx, snapshot, check.query, BookID)
+		if err != nil {
+			return SelfCheckResult{}, err
+		}
+		if anomaly.Count == 0 {
+			continue
+		}
+		result.Status = SelfCheckFailed
+		result.FindingCount += anomaly.Count
+		result.Sample = append(result.Sample, anomaly.Sample...)
+		summaries = append(summaries, fmt.Sprintf("%d %s", anomaly.Count, check.label))
+	}
 	if result.Status == SelfCheckFailed {
 		if len(result.Sample) > db.SelfCheckSampleLimit {
 			result.Sample = result.Sample[:db.SelfCheckSampleLimit]

@@ -175,16 +175,23 @@ func TestVoidPriceObservationRefusesAChainBeyondTheDepthLimit(t *testing.T) {
 	assert.Equal(t, 0, fixture.countAuditEvents(t), "the audit event must roll back with the void")
 }
 
-// A cycle in the derivation metadata terminates on the visited set rather than
-// on the depth bound, so it voids cleanly instead of being refused.
-func TestVoidPriceObservationCascadesThroughACycleWithoutHittingTheDepthLimit(t *testing.T) {
+// The dependency index cannot hold a cycle: a source is always older than what
+// is derived from it (#104). Rewriting derivation_json in place does not change
+// what the cascade follows either — the index written at insert is the record.
+func TestPriceDependencyIndexCannotFormACycle(t *testing.T) {
 	t.Parallel()
 	fixture := newVoidCascadeFixture(t)
 	root := fixture.createObservation(t, 1)
 	first := fixture.createObservation(t, 2, root)
 	second := fixture.createObservation(t, 3, first)
-	// Close the loop: the root is rewritten to derive from the last link.
+
 	_, err := fixture.database.ExecContext(context.Background(), `
+		INSERT INTO price_observation_dependencies (book_id, observation_id, source_observation_id)
+		VALUES (1, ?, ?)
+	`, root, second)
+	require.Error(t, err, "a link from an observation to a newer one would close a cycle")
+
+	_, err = fixture.database.ExecContext(context.Background(), `
 		UPDATE price_observations
 		SET is_derived = 1, derivation_json = ?
 		WHERE id = ?
