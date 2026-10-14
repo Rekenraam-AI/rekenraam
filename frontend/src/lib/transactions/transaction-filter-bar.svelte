@@ -26,10 +26,18 @@
 
   let {
     filters = $bindable<TransactionFilters>({}),
-    show = {}
+    show = {},
+    singleStatus = false
   }: {
     filters: TransactionFilters;
     show?: FilterVisibility;
+    /**
+     * The surface reads exactly one lifecycle at a time, defaulting to posted
+     * (the account register: its running balance is only meaningful within one
+     * status, and its API treats a blank status as posted). No "All" choice is
+     * offered there, because it would silently mean Posted (#223).
+     */
+    singleStatus?: boolean;
   } = $props();
 
   const controlClass =
@@ -90,14 +98,16 @@
         >{m.transactions_filter_status()}</span
       >
       <select
-        value={filters.status ?? ''}
+        value={filters.status ?? (singleStatus ? 'posted' : '')}
         onchange={(e) => {
           const v = (e.target as HTMLSelectElement).value;
           filters = { ...filters, status: v ? (v as TransactionFilters['status']) : undefined };
         }}
         class={controlClass}
       >
-        <option value="">{m.transactions_filter_status_all()}</option>
+        {#if !singleStatus}
+          <option value="">{m.transactions_filter_status_all()}</option>
+        {/if}
         <option value="posted">{m.transactions_filter_status_posted()}</option>
         <option value="voided">{m.transactions_filter_status_voided()}</option>
       </select>

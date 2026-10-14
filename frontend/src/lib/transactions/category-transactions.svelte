@@ -12,12 +12,11 @@
     type TransactionResponse
   } from '#lib/api/transactions.ts';
   import { formatQuantity } from '#lib/money/format.ts';
-  import { sumByCommodity } from '#lib/money/amount.ts';
+  import { categoryAmounts as categoryScopeAmounts } from './category-amount';
   import {
     resolveAccountLabel,
     statusLabel,
-    statusTone,
-    type PostingResponse
+    statusTone
   } from './transaction-labels';
   import TransactionTable from './transaction-table.svelte';
   import TransactionFilterBar from './transaction-filter-bar.svelte';
@@ -59,49 +58,24 @@
     query.data?.pages.flatMap((p) => p.transactions ?? []) ?? []
   );
 
-  // Per-commodity category amount rows for a transaction.
-  // Returns one entry per commodity that has category postings.
+  // Per-commodity amount this category contributes to a transaction (#222).
   type CommodityAmount = {
     commodityID: number;
     commodityCode: string;
     commoditySymbol: string | null | undefined;
     displayValue: string;
-    scale: number;
     isPositive: boolean;
   };
 
   function categoryAmounts(tx: TransactionResponse): CommodityAmount[] {
-    const allPostings = tx.journal_entries?.flatMap((e) => e.postings ?? []) ?? [];
-
-    // Category postings: income or expense class, no system role.
-    const catPostings = allPostings.filter(
-      (p) => (p.account_class === 'income' || p.account_class === 'expense')
-        && !p.account_system_role
-    );
-    if (catPostings.length === 0) return [];
-
-    // Scale alignment and the normal-sign rule (negate income/liability/equity
-    // so activity reads positive) live in #lib/money/amount.ts, not here. This
-    // component used to carry its own rescaleUp and sign switch; every private
-    // copy of that logic in this repo has eventually drifted, and the ones that
-    // did shipped money bugs (T-45, T-46, T-47).
-    const totals = sumByCommodity(catPostings);
-
-    const representative = new Map<number, PostingResponse>();
-    for (const p of catPostings) {
-      if (!representative.has(p.commodity_id)) representative.set(p.commodity_id, p);
-    }
-
-    return totals.map((total) => {
-      const rep = representative.get(total.commodityID)!;
+    return categoryScopeAmounts(tx, categoryID).map((total) => {
       const isPositive = !total.value.startsWith('-');
       const absValue = isPositive ? total.value : total.value.slice(1);
       return {
         commodityID: total.commodityID,
-        commodityCode: rep.commodity_code,
-        commoditySymbol: rep.commodity_symbol,
+        commodityCode: total.commodityCode,
+        commoditySymbol: total.commoditySymbol,
         displayValue: formatQuantity(absValue, total.scale, locale),
-        scale: total.scale,
         isPositive
       };
     });

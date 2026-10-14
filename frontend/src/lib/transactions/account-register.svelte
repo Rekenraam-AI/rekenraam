@@ -44,7 +44,8 @@
     offerOnlyThisAccount?: boolean;
   } = $props();
 
-  let filters = $state<TransactionFilters>({});
+  // Explicit, never blank: the register shows one lifecycle at a time (#223).
+  let filters = $state<TransactionFilters>({ status: 'posted' });
 
   const locale = $derived(getLocale());
   const queryClient = useQueryClient();
@@ -126,6 +127,7 @@
     <TransactionFilterBar
       bind:filters
       show={{ status: true, dateRange: true }}
+      singleStatus
     />
   </Panel>
 

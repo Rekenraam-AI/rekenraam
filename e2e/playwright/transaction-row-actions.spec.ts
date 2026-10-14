@@ -27,7 +27,7 @@ async function seed(page: Page) {
     account: `/app/accounts/${account.id}/register`,
     category: `/app/categories/${category.id}`
   };
-  return { account, category, transaction, description, paths };
+  return { account, category, transaction, description, paths, currencyID };
 }
 
 const row = (page: Page, description: string) => page.getByRole('row').filter({ hasText: description });
@@ -228,4 +228,69 @@ test('a desktop row can reopen unvoid after cancelling while detail stays open',
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await unvoid.click();
   await expect(page.getByRole('dialog', { name: 'Unvoid transaction' })).toBeVisible();
+});
+
+test('the account register shows one lifecycle at a time and never offers a posted-only "All" (#223)', async ({ page }) => {
+  const s = await seed(page);
+  const voidedDescription = `Voided coffee ${Date.now()}`;
+  const csrfToken = await csrfTokenFor(page);
+  const voided = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/transactions', csrfToken, {
+    transaction_date: todayISO(), transaction_kind: 'ordinary', status: 'posted', description: voidedDescription,
+    journal_entries: [{ entry_date: todayISO(), entry_kind: 'ordinary', postings: [
+      { account_id: s.account.id, commodity_id: s.currencyID, quantity_value: '-200', quantity_scale: 2 },
+      { account_id: s.category.id, commodity_id: s.currencyID, quantity_value: '200', quantity_scale: 2 }
+    ] }]
+  });
+  await apiJSON(page, 'POST', `/api/v1/transactions/${voided.id}/void`, await csrfTokenFor(page), { change_reason: 'Duplicate' });
+
+  await page.goto(s.paths.account);
+  const status = page.getByRole('combobox', { name: 'Status', exact: true });
+  await expect(status).toHaveValue('posted');
+  await expect(status.getByRole('option')).toHaveText(['Posted', 'Voided']);
+  await expect(row(page, s.description)).toBeVisible();
+  await expect(row(page, voidedDescription)).toHaveCount(0);
+
+  await status.selectOption('voided');
+  await expect(row(page, voidedDescription)).toBeVisible();
+  await expect(row(page, s.description)).toHaveCount(0);
+
+  await row(page, voidedDescription).getByRole('button', { name: 'Unvoid', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('textbox').fill('Restore valid entry');
+  await dialog.getByRole('button', { name: 'Unvoid', exact: true }).click();
+  await expect.poll(async () => (await readTransaction(page, voided.id)).status).toBe('posted');
+  await page.reload();
+  await expect(status).toHaveValue('posted');
+  await expect(row(page, voidedDescription)).toBeVisible();
+  await expect(row(page, s.description)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('a category screen shows only its own leg of a split transaction (#222)', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const suffix = Date.now();
+  const account = await createCashAccount(page, csrfToken, `Split cash ${suffix}`, currencyID);
+  const groceries = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/categories', csrfToken, {
+    name: `Split groceries ${suffix}`, category_type: 'expense'
+  });
+  const dining = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/categories', csrfToken, {
+    name: `Split dining ${suffix}`, category_type: 'expense'
+  });
+  const description = `Split shop ${suffix}`;
+  await apiJSON(page, 'POST', '/api/v1/transactions', csrfToken, {
+    transaction_date: todayISO(), transaction_kind: 'ordinary', status: 'posted', description,
+    journal_entries: [{ entry_date: todayISO(), entry_kind: 'ordinary', postings: [
+      { account_id: account.id, commodity_id: currencyID, quantity_value: '-3000', quantity_scale: 2 },
+      { account_id: groceries.id, commodity_id: currencyID, quantity_value: '1000', quantity_scale: 2 },
+      { account_id: dining.id, commodity_id: currencyID, quantity_value: '2000', quantity_scale: 2 }
+    ] }]
+  });
+  for (const [category, expected, other] of [[groceries, '10.00', '20.00'], [dining, '20.00', '10.00']] as const) {
+    await page.goto(`/app/categories/${category.id}`);
+    const entry = row(page, description);
+    await expect(entry).toContainText(expected);
+    await expect(entry).not.toContainText(other);
+    await expect(entry).not.toContainText('30.00');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
 });
