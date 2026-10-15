@@ -1,4 +1,6 @@
 <script lang="ts">
+  import AlternativeGains from './alternative-gains.svelte';
+  import type { AlternativeBasisMethod } from '#lib/api/investments.ts';
   import ObservationStatus from '#lib/valuation/observation-status.svelte';
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery } from '@tanstack/svelte-query';
@@ -45,11 +47,14 @@
     appliedValuationDate = valuationDate;
   }
 
+  let alternativeMethod = $state<AlternativeBasisMethod | ''>('');
+
   const gainsQuery = createQuery(() =>
     investmentGainsQueryOptions(
       appliedFrom || undefined,
       appliedTo || undefined,
-      appliedValuationDate === today ? undefined : appliedValuationDate
+      appliedValuationDate === today ? undefined : appliedValuationDate,
+      alternativeMethod || undefined
     )
   );
   const profile = $derived(gainsQuery.data?.profile);
@@ -99,6 +104,26 @@
 
 <div class="space-y-6">
   <p class="text-sm text-muted">{m.valuation_holdings_policy()}</p>
+  <section class="space-y-3" data-testid="alternative-gains">
+    <label class="flex flex-wrap items-center gap-2 text-sm text-foreground">
+      {m.valuation_alternative_method()}
+      <select bind:value={alternativeMethod} class="rounded border border-border bg-control px-2 py-1 text-foreground">
+        <option value="">{m.valuation_alternative_none()}</option>
+        <option value="fifo">{m.transactions_investment_replace_method_fifo()}</option>
+        <option value="lifo">{m.transactions_investment_replace_method_lifo()}</option>
+        <option value="average_cost">{m.transactions_investment_replace_method_average()}</option>
+      </select>
+    </label>
+    {#if alternativeMethod}
+      {#if gainsQuery.isPending}
+        <Panel><p class="text-sm text-muted">{m.investments_gains_loading()}</p></Panel>
+      {:else if gainsQuery.isError}
+        <Panel><p class="text-sm text-destructive">{m.investments_gains_error()}</p></Panel>
+      {:else if gainsQuery.data?.alternative}
+        <AlternativeGains data={gainsQuery.data} {instrumentName} {formatGain} />
+      {/if}
+    {/if}
+  </section>
   <!-- Unrealized gains -->
   <section>
     <div class="mb-3 flex flex-wrap items-center gap-3">

@@ -1451,6 +1451,8 @@ components:
       $ref: "./components/schemas/investments.yaml#/InvestmentGainsResponse"
     GainsProfile:
       $ref: "./components/schemas/investments.yaml#/GainsProfile"
+    AlternativeGainsProjection:
+      $ref: "./components/schemas/investments.yaml#/AlternativeGainsProjection"
     InvestmentGainsStatementResponse:
       $ref: "./components/schemas/investments.yaml#/InvestmentGainsStatementResponse"
     GainsStatementRow:

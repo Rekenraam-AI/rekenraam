@@ -39,5 +39,12 @@
   "valuation_statement_reason_both": "Без цены: {unpriced}; неизвестная себестоимость: {unresolved}",
   "valuation_statement_reason_realized": "Неизвестная себестоимость: {count}",
   "valuation_statement_needs_both": "Нужны значения на начало и на конец",
-  "valuation_statement_needs_all": "Нужны все значения выше"
+  "valuation_statement_needs_all": "Нужны все значения выше",
+  "valuation_alternative_method": "Сравнить метод расчёта себестоимости",
+  "valuation_alternative_none": "Без сравнения",
+  "valuation_alternative_title": "Сравнение: {method}",
+  "valuation_alternative_operational": "Операционный",
+  "valuation_alternative_policy": "На {date}, по текущей действующей истории. Выбор конкретных лотов и списания при переводах используют выбранный метод. Только чтение; не налоговый расчёт.",
+  "valuation_alternative_unavailable": "Недоступно: нет цены или неизвестна себестоимость",
+  "valuation_alternative_empty": "Нет результатов или открытых позиций для сравнения."
 }

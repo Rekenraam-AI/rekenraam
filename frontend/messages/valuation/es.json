@@ -39,5 +39,12 @@
   "valuation_statement_reason_both": "Sin precio: {unpriced}; base de coste desconocida: {unresolved}",
   "valuation_statement_reason_realized": "Base de coste desconocida: {count}",
   "valuation_statement_needs_both": "Requiere los importes de inicio y de cierre",
-  "valuation_statement_needs_all": "Requiere todos los importes anteriores"
+  "valuation_statement_needs_all": "Requiere todos los importes anteriores",
+  "valuation_alternative_method": "Comparar método de coste",
+  "valuation_alternative_none": "Sin comparación",
+  "valuation_alternative_title": "Comparación: {method}",
+  "valuation_alternative_operational": "Operativo",
+  "valuation_alternative_policy": "A fecha de {date}, con el historial efectivo actual. Las selecciones de lotes específicos y las transferencias usan el método elegido. Solo lectura; no es un cálculo fiscal.",
+  "valuation_alternative_unavailable": "No disponible: falta el precio o se desconoce el coste",
+  "valuation_alternative_empty": "No hay ganancias ni posiciones abiertas para comparar."
 }

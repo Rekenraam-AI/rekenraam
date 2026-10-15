@@ -39,5 +39,12 @@
   "valuation_statement_reason_both": "Kein Kurs: {unpriced}; unbekannte Anschaffungskosten: {unresolved}",
   "valuation_statement_reason_realized": "Unbekannte Anschaffungskosten: {count}",
   "valuation_statement_needs_both": "Erfordert Anfangs- und Endwert",
-  "valuation_statement_needs_all": "Erfordert alle Werte oben"
+  "valuation_statement_needs_all": "Erfordert alle Werte oben",
+  "valuation_alternative_method": "Kostenbasismethode vergleichen",
+  "valuation_alternative_none": "Kein Vergleich",
+  "valuation_alternative_title": "Vergleich: {method}",
+  "valuation_alternative_operational": "Operativ",
+  "valuation_alternative_policy": "Stand {date}, mit der aktuell wirksamen Historie. Einzelne Lotauswahlen und Übertragungen verwenden die gewählte Methode. Schreibgeschützt; keine Steuerberechnung.",
+  "valuation_alternative_unavailable": "Nicht verfügbar: Kurs fehlt oder Kostenbasis unbekannt",
+  "valuation_alternative_empty": "Keine Gewinne oder offenen Positionen zum Vergleichen."
 }

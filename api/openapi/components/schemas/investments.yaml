@@ -3867,6 +3867,8 @@ InvestmentGainsResponse:
     - capital_returns
     - profile
   properties:
+    alternative:
+      $ref: "#/AlternativeGainsProjection"
     profile:
       $ref: "#/GainsProfile"
     capital_returns:
@@ -3913,14 +3915,14 @@ GainsProfile:
   properties:
     name:
       type: string
-      enum: [operational_v1]
+      enum: [operational_v1, alternative_method_v1]
     purpose:
       type: string
-      enum: [operational]
+      enum: [operational, alternative_method]
     basis_method:
       type: string
-      enum: [operational_elections]
-      description: Each committed disposal's recorded method, tier and allocations; no re-election.
+      enum: [operational_elections, fifo, lifo, average_cost]
+      description: Operational elections, or the selected alternative method applied to every disposal and transfer depletion.
     valuation_as_of:
       type: string
       format: date
@@ -3946,6 +3948,47 @@ GainsProfile:
     rounding:
       type: string
       enum: [exact_half_up]
+
+    structural_action_policy:
+      type: string
+      enum: [recorded_entitlements]
+      description: Sourced structural-action lot entitlements stay fixed; a method that cannot satisfy them is refused with the operation named.
+    specific_lot_fallback:
+      type: string
+      enum: [selected_method]
+      description: Alternative profiles ignore specific-lot elections and apply basis_method.
+    transfer_policy:
+      type: string
+      enum: [selected_method_fixed_link_quantities]
+      description: Transfer link quantities, destination identities and acquisition-date evidence stay fixed; the selected method supplies hypothetical carried basis.
+    from:
+      type: string
+      format: date
+      description: Inclusive realized period start, omitted when unbounded.
+    to:
+      type: string
+      format: date
+      description: Inclusive realized period end, omitted when unbounded; independent of valuation_as_of.
+
+AlternativeGainsProjection:
+  type: object
+  description: Read-only alternative results beside the operational results, in original cost currencies. Capital-return cash/excess is not part of disposal gains.
+  required: [profile, realized, unrealized, realized_totals]
+  properties:
+    profile:
+      $ref: "#/GainsProfile"
+    realized:
+      type: array
+      items:
+        $ref: "#/RealizedGainEntry"
+    unrealized:
+      type: array
+      items:
+        $ref: "#/UnrealizedGainEntry"
+    realized_totals:
+      type: array
+      items:
+        $ref: "#/RealizedGainTotal"
 
 InvestmentGainsStatementResponse:
   type: object

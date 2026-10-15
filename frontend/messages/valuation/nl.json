@@ -39,5 +39,12 @@
   "valuation_statement_reason_both": "Geen koers: {unpriced}; onbekende kostprijs: {unresolved}",
   "valuation_statement_reason_realized": "Onbekende kostprijs: {count}",
   "valuation_statement_needs_both": "Vereist zowel begin- als eindbedrag",
-  "valuation_statement_needs_all": "Vereist alle bedragen hierboven"
+  "valuation_statement_needs_all": "Vereist alle bedragen hierboven",
+  "valuation_alternative_method": "Kostprijsmethode vergelijken",
+  "valuation_alternative_none": "Geen vergelijking",
+  "valuation_alternative_title": "Vergelijking: {method}",
+  "valuation_alternative_operational": "Operationeel",
+  "valuation_alternative_policy": "Per {date}, met de huidige effectieve historie. Specifieke lotkeuzes en overdrachten gebruiken de gekozen methode. Alleen lezen; geen belastingberekening.",
+  "valuation_alternative_unavailable": "Niet beschikbaar: koers ontbreekt of kostprijs onbekend",
+  "valuation_alternative_empty": "Geen resultaten of open posities om te vergelijken."
 }

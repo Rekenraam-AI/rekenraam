@@ -3,9 +3,9 @@
 ADR [0012](../adrs/0012-investment-ledger-subledger-and-reporting-boundaries.md)
 governs this plan. The [roadmap](../roadmap.md#r18--reproducible-investment-basis-and-gains-projections)
 owns sequencing; [#203](https://github.com/sergeyfarin/rekenraam/issues/203)
-owns the bounded observation-selection delivery. This first policy slice does
-not deliver alternative basis profiles, tax calculations or frozen historical
-reports.
+owns the bounded observation-selection delivery. The delivered slices below
+add operational and alternative-method basis profiles; tax calculations and
+frozen historical reports remain outside them.
 
 ## Live observation selection: `live_raw_v1`
 
@@ -87,8 +87,8 @@ compliance.
 
 | Field | Meaning | Values defined so far |
 | --- | --- | --- |
-| `name` / `version` | Stable key; a rule change is a new version, never a silent reinterpretation. | `operational_v1` |
-| `purpose` | What the figure is for. A label, not a compliance claim. | `operational` (later: `alternative_method`, `broker_comparison`, `tax_estimate`) |
+| `name` / `version` | Stable key; a rule change is a new version, never a silent reinterpretation. | `operational_v1`, `alternative_method_v1` |
+| `purpose` | What the figure is for. A label, not a compliance claim. | `operational`, `alternative_method` (later: `broker_comparison`, `tax_estimate`) |
 | `basis_method` | How disposals consume basis. | `operational_elections`: each committed disposal's recorded method, tier and allocations (ADR 0012); no re-election. |
 | `valuation_as_of` | Calendar date the open positions are replayed to and priced at. | Any date up to owner-local today; default today. |
 | `positions_as_of` | Which events build the holding. | Every effective event dated on or before `valuation_as_of`, replayed in a rolled-back read (the #166 dated-holdings replay, both sides). |
@@ -151,13 +151,62 @@ range of price dates used. Any figure resting on a missing price or unresolved
 basis is null with its reason, and so is every figure built from it; a
 currency with nothing held at a date has a known zero.
 
+### Alternative-method comparison (#232)
+
+`GET /api/v1/investments/gains?alternative_method=fifo|lifo|average_cost`
+adds an `alternative` object beside the unchanged operational response. It
+contains its own `profile`, `realized`, `unrealized` and `realized_totals`.
+`alternative_method_v1` has purpose `alternative_method`; `basis_method` is
+the selected method. Every disposal, including an operational specific-lot
+election, uses that method (`specific_lot_fallback: selected_method`). This
+is a comparison, never an operational re-election or a tax computation.
+
+The optional inclusive `from`/`to` disposal period is echoed in the alternative
+descriptor; omitted bounds are unbounded. It is independent of
+`valuation_as_of`. Replay starts at the first effective event, rather than at
+`from`, so earlier purchases and disposals determine the basis used inside the
+period. Both long and named-short positions use their existing exact disposal
+algorithms. Merger cash keeps its recorded disposal date and zero quantity,
+independently of its cash posting's payable date. Unknown basis remains
+unresolved, never a gain against the known subset.
+
+A single merged stream orders effective events by date, correction-root slot
+and effect. Ordinary holding transfers retain each recorded link's quantity
+and destination identity/acquisition-date evidence, but deplete using the selected method
+(`transfer_policy: selected_method_fixed_link_quantities`). Hypothetical
+carried basis reaches a destination before it opens, including onward and
+return transfers; no operational transfer revision or bridge is written.
+Source-lot and pooled-lot destinations are both supported. Structural actions
+and explicit capital-return entitlements retain their sourced lot relationships
+(`structural_action_policy: recorded_entitlements`). If a hypothetical method
+leaves those entitlements impossible, the comparison refuses with HTTP 409
+`CONFLICT`, naming the dependent operation, and returns no partial projection.
+It never silently changes the sourced action to fit a method.
+
+The transaction is always rolled back, on success or failure. Temporary lot
+state, method locks and generated replay effects never survive the read;
+operational lots, elections, transfer links, journals, reconciliation, prices
+and audit rows stay unchanged. The profile retains `current_effective` history,
+`live_raw_v1` observations (using the operational read's same price knowledge
+cutoff and valuation date), original cost currencies, the seven-day stale
+warning and exact half-up valuation. As with `operational_v1`, later corrected
+history or observation evidence can restate the result; immutable runs remain
+#234. Cross-account person-level pooling remains #235. The period statement
+endpoint continues to use `operational_v1`.
+
+The Gains screen offers an optional method selector and compares realized
+currency totals and each position's unrealized gain in adjacent columns. It
+uses the same applied period and valuation controls as the operational figures,
+shows the selected method and read-only policy, and retains loading, empty,
+error and unavailable states in all six locales.
+
 ### Delivery slices
 
 | Slice | Issue | Scope |
 | --- | --- | --- |
 | 1 | [#230](https://github.com/sergeyfarin/rekenraam/issues/230) | `operational_v1` descriptor and as-of valuation: positions replayed to `valuation_as_of`, priced under `live_raw_v1`, on the gains read and screen. |
 | 2 | [#231](https://github.com/sergeyfarin/rekenraam/issues/231) | Delivered 2026-10-14. Period gains statement: opening unrealized (day before the period), realized, gross dividend income and closing unrealized per currency for a date range; absent figures are null with reason and counts. |
-| 3 | [#232](https://github.com/sergeyfarin/rekenraam/issues/232) | Alternative-method projection (FIFO/LIFO/average) beside the operational result, computed by rolled-back replay. |
+| 3 | [#232](https://github.com/sergeyfarin/rekenraam/issues/232) | Delivered 2026-10-15. Alternative-method projection (FIFO/LIFO/average) beside the operational result, computed by rolled-back replay. |
 | 4 | [#233](https://github.com/sergeyfarin/rekenraam/issues/233) | Reporting-currency conversion with a named FX method and coverage disclosure. |
 | 5 | [#234](https://github.com/sergeyfarin/rekenraam/issues/234) | Reproducible runs: knowledge-time ledger reconstruction or immutable persisted run, decided by evidence. |
 | 6 | [#235](https://github.com/sergeyfarin/rekenraam/issues/235) | Person-level pooled average-cost profile across accounts (s104/ACB/PMP style), labelled as a method, not tax advice. |
@@ -167,6 +216,25 @@ follow slice 3 once a provider supplies that evidence; they are not
 scheduled.
 
 ## Validation evidence
+
+- `TestAlternativeGainsMethodsConserveQuantityAndBasisAcrossPartialSales`,
+  `TestAlternativeGainsEqualOperationalWhenMethodsMatch`,
+  `TestAlternativeGainsConserveBasisThroughTransfersAndDestinationSales` and
+  `TestAlternativeGainsShortMethodsConserveOpeningProceeds` pin exact expected
+  results and conservation under all three methods.
+- `TestAlternativeGainsReadLeavesLotsElectionsJournalsAndAuditUnchanged` and
+  `TestAlternativeGainsFailureRollsBackTemporaryProjection` snapshot durable
+  state across repeated reads and injected late failures. The remaining
+  `TestAlternativeGains*` cases cover independent period/valuation dates,
+  corrected history/splits, unresolved basis, merger metadata and explicit
+  refusal of impossible structural entitlements.
+- `TestInvestmentGainsAlternativeMethodAPI` verifies both profiles, exact
+  coefficients, totals and validation through authenticated HTTP.
+  `TestAlternativeGainsOverflowIs422AndOperationalProjectionSurvives` verifies
+  a hypothetical method exceeding supported precision returns 422 while the
+  operational read remains usable. The 390px
+  `investments-alternative-gains.spec.ts` journey covers the comparison
+  control, expected values, unchanged operational basis and axe accessibility.
 
 - `TestObservationSelectionThroughHoldingsAndLatestPrices`: future, adjusted,
   bid and raw admission through real holdings and settings price reads.

@@ -292,8 +292,9 @@ The plan now also fixes the profile contract and research recommendations
 (#118) and splits delivery into slices: `operational_v1` as-of valuation
 [#230](https://github.com/sergeyfarin/rekenraam/issues/230) and the period
 statement [#231](https://github.com/sergeyfarin/rekenraam/issues/231) are
-delivered (2026-10-14); alternative methods [#232](https://github.com/sergeyfarin/rekenraam/issues/232),
-reporting-currency FX [#233](https://github.com/sergeyfarin/rekenraam/issues/233),
+delivered (2026-10-14), along with alternative methods
+[#232](https://github.com/sergeyfarin/rekenraam/issues/232) (2026-10-15).
+Reporting-currency FX [#233](https://github.com/sergeyfarin/rekenraam/issues/233),
 reproducible runs [#234](https://github.com/sergeyfarin/rekenraam/issues/234) and
 person-pooled average cost [#235](https://github.com/sergeyfarin/rekenraam/issues/235)
 remain. I-04 formal postings are out of R18 until a need is evidenced.

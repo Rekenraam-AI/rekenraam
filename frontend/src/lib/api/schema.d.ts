@@ -24244,7 +24244,7 @@ export interface paths {
         };
         /**
          * List realized and unrealized investment gains
-         * @description Returns all realized gains (from closed lot disposal events) and unrealized gains (from open positions vs. latest price). Realized gains can be filtered by disposal date. Unrealized gain fields are omitted when no price observation exists for the instrument. Effective return-of-capital allocation sets are included separately, filtered by payment date. Their unresolved excess is not included in disposal gains or totals; viewing does not post income. Unrealized gains are a read-only operational_v1 projection (R18, #230): without `valuation_as_of` they value today's positions; with it, every position is replayed to that date and priced with the latest compatible observation on or before it. `profile` names the rules used.
+         * @description Returns all realized gains (from closed lot disposal events) and unrealized gains (from open positions vs. latest price). Realized gains can be filtered by disposal date. Unrealized gain fields are omitted when no price observation exists for the instrument. Effective return-of-capital allocation sets are included separately, filtered by payment date. Their unresolved excess is not included in disposal gains or totals; viewing does not post income. Unrealized gains are a read-only operational_v1 projection (R18, #230): without `valuation_as_of` they value today's positions; with it, every position is replayed to that date and priced with the latest compatible observation on or before it. `profile` names the rules used. Optional `alternative_method` adds an alternative_method_v1 projection beside the operational results. It replays effective history under FIFO, LIFO or average cost in a rolled-back read, including specific-lot decisions using the selected method. It never changes operational elections or journals.
          */
         get: {
             parameters: {
@@ -24255,6 +24255,8 @@ export interface paths {
                     to?: string;
                     /** @description Valuation date for unrealized gains (ISO date, not after owner-local today). Positions are replayed to that date under today's effective history; disposal-date filters are independent. */
                     valuation_as_of?: string;
+                    /** @description Read-only cost-basis comparison beside the operational result. */
+                    alternative_method?: "fifo" | "lifo" | "average_cost";
                 };
                 header?: never;
                 path?: never;
@@ -24272,7 +24274,7 @@ export interface paths {
                         "application/json": components["schemas"]["InvestmentGainsResponse"];
                     };
                 };
-                /** @description The valuation date is malformed or after owner-local today */
+                /** @description The method, disposal period or valuation date is invalid, or the valuation date is after owner-local today */
                 400: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
@@ -24286,6 +24288,24 @@ export interface paths {
                 401: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description The alternative method cannot preserve a recorded structural lot entitlement; the operation is named. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description The exact projection amount exceeds the supported range. */
+                422: {
+                    headers: {
                         [name: string]: unknown;
                     };
                     content: {
@@ -30365,6 +30385,7 @@ export interface components {
             total_gain_scale: number | null;
         };
         InvestmentGainsResponse: {
+            alternative?: components["schemas"]["AlternativeGainsProjection"];
             profile: components["schemas"]["GainsProfile"];
             /** @description Effective return-of-capital allocations at the latest whole-effect revision, filtered inclusively by payment date using from/to. Separate from realized gains and income. */
             capital_returns: components["schemas"]["CapitalReturnRead"][];
@@ -30378,14 +30399,14 @@ export interface components {
         /** @description The named read-only rules the unrealized projection ran under (R18, docs/plans/investment-reporting-plan.md). Figures compare only when their profiles match. Not a tax computation. */
         GainsProfile: {
             /** @enum {string} */
-            name: "operational_v1";
+            name: "operational_v1" | "alternative_method_v1";
             /** @enum {string} */
-            purpose: "operational";
+            purpose: "operational" | "alternative_method";
             /**
-             * @description Each committed disposal's recorded method, tier and allocations; no re-election.
+             * @description Operational elections, or the selected alternative method applied to every disposal and transfer depletion.
              * @enum {string}
              */
-            basis_method: "operational_elections";
+            basis_method: "operational_elections" | "fifo" | "lifo" | "average_cost";
             /**
              * Format: date
              * @description Date positions are replayed to and priced at.
@@ -30412,6 +30433,38 @@ export interface components {
             fx_method: "none";
             /** @enum {string} */
             rounding: "exact_half_up";
+            /**
+             * @description Sourced structural-action lot entitlements stay fixed; a method that cannot satisfy them is refused with the operation named.
+             * @enum {string}
+             */
+            structural_action_policy?: "recorded_entitlements";
+            /**
+             * @description Alternative profiles ignore specific-lot elections and apply basis_method.
+             * @enum {string}
+             */
+            specific_lot_fallback?: "selected_method";
+            /**
+             * @description Transfer link quantities, destination identities and acquisition-date evidence stay fixed; the selected method supplies hypothetical carried basis.
+             * @enum {string}
+             */
+            transfer_policy?: "selected_method_fixed_link_quantities";
+            /**
+             * Format: date
+             * @description Inclusive realized period start, omitted when unbounded.
+             */
+            from?: string;
+            /**
+             * Format: date
+             * @description Inclusive realized period end, omitted when unbounded; independent of valuation_as_of.
+             */
+            to?: string;
+        };
+        /** @description Read-only alternative results beside the operational results, in original cost currencies. Capital-return cash/excess is not part of disposal gains. */
+        AlternativeGainsProjection: {
+            profile: components["schemas"]["GainsProfile"];
+            realized: components["schemas"]["RealizedGainEntry"][];
+            unrealized: components["schemas"]["UnrealizedGainEntry"][];
+            realized_totals: components["schemas"]["RealizedGainTotal"][];
         };
         /** @description Period gains statement (R18 slice 2, #231). One row per currency that has a position at either valuation date, a disposal in the period or investment income in the period. Not a tax computation. */
         InvestmentGainsStatementResponse: {

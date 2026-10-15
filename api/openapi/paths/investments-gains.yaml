@@ -11,6 +11,10 @@ get:
     without `valuation_as_of` they value today's positions; with it, every
     position is replayed to that date and priced with the latest compatible
     observation on or before it. `profile` names the rules used.
+    Optional `alternative_method` adds an alternative_method_v1 projection beside
+    the operational results. It replays effective history under FIFO, LIFO or
+    average cost in a rolled-back read, including specific-lot decisions using
+    the selected method. It never changes operational elections or journals.
   parameters:
     - name: from
       in: query
@@ -36,6 +40,13 @@ get:
       schema:
         type: string
         format: date
+    - name: alternative_method
+      in: query
+      required: false
+      description: Read-only cost-basis comparison beside the operational result.
+      schema:
+        type: string
+        enum: [fifo, lifo, average_cost]
   responses:
     "200":
       description: Realized and unrealized gains
@@ -47,7 +58,7 @@ get:
           schema:
             $ref: "../openapi.yaml#/components/schemas/InvestmentGainsResponse"
     "400":
-      description: The valuation date is malformed or after owner-local today
+      description: The method, disposal period or valuation date is invalid, or the valuation date is after owner-local today
       headers:
         X-Request-ID:
           $ref: "../openapi.yaml#/components/headers/XRequestID"
@@ -60,6 +71,18 @@ get:
       headers:
         X-Request-ID:
           $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "409":
+      description: The alternative method cannot preserve a recorded structural lot entitlement; the operation is named.
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "422":
+      description: The exact projection amount exceeds the supported range.
       content:
         application/json:
           schema:

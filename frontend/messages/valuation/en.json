@@ -39,5 +39,12 @@
   "valuation_statement_reason_both": "No price: {unpriced}; unknown cost basis: {unresolved}",
   "valuation_statement_reason_realized": "Unknown cost basis: {count}",
   "valuation_statement_needs_both": "Needs both opening and closing figures",
-  "valuation_statement_needs_all": "Needs every figure above"
+  "valuation_statement_needs_all": "Needs every figure above",
+  "valuation_alternative_method": "Compare basis method",
+  "valuation_alternative_none": "No comparison",
+  "valuation_alternative_title": "Comparison: {method}",
+  "valuation_alternative_operational": "Operational",
+  "valuation_alternative_policy": "As of {date}, using current effective history. Specific-lot choices and transfer depletions use the selected method. Read-only; not a tax calculation.",
+  "valuation_alternative_unavailable": "Unavailable: missing price or unknown basis",
+  "valuation_alternative_empty": "No gains or open positions to compare."
 }

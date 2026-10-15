@@ -39,5 +39,12 @@
   "valuation_statement_reason_both": "Sans cours : {unpriced} ; coût de revient inconnu : {unresolved}",
   "valuation_statement_reason_realized": "Coût de revient inconnu : {count}",
   "valuation_statement_needs_both": "Nécessite les montants d’ouverture et de clôture",
-  "valuation_statement_needs_all": "Nécessite tous les montants ci-dessus"
+  "valuation_statement_needs_all": "Nécessite tous les montants ci-dessus",
+  "valuation_alternative_method": "Comparer la méthode de coût de revient",
+  "valuation_alternative_none": "Aucune comparaison",
+  "valuation_alternative_title": "Comparaison : {method}",
+  "valuation_alternative_operational": "Opérationnel",
+  "valuation_alternative_policy": "Au {date}, selon l’historique effectif actuel. Les choix de lots spécifiques et les transferts utilisent la méthode sélectionnée. Lecture seule ; aucun calcul fiscal.",
+  "valuation_alternative_unavailable": "Indisponible : cours manquant ou coût de revient inconnu",
+  "valuation_alternative_empty": "Aucun gain ni position ouverte à comparer."
 }

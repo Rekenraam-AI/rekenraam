@@ -1883,7 +1883,12 @@ func saveInvestmentAutomationRules(logger *slog.Logger, authService *app.AuthSer
 func writeInvestmentServiceError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, action string, err error) {
 	var validationError app.ValidationError
 	var overflowError app.LedgerOverflowError
+	var projectionDependency app.AlternativeGainsDependencyError
 	switch {
+	case errors.As(err, &projectionDependency):
+		writeAPIError(w, http.StatusConflict, "CONFLICT", projectionDependency.Error())
+	case errors.Is(err, exact.ErrInt64Range), errors.Is(err, db.ErrInvestmentBasisRange):
+		writeAPIError(w, http.StatusUnprocessableEntity, "LEDGER_OVERFLOW", "investment projection exceeds supported precision")
 	case errors.As(err, &validationError):
 		writeAPIError(w, http.StatusBadRequest, "VALIDATION_FAILED", validationError.Error())
 	case errors.As(err, &overflowError):
@@ -2378,7 +2383,15 @@ type realizedGainTotalResponse struct {
 	UnresolvedCount int               `json:"unresolved_count"`
 }
 
+type alternativeGainsResponse struct {
+	Profile        gainsProfileResponse        `json:"profile"`
+	Realized       []realizedGainResponse      `json:"realized"`
+	Unrealized     []unrealizedGainResponse    `json:"unrealized"`
+	RealizedTotals []realizedGainTotalResponse `json:"realized_totals"`
+}
+
 type investmentGainsResponse struct {
+	Alternative    *alternativeGainsResponse   `json:"alternative,omitempty"`
 	Profile        gainsProfileResponse        `json:"profile"`
 	CapitalReturns []capitalReturnReadResponse `json:"capital_returns"`
 	Currencies     []currencyResponse          `json:"currencies"`
@@ -2388,20 +2401,27 @@ type investmentGainsResponse struct {
 }
 
 type gainsProfileResponse struct {
-	Name            string `json:"name"`
-	Purpose         string `json:"purpose"`
-	BasisMethod     string `json:"basis_method"`
-	ValuationAsOf   string `json:"valuation_as_of"`
-	KnowledgeCutoff string `json:"knowledge_cutoff"`
-	LedgerKnowledge string `json:"ledger_knowledge"`
-	QuotePolicy     string `json:"quote_policy"`
-	StaleAfterDays  int    `json:"stale_after_days"`
-	FXMethod        string `json:"fx_method"`
-	Rounding        string `json:"rounding"`
+	StructuralActionPolicy string `json:"structural_action_policy,omitempty"`
+	SpecificLotFallback    string `json:"specific_lot_fallback,omitempty"`
+	TransferPolicy         string `json:"transfer_policy,omitempty"`
+	From                   string `json:"from,omitempty"`
+	To                     string `json:"to,omitempty"`
+	Name                   string `json:"name"`
+	Purpose                string `json:"purpose"`
+	BasisMethod            string `json:"basis_method"`
+	ValuationAsOf          string `json:"valuation_as_of"`
+	KnowledgeCutoff        string `json:"knowledge_cutoff"`
+	LedgerKnowledge        string `json:"ledger_knowledge"`
+	QuotePolicy            string `json:"quote_policy"`
+	StaleAfterDays         int    `json:"stale_after_days"`
+	FXMethod               string `json:"fx_method"`
+	Rounding               string `json:"rounding"`
 }
 
 func toGainsProfileResponse(profile app.GainsProfile) gainsProfileResponse {
 	return gainsProfileResponse{
+		StructuralActionPolicy: profile.StructuralActionPolicy,
+		SpecificLotFallback:    profile.SpecificLotFallback, TransferPolicy: profile.TransferPolicy, From: profile.From, To: profile.To,
 		Name: profile.Name, Purpose: profile.Purpose, BasisMethod: profile.BasisMethod,
 		ValuationAsOf: profile.ValuationAsOf, KnowledgeCutoff: profile.KnowledgeCutoff,
 		LedgerKnowledge: profile.LedgerKnowledge, QuotePolicy: profile.QuotePolicy,
@@ -2438,104 +2458,127 @@ func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, inve
 			writeInvestmentServiceError(w, r, logger, "list unrealized gains", err)
 			return
 		}
-		realizedResponses := make([]realizedGainResponse, 0, len(realized))
-		for _, e := range realized {
-			realizedResponses = append(realizedResponses, realizedGainResponse{
-				AccountID:          e.AccountID,
-				CommodityID:        e.CommodityID,
-				CostCommodityID:    e.CostCommodityID,
-				DisposalDate:       e.DisposalDate,
-				TransactionID:      e.TransactionID,
-				QuantityValue:      e.QuantityValue,
-				QuantityScale:      e.QuantityScale,
-				DisposedBasisValue: projectedBasisValue(e.DisposedBasisValue, e.BasisKnowledge),
-				DisposedBasisScale: projectedBasisScale(e.DisposedBasisScale, e.BasisKnowledge),
-				ProceedsValue:      moneyCoefficient(e.ProceedsValue),
-				ProceedsScale:      e.ProceedsScale,
-				RealizedGainValue:  projectedBasisValue(e.RealizedGainValue, e.BasisKnowledge),
-				RealizedGainScale:  projectedBasisScale(e.RealizedGainScale, e.BasisKnowledge),
-				BasisKnowledge:     responseKnowledge(e.BasisKnowledge),
-				PositionSide:       e.PositionSide,
-			})
-		}
-		unrealizedResponses := make([]unrealizedGainResponse, 0, len(unrealized))
-		for _, e := range unrealized {
-			unrealizedResponses = append(unrealizedResponses, unrealizedGainResponse{
-				AccountID:               e.AccountID,
-				CommodityID:             e.CommodityID,
-				CostCommodityID:         e.CostCommodityID,
-				QuantityValue:           e.QuantityValue,
-				QuantityScale:           e.QuantityScale,
-				RemainingCostBasisValue: projectedBasisValue(e.RemainingCostBasisValue, e.BasisKnowledge),
-				RemainingCostBasisScale: projectedBasisScale(e.RemainingCostBasisScale, e.BasisKnowledge), BasisKnowledge: e.BasisKnowledge,
-				PriceStatus: e.PriceStatus, ValuationAsOf: e.ValuationAsOf, KnowledgeCutoff: e.KnowledgeCutoff,
-				LatestPriceValue:       moneyCoefficientPointer(e.LatestPriceValue),
-				LatestPriceScale:       e.LatestPriceScale,
-				LatestPriceDate:        e.LatestPriceDate,
-				LatestPriceApproximate: e.LatestPriceApproximate,
-				MarketValueValue:       moneyCoefficientPointer(e.MarketValueValue),
-				MarketValueScale:       e.MarketValueScale,
-				UnrealizedGainValue:    moneyCoefficientPointer(e.UnrealizedGainValue),
-				UnrealizedGainScale:    e.UnrealizedGainScale,
-				ValuationUnavailable:   e.ValuationUnavailable,
-				GainUnavailable:        e.GainUnavailable,
-				PositionSide:           e.PositionSide,
-			})
-		}
 
-		// Realized totals are grouped by cost commodity alone and summed
-		// exactly. Grouping by scale as well used to stand in for "can be added
-		// without loss", but a gain now carries whatever scale its own
-		// subtraction needed (T-101), so two gains in the same currency can
-		// legitimately differ in scale — splitting them into separate totals
-		// would report one currency twice and make neither row the total.
-		// exact.ScaledInt deepens as it adds, so one row per currency holds the
-		// sum without rounding.
-		totalsMap := map[int64]*exact.ScaledInt{}
-		unresolved := map[int64]int{}
-		var totalsOrder []int64
-		for _, e := range realized {
-			if totalsMap[e.CostCommodityID] == nil {
-				totalsMap[e.CostCommodityID] = exact.NewScaledInt()
-				totalsOrder = append(totalsOrder, e.CostCommodityID)
-			}
-			if e.BasisKnowledge == "unknown" {
-				unresolved[e.CostCommodityID]++
-				continue
-			}
-			totalsMap[e.CostCommodityID].AddInt64(e.RealizedGainValue, e.RealizedGainScale)
+		response, err := gainsProjectionResponse(profile, realized, unrealized)
+		if err != nil {
+			writeInvestmentServiceError(w, r, logger, "sum realized gains", err)
+			return
 		}
-		realizedTotals := make([]realizedGainTotalResponse, 0, len(totalsOrder))
-		for _, commodityID := range totalsOrder {
-			total := totalsMap[commodityID]
-			totalValue, err := total.Int64()
+		response.CapitalReturns, response.Currencies = toCapitalReturnReads(capitalReturns), toCurrencyResponses(currencies)
+		if method := r.URL.Query().Get("alternative_method"); method != "" {
+			alternative, err := investmentService.AlternativeGainsForProfile(r.Context(), method, profile, params)
 			if err != nil {
-				writeServiceInternalError(w, r, logger, "sum realized gains", err)
+				writeInvestmentServiceError(w, r, logger, "alternative gains", err)
 				return
 			}
-			knowledge := "known"
-			if unresolved[commodityID] > 0 {
-				knowledge = "unknown"
+			projection, err := gainsProjectionResponse(alternative.Profile, alternative.Realized, alternative.Unrealized)
+			if err != nil {
+				writeInvestmentServiceError(w, r, logger, "sum alternative gains", err)
+				return
 			}
-			realizedTotals = append(realizedTotals, realizedGainTotalResponse{
-				CostCommodityID: commodityID,
-				TotalGainValue:  projectedBasisValue(totalValue, knowledge),
-				TotalGainScale:  projectedBasisScale(total.Scale(), knowledge),
-				BasisKnowledge:  knowledge,
-				UnresolvedCount: unresolved[commodityID],
-			})
+			response.Alternative = &alternativeGainsResponse{Profile: projection.Profile, Realized: projection.Realized, Unrealized: projection.Unrealized, RealizedTotals: projection.RealizedTotals}
 		}
-		writeJSON(w, http.StatusOK, investmentGainsResponse{
-			Profile:        toGainsProfileResponse(profile),
-			CapitalReturns: toCapitalReturnReads(capitalReturns),
-			Currencies:     toCurrencyResponses(currencies),
-			Realized:       realizedResponses,
-			Unrealized:     unrealizedResponses,
-			RealizedTotals: realizedTotals,
-		})
+		writeJSON(w, http.StatusOK, response)
 	}
 }
 
+// gainsProjectionResponse applies the same wire representation to both profiles.
+func gainsProjectionResponse(profile app.GainsProfile, realized []app.RealizedGainEntry, unrealized []app.UnrealizedGainEntry) (investmentGainsResponse, error) {
+	realizedResponses := make([]realizedGainResponse, 0, len(realized))
+	for _, e := range realized {
+		realizedResponses = append(realizedResponses, realizedGainResponse{
+			AccountID:          e.AccountID,
+			CommodityID:        e.CommodityID,
+			CostCommodityID:    e.CostCommodityID,
+			DisposalDate:       e.DisposalDate,
+			TransactionID:      e.TransactionID,
+			QuantityValue:      e.QuantityValue,
+			QuantityScale:      e.QuantityScale,
+			DisposedBasisValue: projectedBasisValue(e.DisposedBasisValue, e.BasisKnowledge),
+			DisposedBasisScale: projectedBasisScale(e.DisposedBasisScale, e.BasisKnowledge),
+			ProceedsValue:      moneyCoefficient(e.ProceedsValue),
+			ProceedsScale:      e.ProceedsScale,
+			RealizedGainValue:  projectedBasisValue(e.RealizedGainValue, e.BasisKnowledge),
+			RealizedGainScale:  projectedBasisScale(e.RealizedGainScale, e.BasisKnowledge),
+			BasisKnowledge:     responseKnowledge(e.BasisKnowledge),
+			PositionSide:       e.PositionSide,
+		})
+	}
+	unrealizedResponses := make([]unrealizedGainResponse, 0, len(unrealized))
+	for _, e := range unrealized {
+		unrealizedResponses = append(unrealizedResponses, unrealizedGainResponse{
+			AccountID:               e.AccountID,
+			CommodityID:             e.CommodityID,
+			CostCommodityID:         e.CostCommodityID,
+			QuantityValue:           e.QuantityValue,
+			QuantityScale:           e.QuantityScale,
+			RemainingCostBasisValue: projectedBasisValue(e.RemainingCostBasisValue, e.BasisKnowledge),
+			RemainingCostBasisScale: projectedBasisScale(e.RemainingCostBasisScale, e.BasisKnowledge), BasisKnowledge: e.BasisKnowledge,
+			PriceStatus: e.PriceStatus, ValuationAsOf: e.ValuationAsOf, KnowledgeCutoff: e.KnowledgeCutoff,
+			LatestPriceValue:       moneyCoefficientPointer(e.LatestPriceValue),
+			LatestPriceScale:       e.LatestPriceScale,
+			LatestPriceDate:        e.LatestPriceDate,
+			LatestPriceApproximate: e.LatestPriceApproximate,
+			MarketValueValue:       moneyCoefficientPointer(e.MarketValueValue),
+			MarketValueScale:       e.MarketValueScale,
+			UnrealizedGainValue:    moneyCoefficientPointer(e.UnrealizedGainValue),
+			UnrealizedGainScale:    e.UnrealizedGainScale,
+			ValuationUnavailable:   e.ValuationUnavailable,
+			GainUnavailable:        e.GainUnavailable,
+			PositionSide:           e.PositionSide,
+		})
+	}
+
+	// Realized totals are grouped by cost commodity alone and summed
+	// exactly. Grouping by scale as well used to stand in for "can be added
+	// without loss", but a gain now carries whatever scale its own
+	// subtraction needed (T-101), so two gains in the same currency can
+	// legitimately differ in scale — splitting them into separate totals
+	// would report one currency twice and make neither row the total.
+	// exact.ScaledInt deepens as it adds, so one row per currency holds the
+	// sum without rounding.
+	totalsMap := map[int64]*exact.ScaledInt{}
+	unresolved := map[int64]int{}
+	var totalsOrder []int64
+	for _, e := range realized {
+		if totalsMap[e.CostCommodityID] == nil {
+			totalsMap[e.CostCommodityID] = exact.NewScaledInt()
+			totalsOrder = append(totalsOrder, e.CostCommodityID)
+		}
+		if e.BasisKnowledge == "unknown" {
+			unresolved[e.CostCommodityID]++
+			continue
+		}
+		totalsMap[e.CostCommodityID].AddInt64(e.RealizedGainValue, e.RealizedGainScale)
+	}
+	realizedTotals := make([]realizedGainTotalResponse, 0, len(totalsOrder))
+	for _, commodityID := range totalsOrder {
+		total := totalsMap[commodityID]
+		totalValue, err := total.Int64()
+		if err != nil {
+			return investmentGainsResponse{}, err
+		}
+		knowledge := "known"
+		if unresolved[commodityID] > 0 {
+			knowledge = "unknown"
+		}
+		realizedTotals = append(realizedTotals, realizedGainTotalResponse{
+			CostCommodityID: commodityID,
+			TotalGainValue:  projectedBasisValue(totalValue, knowledge),
+			TotalGainScale:  projectedBasisScale(total.Scale(), knowledge),
+			BasisKnowledge:  knowledge,
+			UnresolvedCount: unresolved[commodityID],
+		})
+	}
+	return investmentGainsResponse{
+		Profile:        toGainsProfileResponse(profile),
+		CapitalReturns: nil,
+		Currencies:     nil,
+		Realized:       realizedResponses,
+		Unrealized:     unrealizedResponses,
+		RealizedTotals: realizedTotals,
+	}, nil
+}
 func projectedBasisValue(value int64, knowledge string) *moneyCoefficient {
 	if knowledge == "unknown" {
 		return nil

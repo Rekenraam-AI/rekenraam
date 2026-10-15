@@ -2977,6 +2977,10 @@ func (s *InvestmentService) ListRealizedGains(ctx context.Context, params GainsR
 	if err != nil {
 		return nil, fmt.Errorf("list realized gains: %w", err)
 	}
+	return realizedGainEntries(records), nil
+}
+
+func realizedGainEntries(records []db.RealizedGainRecord) []RealizedGainEntry {
 	entries := make([]RealizedGainEntry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, RealizedGainEntry{
@@ -2997,7 +3001,7 @@ func (s *InvestmentService) ListRealizedGains(ctx context.Context, params GainsR
 			PositionSide:       r.PositionSide,
 		})
 	}
-	return entries, nil
+	return entries
 }
 
 func (s *InvestmentService) ListUnrealizedGains(ctx context.Context) ([]UnrealizedGainEntry, error) {
@@ -3009,16 +3013,21 @@ func (s *InvestmentService) ListUnrealizedGains(ctx context.Context) ([]Unrealiz
 // #230). Two figures compare only when their profiles match; see the R18
 // reporting plan for each field's contract.
 type GainsProfile struct {
-	Name            string
-	Purpose         string
-	BasisMethod     string
-	ValuationAsOf   string
-	KnowledgeCutoff string
-	LedgerKnowledge string
-	QuotePolicy     string
-	StaleAfterDays  int
-	FXMethod        string
-	Rounding        string
+	StructuralActionPolicy string
+	SpecificLotFallback    string
+	TransferPolicy         string
+	From                   string
+	To                     string
+	Name                   string
+	Purpose                string
+	BasisMethod            string
+	ValuationAsOf          string
+	KnowledgeCutoff        string
+	LedgerKnowledge        string
+	QuotePolicy            string
+	StaleAfterDays         int
+	FXMethod               string
+	Rounding               string
 }
 
 // operationalGainsProfile is operational_v1 at the given boundary.
@@ -3057,6 +3066,10 @@ func (s *InvestmentService) UnrealizedGainsProjection(ctx context.Context, valua
 	if err != nil {
 		return GainsProfile{}, nil, fmt.Errorf("list unrealized gains: %w", err)
 	}
+	return operationalGainsProfile(boundary), unrealizedGainEntries(records), nil
+}
+
+func unrealizedGainEntries(records []db.UnrealizedGainRecord) []UnrealizedGainEntry {
 	entries := make([]UnrealizedGainEntry, 0, len(records))
 	for _, r := range records {
 		var priceScale *int
@@ -3087,7 +3100,7 @@ func (s *InvestmentService) UnrealizedGainsProjection(ctx context.Context, valua
 			PositionSide:            r.PositionSide,
 		})
 	}
-	return operationalGainsProfile(boundary), entries, nil
+	return entries
 }
 
 // InvestmentImpactKind names which investment write path a reconciliation

@@ -1,4 +1,4 @@
-import type { components } from '#lib/api/schema.js';
+import type { components, paths } from '#lib/api/schema.js';
 import type { TransactionResponse } from '#lib/api/transactions.ts';
 import { APIClientError, apiClient, toAPIClientError, toNetworkError } from '#lib/api/client.ts';
 
@@ -977,10 +977,14 @@ export async function recordReinvestedDividend(
   }
 }
 
-export function investmentGainsQueryOptions(from?: string, to?: string, valuationAsOf?: string) {
+export type AlternativeBasisMethod = NonNullable<
+  NonNullable<paths['/api/v1/investments/gains']['get']['parameters']['query']>['alternative_method']
+>;
+
+export function investmentGainsQueryOptions(from?: string, to?: string, valuationAsOf?: string, alternativeMethod?: AlternativeBasisMethod) {
   return {
-    queryKey: [...investmentGainsQueryKey, { from, to, valuationAsOf }] as const,
-    queryFn: () => getInvestmentGains(from, to, valuationAsOf),
+    queryKey: [...investmentGainsQueryKey, { from, to, valuationAsOf, alternativeMethod }] as const,
+    queryFn: () => getInvestmentGains(from, to, valuationAsOf, alternativeMethod),
     staleTime: 30_000
   };
 }
@@ -1014,11 +1018,12 @@ export function investmentAutomationRulesQueryOptions() {
 export async function getInvestmentGains(
   from?: string,
   to?: string,
-  valuationAsOf?: string
+  valuationAsOf?: string,
+  alternativeMethod?: AlternativeBasisMethod
 ): Promise<InvestmentGainsResponse> {
   try {
     const { data, error, response } = await apiClient.GET('/api/v1/investments/gains', {
-      params: { query: { from, to, valuation_as_of: valuationAsOf } }
+      params: { query: { from, to, valuation_as_of: valuationAsOf, alternative_method: alternativeMethod } }
     });
 
     if (data !== undefined) {
