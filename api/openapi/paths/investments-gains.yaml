@@ -8,9 +8,10 @@ get:
     included separately, filtered by payment date. Their unresolved excess is
     not included in disposal gains or totals; viewing does not post income.
     Unrealized gains are a read-only operational_v1 projection (R18, #230):
-    without `valuation_as_of` they value today's positions; with it, every
-    position is replayed to that date and priced with the latest compatible
-    observation on or before it. `profile` names the rules used.
+    `valuation_as_of` defaults to owner-local today. Every position is replayed
+    to the resolved date, excluding later events (including recorded future
+    trades), and priced with the latest compatible observation on or before it.
+    `profile` names the rules used.
     Optional `alternative_method` adds an alternative_method_v1 projection beside
     the operational results. It replays effective history under FIFO, LIFO or
     average cost in a rolled-back read, including specific-lot decisions using

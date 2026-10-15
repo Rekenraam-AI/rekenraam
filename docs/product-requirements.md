@@ -438,7 +438,9 @@ Goal: add power-user workflows after the core ledger is stable.
   result; same-currency conversion is exact. See the R18 reporting plan (#233).
 - Reproducible investment reporting with an explicit as-of date, price-knowledge
   cutoff, basis profile, valuation/FX method, staleness policy, reporting currency,
-  period/date basis, and rounding. Persist report snapshots where reproducibility
+  period/date basis, and rounding. An omitted gains valuation date resolves to
+  owner-local today and excludes recorded future investment events, just as an
+  explicit date does. Persist report snapshots where reproducibility
   cannot be guaranteed cheaply from immutable facts and versioned policies.
 
 ### Later

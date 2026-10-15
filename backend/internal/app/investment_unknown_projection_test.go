@@ -17,10 +17,12 @@ import (
 func TestUnknownProjectedBasisDoesNotBecomeZeroGain(t *testing.T) {
 	t.Parallel()
 	f := newInvestmentsTestFixture(t)
-	buyOn(t, f, "2026-01-01", 2, 2000)
-	_, err := f.database.Exec(`UPDATE investment_lot_state SET basis_knowledge = 'unknown',
-		remaining_cost_basis_value = NULL, remaining_cost_basis_scale = NULL`)
-	require.NoError(t, err, "unknown basis must have an explicit status and no numeric amount")
+	seedExternalTransferEquity(t, f.database)
+	inbound := unknownTransferInInput(f, "2026-01-01", "")
+	inbound.QuantityValue, inbound.QuantityScale = exact.New(2), 0
+	_, err := f.investmentService.ExternalTransferIn(context.Background(), inbound)
+	require.NoError(t, err)
+	priceStockOn(t, f, "2026-01-01", 1000)
 	gains, err := f.investmentService.ListUnrealizedGains(context.Background())
 	require.NoError(t, err)
 	require.Len(t, gains, 1)
@@ -37,14 +39,21 @@ func TestUnknownProjectionMakesMixedPositionBasisUnavailable(t *testing.T) {
 		t.Run(map[bool]string{true: "first lot unknown", false: "last lot unknown"}[unknownFirst], func(t *testing.T) {
 			t.Parallel()
 			f := newInvestmentsTestFixture(t)
-			first := buyOn(t, f, "2026-01-01", 2, 2000)
-			last := buyOn(t, f, "2026-01-02", 1, 4000)
-			id := *last.LotID
+			seedExternalTransferEquity(t, f.database)
+			inbound := unknownTransferInInput(f, "2026-01-02", "")
+			inbound.QuantityValue, inbound.QuantityScale = exact.New(1), 0
 			if unknownFirst {
-				id = *first.LotID
+				inbound.EffectiveOn = "2026-01-01"
+				inbound.QuantityValue = exact.New(2)
+				_, err := f.investmentService.ExternalTransferIn(context.Background(), inbound)
+				require.NoError(t, err)
+				buyOn(t, f, "2026-01-02", 1, 4000)
+			} else {
+				buyOn(t, f, "2026-01-01", 2, 2000)
+				_, err := f.investmentService.ExternalTransferIn(context.Background(), inbound)
+				require.NoError(t, err)
 			}
-			_, err := f.database.Exec(`UPDATE investment_lot_state SET basis_knowledge = 'unknown', remaining_cost_basis_value = NULL, remaining_cost_basis_scale = NULL WHERE lot_id = ?`, id)
-			require.NoError(t, err)
+			priceStockOn(t, f, "2026-01-03", 4000)
 			positions, err := f.investmentService.Positions(context.Background())
 			require.NoError(t, err)
 			require.Len(t, positions, 1)

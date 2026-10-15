@@ -46,7 +46,7 @@ publication/observation timestamp is provenance, not the recorded-at boundary.
 
 | Consumer | Valuation and knowledge boundary | Age/coverage rule |
 | --- | --- | --- |
-| Current positions and unrealized gains | Owner-local today and UTC read start. Quantity/basis remain the current operational projection, irrespective of date filters on realized gains. | No age rejection: retain the latest compatible price, explicitly mark it stale after seven calendar days. Missing/future-only/incompatible/not-yet-known evidence leaves value/gain absent with a reason; quantity and cost currency/basis remain. |
+| Current positions and unrealized gains | Owner-local today and UTC read start. Holdings retain the current operational projection. Gains replay quantity/basis to the resolved valuation date (today by default), excluding later events, independently of disposal-date filters. | No age rejection: retain the latest compatible price, explicitly mark it stale after seven calendar days. Missing/future-only/incompatible/not-yet-known evidence leaves value/gain absent with a reason; quantity and cost currency/basis remain. |
 | Currency settings latest rates | Owner-local today and UTC read start. | Retain old compatible rates with their date and the same seven-day stale warning. This is a management view, not a historical conversion guarantee. |
 | Net worth series | Each bucket end, capped at owner-local today; observation knowledge limited to UTC read start. | Nearest on-or-before quote within requested age, default seven calendar days, inclusive. No eligible rate means no converted bucket total. Original commodity figures remain. |
 | Spending and cashflow | Each posting entry date, with observation ceiling capped at owner-local today; UTC read start knowledge. | Same requested age window. Convert each posting with exact arithmetic then sum; incomplete converted groups/totals are absent. Original currency figures remain. |
@@ -87,9 +87,9 @@ compliance.
 
 | Field | Meaning | Values defined so far |
 | --- | --- | --- |
-| `name` / `version` | Stable key; a rule change is a new version, never a silent reinterpretation. | `operational_v1`, `alternative_method_v1` |
+| `name` / `version` | Stable key; a rule change is a new version, never a silent reinterpretation. | `operational_v1`, `alternative_method_v1`, `person_pooled_average_v1` |
 | `purpose` | What the figure is for. A label, not a compliance claim. | `operational`, `alternative_method` (later: `broker_comparison`, `tax_estimate`) |
-| `basis_method` | How disposals consume basis. | `operational_elections`: each committed disposal's recorded method, tier and allocations (ADR 0012); no re-election. |
+| `basis_method` | How disposals consume basis. | `operational_elections`: each committed disposal's recorded method, tier and allocations (ADR 0012); comparisons explicitly select `fifo`, `lifo`, `average_cost` or `person_pooled_average` without re-election. |
 | `valuation_as_of` | Calendar date the open positions are replayed to and priced at. | Any date up to owner-local today; default today. |
 | `positions_as_of` | Which events build the holding. | Every effective event dated on or before `valuation_as_of`, replayed in a rolled-back read (the #166 dated-holdings replay, both sides). |
 | `knowledge_cutoff` | UTC instant limiting admitted **observations**. | Read start. |
@@ -137,6 +137,13 @@ instant* is provided by an explicitly saved immutable run (#234, below). Live
 reads keep using current effective history and never claim historical
 reconstruction. An unsaved earlier read cannot be recovered retroactively.
 
+The [completion audit](../reviews/r18-completion-audit-2026-10-15.md) found a
+separate live-read consistency defect: shared observation cutoffs do not keep
+the separate operational, comparison and FX reads on one input state when a
+correction or withdrawal interleaves. [#237](https://github.com/sergeyfarin/rekenraam/issues/237)
+owns that repair. Saved operational runs already use a consistent isolated
+snapshot and retain their reproducibility guarantee.
+
 ### Period statement (#231)
 
 A period `from..to` reports, per currency and under the same profile:
@@ -150,6 +157,13 @@ valuation states its position, unpriced, unresolved and stale counts and the
 range of price dates used. Any figure resting on a missing price or unresolved
 basis is null with its reason, and so is every figure built from it; a
 currency with nothing held at a date has a known zero.
+
+Return-of-capital excess remains outside disposal/income totals; the separate
+gains summary exposes its recorded allocations (#171). The period statement
+does not yet disclose excluded excess or its coverage. The reporting decision
+and period disclosure are tracked in [#238](https://github.com/sergeyfarin/rekenraam/issues/238);
+the present total is the stated realized + dividend income + unrealized-change
+formula, not a comprehensive return or tax calculation.
 
 ### Alternative-method comparison (#232)
 

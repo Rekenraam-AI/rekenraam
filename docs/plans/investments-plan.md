@@ -36,8 +36,16 @@ Current-status notes reconciled 2026-08-31; original delivery was 2026-07-03.
 > and reversal are delivered in T-75b #99; remaining operation families and
 > gain-impact safety have separate issues in the active R16 operation plan.
 > Durable disposal-policy provenance (T-76) shipped 2026-09-10.
-> ADR 0012 and R18 govern future reproducible reporting. See
+> ADR 0012 and R18 govern reproducible reporting. See
 > `docs/plans/investment-integrity-plan.md` for the acceptance evidence.
+
+> **Reporting status (2026-10-15).** R18's six bounded slices now ship dated
+> operational gains and period statements, alternative/person-pooled methods,
+> operational FX and immutable operational runs. The
+> [reporting policy](investment-reporting-plan.md) supersedes the older
+> reporting-status claims below; the [completion audit](../reviews/r18-completion-audit-2026-10-15.md)
+> records retained limits and independent follow-ups #237/#238. Formal postings
+> remain outside R18, and TWR/MWR belongs to R13.
 
 ---
 
@@ -641,9 +649,11 @@ Realized gains section (filterable by date range):
   instruments query).
 
 **No report snapshots in this slice.** The plan mentions snapshots where
-reproducibility matters; that is deferred to a future slice — the live query
-over `investment_lot_events` is sufficient here and the immutable event log means
-the query is already reproducible for past dates.
+reproducibility matters; R12's live read is sufficient for its operational
+scope. Immutable events alone do not reproduce past knowledge once corrections,
+replay revisions and observation withdrawals apply. R18 #234 now supplies
+explicit immutable operational gains/statement documents; see its
+[reproducibility contract](investment-reporting-plan.md#immutable-operational-runs-234).
 
 **Step 7 — Tests.**
 
@@ -830,7 +840,8 @@ store, durable fetch, dedupe) was unchanged, as planned.
    not posted to a gain/loss account (none exists in the taxonomy). ADR 0012 now
    fixes the boundary: viewing a report never posts. If product later wants gain
    as a ledger movement, it is a separate, explicit workflow linked to the named
-   projection that produced it; R18 decides whether to scope that workflow.
+   projection that produced it. R18's research recommendation leaves formal
+   postings unscheduled until a user need is evidenced.
 3. **Market price availability** for unrealized gains depends on the pricing
    backend having instrument prices (distinct from FX). Read-only UI must degrade
    gracefully (cost-only) when no price exists rather than fabricate one.
@@ -861,9 +872,8 @@ store, durable fetch, dedupe) was unchanged, as planned.
    the resolved method, tier, source version/effective state, exact totals,
    allocations, transaction version, and audit linkage. The committed API and
    structured export carry the same contract; metadata JSON is not authoritative.
-8. **Current gains are operational, not report-grade (I-03 / R18):** realized
-   rows expose only the committed operational basis; unrealized rows always use
-   the latest price and have no `as_of`, knowledge cutoff, staleness, source/FX
-   policy, or reporting currency. Keep the UI, label its semantics honestly, and
-   build the reproducible named projection only after R12a, R16, and R17 supply
-   trustworthy events and prices.
+8. **Named reporting projections (I-03 / R18, delivered 2026-10-15):** the
+   [R18 policy](investment-reporting-plan.md) defines dated gains, knowledge and
+   quote/staleness descriptors, alternative/person-pooled basis comparisons,
+   operational FX and immutable operational runs. Live reads remain
+   current-effective; saved schema 1 is operational/original-currency only.

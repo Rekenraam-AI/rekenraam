@@ -59,3 +59,33 @@ func TestInvestmentGainsValuationAsOfAPI(t *testing.T) {
 		assert.Equal(t, "VALIDATION_FAILED", failure.Error.Code, query)
 	}
 }
+
+func TestInvestmentGainsDefaultTodayKeepsFutureSaleOutOfValuation(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	f := bootstrapInvestmentAPITest(t, handler)
+	instrument := createInstrumentForSession(t, handler, f, "FUTURE")
+	holding := createHoldingAccountForSession(t, handler, f, instrument.ID)
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/buy",
+		tradeRequestBody(f, holding.ID, instrument.CommodityID, "2", 4000), http.StatusCreated)
+	sale := tradeRequestBody(f, holding.ID, instrument.CommodityID, "2", 5000)
+	sale.TransactionDate = "2099-01-01"
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/sell", sale, http.StatusCreated)
+	res := doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet,
+		"/api/v1/investments/gains?alternative_method=fifo", nil, http.StatusOK)
+	var body investmentGainsResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
+	require.Len(t, body.Unrealized, 1, "a future sale cannot hide today's holding")
+	assert.Equal(t, "2", body.Unrealized[0].QuantityValue.String())
+	require.NotNil(t, body.Alternative)
+	require.Len(t, body.Alternative.Unrealized, 1)
+	assert.Equal(t, body.Unrealized[0].QuantityValue, body.Alternative.Unrealized[0].QuantityValue)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet,
+		"/api/v1/investments/gains?valuation_as_of="+body.Profile.ValuationAsOf, nil, http.StatusOK)
+	var dated investmentGainsResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&dated))
+	require.Len(t, dated.Unrealized, len(body.Unrealized))
+	// Separate live reads have distinct observation-knowledge instants.
+	dated.Unrealized[0].KnowledgeCutoff = body.Unrealized[0].KnowledgeCutoff
+	assert.Equal(t, body.Unrealized, dated.Unrealized)
+}

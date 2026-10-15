@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -134,5 +135,36 @@ func TestDatedValuationRejectsFutureAndMalformedDates(t *testing.T) {
 		_, _, err := f.investmentService.UnrealizedGainsProjection(context.Background(), date)
 		var validation ValidationError
 		require.ErrorAs(t, err, &validation, date)
+	}
+}
+
+func TestDatedValuationDefaultExcludesFutureInvestmentEvents(t *testing.T) {
+	t.Parallel()
+	for _, event := range []string{"buy", "sale", "short_cover"} {
+		t.Run(event, func(t *testing.T) {
+			f := newInvestmentsTestFixture(t)
+			f.investmentService.now = func() time.Time { return time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC) }
+			ctx := context.Background()
+			switch event {
+			case "buy":
+				buyOn(t, f, "2026-01-01", 2, 4000)
+				buyOn(t, f, "2099-01-01", 3, 9000)
+			case "sale":
+				buyOn(t, f, "2026-01-01", 2, 4000)
+				_, err := f.investmentService.Sell(ctx, sellInput(f, "2099-01-01", 2))
+				require.NoError(t, err)
+			case "short_cover":
+				shortSaleOn(t, f, "2026-01-01", 2, 4000)
+				_, err := f.investmentService.ShortCover(ctx, shortInput(f, "2099-01-01", 2, 3000))
+				require.NoError(t, err)
+			}
+			before := buyReplacementPreviewSnapshot(t, f.database)
+			profile, current := datedValuation(t, f, "")
+			_, dated := datedValuation(t, f, profile.ValuationAsOf)
+			require.Len(t, dated, 1)
+			assert.Equal(t, dated, current, "omitting the date must value the same holding as explicit owner-local today")
+			assert.Equal(t, "2", dated[0].QuantityValue.String())
+			assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+		})
 	}
 }

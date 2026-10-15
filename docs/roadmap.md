@@ -109,9 +109,11 @@ below is execution order, not a chain of hard dependencies.
 
 **Now**
 
-1. R13 investment returns and allocation analytics, following the delivered
-   R18 gains-projection slices [#230–#235](plans/investment-reporting-plan.md#delivery-slices)
-   (2026-10-15).
+1. Repair live gains consistency [#237](https://github.com/sergeyfarin/rekenraam/issues/237)
+   before building R13 analytics on those readers. R13 investment returns and
+   allocation planning [#119](https://github.com/sergeyfarin/rekenraam/issues/119)
+   can proceed from the delivered R18 contracts
+   [#230–#235](plans/investment-reporting-plan.md#delivery-slices) (2026-10-15).
 2. Daily-use parallel work. The shared transaction workspace
    [#185](https://github.com/sergeyfarin/rekenraam/issues/185) is delivered
    (2026-10-14): contextual entry, same-day reorder and row actions on the
@@ -180,8 +182,8 @@ separate R16 completion gates above, rather than reopening delivered children.
 **Delivered parallel trust follow-up (2026-10-13):** recorded return-of-capital
 excess visibility [#171](https://github.com/sergeyfarin/rekenraam/issues/171),
 with effective allocations and immutable history in transaction detail and
-the investment summary. The separately specified reporting decision remains
-in #118. Write-off mobile entry [#172](https://github.com/sergeyfarin/rekenraam/issues/172)
+the investment summary. The period disclosure and reporting decision remain
+in [#238](https://github.com/sergeyfarin/rekenraam/issues/238). Write-off mobile entry [#172](https://github.com/sergeyfarin/rekenraam/issues/172)
 is delivered (2026-10-13), with dated lot selection, exact/unresolved loss
 preview and shared gain/checkpoint review. Mixed-cost-currency write-off selection
 [#199](https://github.com/sergeyfarin/rekenraam/issues/199) is delivered (2026-10-13),
@@ -284,7 +286,10 @@ The six delivery slices [#230–#235](plans/investment-reporting-plan.md#deliver
 are delivered (2026-10-15). Their contracts and retained limits live in the
 [reporting policy](plans/investment-reporting-plan.md); shipped capabilities and
 validation live in [the feature ledger](implemented.md). Formal postings remain
-outside this bounded initiative until a need is evidenced. R13 follows.
+outside this bounded initiative until a need is evidenced. The
+[completion audit](reviews/r18-completion-audit-2026-10-15.md) records the
+independent live-read consistency (#237) and capital-return period disclosure
+(#238) follow-ups. R13 follows; its planning does not close those defects.
 
 ### R13 — investment returns and allocation analytics
 
@@ -333,7 +338,8 @@ These are valuable, but they are not allowed to displace the current plan:
   `docs/plans/receipts-plan.md`. **R14a ships after R5**, not alongside R3
   (decided 2026-08-05): it is not an announcement gate, so it does not go
   between two slices that are. R3 carries the attachments hook instead.
-- Report snapshots, multi-user, and household features. Core
+- General report snapshots beyond R18’s saved operational investment
+  gains/statement documents, multi-user, and household features. Core
   reporting-currency conversion is already shipped.
 
 ## Competitor and parity check
@@ -468,29 +474,6 @@ Resolve these only when their related slice becomes current work:
 - Attachment storage, retention, access-control, backup, and encryption model
   — a proposed resolution now exists in `docs/plans/receipts-plan.md` (R14a);
   decide when that slice is scheduled.
-- I-03 / I-04 (gains reporting): **architectural boundary decided 2026-08-29
-  in ADR 0012; product research is scheduled inside R18 after R12a/R16/R17.**
-  The remaining work is not a yes/no choice because:
-  - realized and unrealized gains answer different questions, and which one a
-    user should see depends on what they are trying to learn;
-  - tax treatment differs by country — some tax realized gains, some tax
-    unrealized — so a single hard-coded presentation cannot serve the persona;
-  - unrealized figures move with every price refresh, so a naive presentation
-    flip-flops and reads as instability rather than information.
-
-  **Recommendation recorded 2026-10-14 (#118)** in the
-  [R18 reporting plan](plans/investment-reporting-plan.md#research-recommendations);
-  the original framing follows.
-  The R18 plan must produce a recommendation for: which measure is authoritative
-  where, when each is shown, how the jurisdiction difference is expressed
-  without turning the app into a tax engine, and how to present unrealized
-  movement without flip-flopping. I-03 is a named read-side projection. ADR 0012
-  answers I-04's boundary now: viewing a report never posts; any accounting entry
-  is a separate explicit linked workflow whose inclusion remains an R18 scope choice.
-
-  **This does not block R12a, R16 slice 1, or R17.** Zero-proceeds write-off (T-38), price
-  observation voiding (T-37), and return of capital are lot-lifecycle work; they
-  use whatever gains treatment is current and do not depend on this outcome.
 
 ## Completed milestones
 

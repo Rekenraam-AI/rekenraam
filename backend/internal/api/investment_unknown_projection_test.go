@@ -6,19 +6,27 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"rekenraam/backend/internal/exact"
 )
 
 func TestUnknownProjectedBasisAPIKeepsQuantityAndReturnsNullBasis(t *testing.T) {
 	t.Parallel()
-	handler, database := newSetupTestHandler(t)
+	handler, _ := newSetupTestHandler(t)
 	f := bootstrapInvestmentAPITest(t, handler)
 	instrument := createInstrumentForSession(t, handler, f, "NULLBASIS")
 	holding := createHoldingAccountForSession(t, handler, f, instrument.ID)
-	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/buy",
-		tradeRequestBody(f, holding.ID, instrument.CommodityID, "2", 2000), http.StatusCreated)
-	_, err := database.Exec(`UPDATE investment_lot_state SET basis_knowledge = 'unknown',
-		remaining_cost_basis_value = NULL, remaining_cost_basis_scale = NULL`)
-	require.NoError(t, err)
+	// Use real unknown acquisition evidence so both the current lot state and
+	// dated replay retain unknown basis. A partial sale supplies a price while
+	// leaving two units, without damaging the rebuildable projection by hand.
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost,
+		"/api/v1/investments/transfers/external/in", externalTransferInRequest{
+			EffectiveOn: "2026-02-01", HoldingAccountID: holding.ID, CommodityID: instrument.CommodityID,
+			QuantityValue: exact.New(3), CostCommodityID: f.commodityID, BasisKnowledge: "unknown",
+		}, http.StatusCreated)
+	sale := tradeRequestBody(f, holding.ID, instrument.CommodityID, "1", 2000)
+	sale.TransactionDate = "2026-03-01"
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/sell", sale, http.StatusCreated)
 	for _, test := range []struct{ path, key string }{
 		{"/api/v1/investments/lots", "lots"},
 		{"/api/v1/investments/positions", "positions"},

@@ -3044,8 +3044,8 @@ func operationalGainsProfile(boundary db.ObservationBoundary) GainsProfile {
 }
 
 // UnrealizedGainsProjection values open positions under operational_v1. An
-// empty valuationAsOf is owner-local today over the current projection; a
-// past date replays each position to that date and prices it then (#230).
+// empty valuationAsOf resolves to owner-local today. Every valuation replays
+// positions to its date, excluding even already-recorded future events (#230).
 // A date after owner-local today is refused: it would value positions with
 // prices nobody has observed yet.
 func (s *InvestmentService) UnrealizedGainsProjection(ctx context.Context, valuationAsOf string) (GainsProfile, []UnrealizedGainEntry, error) {
@@ -3053,10 +3053,7 @@ func (s *InvestmentService) UnrealizedGainsProjection(ctx context.Context, valua
 	if err != nil {
 		return GainsProfile{}, nil, err
 	}
-	var records []db.UnrealizedGainRecord
-	if valuationAsOf == "" {
-		records, err = s.repository.PositionsWithGains(ctx, BookID, boundary)
-	} else {
+	if valuationAsOf != "" {
 		date, dateErr := cleanRequiredDate(valuationAsOf, "valuation date")
 		if dateErr != nil {
 			return GainsProfile{}, nil, dateErr
@@ -3065,8 +3062,8 @@ func (s *InvestmentService) UnrealizedGainsProjection(ctx context.Context, valua
 			return GainsProfile{}, nil, ValidationError{Message: "valuation date cannot be after today"}
 		}
 		boundary.AsOf = date
-		records, err = s.repository.DatedPositionsWithGains(ctx, BookID, boundary)
 	}
+	records, err := s.repository.DatedPositionsWithGains(ctx, BookID, boundary)
 	if err != nil {
 		return GainsProfile{}, nil, fmt.Errorf("list unrealized gains: %w", err)
 	}

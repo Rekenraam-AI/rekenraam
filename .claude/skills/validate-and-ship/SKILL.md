@@ -428,6 +428,11 @@ non-trivial diff (yours or reviewed):
     them and discard selected dates/amounts. Check an opposite-midnight browser,
     year rollover and refresh followed by reopening; see
     `owner-local-dates.spec.ts` and `owner-local-date-contract.spec.ts`.
+    A valuation's date must also constrain holding events: current lot state
+    can include recorded future buys, sales or covers. Omitting a gains date
+    must match explicit owner-local today. Named regressions:
+    `TestDatedValuationDefaultExcludesFutureInvestmentEvents`,
+    `TestInvestmentGainsDefaultTodayKeepsFutureSaleOutOfValuation`.
 
 40. **Checking a process lock without holding it through replacement** —
     `CheckAvailable` releases its lock immediately; it cannot protect a later

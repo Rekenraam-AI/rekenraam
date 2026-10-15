@@ -88,8 +88,10 @@ selector, restated rows, coverage notices, charts, and CSV output ship in
   incomplete converted figures are omitted, never shown as complete totals.
 - *Withdrawn observations:* T-37 is complete. Voided observations and dependent
   derived rates are excluded from reporting-rate reads.
-- *Remaining scope:* this is live reporting-currency valuation, not saved
-  snapshots or the reproducible investment-basis projections planned in R18.
+- *Remaining scope:* these core reports remain live. R18 separately ships
+  investment basis comparisons and immutable original-currency operational
+  gains/statement runs; general net-worth/spending/cashflow snapshots remain
+  deferred. See the [saved-run boundary](investment-reporting-plan.md#immutable-operational-runs-234).
 
 ## Shared contract
 
@@ -603,7 +605,7 @@ document gets a disposition and a reason; nothing is left as "reconsider later".
 | --- | --- | --- |
 | Reporting-currency selector and named FX/price valuation method | **Approved after R3; shipped 2026-08-26** | Implemented as `observed_on_or_before`, with rate-date/coverage metadata, optional restated totals, and unchanged exact commodity totals. See the delivered contract above. |
 | Named saved report definitions and live report runs | **No, deferred** | The URL already is the saved definition: every control writes it and a link reproduces the exact report. A saved-definition store adds a second source of truth and a migration story for a convenience the address bar covers. Revisit when a report acquires state a URL cannot carry. |
-| Immutable/reproducible report snapshots | **No, deferred** | Reproducibility here would mean freezing the ledger as it was read, which is a point-in-time query over the version tables — a capability worth having on its own terms, not a report feature. The audit model already records what changed and when. |
+| Immutable/reproducible core report snapshots | **No, deferred for R2** | Net-worth/spending/cashflow snapshots remain outside this report slice. R18 separately preserves immutable operational investment gains/statement documents from consistent SQLite input images; that decision does not imply general knowledge-time reconstruction over version tables. See the [R18 contract](investment-reporting-plan.md#immutable-operational-runs-234). |
 | Country, jurisdiction, tax, investment, and benchmark dimensions | **No, deferred** | These are report *questions*, and the ledger does not yet carry the facts most of them need. Tax and jurisdiction have no schema; investment returns are R13's subject and are tracked there. Adding dimensions before the facts exist would ship empty columns. |
 | User-configurable report builder | **No, rejected for this stage** | A builder is the answer to "many reports we cannot predict". With three reports and a single-user product, it would be a large generic surface protecting against a problem the product does not have. The shared filter contract is the part worth keeping, and it shipped. |
 | Net-worth asset/liability split in the series response | **No, retained as a known partial capability** | Recorded above as a deliberate gap, not an oversight. The series answers "what is it worth over time"; the split is a composition question that belongs with the balance-sheet view, and shipping half of it in the series response would fix the shape before that view is designed. |
