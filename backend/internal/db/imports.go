@@ -259,7 +259,9 @@ type UpdateImportBatchStatusParams struct {
 	ActorUserID   int64
 	AuthSessionID int64
 	RequestID     string
-	OccurredAt    string
+	// OccurredAt is required: it stamps the batch event (and the audit event
+	// when ActorUserID is set).
+	OccurredAt string
 }
 
 type UpdateImportStagedRowResolutionParams struct {
@@ -862,6 +864,9 @@ func (r *ImportRepository) ListImportBatches(ctx context.Context, params ListImp
 }
 
 func (r *ImportRepository) UpdateImportBatchStatus(ctx context.Context, params UpdateImportBatchStatusParams) error {
+	if params.OccurredAt == "" {
+		return errors.New("update import batch status: occurred_at is required")
+	}
 	tx, err := r.database.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin update import batch status: %w", err)
@@ -902,7 +907,7 @@ func (r *ImportRepository) UpdateImportBatchStatus(ctx context.Context, params U
 
 	occurredAt := params.OccurredAt
 	var auditEventID sql.NullInt64
-	if params.ActorUserID > 0 && occurredAt != "" {
+	if params.ActorUserID > 0 {
 		eid, err := insertAuditEvent(ctx, tx, AuditEventParams{
 			BookID:        0,
 			ActorUserID:   params.ActorUserID,
@@ -923,19 +928,11 @@ func (r *ImportRepository) UpdateImportBatchStatus(ctx context.Context, params U
 	if detailJSON == "" {
 		detailJSON = "{}"
 	}
-	eventCreatedAt := occurredAt
-	if eventCreatedAt == "" {
-		eventCreatedAt = params.OccurredAt
-	}
-	// Use a deterministic timestamp fallback by querying batch created_at
-	if eventCreatedAt == "" {
-		_ = r.database.QueryRowContext(ctx, `SELECT created_at FROM import_batches WHERE id = ?`, params.BatchID).Scan(&eventCreatedAt)
-	}
 
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO import_batch_events (batch_id, event_kind, detail_json, audit_event_id, created_at)
 		VALUES (?, ?, ?, ?, ?)
-	`, params.BatchID, params.EventKind, detailJSON, auditEventID, eventCreatedAt); err != nil {
+	`, params.BatchID, params.EventKind, detailJSON, auditEventID, occurredAt); err != nil {
 		return fmt.Errorf("insert import batch event: %w", err)
 	}
 
