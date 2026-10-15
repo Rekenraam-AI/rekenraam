@@ -30,7 +30,7 @@ func TestInvestmentSlice1FreshAndSeededBundleContract(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			ctx := context.Background()
-			database, err := db.Open(ctx, "file:"+filepath.Join(t.TempDir(), "candidate.sqlite"))
+			database, err := db.Open(ctx, db.SQLiteFileURL(filepath.Join(t.TempDir(), "candidate.sqlite")))
 			require.NoError(t, err)
 			defer database.Close()
 			require.NoError(t, db.Migrate(ctx, database))

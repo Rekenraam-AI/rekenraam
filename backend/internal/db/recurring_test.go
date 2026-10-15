@@ -20,7 +20,7 @@ func newRecurringTestDatabase(t testing.TB) *sql.DB {
 	t.Helper()
 
 	ctx := context.Background()
-	database, err := Open(ctx, "file:"+filepath.Join(t.TempDir(), "recurring.sqlite"))
+	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "recurring.sqlite")))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, database.Close()) })
 	require.NoError(t, Migrate(ctx, database))

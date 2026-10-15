@@ -50,7 +50,7 @@ type ledgerFingerprint struct {
 func fingerprintLedger(t *testing.T, databasePath string) ledgerFingerprint {
 	t.Helper()
 
-	database, err := sql.Open("sqlite", "file:"+databasePath+"?mode=ro")
+	database, err := sql.Open("sqlite", db.SQLiteFileURL(databasePath)+"?mode=ro")
 	require.NoError(t, err)
 	defer database.Close()
 
@@ -147,13 +147,15 @@ func TestRestoreDrillMatchesSourceTrialBalance(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	root := t.TempDir()
-	sourceURL := "file:" + filepath.Join(root, "source.sqlite")
+	root := filepath.Join(t.TempDir(), "sqlite #?%23 space ü")
+	require.NoError(t, os.Mkdir(root, 0o700))
+	sourceURL := db.SQLiteFileURL(filepath.Join(root, "source.sqlite"))
 
 	source, err := db.Open(ctx, sourceURL)
 	require.NoError(t, err)
 	require.NoError(t, db.Migrate(ctx, source))
 	seedRestoreLedger(t, source)
+	require.FileExists(t, filepath.Join(root, "source.sqlite"))
 
 	readOnly, err := db.OpenReadOnly(ctx, sourceURL)
 	require.NoError(t, err)
@@ -167,7 +169,7 @@ func TestRestoreDrillMatchesSourceTrialBalance(t *testing.T) {
 	require.NoError(t, source.Close())
 
 	// A fresh location, as an operator restoring onto a new machine would have.
-	restoredURL := "file:" + filepath.Join(root, "restored", "rekenraam.sqlite")
+	restoredURL := db.SQLiteFileURL(filepath.Join(root, "restored", "rekenraam.sqlite"))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "restored"), 0o700))
 
 	result, err := db.RestoreSQLiteDatabase(ctx, backupPath, restoredURL)
@@ -193,7 +195,7 @@ func TestRestorePreservesUncheckpointedWALContent(t *testing.T) {
 
 	ctx := context.Background()
 	root := t.TempDir()
-	sourceURL := "file:" + filepath.Join(root, "source.sqlite")
+	sourceURL := db.SQLiteFileURL(filepath.Join(root, "source.sqlite"))
 	sourcePath := filepath.Join(root, "source.sqlite")
 
 	source, err := db.Open(ctx, sourceURL)
@@ -221,7 +223,7 @@ func TestRestorePreservesUncheckpointedWALContent(t *testing.T) {
 	require.NoError(t, source.Close())
 
 	// The backup carries what was only in the WAL.
-	backup, err := sql.Open("sqlite", "file:"+backupPath+"?mode=ro")
+	backup, err := sql.Open("sqlite", db.SQLiteFileURL(backupPath)+"?mode=ro")
 	require.NoError(t, err)
 	var events int64
 	require.NoError(t, backup.QueryRowContext(ctx,
@@ -262,7 +264,7 @@ func TestRestorePreservesUncheckpointedWALContent(t *testing.T) {
 	require.NoError(t, err, "the simulation needs a WAL to exist at restore time")
 	require.Positive(t, crashedWAL.Size(), "and it needs content in it")
 
-	crashedURL := "file:" + filepath.Join(crashed, "rekenraam.sqlite")
+	crashedURL := db.SQLiteFileURL(filepath.Join(crashed, "rekenraam.sqlite"))
 	result, err := db.RestoreSQLiteDatabase(ctx, backupPath, crashedURL)
 	require.NoError(t, err)
 	require.NotEmpty(t, result.PreservedDir)
@@ -276,7 +278,7 @@ func TestRestorePreservesUncheckpointedWALContent(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(foldedPath, foldedBytes, 0o600))
 
-	folded, err := sql.Open("sqlite", "file:"+foldedPath+"?mode=ro")
+	folded, err := sql.Open("sqlite", db.SQLiteFileURL(foldedPath)+"?mode=ro")
 	require.NoError(t, err)
 	defer folded.Close()
 	var replaced int64
@@ -286,7 +288,7 @@ func TestRestorePreservesUncheckpointedWALContent(t *testing.T) {
 		"the checkpoint before preservation must fold the WAL into the file it preserves")
 
 	// And the restore itself installed the backup, which predates that write.
-	restored, err := sql.Open("sqlite", "file:"+filepath.Join(crashed, "rekenraam.sqlite")+"?mode=ro")
+	restored, err := sql.Open("sqlite", db.SQLiteFileURL(filepath.Join(crashed, "rekenraam.sqlite"))+"?mode=ro")
 	require.NoError(t, err)
 	defer restored.Close()
 	var afterRestore int64
@@ -323,7 +325,7 @@ func TestRestoreRefusesSourceEqualsDestination(t *testing.T) {
 
 	ctx := context.Background()
 	root := t.TempDir()
-	databaseURL := "file:" + filepath.Join(root, "rekenraam.sqlite")
+	databaseURL := db.SQLiteFileURL(filepath.Join(root, "rekenraam.sqlite"))
 
 	database, err := db.Open(ctx, databaseURL)
 	require.NoError(t, err)
@@ -349,7 +351,7 @@ func TestRestoreRefusesNewerSchema(t *testing.T) {
 	backupPath := filepath.Join(root, "future.sqlite")
 
 	// A backup written by a build with migrations this one does not have.
-	future, err := sql.Open("sqlite", "file:"+backupPath)
+	future, err := sql.Open("sqlite", db.SQLiteFileURL(backupPath))
 	require.NoError(t, err)
 	require.NoError(t, db.Migrate(ctx, future))
 	_, err = future.ExecContext(ctx, `
@@ -359,7 +361,7 @@ func TestRestoreRefusesNewerSchema(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, future.Close())
 
-	_, err = db.RestoreSQLiteDatabase(ctx, backupPath, "file:"+filepath.Join(root, "target.sqlite"))
+	_, err = db.RestoreSQLiteDatabase(ctx, backupPath, db.SQLiteFileURL(filepath.Join(root, "target.sqlite")))
 	require.ErrorIs(t, err, db.ErrRestoreSchemaNewer,
 		"a newer schema must be refused rather than half-migrated by an older build")
 }
@@ -372,7 +374,7 @@ func TestSealedDataDecryptsAfterRestoreWithRetainedKey(t *testing.T) {
 
 	ctx := context.Background()
 	root := t.TempDir()
-	sourceURL := "file:" + filepath.Join(root, "source.sqlite")
+	sourceURL := db.SQLiteFileURL(filepath.Join(root, "source.sqlite"))
 
 	source, err := db.Open(ctx, sourceURL)
 	require.NoError(t, err)
@@ -434,7 +436,7 @@ func TestConsecutiveRestoresEachKeepTheirOwnSafetyCopy(t *testing.T) {
 
 	ctx := context.Background()
 	root := t.TempDir()
-	sourceURL := "file:" + filepath.Join(root, "source.sqlite")
+	sourceURL := db.SQLiteFileURL(filepath.Join(root, "source.sqlite"))
 
 	source, err := db.Open(ctx, sourceURL)
 	require.NoError(t, err)
@@ -454,20 +456,20 @@ func TestConsecutiveRestoresEachKeepTheirOwnSafetyCopy(t *testing.T) {
 	liveDir := filepath.Join(root, "live")
 	require.NoError(t, os.MkdirAll(liveDir, 0o700))
 	livePath := filepath.Join(liveDir, "rekenraam.sqlite")
-	live, err := db.Open(ctx, "file:"+livePath)
+	live, err := db.Open(ctx, db.SQLiteFileURL(livePath))
 	require.NoError(t, err)
 	require.NoError(t, db.Migrate(ctx, live))
 	require.NoError(t, live.Close())
 	original := fingerprintLedger(t, livePath)
 	require.Zero(t, original.transactions, "the live database starts empty, unlike the backup")
 
-	first, err := db.RestoreSQLiteDatabase(ctx, backupPath, "file:"+livePath)
+	first, err := db.RestoreSQLiteDatabase(ctx, backupPath, db.SQLiteFileURL(livePath))
 	require.NoError(t, err)
 	require.NotEmpty(t, first.PreservedFiles)
 
 	// Immediately, with no sleep: the collision this guards against is the one
 	// that happens inside a single second.
-	second, err := db.RestoreSQLiteDatabase(ctx, backupPath, "file:"+livePath)
+	second, err := db.RestoreSQLiteDatabase(ctx, backupPath, db.SQLiteFileURL(livePath))
 	require.NoError(t, err)
 	require.NotEmpty(t, second.PreservedFiles)
 

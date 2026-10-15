@@ -159,7 +159,7 @@ func setupRecoveryCommandDatabase(t *testing.T, password string) string {
 	t.Helper()
 
 	databasePath := filepath.Join(t.TempDir(), "rekenraam.sqlite")
-	databaseURL := "file:" + databasePath
+	databaseURL := db.SQLiteFileURL(databasePath)
 	database := openRecoveryCommandDatabase(t, databaseURL)
 	defer database.Close()
 
@@ -186,7 +186,7 @@ func setupPreMigrationRecoveryDatabase(t *testing.T) string {
 	t.Helper()
 
 	databasePath := filepath.Join(t.TempDir(), "pre-migration.sqlite")
-	databaseURL := "file:" + databasePath
+	databaseURL := db.SQLiteFileURL(databasePath)
 	database, err := db.Open(context.Background(), databaseURL)
 	require.NoError(t, err)
 	defer database.Close()
@@ -233,7 +233,7 @@ func sqliteTableExists(t *testing.T, database *sql.DB, tableName string) bool {
 func openSQLiteReadOnly(t *testing.T, databasePath string) *sql.DB {
 	t.Helper()
 
-	database, err := sql.Open("sqlite", "file:"+databasePath+"?mode=ro")
+	database, err := sql.Open("sqlite", db.SQLiteFileURL(databasePath)+"?mode=ro")
 	require.NoError(t, err)
 	require.NoError(t, database.PingContext(context.Background()))
 	return database

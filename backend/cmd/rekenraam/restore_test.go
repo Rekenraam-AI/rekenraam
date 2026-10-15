@@ -26,7 +26,7 @@ func backupOf(t *testing.T) (databaseURL string, backupPath string) {
 
 	ctx := context.Background()
 	root := t.TempDir()
-	databaseURL = "file:" + filepath.Join(root, "rekenraam.sqlite")
+	databaseURL = db.SQLiteFileURL(filepath.Join(root, "rekenraam.sqlite"))
 
 	database, err := db.Open(ctx, databaseURL)
 	require.NoError(t, err)
@@ -67,7 +67,7 @@ func TestVerifyBackupCommandRejectsAnUnusableFile(t *testing.T) {
 	root := t.TempDir()
 	notABackup := filepath.Join(root, "notes.txt")
 	require.NoError(t, os.WriteFile(notABackup, []byte("this is not a database"), 0o600))
-	t.Setenv("DATABASE_URL", "file:"+filepath.Join(root, "rekenraam.sqlite"))
+	t.Setenv("DATABASE_URL", db.SQLiteFileURL(filepath.Join(root, "rekenraam.sqlite")))
 	t.Setenv("APP_ENV", "development")
 
 	stdout := &bytes.Buffer{}
@@ -160,7 +160,7 @@ func sealedBackupOf(t *testing.T) (databaseURL string, backupPath string, key st
 
 	ctx := context.Background()
 	root := t.TempDir()
-	databaseURL = "file:" + filepath.Join(root, "rekenraam.sqlite")
+	databaseURL = db.SQLiteFileURL(filepath.Join(root, "rekenraam.sqlite"))
 
 	database, err := db.Open(ctx, databaseURL)
 	require.NoError(t, err)
@@ -318,7 +318,7 @@ func TestRestoreCommandReleasesLockOnFailure(t *testing.T) {
 			case "source_equals_destination":
 				backupPath = path
 			case "newer_schema":
-				backup, err := db.Open(ctx, "file:"+backupPath)
+				backup, err := db.Open(ctx, db.SQLiteFileURL(backupPath))
 				require.NoError(t, err)
 				_, err = backup.ExecContext(ctx, `UPDATE goose_db_version SET version_id = 9999 WHERE version_id = (SELECT MAX(version_id) FROM goose_db_version)`)
 				require.NoError(t, err)

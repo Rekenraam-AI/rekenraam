@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -36,7 +35,7 @@ func Open(t testing.TB) (*sql.DB, string) {
 		t.Fatalf("copy migrated SQLite test template: %v", err)
 	}
 
-	databaseURL := (&url.URL{Scheme: "file", Path: filepath.ToSlash(databasePath), OmitHost: true}).String()
+	databaseURL := db.SQLiteFileURL(databasePath)
 	database, err := db.Open(context.Background(), databaseURL)
 	if err != nil {
 		t.Fatalf("open copied SQLite test database: %v", err)
@@ -65,7 +64,7 @@ func buildTemplate() ([]byte, error) {
 	defer os.RemoveAll(directory)
 
 	databasePath := filepath.Join(directory, "template.sqlite")
-	databaseURL := (&url.URL{Scheme: "file", Path: filepath.ToSlash(databasePath), OmitHost: true}).String()
+	databaseURL := db.SQLiteFileURL(databasePath)
 	database, err := db.Open(context.Background(), databaseURL)
 	if err != nil {
 		return nil, err

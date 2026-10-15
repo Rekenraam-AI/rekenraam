@@ -23,7 +23,7 @@ func runtimeTestConfig(t *testing.T) (config.Config, string) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "runtime.sqlite")
 	return config.Config{
-		AppEnv: "development", DatabaseURL: "file:" + path,
+		AppEnv: "development", DatabaseURL: db.SQLiteFileURL(path),
 		SessionLifetime: 24 * time.Hour,
 	}, path
 }

@@ -254,8 +254,10 @@ func sqliteDSN(databaseURL string, readOnly bool) (string, error) {
 	return base + "?" + params.Encode(), nil
 }
 
-// sqliteFileURL escapes filesystem punctuation before it becomes URI syntax.
-func sqliteFileURL(path string) string {
+// SQLiteFileURL converts a filesystem path to a file URI, preserving relative
+// paths and escaping punctuation before it becomes URI syntax. Append connection
+// query options to the returned URI rather than to the filesystem path.
+func SQLiteFileURL(path string) string {
 	return (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), OmitHost: true}).String()
 }
 
@@ -266,7 +268,7 @@ func sqliteAuxiliaryDSN(path string, readOnly bool) string {
 	if readOnly {
 		params.Set("mode", "ro")
 	}
-	return sqliteFileURL(path) + "?" + params.Encode()
+	return SQLiteFileURL(path) + "?" + params.Encode()
 }
 
 func ResolveSQLiteFilePath(databaseURL string) (string, error) {
@@ -326,7 +328,7 @@ func BackupSQLiteDatabase(ctx context.Context, database *sql.DB, backupPath stri
 	if _, err := database.ExecContext(ctx, statement); err != nil {
 		return fmt.Errorf("vacuum into backup: %w", err)
 	}
-	if err := EnforceSQLiteFilePermissions(sqliteFileURL(backupPath)); err != nil {
+	if err := EnforceSQLiteFilePermissions(SQLiteFileURL(backupPath)); err != nil {
 		return fmt.Errorf("set sqlite backup permissions: %w", err)
 	}
 

@@ -135,7 +135,7 @@ func TestForecastServiceUsesRealRecurringGenerationAndPromotion(t *testing.T) {
 	require.NoError(t, err)
 	var databaseFile string
 	require.NoError(t, f.database.QueryRow(`SELECT file FROM pragma_database_list WHERE name = 'main'`).Scan(&databaseFile))
-	readOnly, err := db.OpenReadOnly(ctx, "file:"+databaseFile)
+	readOnly, err := db.OpenReadOnly(ctx, db.SQLiteFileURL(databaseFile))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, readOnly.Close()) })
 	forecast := NewForecastService(db.NewForecastRepository(readOnly))
@@ -167,7 +167,7 @@ func TestForecastConcurrentMaterializationKeepsOneBasis(t *testing.T) {
 	require.NoError(t, err)
 	var databaseFile string
 	require.NoError(t, f.database.QueryRow(`SELECT file FROM pragma_database_list WHERE name = 'main'`).Scan(&databaseFile))
-	readOnly, err := db.OpenReadOnly(ctx, "file:"+databaseFile)
+	readOnly, err := db.OpenReadOnly(ctx, db.SQLiteFileURL(databaseFile))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, readOnly.Close()) })
 	forecast := NewForecastService(db.NewForecastRepository(readOnly))

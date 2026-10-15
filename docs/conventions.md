@@ -650,6 +650,10 @@ has actual installations, its migration files are immutable.
   `db.Open`, including its production PRAGMA and permission checks. Tests whose
   subject is migration, restore, or fresh-database startup behavior must keep
   constructing and migrating their own database instead of using the template.
+- Construct SQLite file URIs from filesystem paths with `db.SQLiteFileURL`
+  (`SQLiteFileURL` inside the db package), then append any connection query
+  options. This also applies to fresh migration, recovery, restore and read-only
+  test connections; raw `file:` concatenation misreads temporary path punctuation.
 - ADR 0016 sets the shared native backend gate to two concurrent packages and
   a five-minute deadline per package in both race and coverage modes. Normal
   commands use available Go CPU resources; do not impose the historical

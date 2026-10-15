@@ -16,7 +16,7 @@ func newForecastTestRepository(t testing.TB) (*sql.DB, *ForecastRepository) {
 	writer := newRecurringTestDatabase(t)
 	var databaseFile string
 	require.NoError(t, writer.QueryRow(`SELECT file FROM pragma_database_list WHERE name = 'main'`).Scan(&databaseFile))
-	reader, err := OpenReadOnly(context.Background(), "file:"+databaseFile)
+	reader, err := OpenReadOnly(context.Background(), SQLiteFileURL(databaseFile))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, reader.Close()) })
 	return writer, NewForecastRepository(reader)

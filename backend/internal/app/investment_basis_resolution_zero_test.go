@@ -260,7 +260,7 @@ func TestKnownZeroResolutionExportsAndSurvivesRestore(t *testing.T) {
 	backupPath := filepath.Join(t.TempDir(), "backup.sqlite")
 	_, err = db.OnlineBackupSQLiteDatabase(ctx, f.database, backupPath, db.OnlineBackupOptions{})
 	require.NoError(t, err)
-	restoredURL := "file:" + filepath.Join(t.TempDir(), "restored.sqlite")
+	restoredURL := db.SQLiteFileURL(filepath.Join(t.TempDir(), "restored.sqlite"))
 	_, err = db.RestoreSQLiteDatabase(ctx, backupPath, restoredURL)
 	require.NoError(t, err)
 	restored, err := db.Open(ctx, restoredURL)

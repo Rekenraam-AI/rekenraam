@@ -254,7 +254,7 @@ func TestTwoProcessRestoreOwnsLockThroughoutReplacement(t *testing.T) {
 
 func TestTwoProcessLockHandoffsKeepOneFileIdentity(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "handoff.sqlite")
-	databaseURL := "file:" + path
+	databaseURL := db.SQLiteFileURL(path)
 	for round := 0; round < 8; round++ {
 		t.Run(fmt.Sprintf("handoff_%02d", round), func(t *testing.T) {
 			first, err := lockfile.Acquire(path)

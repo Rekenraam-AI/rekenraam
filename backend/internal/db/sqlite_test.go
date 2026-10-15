@@ -37,7 +37,7 @@ func TestOpenAppliesRequiredPragmas(t *testing.T) {
 func TestEnforceSQLiteFilePermissionsRestrictsDatabaseAndSidecars(t *testing.T) {
 	t.Parallel()
 	databasePath := filepath.Join(t.TempDir(), "private.sqlite")
-	databaseURL := "file:" + databasePath
+	databaseURL := SQLiteFileURL(databasePath)
 	database, err := Open(context.Background(), databaseURL)
 	require.NoError(t, err)
 	defer database.Close()
@@ -69,7 +69,7 @@ func TestEnforceSQLiteFilePermissionsRestrictsDatabaseAndSidecars(t *testing.T) 
 func TestBackupSQLiteDatabaseCreatesPrivateDirectory(t *testing.T) {
 	t.Parallel()
 	databasePath := filepath.Join(t.TempDir(), "source.sqlite")
-	database, err := Open(context.Background(), "file:"+databasePath)
+	database, err := Open(context.Background(), SQLiteFileURL(databasePath))
 	require.NoError(t, err)
 	defer database.Close()
 
@@ -93,7 +93,7 @@ func TestBackupSQLiteDatabaseCreatesPrivateDirectory(t *testing.T) {
 func TestVerifySQLiteBackupRejectsForeignKeyViolation(t *testing.T) {
 	t.Parallel()
 	backupPath := filepath.Join(t.TempDir(), "invalid-backup.sqlite")
-	backupDatabase, err := sql.Open(driverName, "file:"+backupPath)
+	backupDatabase, err := sql.Open(driverName, SQLiteFileURL(backupPath))
 	require.NoError(t, err)
 	_, err = backupDatabase.ExecContext(context.Background(), `
 		PRAGMA foreign_keys = OFF;
@@ -1118,7 +1118,7 @@ func TestWithRequiredPragmasPreservesExistingQuery(t *testing.T) {
 func openTestDatabase(t *testing.T) *sql.DB {
 	t.Helper()
 
-	database, err := Open(context.Background(), "file:"+filepath.Join(t.TempDir(), "rekenraam.sqlite"))
+	database, err := Open(context.Background(), SQLiteFileURL(filepath.Join(t.TempDir(), "rekenraam.sqlite")))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, database.Close())
@@ -1203,7 +1203,7 @@ func TestOpenReadOnlyRefusesWrites(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	databaseURL := "file:" + filepath.Join(t.TempDir(), "readonly.sqlite")
+	databaseURL := SQLiteFileURL(filepath.Join(t.TempDir(), "readonly.sqlite"))
 	writer, err := Open(ctx, databaseURL)
 	require.NoError(t, err)
 	defer writer.Close()
@@ -1226,7 +1226,7 @@ func TestReadOnlySnapshotDoesNotSeeLaterWrites(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	databaseURL := "file:" + filepath.Join(t.TempDir(), "snapshot.sqlite")
+	databaseURL := SQLiteFileURL(filepath.Join(t.TempDir(), "snapshot.sqlite"))
 	writer, err := Open(ctx, databaseURL)
 	require.NoError(t, err)
 	defer writer.Close()
@@ -1263,7 +1263,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 	assert.Equal(t, int64(8), version, "the head preserves old gains documents and admits capital-return statement schema 2")
 
 	ctx := context.Background()
-	database, err := Open(ctx, "file:"+filepath.Join(t.TempDir(), "schema.sqlite"))
+	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))
 	require.NoError(t, err)
 	defer database.Close()
 	require.NoError(t, Migrate(ctx, database))

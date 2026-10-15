@@ -148,7 +148,7 @@ func OnlineBackupSQLiteDatabase(ctx context.Context, source *sql.DB, backupPath 
 		return OnlineBackupResult{}, err
 	}
 
-	if err := EnforceSQLiteFilePermissions(sqliteFileURL(backupPath)); err != nil {
+	if err := EnforceSQLiteFilePermissions(SQLiteFileURL(backupPath)); err != nil {
 		removeBackupFiles(backupPath)
 		return OnlineBackupResult{}, fmt.Errorf("set sqlite backup permissions: %w", err)
 	}

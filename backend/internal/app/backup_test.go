@@ -140,7 +140,7 @@ func TestBackupUsesOnlineBackupAPI(t *testing.T) {
 	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "a full copy of the ledger is not world-readable")
 
 	// The copy is a real database carrying the source's rows.
-	copied, err := sql.Open("sqlite", "file:"+run.TargetPath+"?mode=ro")
+	copied, err := sql.Open("sqlite", db.SQLiteFileURL(run.TargetPath)+"?mode=ro")
 	require.NoError(t, err)
 	defer copied.Close()
 	var books int

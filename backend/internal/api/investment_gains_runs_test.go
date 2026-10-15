@@ -92,7 +92,7 @@ func TestInvestmentGainsRunReproducesBeforeSaleReversal(t *testing.T) {
 	ctx := context.Background()
 	backup := filepath.Join(t.TempDir(), "restored.sqlite")
 	require.NoError(t, db.BackupSQLiteDatabase(ctx, database, backup))
-	restored, err := db.Open(ctx, "file:"+backup)
+	restored, err := db.Open(ctx, db.SQLiteFileURL(backup))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, restored.Close()) })
 	reader := app.NewInvestmentService(db.NewInvestmentRepository(restored), nil, nil, nil)
@@ -103,7 +103,7 @@ func TestInvestmentGainsRunReproducesBeforeSaleReversal(t *testing.T) {
 		record.BookID = 0
 		assert.Equal(t, run, record)
 	}
-	readOnly, err := db.OpenReadOnly(ctx, "file:"+backup)
+	readOnly, err := db.OpenReadOnly(ctx, db.SQLiteFileURL(backup))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, readOnly.Close()) })
 	self := app.NewSelfCheckService(db.NewSelfCheckRepository(restored, readOnly))

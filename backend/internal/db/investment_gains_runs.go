@@ -116,7 +116,7 @@ func (r *InvestmentRepository) gainsSnapshot(ctx context.Context, fingerprint bo
 		}
 		digest = hex.EncodeToString(hash.Sum(nil))
 	}
-	snapshot, err := Open(ctx, sqliteFileURL(path))
+	snapshot, err := Open(ctx, SQLiteFileURL(path))
 	if err != nil {
 		cleanup()
 		return nil, "", nil, err

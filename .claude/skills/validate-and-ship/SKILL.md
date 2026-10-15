@@ -490,11 +490,15 @@ non-trivial diff (yours or reviewed):
 
 45. **Filesystem paths treated as SQLite URI syntax** — concatenating `file:`
     with a path lets `#`, `?` and percent escapes select a different file
-    (#128). Build file URIs with `net/url` before adding query options, including
-    template and auxiliary test connections. Exercise unnamed subtests (`#00`)
-    and punctuation in the temporary root; assert migration, copy isolation and
-    reopening the returned URL. Named regressions: `TestOpenEscapesFixturePaths`,
-    `TestTemplateAndFixturesEscapeTemporaryRoot`.
+    (#128, #239). Build file URIs with `db.SQLiteFileURL` before adding query
+    options, including template and auxiliary test connections. Exercise unnamed
+    subtests (`#00`) and punctuation in the temporary root; assert migration,
+    copy isolation and reopening the returned URL. Named regressions:
+    `TestOpenEscapesFixturePaths`,
+    `TestTemplateAndFixturesEscapeTemporaryRoot`,
+    `TestFreshDatabaseHelpersEscapeTemporaryRoot`,
+    `TestRecoveryAndRestoreHelpersEscapeTemporaryRoot` and
+    `TestRestoreDrillMatchesSourceTrialBalance`.
 
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.

@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"rekenraam/backend/internal/config"
+	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/lockfile"
 )
 
@@ -22,7 +23,7 @@ func TestRunServeListenerFailureClosesApplicationRuntime(t *testing.T) {
 	defer listener.Close()
 	path := filepath.Join(t.TempDir(), "serve.sqlite")
 	cfg := config.Config{AppEnv: "development", HTTPAddr: listener.Addr().String(),
-		DatabaseURL: "file:" + path, SessionLifetime: 24 * time.Hour}
+		DatabaseURL: db.SQLiteFileURL(path), SessionLifetime: 24 * time.Hour}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	require.Equal(t, 1, runServe(context.Background(), cfg, logger))
 	require.NoError(t, lockfile.CheckAvailable(path))
@@ -35,7 +36,7 @@ func TestRunServeCancellationClosesApplicationRuntime(t *testing.T) {
 	require.NoError(t, listener.Close())
 	path := filepath.Join(t.TempDir(), "serve.sqlite")
 	cfg := config.Config{AppEnv: "development", HTTPAddr: addr,
-		DatabaseURL: "file:" + path, SessionLifetime: 24 * time.Hour}
+		DatabaseURL: db.SQLiteFileURL(path), SessionLifetime: 24 * time.Hour}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

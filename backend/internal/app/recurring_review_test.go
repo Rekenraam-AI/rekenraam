@@ -341,7 +341,7 @@ func TestConcurrentRecurringRetriesAcrossPoolsCreateOneDraft(t *testing.T) {
 	require.NoError(t, err)
 	var file string
 	require.NoError(t, f.database.QueryRow(`SELECT file FROM pragma_database_list WHERE name='main'`).Scan(&file))
-	other, err := db.Open(ctx, "file:"+file)
+	other, err := db.Open(ctx, db.SQLiteFileURL(file))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, other.Close()) })
 	second := NewRecurringService(db.NewRecurringRepository(other), NewTransactionService(db.NewTransactionRepository(other), db.NewPayeeRepository(other), db.NewAccountRepository(other), db.NewCommodityRepository(other)), NewSettingsService(db.NewSettingsRepository(other)))

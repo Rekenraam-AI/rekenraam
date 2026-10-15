@@ -106,6 +106,10 @@ strings to the client.
   DDL. Migration, restore, and fresh-start tests keep using `db.Open` plus
   `db.Migrate` directly because migration behavior is their subject.
   Never touch `backend/var/dev.sqlite` from tests.
+- Build file URIs from paths with `db.SQLiteFileURL` (`SQLiteFileURL` inside
+  the db package), then append query options such as `?mode=ro`. Reuse this
+  constructor for fresh migration, recovery and restore fixtures as well as
+  auxiliary readers; raw `file:` concatenation breaks on `#`, `?` and `%`.
 - Every top-level test in `internal/app` and `internal/db` starts with
   `t.Parallel()` (T-125: serial tests were 654 of the app package's 866
   race-gate seconds). Opt out only with a `// serial: <reason>` comment above

@@ -46,7 +46,7 @@ func TestNativeSQLiteEngineFeaturesAndFingerprint(t *testing.T) {
 func TestNativeConnectionPoliciesSurviveReplacement(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	uri := sqliteFileURL(filepath.Join(t.TempDir(), "policies.sqlite")) + "?cache=private&_fk=0&_foreign_keys=0&_timeout=1&_sync=OFF&_journal=DELETE&_txlock=exclusive&_stmt_cache_size=100&_query_only=1&_pragma=foreign_keys(0)"
+	uri := SQLiteFileURL(filepath.Join(t.TempDir(), "policies.sqlite")) + "?cache=private&_fk=0&_foreign_keys=0&_timeout=1&_sync=OFF&_journal=DELETE&_txlock=exclusive&_stmt_cache_size=100&_query_only=1&_pragma=foreign_keys(0)"
 	writer, err := Open(ctx, uri)
 	require.NoError(t, err)
 	defer writer.Close()
@@ -95,7 +95,7 @@ func TestNativeDriverRequiresFullSynchronousOnEveryConnection(t *testing.T) {
 	ctx := context.Background()
 	// Direct opens must share the durability policy too, even when they bypass
 	// the app DSN or attempt to supply the driver's weaker defaults.
-	database, err := sql.Open(driverName, sqliteFileURL(filepath.Join(t.TempDir(), "raw-sync.sqlite"))+"?_synchronous=OFF")
+	database, err := sql.Open(driverName, SQLiteFileURL(filepath.Join(t.TempDir(), "raw-sync.sqlite"))+"?_synchronous=OFF")
 	require.NoError(t, err)
 	defer database.Close()
 	database.SetMaxOpenConns(1)
@@ -113,7 +113,7 @@ func TestNativeDriverRequiresFullSynchronousOnEveryConnection(t *testing.T) {
 func TestNativeTransactionsRemainDeferred(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	uri := sqliteFileURL(filepath.Join(t.TempDir(), "deferred.sqlite"))
+	uri := SQLiteFileURL(filepath.Join(t.TempDir(), "deferred.sqlite"))
 	writer, err := Open(ctx, uri+"?_txlock=immediate")
 	require.NoError(t, err)
 	defer writer.Close()
@@ -190,7 +190,7 @@ func TestNativeSQLiteURIPunctuationAndBackup(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "ledger ?#%&' café.sqlite")
-	uri := sqliteFileURL(path)
+	uri := SQLiteFileURL(path)
 	resolved, err := ResolveSQLiteFilePath(uri)
 	require.NoError(t, err)
 	assert.Equal(t, path, resolved)
@@ -237,7 +237,7 @@ func TestNativeConstraintClassificationUsesCodes(t *testing.T) {
 
 func TestNativeSQLiteFileURLPreservesRelativePaths(t *testing.T) {
 	t.Parallel()
-	uri := sqliteFileURL("var/backup ?#%.sqlite")
+	uri := SQLiteFileURL("var/backup ?#%.sqlite")
 	path, err := ResolveSQLiteFilePath(uri)
 	require.NoError(t, err)
 	assert.Equal(t, "var/backup ?#%.sqlite", path)
@@ -246,7 +246,7 @@ func TestNativeSQLiteFileURLPreservesRelativePaths(t *testing.T) {
 
 func TestNativeReadOnlyRetainsFullSynchronous(t *testing.T) {
 	t.Parallel()
-	path := sqliteFileURL(filepath.Join(t.TempDir(), "read-sync.sqlite"))
+	path := SQLiteFileURL(filepath.Join(t.TempDir(), "read-sync.sqlite"))
 	writer, err := Open(context.Background(), path)
 	require.NoError(t, err)
 	defer writer.Close()

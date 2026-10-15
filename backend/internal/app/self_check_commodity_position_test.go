@@ -35,7 +35,7 @@ func selfCheckOver(t *testing.T, database *sql.DB) *SelfCheckService {
 	var path string
 	require.NoError(t, database.QueryRowContext(context.Background(),
 		`SELECT file FROM pragma_database_list WHERE name = 'main'`).Scan(&path))
-	readOnly, err := db.OpenReadOnly(context.Background(), "file:"+path)
+	readOnly, err := db.OpenReadOnly(context.Background(), db.SQLiteFileURL(path))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, readOnly.Close()) })
 	return NewSelfCheckService(db.NewSelfCheckRepository(database, readOnly))
