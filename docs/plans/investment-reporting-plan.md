@@ -165,6 +165,43 @@ and period disclosure are tracked in [#238](https://github.com/sergeyfarin/reken
 the present total is the stated realized + dividend income + unrealized-change
 formula, not a comprehensive return or tax calculation.
 
+### Consistent live input state (#237)
+
+Each live gains or period-statement request captures one consistent disposable
+SQLite input image before composition. Native operational results, capital-return
+allocations, alternative/person-pooled comparisons, both statement boundaries,
+disposals, income, historical basis, currency metadata and reporting rates all
+use that image. Corrections, reversals and observation withdrawals committed
+during composition affect subsequent requests, never a later stage of this one.
+The application-service entry points are `ReadGains` and `ReadGainsStatement`;
+standalone conversion/comparison stages must not compose a live response from
+previously fetched inputs and live repositories. `GainsStatement` itself also
+captures once when called outside an existing captured read.
+
+This reuses #234's native backup capture and the existing replay, observation,
+basis, comparison and FX owners. Replay's temporary writes require a writable
+isolated image; a read-only WAL transaction cannot run those readers unchanged.
+A live writer transaction spanning all stages would serialize unrelated writes
+through replay. Instead, only capture occupies the live pool's connection;
+composition runs against the private image and releases it on success, failure
+or cancellation. The image uses a private 0700 directory and 0600 database and
+is removed with its sidecars afterward. No GET saves a report run or audit event.
+No provider call occurs. Saved-run fingerprinting is skipped for live reads.
+
+The chosen implementation copies the full database per request: O(database
+size) I/O and temporary disk, plus replay's temporary WAL and processing costs.
+Capture/open/cleanup measured 66/112/210 ms for 1.6/18.4/68.7 MB synthetic images
+on the validation host; these are not end-to-end report latencies or a production
+capacity claim. The native copy has the existing 30-second deadline and honors
+request cancellation; the source connection is released before replay. See the
+[review and repeatable benchmark](../reviews/live-gains-consistency-2026-10-15.md).
+
+`ledger_knowledge: current_effective` and the live/saved distinction remain:
+the cutoff admits price evidence, but does not reconstruct earlier ledger or
+retirement knowledge. The response is internally consistent, not retained.
+Only an explicit immutable run preserves an output for later retrieval; no
+unsaved past response can be recovered by supplying its cutoff.
+
 ### Alternative-method comparison (#232)
 
 `GET /api/v1/investments/gains?alternative_method=fifo|lifo|average_cost`

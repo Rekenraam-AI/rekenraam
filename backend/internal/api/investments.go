@@ -2439,7 +2439,7 @@ func toGainsProfileResponse(profile app.GainsProfile) gainsProfileResponse {
 	}
 }
 
-func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, investmentService *app.InvestmentService, currencyService *app.CurrencyService) http.HandlerFunc {
+func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, investmentService *app.InvestmentService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := authenticatedOwner(w, r, logger, authService); !ok {
 			return
@@ -2459,43 +2459,24 @@ func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, inve
 			writeInvestmentServiceError(w, r, logger, "alternative gains input", app.ValidationError{Message: "jurisdiction note requires person_pooled_average"})
 			return
 		}
-		currencies, err := currencyService.ListCurrencies(r.Context())
+		input := app.GainsReadInput{
+			Period:            app.GainsReportParams{From: r.URL.Query().Get("from"), To: r.URL.Query().Get("to")},
+			ValuationAsOf:     r.URL.Query().Get("valuation_as_of"),
+			AlternativeMethod: r.URL.Query().Get("alternative_method"),
+			JurisdictionNote:  r.URL.Query().Get("jurisdiction_note"), FX: fx,
+		}
+		read, err := investmentService.ReadGains(r.Context(), input)
 		if err != nil {
-			writeCurrencyServiceError(w, r, logger, "list gains currencies", err)
+			writeInvestmentServiceError(w, r, logger, "read investment gains", err)
 			return
 		}
-		params := app.GainsReportParams{
-			From: r.URL.Query().Get("from"),
-			To:   r.URL.Query().Get("to"),
-		}
-		realized, err := investmentService.ListRealizedGains(r.Context(), params)
-		if err != nil {
-			writeInvestmentServiceError(w, r, logger, "list realized gains", err)
-			return
-		}
-		capitalReturns, err := investmentService.ListCapitalReturns(r.Context(), params)
-		if err != nil {
-			writeInvestmentServiceError(w, r, logger, "list capital returns", err)
-			return
-		}
-		profile, unrealized, err := investmentService.UnrealizedGainsProjection(r.Context(), r.URL.Query().Get("valuation_as_of"))
-		if err != nil {
-			writeInvestmentServiceError(w, r, logger, "list unrealized gains", err)
-			return
-		}
-
-		response, err := gainsProjectionResponse(profile, realized, unrealized)
+		response, err := gainsProjectionResponse(read.Profile, read.Realized, read.Unrealized)
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "sum realized gains", err)
 			return
 		}
-		response.CapitalReturns, response.Currencies = toCapitalReturnReads(capitalReturns), toCurrencyResponses(currencies)
-		if method := r.URL.Query().Get("alternative_method"); method != "" {
-			alternative, err := investmentService.AlternativeGainsForProfile(r.Context(), method, r.URL.Query().Get("jurisdiction_note"), profile, params)
-			if err != nil {
-				writeInvestmentServiceError(w, r, logger, "alternative gains", err)
-				return
-			}
+		response.CapitalReturns, response.Currencies = toCapitalReturnReads(read.CapitalReturns), toCurrencyResponses(read.Currencies)
+		if alternative := read.Alternative; alternative != nil {
 			projection, err := gainsProjectionResponse(alternative.Profile, alternative.Realized, alternative.Unrealized)
 			if err != nil {
 				writeInvestmentServiceError(w, r, logger, "sum alternative gains", err)
@@ -2503,12 +2484,7 @@ func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, inve
 			}
 			response.Alternative = &alternativeGainsResponse{Profile: projection.Profile, Realized: projection.Realized, Unrealized: projection.Unrealized, RealizedTotals: projection.RealizedTotals}
 		}
-		if fx != nil {
-			converted, err := investmentService.ConvertGains(r.Context(), profile, params, realized, unrealized, *fx)
-			if err != nil {
-				writeInvestmentServiceError(w, r, logger, "convert gains", err)
-				return
-			}
+		if converted := read.Reporting; converted != nil {
 			response.Reporting = &gainsFXProjectionResponse{Profile: toGainsProfileResponse(converted.Profile), Realized: converted.Realized, Unrealized: converted.Unrealized, RealizedTotal: converted.RealizedTotal, UnrealizedTotal: converted.UnrealizedTotal}
 		}
 		writeJSON(w, http.StatusOK, response)

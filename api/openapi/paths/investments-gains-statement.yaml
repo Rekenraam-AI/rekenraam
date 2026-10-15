@@ -9,6 +9,10 @@ get:
     price them with the latest live_raw_v1 observation on or before their
     date. A figure that depends on a missing price or an unresolved basis is
     null with its reason and counts, never zero. Read-only; optional reporting conversion preserves original figures.
+    Both boundaries, disposals, income, historical basis, currency metadata and
+    reporting FX share one consistent disposable input snapshot (#237), including
+    effective corrections and observation retirements. No saved run or audit event
+    is created; subsequent live requests may restate the result.
   parameters:
     - name: from
       in: query
@@ -78,6 +82,15 @@ get:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "422":
       description: A converted amount exceeds supported exact precision.
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "503":
+      description: Consistent input capture exceeded its deadline; RESOURCE_BUSY is retryable.
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
       content:
         application/json:
           schema:

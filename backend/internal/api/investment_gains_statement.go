@@ -74,7 +74,7 @@ func toGainsStatementValuationResponse(valuation app.GainsStatementValuation) ga
 
 // investmentGainsStatement serves the R18 period statement (#231) as one
 // backend-composed read.
-func investmentGainsStatement(logger *slog.Logger, authService *app.AuthService, investmentService *app.InvestmentService, currencyService *app.CurrencyService) http.HandlerFunc {
+func investmentGainsStatement(logger *slog.Logger, authService *app.AuthService, investmentService *app.InvestmentService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := authenticatedOwner(w, r, logger, authService); !ok {
 			return
@@ -85,26 +85,16 @@ func investmentGainsStatement(logger *slog.Logger, authService *app.AuthService,
 			writeInvestmentServiceError(w, r, logger, "statement FX input", err)
 			return
 		}
-		statement, err := investmentService.GainsStatement(r.Context(), query.Get("from"), query.Get("to"))
+		read, err := investmentService.ReadGainsStatement(r.Context(), query.Get("from"), query.Get("to"), fx)
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "investment gains statement", err)
 			return
 		}
-		currencies, err := currencyService.ListCurrencies(r.Context())
-		if err != nil {
-			writeCurrencyServiceError(w, r, logger, "list gains statement currencies", err)
-			return
-		}
 		var reporting *gainsFXStatementResponse
-		if fx != nil {
-			converted, err := investmentService.ConvertGainsStatement(r.Context(), statement, *fx)
-			if err != nil {
-				writeInvestmentServiceError(w, r, logger, "convert gains statement", err)
-				return
-			}
+		if converted := read.Reporting; converted != nil {
 			reporting = &gainsFXStatementResponse{Profile: toGainsProfileResponse(converted.Profile), Opening: converted.Opening, Realized: converted.Realized, Income: converted.Income, Closing: converted.Closing, UnrealizedChange: converted.UnrealizedChange, Total: converted.Total}
 		}
-		response := gainsStatementResponse(statement, currencies)
+		response := gainsStatementResponse(read.Statement, read.Currencies)
 		response.Reporting = reporting
 		writeJSON(w, http.StatusOK, response)
 	}

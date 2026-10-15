@@ -20,6 +20,11 @@ get:
     each security, cost currency and position side. Internal transfers conserve
     the pool; rows retain their account quantities with prorated pooled basis.
     This method is not a tax computation and applies no same-day or 30-day rules.
+    All components, comparisons, currency metadata and optional reporting FX
+    use one consistent disposable input snapshot per request (#237), including
+    effective corrections and observation retirements. The read creates no saved
+    run or audit event. Later requests may restate live results; knowledge_cutoff
+    is not a reconstruction of history as known at an earlier instant.
   parameters:
     - name: from
       in: query
@@ -120,6 +125,15 @@ get:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "422":
       description: The exact projection amount exceeds the supported range.
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "503":
+      description: Consistent input capture exceeded its deadline; RESOURCE_BUSY is retryable.
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
       content:
         application/json:
           schema:

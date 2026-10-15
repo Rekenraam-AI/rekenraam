@@ -202,7 +202,10 @@ func combineFXFigures(figures ...GainsFXFigure) (GainsFXFigure, error) {
 }
 
 // ConvertGains adds reporting figures beside an operational projection. It
-// never changes the source values, elections or journals.
+// never changes the source values, elections or journals. This is a composition
+// stage: callers needing a live response use ReadGains so inputs and conversion
+// belong to the same captured state. A knowledge cutoff alone cannot freeze
+// corrections or observation retirements across standalone calls.
 func (s *InvestmentService) ConvertGains(ctx context.Context, profile GainsProfile, period GainsReportParams, realized []RealizedGainEntry, unrealized []UnrealizedGainEntry, input GainsFXInput) (GainsFXProjection, error) {
 	input, err := input.validated()
 	if err != nil {
@@ -321,6 +324,8 @@ func (s *InvestmentService) ConvertGains(ctx context.Context, profile GainsProfi
 	return result, err
 }
 
+// ConvertGainsStatement is a composition stage. Live callers use
+// ReadGainsStatement to capture the native statement and reporting inputs once.
 func (s *InvestmentService) ConvertGainsStatement(ctx context.Context, statement GainsStatement, input GainsFXInput) (GainsFXStatement, error) {
 	project := func(date string) (GainsFXProjection, error) {
 		profile := statement.Profile

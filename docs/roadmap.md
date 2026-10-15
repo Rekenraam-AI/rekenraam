@@ -109,9 +109,8 @@ below is execution order, not a chain of hard dependencies.
 
 **Now**
 
-1. Repair live gains consistency [#237](https://github.com/sergeyfarin/rekenraam/issues/237)
-   before building R13 analytics on those readers. R13 investment returns and
-   allocation planning [#119](https://github.com/sergeyfarin/rekenraam/issues/119)
+1. R13 investment returns and allocation planning
+   [#119](https://github.com/sergeyfarin/rekenraam/issues/119)
    can proceed from the delivered R18 contracts
    [#230–#235](plans/investment-reporting-plan.md#delivery-slices) (2026-10-15).
 2. Daily-use parallel work. The shared transaction workspace
@@ -288,8 +287,8 @@ are delivered (2026-10-15). Their contracts and retained limits live in the
 validation live in [the feature ledger](implemented.md). Formal postings remain
 outside this bounded initiative until a need is evidenced. The
 [completion audit](reviews/r18-completion-audit-2026-10-15.md) records the
-independent live-read consistency (#237) and capital-return period disclosure
-(#238) follow-ups. R13 follows; its planning does not close those defects.
+independent live-read consistency (#237, delivered 2026-10-15) and capital-return
+period disclosure (#238) follow-ups. R13 follows; its planning does not close #238.
 
 ### R13 — investment returns and allocation analytics
 

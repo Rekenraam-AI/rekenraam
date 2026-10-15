@@ -24244,7 +24244,7 @@ export interface paths {
         };
         /**
          * List realized and unrealized investment gains
-         * @description Returns all realized gains (from closed lot disposal events) and unrealized gains (from open positions vs. latest price). Realized gains can be filtered by disposal date. Unrealized gain fields are omitted when no price observation exists for the instrument. Effective return-of-capital allocation sets are included separately, filtered by payment date. Their unresolved excess is not included in disposal gains or totals; viewing does not post income. Unrealized gains are a read-only operational_v1 projection (R18, #230): `valuation_as_of` defaults to owner-local today. Every position is replayed to the resolved date, excluding later events (including recorded future trades), and priced with the latest compatible observation on or before it. `profile` names the rules used. Optional `alternative_method` adds an alternative_method_v1 projection beside the operational results. It replays effective history under FIFO, LIFO or average cost in a rolled-back read, including specific-lot decisions using the selected method. It never changes operational elections or journals. person_pooled_average adds person_pooled_average_v1: all owner accounts pool each security, cost currency and position side. Internal transfers conserve the pool; rows retain their account quantities with prorated pooled basis. This method is not a tax computation and applies no same-day or 30-day rules.
+         * @description Returns all realized gains (from closed lot disposal events) and unrealized gains (from open positions vs. latest price). Realized gains can be filtered by disposal date. Unrealized gain fields are omitted when no price observation exists for the instrument. Effective return-of-capital allocation sets are included separately, filtered by payment date. Their unresolved excess is not included in disposal gains or totals; viewing does not post income. Unrealized gains are a read-only operational_v1 projection (R18, #230): `valuation_as_of` defaults to owner-local today. Every position is replayed to the resolved date, excluding later events (including recorded future trades), and priced with the latest compatible observation on or before it. `profile` names the rules used. Optional `alternative_method` adds an alternative_method_v1 projection beside the operational results. It replays effective history under FIFO, LIFO or average cost in a rolled-back read, including specific-lot decisions using the selected method. It never changes operational elections or journals. person_pooled_average adds person_pooled_average_v1: all owner accounts pool each security, cost currency and position side. Internal transfers conserve the pool; rows retain their account quantities with prorated pooled basis. This method is not a tax computation and applies no same-day or 30-day rules. All components, comparisons, currency metadata and optional reporting FX use one consistent disposable input snapshot per request (#237), including effective corrections and observation retirements. The read creates no saved run or audit event. Later requests may restate live results; knowledge_cutoff is not a reconstruction of history as known at an earlier instant.
          */
         get: {
             parameters: {
@@ -24322,6 +24322,16 @@ export interface paths {
                 };
                 /** @description Internal server error */
                 500: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Consistent input capture exceeded its deadline; RESOURCE_BUSY is retryable. */
+                503: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
                         [name: string]: unknown;
@@ -24578,7 +24588,7 @@ export interface paths {
         };
         /**
          * Period gains statement under operational_v1
-         * @description R18 slice 2 (#231). For each currency, reports the unrealized gain of the positions held at the end of the day before `from` (opening), the realized gain of disposals dated in the period, the investment income of effective dividends paid in the period, and the unrealized gain at `to` (closing). Both valuations replay positions under the operational_v1 profile and price them with the latest live_raw_v1 observation on or before their date. A figure that depends on a missing price or an unresolved basis is null with its reason and counts, never zero. Read-only; optional reporting conversion preserves original figures.
+         * @description R18 slice 2 (#231). For each currency, reports the unrealized gain of the positions held at the end of the day before `from` (opening), the realized gain of disposals dated in the period, the investment income of effective dividends paid in the period, and the unrealized gain at `to` (closing). Both valuations replay positions under the operational_v1 profile and price them with the latest live_raw_v1 observation on or before their date. A figure that depends on a missing price or an unresolved basis is null with its reason and counts, never zero. Read-only; optional reporting conversion preserves original figures. Both boundaries, disposals, income, historical basis, currency metadata and reporting FX share one consistent disposable input snapshot (#237), including effective corrections and observation retirements. No saved run or audit event is created; subsequent live requests may restate the result.
          */
         get: {
             parameters: {
@@ -24641,6 +24651,16 @@ export interface paths {
                 };
                 /** @description Internal server error */
                 500: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Consistent input capture exceeded its deadline; RESOURCE_BUSY is retryable. */
+                503: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
                         [name: string]: unknown;

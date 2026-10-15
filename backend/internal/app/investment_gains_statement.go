@@ -66,6 +66,10 @@ const (
 // closing unrealized gain at to (R18 slice 2, #231). Both valuations replay
 // positions under operational_v1; nothing is written and nothing converted.
 func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string) (GainsStatement, error) {
+	if !s.consistentGainsRead {
+		result, err := s.ReadGainsStatement(ctx, from, to, nil)
+		return result.Statement, err
+	}
 	from, err := cleanRequiredDate(from, "period start")
 	if err != nil {
 		return GainsStatement{}, err
@@ -85,6 +89,7 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 	if err != nil {
 		return GainsStatement{}, err
 	}
+	s.gainsReadStage("closing")
 	openingRecords, err := s.repository.DatedPositionsWithGains(ctx, BookID, db.ObservationBoundary{AsOf: openingDate, RecordedAt: profile.KnowledgeCutoff})
 	if err != nil {
 		return GainsStatement{}, err

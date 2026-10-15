@@ -79,6 +79,17 @@ func ValidGainsRunDocument(r GainsRunRecord) bool {
 // without nesting in a live write transaction or observing concurrent changes.
 // The digest identifies the full SQLite input image before any replay/open.
 func (r *InvestmentRepository) GainsSnapshot(ctx context.Context) (*sql.DB, string, func(), error) {
+	return r.gainsSnapshot(ctx, true)
+}
+
+// LiveGainsSnapshot uses the same consistent input capture as saved runs,
+// without reading the entire image again to fingerprint an unsaved response.
+func (r *InvestmentRepository) LiveGainsSnapshot(ctx context.Context) (*sql.DB, func(), error) {
+	snapshot, _, cleanup, err := r.gainsSnapshot(ctx, false)
+	return snapshot, cleanup, err
+}
+
+func (r *InvestmentRepository) gainsSnapshot(ctx context.Context, fingerprint bool) (*sql.DB, string, func(), error) {
 	dir, err := os.MkdirTemp("", "rekenraam-gains-")
 	if err != nil {
 		return nil, "", nil, err
@@ -89,24 +100,28 @@ func (r *InvestmentRepository) GainsSnapshot(ctx context.Context) (*sql.DB, stri
 		cleanup()
 		return nil, "", nil, err
 	}
-	file, err := os.Open(path)
-	if err != nil {
-		cleanup()
-		return nil, "", nil, err
-	}
-	digest := sha256.New()
-	_, copyErr := io.Copy(digest, file)
-	closeErr := file.Close()
-	if err = errors.Join(copyErr, closeErr); err != nil {
-		cleanup()
-		return nil, "", nil, err
+	var digest string
+	if fingerprint {
+		file, err := os.Open(path)
+		if err != nil {
+			cleanup()
+			return nil, "", nil, err
+		}
+		hash := sha256.New()
+		_, copyErr := io.Copy(hash, file)
+		closeErr := file.Close()
+		if err = errors.Join(copyErr, closeErr); err != nil {
+			cleanup()
+			return nil, "", nil, err
+		}
+		digest = hex.EncodeToString(hash.Sum(nil))
 	}
 	snapshot, err := Open(ctx, sqliteFileURL(path))
 	if err != nil {
 		cleanup()
 		return nil, "", nil, err
 	}
-	return snapshot, hex.EncodeToString(digest.Sum(nil)), func() { _ = snapshot.Close(); cleanup() }, nil
+	return snapshot, digest, func() { _ = snapshot.Close(); cleanup() }, nil
 }
 
 func (r *InvestmentRepository) CreateGainsRun(ctx context.Context, run GainsRunRecord, audit AuditEventParams) (GainsRunRecord, error) {

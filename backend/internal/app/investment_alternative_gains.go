@@ -47,7 +47,8 @@ func (s *InvestmentService) AlternativeGainsProjection(ctx context.Context, meth
 }
 
 // AlternativeGainsForProfile shares the operational read's price/date boundary
-// so observations recorded between the two computations cannot skew comparison.
+// so later-recorded observations cannot skew comparison. Live callers use
+// ReadGains to also freeze corrections and retirements across both computations.
 func (s *InvestmentService) AlternativeGainsForProfile(ctx context.Context, method, jurisdictionNote string, operational GainsProfile, period GainsReportParams) (AlternativeGains, error) {
 	return s.alternativeGainsAtBoundary(ctx, method, jurisdictionNote, db.ObservationBoundary{AsOf: operational.ValuationAsOf, RecordedAt: operational.KnowledgeCutoff}, period)
 }

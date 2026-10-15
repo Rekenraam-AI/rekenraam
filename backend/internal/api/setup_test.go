@@ -305,6 +305,12 @@ func newSetupTestHandler(t *testing.T) (http.Handler, *sql.DB) {
 
 func newSetupTestHandlerWithOptions(t *testing.T, options HandlerOptions) (http.Handler, *sql.DB) {
 	t.Helper()
+	handler, database, _ := newSetupTestHandlerWithInvestment(t, options)
+	return handler, database
+}
+
+func newSetupTestHandlerWithInvestment(t *testing.T, options HandlerOptions) (http.Handler, *sql.DB, *app.InvestmentService) {
+	t.Helper()
 
 	database, databaseURL := testdb.Open(t)
 
@@ -389,7 +395,7 @@ func newSetupTestHandlerWithOptions(t *testing.T, options HandlerOptions) (http.
 		SelfCheck:   selfCheckService,
 		Forecast:    forecastService,
 		Budget:      budgetService,
-	}, options), database
+	}, options), database, investmentService
 }
 
 func setSameOrigin(req *http.Request) {

@@ -194,3 +194,21 @@ investment-foundation self-check checks document integrity, never restates old
 figures from current history. Future document schemas/readers must preserve old
 outputs rather than recompute or overwrite them. This refines ADR 0011's bundle
 contract without changing the canonical ledger CSV or QIF semantics.
+
+## Consistent live composition refinement — 2026-10-15 (#237)
+
+One live gains or period-statement response uses one disposable SQLite input
+image across operational, alternative/person-pooled, historical-basis, income,
+boundary and reporting-FX readers, including reference metadata and observation
+retirements. It reuses #234's native capture without hashing or persisting a run.
+Existing replay owners need rolled-back writes; a read-only transaction cannot
+host them unchanged. Copying avoids holding the live writer across replay, at
+the explicit cost of full-database I/O and temporary disk per request. Only
+capture occupies the live pool connection. The image is private and removed on
+completion or failure. The [reporting plan](../plans/investment-reporting-plan.md#consistent-live-input-state-237)
+and [cost review](../reviews/live-gains-consistency-2026-10-15.md) record the
+boundary, measurements and validation.
+
+This is consistency within a response, not retained reproducibility or temporal
+reconstruction: later requests evaluate later effective history. The descriptor
+remains `current_effective`, and only an explicit saved run preserves its output.

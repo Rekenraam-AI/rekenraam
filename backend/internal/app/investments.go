@@ -707,11 +707,13 @@ type SaveAutomationRulesInput struct {
 }
 
 type InvestmentService struct {
-	repository         *db.InvestmentRepository
-	accountService     *AccountService
-	transactionService *TransactionService
-	pricingService     *PricingService
-	now                func() time.Time
+	gainsReadStageForTest func(string)
+	consistentGainsRead   bool
+	repository            *db.InvestmentRepository
+	accountService        *AccountService
+	transactionService    *TransactionService
+	pricingService        *PricingService
+	now                   func() time.Time
 }
 
 func NewInvestmentService(repository *db.InvestmentRepository, accountService *AccountService, transactionService *TransactionService, pricingService *PricingService) *InvestmentService {

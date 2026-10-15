@@ -66,6 +66,7 @@ func (s *InvestmentService) CreateGainsRun(ctx context.Context, input GainsRunIn
 	defer cleanup()
 	captured := s.now().UTC()
 	reader := NewInvestmentService(db.NewInvestmentRepository(snapshot), nil, nil, nil)
+	reader.consistentGainsRead = true
 	reader.now = func() time.Time { return captured }
 	projection := GainsRunProjection{}
 	projection.Currencies, err = NewCurrencyService(db.NewCommodityRepository(snapshot), nil).ListCurrencies(ctx)

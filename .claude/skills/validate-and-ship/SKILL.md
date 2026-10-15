@@ -468,6 +468,18 @@ non-trivial diff (yours or reviewed):
     `TestLoadRefusesMarketDataBaseURLOutsideDevelopment`,
     `TestRuntimeRefusesMarketDataBaseURLOutsideDevelopment`.
 
+43. **One response assembled from different effective histories** — a shared
+    price `knowledge_cutoff` does not freeze ledger corrections or observation
+    retirements (#237). Live gains and statements use `ReadGains` /
+    `ReadGainsStatement` to capture all operational, comparison, boundary,
+    income, historic-basis and FX dependencies once. Never combine standalone
+    stage calls against live repositories. Deterministic stage interleavings
+    must retain the same figures and evidence after source corrections and
+    withdrawals, with no durable read-side writes. Named regressions:
+    `TestLiveGainsCorrectionBetweenOperationalAndFXKeepsSameCurrencyGain`,
+    `TestLiveStatementBoundariesDisposalsIncomeAndFXShareEffectiveHistory`,
+    `TestLiveGainsAPICorrectionBetweenCompositionStages`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

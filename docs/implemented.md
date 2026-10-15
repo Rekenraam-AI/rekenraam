@@ -363,11 +363,21 @@ knowledge. Forward migration 3 preserves existing known history.
 R18’s six bounded slices are delivered. The
 [2026-10-15 completion audit](reviews/r18-completion-audit-2026-10-15.md)
 records two independent follow-ups: [#237](https://github.com/sergeyfarin/rekenraam/issues/237)
-for consistent input state across live report components, and
+for consistent input state across live report components (delivered 2026-10-15), and
 [#238](https://github.com/sergeyfarin/rekenraam/issues/238) for excluded
 return-of-capital excess in period statements. Saved operational runs already
 use a consistent snapshot; saved alternative/FX runs, broker-basis comparisons,
 TWR/IRR and jurisdiction tax rules remain outside the delivered contract.
+
+Live gains consistency (#237) now composes native gains, capital-return reads,
+alternative/person-pooled comparisons, both statement boundaries, disposals,
+income, historical basis and reporting FX from one disposable SQLite input image,
+including currency metadata and observation retirements. Reads create no run or
+audit rows, and later requests still restate current effective history. Named
+`TestLiveGains*` and `TestLiveStatement*` service/API interleavings cover corrections,
+withdrawals, both FX methods, cancellation and unchanged durable rows. The
+[consistency review](reviews/live-gains-consistency-2026-10-15.md) records the copy
+cost and retained live-versus-saved distinction.
 
 ### Gains precision and range admission (2026-09-20)
 
