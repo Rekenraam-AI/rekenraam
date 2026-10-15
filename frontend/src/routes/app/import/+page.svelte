@@ -17,7 +17,8 @@
   import PayeeResolutionPanel from '#lib/imports/payee-resolution-panel.svelte';
   import ImportRulesPanel from '#lib/imports/import-rules-panel.svelte';
   import type { PayeeResponse } from '#lib/api/payees.ts';
-  import { linkableSplitFill, sourceCorrectionKind, unsupportedSourceFill } from '#lib/imports/source-correction.ts';
+  import { linkableShortFill, linkableSplitFill, linkedFillKind, sourceCorrectionKind, unsupportedSourceFill } from '#lib/imports/source-correction.ts';
+  import ShortLinkPanel from '#lib/imports/short-link-panel.svelte';
   import SplitLinkPanel from '#lib/imports/split-link-panel.svelte';
   import { authSessionQueryOptions } from '#lib/api/auth.ts';
   import { investmentInstrumentsQueryOptions } from '#lib/api/investments.ts';
@@ -151,6 +152,7 @@
   let reconciliationOverride = $state(false);
   let sourceCorrectionRowID = $state<number | null>(null);
   let splitLinkRowID = $state<number | null>(null);
+  let shortLinkRowID = $state<number | null>(null);
   let sourceCorrectionReason = $state('');
   let sourceCorrectionOverride = $state(false);
   let sourceCorrectionImpact = $state<ReconciliationImpactResponse | null>(null);
@@ -612,10 +614,12 @@
     }
   }
 
-  // A linked split row is committed evidence of a recorded split; refresh the
-  // batch so its status and duplicate protection show immediately (T-122).
-  async function handleSplitLinked(rowId: number) {
+  // A linked split or short row is committed evidence of a recorded operation;
+  // refresh the batch so its status and duplicate protection show immediately
+  // (T-122, #245).
+  async function handleOperationLinked(rowId: number) {
     splitLinkRowID = null;
+    shortLinkRowID = null;
     if (previewData) {
       previewData = {
         ...previewData,
@@ -1583,7 +1587,7 @@
                     class="text-xs font-medium"
                   >
                     {row.commit_status === 'committed' && unsupportedFill
-                      ? m.import_preview_split_linked()
+                      ? (linkedFillKind(row) === 'split' ? m.import_preview_split_linked() : m.import_preview_short_linked())
                       : row.commit_status === 'committed' && row.dedupe_status === 'needs_attention'
                       ? m.import_preview_source_revision_accepted()
                       : unsupportedFill ? m.import_preview_unsupported_fill() : row.source_changed ? m.import_preview_source_changed() : dedupeStatusLabel(row.dedupe_status)}
@@ -1617,6 +1621,14 @@
                       class="mt-2 block rounded-(--radius-control) border border-border bg-control px-2 py-1 text-xs font-semibold text-foreground hover:bg-control-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
                       onclick={() => { splitLinkRowID = splitLinkRowID === row.id ? null : row.id; }}
                     >{m.import_preview_split_link()}</button>
+                  {/if}
+                  {#if linkableShortFill(row) && batchId}
+                    <button
+                      type="button"
+                      aria-expanded={shortLinkRowID === row.id}
+                      class="mt-2 block rounded-(--radius-control) border border-border bg-control px-2 py-1 text-xs font-semibold text-foreground hover:bg-control-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+                      onclick={() => { shortLinkRowID = shortLinkRowID === row.id ? null : row.id; }}
+                    >{m.import_preview_short_link()}</button>
                   {/if}
                 </td>
                 <td class="px-4 py-2.5">
@@ -1707,7 +1719,17 @@
               {#if splitLinkRowID === row.id && batchId}
                 <tr class="border-b border-border bg-control">
                   <td colspan="9" class="px-4 py-4">
-                    <SplitLinkPanel batchId={batchId} rowId={row.id} {csrfToken} {accounts} onLinked={() => handleSplitLinked(row.id)} />
+                    <SplitLinkPanel batchId={batchId} rowId={row.id} {csrfToken} {accounts} onLinked={() => handleOperationLinked(row.id)} />
+                  </td>
+                </tr>
+              {/if}
+              {#if shortLinkRowID === row.id && batchId}
+                <tr class="border-b border-border bg-control">
+                  <td colspan="9" class="px-4 py-4">
+                    <!-- Pinned to the visible width so the review stays readable inside the scrolling table on a phone. -->
+                    <div class="sticky left-4 max-w-[calc(100vw-4rem)]">
+                      <ShortLinkPanel batchId={batchId} rowId={row.id} {csrfToken} {accounts} onLinked={() => handleOperationLinked(row.id)} />
+                    </div>
                   </td>
                 </tr>
               {/if}

@@ -120,7 +120,7 @@ governs how this historical adapter plan relates to app scope. Trading 212 does
 not define the domain feature set. Missing optional data can stay explicitly
 unattributed, and missing required effects need owner-supplied facts or a manual
 operation link rather than guessed semantics. Split linking already supports
-that pattern; explicit manual short/cover linking is #245. Verified automatic
+that pattern, and explicit manual short/cover linking ships under #245. Verified automatic
 split, cancellation and short mappings remain their own adapter issues.
 
 The legacy missing-dividend-default cash fallback still loses a resolved payer

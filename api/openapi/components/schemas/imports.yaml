@@ -633,6 +633,78 @@ ImportSplitCandidatesResponse:
       type: array
       items:
         $ref: "../schemas/imports.yaml#/ImportSplitCandidate"
+
+ImportLinkShortRequest:
+  type: object
+  additionalProperties: false
+  required: [operation_id]
+  properties:
+    operation_id:
+      type: integer
+      format: int64
+      description: The recorded short sale or cover the owner asserts this provider row evidences.
+
+ImportShortSource:
+  type: object
+  description: >
+    The staged row's provider evidence as received. A blank value is unknown
+    and is not compared.
+  required: [operation_kind, fill_type, side, ticker, isin, date, quantity, net_value, net_currency]
+  properties:
+    operation_kind:
+      type: string
+      enum: [short_sale, short_cover]
+      description: The operation family the row's side can evidence (SELL → short_sale, BUY → short_cover).
+    fill_type: { type: string }
+    side: { type: string, enum: [BUY, SELL] }
+    ticker: { type: string }
+    isin: { type: string }
+    date:
+      type: string
+      description: Source date (YYYY-MM-DD), or empty when unknown.
+    quantity: { type: string }
+    net_value:
+      type: string
+      description: Signed net wallet cash as the provider reported it.
+    net_currency: { type: string }
+
+ImportShortCandidate:
+  type: object
+  required: [operation_id, operation_kind, transaction_id, holding_account_id, cash_account_id, event_date, quantity, net_amount, cash_currency, linked, mismatches]
+  properties:
+    operation_id: { type: integer, format: int64 }
+    operation_kind: { type: string, enum: [short_sale, short_cover] }
+    transaction_id: { type: integer, format: int64 }
+    holding_account_id: { type: integer, format: int64 }
+    cash_account_id: { type: integer, format: int64 }
+    event_date: { type: string, format: date }
+    quantity:
+      type: string
+      description: Canonical dot-decimal units borrowed (short sale) or covered.
+    net_amount:
+      type: string
+      description: Canonical signed dot-decimal net settlement; positive for a short sale, negative for a cover.
+    cash_currency: { type: string }
+    linked:
+      type: boolean
+      description: This operation or one it corrects already has source evidence; it cannot be linked again.
+    mismatches:
+      type: array
+      description: Known source facts that disagree with this operation. Only a candidate with none can be linked.
+      items:
+        type: string
+        enum: [date, quantity, cash_amount, cash_currency, holding_account, cash_account]
+
+ImportShortCandidatesResponse:
+  type: object
+  required: [source, candidates]
+  properties:
+    source:
+      $ref: "../../openapi.yaml#/components/schemas/ImportShortSource"
+    candidates:
+      type: array
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/ImportShortCandidate"
 ImportDividendReview:
   type: object
   required: [row_id, batch_id, row_index, state, source_instrument, source_date, source_cash_amount, source_currency, resolution]

@@ -35,3 +35,26 @@ export function linkableSplitFill(row: Pick<ImportStagedRow, 'raw' | 'commit_sta
     return raw?.kind === 'trading212_order_fill' && raw.fill_type === 'STOCK_SPLIT';
   } catch { return false; }
 }
+
+/**
+ * A pending unsupported BUY or SELL fill other than a split (#245). It never
+ * posts and is never classified as a short by itself; the owner may link it
+ * to a short sale (SELL) or cover (BUY) they recorded natively.
+ */
+export function linkableShortFill(row: Pick<ImportStagedRow, 'raw' | 'commit_status' | 'dedupe_status'>): boolean {
+  if (row.commit_status === 'committed' || row.dedupe_status === 'duplicate') return false;
+  try {
+    const raw = JSON.parse(row.raw) as { kind?: string; fill_type?: string; side?: unknown } | null;
+    if (raw?.kind !== 'trading212_order_fill' || raw.fill_type === 'TRADE' || raw.fill_type === 'STOCK_SPLIT') return false;
+    const side = typeof raw.side === 'string' ? raw.side.trim().toUpperCase() : '';
+    return side === 'BUY' || side === 'SELL';
+  } catch { return false; }
+}
+
+/** Whether a committed unsupported fill was linked to a split or a short. */
+export function linkedFillKind(row: Pick<ImportStagedRow, 'raw'>): 'split' | 'short' {
+  try {
+    const raw = JSON.parse(row.raw) as { fill_type?: string } | null;
+    return raw?.fill_type === 'STOCK_SPLIT' ? 'split' : 'short';
+  } catch { return 'short'; }
+}

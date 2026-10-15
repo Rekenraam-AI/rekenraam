@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ImportStagedRow } from '#lib/api/imports.ts';
-import { linkableSplitFill, sourceCorrectionKind, unsupportedSourceFill } from './source-correction';
+import { linkableShortFill, linkableSplitFill, linkedFillKind, sourceCorrectionKind, unsupportedSourceFill } from './source-correction';
 
 function row(changes: Partial<ImportStagedRow> = {}): ImportStagedRow {
   return {
@@ -59,5 +59,24 @@ describe('linkableSplitFill', () => {
     expect(linkableSplitFill(row({ raw: split, dedupe_status: 'duplicate' }))).toBe(false);
     expect(linkableSplitFill(row())).toBe(false);
     expect(linkableSplitFill(row({ raw: 'not json' }))).toBe(false);
+  });
+});
+
+describe('linkableShortFill', () => {
+  const fill = (fields: Record<string, unknown>) => JSON.stringify({ kind: 'trading212_order_fill', fill_type: 'UNKNOWN', side: 'SELL', ...fields });
+  it('offers short linking for a pending or skipped unsupported BUY or SELL fill', () => {
+    expect(linkableShortFill(row({ raw: fill({}) }))).toBe(true);
+    expect(linkableShortFill(row({ raw: fill({ side: ' buy ' }), commit_status: 'skipped' }))).toBe(true);
+  });
+  it.each([
+    { raw: fill({ fill_type: 'TRADE' }) }, { raw: fill({ fill_type: 'STOCK_SPLIT' }) },
+    { raw: fill({ side: '' }) }, { raw: fill({ side: 1 }) }, { raw: '{"kind":"cash","side":"SELL"}' }, { raw: 'not json' },
+    { raw: fill({}), commit_status: 'committed' as const }, { raw: fill({}), dedupe_status: 'duplicate' as const }
+  ])('keeps other rows out: %j', (changes) => {
+    expect(linkableShortFill(row(changes))).toBe(false);
+  });
+  it('names the linked operation family', () => {
+    expect(linkedFillKind(row({ raw: fill({ fill_type: 'STOCK_SPLIT' }) }))).toBe('split');
+    expect(linkedFillKind(row({ raw: fill({}) }))).toBe('short');
   });
 });

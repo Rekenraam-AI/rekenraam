@@ -235,6 +235,10 @@ paths:
     $ref: "./paths/import-row-split-candidates.yaml"
   /api/v1/imports/{batch_id}/rows/{row_id}/link-split:
     $ref: "./paths/import-row-link-split.yaml"
+  /api/v1/imports/{batch_id}/rows/{row_id}/short-candidates:
+    $ref: "./paths/import-row-short-candidates.yaml"
+  /api/v1/imports/{batch_id}/rows/{row_id}/link-short:
+    $ref: "./paths/import-row-link-short.yaml"
   /api/v1/imports/{batch_id}/rows/{row_id}/correct-buy:
     $ref: "./paths/import-correct-buy.yaml"
   /api/v1/imports/{batch_id}/rows/{row_id}/correct-buy/reconciliation-impact:
@@ -1107,6 +1111,14 @@ components:
       $ref: "./components/schemas/imports.yaml#/ImportSplitCandidate"
     ImportSplitCandidatesResponse:
       $ref: "./components/schemas/imports.yaml#/ImportSplitCandidatesResponse"
+    ImportLinkShortRequest:
+      $ref: "./components/schemas/imports.yaml#/ImportLinkShortRequest"
+    ImportShortSource:
+      $ref: "./components/schemas/imports.yaml#/ImportShortSource"
+    ImportShortCandidate:
+      $ref: "./components/schemas/imports.yaml#/ImportShortCandidate"
+    ImportShortCandidatesResponse:
+      $ref: "./components/schemas/imports.yaml#/ImportShortCandidatesResponse"
     ImportRowGainImpactAcknowledgement:
       $ref: "./components/schemas/imports.yaml#/ImportRowGainImpactAcknowledgement"
     ImportRowGainImpact:

@@ -1,0 +1,50 @@
+get:
+  summary: List recorded short operations a pending unsupported Trading 212 row can be linked to
+  description: >
+    A Trading 212 fill whose type is not a documented execution never posts,
+    and automatic short admission waits for verified provider payloads (#176).
+    This lists the effective recorded short sales (for a SELL row) or short
+    covers (for a BUY row) of the row's security, newest first, with the
+    row's source evidence and, per candidate, every known source fact that
+    disagrees with it. The security is looked up, never created; an unknown
+    security has no candidates. Stock split rows use split-candidates instead.
+  parameters:
+    - in: path
+      name: batch_id
+      required: true
+      schema: { type: integer, format: int64 }
+    - in: path
+      name: row_id
+      required: true
+      schema: { type: integer, format: int64 }
+  responses:
+    "200":
+      description: Source evidence and candidate operations (no mutation)
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ImportShortCandidatesResponse"
+    "401":
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "404":
+      description: Import batch not found
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "409":
+      description: IMPORT_SHORT_LINK_UNAVAILABLE — the row is not a pending unsupported BUY or SELL Trading 212 fill in this batch
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "500":
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"

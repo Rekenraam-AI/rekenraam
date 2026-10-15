@@ -615,6 +615,8 @@ func TestImportBatchEndpoints_RequireAuthentication(t *testing.T) {
 		{"correct-buy-impact", http.MethodPost, "/api/v1/imports/1/rows/1/correct-buy/reconciliation-impact"},
 		{"split-candidates", http.MethodGet, "/api/v1/imports/1/rows/1/split-candidates"},
 		{"link-split", http.MethodPost, "/api/v1/imports/1/rows/1/link-split"},
+		{"short-candidates", http.MethodGet, "/api/v1/imports/1/rows/1/short-candidates"},
+		{"link-short", http.MethodPost, "/api/v1/imports/1/rows/1/link-short"},
 		{"discard", http.MethodPost, "/api/v1/imports/1/discard"},
 	}
 	for _, tc := range cases {
@@ -644,6 +646,7 @@ func TestImportBatchMutations_RequireCSRFToken(t *testing.T) {
 		{"commit", http.MethodPost, "/api/v1/imports/" + strconv.FormatInt(started.Batch.ID, 10) + "/commit", "{}"},
 		{"correct-buy", http.MethodPost, "/api/v1/imports/" + strconv.FormatInt(started.Batch.ID, 10) + "/rows/" + strconv.FormatInt(started.Rows[0].ID, 10) + "/correct-buy", `{"reason":"provider correction"}`},
 		{"link-split", http.MethodPost, "/api/v1/imports/" + strconv.FormatInt(started.Batch.ID, 10) + "/rows/" + strconv.FormatInt(started.Rows[0].ID, 10) + "/link-split", `{"operation_id":1}`},
+		{"link-short", http.MethodPost, "/api/v1/imports/" + strconv.FormatInt(started.Batch.ID, 10) + "/rows/" + strconv.FormatInt(started.Rows[0].ID, 10) + "/link-short", `{"operation_id":1}`},
 		{"discard", http.MethodPost, "/api/v1/imports/" + strconv.FormatInt(started.Batch.ID, 10) + "/discard", ""},
 		{"analyze", http.MethodPost, "/api/v1/imports/analyze", ""},
 	}
@@ -1043,4 +1046,55 @@ func TestImportSplitLinkRefusesNonSplitRows(t *testing.T) {
 	handler.ServeHTTP(res, req)
 	assert.Equal(t, http.StatusConflict, res.Code)
 	assert.Contains(t, res.Body.String(), "IMPORT_SPLIT_LINK_UNAVAILABLE")
+}
+
+// #245: a QIF bank row is not a pending unsupported provider fill, so it can
+// neither list nor link short operations; nothing is written.
+func TestImportShortLinkRefusesNonProviderRows(t *testing.T) {
+	t.Parallel()
+	handler, database := newSetupTestHandler(t)
+	sessionCookie, csrfToken, _, _, _ := bootstrapImportAPITest(t, handler)
+	started := startQIFImportForSession(t, handler, sessionCookie, csrfToken, "bank.qif", qifRow("06/01/26", "-10.00", "Coffee"), http.StatusCreated)
+	base := "/api/v1/imports/" + strconv.FormatInt(started.Batch.ID, 10) + "/rows/" + strconv.FormatInt(started.Rows[0].ID, 10)
+	var before int
+	require.NoError(t, database.QueryRow("SELECT count(*) FROM audit_events").Scan(&before))
+
+	req := httptest.NewRequest(http.MethodGet, base+"/short-candidates", nil)
+	req.AddCookie(sessionCookie)
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	assert.Equal(t, http.StatusConflict, res.Code)
+	assert.Contains(t, res.Body.String(), "IMPORT_SHORT_LINK_UNAVAILABLE")
+
+	req = httptest.NewRequest(http.MethodPost, base+"/link-short", strings.NewReader(`{"operation_id":1}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-CSRF-Token", csrfToken)
+	setSameOrigin(req)
+	req.AddCookie(sessionCookie)
+	res = httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	assert.Equal(t, http.StatusConflict, res.Code)
+	assert.Contains(t, res.Body.String(), "IMPORT_SHORT_LINK_UNAVAILABLE")
+	var after int
+	require.NoError(t, database.QueryRow("SELECT count(*) FROM audit_events").Scan(&after))
+	assert.Equal(t, before, after)
+}
+
+func TestImportShortLinkErrorsUseStableCodes(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		err  error
+		code string
+	}{
+		{app.ErrImportShortLinkUnavailable, "IMPORT_SHORT_LINK_UNAVAILABLE"},
+		{app.ErrImportShortLinkChanged, "IMPORT_SHORT_LINK_CHANGED"},
+		{app.ImportShortLinkMismatchError{Fields: []string{"quantity", "date"}}, "IMPORT_SHORT_LINK_MISMATCH"},
+	} {
+		res := httptest.NewRecorder()
+		writeImportShortLinkError(res, httptest.NewRequest(http.MethodPost, "/", nil), nil, "link import short", tc.err)
+		assert.Equal(t, http.StatusConflict, res.Code, tc.code)
+		var body errorResponse
+		require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
+		assert.Equal(t, tc.code, body.Error.Code)
+	}
 }

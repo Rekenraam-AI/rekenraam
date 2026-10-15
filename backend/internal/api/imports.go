@@ -1287,3 +1287,126 @@ func linkImportSplit(logger *slog.Logger, authService *app.AuthService, importSe
 		w.WriteHeader(http.StatusNoContent)
 	}))
 }
+
+type importLinkShortRequest struct {
+	OperationID int64 `json:"operation_id"`
+}
+
+type importShortSourceResponse struct {
+	OperationKind string `json:"operation_kind"`
+	FillType      string `json:"fill_type"`
+	Side          string `json:"side"`
+	Ticker        string `json:"ticker"`
+	ISIN          string `json:"isin"`
+	Date          string `json:"date"`
+	Quantity      string `json:"quantity"`
+	NetValue      string `json:"net_value"`
+	NetCurrency   string `json:"net_currency"`
+}
+
+type importShortCandidateResponse struct {
+	OperationID      int64    `json:"operation_id"`
+	OperationKind    string   `json:"operation_kind"`
+	TransactionID    int64    `json:"transaction_id"`
+	HoldingAccountID int64    `json:"holding_account_id"`
+	CashAccountID    int64    `json:"cash_account_id"`
+	EventDate        string   `json:"event_date"`
+	Quantity         string   `json:"quantity"`
+	NetAmount        string   `json:"net_amount"`
+	CashCurrency     string   `json:"cash_currency"`
+	Linked           bool     `json:"linked"`
+	Mismatches       []string `json:"mismatches"`
+}
+
+type importShortCandidatesResponse struct {
+	Source     importShortSourceResponse      `json:"source"`
+	Candidates []importShortCandidateResponse `json:"candidates"`
+}
+
+func writeImportShortLinkError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, action string, err error) {
+	switch {
+	case errors.Is(err, app.ErrImportBatchNotFound):
+		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "import batch not found")
+	case errors.Is(err, app.ErrImportShortLinkUnavailable):
+		writeAPIError(w, http.StatusConflict, "IMPORT_SHORT_LINK_UNAVAILABLE", err.Error())
+	case errors.Is(err, app.ErrImportShortLinkChanged):
+		writeAPIError(w, http.StatusConflict, "IMPORT_SHORT_LINK_CHANGED", err.Error())
+	case errors.Is(err, app.ErrImportShortLinkMismatch):
+		writeAPIError(w, http.StatusConflict, "IMPORT_SHORT_LINK_MISMATCH", err.Error())
+	default:
+		writeInvestmentServiceError(w, r, logger, action, err)
+	}
+}
+
+func importShortCandidates(logger *slog.Logger, authService *app.AuthService, importService *app.ImportService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		owner, ok := authenticatedOwner(w, r, logger, authService)
+		if !ok {
+			return
+		}
+		batchID, ok := readImportBatchID(w, r)
+		if !ok {
+			return
+		}
+		rowID, ok := readPathInt64(w, r, "row_id", "row id")
+		if !ok {
+			return
+		}
+		review, err := importService.Trading212ShortCandidates(r.Context(), app.Trading212ShortRowInput{
+			OwnerUserID: owner.ID, BatchID: batchID, RowID: rowID,
+		})
+		if err != nil {
+			writeImportShortLinkError(w, r, logger, "list import short candidates", err)
+			return
+		}
+		source := review.Source
+		response := importShortCandidatesResponse{
+			Source: importShortSourceResponse{OperationKind: source.OperationKind, FillType: source.FillType, Side: source.Side,
+				Ticker: source.Ticker, ISIN: source.ISIN, Date: source.Date, Quantity: source.Quantity,
+				NetValue: source.NetValue, NetCurrency: source.NetCurrency},
+			Candidates: make([]importShortCandidateResponse, 0, len(review.Candidates)),
+		}
+		for _, candidate := range review.Candidates {
+			response.Candidates = append(response.Candidates, importShortCandidateResponse{
+				OperationID: candidate.OperationID, OperationKind: candidate.OperationKind, TransactionID: candidate.TransactionID,
+				HoldingAccountID: candidate.HoldingAccountID, CashAccountID: candidate.CashAccountID, EventDate: candidate.EventDate,
+				Quantity: candidate.Quantity, NetAmount: candidate.NetAmount, CashCurrency: candidate.CashCurrency,
+				Linked: candidate.Linked, Mismatches: candidate.Mismatches,
+			})
+		}
+		writeJSON(w, http.StatusOK, response)
+	}
+}
+
+func linkImportShort(logger *slog.Logger, authService *app.AuthService, importService *app.ImportService, options HandlerOptions) http.HandlerFunc {
+	return requireAuthenticatedMutation(logger, authService, options, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		owner, ok := authenticatedMutationOwner(w, r)
+		if !ok {
+			return
+		}
+		batchID, ok := readImportBatchID(w, r)
+		if !ok {
+			return
+		}
+		rowID, ok := readPathInt64(w, r, "row_id", "row id")
+		if !ok {
+			return
+		}
+		var request importLinkShortRequest
+		if err := decodeJSONBody(r, &request); err != nil {
+			writeDecodeError(w, err)
+			return
+		}
+		if err := importService.LinkTrading212Short(r.Context(), app.LinkTrading212ShortInput{
+			Trading212ShortRowInput: app.Trading212ShortRowInput{
+				OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r),
+				RequestID: RequestIDFromContext(r.Context()), BatchID: batchID, RowID: rowID,
+			},
+			OperationID: request.OperationID,
+		}); err != nil {
+			writeImportShortLinkError(w, r, logger, "link import short", err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+}

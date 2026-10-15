@@ -140,7 +140,8 @@ below is execution order, not a chain of hard dependencies.
    (2026-10-15), completing #229's imported-payer scope. App-owned partial-data
    work proceeds independently of provider automation:
    visible attribution coverage [#244](https://github.com/sergeyfarin/rekenraam/issues/244),
-   and manual short-operation import links [#245](https://github.com/sergeyfarin/rekenraam/issues/245).
+   and manual short-operation import links [#245](https://github.com/sergeyfarin/rekenraam/issues/245)
+   (delivered 2026-10-15).
    These follow-ups do not gate R13 or other features. Reconciliation recovery is tracked
    independently in #240. Approval preserves the journal
    (#219); guarded void/unvoid/delete/restore preview their own impact (#220,
@@ -224,8 +225,8 @@ The [2026-10-13 split evidence recheck](reviews/trading212-split-evidence-2026-1
 records the current official schema, missing live payloads and collection guide
 for #145; the provider-mapping gate remains. Neither it nor execution-cancellation
 mapping #136 or short mapping #176 blocks native manual entry/correction or
-unrelated app features. Manual split linking already ships; broader manual
-linking is app-owned work (#245).
+unrelated app features. Manual split linking and manual short/cover linking
+(#245, 2026-10-15) ship.
 
 ### Completed initiatives through R10
 

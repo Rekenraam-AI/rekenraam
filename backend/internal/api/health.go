@@ -339,6 +339,8 @@ func RegisterRoutesWithAuth(mux *http.ServeMux, logger *slog.Logger, services Se
 	mux.HandleFunc("POST /api/v1/imports/{batch_id}/rows/{row_id}/review-dividend/reconciliation-impact", reviewImportDividend(logger, services.Auth, services.Import, options, true))
 	mux.HandleFunc("GET /api/v1/imports/{batch_id}/rows/{row_id}/split-candidates", importSplitCandidates(logger, services.Auth, services.Import))
 	mux.HandleFunc("POST /api/v1/imports/{batch_id}/rows/{row_id}/link-split", linkImportSplit(logger, services.Auth, services.Import, options))
+	mux.HandleFunc("GET /api/v1/imports/{batch_id}/rows/{row_id}/short-candidates", importShortCandidates(logger, services.Auth, services.Import))
+	mux.HandleFunc("POST /api/v1/imports/{batch_id}/rows/{row_id}/link-short", linkImportShort(logger, services.Auth, services.Import, options))
 	mux.HandleFunc("POST /api/v1/imports/{batch_id}/rows/{row_id}/correct-buy", correctTrading212Buy(logger, services.Auth, services.Import, options))
 	mux.HandleFunc("POST /api/v1/imports/{batch_id}/rows/{row_id}/correct-buy/reconciliation-impact", trading212BuyCorrectionReconciliationImpact(logger, services.Auth, services.Import))
 	mux.HandleFunc("POST /api/v1/imports/{batch_id}/rows/{row_id}/correct-sale", correctTrading212Sale(logger, services.Auth, services.Import, options))

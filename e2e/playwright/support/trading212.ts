@@ -21,6 +21,8 @@ export type StubFill = {
   netValue: string;
   /** `YYYY-MM-DD`; the stub reports it at 10:00 UTC. */
   date: string;
+  /** Provider fill type; the stub defaults to TRADE. */
+  type?: string;
 };
 
 export type StubInstrument = { ticker: string; isin: string; currency: string };
@@ -39,7 +41,7 @@ export function requireTrading212Stub(): void {
 export async function setTrading212Fills(apiKey: string, instrument: StubInstrument, fills: StubFill[]): Promise<void> {
   const orders = fills.map((fill) => ({
     id: fill.id, side: fill.side, quantity: fill.quantity, price: fill.price, netValue: fill.netValue,
-    filledAt: `${fill.date}T10:00:00Z`, ...instrument
+    filledAt: `${fill.date}T10:00:00Z`, type: fill.type, ...instrument
   }));
   const res = await fetch(`${stubURL}/__control/accounts/${encodeURIComponent(apiKey)}`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders })
