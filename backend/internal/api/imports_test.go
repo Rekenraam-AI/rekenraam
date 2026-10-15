@@ -828,6 +828,38 @@ func TestPatchImportBatch_InvalidDedupeStatusRejectedAsValidationError(t *testin
 	assert.Equal(t, "VALIDATION_FAILED", body.Error.Code)
 }
 
+// #243: omitted fields keep their HTTP defaults now that the service owns
+// them, and a row outside the batch is a 400 that applies nothing.
+func TestPatchImportBatch_OmittedFieldsDefaultAndUnknownRowAppliesNothing(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newSetupTestHandler(t)
+	sessionCookie, csrfToken, _, _, _ := bootstrapImportAPITest(t, handler)
+	started := startQIFImportForSession(t, handler, sessionCookie, csrfToken, "bank.qif", qifRow("06/01/26", "-10.00", "Coffee"), http.StatusCreated)
+	rowID := strconv.FormatInt(started.Rows[0].ID, 10)
+
+	patchImportBatchForSession(t, handler, sessionCookie, csrfToken, started.Batch.ID,
+		`{"row_resolutions":[{"row_id":`+rowID+`,"resolution":"{\"account_id\":1}"}]}`, http.StatusNoContent)
+	got := getImportBatchForSession(t, handler, sessionCookie, started.Batch.ID, "", http.StatusOK)
+	require.Len(t, got.Rows, 1)
+	assert.Equal(t, "new", got.Rows[0].DedupeStatus)
+	assert.JSONEq(t, `{"account_id":1}`, got.Rows[0].ResolutionJSON)
+
+	patchImportBatchForSession(t, handler, sessionCookie, csrfToken, started.Batch.ID,
+		`{"row_resolutions":[{"row_id":`+rowID+`,"dedupe_status":"excluded"}]}`, http.StatusNoContent)
+	got = getImportBatchForSession(t, handler, sessionCookie, started.Batch.ID, "", http.StatusOK)
+	assert.Equal(t, "excluded", got.Rows[0].DedupeStatus)
+	assert.Equal(t, "{}", got.Rows[0].ResolutionJSON)
+
+	res := patchImportBatchForSession(t, handler, sessionCookie, csrfToken, started.Batch.ID,
+		`{"row_resolutions":[{"row_id":`+rowID+`},{"row_id":999999}]}`, http.StatusBadRequest)
+	var body errorResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
+	assert.Equal(t, "VALIDATION_FAILED", body.Error.Code)
+	got = getImportBatchForSession(t, handler, sessionCookie, started.Batch.ID, "", http.StatusOK)
+	assert.Equal(t, "excluded", got.Rows[0].DedupeStatus, "the rejected patch must not apply its first row")
+}
+
 func TestCommitImportBatch_UnknownAccountResolutionFailsRow(t *testing.T) {
 	t.Parallel()
 

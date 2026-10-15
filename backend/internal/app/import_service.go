@@ -760,29 +760,52 @@ func (s *ImportService) PatchImportBatch(ctx context.Context, input PatchImportB
 		return ErrImportBatchNotOpen
 	}
 
-	// Validate every patch before writing any of them: import_staged_rows
-	// enforces dedupe_status and resolution_json shape with DB CHECK
-	// constraints, and a violation from client input should surface as a
-	// clean 400 VALIDATION_FAILED rather than a 500 from a raw SQL error
-	// partway through the batch.
+	// Normalize and validate every patch before writing any of them:
+	// import_staged_rows enforces dedupe_status and resolution_json shape with
+	// DB CHECK constraints, and a violation from client input should surface
+	// as a clean 400 VALIDATION_FAILED rather than a 500 from a raw SQL error.
+	// The repository then applies the whole patch in one transaction, so a
+	// row outside the batch cannot leave earlier choices half-applied.
+	updates := make([]db.UpdateImportStagedRowResolutionParams, 0, len(input.RowResolutions))
 	for _, patch := range input.RowResolutions {
+		patch = normalizeRowResolutionPatch(patch)
 		if err := validateRowResolutionPatch(patch); err != nil {
 			return err
 		}
-	}
-
-	for _, patch := range input.RowResolutions {
-		if err := s.repository.UpdateImportStagedRowResolution(ctx, db.UpdateImportStagedRowResolutionParams{
+		updates = append(updates, db.UpdateImportStagedRowResolutionParams{
 			RowID:          patch.RowID,
 			BatchID:        input.BatchID,
 			DedupeStatus:   patch.DedupeStatus,
 			ResolutionJSON: patch.ResolutionJSON,
-		}); err != nil {
-			return fmt.Errorf("update row %d resolution: %w", patch.RowID, err)
-		}
+		})
 	}
 
+	if err := s.repository.PatchImportStagedRowResolutions(ctx, input.BatchID, updates); err != nil {
+		switch {
+		case errors.Is(err, db.ErrImportBatchNotFound):
+			return ErrImportBatchNotFound
+		case errors.Is(err, db.ErrImportBatchNotPreviewing):
+			return ErrImportBatchNotOpen
+		case errors.Is(err, db.ErrNotFound):
+			return ValidationError{Message: "row_id is not a row of this import batch"}
+		}
+		return fmt.Errorf("patch import batch rows: %w", err)
+	}
 	return nil
+}
+
+// normalizeRowResolutionPatch applies the documented defaults for omitted
+// fields. A patch replaces the row's whole review state, so an omitted
+// dedupe_status means "new" (include the row) and an omitted resolution
+// means "{}" (no mapping), at the service boundary as well as over HTTP.
+func normalizeRowResolutionPatch(patch RowResolutionPatch) RowResolutionPatch {
+	if patch.DedupeStatus == "" {
+		patch.DedupeStatus = "new"
+	}
+	if patch.ResolutionJSON == "" {
+		patch.ResolutionJSON = "{}"
+	}
+	return patch
 }
 
 // validRowResolutionDedupeStatuses mirrors the import_staged_rows.dedupe_status
@@ -798,10 +821,10 @@ func validateRowResolutionPatch(patch RowResolutionPatch) error {
 	if patch.RowID <= 0 {
 		return ValidationError{Message: "row_id is required"}
 	}
-	if patch.DedupeStatus != "" && !validRowResolutionDedupeStatuses[patch.DedupeStatus] {
+	if !validRowResolutionDedupeStatuses[patch.DedupeStatus] {
 		return ValidationError{Message: "dedupe_status is invalid"}
 	}
-	if patch.ResolutionJSON != "" && !json.Valid([]byte(patch.ResolutionJSON)) {
+	if !json.Valid([]byte(patch.ResolutionJSON)) {
 		return ValidationError{Message: "resolution is not valid JSON"}
 	}
 	return nil

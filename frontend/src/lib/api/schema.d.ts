@@ -28257,10 +28257,12 @@ export interface components {
         RowResolutionPatch: {
             /** Format: int64 */
             row_id: number;
+            /** @description Defaults to `new` when omitted. */
             dedupe_status?: components["schemas"]["ImportDedupeStatus"];
-            /** @description JSON string matching ImportResolution. */
+            /** @description JSON string matching ImportResolution. Defaults to `{}` when omitted; a patch replaces the row's whole review state. */
             resolution?: string;
         };
+        /** @description Applied atomically. Every patch is validated before any row changes, and a row_id outside the batch rejects the whole request. */
         PatchImportBatchRequest: {
             row_resolutions: components["schemas"]["RowResolutionPatch"][];
         };

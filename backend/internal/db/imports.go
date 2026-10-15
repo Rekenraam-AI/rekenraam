@@ -1410,6 +1410,66 @@ func (r *ImportRepository) UpdateImportStagedRowResolution(ctx context.Context, 
 	return nil
 }
 
+// ErrImportBatchNotPreviewing reports that a review patch reached a batch that
+// left the previewing state after the caller's admission check.
+var ErrImportBatchNotPreviewing = errors.New("import batch is not previewing")
+
+// PatchImportStagedRowResolutions applies a review patch atomically: every
+// row update lands or none does. Each statement re-checks that the batch is
+// still previewing, so a commit or discard that wins the race after the
+// caller's admission check rejects the whole patch (ErrImportBatchNotPreviewing)
+// instead of rewriting a row the commit already read. A row outside the batch
+// rejects the whole patch with ErrNotFound.
+func (r *ImportRepository) PatchImportStagedRowResolutions(ctx context.Context, batchID int64, patches []UpdateImportStagedRowResolutionParams) error {
+	tx, err := r.database.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin patch staged row resolutions: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			rollbackTx(ctx, tx)
+		}
+	}()
+
+	for _, patch := range patches {
+		result, err := tx.ExecContext(ctx, `
+			UPDATE import_staged_rows
+			SET dedupe_status = ?, resolution_json = ?
+			WHERE id = ? AND batch_id = ?
+			  AND EXISTS (SELECT 1 FROM import_batches b
+			    WHERE b.id = import_staged_rows.batch_id AND b.status = 'previewing')
+		`, patch.DedupeStatus, patch.ResolutionJSON, patch.RowID, batchID)
+		if err != nil {
+			return fmt.Errorf("update staged row %d resolution: %w", patch.RowID, err)
+		}
+		n, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("rows affected: %w", err)
+		}
+		if n == 1 {
+			continue
+		}
+		var status string
+		if err := tx.QueryRowContext(ctx, `SELECT status FROM import_batches WHERE id = ?`, batchID).Scan(&status); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrImportBatchNotFound
+			}
+			return fmt.Errorf("read import batch status: %w", err)
+		}
+		if status != "previewing" {
+			return ErrImportBatchNotPreviewing
+		}
+		return fmt.Errorf("staged row %d: %w", patch.RowID, ErrNotFound)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit patch staged row resolutions: %w", err)
+	}
+	committed = true
+	return nil
+}
+
 func (r *ImportRepository) CommitImportStagedRow(ctx context.Context, params CommitImportStagedRowParams) error {
 	return commitImportStagedRowExec(ctx, r.database, params)
 }

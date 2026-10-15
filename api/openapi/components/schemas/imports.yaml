@@ -388,11 +388,18 @@ RowResolutionPatch:
       type: integer
       format: int64
     dedupe_status:
-      $ref: "../../openapi.yaml#/components/schemas/ImportDedupeStatus"
+      description: Defaults to `new` when omitted.
+      allOf:
+        - $ref: "../../openapi.yaml#/components/schemas/ImportDedupeStatus"
     resolution:
       type: string
-      description: JSON string matching ImportResolution.
+      description: >-
+        JSON string matching ImportResolution. Defaults to `{}` when omitted;
+        a patch replaces the row's whole review state.
 PatchImportBatchRequest:
+  description: >-
+    Applied atomically. Every patch is validated before any row changes, and
+    a row_id outside the batch rejects the whole request.
   type: object
   required:
     - row_resolutions

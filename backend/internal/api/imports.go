@@ -642,19 +642,13 @@ func patchImportBatch(logger *slog.Logger, authService *app.AuthService, importS
 		}
 
 		patches := make([]app.RowResolutionPatch, 0, len(request.RowResolutions))
+		// Omitted fields are defaulted by the service (dedupe_status "new",
+		// resolution "{}").
 		for _, p := range request.RowResolutions {
-			resJSON := p.ResolutionJSON
-			if resJSON == "" {
-				resJSON = "{}"
-			}
-			dedupeStatus := p.DedupeStatus
-			if dedupeStatus == "" {
-				dedupeStatus = "new"
-			}
 			patches = append(patches, app.RowResolutionPatch{
 				RowID:          p.RowID,
-				DedupeStatus:   dedupeStatus,
-				ResolutionJSON: resJSON,
+				DedupeStatus:   p.DedupeStatus,
+				ResolutionJSON: p.ResolutionJSON,
 			})
 		}
 
