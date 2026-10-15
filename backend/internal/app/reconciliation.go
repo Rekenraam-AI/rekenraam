@@ -192,9 +192,12 @@ func (s *TransactionService) StartReconciliation(ctx context.Context, input Star
 	if err != nil {
 		return ReconciliationSession{}, mapTransactionDBError(err)
 	}
+	// A candidate still marked reconciled was verified by a checkpoint that
+	// has since been invalidated or voided (#240). It starts selected like a
+	// cleared posting and is re-verified against this statement.
 	clearedPostingIDs := make([]int64, 0)
 	for _, candidate := range record.Candidates {
-		if candidate.ReconciliationStatus == "cleared" {
+		if candidate.ReconciliationStatus == "cleared" || candidate.ReconciliationStatus == "reconciled" {
 			clearedPostingIDs = append(clearedPostingIDs, candidate.PostingID)
 		}
 	}

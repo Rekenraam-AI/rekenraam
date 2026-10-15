@@ -142,8 +142,8 @@ below is execution order, not a chain of hard dependencies.
    coverage [#244](https://github.com/sergeyfarin/rekenraam/issues/244) and
    manual short-operation import links [#245](https://github.com/sergeyfarin/rekenraam/issues/245)
    are both delivered (2026-10-15).
-   These follow-ups do not gate R13 or other features. Reconciliation recovery is tracked
-   independently in #240. Approval preserves the journal
+   These follow-ups do not gate R13 or other features. Reconciliation recovery after
+   checkpoint invalidation or void is delivered (#240, 2026-10-15). Approval preserves the journal
    (#219); guarded void/unvoid/delete/restore preview their own impact (#220,
    2026-10-14; trash restore too, #225), register rows are per posting line
    (#221), the register status filter is explicit Posted/Voided (#223) and

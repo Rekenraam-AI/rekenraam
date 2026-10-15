@@ -630,6 +630,89 @@ func TestVoidReconciledTransactionRequiresOverrideAndInvalidatesCheckpoint(t *te
 	assert.Equal(t, "invalidated", checkpoints.Checkpoints[0].Status)
 }
 
+// #240. After an override invalidates a checkpoint, a fresh reconciliation of
+// the same period offers the once-reconciled posting again, preselected, and
+// finishes at the corrected ledger balance. A session whose starting
+// checkpoint is voided before it finishes is refused with a stable code.
+func TestReReconcileAfterCheckpointInvalidationAndStaleStart(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newSetupTestHandler(t)
+	sessionCookie, csrfToken, commodityID := setupAccountAPITest(t, handler)
+	checking := createLedgerAccount(t, handler, sessionCookie, csrfToken, "Re-reconcile Checking", "asset", "checking", commodityID, 2)
+	income := createCategoryForSession(t, handler, sessionCookie, csrfToken, `{"name":"Re-reconcile Income","category_type":"income"}`)
+
+	dividend := createTransactionForSession(t, handler, sessionCookie, csrfToken, balancedBody("2026-03-01",
+		posting(checking.ID, 10000, 2, commodityID),
+		posting(income.ID, -10000, 2, commodityID),
+	), http.StatusCreated)
+	reconcilePostingForSession(t, handler, sessionCookie, csrfToken, checking.ID, commodityID, dividend.JournalEntries[0].Postings[0], "2026-04-01")
+
+	withholding := strings.Replace(balancedBody("2026-03-01",
+		posting(checking.ID, -1500, 2, commodityID),
+		posting(income.ID, 1500, 2, commodityID),
+	), "{", `{"reconciliation_override":true,"change_reason":"withholding entered late",`, 1)
+	created := createTransactionForSession(t, handler, sessionCookie, csrfToken, withholding, http.StatusCreated)
+	require.NotEmpty(t, created.InvalidatedCheckpointIDs)
+
+	statement := `{
+		"commodity_id":` + strconvFormatInt(commodityID) + `,
+		"source_kind":"statement",
+		"statement_date":"2026-04-01",
+		"statement_balance_value":"8500",
+		"statement_balance_scale":2
+	}`
+	started := startReconciliationForSession(t, handler, sessionCookie, csrfToken, checking.ID, statement, http.StatusCreated)
+	require.Len(t, started.Candidates, 2)
+	require.Len(t, started.SelectedPostings, 1)
+	ids := make([]string, 0, len(started.Candidates))
+	for _, candidate := range started.Candidates {
+		if candidate.TransactionID == dividend.ID {
+			assert.Equal(t, "reconciled", candidate.ReconciliationStatus)
+			assert.Equal(t, candidate.PostingID, started.SelectedPostings[0].PostingID)
+		}
+		ids = append(ids, strconvFormatInt(candidate.PostingID))
+	}
+	preview := previewReconciliationForSession(t, handler, sessionCookie, csrfToken, started.ID, `{"posting_version_ids":[`+strings.Join(ids, ",")+`]}`, http.StatusOK)
+	assert.Equal(t, "0", preview.Difference.QuantityValue.String())
+	finishReconciliationForSession(t, handler, sessionCookie, csrfToken, started.ID, `{"change_reason":"matched corrected statement"}`, http.StatusOK)
+
+	checkpoints := listReconciliationCheckpointsForSession(t, handler, sessionCookie, checking.ID, "?commodity_id="+strconvFormatInt(commodityID))
+	require.Len(t, checkpoints.Checkpoints, 2, "the invalidated checkpoint stays inspectable")
+	statuses := []string{checkpoints.Checkpoints[0].Status, checkpoints.Checkpoints[1].Status}
+	assert.ElementsMatch(t, []string{"active", "invalidated"}, statuses)
+
+	var active reconciliationCheckpointResponse
+	for _, checkpoint := range checkpoints.Checkpoints {
+		if checkpoint.Status == "active" {
+			active = checkpoint
+		}
+	}
+	later := createTransactionForSession(t, handler, sessionCookie, csrfToken, balancedBody("2026-04-10",
+		posting(checking.ID, 500, 2, commodityID),
+		posting(income.ID, -500, 2, commodityID),
+	), http.StatusCreated)
+	open := startReconciliationForSession(t, handler, sessionCookie, csrfToken, checking.ID, `{
+		"commodity_id":`+strconvFormatInt(commodityID)+`,
+		"source_kind":"statement",
+		"statement_date":"2026-04-30",
+		"statement_balance_value":"9000",
+		"statement_balance_scale":2
+	}`, http.StatusCreated)
+	previewReconciliationForSession(t, handler, sessionCookie, csrfToken, open.ID, `{"posting_version_ids":[`+strconvFormatInt(later.JournalEntries[0].Postings[0].ID)+`]}`, http.StatusOK)
+	voidReconciliationCheckpointForSession(t, handler, sessionCookie, csrfToken, active.ID, `{"change_reason":"wrong statement"}`, http.StatusOK)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/reconciliations/"+strconvFormatInt(open.ID)+"/finish", strings.NewReader(`{"change_reason":"matched statement"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(csrfTokenHeader, csrfToken)
+	setSameOrigin(req)
+	req.AddCookie(sessionCookie)
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	require.Equal(t, http.StatusConflict, res.Code)
+	assert.Contains(t, res.Body.String(), `"RECONCILIATION_START_STALE"`)
+}
+
 func TestUpdateTransactionCannotBypassBalanceValidationViaDraftStatus(t *testing.T) {
 	t.Parallel()
 

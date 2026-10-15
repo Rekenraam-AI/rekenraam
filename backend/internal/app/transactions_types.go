@@ -32,6 +32,7 @@ var (
 	ErrReconciliationClosed           = errors.New("reconciliation is not open")
 	ErrReconciliationNotBalanced      = errors.New("reconciliation difference must be zero")
 	ErrReconciliationPosting          = errors.New("reconciliation posting is invalid")
+	ErrReconciliationStartStale       = errors.New("reconciliation starting balance is no longer current")
 )
 
 type Transaction struct {

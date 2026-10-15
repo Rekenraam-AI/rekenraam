@@ -88,7 +88,9 @@ test('a refused void and unvoid show every affected checkpoint before override',
   expect(await s.active()).toEqual([]);
 
   // A new statement covers the day again; unvoid shows it and only it.
-  const again = await s.reconcile(await s.spend(`Next spend ${s.suffix}`, 200), -200);
+  // The later spend's checkpoint was invalidated too, so it is re-verified
+  // on this statement (#240): -5.00 later plus -2.00 next.
+  const again = await s.reconcile(await s.spend(`Next spend ${s.suffix}`, 200), -700);
   // The register hides voided entries; a transaction link opens its panel.
   await page.goto(`/app/transactions?transaction_id=${subject.id}`);
   await page.getByRole('button', { name: 'Unvoid…' }).click();

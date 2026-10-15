@@ -46,6 +46,8 @@ func writeTransactionServiceError(w http.ResponseWriter, r *http.Request, logger
 		writeAPIError(w, http.StatusConflict, "CONFLICT", "reconciliation is not open")
 	case errors.Is(err, app.ErrReconciliationNotBalanced):
 		writeAPIError(w, http.StatusConflict, "CONFLICT", "reconciliation difference must be zero")
+	case errors.Is(err, app.ErrReconciliationStartStale):
+		writeAPIError(w, http.StatusConflict, "RECONCILIATION_START_STALE", "reconciliation starting balance is no longer current; void it and start a new reconciliation")
 	case errors.Is(err, app.ErrReconciliationPosting):
 		writeAPIError(w, http.StatusConflict, "CONFLICT", "reconciliation posting is invalid")
 	default:

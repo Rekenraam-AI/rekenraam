@@ -98,8 +98,10 @@ func TestLifecycleReconciliationImpactNamesEveryCheckpointTheWriteInvalidates(t 
 	assert.Empty(t, preview("unvoid", subject.ID), "no active checkpoint covers the voided entry")
 
 	// Unvoid after a new statement covers the date: same refusal and preview.
+	// The late spend's checkpoint was invalidated, so it is re-verified on
+	// this statement too (#240): -1000 opening, -5000 late, -2000 fresh.
 	fresh := spend("2026-06-21", 2000)
-	again := reconcile(fresh, "2026-06-21", "-3000")
+	again := reconcile(fresh, "2026-06-21", "-8000")
 	lifecycle("unvoid", subject.ID, false, http.StatusConflict)
 	assert.Equal(t, []int64{again}, preview("unvoid", subject.ID))
 	assert.ElementsMatch(t, []int64{before, again}, activeCheckpoints())
@@ -111,7 +113,9 @@ func TestLifecycleReconciliationImpactNamesEveryCheckpointTheWriteInvalidates(t 
 	assert.Equal(t, []int64{before}, activeCheckpoints())
 
 	// Soft delete and restore preview through the same guard.
-	again = reconcile(spend("2026-06-22", 3000), "2026-06-22", "-4000")
+	// Everything since the opening balance is re-verified: the unvoided
+	// subject and the invalidated statement's postings, plus the new spend.
+	again = reconcile(spend("2026-06-22", 3000), "2026-06-22", "-21000")
 	assert.Equal(t, []int64{again}, preview("soft-delete", subject.ID))
 	assert.Empty(t, preview("restore", subject.ID), "restoring a live transaction changes nothing")
 }

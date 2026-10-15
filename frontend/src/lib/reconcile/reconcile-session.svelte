@@ -173,7 +173,15 @@
                       />
                     </td>
                     <td class="px-3 py-3 whitespace-nowrap text-muted">{posting.entry_date}</td>
-                    <td class="px-3 py-3 text-foreground">{detailFor(posting.payee_name, posting.description)}</td>
+                    <td class="px-3 py-3 text-foreground">
+                      {detailFor(posting.payee_name, posting.description)}
+                      {#if posting.reconciliation_status === 'reconciled'}
+                        <!-- Its checkpoint was invalidated or voided (#240). -->
+                        <span class="ml-2 inline-block align-middle">
+                          <StatusBadge tone="warning">{m.reconcile_session_reverify()}</StatusBadge>
+                        </span>
+                      {/if}
+                    </td>
                     <td class="px-3 py-3 text-right tabular-nums text-foreground">
                       {formatQuantity(posting.quantity_value, posting.quantity_scale, locale)}
                     </td>

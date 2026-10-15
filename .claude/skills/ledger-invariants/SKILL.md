@@ -94,6 +94,12 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   investment command that only appends journals is guarded once on its
   combined per-account/commodity delta at each boundary (T-120); edits of
   existing postings keep the per-posting rule.
+- The posting `reconciled` status is evidence, not the lock (#240). A posting
+  is out of new sessions only while a covering checkpoint (active, or on an
+  active one's `previous_checkpoint_id` chain) links its posting line; after
+  an invalidation or void it is offered again for re-verification. Never
+  filter reconciliation candidates on `reconciliation_status` alone, and a
+  session finishes only from the account's current latest active checkpoint.
 - Every new mutation path over postings must be wired through the guard — see
   how `app/transactions_write.go` and `app/reconciliation.go` do it. Forgetting
   the guard on a new path is a severity-1 bug.

@@ -17,6 +17,7 @@ var (
 	ErrReconciliationNotBalanced = errors.New("reconciliation difference must be zero")
 	ErrReconciliationPosting     = errors.New("reconciliation posting is invalid")
 	ErrReconciliationCheckpoint  = errors.New("reconciliation checkpoint is invalid")
+	ErrReconciliationStartStale  = errors.New("reconciliation starting checkpoint is no longer current")
 )
 
 type ReconciliationSessionRecord struct {
@@ -362,6 +363,22 @@ func (r *TransactionRepository) FinishReconciliationSession(ctx context.Context,
 	if session.DifferenceValue.Sign() != 0 {
 		return ReconciliationSessionRecord{}, ErrReconciliationNotBalanced
 	}
+	// #240. The new checkpoint chains from the session's starting balance, so
+	// that balance must still be the account's latest active one. A checkpoint
+	// invalidated or voided while the session was open, or another session
+	// finished from the same start, leaves this one adding up against a
+	// balance the account no longer stands on.
+	current, err := latestActiveReconciliationCheckpoint(ctx, tx, params.BookID, session.AccountID, session.CommodityID)
+	switch {
+	case errors.Is(err, ErrReconciliationCheckpoint):
+		if session.StartingCheckpointID.Valid {
+			return ReconciliationSessionRecord{}, ErrReconciliationStartStale
+		}
+	case err != nil:
+		return ReconciliationSessionRecord{}, err
+	case !session.StartingCheckpointID.Valid || session.StartingCheckpointID.Int64 != current.ID:
+		return ReconciliationSessionRecord{}, ErrReconciliationStartStale
+	}
 	selected, err := reconciliationSessionPostings(ctx, tx, params.BookID, params.SessionID)
 	if err != nil {
 		return ReconciliationSessionRecord{}, err
@@ -657,10 +674,12 @@ func (r *TransactionRepository) ChangePostingReconciliationStatus(ctx context.Co
 	if err != nil {
 		return nil, err
 	}
-	for _, posting := range postings {
-		if posting.ReconciliationStatus == "reconciled" {
-			return nil, ErrReconciliationPosting
-		}
+	locked, err := checkpointCoveredPostingCount(ctx, tx, params.BookID, params.AccountID, postingIDs(postings))
+	if err != nil {
+		return nil, err
+	}
+	if locked > 0 {
+		return nil, ErrReconciliationPosting
 	}
 	auditEventID, err := insertAuditEvent(ctx, tx, AuditEventParams{
 		BookID:        params.BookID,
@@ -1054,14 +1073,74 @@ func reconciliationCandidates(ctx context.Context, queryer queryer, session Reco
 			AND pv.account_id = ?
 			AND pv.commodity_id = ?
 			AND je.entry_date <= ?
-			AND pv.reconciliation_status != 'reconciled'
+			AND `+notCoveredByCheckpointSQL+`
 		ORDER BY je.entry_date, pv.id
-	`), session.BookID, session.AccountID, session.CommodityID, session.StatementDate)
+	`), session.BookID, session.AccountID, session.CommodityID, session.StatementDate, session.BookID, session.AccountID)
 	if err != nil {
 		return nil, fmt.Errorf("read reconciliation candidates: %w", err)
 	}
 	defer rows.Close()
 	return scanReconciliationPostings(rows)
+}
+
+// coveringCheckpointsSQL lists the checkpoints whose linked postings an active
+// starting balance of the account already accounts for: every active
+// checkpoint, and every checkpoint on an active one's previous-checkpoint
+// chain, whatever its own status. A later active checkpoint chained from a
+// voided one still counts that one's postings in its statement balance.
+// Arguments: book_id, account_id.
+const coveringCheckpointsSQL = `
+	WITH RECURSIVE covering(id) AS (
+		SELECT id
+		FROM reconciliation_checkpoints
+		WHERE book_id = ? AND account_id = ? AND status = 'active'
+		UNION
+		SELECT rc.previous_checkpoint_id
+		FROM reconciliation_checkpoints rc
+		JOIN covering ON covering.id = rc.id
+		WHERE rc.previous_checkpoint_id IS NOT NULL
+	)
+	SELECT id FROM covering`
+
+// notCoveredByCheckpointSQL keeps a posting (pv) open for reconciliation
+// unless a covering checkpoint links its posting line (#240). The posting's own
+// reconciliation_status is not the lock: it records that a statement once
+// verified the posting, and stays 'reconciled' after that checkpoint is
+// invalidated or voided. Checkpoint links are kept on the version reconciled,
+// so the line, not the version, is what matches a later edit. Arguments:
+// book_id, account_id.
+const notCoveredByCheckpointSQL = `NOT EXISTS (
+		SELECT 1
+		FROM reconciliation_checkpoint_postings rcp
+		JOIN posting_versions linked ON linked.id = rcp.posting_version_id
+		WHERE linked.posting_line_id = pv.posting_line_id
+			AND rcp.checkpoint_id IN (` + coveringCheckpointsSQL + `)
+	)`
+
+// checkpointCoveredPostingCount counts the given posting versions whose lines a
+// covering checkpoint still locks.
+func checkpointCoveredPostingCount(ctx context.Context, queryer interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}, bookID int64, accountID int64, postingVersionIDs []int64) (int, error) {
+	if len(postingVersionIDs) == 0 {
+		return 0, nil
+	}
+	placeholders := make([]string, 0, len(postingVersionIDs))
+	args := []any{bookID, accountID}
+	for _, postingID := range postingVersionIDs {
+		placeholders = append(placeholders, "?")
+		args = append(args, postingID)
+	}
+	var count int
+	if err := queryer.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM posting_versions pv
+		WHERE NOT `+notCoveredByCheckpointSQL+`
+			AND pv.id IN (`+strings.Join(placeholders, ",")+`)
+	`, args...).Scan(&count); err != nil {
+		return 0, fmt.Errorf("read checkpoint-covered postings: %w", err)
+	}
+	return count, nil
 }
 
 func reconciliationSessionPostings(ctx context.Context, queryer queryer, bookID int64, sessionID int64) ([]ReconciliationPostingRecord, error) {
@@ -1091,7 +1170,7 @@ func currentReconciliationPostingsByID(ctx context.Context, queryer queryer, ses
 		return nil, nil
 	}
 	placeholders := make([]string, 0, len(postingVersionIDs))
-	args := []any{session.BookID, session.AccountID, session.CommodityID, session.StatementDate}
+	args := []any{session.BookID, session.AccountID, session.CommodityID, session.StatementDate, session.BookID, session.AccountID}
 	for _, postingID := range postingVersionIDs {
 		placeholders = append(placeholders, "?")
 		args = append(args, postingID)
@@ -1102,7 +1181,7 @@ func currentReconciliationPostingsByID(ctx context.Context, queryer queryer, ses
 			AND pv.account_id = ?
 			AND pv.commodity_id = ?
 			AND je.entry_date <= ?
-			AND pv.reconciliation_status != 'reconciled'
+			AND `+notCoveredByCheckpointSQL+`
 			AND pv.id IN (`+strings.Join(placeholders, ",")+`)
 		ORDER BY je.entry_date, pv.id
 	`), args...)

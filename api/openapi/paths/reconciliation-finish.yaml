@@ -39,7 +39,12 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
-      description: Reconciliation is closed, unbalanced, or posting selection is invalid
+      description: >-
+        Reconciliation is closed, unbalanced, or posting selection is invalid
+        (CONFLICT); or its starting checkpoint is no longer the account's
+        latest active checkpoint because it was invalidated or voided, or
+        another session finished from it (RECONCILIATION_START_STALE). A
+        stale session is voided and a new reconciliation started.
       content:
         application/json:
           schema:

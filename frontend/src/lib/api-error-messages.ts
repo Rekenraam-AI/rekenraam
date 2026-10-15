@@ -75,6 +75,7 @@ const apiErrorMessageByCode: Record<APIErrorCode, () => string> = {
   TRANSACTION_VERSION_STALE: () => m.api_error_transaction_version_stale(),
   POSTING_ACCOUNT_VERSION_STALE: () => m.api_error_posting_account_version_stale(),
   RECURRING_TEMPLATE_UNBALANCED: () => m.api_error_recurring_template_unbalanced(),
+  RECONCILIATION_START_STALE: () => m.api_error_reconciliation_start_stale(),
   RECURRING_SCHEDULE_INVALID: () => m.api_error_recurring_schedule_invalid(),
   RECURRING_OCCURRENCE_ALREADY_MATERIALIZED: () => m.api_error_recurring_occurrence_already_materialized(),
   RECURRING_TEMPLATE_ARCHIVED: () => m.api_error_recurring_template_archived(),

@@ -139,6 +139,13 @@ ReconciliationSessionResponse:
       type: string
     candidates:
       type: array
+      description: >-
+        Posted postings dated on or before the statement date that no covering
+        checkpoint links (an active checkpoint or one on an active
+        checkpoint's previous-checkpoint chain). A candidate whose
+        reconciliation_status is still reconciled was verified by a checkpoint
+        that has since been invalidated or voided and needs re-verification;
+        it starts selected, like a cleared posting.
       items:
         $ref: "../../openapi.yaml#/components/schemas/ReconciliationPostingResponse"
     selected_postings:
