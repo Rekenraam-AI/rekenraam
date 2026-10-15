@@ -26,6 +26,28 @@ Last documentation reconciliation: 2026-09-28 (R16 runtime extraction,
 foundation, exact trade economics and correction sub-slices 4a–4u). R12a closed 2026-08-30; ADR 0012
 governs the journal/subledger boundary and ADR 0013 the R16 operation model.
 
+## Cash dividend instrument attribution — #229 (2026-10-15)
+
+Cash dividends store an optional immutable paying-instrument fact on the named
+operation, shared by gross income and withholding. Separate withholding-tax
+payments require an instrument and record only tax and cash, without gross
+income or security units; entry, correction and reversal are available in all
+six locales, including the instrument view. Instrument activity includes
+the complete cash journal, replacements and reversals in its existing paginated
+read. Corrections expose and retain the payer when omitted, including older API
+clients; explicitly correcting the payer assigns only the replacement to the new
+instrument and keeps the inverse with the predecessor. Trading 212's native
+import retains its resolved instrument atomically with the journal and source
+identity. Bundle schema 13 carries `investment-dividend-facts.csv`; migration 9
+preserves existing journals and leaves historical unidentified payers unassigned.
+Bank CSV profiles remain cash-only: instrument-aware dividend/tax mapping is
+tracked separately in [#241](https://github.com/sergeyfarin/rekenraam/issues/241).
+Named evidence: `TestInstrumentActivityRetainsDividendWithholdingThroughReplacementAndReversal`,
+`TestDividendInstrumentReplacementKeepsInverseWithOriginalPayer`,
+`TestReplaceAndReverseDividendAPI`, `TestSeparateWithholdingIsInstrumentActivityWithoutGrossIncome`,
+`TestSeparateWithholdingAPIAndBundle`, `TestCommitImportBatch_DividendPostsAsInvestmentIncome`,
+the seeded-baseline upgrade test and the 390px instrument-activity correction journey.
+
 ## Foundation (Phase 0) — ✅ Complete
 
 | Capability | Status | Notes |
@@ -178,7 +200,7 @@ governs the journal/subledger boundary and ADR 0013 the R16 operation model.
 | Export format contract | ✅ | `docs/adrs/0011-ledger-export-contract.md` — grain and order, entry-complete filter semantics, the `in_scope` definition, the seven-column trial-balance identities, amount rendering, and append-only schema stability. |
 | In-kind transfer bundle rows | ✅ | Bundle v2 adds `investment-transfer-facts.csv` and `investment-transfer-lot-links.csv`, preserving the typed source, carried-basis knowledge, and optional original acquisition date. The files are present with headers even in an empty book. |
 | Account paths | ✅ | Every row carries `account_id` (join key) and `account_path` (colon-separated hierarchy, current names). A system account is named by its role rather than left blank; the path builder refuses to loop on a cyclic parent chain. |
-| Export archive | ✅ | `GET /api/v1/exports/bundle.zip` — manifest schema version 12 includes immutable saved gains/statement documents and fingerprints, and retains non-sale effect knowledge and preserves projected basis knowledge with empty unknown amounts to lot summary/state files, alongside immutable decision-to-clearing posting portions and separate current lot-state/projection attribution and operation journal links, typed dates, exact source components, immutable lot-opening facts and events, effect links, and fee policy versions beside the existing `ledger.csv`, current `lots.csv`, disposal records, prices, and trial balance. Approximate trade prices carry typed source transaction version and audit identifiers. `manifest.json` is written **last**, so a truncated download fails to open rather than looking complete. The manifest carries a SHA-256 and byte count per file, the resolved query, the incomplete-transaction count, and the counterpart-posting count. |
+| Export archive | ✅ | `GET /api/v1/exports/bundle.zip` — manifest schema version 13 adds paying-instrument and separate-withholding facts beside immutable saved gains/statement documents and fingerprints, and retains non-sale effect knowledge and preserves projected basis knowledge with empty unknown amounts to lot summary/state files, alongside immutable decision-to-clearing posting portions and separate current lot-state/projection attribution and operation journal links, typed dates, exact source components, immutable lot-opening facts and events, effect links, and fee policy versions beside the existing `ledger.csv`, current `lots.csv`, disposal records, prices, and trial balance. Approximate trade prices carry typed source transaction version and audit identifiers. `manifest.json` is written **last**, so a truncated download fails to open rather than looking complete. The manifest carries a SHA-256 and byte count per file, the resolved query, the incomplete-transaction count, and the counterpart-posting count. |
 | Scoped export filters | ✅ | `from`, `to`, `date_basis=entry\|transaction`, repeatable `account_id` with `include_descendants`, repeatable `commodity_id` — on the archive only. Filters select whole **journal entries**: every posting of a selected entry is exported, so the archive balances per entry under every filter, and `transaction_complete` reports per row which transaction groups are whole. Any account class is accepted, unlike the reports filter, because exporting everything that touched a category is a reasonable request. A rejected filter is a 400 before the first byte (`ValidateFilter`), since a stream cannot change its status afterwards. |
 | Trial balance | ✅ | `trial-balance.csv` states `in_scope`, `opening_balance`, `exported_in_range_movement`, `exported_out_of_range_movement`, `excluded_in_range_movement`, `derived_closing_balance`, and `actual_closing_balance`, with three exact identities tested over the two shapes that break simpler models: a scoped export whose counterpart account has unrelated activity, and a transaction whose entries straddle the range under both date bases. The derived figure is never called the account's closing balance. Each figure keeps the scale it accumulated at — the same decision R2 reached for cashflow measures, for the same 38-digit-ceiling reason — except a figure that accumulated nothing, which takes its row's scale, because zero is the same number at every scale and deepening it can widen nothing. A derived total wider than a stored coefficient (a 38-digit posting plus a 2.50 one) is written exactly through `exact.DecimalFromBig` rather than failing the archive; the ceiling governs stored values, not decimal text. |
 | Cross-language decimal rendering | ✅ | `fixtures/decimal-rendering.json` is one specification with two readers: `exact.Decimal` (Go) and `formatLedgerAmount` (TypeScript) both test against it, so the twin implementations cannot drift. |

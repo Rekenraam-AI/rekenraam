@@ -173,10 +173,12 @@ func (s *InvestmentService) validateDividendRoles(ctx context.Context, input Div
 	if _, err := s.accountInRole(ctx, input.CashAccountID, date, settlementRole, dependencies); err != nil {
 		return err
 	}
-	if _, err := s.accountInRole(ctx, incomeAccountID, date, incomeRole, dependencies); err != nil {
-		return err
+	if !input.WithholdingOnly {
+		if _, err := s.accountInRole(ctx, incomeAccountID, date, incomeRole, dependencies); err != nil {
+			return err
+		}
 	}
-	if input.WithholdingValue != nil && *input.WithholdingValue > 0 {
+	if input.WithholdingOnly || (input.WithholdingValue != nil && *input.WithholdingValue > 0) {
 		withholdingAccountID := int64(0)
 		if input.WithholdingAccountID != nil {
 			withholdingAccountID = *input.WithholdingAccountID

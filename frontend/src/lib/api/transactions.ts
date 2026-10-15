@@ -16,7 +16,7 @@ export type DeletedTransactionsResponse = components['schemas']['DeletedTransact
 export type TransactionListOptions = {
   accountID?: number;
   categoryID?: number;
-  /** Restricts to transactions with a posting in this commodity (an instrument's activity). */
+  /** Matches postings or dividend/withholding operation facts for this instrument, including corrections. */
   commodityID?: number;
   payeeID?: number;
   q?: string;

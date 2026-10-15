@@ -118,9 +118,12 @@ below is execution order, not a chain of hard dependencies.
    (2026-10-14): contextual entry, same-day reorder and row actions on the
    journal, account and category screens. Investment entry from holding
    accounts and instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186)
-   is delivered (2026-10-14) with a per-instrument activity view; cash
-   dividends are not yet linked to their instrument
-   ([#229](https://github.com/sergeyfarin/rekenraam/issues/229)). Approval preserves the journal
+   is delivered (2026-10-14) with a per-instrument activity view. Cash
+   dividends and their withholding now retain the paying instrument through
+   corrections and appear in that activity
+   ([#229](https://github.com/sergeyfarin/rekenraam/issues/229), 2026-10-15). CSV
+   dividend/tax instrument mapping remains
+   [#241](https://github.com/sergeyfarin/rekenraam/issues/241). Approval preserves the journal
    (#219); guarded void/unvoid/delete/restore preview their own impact (#220,
    2026-10-14; trash restore too, #225), register rows are per posting line
    (#221), the register status filter is explicit Posted/Voided (#223) and

@@ -464,7 +464,7 @@ func TestCapitalReturnForwardMigrationPreservesPopulatedKnownHistory(t *testing.
 	before := buyReplacementPreviewSnapshot(t, f.database)
 	provider, err := goose.NewProvider(goose.DialectSQLite3, f.database, migrations.FS)
 	require.NoError(t, err)
-	_, err = provider.Down(ctx)
+	_, err = provider.DownTo(ctx, 2)
 	require.NoError(t, err, "known history can be represented by schema 2")
 	require.NoError(t, db.Migrate(ctx, f.database))
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "forward upgrade preserves every original and revised figure")
@@ -486,6 +486,8 @@ func TestCapitalReturnUnknownAmountPairsAndDowngradeRefusal(t *testing.T) {
 	// Step below 0003 explicitly so later migrations do not change the target.
 	_, err = provider.DownTo(ctx, 2)
 	require.ErrorContains(t, err, "CHECK constraint failed", "unknown evidence cannot be discarded by downgrade")
+	// Later migrations may have been removed before schema 3 refused.
+	require.NoError(t, db.Migrate(ctx, f.database))
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 	_, err = f.database.Exec(`DROP TRIGGER investment_capital_return_effects_no_update`)
 	require.NoError(t, err)

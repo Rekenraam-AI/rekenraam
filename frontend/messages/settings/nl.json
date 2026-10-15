@@ -1580,7 +1580,15 @@
   "investments_instrument_view_not_found_copy": "Dit instrument bestaat niet. Kies er een op het scherm Beleggingen.",
   "investments_instrument_view_col_units": "Eenheden",
   "investments_instrument_view_col_accounts": "Rekeningen",
-  "investments_instrument_view_dividend_note": "Contante dividenden verplaatsen geen eenheden van het instrument en staan daarom in het register van de geldrekening.",
   "investments_instrument_view_open": "Activiteit bekijken",
-  "investments_instrument_view_open_aria": "Activiteit van {name} bekijken"
+  "investments_instrument_view_open_aria": "Activiteit van {name} bekijken",
+  "investments_record_withholding": "Bronbelasting vastleggen",
+  "investments_withholding_title": "Afzonderlijke bronbelasting vastleggen",
+  "investments_withholding_pending": "Bronbelasting vastleggen…",
+  "investments_withholding_correct_action": "Bronbelasting corrigeren…",
+  "investments_withholding_correct_title": "Deze bronbelasting corrigeren",
+  "investments_withholding_correct_copy": "Vervang deze belastingbetaling door het juiste bedrag en de juiste belastingrekening. Datum, geldrekening en valuta blijven gelijk.",
+  "investments_withholding_reverse_action": "Bronbelasting terugdraaien…",
+  "investments_withholding_reverse_title": "Deze bronbelasting terugdraaien",
+  "investments_withholding_reverse_copy": "Boek een gecontroleerde tegenboeking voor deze afzonderlijke belastingbetaling. Het origineel blijft in de historie."
 }

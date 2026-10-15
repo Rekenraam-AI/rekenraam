@@ -335,3 +335,21 @@ These book-level documents are included in full even when the ledger is scoped;
 their original periods and descriptors remain attached, and ledger filters do
 not re-scope or recalculate them. Existing CSV files and columns remain unchanged.
 ADR 0012 and the reporting plan own the saved-run policy and schema lifecycle.
+
+### Cash dividend instrument facts (2026-10-15, #229)
+
+Manifest schema version 13 adds `investment-dividend-facts.csv` with
+`operation_id`, `commodity_id` (the paying instrument), `audit_event_id`, and
+`withholding_only` (`0` for a dividend with optional withholding, `1` for a
+separate tax payment). Tax-only operations carry a negative `withholding`
+component and no `dividend_gross` component; their journals post only tax and
+cash. Reversals retain the predecessor payment shape.
+The fact identifies the payer of both gross income and withholding; monetary
+components retain their settlement currency. Replacements and reversals preserve
+immutable predecessor facts and journal links. A replacement's reversal journal
+is attributed to its predecessor's payer, independently of a corrected successor
+payer. Absence of a fact means unassigned, including historical cash-only
+journals whose instrument cannot be established. These book-level facts are
+included in full in scoped bundles, like other operation facts. A populated
+fact table refuses downgrade rather than discarding payer or tax evidence. Existing files
+and columns retain their order.

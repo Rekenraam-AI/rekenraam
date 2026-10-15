@@ -1580,7 +1580,15 @@
   "investments_instrument_view_not_found_copy": "Este instrumento no existe. Elija uno en la pantalla de inversiones.",
   "investments_instrument_view_col_units": "Unidades",
   "investments_instrument_view_col_accounts": "Posiciones",
-  "investments_instrument_view_dividend_note": "Los dividendos en efectivo no mueven unidades del instrumento, por lo que aparecen en el registro de la cuenta de efectivo.",
   "investments_instrument_view_open": "Ver actividad",
-  "investments_instrument_view_open_aria": "Ver actividad de {name}"
+  "investments_instrument_view_open_aria": "Ver actividad de {name}",
+  "investments_record_withholding": "Registrar retención fiscal",
+  "investments_withholding_title": "Registrar retención fiscal por separado",
+  "investments_withholding_pending": "Registrando retención fiscal…",
+  "investments_withholding_correct_action": "Corregir retención fiscal…",
+  "investments_withholding_correct_title": "Corregir esta retención fiscal",
+  "investments_withholding_correct_copy": "Sustituya este pago de impuestos por el importe y la cuenta fiscal corregidos. La fecha, la cuenta de efectivo y la moneda se mantienen.",
+  "investments_withholding_reverse_action": "Revertir retención fiscal…",
+  "investments_withholding_reverse_title": "Revertir esta retención fiscal",
+  "investments_withholding_reverse_copy": "Registre un asiento inverso auditable de este pago de impuestos separado. El original permanece en el historial."
 }

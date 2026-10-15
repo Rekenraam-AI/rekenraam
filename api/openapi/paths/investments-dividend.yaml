@@ -1,5 +1,10 @@
 post:
-  summary: Record a cash dividend
+  summary: Record a cash dividend or separate withholding tax
+  description: >-
+    Gross dividend income may include withholding in the same transaction.
+    withholding_only records tax paid separately for an instrument, with
+    amount_value as tax magnitude and no income or security-unit posting.
+    Both shapes retain their paying instrument as an immutable operation fact.
   parameters:
     - in: header
       name: X-CSRF-Token

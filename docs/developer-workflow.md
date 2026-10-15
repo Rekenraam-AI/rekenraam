@@ -470,6 +470,13 @@ version. Startup upgrades existing schema-3 databases without a reset; one that
 already holds such a duplicate fails the migration and must be recreated (no
 installed release is affected). Bundle schema is unchanged.
 
+Forward migration `0009_dividend_instruments.sql` (#229, 2026-10-15)
+adds immutable paying-instrument facts for dividends and separate withholding.
+Startup upgrades the existing baseline without a reset or changes to posted
+journals; historical payers remain unassigned. A populated fact table refuses
+downgrade so payer/tax evidence is not lost. Bundle schema 13 adds
+`investment-dividend-facts.csv`; use verified backup/restore for rollback.
+
 The e2e database resets itself on every self-managed run and needs no manual reset.
 
 - Keep nothing in a local database you would be sorry to lose. Reproducible

@@ -1580,7 +1580,15 @@
   "investments_instrument_view_not_found_copy": "Dieses Instrument existiert nicht. Wählen Sie eines auf der Seite Geldanlage.",
   "investments_instrument_view_col_units": "Stück",
   "investments_instrument_view_col_accounts": "Depots",
-  "investments_instrument_view_dividend_note": "Bardividenden bewegen keine Stücke des Instruments und erscheinen daher im Register des Geldkontos.",
   "investments_instrument_view_open": "Aktivität anzeigen",
-  "investments_instrument_view_open_aria": "Aktivität für {name} anzeigen"
+  "investments_instrument_view_open_aria": "Aktivität für {name} anzeigen",
+  "investments_record_withholding": "Quellensteuer erfassen",
+  "investments_withholding_title": "Separate Quellensteuer erfassen",
+  "investments_withholding_pending": "Quellensteuer wird erfasst…",
+  "investments_withholding_correct_action": "Quellensteuer korrigieren…",
+  "investments_withholding_correct_title": "Diese Quellensteuer korrigieren",
+  "investments_withholding_correct_copy": "Ersetzen Sie diese Steuerzahlung durch den korrigierten Betrag und das Steuerkonto. Datum, Geldkonto und Währung bleiben unverändert.",
+  "investments_withholding_reverse_action": "Quellensteuer stornieren…",
+  "investments_withholding_reverse_title": "Diese Quellensteuer stornieren",
+  "investments_withholding_reverse_copy": "Buchen Sie eine nachvollziehbare Gegenbuchung dieser separaten Steuerzahlung. Das Original bleibt im Verlauf erhalten."
 }

@@ -521,6 +521,8 @@ func optionalPositiveID(value int64) *int64 {
 }
 
 type DividendInput struct {
+	// WithholdingOnly records a separate tax payment: AmountValue is tax, with no income leg.
+	WithholdingOnly      bool
 	OwnerUserID          int64
 	AuthSessionID        int64
 	RequestID            string
@@ -1730,7 +1732,7 @@ func (s *InvestmentService) dividendPlan(ctx context.Context, input DividendInpu
 	if input.IncomeAccountID != nil {
 		incomeAccountID = *input.IncomeAccountID
 	}
-	if incomeAccountID <= 0 {
+	if !input.WithholdingOnly && incomeAccountID <= 0 {
 		return investmentTransactionPlan{}, ValidationError{Message: "dividend income account is required"}
 	}
 	dependencies := newAccountRuleDependencies()
@@ -1745,9 +1747,19 @@ func (s *InvestmentService) dividendPlan(ctx context.Context, input DividendInpu
 	if strings.TrimSpace(status) == "" {
 		status = "posted"
 	}
-	postings := []PostingInput{
-		{AccountID: input.CashAccountID, QuantityValue: exact.New(input.AmountValue), QuantityScale: input.AmountScale, CommodityID: input.CashCommodityID, Memo: memo},
-		{AccountID: incomeAccountID, QuantityValue: exact.New(-input.AmountValue), QuantityScale: input.AmountScale, CommodityID: input.CashCommodityID, Memo: memo},
+	var postings []PostingInput
+	operation := "investment.dividend"
+	if input.WithholdingOnly {
+		operation = "investment.dividend.withholding"
+		postings = []PostingInput{
+			{AccountID: input.CashAccountID, QuantityValue: exact.New(-input.AmountValue), QuantityScale: input.AmountScale, CommodityID: input.CashCommodityID, Memo: memo},
+			{AccountID: *input.WithholdingAccountID, QuantityValue: exact.New(input.AmountValue), QuantityScale: input.AmountScale, CommodityID: input.CashCommodityID, Memo: memo},
+		}
+	} else {
+		postings = []PostingInput{
+			{AccountID: input.CashAccountID, QuantityValue: exact.New(input.AmountValue), QuantityScale: input.AmountScale, CommodityID: input.CashCommodityID, Memo: memo},
+			{AccountID: incomeAccountID, QuantityValue: exact.New(-input.AmountValue), QuantityScale: input.AmountScale, CommodityID: input.CashCommodityID, Memo: memo},
+		}
 	}
 	if input.WithholdingValue != nil && *input.WithholdingValue > 0 {
 		if input.WithholdingAccountID == nil || *input.WithholdingAccountID <= 0 {
@@ -1774,7 +1786,7 @@ func (s *InvestmentService) dividendPlan(ctx context.Context, input DividendInpu
 			AuthSessionID:          input.AuthSessionID,
 			RequestID:              input.RequestID,
 			OriginType:             defaultString(input.OriginType, "browser_api"),
-			Operation:              defaultString(input.Operation, "investment.dividend"),
+			Operation:              defaultString(input.Operation, operation),
 			ChangeReason:           input.ChangeReason,
 			ReconciliationOverride: input.ReconciliationOverride,
 			Spec: TransactionInput{
@@ -1826,11 +1838,17 @@ func (s *InvestmentService) prepareDividendWrite(ctx context.Context, input Divi
 	if err != nil {
 		return db.CreateTransactionParams{}, err
 	}
+	params.DividendCommodityID = nullableInt64(input.CommodityID)
+	params.DividendWithholdingOnly = input.WithholdingOnly
 	params.InvestmentComponents = []db.InvestmentComponentSpec{{
 		Kind: "dividend_gross", CommodityID: input.CashCommodityID,
 		AmountValue: strconv.FormatInt(input.AmountValue, 10), AmountScale: input.AmountScale,
 		AmountDate: plan.Date,
 	}}
+	if input.WithholdingOnly {
+		params.InvestmentComponents[0].Kind = "withholding"
+		params.InvestmentComponents[0].AmountValue = strconv.FormatInt(-input.AmountValue, 10)
+	}
 	if input.WithholdingValue != nil && *input.WithholdingValue > 0 {
 		scale := input.AmountScale
 		if input.WithholdingScale != nil {
@@ -2602,6 +2620,11 @@ func validateDividendInput(input DividendInput) (string, error) {
 	}
 	if input.AmountValue <= 0 {
 		return "", ValidationError{Message: "dividend amount is required"}
+	}
+	if input.WithholdingOnly && (input.CommodityID == nil || *input.CommodityID <= 0 ||
+		input.WithholdingAccountID == nil || *input.WithholdingAccountID <= 0 ||
+		input.IncomeAccountID != nil || input.WithholdingValue != nil || input.WithholdingScale != nil) {
+		return "", ValidationError{Message: "separate withholding requires an instrument and tax account, with amount_value as tax and no income or combined withholding fields"}
 	}
 	date, err := cleanRequiredDate(input.TransactionDate, "transaction date")
 	if err != nil {

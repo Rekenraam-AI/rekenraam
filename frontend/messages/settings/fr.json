@@ -1580,7 +1580,15 @@
   "investments_instrument_view_not_found_copy": "Cet instrument n’existe pas. Choisissez-en un sur l’écran Investissements.",
   "investments_instrument_view_col_units": "Unités",
   "investments_instrument_view_col_accounts": "Comptes-titres",
-  "investments_instrument_view_dividend_note": "Les dividendes en espèces ne déplacent aucune unité de l’instrument ; ils apparaissent dans le registre du compte espèces.",
   "investments_instrument_view_open": "Voir l’activité",
-  "investments_instrument_view_open_aria": "Voir l’activité de {name}"
+  "investments_instrument_view_open_aria": "Voir l’activité de {name}",
+  "investments_record_withholding": "Enregistrer une retenue fiscale",
+  "investments_withholding_title": "Enregistrer une retenue fiscale séparée",
+  "investments_withholding_pending": "Enregistrement de la retenue fiscale…",
+  "investments_withholding_correct_action": "Corriger la retenue fiscale…",
+  "investments_withholding_correct_title": "Corriger cette retenue fiscale",
+  "investments_withholding_correct_copy": "Remplacez ce paiement fiscal par le montant et le compte fiscal corrigés. La date, le compte espèces et la devise restent inchangés.",
+  "investments_withholding_reverse_action": "Annuler la retenue fiscale…",
+  "investments_withholding_reverse_title": "Annuler cette retenue fiscale",
+  "investments_withholding_reverse_copy": "Comptabilisez une écriture inverse traçable de ce paiement fiscal séparé. L’original reste dans l’historique."
 }

@@ -1580,7 +1580,15 @@
   "investments_instrument_view_not_found_copy": "Такого инструмента нет. Выберите его на экране «Инвестиции».",
   "investments_instrument_view_col_units": "Единицы",
   "investments_instrument_view_col_accounts": "Счета",
-  "investments_instrument_view_dividend_note": "Денежные дивиденды не меняют количество единиц инструмента, поэтому они видны в реестре денежного счёта.",
   "investments_instrument_view_open": "Показать операции",
-  "investments_instrument_view_open_aria": "Показать операции по {name}"
+  "investments_instrument_view_open_aria": "Показать операции по {name}",
+  "investments_record_withholding": "Записать удержанный налог",
+  "investments_withholding_title": "Записать отдельное удержание налога",
+  "investments_withholding_pending": "Запись удержанного налога…",
+  "investments_withholding_correct_action": "Исправить удержанный налог…",
+  "investments_withholding_correct_title": "Исправить это удержание налога",
+  "investments_withholding_correct_copy": "Замените этот налоговый платёж исправленной суммой и налоговым счётом. Дата, денежный счёт и валюта сохраняются.",
+  "investments_withholding_reverse_action": "Сторнировать удержанный налог…",
+  "investments_withholding_reverse_title": "Сторнировать это удержание налога",
+  "investments_withholding_reverse_copy": "Создайте проверяемую обратную проводку этого отдельного налогового платежа. Исходная запись останется в истории."
 }

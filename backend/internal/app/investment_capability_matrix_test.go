@@ -110,7 +110,7 @@ func init() {
 			reversal:    exercised(TestReverseCashInLieuRestoresFractionAndFreesSplit),
 			export:      allKinds,
 			selfCheck:   allKinds},
-		{kind: "dividend",
+		{kind: "dividend", exportedIn: []string{"investment-dividend-facts.csv"},
 			replay:      lotFree(),
 			replacement: exercised(TestReplaceDividendCorrectsAmountAndWithholding),
 			reversal:    exercised(TestReverseDividendRequiresReconciliationOverride),
@@ -240,7 +240,9 @@ func TestOperationKindCapabilityMatrixCoversEveryAcceptedKind(t *testing.T) {
 				testName(t, cell.test)
 			case capabilityLotFree:
 				require.Equal(t, "replay", column, "%s %s: only replay can be lot-free", row.kind, column)
-				require.Empty(t, row.exportedIn, "%s: a lot-free kind exports no lot or disposal rows", row.kind)
+				for _, name := range []string{lotFactsFile, "investment-lot-effects.csv", disposalDecisionsFile} {
+					require.NotContains(t, row.exportedIn, name, "%s: lot-free kinds may export payment facts, but no lot or disposal rows", row.kind)
+				}
 			case capabilityGap:
 				require.Positive(t, cell.issue, "%s %s: a gap names the issue that tracks it", row.kind, column)
 			default:

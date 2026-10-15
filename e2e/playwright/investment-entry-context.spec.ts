@@ -113,3 +113,93 @@ test('investment entry in context is translated in every locale', async ({ page 
     await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
   }
 });
+
+
+test('instrument activity includes a cash dividend with withholding and retains it after correction', async ({ page }) => {
+  const { csrfToken, currencyID, suffix, instrument } = await setup(page);
+  const cash = await createCashAccount(page, csrfToken, `Payer cash ${suffix}`, currencyID);
+  const category = async (account_class: 'income' | 'expense') => apiJSON<{ id: number }>(
+    page, 'POST', '/api/v1/accounts', csrfToken, {
+      name: `Payer ${account_class} ${suffix}`, account_class, account_kind: account_class,
+      default_commodity_id: currencyID, allows_postings: true, opened_on: todayISO(), effective_from: todayISO()
+    });
+  const income = await category('income');
+  const withholding = await category('expense');
+  const memo = `Payer dividend ${suffix}`;
+  const dividend = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/dividend', csrfToken, {
+    commodity_id: instrument.commodity_id, transaction_date: todayISO(),
+    cash_account_id: cash.id, cash_commodity_id: currencyID, income_account_id: income.id,
+    amount_value: '10000', amount_scale: 2, withholding_value: '1500', withholding_scale: 2,
+    withholding_account_id: withholding.id, memo
+  });
+  await page.goto(`/app/investments/instruments/${instrument.commodity_id}`);
+  await expect(page.getByText('Cash dividends move no units', { exact: false })).toHaveCount(0);
+  await page.getByText(memo, { exact: true }).click();
+  await page.getByRole('button', { name: 'Correct dividend…' }).click();
+  const form = page.getByRole('dialog', { name: 'Correct this dividend' });
+  await expect(form.getByLabel('Dividend amount')).toHaveValue('100.00');
+  await expect(form.locator('#dividend-correction-withholding')).toHaveValue('15.00');
+  await form.locator('#dividend-correction-withholding').fill('20.00');
+  await form.getByLabel('Reason for correction').fill('correct withholding');
+  await form.getByRole('button', { name: 'Review and replace' }).click();
+  await expect(form).toBeHidden();
+  const chain = await apiJSON<{
+    effective_transaction_id: number;
+    effective_dividend: { commodity_id: number; withholding_value: string };
+  }>(page, 'GET', `/api/v1/investments/transactions/${dividend.id}/correction-chain`);
+  expect(chain.effective_dividend.commodity_id).toBe(instrument.commodity_id);
+  expect(chain.effective_dividend.withholding_value).toBe('2000');
+  await page.goto(`/app/investments/instruments/${instrument.commodity_id}`);
+  const activity = await apiJSON<{ transactions: Array<{ id: number }> }>(
+    page, 'GET', `/api/v1/transactions?commodity_id=${instrument.commodity_id}`);
+  expect(activity.transactions).toHaveLength(3);
+  expect(activity.transactions.map((tx) => tx.id)).toContain(chain.effective_transaction_id);
+  await expect(page.getByText(memo, { exact: true })).toHaveCount(3);
+  await expectNoAccessibilityViolations(page, 'instrument cash dividend activity');
+});
+
+
+test('an instrument records, corrects and reverses separately paid withholding tax on a phone', async ({ page }) => {
+  const { csrfToken, currencyID, suffix, instrument, cash, name } = await setup(page);
+  const tax = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: `Separate tax ${suffix}`, account_class: 'expense', account_kind: 'expense',
+    default_commodity_id: currencyID, allows_postings: true, opened_on: todayISO(), effective_from: todayISO()
+  });
+  const memo = `Separate withholding ${suffix}`;
+  await page.goto(`/app/investments/instruments/${instrument.commodity_id}`);
+  await openActivity(page, 'Record investment activity', 'Record withholding tax');
+  const entry = page.getByRole('dialog', { name: 'Record separate withholding tax' });
+  await expect(entry.locator('#div-instrument')).toHaveValue(name);
+  await expect(entry.locator('#div-income-account')).toHaveCount(0);
+  await entry.locator('#div-cash-account').selectOption(String(cash.id));
+  await entry.getByLabel('Withholding amount').fill('15.00');
+  await entry.locator('#div-withholding-account').selectOption(String(tax.id));
+  await entry.getByLabel('Memo').fill(memo);
+  await expectNoAccessibilityViolations(page, 'separate withholding entry');
+  await entry.getByRole('button', { name: 'Record withholding tax' }).click();
+  await expect(entry).toBeHidden();
+  await page.getByText(memo, { exact: true }).click();
+  await page.getByRole('button', { name: 'Correct withholding tax…' }).click();
+  const form = page.getByRole('dialog', { name: 'Correct this withholding tax' });
+  await expect(form.getByLabel('Withholding amount')).toHaveValue('15.00');
+  await form.getByLabel('Withholding amount').fill('20.00');
+  await form.getByLabel('Reason for correction').fill('statement tax correction');
+  await form.getByRole('button', { name: 'Review and replace' }).click();
+  await expect(form).toBeHidden();
+  const activity = await apiJSON<{ transactions: Array<{ id: number; correction_of_transaction_id?: number }> }>(
+    page, 'GET', `/api/v1/transactions?commodity_id=${instrument.commodity_id}`);
+  expect(activity.transactions).toHaveLength(3);
+  const original = activity.transactions.find((tx) => tx.correction_of_transaction_id === undefined)!;
+  const chain = await apiJSON<{ effective_transaction_id: number; effective_dividend: { withholding_only: boolean } }>(
+    page, 'GET', `/api/v1/investments/transactions/${original.id}/correction-chain`);
+  expect(chain.effective_dividend.withholding_only).toBe(true);
+  await page.goto(`/app/transactions?transaction_id=${chain.effective_transaction_id}`);
+  await page.getByRole('button', { name: 'Reverse withholding tax…' }).click();
+  const reversal = page.getByRole('alertdialog', { name: 'Reverse this withholding tax' });
+  await reversal.getByLabel('Reason for reversal').fill('duplicate tax');
+  await reversal.getByRole('button', { name: 'Review and reverse' }).click();
+  await expect(reversal).toBeHidden();
+  const reversed = await apiJSON<{ effective_transaction_id: number | null }>(page, 'GET',
+    `/api/v1/investments/transactions/${original.id}/correction-chain`);
+  expect(reversed.effective_transaction_id).toBeNull();
+});

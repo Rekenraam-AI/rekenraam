@@ -35,7 +35,7 @@
   const sessionQuery = createQuery(() => authSessionQueryOptions());
   const csrfToken = $derived(sessionQuery.data?.csrf_token ?? '');
 
-  type Activity = 'write-off' | 'buy' | 'sell' | 'short-open' | 'short-cover' | 'dividend' | 'reinvested' |
+  type Activity = 'write-off' | 'buy' | 'sell' | 'short-open' | 'short-cover' | 'dividend' | 'withholding' | 'reinvested' |
     'external-transfer-in' | 'external-transfer-out' | 'internal-transfer' | 'split' | 'share-exchange' |
     'cash-and-stock-merger' | 'spin-off' | 'capital-return';
 
@@ -46,6 +46,7 @@
     { id: 'short-open', label: m.investments_record_short_sale, titleID: 'short-open-title' },
     { id: 'short-cover', label: m.investments_record_short_cover, titleID: 'short-cover-title' },
     { id: 'dividend', label: m.investments_record_dividend },
+    { id: 'withholding', label: m.investments_record_withholding, titleID: 'withholding-title' },
     { id: 'reinvested', label: m.investments_record_reinvested },
     { id: 'external-transfer-in', label: m.investments_record_external_transfer_in, titleID: 'external-transfer-in-title' },
     { id: 'internal-transfer', label: m.investments_record_internal_transfer, titleID: 'internal-transfer-title' },
@@ -137,6 +138,8 @@
         <ShortTradeForm mode="cover" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
       {:else if active === 'dividend'}
         <DividendForm mode="cash" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'withholding'}
+        <DividendForm mode="withholding" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
       {:else if active === 'reinvested'}
         <DividendForm mode="reinvested" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
       {:else if active === 'external-transfer-in'}

@@ -17,6 +17,8 @@ type DividendOperationRecord struct {
 	TransactionVersionID int64
 	CurrentVersionID     int64
 	EventDate            string
+	CommodityID          sql.NullInt64
+	WithholdingOnly      bool
 	AlreadyCorrected     bool
 	ImportedLineage      bool
 }
@@ -29,15 +31,16 @@ func dividendOperationByTransactionIDQuery(ctx context.Context, reader saleOpera
 	var record DividendOperationRecord
 	var corrected int
 	err := reader.QueryRowContext(ctx, `SELECT o.id, linked_version.transaction_id, link.transaction_version_id,
-		current.id, o.event_date,
+		current.id, o.event_date, facts.commodity_id, COALESCE(facts.withholding_only, 0),
 		EXISTS(SELECT 1 FROM investment_operations successor WHERE successor.correction_of_operation_id = o.id)
 		FROM investment_operations o
 		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
 		JOIN transaction_versions linked_version ON linked_version.id = link.transaction_version_id
 		JOIN current_transaction_versions current ON current.transaction_id = linked_version.transaction_id
+		LEFT JOIN investment_dividend_facts facts ON facts.operation_id = o.id
 		WHERE o.book_id = ? AND linked_version.transaction_id = ? AND o.operation_kind = 'dividend'`,
 		bookID, transactionID).Scan(&record.OperationID, &record.TransactionID, &record.TransactionVersionID,
-		&record.CurrentVersionID, &record.EventDate, &corrected)
+		&record.CurrentVersionID, &record.EventDate, &record.CommodityID, &record.WithholdingOnly, &corrected)
 	if errors.Is(err, sql.ErrNoRows) {
 		return DividendOperationRecord{}, ErrNotFound
 	}

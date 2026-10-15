@@ -61,13 +61,21 @@ func (r *TransactionRepository) ListTransactions(ctx context.Context, params Lis
 		args = append(args, params.AccountID)
 	}
 	if params.CommodityID > 0 {
-		where = append(where, `EXISTS (
+		where = append(where, `(EXISTS (
 			SELECT 1
 			FROM posting_versions commodity_pv
 			WHERE commodity_pv.transaction_version_id = tv.id
 				AND commodity_pv.commodity_id = ?
-		)`)
-		args = append(args, params.CommodityID)
+		) OR EXISTS (
+			SELECT 1 FROM investment_operation_journal_links link
+			JOIN investment_operations operation ON operation.id = link.operation_id
+			JOIN investment_dividend_facts dividend ON dividend.operation_id =
+				CASE WHEN link.role = 'reversal' THEN operation.correction_of_operation_id ELSE operation.id END
+			JOIN transaction_versions linked ON linked.id = link.transaction_version_id
+			WHERE dividend.book_id = t.book_id AND dividend.commodity_id = ?
+				AND linked.transaction_id = t.id AND link.role IN ('primary', 'reversal')
+		))`)
+		args = append(args, params.CommodityID, params.CommodityID)
 	}
 	if params.NeedsReview {
 		where = append(where, "tv.needs_review = 1")

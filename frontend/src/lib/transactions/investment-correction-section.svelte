@@ -111,6 +111,7 @@
   const cashInLieuCorrectable = $derived(chainQuery.data?.can_correct_cash_in_lieu === true && chainQuery.data.effective_transaction_id === transactionID);
   const capitalReturnReversible = $derived(chainQuery.data?.can_reverse_return_of_capital === true &&
     chainQuery.data.effective_transaction_id === transactionID);
+  const withholdingOnly = $derived(chainQuery.data?.effective_dividend?.withholding_only === true);
   const dividendCorrectable = $derived(chainQuery.data?.can_correct_dividend === true &&
     chainQuery.data.effective_transaction_id === transactionID && !!chainQuery.data.effective_dividend);
   const reinvestmentCorrectable = $derived(chainQuery.data?.can_correct_reinvested_dividend === true &&
@@ -664,13 +665,13 @@
           disabled={!csrfToken || pending}
           onclick={() => { reversalKind = dividendCorrectable ? 'dividend' : 'reinvestment'; reason = ''; actionError = undefined; modal = 'reason'; }}
         >
-          {dividendCorrectable ? m.transactions_investment_reverse_dividend_action() : m.transactions_investment_reverse_reinvestment_action()}
+          {dividendCorrectable ? (withholdingOnly ? m.investments_withholding_reverse_action() : m.transactions_investment_reverse_dividend_action()) : m.transactions_investment_reverse_reinvestment_action()}
         </button>
         <button type="button"
           class="inline-flex min-h-10 items-center rounded-[var(--radius-control)] border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground hover:bg-control-hover disabled:opacity-60"
           disabled={!csrfToken}
           onclick={() => { replacementKind = dividendCorrectable ? 'dividend' : 'reinvestment'; }}>
-          {dividendCorrectable ? m.transactions_investment_replace_dividend_action() : m.transactions_investment_replace_reinvestment_action()}
+          {dividendCorrectable ? (withholdingOnly ? m.investments_withholding_correct_action() : m.transactions_investment_replace_dividend_action()) : m.transactions_investment_replace_reinvestment_action()}
         </button>
       </div>
     {/if}
@@ -822,7 +823,7 @@
     role="presentation">
     <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
       role="dialog" aria-modal="true" aria-label={replacementKind === 'dividend'
-        ? m.transactions_investment_replace_dividend_title() : m.transactions_investment_replace_reinvestment_title()}>
+        ? (withholdingOnly ? m.investments_withholding_correct_title() : m.transactions_investment_replace_dividend_title()) : m.transactions_investment_replace_reinvestment_title()}>
       {#if replacementKind === 'dividend' && dividendCorrectable && chainQuery.data?.effective_dividend}
         <DividendCorrectionForm {csrfToken} {transactionID} dividend={chainQuery.data.effective_dividend}
           onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
@@ -982,7 +983,7 @@
           {modal === 'reason'
             ? reversalKind === 'buy' ? m.transactions_investment_reverse_buy_title()
               : reversalKind === 'split' ? m.transactions_investment_reverse_split_title()
-              : reversalKind === 'dividend' ? m.transactions_investment_reverse_dividend_title()
+              : reversalKind === 'dividend' ? (withholdingOnly ? m.investments_withholding_reverse_title() : m.transactions_investment_reverse_dividend_title())
               : reversalKind === 'reinvestment' ? m.transactions_investment_reverse_reinvestment_title()
               : reversalKind === 'write_off' ? m.transactions_investment_reverse_write_off_title()
               : reversalKind === 'transfer' ? m.transactions_investment_reverse_transfer_title()
@@ -1002,7 +1003,7 @@
             {modal === 'reason'
               ? reversalKind === 'buy' ? m.transactions_investment_reverse_buy_copy()
                 : reversalKind === 'split' ? m.transactions_investment_reverse_split_copy()
-                : reversalKind === 'dividend' ? m.transactions_investment_reverse_dividend_copy()
+                : reversalKind === 'dividend' ? (withholdingOnly ? m.investments_withholding_reverse_copy() : m.transactions_investment_reverse_dividend_copy())
                 : reversalKind === 'reinvestment' ? m.transactions_investment_reverse_reinvestment_copy()
                 : reversalKind === 'write_off' ? m.transactions_investment_reverse_write_off_copy()
                 : reversalKind === 'transfer' ? m.transactions_investment_reverse_transfer_copy()

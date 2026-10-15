@@ -47,7 +47,7 @@
     onCancel,
     prefill
   }: {
-    mode?: 'cash' | 'reinvested';
+    mode?: 'cash' | 'withholding' | 'reinvested';
     csrfToken: string;
     onSaved: () => void;
     onCancel: () => void;
@@ -153,9 +153,10 @@
     )
   );
 
-  const liabilityAccounts = $derived(
+  const withholdingAccounts = $derived(
     (accountsQuery.data?.accounts ?? []).filter(
-      (a: AccountResponse) => a.account_class === 'liability' && a.status === 'active' && a.allows_postings
+      (a: AccountResponse) => ['asset', 'liability', 'expense'].includes(a.account_class) &&
+        !a.system_role && !['security_holding', 'fund_holding'].includes(a.account_kind) && a.status === 'active' && a.allows_postings
     )
   );
 
@@ -212,7 +213,7 @@
   const canSubmitCash = $derived(
     cashAccountID !== '' &&
     !!cashCommodityID &&
-    incomeAccountID !== '' &&
+    (mode === 'withholding' ? !!selectedInstrument && withholdingAccountID !== '' : incomeAccountID !== '') &&
     amountStr.trim() !== ''
   );
 
@@ -225,7 +226,7 @@
     amountStr.trim() !== ''
   );
 
-  const canSubmit = $derived(mode === 'cash' ? canSubmitCash : canSubmitReinvested);
+  const canSubmit = $derived(mode !== 'reinvested' ? canSubmitCash : canSubmitReinvested);
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -251,19 +252,20 @@
     formError = undefined;
 
     try {
-      if (mode === 'cash') {
+      if (mode !== 'reinvested') {
         const payload: DividendRequest = {
           transaction_date: transactionDate,
+          withholding_only: mode === 'withholding',
           commodity_id: selectedInstrument?.commodity_id,
           cash_account_id: Number(cashAccountID),
           cash_commodity_id: cashCommodityID,
-          income_account_id: incomeAccountID ? Number(incomeAccountID) : undefined,
+          income_account_id: mode !== 'withholding' && incomeAccountID ? Number(incomeAccountID) : undefined,
           amount_value: amount.value,
           amount_scale: amount.scale,
           withholding_value: withholding?.value,
           withholding_scale: withholding?.scale,
           withholding_account_id:
-            withholding && withholdingAccountID ? Number(withholdingAccountID) : undefined,
+            (mode === 'withholding' || withholding) && withholdingAccountID ? Number(withholdingAccountID) : undefined,
           memo: memo.trim() || undefined
         };
 
@@ -364,11 +366,11 @@
     onSaved();
   }
 
-  const title = $derived(mode === 'cash' ? m.investments_dividend_title() : m.investments_reinvested_title());
+  const title = $derived(mode === 'withholding' ? m.investments_withholding_title() : mode === 'cash' ? m.investments_dividend_title() : m.investments_reinvested_title());
   const submitLabel = $derived(
     pending
-      ? (mode === 'cash' ? m.investments_dividend_pending() : m.investments_reinvested_pending())
-      : (mode === 'cash' ? m.investments_dividend_submit() : m.investments_reinvested_submit())
+      ? (mode === 'withholding' ? m.investments_withholding_pending() : mode === 'cash' ? m.investments_dividend_pending() : m.investments_reinvested_pending())
+      : (mode === 'withholding' ? m.investments_record_withholding() : mode === 'cash' ? m.investments_dividend_submit() : m.investments_reinvested_submit())
   );
 </script>
 
@@ -384,7 +386,7 @@
 {/if}
 
 <form onsubmit={handleSubmit} class="space-y-4">
-  <h2 class="text-base font-semibold text-foreground">{title}</h2>
+  <h2 id={mode === 'withholding' ? 'withholding-title' : undefined} class="text-base font-semibold text-foreground">{title}</h2>
 
   <!-- Date -->
   <div>
@@ -468,7 +470,7 @@
   <!-- Cash account -->
   <div>
     <label for="div-cash-account" class="mb-1 block text-sm font-medium text-foreground">
-      {mode === 'cash' ? m.investments_form_cash_account() : m.investments_form_currency_account()}
+      {mode !== 'reinvested' ? m.investments_form_cash_account() : m.investments_form_currency_account()}
     </label>
     <select
       id="div-cash-account"
@@ -504,7 +506,7 @@
   <!-- Amount -->
   <div>
     <label for="div-amount" class="mb-1 block text-sm font-medium text-foreground">
-      {m.investments_form_dividend_amount()}
+      {mode === 'withholding' ? m.investments_form_withholding_amount() : m.investments_form_dividend_amount()}
       {#if cashCurrencyCode}
         <span class="ml-1 text-xs font-normal text-muted">({cashCurrencyCode})</span>
       {/if}
@@ -520,24 +522,35 @@
     />
   </div>
 
-  <!-- Income account -->
-  <div>
-    <label for="div-income-account" class="mb-1 block text-sm font-medium text-foreground">
-      {m.investments_form_income_account()}
-      <span class="ml-1 text-xs font-normal text-muted">({m.investments_form_optional()})</span>
-    </label>
-    <select
-      id="div-income-account"
-      bind:value={incomeAccountID}
-      class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground"
-    >
-      <option value="">{m.investments_form_select_account()}</option>
-      {#each incomeAccounts as acc (acc.id)}
-        <option value={String(acc.id)}>{acc.name}</option>
-      {/each}
-    </select>
-  </div>
+  {#if mode !== 'withholding'}
+    <!-- Income account -->
+    <div>
+      <label for="div-income-account" class="mb-1 block text-sm font-medium text-foreground">
+        {m.investments_form_income_account()}
+        <span class="ml-1 text-xs font-normal text-muted">({m.investments_form_optional()})</span>
+      </label>
+      <select
+        id="div-income-account"
+        bind:value={incomeAccountID}
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground"
+      >
+        <option value="">{m.investments_form_select_account()}</option>
+        {#each incomeAccounts as acc (acc.id)}
+          <option value={String(acc.id)}>{acc.name}</option>
+        {/each}
+      </select>
+    </div>
 
+  {:else}
+    <div>
+      <label for="div-withholding-account" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_withholding_account()}</label>
+      <select id="div-withholding-account" bind:value={withholdingAccountID} required
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground">
+        <option value="">{m.investments_form_select_account()}</option>
+        {#each withholdingAccounts as account (account.id)}<option value={String(account.id)}>{account.name}</option>{/each}
+      </select>
+    </div>
+  {/if}
   <!-- Withholding tax (cash dividend only) -->
   {#if mode === 'cash'}
     <div>
@@ -575,7 +588,7 @@
             class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground"
           >
             <option value="">{m.investments_form_select_account()}</option>
-            {#each liabilityAccounts as acc (acc.id)}
+            {#each withholdingAccounts as acc (acc.id)}
               <option value={String(acc.id)}>{acc.name}</option>
             {/each}
           </select>

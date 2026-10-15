@@ -22,7 +22,7 @@ import (
 // BundleSchemaVersion is the archive's own version, carried in manifest.json.
 // Columns are appended within a version; a change that cannot be made by
 // appending increments this and needs an ADR (ADR 0011).
-const BundleSchemaVersion = 12
+const BundleSchemaVersion = 13
 
 // bundleFile is one entry of the archive, recorded in the manifest with the
 // checksum computed while it was written.
@@ -182,6 +182,9 @@ func (s *ExportService) WriteBundle(ctx context.Context, out io.Writer, filter E
 		{"commodities.csv", func(w io.Writer) (int64, error) { return s.writeCommoditiesCSV(ctx, w, snapshot) }},
 		{"tags.csv", func(w io.Writer) (int64, error) { return s.writeTagsCSV(ctx, w, snapshot) }},
 		{"lots.csv", func(w io.Writer) (int64, error) { return s.writeLotsCSV(ctx, w, snapshot, paths) }},
+		{"investment-dividend-facts.csv", func(w io.Writer) (int64, error) {
+			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "dividend-facts", []string{"operation_id", "commodity_id", "audit_event_id", "withholding_only"})
+		}},
 		{"investment-operations.csv", func(w io.Writer) (int64, error) { return s.writeInvestmentOperationsCSV(ctx, w, snapshot) }},
 		{"investment-operation-journal-links.csv", func(w io.Writer) (int64, error) {
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "journal-links", []string{"operation_id", "link_seq", "transaction_version_id", "role"})
@@ -916,6 +919,7 @@ value in this archive was ever a floating-point number.`,
   commodities.csv    currencies, securities, and crypto, with their scales
   tags.csv           tag names behind the tag columns in ledger.csv
   lots.csv           investment lots as they currently stand
+  investment-dividend-facts.csv  paying instrument of cash dividends and reversals
   investment-operations.csv  named investment command parents
   investment-operation-journal-links.csv  posted versions made by each operation
   investment-operation-dates.csv  typed trade, settlement, and payment dates
@@ -1004,6 +1008,10 @@ Both lots.csv and investment-lot-state.csv carry basis_knowledge for remaining
 projected basis. Unknown basis has empty amount/scale fields, never numeric
 zero; known zero remains explicit. Quantity and immutable opening facts remain
 separate from that current knowledge state.
+Bundle schema 13 adds investment-dividend-facts.csv, linking gross dividends
+and withholding to their paying instruments. withholding_only distinguishes a
+separate tax payment with no gross income. Journal links retain correction and
+reversal attribution; historical unassigned payers are not guessed.
 Bundle schema 12 adds investment-gains-runs.csv with every immutable saved
 operational gains/statement document, original descriptor, timestamps, actor and
 audit IDs, and SHA-256 fingerprints. All runs are included even in scoped ledger

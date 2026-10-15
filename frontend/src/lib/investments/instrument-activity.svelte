@@ -15,8 +15,8 @@
   import type { TransactionWorkspaceActions } from '#lib/transactions/transaction-workspace.svelte';
   import { instrumentAccountIDs, instrumentUnits } from './instrument-activity.ts';
 
-  // An instrument's activity (#186): every transaction with a posting in the
-  // instrument, listed like a category's transactions. One request per page
+  // An instrument's activity (#229): postings and cash-dividend operation
+  // facts identify its transactions. One request per page
   // through the commodity filter, never a fetch per holding.
   let {
     commodityID,
@@ -111,5 +111,4 @@
     onRowClick={actions.showDetail}
   />
 
-  <p class="text-sm text-muted">{m.investments_instrument_view_dividend_note()}</p>
 </div>

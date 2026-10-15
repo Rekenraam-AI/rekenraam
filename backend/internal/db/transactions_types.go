@@ -240,8 +240,11 @@ type CreateTransactionParams struct {
 	// AccountRuleDependencies are the accounts whose versions the posting
 	// checks in Spec were decided against. The write transaction refuses the
 	// spec if any of them has been restructured since (T-100).
-	AccountRuleDependencies  []AccountRuleDependency
-	InvestmentComponents     []InvestmentComponentSpec
+	AccountRuleDependencies []AccountRuleDependency
+	InvestmentComponents    []InvestmentComponentSpec
+	// DividendCommodityID identifies the payer of all gross/withholding components.
+	DividendCommodityID      sql.NullInt64
+	DividendWithholdingOnly  bool
 	InvestmentSettlementDate string
 	TradeImpliedPrice        *TradeImpliedPriceSpec
 	// InvestmentCorrectionOfOperationID is set only by an investment-native

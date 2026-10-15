@@ -1,5 +1,5 @@
 post:
-  summary: Reverse a posted cash dividend
+  summary: Reverse a posted cash dividend or separate withholding tax
   description: >-
     Posts the exact inverse of a cash dividend, including any withholding, as a
     reversal operation under one audit event (T-115). The original dividend
@@ -7,7 +7,8 @@ post:
     requires reconciliation_override. An imported dividend is correctable only
     while its committed source identity still points to it; that identity stays
     on the original so a re-fetch keeps deduplicating.
-    gain_impact_acknowledgement is ignored: a cash dividend replays no disposal.
+    Separate withholding reverses only its tax and cash legs, retaining the
+    instrument fact. gain_impact_acknowledgement is ignored: a cash dividend replays no disposal.
   parameters:
     - in: path
       name: transaction_id

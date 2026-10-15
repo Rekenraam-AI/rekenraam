@@ -265,6 +265,10 @@ func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisc
 	require.Empty(t, live.CapitalReturns)
 	_, err = provider.DownTo(ctx, 7)
 	require.Error(t, err, "cannot downgrade away schema-2 contract")
+	// Goose rolls back one migration at a time; later migrations can already
+	// have been removed before schema 8 refuses. Restore the head before using
+	// the current server's export contract.
+	require.NoError(t, db.Migrate(ctx, database))
 	// Existing portable export and backup tests exercise both saved schemas.
 	bundle := downloadBundle(t, handler, f.sessionCookie, "?from=2026-07-01&to=2026-07-31")
 	table := bundle.table(t, "investment-gains-runs.csv")

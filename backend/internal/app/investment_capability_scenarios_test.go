@@ -37,7 +37,15 @@ var capabilityScenarios = []struct {
 		buy := buyOn(t, f, "2026-01-02", 10, 10000)
 		sale := acknowledgedSell(t, f, sellInput(f, "2026-02-01", 1))
 		writeOff := writeOffOn(t, f, "2026-02-02", 1, "fifo")
-		dividend, err := f.investmentService.Dividend(ctx, cashDividendInput(f, 0, 10000, 0))
+		dividendInput := cashDividendInput(f, 0, 10000, 0)
+		dividendInput.CommodityID = &f.stockCommodityID
+		dividend, err := f.investmentService.Dividend(ctx, dividendInput)
+		require.NoError(t, err)
+		taxAccount := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
+		taxInput := dividendInput
+		taxInput.WithholdingOnly, taxInput.AmountValue = true, 1500
+		taxInput.IncomeAccountID, taxInput.WithholdingAccountID = nil, &taxAccount
+		tax, err := f.investmentService.Dividend(ctx, taxInput)
 		require.NoError(t, err)
 		reinvestment := reinvestOn(t, f, "2026-03-02", 1, 500)
 		capitalReturn, err := f.investmentService.CapitalReturn(ctx, capitalReturnInput(f, "2026-04-01", 400))
@@ -50,6 +58,7 @@ var capabilityScenarios = []struct {
 			{"sell", sale.Transaction.ID, "2026-02-01", 0},
 			{"write_off", writeOff.Transaction.ID, "2026-02-02", 0},
 			{"dividend", dividend.ID, "2026-03-01", 0},
+			{"dividend", tax.ID, "2026-03-01", 0},
 			{"reinvested_dividend", reinvestment.Transaction.ID, "2026-03-02", 0},
 			{"return_of_capital", capitalReturn.Transaction.ID, "2026-04-01", 0},
 			{"reversal", reversal.ID, "2026-03-01", dividend.ID},

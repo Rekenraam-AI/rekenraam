@@ -1580,7 +1580,15 @@
   "investments_instrument_view_not_found_copy": "This instrument does not exist. Choose one from the Investments screen.",
   "investments_instrument_view_col_units": "Units",
   "investments_instrument_view_col_accounts": "Holdings",
-  "investments_instrument_view_dividend_note": "Cash dividends move no units of the instrument, so they appear on the cash account’s register instead.",
   "investments_instrument_view_open": "View activity",
-  "investments_instrument_view_open_aria": "View activity for {name}"
+  "investments_instrument_view_open_aria": "View activity for {name}",
+  "investments_record_withholding": "Record withholding tax",
+  "investments_withholding_title": "Record separate withholding tax",
+  "investments_withholding_pending": "Recording withholding tax…",
+  "investments_withholding_correct_action": "Correct withholding tax…",
+  "investments_withholding_correct_title": "Correct this withholding tax",
+  "investments_withholding_correct_copy": "Replace this tax payment with its corrected amount and tax account. The date, cash account and currency stay fixed.",
+  "investments_withholding_reverse_action": "Reverse withholding tax…",
+  "investments_withholding_reverse_title": "Reverse this withholding tax",
+  "investments_withholding_reverse_copy": "Post an audited inverse of this separate tax payment. The original remains in history."
 }

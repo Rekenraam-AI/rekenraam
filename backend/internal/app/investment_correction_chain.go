@@ -135,6 +135,8 @@ type InvestmentCorrectionShareExchangeTerms struct {
 // InvestmentCorrectionDividendTerms are an effective cash dividend's posted
 // facts. The date, cash account and currency are fixed for a replacement.
 type InvestmentCorrectionDividendTerms struct {
+	WithholdingOnly      bool
+	CommodityID          *int64
 	EventDate            string
 	CashAccountID        int64
 	CashCommodityID      int64
@@ -292,7 +294,14 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 			if err != nil {
 				return InvestmentCorrectionChain{}, err
 			}
-			chain.EffectiveDividend, chain.CanCorrectDividend = dividendCorrectionTerms(transaction)
+			operation, err := s.repository.DividendOperationByTransactionID(ctx, BookID, transaction.ID)
+			if err != nil {
+				return InvestmentCorrectionChain{}, err
+			}
+			chain.EffectiveDividend, chain.CanCorrectDividend = dividendCorrectionTerms(transaction, operation.WithholdingOnly)
+			if chain.EffectiveDividend != nil {
+				chain.EffectiveDividend.CommodityID = nullableSQLInt64Ptr(operation.CommodityID)
+			}
 		}
 		if correctable && record.OperationKind == "reinvested_dividend" && !importedLineage {
 			transaction, err := s.transactionService.Transaction(ctx, record.TransactionID.Int64)
@@ -448,7 +457,7 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 // dividendCorrectionTerms reads a posted cash dividend in the shape
 // dividendPlan writes: cash +gross, income -gross, then optionally
 // withholding +w and cash -w. Any other shape is not offered for correction.
-func dividendCorrectionTerms(transaction Transaction) (*InvestmentCorrectionDividendTerms, bool) {
+func dividendCorrectionTerms(transaction Transaction, withholdingOnly bool) (*InvestmentCorrectionDividendTerms, bool) {
 	if len(transaction.JournalEntries) != 1 {
 		return nil, false
 	}
@@ -457,6 +466,18 @@ func dividendCorrectionTerms(transaction Transaction) (*InvestmentCorrectionDivi
 		return nil, false
 	}
 	cash, income := postings[0], postings[1]
+	if withholdingOnly {
+		if len(postings) != 2 || cash.QuantityValue.Sign() >= 0 || cash.CommodityID != income.CommodityID ||
+			cash.QuantityScale != income.QuantityScale || income.QuantityValue != cash.QuantityValue.Negated() {
+			return nil, false
+		}
+		return &InvestmentCorrectionDividendTerms{
+			WithholdingOnly: true, EventDate: transaction.TransactionDate, CashAccountID: cash.AccountID,
+			CashCommodityID: cash.CommodityID, WithholdingAccountID: &income.AccountID,
+			AmountValue: cash.QuantityValue.Negated(), AmountScale: cash.QuantityScale,
+			Memo: transaction.Description, PayeeID: transaction.PayeeID,
+		}, true
+	}
 	if cash.CommodityID != income.CommodityID || cash.QuantityScale != income.QuantityScale ||
 		cash.QuantityValue.Sign() <= 0 || income.QuantityValue != cash.QuantityValue.Negated() {
 		return nil, false

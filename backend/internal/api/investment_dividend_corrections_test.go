@@ -26,8 +26,9 @@ func TestReplaceAndReverseDividendAPI(t *testing.T) {
 	t.Parallel()
 	handler, _ := newSetupTestHandler(t)
 	f := bootstrapInvestmentAPITest(t, handler)
+	instrument := createInstrumentForSession(t, handler, f, "DIVPAY")
 	dividend := func(amount int64) dividendRequest {
-		return dividendRequest{TransactionDate: "2026-04-01", CashAccountID: f.cashAccount.ID, CashCommodityID: f.commodityID,
+		return dividendRequest{CommodityID: &instrument.CommodityID, TransactionDate: "2026-04-01", CashAccountID: f.cashAccount.ID, CashCommodityID: f.commodityID,
 			IncomeAccountID: &f.incomeAccount.ID, AmountValue: moneyCoefficient(amount), AmountScale: 2}
 	}
 	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/dividend", dividend(5000), http.StatusCreated)
@@ -50,6 +51,27 @@ func TestReplaceAndReverseDividendAPI(t *testing.T) {
 	require.NotNil(t, replaced.InverseTransaction.CorrectionOfTransactionID)
 	assert.Equal(t, original.ID, *replaced.InverseTransaction.CorrectionOfTransactionID)
 	assert.Equal(t, original.ID, *replaced.ReplacementTransaction.CorrectionOfTransactionID)
+
+	chainRes := doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, base+"/correction-chain", nil, http.StatusOK)
+	var chain investmentCorrectionChainResponse
+	require.NoError(t, json.NewDecoder(chainRes.Body).Decode(&chain))
+	require.NotNil(t, chain.EffectiveDividend)
+	assert.Equal(t, &instrument.CommodityID, chain.EffectiveDividend.CommodityID)
+	activityRes := doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet,
+		"/api/v1/transactions?commodity_id="+strconv.FormatInt(instrument.CommodityID, 10), nil, http.StatusOK)
+	var activity struct {
+		Transactions []transactionResponse `json:"transactions"`
+	}
+	require.NoError(t, json.NewDecoder(activityRes.Body).Decode(&activity))
+	require.Len(t, activity.Transactions, 3, "original, inverse and replacement appear once")
+	bundle := downloadBundle(t, handler, f.sessionCookie, "")
+	facts := bundle.table(t, "investment-dividend-facts.csv")
+	require.Len(t, facts.rows, 2)
+	for _, row := range facts.rows {
+		assert.Equal(t, strconv.FormatInt(instrument.CommodityID, 10), facts.column(row, "commodity_id"))
+		assert.NotEmpty(t, facts.column(row, "operation_id"))
+		assert.NotEmpty(t, facts.column(row, "audit_event_id"))
+	}
 
 	expectInvestmentConflict(t, handler, f, base+"/replace-dividend", replace, "INVESTMENT_DIVIDEND_ALREADY_CORRECTED")
 	expectInvestmentConflict(t, handler, f, base+"/reverse-dividend", investmentSaleReversalRequest{Reason: "again"}, "INVESTMENT_DIVIDEND_ALREADY_CORRECTED")
@@ -122,4 +144,30 @@ func TestReplaceAndReverseReinvestedDividendAPI(t *testing.T) {
 	// A buy is not a reinvestment, and a reinvestment is not a dividend.
 	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, replacementBase+"/reverse-dividend/reconciliation-impact",
 		investmentSaleReversalRequest{Reason: "wrong family"}, http.StatusNotFound)
+}
+
+func TestSeparateWithholdingAPIAndBundle(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	f := bootstrapInvestmentAPITest(t, handler)
+	instrument := createInstrumentForSession(t, handler, f, "TAXPAY")
+	taxAccount := createLedgerAccount(t, handler, f.sessionCookie, f.csrfToken, "Withholding tax", "expense", "expense", f.commodityID, 2)
+	input := dividendRequest{WithholdingOnly: true, CommodityID: &instrument.CommodityID,
+		TransactionDate: "2026-04-01", CashAccountID: f.cashAccount.ID, CashCommodityID: f.commodityID,
+		WithholdingAccountID: &taxAccount.ID, AmountValue: moneyCoefficient(1500), AmountScale: 2}
+	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost,
+		"/api/v1/investments/dividend", input, http.StatusCreated)
+	var tax transactionResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&tax))
+	require.Len(t, tax.JournalEntries[0].Postings, 2)
+	bundle := downloadBundle(t, handler, f.sessionCookie, "")
+	facts := bundle.table(t, "investment-dividend-facts.csv")
+	require.Len(t, facts.rows, 1)
+	assert.Equal(t, "1", facts.column(facts.rows[0], "withholding_only"))
+	assert.Equal(t, strconv.FormatInt(instrument.CommodityID, 10), facts.column(facts.rows[0], "commodity_id"))
+	components := bundle.table(t, "investment-operation-components.csv")
+	require.Len(t, components.rows, 1)
+	assert.Equal(t, "withholding", components.column(components.rows[0], "component_kind"))
+	assert.Equal(t, "-1500", components.column(components.rows[0], "amount_value"))
+	assert.Equal(t, strconv.FormatInt(f.commodityID, 10), components.column(components.rows[0], "commodity_id"))
 }

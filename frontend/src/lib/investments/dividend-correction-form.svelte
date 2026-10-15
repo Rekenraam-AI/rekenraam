@@ -54,6 +54,7 @@
   const initialDividend = untrack(() => dividend);
   const initialReinvestment = untrack(() => reinvestment);
   const reinvested = initialReinvestment !== undefined;
+  const withholdingOnly = initialDividend?.withholding_only === true;
   const terms = (initialReinvestment ?? initialDividend)!;
 
   const queryClient = useQueryClient();
@@ -92,10 +93,10 @@
   const accountName = (id: number) => accounts.find((account: AccountResponse) => account.id === id)?.name ?? `#${id}`;
   const incomeAccounts = $derived(accounts.filter((account: AccountResponse) =>
     account.account_class === 'income' && ((account.status === 'active' && account.allows_postings) || account.id === terms.income_account_id)));
-  // The original withholding account stays selectable even when it is not a
-  // liability, so an unchanged replacement never silently moves the tax.
+  // Match the backend tax roles; retain the original account even if archived.
   const withholdingAccounts = $derived(accounts.filter((account: AccountResponse) =>
-    (account.account_class === 'liability' && account.status === 'active' && account.allows_postings) ||
+    (['asset', 'liability', 'expense'].includes(account.account_class) && !account.system_role &&
+      !['security_holding', 'fund_holding'].includes(account.account_kind) && account.status === 'active' && account.allows_postings) ||
     account.id === initialDividend?.withholding_account_id));
   const currenciesByID = $derived(new Map<number, CurrencyResponse>(
     (currenciesQuery.data?.currencies ?? []).map((currency: CurrencyResponse) => [currency.id, currency])));
@@ -104,7 +105,7 @@
     ? gainImpactRows(review.gainImpact.changes, gainImpactCurrency(currenciesByID), getLocale()) : []);
   const dateLabel = $derived(new Intl.DateTimeFormat(getLocale(), { year: 'numeric', month: 'short', day: 'numeric' })
     .format(parseISO(terms.event_date)));
-  const canSubmit = $derived(!!reason.trim() && amountStr.trim() !== '' && incomeAccountID !== '' &&
+  const canSubmit = $derived(!!reason.trim() && amountStr.trim() !== '' && (withholdingOnly ? withholdingAccountID !== '' : incomeAccountID !== '') &&
     (!reinvested || quantityStr.trim() !== '') &&
     (!showWithholding || withholdingStr.trim() === '' || withholdingAccountID !== ''));
 
@@ -123,7 +124,7 @@
     event.preventDefault();
     if (!canSubmit || pending) return;
     const amounts = parseDividendAmounts({
-      amountStr, withholdingStr, includeWithholding: !reinvested && showWithholding,
+      amountStr, withholdingStr, includeWithholding: !reinvested && !withholdingOnly && showWithholding,
       quantityStr, includeQuantity: reinvested
     });
     if (!amounts.ok) {
@@ -143,11 +144,13 @@
       } };
     } else {
       target = { kind: 'cash', payload: {
+        commodity_id: initialDividend!.commodity_id,
+        withholding_only: withholdingOnly,
         transaction_date: terms.event_date, cash_account_id: initialDividend!.cash_account_id,
-        cash_commodity_id: terms.cash_commodity_id, income_account_id: Number(incomeAccountID),
+        cash_commodity_id: terms.cash_commodity_id, income_account_id: withholdingOnly ? undefined : Number(incomeAccountID),
         amount_value: amount.value, amount_scale: amount.scale,
         withholding_value: withholding?.value, withholding_scale: withholding?.scale,
-        withholding_account_id: withholding && withholdingAccountID ? Number(withholdingAccountID) : undefined,
+        withholding_account_id: (withholdingOnly || withholding) && withholdingAccountID ? Number(withholdingAccountID) : undefined,
         memo: memo.trim() || undefined, payee_id: initialDividend!.payee_id
       } };
     }
@@ -219,10 +222,10 @@
 
 <form onsubmit={handleSubmit} class="space-y-4">
   <h2 class="text-base font-semibold text-foreground">
-    {reinvested ? m.transactions_investment_replace_reinvestment_title() : m.transactions_investment_replace_dividend_title()}
+    {withholdingOnly ? m.investments_withholding_correct_title() : reinvested ? m.transactions_investment_replace_reinvestment_title() : m.transactions_investment_replace_dividend_title()}
   </h2>
   <p class="text-sm text-muted">
-    {reinvested ? m.transactions_investment_replace_reinvestment_copy() : m.transactions_investment_replace_dividend_copy()}
+    {withholdingOnly ? m.investments_withholding_correct_copy() : reinvested ? m.transactions_investment_replace_reinvestment_copy() : m.transactions_investment_replace_dividend_copy()}
   </p>
 
   <div>
@@ -260,26 +263,36 @@
 
   <div>
     <label for="dividend-correction-amount" class="mb-1 block text-sm font-medium text-foreground">
-      {m.investments_form_dividend_amount()}
+      {withholdingOnly ? m.investments_form_withholding_amount() : m.investments_form_dividend_amount()}
       {#if currencyCode}<span class="ml-1 text-xs font-normal text-muted">({currencyCode})</span>{/if}
     </label>
     <input id="dividend-correction-amount" type="text" inputmode="decimal" bind:value={amountStr} required
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 font-mono text-sm text-foreground" />
   </div>
 
-  <div>
-    <label for="dividend-correction-income" class="mb-1 block text-sm font-medium text-foreground">
-      {m.investments_form_income_account()}
-    </label>
-    <select id="dividend-correction-income" bind:value={incomeAccountID} required
-      class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground">
-      {#each incomeAccounts as account (account.id)}
-        <option value={String(account.id)}>{account.name}</option>
-      {/each}
-    </select>
-  </div>
+  {#if !withholdingOnly}
+    <div>
+      <label for="dividend-correction-income" class="mb-1 block text-sm font-medium text-foreground">
+        {m.investments_form_income_account()}
+      </label>
+      <select id="dividend-correction-income" bind:value={incomeAccountID} required
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground">
+        {#each incomeAccounts as account (account.id)}
+          <option value={String(account.id)}>{account.name}</option>
+        {/each}
+      </select>
+    </div>
 
-  {#if !reinvested}
+  {:else}
+    <div>
+      <label for="dividend-correction-tax-account" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_withholding_account()}</label>
+      <select id="dividend-correction-tax-account" bind:value={withholdingAccountID} required
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground">
+        {#each withholdingAccounts as account (account.id)}<option value={String(account.id)}>{account.name}</option>{/each}
+      </select>
+    </div>
+  {/if}
+  {#if !reinvested && !withholdingOnly}
     <label class="flex items-center gap-2 text-sm font-medium text-foreground">
       <input type="checkbox" bind:checked={showWithholding} class="h-4 w-4 rounded" />
       {m.investments_form_withholding_toggle()}

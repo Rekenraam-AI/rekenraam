@@ -14,7 +14,7 @@ get:
         format: int64
     - in: query
       name: commodity_id
-      description: Filter to transactions with a posting in this commodity, such as an instrument's investment activity.
+      description: Filter to transactions with a posting in this commodity or a cash-dividend operation fact naming it as the paying instrument. Includes linked correction journals, gross income and withholding.
       schema:
         type: integer
         format: int64

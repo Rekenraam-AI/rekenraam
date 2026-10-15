@@ -83,6 +83,8 @@ func (s *InvestmentService) prepareDividendReversalWrite(ctx context.Context, in
 	if err != nil {
 		return db.DividendOperationRecord{}, db.CreateTransactionParams{}, err
 	}
+	params.DividendCommodityID = operation.CommodityID
+	params.DividendWithholdingOnly = operation.WithholdingOnly
 	params.InvestmentCorrectionOfOperationID = operation.OperationID
 	params.InvestmentCorrectionMode = "reverse"
 	params.InvestmentCorrectionReason = planned.ChangeReason
@@ -132,6 +134,15 @@ func (s *InvestmentService) prepareDividendReplacementWrite(ctx context.Context,
 		return db.DividendOperationRecord{}, db.CreateTransactionParams{}, db.CreateTransactionParams{}, err
 	}
 	replacement := input.Replacement
+	if replacement.WithholdingOnly && !operation.WithholdingOnly {
+		return db.DividendOperationRecord{}, db.CreateTransactionParams{}, db.CreateTransactionParams{},
+			ValidationError{Message: "replacement must keep the dividend payment shape"}
+	}
+	replacement.WithholdingOnly = operation.WithholdingOnly
+	// Omission in older clients must retain the immutable payer fact.
+	if replacement.CommodityID == nil {
+		replacement.CommodityID = nullableSQLInt64Ptr(operation.CommodityID)
+	}
 	// dividendPlan writes the cash leg first; that posting names the original
 	// cash account and currency.
 	cash := original.JournalEntries[0].Postings[0]

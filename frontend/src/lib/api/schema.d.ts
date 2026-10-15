@@ -8280,7 +8280,7 @@ export interface paths {
                     account_id?: number;
                     /** @description Filter to transactions that have a posting to this income or expense account. Returns VALIDATION_FAILED if the account is not income or expense class. */
                     category_id?: number;
-                    /** @description Filter to transactions with a posting in this commodity, such as an instrument's investment activity. */
+                    /** @description Filter to transactions with a posting in this commodity or a cash-dividend operation fact naming it as the paying instrument. Includes linked correction journals, gross income and withholding. */
                     commodity_id?: number;
                     payee_id?: number;
                     q?: string;
@@ -22313,8 +22313,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Reverse a posted cash dividend
-         * @description Posts the exact inverse of a cash dividend, including any withholding, as a reversal operation under one audit event (T-115). The original dividend remains posted history. A reconciled cash, income or withholding balance requires reconciliation_override. An imported dividend is correctable only while its committed source identity still points to it; that identity stays on the original so a re-fetch keeps deduplicating. gain_impact_acknowledgement is ignored: a cash dividend replays no disposal.
+         * Reverse a posted cash dividend or separate withholding tax
+         * @description Posts the exact inverse of a cash dividend, including any withholding, as a reversal operation under one audit event (T-115). The original dividend remains posted history. A reconciled cash, income or withholding balance requires reconciliation_override. An imported dividend is correctable only while its committed source identity still points to it; that identity stays on the original so a re-fetch keeps deduplicating. Separate withholding reverses only its tax and cash legs, retaining the instrument fact. gain_impact_acknowledgement is ignored: a cash dividend replays no disposal.
          */
         post: {
             parameters: {
@@ -22486,8 +22486,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Replace a posted cash dividend
-         * @description Posts the inverse and the corrected dividend — gross amount, withholding, income and withholding accounts — under one audit event (T-115). The replacement keeps the dividend date, cash account and currency. The original remains posted history; an imported dividend keeps its committed source identity on the original.
+         * Replace a posted cash dividend or separate withholding tax
+         * @description Posts the inverse and the corrected dividend — gross amount, withholding, income and withholding accounts — under one audit event (T-115). The replacement keeps the dividend date, cash account and currency. The original remains posted history; an imported dividend keeps its committed source identity on the original. Separate withholding keeps its tax-only shape; amount_value is its tax magnitude and no income is posted. Omitting the paying commodity_id preserves the source instrument. An explicitly corrected payer belongs to the successor; the inverse remains attributed to the source.
          */
         post: {
             parameters: {
@@ -23270,7 +23270,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Record a cash dividend */
+        /**
+         * Record a cash dividend or separate withholding tax
+         * @description Gross dividend income may include withholding in the same transaction. withholding_only records tax paid separately for an instrument, with amount_value as tax magnitude and no income or security-unit posting. Both shapes retain their paying instrument as an immutable operation fact.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -29765,6 +29768,13 @@ export interface components {
         };
         /** @description The effective cash dividend's posted facts, for pre-filling a replacement. The date, cash account and currency are fixed for a replacement. */
         InvestmentCorrectionDividendTerms: {
+            /** @description Separate tax payment; amount is tax, no income leg, and withholding_account_id is required. */
+            withholding_only?: boolean;
+            /**
+             * Format: int64
+             * @description Paying instrument shared by gross income and withholding; absent for unassigned historical dividends.
+             */
+            commodity_id?: number;
             /** Format: date */
             event_date: string;
             /** Format: int64 */
@@ -29772,8 +29782,8 @@ export interface components {
             /** Format: int64 */
             cash_commodity_id: number;
             /** Format: int64 */
-            income_account_id: number;
-            /** @description Gross dividend coefficient. */
+            income_account_id?: number;
+            /** @description Gross dividend coefficient */
             amount_value: string;
             amount_scale: number;
             /** Format: int64 */
@@ -30089,7 +30099,7 @@ export interface components {
             effective_return_of_capital?: components["schemas"]["CapitalReturnRequest"];
             /** @description The effective operation is a return of capital that can be reversed (T-148). */
             can_reverse_return_of_capital: boolean;
-            /** @description Whether the effective posted cash dividend can be reversed or replaced (T-115). Imported lineage requires a committed source identity. */
+            /** @description Whether the effective posted cash dividend or separate withholding payment can be reversed or replaced. Imported lineage requires a committed source identity. */
             can_correct_dividend: boolean;
             effective_dividend?: components["schemas"]["InvestmentCorrectionDividendTerms"];
             /** @description Whether the effective posted reinvested dividend can be reversed or replaced (T-115). Dependent replay may still refuse the command. */
@@ -30276,6 +30286,11 @@ export interface components {
             charges: components["schemas"]["InvestmentTradeChargeRequest"][];
         };
         DividendRequest: {
+            /**
+             * @description Record a separate withholding-tax payment using amount_value/amount_scale as the positive tax magnitude. Requires commodity_id and withholding_account_id; income_account_id, withholding_value and withholding_scale must be absent. The operation has no gross income or security quantity posting.
+             * @default false
+             */
+            withholding_only: boolean;
             /** Format: date */
             transaction_date: string;
             /** Format: int64 */

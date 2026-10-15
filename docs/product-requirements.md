@@ -421,6 +421,15 @@ Goal: add power-user workflows after the core ledger is stable.
   covers only the postings whose lots they actually write.
 - Dividend and reinvested-dividend workflows with optional per-security income
   and withholding defaults.
+- Cash dividends retain their optional paying instrument as an immutable named-operation
+  fact shared by gross income and withholding. Separately paid withholding is an
+  explicit tax-only dividend operation (`withholding_only`), requires an instrument,
+  and posts only cash and tax in the payment currency, with no fabricated income
+  or security units. It supports the same audited replacement/reversal and
+  reconciliation guard as combined dividends. Replacement preserves the payer when omitted;
+  an explicit corrected payer belongs to the replacement, while the inverse stays
+  attributed to the predecessor. Instrument activity includes these journals without
+  fabricating security postings. Historical journals without a payer stay unassigned.
 - Provider events and reviewable suggestions for dividends, distributions,
   splits, mergers, spin-offs, ticker changes, delistings, cash-in-lieu, return
   of capital, and other corporate actions.

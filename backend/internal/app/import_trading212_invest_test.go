@@ -1372,6 +1372,19 @@ func TestCommitImportBatch_DividendPostsAsInvestmentIncome(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "div-1", transaction.ExternalRefHint)
 	assert.JSONEq(t, `{"source_kind":"trading212","connection_id":1,"provider_kind":"dividend","provider_id":"div-1"}`, transaction.MetadataJSON)
+	var payer int64
+	require.NoError(t, f.database.QueryRow(`SELECT facts.commodity_id FROM investment_dividend_facts facts
+		JOIN investment_operation_journal_links link ON link.operation_id = facts.operation_id AND link.role = 'primary'
+		WHERE link.transaction_version_id = ?`, transaction.VersionID).Scan(&payer))
+	assert.Equal(t, dividendCommodityID, payer)
+	activity, err := f.importService.transactionService.ListTransactions(context.Background(), ListTransactionsInput{CommodityID: payer})
+	require.NoError(t, err)
+	var dividendFound bool
+	for _, row := range activity.Transactions {
+		dividendFound = dividendFound || row.ID == transaction.ID
+	}
+	require.True(t, dividendFound, "imported dividend appears under its resolved instrument")
+
 }
 
 // failInvestmentImportIdentityWrites injects the exact failure point T-26
@@ -1488,6 +1501,9 @@ func TestCommitImportBatch_InvestmentDividendRollsBackWhenIdentityRecordingFails
 	failInvestmentImportIdentityWrites(t, f)
 	assertInvestmentIdentityFailure(t, f, dividendBatchID)
 	assert.Equal(t, 1, transactionCount(t, f), "identity failure must roll back the dividend ledger transaction")
+	var facts int
+	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM investment_dividend_facts`).Scan(&facts))
+	require.Zero(t, facts, "payer fact rolls back with the journal and import identity")
 }
 
 // TestCommitImportBatch_ConcurrentTrading212CommitsKeepTheCommittedRow verifies

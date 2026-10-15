@@ -19,6 +19,16 @@ func recordInvestmentFoundationTx(ctx context.Context, tx *sql.Tx, params Create
 	`, params.BookID, operationID, transaction.VersionID); err != nil {
 		return fmt.Errorf("link investment operation to posted version: %w", err)
 	}
+	if params.DividendWithholdingOnly && !params.DividendCommodityID.Valid {
+		return fmt.Errorf("separate withholding requires its paying instrument fact")
+	}
+	if params.DividendCommodityID.Valid {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO investment_dividend_facts
+			(book_id, operation_id, commodity_id, withholding_only, created_audit_event_id) VALUES (?, ?, ?, ?, ?)`,
+			params.BookID, operationID, params.DividendCommodityID.Int64, boolInt(params.DividendWithholdingOnly), auditEventID); err != nil {
+			return fmt.Errorf("record dividend paying instrument: %w", err)
+		}
+	}
 	dateRole := "trade"
 	if params.Spec.InvestmentOperationKind == "dividend" || params.Spec.InvestmentOperationKind == "reinvested_dividend" ||
 		params.Spec.InvestmentOperationKind == "return_of_capital" {

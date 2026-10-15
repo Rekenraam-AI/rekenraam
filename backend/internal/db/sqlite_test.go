@@ -277,6 +277,9 @@ func TestMigrateSeededBaselineMatchesFreshSchema(t *testing.T) {
 	// TestPriceDependencyMigrationBackfillsDerivationLegs covers one that does.
 	assert.Equal(t, "0", after["count:price_observation_dependencies"])
 	delete(after, "count:price_observation_dependencies")
+	// #229 adds unassigned dividend facts without inventing old payers.
+	assert.Equal(t, "0", after["count:investment_dividend_facts"])
+	delete(after, "count:investment_dividend_facts")
 	// #234 adds empty immutable report storage; existing figures stay exact.
 	assert.Equal(t, "0", after["count:investment_gains_runs"])
 	delete(after, "count:investment_gains_runs")
@@ -1260,7 +1263,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(8), version, "the head preserves old gains documents and admits capital-return statement schema 2")
+	assert.Equal(t, int64(9), version, "the head adds immutable dividend instrument facts")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))
@@ -1289,9 +1292,9 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 		objectCounts[kind]++
 	}
 	assert.Equal(t, map[string]int{
-		"index":   110,
-		"table":   113,
-		"trigger": 151,
+		"index":   111,
+		"table":   114,
+		"trigger": 154,
 		"view":    15,
 	}, objectCounts, "the migrated head must retain every schema object")
 	assert.Equal(t, "table", objects["investment_gains_runs"])
