@@ -3013,23 +3013,23 @@ func (s *InvestmentService) ListUnrealizedGains(ctx context.Context) ([]Unrealiz
 // #230). Two figures compare only when their profiles match; see the R18
 // reporting plan for each field's contract.
 type GainsProfile struct {
-	ReportingCurrencyID    int64
-	FXMaxAgeDays           int
-	StructuralActionPolicy string
-	SpecificLotFallback    string
-	TransferPolicy         string
-	From                   string
-	To                     string
-	Name                   string
-	Purpose                string
-	BasisMethod            string
-	ValuationAsOf          string
-	KnowledgeCutoff        string
-	LedgerKnowledge        string
-	QuotePolicy            string
-	StaleAfterDays         int
-	FXMethod               string
-	Rounding               string
+	ReportingCurrencyID    int64  `json:"reporting_currency_id,omitempty"`
+	FXMaxAgeDays           int    `json:"fx_max_age_days,omitempty"`
+	StructuralActionPolicy string `json:"structural_action_policy,omitempty"`
+	SpecificLotFallback    string `json:"specific_lot_fallback,omitempty"`
+	TransferPolicy         string `json:"transfer_policy,omitempty"`
+	From                   string `json:"from,omitempty"`
+	To                     string `json:"to,omitempty"`
+	Name                   string `json:"name"`
+	Purpose                string `json:"purpose"`
+	BasisMethod            string `json:"basis_method"`
+	ValuationAsOf          string `json:"valuation_as_of"`
+	KnowledgeCutoff        string `json:"knowledge_cutoff"`
+	LedgerKnowledge        string `json:"ledger_knowledge"`
+	QuotePolicy            string `json:"quote_policy"`
+	StaleAfterDays         int    `json:"stale_after_days"`
+	FXMethod               string `json:"fx_method"`
+	Rounding               string `json:"rounding"`
 }
 
 // operationalGainsProfile is operational_v1 at the given boundary.

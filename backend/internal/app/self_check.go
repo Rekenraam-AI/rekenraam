@@ -131,8 +131,8 @@ var checkNarratives = map[string]checkNarrative{
 		nextStep:    "The app refuses to create these, so a non-zero count means rows arrived from outside it — a backfill, a manual repair, or a restored and patched database. Exports have been quietly falling back to each account's earliest version for these rows.",
 	},
 	CheckInvestmentFoundation: {
-		explanation: "Named investment operations must link their posted versions, source lots, effects and journal-backed cash components. Disposal decisions and each shared cost-currency clearing posting must independently conserve their attributed proceeds. A completed setup also needs its external investment transfer equity account and commission default.",
-		nextStep:    "Review the named operation, disposal decision, journal or lot and the setup accounts. Preserve the original rows before correcting any mismatch or missing link.",
+		explanation: "Named investment operations must link their posted versions, source lots, effects and journal-backed cash components. Disposal decisions and each shared cost-currency clearing posting must independently conserve their attributed proceeds. Saved gains runs must retain their original input/output digests and matching descriptors; they are checked as documents, never recomputed against current history. A completed setup also needs its external investment transfer equity account and commission default.",
+		nextStep:    "Review the named operation, disposal decision, journal, lot or saved gains run and the setup accounts. Preserve the original rows before correcting any mismatch or missing link.",
 	},
 	CheckInvestmentReplay: {
 		explanation: "Commands replay only the investment positions they affect. This check replays every long and short position from its effective trades, transfers, splits and elections in a rolled-back simulation and compares lot balances, each disposal's allocations, split effects, carried transfer basis and the method lock with what is stored, exactly and per cost currency. A stored result that history no longer produces means a command skipped a replay it needed.",
@@ -413,7 +413,7 @@ func replayReferenceLabel(kind string) string {
 }
 
 func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapshot *sql.Tx) (SelfCheckResult, error) {
-	result := SelfCheckResult{CheckID: CheckInvestmentFoundation, Status: SelfCheckPassed, Summary: "investment operations, source facts, proceeds, and setup defaults agree with their journals"}
+	result := SelfCheckResult{CheckID: CheckInvestmentFoundation, Status: SelfCheckPassed, Summary: "investment operations, source facts, proceeds, setup defaults and saved gains documents are consistent"}
 	checks := []struct {
 		label string
 		query string
@@ -912,6 +912,25 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 	}
 	var summaries []string
 	var sampleReferences []string
+	var invalidRuns int64
+	if err := db.StreamGainsRuns(ctx, snapshot, BookID, func(run db.GainsRunRecord) error {
+		if !db.ValidGainsRunDocument(run) {
+			invalidRuns++
+			if len(result.Sample) < db.SelfCheckSampleLimit {
+				result.Sample = append(result.Sample, run.ID)
+				sampleReferences = append(sampleReferences, fmt.Sprintf("gains run #%d", run.ID))
+			}
+		}
+		return nil
+	}); err != nil {
+		return SelfCheckResult{}, err
+	}
+	if invalidRuns > 0 {
+		result.Status = SelfCheckFailed
+		result.FindingCount += invalidRuns
+		summaries = append(summaries, fmt.Sprintf("%d saved gains runs failed document integrity", invalidRuns))
+	}
+
 	for _, check := range checks {
 		anomaly, err := s.repository.CountStructuralAnomaly(ctx, snapshot, check.query, BookID)
 		if err != nil {

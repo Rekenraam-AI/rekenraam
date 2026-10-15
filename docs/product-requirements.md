@@ -188,6 +188,14 @@ These apply across all feature phases.
   investment lots. Investment entry remains posted-only until a future producer
   defines promotion/discard semantics that activate or remove journal and
   subledger consequences atomically.
+- Explicitly saved operational investment gains and period statements preserve
+  their original descriptor, exact output, input/output fingerprints and actor
+  attribution after later corrections or price withdrawals. Save computes a new
+  report; live reads remain current-effective and never retroactively save one.
+  Immutable reports are included in backup/restore and portable export and are
+  checked for document integrity without restating their figures. The
+  [R18 reporting policy](plans/investment-reporting-plan.md#immutable-operational-runs-234)
+  defines the saved schema and its original-currency operational scope.
 - Cost-basis, period, jurisdiction/accounting-purpose, price, FX, and knowledge-time
   choices belong to named reporting projections. Multiple analytical projections
   may coexist without rewriting canonical facts. Any future realized-gain,

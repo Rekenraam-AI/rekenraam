@@ -533,6 +533,10 @@ paths:
     $ref: "./paths/investments-automation-rules.yaml"
   /api/v1/investments/gains:
     $ref: "./paths/investments-gains.yaml"
+  /api/v1/investments/gains/runs:
+    $ref: "./paths/investments-gains-runs.yaml"
+  /api/v1/investments/gains/runs/{id}:
+    $ref: "./paths/investments-gains-run.yaml"
   /api/v1/investments/gains/statement:
     $ref: "./paths/investments-gains-statement.yaml"
   /api/v1/investments/operations/{operation_id}/reverse-split:
@@ -1447,6 +1451,16 @@ components:
       $ref: "./components/schemas/investments.yaml#/UnrealizedGainEntry"
     RealizedGainTotal:
       $ref: "./components/schemas/investments.yaml#/RealizedGainTotal"
+    GainsRunRequest:
+      $ref: "./components/schemas/investment-gains-runs.yaml#/GainsRunRequest"
+    GainsRunInputs:
+      $ref: "./components/schemas/investment-gains-runs.yaml#/GainsRunInputs"
+    GainsRunSummary:
+      $ref: "./components/schemas/investment-gains-runs.yaml#/GainsRunSummary"
+    GainsRunResponse:
+      $ref: "./components/schemas/investment-gains-runs.yaml#/GainsRunResponse"
+    GainsRunListResponse:
+      $ref: "./components/schemas/investment-gains-runs.yaml#/GainsRunListResponse"
     InvestmentGainsResponse:
       $ref: "./components/schemas/investments.yaml#/InvestmentGainsResponse"
     GainsFXAmount:

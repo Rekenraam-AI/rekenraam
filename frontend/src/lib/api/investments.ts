@@ -2259,3 +2259,44 @@ export async function getSplitActivity(cursor?: string, operationID?: number): P
   throw toAPIClientError(response,error);
  } catch(error) { if(error instanceof APIClientError)throw error;throw toNetworkError(error); }
 }
+
+export type GainsRunRequest = components['schemas']['GainsRunRequest'];
+export type GainsRunResponse = components['schemas']['GainsRunResponse'];
+export type GainsRunListResponse = components['schemas']['GainsRunListResponse'];
+export const gainsRunsQueryKey = ['investments', 'gains-runs'] as const;
+export const gainsRunQueryKey = (id: number) => ['investments', 'gains-run', id] as const;
+
+export async function saveGainsRun(body: GainsRunRequest, csrfToken: string): Promise<GainsRunResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST('/api/v1/investments/gains/runs', {
+      params: { header: { 'X-CSRF-Token': csrfToken } }, body
+    });
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function getGainsRun(id: number): Promise<GainsRunResponse> {
+  try {
+    const { data, error, response } = await apiClient.GET('/api/v1/investments/gains/runs/{id}', { params: { path: { id } } });
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function getGainsRuns(cursor?: string): Promise<GainsRunListResponse> {
+  try {
+    const { data, error, response } = await apiClient.GET('/api/v1/investments/gains/runs', { params: { query: { cursor } } });
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}

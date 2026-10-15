@@ -69,12 +69,13 @@ func TestInvestmentSlice1FreshAndSeededBundleContract(t *testing.T) {
 				} `json:"files"`
 			}
 			require.NoError(t, json.Unmarshal(files["manifest.json"], &manifest))
-			require.Equal(t, 11, manifest.SchemaVersion)
+			require.Equal(t, 12, manifest.SchemaVersion)
 			manifestRows := map[string]int64{}
 			for _, file := range manifest.Files {
 				manifestRows[file.Name] = file.Rows
 			}
 			for file, header := range map[string][]string{
+				"investment-gains-runs.csv":                        {"id", "schema_version", "report_type", "captured_at", "created_at", "created_by_user_id", "audit_event_id", "snapshot_sha256", "inputs_sha256", "output_sha256", "inputs_json", "output_json"},
 				"disposal-clearing-allocations.csv":                {"decision_id", "posting_version_id", "proceeds_value", "proceeds_scale"},
 				"lots.csv":                                         {"lot_id", "account_id", "account_path", "commodity_id", "position_side", "opened_on", "status", "quantity", "remaining_quantity", "cost_basis", "remaining_cost_basis", "cost_commodity_id", "source_transaction_id", "basis_knowledge", "opening_basis_knowledge"},
 				"investment-operations.csv":                        {"operation_id", "transaction_id", "operation_kind", "event_date", "audit_event_id", "correction_of_operation_id", "correction_mode", "correction_reason"},

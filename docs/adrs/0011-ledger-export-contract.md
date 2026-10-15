@@ -316,3 +316,22 @@ the destination's current original date, and list their source depletions in
 the new file. For `source_lots` revisions the two appended columns are empty
 and the original date stays the link's. Existing files and columns are
 otherwise unchanged.
+
+### Immutable gains-run refinement (2026-10-15, #234)
+
+Manifest schema version 12 adds `investment-gains-runs.csv`: `id`,
+`schema_version`, `report_type`, `captured_at`, `created_at`,
+`created_by_user_id`, `audit_event_id`, `snapshot_sha256`, `inputs_sha256`,
+`output_sha256`, `inputs_json`, `output_json`. Both JSON documents retain their
+exact compact UTF-8 representation, including string coefficients and absent
+figures. The input document embeds resolved request, full profile and snapshot
+fingerprint. Hashes identify original bytes; they are not signatures. The SQLite
+snapshot fingerprint is physical, includes unrelated database state and earlier
+runs, and cannot be reconstructed from a scoped export or the changed book.
+The disposable input image is not retained. Backup/restore retains the full
+immutable run rows; self-check checks document integrity, not current results.
+
+These book-level documents are included in full even when the ledger is scoped;
+their original periods and descriptors remain attached, and ledger filters do
+not re-scope or recalculate them. Existing CSV files and columns remain unchanged.
+ADR 0012 and the reporting plan own the saved-run policy and schema lifecycle.

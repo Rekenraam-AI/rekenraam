@@ -22,7 +22,7 @@ import (
 // BundleSchemaVersion is the archive's own version, carried in manifest.json.
 // Columns are appended within a version; a change that cannot be made by
 // appending increments this and needs an ADR (ADR 0011).
-const BundleSchemaVersion = 11
+const BundleSchemaVersion = 12
 
 // bundleFile is one entry of the archive, recorded in the manifest with the
 // checksum computed while it was written.
@@ -271,6 +271,9 @@ func (s *ExportService) WriteBundle(ctx context.Context, out io.Writer, filter E
 		}},
 		{"disposal-revision-allocations.csv", func(w io.Writer) (int64, error) {
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "disposal-revision-allocations", []string{"revision_id", "allocation_seq", "lot_id", "quantity_value", "quantity_scale", "cost_basis_value", "cost_basis_scale", "proceeds_value", "proceeds_scale", "basis_knowledge"})
+		}},
+		{"investment-gains-runs.csv", func(w io.Writer) (int64, error) {
+			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "gains-runs", []string{"id", "schema_version", "report_type", "captured_at", "created_at", "created_by_user_id", "audit_event_id", "snapshot_sha256", "inputs_sha256", "output_sha256", "inputs_json", "output_json"})
 		}},
 		{"prices.csv", func(w io.Writer) (int64, error) { return s.writePricesCSV(ctx, w, snapshot) }},
 		{"trial-balance.csv", func(w io.Writer) (int64, error) {
@@ -945,6 +948,7 @@ value in this archive was ever a floating-point number.`,
   disposal-clearing-allocations.csv  signed proceeds portions of pinned journal clearing postings
   disposal-revisions.csv  append-only effective replay calculation chain
   disposal-revision-allocations.csv  lot allocations for replay revisions
+  investment-gains-runs.csv  immutable operational gains/statement documents and digests
   prices.csv         non-voided price observations
   trial-balance.csv  balances that let you check ledger.csv against the book
   manifest.json      what this export is, what it contains, and its checksums`,
@@ -1000,6 +1004,12 @@ Both lots.csv and investment-lot-state.csv carry basis_knowledge for remaining
 projected basis. Unknown basis has empty amount/scale fields, never numeric
 zero; known zero remains explicit. Quantity and immutable opening facts remain
 separate from that current knowledge state.
+Bundle schema 12 adds investment-gains-runs.csv with every immutable saved
+operational gains/statement document, original descriptor, timestamps, actor and
+audit IDs, and SHA-256 fingerprints. All runs are included even in scoped ledger
+exports; each document keeps its own original period. The snapshot fingerprint
+identifies the original full SQLite input image, not a retained backup.
+
 Bundle schema 11 appends basis_knowledge to original and revised return-of-capital
 effects. Receipt allocations and entitled quantities remain exact; unknown
 reduction/excess amount pairs are blank. Later sourced resolution appends known

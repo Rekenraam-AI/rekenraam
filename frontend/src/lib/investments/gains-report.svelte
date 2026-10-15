@@ -1,4 +1,9 @@
 <script lang="ts">
+  import SaveGainsRun from './save-gains-run.svelte';
+  import GainsRuns from './gains-runs.svelte';
+  let { csrfToken }: { csrfToken: string } = $props();
+  let selectedRunID = $state(0);
+  function runSaved(id: number) { selectedRunID = id; }
   import GainsFXView from './gains-fx-view.svelte';
   import type { GainsFXInput, InvestmentGainsResponse } from '#lib/api/investments.ts';
   import AlternativeGains from './alternative-gains.svelte';
@@ -114,6 +119,8 @@
 </script>
 
 <div class="space-y-6">
+  <SaveGainsRun request={{ report_type: 'gains', from: appliedFrom || undefined, to: appliedTo || undefined, valuation_as_of: appliedValuationDate }} {csrfToken} onSaved={runSaved} />
+  <GainsRuns bind:selectedID={selectedRunID} />
   <p class="text-sm text-muted">{m.valuation_holdings_policy()}</p>
   <section class="space-y-3" data-testid="alternative-gains">
     <label class="flex flex-wrap items-center gap-2 text-sm text-foreground">
@@ -268,7 +275,7 @@
     {/if}
   </section>
 
-  <GainsStatement {fx} />
+  <GainsStatement {fx} {csrfToken} onRunSaved={runSaved} />
 
   <!-- Realized gains -->
   <section>

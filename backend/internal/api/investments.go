@@ -1885,6 +1885,8 @@ func writeInvestmentServiceError(w http.ResponseWriter, r *http.Request, logger 
 	var overflowError app.LedgerOverflowError
 	var projectionDependency app.AlternativeGainsDependencyError
 	switch {
+	case errors.Is(err, db.ErrOnlineBackupDeadline):
+		writeAPIError(w, http.StatusServiceUnavailable, "RESOURCE_BUSY", "database snapshot is busy; retry the request")
 	case errors.As(err, &projectionDependency):
 		writeAPIError(w, http.StatusConflict, "CONFLICT", projectionDependency.Error())
 	case errors.Is(err, exact.ErrInt64Range), errors.Is(err, db.ErrInvestmentBasisRange), errors.Is(err, app.ErrGainsFXPrecision):

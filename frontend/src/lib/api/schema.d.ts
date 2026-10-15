@@ -24338,6 +24338,235 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/investments/gains/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List saved investment gains runs */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Exclusive descending run ID from next_cursor. */
+                    cursor?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Saved run summaries; frozen output is retrieved by ID. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GainsRunListResponse"];
+                    };
+                };
+                /** @description Invalid cursor */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Save an immutable operational gains run
+         * @description Explicit audited save from one isolated SQLite snapshot. Retains descriptor, exact output and input/output SHA-256 digests. Financial records remain unchanged. Requires the session CSRF token and same-origin policy. Later corrections and price withdrawals cannot restate this run. Saving computes a new run; a previously displayed live read is not retroactively frozen.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CSRF-Token": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GainsRunRequest"];
+                };
+            };
+            responses: {
+                /** @description New frozen report, also available at the Location header. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GainsRunResponse"];
+                    };
+                };
+                /** @description Invalid request or dates */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description CSRF or origin refused */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Exact amount exceeds supported precision */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Database busy or snapshot deadline exceeded */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/gains/runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve an immutable investment gains run
+         * @description Returns saved schema-1 bytes after verifying document integrity. Never recalculates against current history or prices, and never writes.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description true adds an attachment filename. Download the server bytes to preserve the exact JSON document fingerprints. */
+                    download?: boolean;
+                };
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The frozen report and provenance. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GainsRunResponse"];
+                    };
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Run not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error or saved document integrity failure */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/investments/gains/statement": {
         parameters: {
             query?: never;
@@ -30404,6 +30633,59 @@ export interface components {
             /** @description Exact sum of realized_gain_value for every entry with this cost_commodity_id. One row per cost commodity: entries are summed across differing realized_gain_scale values, and total_gain_scale is the scale the sum needs. */
             total_gain_value: string | null;
             total_gain_scale: number | null;
+        };
+        /** @description Save a new operational_v1 run in original currencies. Statement requires from/to and forbids valuation_as_of; gains accepts an optional period and valuation date. No arbitrary historical knowledge cutoff, alternative method or FX options. */
+        GainsRunRequest: {
+            /** @enum {string} */
+            report_type: "gains" | "statement";
+            /** Format: date */
+            from?: string;
+            /** Format: date */
+            to?: string;
+            /** Format: date */
+            valuation_as_of?: string;
+        };
+        GainsRunInputs: {
+            /** @enum {string} */
+            report_type: "gains" | "statement";
+            /** Format: date */
+            from?: string;
+            /** Format: date */
+            to?: string;
+            /** Format: date */
+            valuation_as_of?: string;
+            snapshot_sha256: string;
+            profile: components["schemas"]["GainsProfile"];
+        };
+        /** @description Immutable run under saved-document schema 1. SHA-256 fingerprints detect corruption; they are not signatures. snapshot_sha256 fingerprints the private full SQLite input image before replay, not a retained backup or a portable logical hash. inputs_sha256/output_sha256 hash the exact compact UTF-8 JSON documents. Only successful saves create rows. captured_at is the UTC copy-completion instant; profile.knowledge_cutoff is that instant. Concurrent later writes do not enter the captured book. Retrieve by ID to reproduce saved output; no recalculation occurs. */
+        GainsRunSummary: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {integer} */
+            schema_version: 1;
+            /** @enum {string} */
+            report_type: "gains" | "statement";
+            /** Format: date-time */
+            captured_at: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: int64 */
+            created_by_user_id: number;
+            /** Format: int64 */
+            audit_event_id: number;
+            snapshot_sha256: string;
+            inputs_sha256: string;
+            output_sha256: string;
+            inputs: components["schemas"]["GainsRunInputs"];
+        };
+        GainsRunResponse: components["schemas"]["GainsRunSummary"] & {
+            /** @description Frozen operational gains or period statement, with saved currency metadata, null/unavailable amounts and descriptor. Alternative and reporting projections are absent in schema 1. */
+            output: components["schemas"]["InvestmentGainsResponse"] | components["schemas"]["InvestmentGainsStatementResponse"];
+        };
+        GainsRunListResponse: {
+            runs: components["schemas"]["GainsRunSummary"][];
+            /** @description Exclusive descending run ID cursor; null at the end. */
+            next_cursor: string | null;
         };
         InvestmentGainsResponse: {
             reporting?: components["schemas"]["GainsFXProjection"];

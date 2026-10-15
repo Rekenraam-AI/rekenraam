@@ -1,7 +1,9 @@
 <script lang="ts">
   import GainsFXView from './gains-fx-view.svelte';
   import type { GainsFXInput } from '#lib/api/investments.ts';
-  let { fx }: { fx?: GainsFXInput } = $props();
+  import SaveGainsRun from './save-gains-run.svelte';
+  import type { InvestmentGainsStatementResponse } from '#lib/api/investments.ts';
+  let { fx, saved, csrfToken = '', onRunSaved = () => {} }: { fx?: GainsFXInput; saved?: InvestmentGainsStatementResponse; csrfToken?: string; onRunSaved?: (id: number) => void } = $props();
   import { createQuery } from '@tanstack/svelte-query';
   import Panel from '#lib/components/panel.svelte';
   import StatePanel from '#lib/components/state-panel.svelte';
@@ -20,6 +22,7 @@
   // R18 period statement (#231): per currency, opening unrealized at the day
   // before the period, realized and income in it, closing unrealized at its
   // end. An absent figure is shown with its reason, never as zero.
+  const statementID = $props.id();
   const ownerToday = useOwnerToday();
   const today = ownerToday();
   const locale = $derived(getLocale());
@@ -35,8 +38,8 @@
     applied = { from: fromDate, to: toDate };
   }
 
-  const statementQuery = createQuery(() => investmentGainsStatementQueryOptions(applied.from, applied.to, fx));
-  const statement = $derived(statementQuery.data);
+  const statementQuery = createQuery(() => ({ ...investmentGainsStatementQueryOptions(applied.from, applied.to, fx), enabled: !saved }));
+  const statement = $derived(saved ?? statementQuery.data);
 
   function day(date: string): string {
     return dates.format(new Date(`${date}T00:00:00Z`));
@@ -152,10 +155,10 @@
   }
 </script>
 
-<section class="space-y-3" aria-labelledby="gains-statement-title" data-testid="gains-statement">
+<section class="space-y-3" aria-labelledby={statementID} data-testid="gains-statement">
   <div class="flex flex-wrap items-center gap-3">
-    <h2 id="gains-statement-title" class="text-sm font-semibold text-foreground">{m.valuation_statement_title()}</h2>
-    <form
+    <h2 id={statementID} class="text-sm font-semibold text-foreground">{m.valuation_statement_title()}</h2>
+    {#if !saved}<form
       class="flex flex-wrap items-center gap-2 text-sm"
       onsubmit={(event) => {
         event.preventDefault();
@@ -191,18 +194,21 @@
       >
         {m.valuation_statement_apply()}
       </button>
-    </form>
+    </form>{/if}
   </div>
-  {#if rangeInvalid}
+  {#if !saved && rangeInvalid}
     <p id="gains-statement-range-error" class="text-sm text-destructive">{m.valuation_statement_range_invalid()}</p>
   {/if}
   <p class="text-xs text-muted">
-    {m.valuation_statement_note({ from: day(applied.from), to: day(applied.to) })}
+    {m.valuation_statement_note({ from: day(saved?.from ?? applied.from), to: day(saved?.to ?? applied.to) })}
   </p>
 
-  {#if statementQuery.isPending}
+  {#if !saved}
+    <SaveGainsRun request={{ report_type: 'statement', from: applied.from, to: applied.to }} {csrfToken} onSaved={onRunSaved} />
+  {/if}
+  {#if !saved && statementQuery.isPending}
     <Panel><p class="text-sm text-muted" role="status">{m.valuation_statement_loading()}</p></Panel>
-  {:else if statementQuery.isError}
+  {:else if !saved && statementQuery.isError}
     <Panel><p class="text-sm text-destructive" role="alert">{m.valuation_statement_error()}</p></Panel>
   {:else if !statement || statement.rows.length === 0}
     <StatePanel title={m.valuation_statement_empty()} copy="" />

@@ -95,22 +95,6 @@ func investmentGainsStatement(logger *slog.Logger, authService *app.AuthService,
 			writeCurrencyServiceError(w, r, logger, "list gains statement currencies", err)
 			return
 		}
-		rows := make([]gainsStatementRowResponse, 0, len(statement.Rows))
-		for _, row := range statement.Rows {
-			realizedValue, realizedScale := statementAmountFields(row.Realized)
-			changeValue, changeScale := statementAmountFields(row.UnrealizedChange)
-			totalValue, totalScale := statementAmountFields(row.Total)
-			rows = append(rows, gainsStatementRowResponse{
-				CommodityID:       row.CommodityID,
-				Opening:           toGainsStatementValuationResponse(row.Opening),
-				Closing:           toGainsStatementValuationResponse(row.Closing),
-				RealizedGainValue: realizedValue, RealizedGainScale: realizedScale,
-				DisposalCount: row.DisposalCount, RealizedUnresolvedCount: row.RealizedUnresolvedCount,
-				IncomeValue: moneyCoefficient(row.Income.Value), IncomeScale: row.Income.Scale, IncomeCount: row.IncomeCount,
-				UnrealizedChangeValue: changeValue, UnrealizedChangeScale: changeScale,
-				TotalValue: totalValue, TotalScale: totalScale,
-			})
-		}
 		var reporting *gainsFXStatementResponse
 		if fx != nil {
 			converted, err := investmentService.ConvertGainsStatement(r.Context(), statement, *fx)
@@ -120,9 +104,28 @@ func investmentGainsStatement(logger *slog.Logger, authService *app.AuthService,
 			}
 			reporting = &gainsFXStatementResponse{Profile: toGainsProfileResponse(converted.Profile), Opening: converted.Opening, Realized: converted.Realized, Income: converted.Income, Closing: converted.Closing, UnrealizedChange: converted.UnrealizedChange, Total: converted.Total}
 		}
-		writeJSON(w, http.StatusOK, investmentGainsStatementResponse{
-			Reporting: reporting, Profile: toGainsProfileResponse(statement.Profile), From: statement.From, To: statement.To,
-			Currencies: toCurrencyResponses(currencies), Rows: rows,
+		response := gainsStatementResponse(statement, currencies)
+		response.Reporting = reporting
+		writeJSON(w, http.StatusOK, response)
+	}
+}
+
+func gainsStatementResponse(statement app.GainsStatement, currencies []app.Currency) investmentGainsStatementResponse {
+	rows := make([]gainsStatementRowResponse, 0, len(statement.Rows))
+	for _, row := range statement.Rows {
+		realizedValue, realizedScale := statementAmountFields(row.Realized)
+		changeValue, changeScale := statementAmountFields(row.UnrealizedChange)
+		totalValue, totalScale := statementAmountFields(row.Total)
+		rows = append(rows, gainsStatementRowResponse{
+			CommodityID:       row.CommodityID,
+			Opening:           toGainsStatementValuationResponse(row.Opening),
+			Closing:           toGainsStatementValuationResponse(row.Closing),
+			RealizedGainValue: realizedValue, RealizedGainScale: realizedScale,
+			DisposalCount: row.DisposalCount, RealizedUnresolvedCount: row.RealizedUnresolvedCount,
+			IncomeValue: moneyCoefficient(row.Income.Value), IncomeScale: row.Income.Scale, IncomeCount: row.IncomeCount,
+			UnrealizedChangeValue: changeValue, UnrealizedChangeScale: changeScale,
+			TotalValue: totalValue, TotalScale: totalScale,
 		})
 	}
+	return investmentGainsStatementResponse{Profile: toGainsProfileResponse(statement.Profile), From: statement.From, To: statement.To, Currencies: toCurrencyResponses(currencies), Rows: rows}
 }

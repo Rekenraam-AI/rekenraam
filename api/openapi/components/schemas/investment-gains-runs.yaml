@@ -1,0 +1,126 @@
+GainsRunRequest:
+  type: object
+  additionalProperties: false
+  required:
+  - report_type
+  description: Save a new operational_v1 run in original currencies. Statement requires
+    from/to and forbids valuation_as_of; gains accepts an optional period and valuation
+    date. No arbitrary historical knowledge cutoff, alternative method or FX options.
+  properties:
+    report_type: &id001
+      type: string
+      enum:
+      - gains
+      - statement
+    from: &id002
+      type: string
+      format: date
+    to: &id003
+      type: string
+      format: date
+    valuation_as_of: &id004
+      type: string
+      format: date
+GainsRunInputs:
+  type: object
+  required:
+  - report_type
+  - snapshot_sha256
+  - profile
+  properties:
+    report_type: *id001
+    from: *id002
+    to: *id003
+    valuation_as_of: *id004
+    snapshot_sha256:
+      type: string
+    profile:
+      $ref: ../../openapi.yaml#/components/schemas/GainsProfile
+GainsRunSummary:
+  type: object
+  required:
+  - id
+  - schema_version
+  - report_type
+  - captured_at
+  - created_at
+  - created_by_user_id
+  - audit_event_id
+  - snapshot_sha256
+  - inputs_sha256
+  - output_sha256
+  - inputs
+  description: Immutable run under saved-document schema 1. SHA-256 fingerprints detect
+    corruption; they are not signatures. snapshot_sha256 fingerprints the private
+    full SQLite input image before replay, not a retained backup or a portable logical
+    hash. inputs_sha256/output_sha256 hash the exact compact UTF-8 JSON documents.
+    Only successful saves create rows. captured_at is the UTC copy-completion instant;
+    profile.knowledge_cutoff is that instant. Concurrent later writes do not enter
+    the captured book. Retrieve by ID to reproduce saved output; no recalculation
+    occurs.
+  properties:
+    id:
+      type: integer
+      format: int64
+    schema_version:
+      type: integer
+      enum:
+      - 1
+    report_type:
+      type: string
+      enum:
+      - gains
+      - statement
+    captured_at:
+      type: string
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+    created_by_user_id:
+      type: integer
+      format: int64
+    audit_event_id:
+      type: integer
+      format: int64
+    snapshot_sha256:
+      type: string
+      pattern: ^[0-9a-f]{64}$
+    inputs_sha256:
+      type: string
+      pattern: ^[0-9a-f]{64}$
+    output_sha256:
+      type: string
+      pattern: ^[0-9a-f]{64}$
+    inputs:
+      $ref: '#/GainsRunInputs'
+GainsRunResponse:
+  allOf:
+  - $ref: '#/GainsRunSummary'
+  - type: object
+    required:
+    - output
+    properties:
+      output:
+        description: Frozen operational gains or period statement, with saved currency
+          metadata, null/unavailable amounts and descriptor. Alternative and reporting
+          projections are absent in schema 1.
+        oneOf:
+        - $ref: ../../openapi.yaml#/components/schemas/InvestmentGainsResponse
+        - $ref: ../../openapi.yaml#/components/schemas/InvestmentGainsStatementResponse
+GainsRunListResponse:
+  type: object
+  required:
+  - runs
+  - next_cursor
+  properties:
+    runs:
+      type: array
+      maxItems: 20
+      items:
+        $ref: '#/GainsRunSummary'
+    next_cursor:
+      type:
+      - string
+      - 'null'
+      description: Exclusive descending run ID cursor; null at the end.

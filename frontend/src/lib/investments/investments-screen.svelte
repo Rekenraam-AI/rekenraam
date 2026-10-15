@@ -338,7 +338,7 @@
 
     <!-- Gains tab -->
     {#if activeTab === 'gains'}
-      <GainsReport />
+      <GainsReport {csrfToken} />
     {/if}
 
     {#if activeTab === 'splits'}<SplitActivity {csrfToken}/>{/if}

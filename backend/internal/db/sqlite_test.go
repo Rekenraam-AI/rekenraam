@@ -277,6 +277,9 @@ func TestMigrateSeededBaselineMatchesFreshSchema(t *testing.T) {
 	// TestPriceDependencyMigrationBackfillsDerivationLegs covers one that does.
 	assert.Equal(t, "0", after["count:price_observation_dependencies"])
 	delete(after, "count:price_observation_dependencies")
+	// #234 adds empty immutable report storage; existing figures stay exact.
+	assert.Equal(t, "0", after["count:investment_gains_runs"])
+	delete(after, "count:investment_gains_runs")
 	delete(before, "count:goose_db_version")
 	delete(after, "count:goose_db_version")
 
@@ -1257,7 +1260,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(6), version, "the head admits crypto instruments and quote providers")
+	assert.Equal(t, int64(7), version, "the head preserves immutable investment gains runs")
 
 	ctx := context.Background()
 	database, err := Open(ctx, "file:"+filepath.Join(t.TempDir(), "schema.sqlite"))
@@ -1286,11 +1289,14 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 		objectCounts[kind]++
 	}
 	assert.Equal(t, map[string]int{
-		"index":   109,
-		"table":   112,
-		"trigger": 149,
+		"index":   110,
+		"table":   113,
+		"trigger": 151,
 		"view":    15,
 	}, objectCounts, "the migrated head must retain every schema object")
+	assert.Equal(t, "table", objects["investment_gains_runs"])
+	assert.Equal(t, "trigger", objects["investment_gains_runs_no_update"])
+	assert.Equal(t, "trigger", objects["investment_gains_runs_no_delete"])
 	assert.Equal(t, "table", objects["price_observation_dependencies"])
 	assert.Equal(t, "index", objects["price_observation_dependencies_source_idx"])
 	assert.Equal(t, "trigger", objects["price_observation_dependencies_valid"])

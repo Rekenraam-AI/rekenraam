@@ -14,7 +14,7 @@ Other questions have exactly one home each:
 Do not restate shipped detail here; when a focus item ships, delete it and
 record the capability in `implemented.md`.
 
-Last reviewed: 2026-10-14. R16’s agreed gates, R11 price management and R17
+Last reviewed: 2026-10-15. R16’s agreed gates, R11 price management and R17
 quotes/crypto are delivered. The current order is R18 gains projections, then
 R13 returns analytics.
 Owner-local date correctness is delivered; native catalog review remains
@@ -296,9 +296,10 @@ delivered (2026-10-14), along with alternative methods
 [#232](https://github.com/sergeyfarin/rekenraam/issues/232) and reporting-currency
 FX [#233](https://github.com/sergeyfarin/rekenraam/issues/233) (2026-10-15): two
 named FX methods, component rate provenance and complete-only gains/statement
-totals with original currencies retained. Reproducible runs [#234](https://github.com/sergeyfarin/rekenraam/issues/234) and
-person-pooled average cost [#235](https://github.com/sergeyfarin/rekenraam/issues/235)
-remain. I-04 formal postings are out of R18 until a need is evidenced.
+totals with original currencies retained. Immutable operational runs [#234](https://github.com/sergeyfarin/rekenraam/issues/234)
+are delivered (2026-10-15), including saved gains/statements, provenance, export
+and document self-check. Person-pooled average cost [#235](https://github.com/sergeyfarin/rekenraam/issues/235)
+remains. I-04 formal postings are out of R18 until a need is evidenced.
 
 The plan must specify named basis profiles rather than a tax-engine promise. A
 profile states purpose/scope, cost-basis method, effective period/date basis,

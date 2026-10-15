@@ -162,3 +162,35 @@ point-in-time unrealized figures with their price date; realized gain belongs
 to period reports. Purpose and jurisdiction are user labels on a named
 method, never a compliance claim. Formal gain/revaluation postings (layer 4,
 I-04) are not part of R18 until a user need is evidenced.
+
+## Immutable report-run refinement — 2026-10-15 (#234)
+
+Layer 3 now supports explicitly saved immutable operational gains and period
+statements. The [reporting plan](../plans/investment-reporting-plan.md#immutable-operational-runs-234)
+defines saved-document schema 1: one consistent disposable SQLite input image,
+full `operational_v1` descriptor, resolved request, exact outputs, SHA-256 input
+and output fingerprints, capture time and actor/audit attribution. Saving is an
+explicit audited command; retrieval returns the preserved document without
+replay. Current live profiles retain their effective-history semantics. Saved
+runs do not post, re-elect lots or alter reconciliation, and they cannot recover
+an earlier unsaved live response. Alternative-method and FX runs remain outside
+saved schema 1.
+
+Knowledge-time reconstruction was rejected for this bounded slice: observation
+withdrawals and operational replay currently evaluate current effective facts
+and latest revisions. A coordinated temporal contract across these readers and
+reference versions would be substantially larger than a price timestamp filter.
+The existing native backup API provides an isolated snapshot on which existing
+Go readers can run unchanged, without racing later writes or introducing a
+parallel financial engine. The private snapshot is discarded; only its physical
+fingerprint and the finished document are retained. Snapshot hashes identify the
+input image, not a portable logical export, and hashes do not provide signatures.
+
+A saved run is durable investment evidence, with immutable UPDATE/DELETE guards
+and a single atomic run/audit insertion. Forward migration 0007 adds the rows
+without changing the baseline. Backup/restore preserves them; bundle schema 12
+exports all saved documents and fingerprints even under ledger filters. The
+investment-foundation self-check checks document integrity, never restates old
+figures from current history. Future document schemas/readers must preserve old
+outputs rather than recompute or overwrite them. This refines ADR 0011's bundle
+contract without changing the canonical ledger CSV or QIF semantics.

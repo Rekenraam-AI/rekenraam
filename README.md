@@ -12,6 +12,8 @@ and named short sale/cover workflows ship within R16's agreed scope. Provider
 import for additional operation kinds and other extensions remain tracked;
 see the [R16 plan](docs/plans/investment-operation-refactor-plan.md) and the
 [feature ledger](docs/implemented.md) for the exact boundary.
+Gains and period statements can be saved as immutable operational reports and
+reopened after corrections or price withdrawals; the [reporting policy](docs/plans/investment-reporting-plan.md#immutable-operational-runs-234) defines their scope.
 
 ## Run locally
 

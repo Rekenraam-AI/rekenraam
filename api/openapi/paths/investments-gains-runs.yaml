@@ -1,0 +1,72 @@
+get:
+  summary: List saved investment gains runs
+  parameters:
+  - name: cursor
+    in: query
+    schema:
+      type: string
+      pattern: ^[1-9][0-9]*$
+    description: Exclusive descending run ID from next_cursor.
+  responses:
+    '200':
+      description: Saved run summaries; frozen output is retrieved by ID.
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/GainsRunListResponse
+    '400':
+      description: Invalid cursor
+      content: &id001
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+    '401':
+      description: Authentication required
+      content: *id001
+    '500':
+      description: Internal server error
+      content: *id001
+post:
+  summary: Save an immutable operational gains run
+  description: Explicit audited save from one isolated SQLite snapshot. Retains descriptor,
+    exact output and input/output SHA-256 digests. Financial records remain unchanged.
+    Requires the session CSRF token and same-origin policy. Later corrections and
+    price withdrawals cannot restate this run. Saving computes a new run; a previously
+    displayed live read is not retroactively frozen.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../openapi.yaml#/components/schemas/GainsRunRequest
+  responses:
+    '201':
+      description: New frozen report, also available at the Location header.
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/GainsRunResponse
+    '400':
+      description: Invalid request or dates
+      content: *id001
+    '401':
+      description: Authentication required
+      content: *id001
+    '403':
+      description: CSRF or origin refused
+      content: *id001
+    '422':
+      description: Exact amount exceeds supported precision
+      content: *id001
+    '503':
+      description: Database busy or snapshot deadline exceeded
+      content: *id001
+    '500':
+      description: Internal server error
+      content: *id001
+  parameters:
+  - in: header
+    name: X-CSRF-Token
+    required: true
+    schema:
+      type: string

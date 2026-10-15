@@ -4,8 +4,8 @@ ADR [0012](../adrs/0012-investment-ledger-subledger-and-reporting-boundaries.md)
 governs this plan. The [roadmap](../roadmap.md#r18--reproducible-investment-basis-and-gains-projections)
 owns sequencing; [#203](https://github.com/sergeyfarin/rekenraam/issues/203)
 owns the bounded observation-selection delivery. The delivered slices below
-add operational and alternative-method basis profiles; tax calculations and
-frozen historical reports remain outside them.
+add operational and alternative-method basis profiles and explicit immutable
+operational report runs; tax calculations remain outside them.
 
 ## Live observation selection: `live_raw_v1`
 
@@ -70,7 +70,7 @@ selection and age policy and translate unavailable/stale reasons.
 
 ## Reproducible profile boundary
 
-A future R18 profile must pin purpose, basis method/version, effective period,
+A reproducible projection must pin purpose, basis method/version, effective period,
 valuation date, price knowledge boundary, quote/source policy, FX method,
 staleness, reporting currency and rounding, and reconstruct retirements and
 ledger/basis knowledge or persist an immutable run/snapshot. A timestamp on
@@ -133,9 +133,9 @@ compliance.
 `valuation_as_of` returns the same figures until the book's effective history
 or the admitted observations for that date change, and its descriptor says
 which knowledge it used. Reproducing a figure *as it was known at an earlier
-instant* needs either knowledge-time reconstruction of retirements and
-revisions or a persisted immutable run; that choice is a later slice and no
-current response claims it.
+instant* is provided by an explicitly saved immutable run (#234, below). Live
+reads keep using current effective history and never claim historical
+reconstruction. An unsaved earlier read cannot be recovered retroactively.
 
 ### Period statement (#231)
 
@@ -190,8 +190,7 @@ and audit rows stay unchanged. The profile retains `current_effective` history,
 `live_raw_v1` observations (using the operational read's same price knowledge
 cutoff and valuation date), original cost currencies, the seven-day stale
 warning and exact half-up valuation. As with `operational_v1`, later corrected
-history or observation evidence can restate the result; immutable runs remain
-#234. Cross-account person-level pooling remains #235. The period statement
+history or observation evidence can restate the result; immutable operational runs ship separately in #234. Cross-account person-level pooling remains #235. The period statement
 endpoint continues to use `operational_v1`.
 
 The Gains screen offers an optional method selector and compares realized
@@ -255,7 +254,97 @@ The six-locale Gains screen shares currency, method and maximum-age controls
 with its period statement. Responsive reporting cards expose component/rate
 provenance in keyboard-operable disclosures and show incomplete coverage beside
 retained original figures. These remain live reads over current effective
-history; historical reproduction remains #234 and person-level pooling #235.
+history; immutable operational runs are defined below (#234); person-level pooling remains #235.
+
+### Immutable operational runs (#234)
+
+**Decision (2026-10-15): persist immutable report documents**, saved explicitly
+by the owner. Schema 1 covers the slice 1 operational gains output (including
+realized totals, dated unrealized positions, capital-return evidence and currency
+metadata) and the slice 2 period statement. They retain `operational_v1`, its
+exact rules and `ledger_knowledge: current_effective` as evaluated at capture;
+the run is frozen even though that same profile's live reads can later restate.
+Alternative-method and reporting-currency projections are outside saved schema
+1. The UI states that boundary even when such a comparison is selected.
+
+**Rejected alternative:** knowledge-time reconstruction. `live_raw_v1` evaluates
+current withdrawals; dated replay uses effective operations and latest replay
+revisions across disposal, transfer and structural-action families. Retrospective
+reconstruction would need a coordinated temporal contract for every reader,
+retirement/revision and reference-data version. Adding an observation timestamp
+predicate does not reconstruct these dependencies. Saving an immutable output
+provides the bounded reproducibility guarantee without changing canonical
+journal/subledger lifecycle or introducing a second replay engine. A future
+historical reconstruction profile can coexist with these preserved documents.
+
+`POST /api/v1/investments/gains/runs` accepts `report_type: gains|statement` and
+applied dates. Gains accepts optional `from`, `to` and `valuation_as_of` (resolved
+to owner-local today if omitted); statement requires `from..to` and uses its
+closing date, with no separate valuation option. Periods and valuation dates
+are validated as on the source projections. This **computes a fresh run**; it
+does not freeze a previously displayed live response. No arbitrary past
+`knowledge_cutoff`, client-supplied output or tax claim is accepted.
+
+SQLite's existing native online-backup path captures one consistent database
+image through the single writer connection, bounded to 30 seconds. Its private
+0700 temporary directory/0600 file is removed on success or failure. Existing
+Go projections run on the isolated copy, with all dated replay rolled back;
+no provider is called. Concurrent source changes after capture cannot mix the
+gains, opening/closing statement, income or currency metadata. Only the finished
+report and its `investment.gains_run.create` audit commit to the live book in
+one transaction. Failed computation or persistence leaves no run or audit.
+The copied input database is disposable and is **not** retained as a backup.
+
+Each row fixes saved-document `schema_version: 1`, report type, `captured_at`
+(the UTC copy-completion boundary used as the profile's observation knowledge
+cutoff), creation time, actor/audit IDs, normalized request and full descriptor,
+exact compact output JSON and three SHA-256 fingerprints:
+
+- `snapshot_sha256` identifies the complete SQLite input image before it is
+  opened/replayed. It includes all database state, including unrelated metadata
+  and earlier runs; it is not a portable logical ledger hash and cannot be
+  recomputed from an evolved/restored book or a scoped export.
+- `inputs_sha256` hashes the exact compact UTF-8 `inputs` document: resolved
+  request, snapshot fingerprint and descriptor.
+- `output_sha256` hashes the exact compact UTF-8 `output` document, preserving
+  coefficient strings, null amounts, unavailable reasons, price dates and
+  approximation/staleness evidence. It never hashes a displayed rounded value.
+
+These are corruption checks, not signatures or proof against a database editor
+who can replace both data and hashes. The run's ID identifies this document;
+no comparison, later correction, withdrawal or software upgrade recalculates
+it. Ordinary UPDATE/DELETE are refused by triggers; there is no update/delete
+API or automatic pruning. Reads never manufacture saved rows.
+
+`GET /api/v1/investments/gains/runs` lists 20 summaries per page with an exclusive
+descending-ID `next_cursor`. `GET .../runs/{id}` verifies input/output integrity
+and returns the preserved document without a live projection. `?download=true`
+adds a JSON attachment filename and preserves the server's exact document
+bytes; reserializing parsed JSON in a browser may change escaping and therefore
+its fingerprint. The six-locale mobile UI saves applied original-currency gains
+or statement dates, pages through runs, reopens frozen figures and downloads the
+complete document. Saved gain rows use stable instrument/account IDs; currency
+formatting uses the captured metadata. Statement views disable their live query.
+
+Forward migration `0007_investment_gains_runs.sql` preserves existing financial
+rows without a reset; downgrade refuses when any saved run exists. Backup and
+restore retain the exact rows. Bundle schema **12** adds
+`investment-gains-runs.csv` (all runs even for a scoped ledger export), with
+schema/type, timestamps, actor/audit IDs, all fingerprints and the exact two JSON
+documents. The run's own dates remain authoritative; CSV/QIF ledger rows remain
+canonical journal facts. The `investment_foundation` self-check verifies saved
+JSON hashes, input/output descriptor agreement and snapshot/type identity as
+document integrity; it never compares old figures with today's book. A damaged
+run is named explicitly and retrieval refuses it rather than silently rebuilding.
+
+Named validation: `TestInvestmentGainsRunReproducesBeforeSaleReversal` values at
+D, then reverses a sale before D: both saved output types reproduce byte for
+byte while live gains and statements change. It also verifies scoped export,
+backup/restore, immutability and corrupted-document diagnosis. Additional cases
+cover withdrawn quotes, cursor pagination, invalid/authenticated requests,
+failed writes and isolation from a source write before report persistence
+(`TestGainsRunSnapshot*`). `investments-gains-runs.spec.ts` exercises save,
+reversal, reopen, download, six locales and 390px accessibility.
 
 ### Delivery slices
 
@@ -265,7 +354,7 @@ history; historical reproduction remains #234 and person-level pooling #235.
 | 2 | [#231](https://github.com/sergeyfarin/rekenraam/issues/231) | Delivered 2026-10-14. Period gains statement: opening unrealized (day before the period), realized, gross dividend income and closing unrealized per currency for a date range; absent figures are null with reason and counts. |
 | 3 | [#232](https://github.com/sergeyfarin/rekenraam/issues/232) | Delivered 2026-10-15. Alternative-method projection (FIFO/LIFO/average) beside the operational result, computed by rolled-back replay. |
 | 4 | [#233](https://github.com/sergeyfarin/rekenraam/issues/233) | Delivered 2026-10-15. Operational gains and period statement in a reporting currency under two named FX methods, with per-component provenance and complete-only totals. |
-| 5 | [#234](https://github.com/sergeyfarin/rekenraam/issues/234) | Reproducible runs: knowledge-time ledger reconstruction or immutable persisted run, decided by evidence. |
+| 5 | [#234](https://github.com/sergeyfarin/rekenraam/issues/234) | Delivered 2026-10-15. Explicit immutable operational gains/statement runs with snapshot/input/output fingerprints, audit, save/reopen/download UI, bundle schema 12 and document self-check. |
 | 6 | [#235](https://github.com/sergeyfarin/rekenraam/issues/235) | Person-level pooled average-cost profile across accounts (s104/ACB/PMP style), labelled as a method, not tax advice. |
 
 Broker-comparison reads (retained broker-reported basis beside the book's)

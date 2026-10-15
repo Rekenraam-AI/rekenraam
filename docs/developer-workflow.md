@@ -685,3 +685,12 @@ refuses crypto versions or referenced quote sources. Restore a verified
 pre-upgrade backup when downgrade is refused. Ledger bundle schema is unchanged because instrument type,
 commodity kind, precision, identifiers and generic pricing data were already
 exported fields.
+
+
+Forward migration `0007_investment_gains_runs.sql` (#234, 2026-10-15) adds
+immutable saved operational gains/statement runs without resetting existing
+same-baseline databases. Downgrade refuses a database containing saved runs;
+use a verified pre-upgrade backup for rollback. Bundle schema 12 adds
+`investment-gains-runs.csv`; backup/restore retains every original document and
+fingerprint. The investment-foundation self-check diagnoses document corruption
+without recomputing historical figures. See the [reporting policy](plans/investment-reporting-plan.md#immutable-operational-runs-234).
