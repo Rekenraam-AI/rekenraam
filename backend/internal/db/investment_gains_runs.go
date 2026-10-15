@@ -66,7 +66,7 @@ func ValidGainsRunDocument(r GainsRunRecord) bool {
 		Name            string `json:"name"`
 		KnowledgeCutoff string `json:"knowledge_cutoff"`
 	}
-	return r.SchemaVersion == 1 && (r.ReportType == "gains" || r.ReportType == "statement") &&
+	return (r.SchemaVersion == 1 || (r.SchemaVersion == 2 && r.ReportType == "statement")) && (r.ReportType == "gains" || r.ReportType == "statement") &&
 		GainsRunDigest(r.InputsJSON) == r.InputsSHA256 && GainsRunDigest(r.OutputJSON) == r.OutputSHA256 &&
 		json.Unmarshal(r.InputsJSON, &input) == nil && json.Unmarshal(r.OutputJSON, &output) == nil &&
 		input.ReportType == r.ReportType && input.SnapshotSHA256 == r.SnapshotSHA256 &&

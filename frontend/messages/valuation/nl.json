@@ -89,5 +89,13 @@
   "valuation_person_pool_method": "Gemiddelde kostprijs per persoon",
   "valuation_person_pool_note": "Jurisdictienotitie (optioneel)",
   "valuation_person_pool_policy": "Alleen-lezen methode over al uw rekeningen, gewaardeerd op {date}. Pools blijven gescheiden per effect, kostvaluta en long-/shortpositie. Interne overdrachten behouden de pool; elke rekening toont haar aantal en aandeel in de gepoolde kostprijs. Dit is geen belastingberekening: er gelden geen matchingregels voor dezelfde dag of 30 dagen.",
-  "valuation_person_pool_context": "Uw jurisdictiecontext: {note}"
+  "valuation_person_pool_context": "Uw jurisdictiecontext: {note}",
+  "valuation_statement_roc_scope": "Het perioderesultaat is gerealiseerde winst + bruto dividendinkomsten + verandering in ongerealiseerde winst. Het sluit het overschot bij kapitaalteruggave uit en is geen volledig economisch rendement of belastingberekening.",
+  "valuation_statement_roc_receipts": "Kapitaalteruggaven in deze betaalperiode",
+  "valuation_statement_roc_excluded": "Overschot bij kapitaalteruggave buiten het resultaat",
+  "valuation_statement_roc_title": "Bewijs van kapitaalteruggaven",
+  "valuation_statement_roc_coverage": "Ontvangsten: {receipts}; onopgeloste ontvangsten: {unresolved}; loteffecten met onbekende basis: {lots}.",
+  "valuation_statement_roc_timing": "Ontvangsten, bijbehorende basisverlagingen en overschotten worden gegroepeerd op betaaldatum. De basis verandert op de ingangsdatum, mogelijk buiten deze periode. Deze bedragen worden niet bij het resultaat opgeteld; de verlaging zou dan dubbel tellen.",
+  "valuation_statement_roc_legacy": "Dit opgeslagen overzicht dateert van vóór de toelichting op kapitaalteruggave. De dekking van ontvangsten en overschotten is niet beschikbaar, niet nul. De oorspronkelijke cijfers blijven behouden.",
+  "valuation_statement_roc_fx_timing": "Het resultaat in rapportagevaluta sluit het overschot bij kapitaalteruggave uit en is geen volledig economisch rendement of belastingberekening. Ontvangsten en overschotten gebruiken de wisselkoers op betaaldatum; bijbehorende verlagingen die op ingangsdatum. Bij omrekening op waarderingsdatum gebruiken alle drie de einddatum. Ontbrekende dekking maakt het betreffende bedrag niet beschikbaar."
 }

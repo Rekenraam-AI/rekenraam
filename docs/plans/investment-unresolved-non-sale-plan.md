@@ -79,7 +79,10 @@ Numeric excess on a known effect remains outside gains and income, as in the
 existing return-of-capital contract. Its recorded inspection workflow ships in
 [#171](https://github.com/sergeyfarin/rekenraam/issues/171) (2026-10-13); the
 [slice 5 contract](investment-operation-slice-5-contract.md#return-of-capital)
-defines effective allocation reads and immutable history.
+defines effective allocation reads and immutable history. Period statements
+now expose payment-date receipts, associated reductions, excluded excess and
+unknown coverage under the [#238 policy](investment-reporting-plan.md#return-of-capital-period-disclosure-238),
+without treating an unknown amount as zero or adding excess to the gain formula.
 
 ## Resolution, correction and trust boundaries
 

@@ -1260,7 +1260,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(7), version, "the head preserves immutable investment gains runs")
+	assert.Equal(t, int64(8), version, "the head preserves old gains documents and admits capital-return statement schema 2")
 
 	ctx := context.Background()
 	database, err := Open(ctx, "file:"+filepath.Join(t.TempDir(), "schema.sqlite"))

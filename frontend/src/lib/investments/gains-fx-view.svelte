@@ -6,7 +6,8 @@
   import { getLocale } from '#lib/paraglide/runtime.js';
   import { formatQuantity } from '#lib/money/format.ts';
 
-  let { profile, figures, formatGain }: {
+  let { profile, figures, formatGain, note }: {
+    note?: string;
     profile: components['schemas']['GainsProfile'];
     figures: { label: string; figure: GainsFXFigure }[];
     formatGain: (value: string, scale: number, currency: number) => string;
@@ -18,6 +19,9 @@
       case 'proceeds': return m.investments_gains_col_proceeds();
       case 'market_value': return m.investments_gains_col_market_value();
       case 'income': return m.valuation_statement_income();
+      case 'capital_return_receipt': return m.valuation_statement_roc_receipts();
+      case 'capital_return_reduction': return m.investments_roc_reduction();
+      case 'capital_return_excess': return m.valuation_statement_roc_excluded();
     }
   }
   function reason(part: GainsFXComponent): string {
@@ -37,6 +41,7 @@
   <div class="space-y-3" data-testid="gains-fx-results">
     <h3 class="text-sm font-semibold text-foreground">{m.valuation_fx_title()}</h3>
     <p class="break-words text-xs text-muted">{m.valuation_fx_profile({ method: profile.fx_method, date: profile.valuation_as_of, days: profile.fx_max_age_days ?? 7 })}</p>
+    {#if note}<p class="text-xs text-muted">{note}</p>{/if}
     <dl class="divide-y divide-border text-sm">
       {#each figures as { label, figure }}
         <div class="grid gap-x-3 gap-y-1 py-2 sm:grid-cols-[minmax(0,1fr)_auto]" data-fx-label={label}>

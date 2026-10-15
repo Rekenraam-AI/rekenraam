@@ -1,11 +1,17 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"github.com/pressly/goose/v3"
 	"net/http"
+	"rekenraam/backend/internal/app"
+	"rekenraam/backend/internal/db"
+	"rekenraam/backend/migrations"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,6 +105,10 @@ func TestInvestmentGainsStatementAPIAbsentFiguresAreNull(t *testing.T) {
 	sale.TransactionDate = "2026-03-01"
 	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/sell", sale, http.StatusCreated)
 
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/return-of-capital", capitalReturnRequest{
+		HoldingAccountID: holding.ID, CommodityID: instrument.CommodityID, CashAccountID: f.cashAccount.ID, CurrencyID: f.commodityID,
+		EffectiveOn: "2026-03-15", PaymentOn: "2026-03-20", AmountValue: exact.New(1000), AmountScale: 2, SourceEvidence: json.RawMessage(`{"notice":"unknown238"}`),
+	}, http.StatusCreated)
 	res := doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet,
 		"/api/v1/investments/gains/statement?from=2026-03-01&to=2026-03-31", nil, http.StatusOK)
 	var raw struct {
@@ -122,4 +132,145 @@ func TestInvestmentGainsStatementAPIAbsentFiguresAreNull(t *testing.T) {
 	assert.JSONEq(t, `"0"`, string(row["income_value"]), "no dividends is a known zero")
 	assert.JSONEq(t, `null`, string(row["unrealized_change_value"]))
 	assert.JSONEq(t, `null`, string(row["total_value"]))
+	var disclosure map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(row["capital_return"], &disclosure))
+	assert.JSONEq(t, `null`, string(disclosure["reduction"]))
+	assert.JSONEq(t, `null`, string(disclosure["excess"]))
+	assert.JSONEq(t, `1`, string(disclosure["unknown_lots"]))
+	assert.JSONEq(t, `1`, string(disclosure["unresolved_count"]))
+}
+
+func TestInvestmentGainsStatementDisclosesExcludedCapitalReturnAPI(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	f := bootstrapInvestmentAPITest(t, handler)
+	instrument := createInstrumentForSession(t, handler, f, "ROC238")
+	holding := createHoldingAccountForSession(t, handler, f, instrument.ID)
+	buy := tradeRequestBody(f, holding.ID, instrument.CommodityID, "1", 700)
+	buy.TransactionDate = "2026-05-01"
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/buy", buy, http.StatusCreated)
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/return-of-capital", capitalReturnRequest{
+		HoldingAccountID: holding.ID, CommodityID: instrument.CommodityID, CashAccountID: f.cashAccount.ID,
+		CurrencyID: f.commodityID, EffectiveOn: "2026-06-01", PaymentOn: "2026-06-10",
+		AmountValue: exact.New(1000), AmountScale: 2, SourceEvidence: json.RawMessage(`{"notice":"238"}`),
+	}, http.StatusCreated)
+	res := doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet,
+		"/api/v1/investments/gains/statement?from=2026-06-01&to=2026-06-30", nil, http.StatusOK)
+	var body map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &body))
+	require.Contains(t, body, "capital_returns", "excluded excess must be visible in the period report itself")
+	var statement investmentGainsStatementResponse
+	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &statement))
+	require.Len(t, statement.CapitalReturns, 1)
+	require.Equal(t, "2026-06-01", statement.CapitalReturns[0].EffectiveOn)
+	require.Equal(t, "2026-06-10", statement.CapitalReturns[0].PaymentOn)
+	require.Equal(t, 1, statement.Rows[0].CapitalReturn.ReceiptCount)
+	requireScaledAPIAmount(t, 1000, 2, &statement.Rows[0].CapitalReturn.Receipt.Value, &statement.Rows[0].CapitalReturn.Receipt.Scale)
+	requireScaledAPIAmount(t, 700, 2, &statement.Rows[0].CapitalReturn.Reduction.Value, &statement.Rows[0].CapitalReturn.Reduction.Scale)
+	requireScaledAPIAmount(t, 300, 2, &statement.Rows[0].CapitalReturn.Excess.Value, &statement.Rows[0].CapitalReturn.Excess.Scale)
+	require.NotNil(t, statement.Rows[0].TotalValue)
+	require.NotNil(t, statement.Rows[0].TotalScale)
+	assertMoneyValue(t, 700, 2, *statement.Rows[0].TotalValue, *statement.Rows[0].TotalScale)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet,
+		"/api/v1/investments/gains/statement?from=2026-06-01&to=2026-06-30&reporting_currency_id="+strconv.FormatInt(f.commodityID, 10)+"&fx_method=historic_basis_valuation_close", nil, http.StatusOK)
+	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &statement))
+	require.NotNil(t, statement.Reporting)
+	requireScaledAPIAmount(t, 300, 2, &statement.Reporting.CapitalReturnExcess.Amount.Value, &statement.Reporting.CapitalReturnExcess.Amount.Scale)
+	require.Equal(t, "2026-06-10", statement.Reporting.CapitalReturnExcess.Components[0].RequestedDate)
+	require.Equal(t, "2026-06-01", statement.Reporting.CapitalReturnReduction.Components[0].RequestedDate)
+}
+
+func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisclosure(t *testing.T) {
+	t.Parallel()
+	handler, database := newSetupTestHandler(t)
+	f := bootstrapInvestmentAPITest(t, handler)
+	instrument := createInstrumentForSession(t, handler, f, "ROCDOC")
+	holding := createHoldingAccountForSession(t, handler, f, instrument.ID)
+	buy := tradeRequestBody(f, holding.ID, instrument.CommodityID, "1", 700)
+	buy.TransactionDate = "2026-05-01"
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/buy", buy, http.StatusCreated)
+	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/return-of-capital", capitalReturnRequest{
+		HoldingAccountID: holding.ID, CommodityID: instrument.CommodityID, CashAccountID: f.cashAccount.ID, CurrencyID: f.commodityID,
+		EffectiveOn: "2026-06-01", PaymentOn: "2026-06-10", AmountValue: exact.New(1000), AmountScale: 2, SourceEvidence: json.RawMessage(`{"notice":"238"}`),
+	}, http.StatusCreated)
+	var receipt capitalReturnResponse
+	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &receipt))
+	ctx := context.Background()
+	service := app.NewInvestmentService(db.NewInvestmentRepository(database), nil, nil, nil)
+	// Manufacture the prior wire format on schema 7 using the real computation,
+	// then persist as the old server did. No new-code save claims it is schema 1.
+	statement, err := service.GainsStatement(ctx, "2026-06-01", "2026-06-30")
+	require.NoError(t, err)
+	statement.Profile.From, statement.Profile.To = statement.From, statement.To
+	currencies, err := app.NewCurrencyService(db.NewCommodityRepository(database), nil).ListCurrencies(ctx)
+	require.NoError(t, err)
+	var output map[string]json.RawMessage
+	encoded, err := json.Marshal(gainsStatementResponse(statement, currencies))
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(encoded, &output))
+	delete(output, "capital_returns")
+	var rows []map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(output["rows"], &rows))
+	for _, row := range rows {
+		delete(row, "capital_return")
+	}
+	output["rows"], err = json.Marshal(rows)
+	require.NoError(t, err)
+	encoded, err = json.Marshal(output)
+	require.NoError(t, err)
+	profile := toGainsProfileResponse(statement.Profile)
+	inputs, err := json.Marshal(map[string]any{"report_type": "statement", "from": statement.From, "to": statement.To, "profile": profile, "snapshot_sha256": strings.Repeat("a", 64)})
+	require.NoError(t, err)
+	var ownerID int64
+	require.NoError(t, database.QueryRow(`SELECT id FROM users LIMIT 1`).Scan(&ownerID))
+	captured, err := time.Parse(time.RFC3339Nano, profile.KnowledgeCutoff)
+	require.NoError(t, err)
+	legacy := db.GainsRunRecord{BookID: 1, SchemaVersion: 1, ReportType: "statement", CapturedAt: profile.KnowledgeCutoff, CreatedAt: captured.Format(time.RFC3339),
+		CreatedByUserID: ownerID, SnapshotSHA256: strings.Repeat("a", 64), InputsJSON: inputs, OutputJSON: encoded, InputsSHA256: db.GainsRunDigest(inputs), OutputSHA256: db.GainsRunDigest(encoded)}
+	provider, err := goose.NewProvider(goose.DialectSQLite3, database, migrations.FS)
+	require.NoError(t, err)
+	_, err = provider.DownTo(ctx, 7)
+	require.NoError(t, err)
+	legacy, err = db.NewInvestmentRepository(database).CreateGainsRun(ctx, legacy, db.AuditEventParams{BookID: 1, ActorUserID: ownerID, OriginType: "browser_api", OccurredAt: legacy.CreatedAt})
+	require.NoError(t, err)
+	require.True(t, db.ValidGainsRunDocument(legacy))
+	_, err = provider.Up(ctx)
+	require.NoError(t, err)
+	got, err := service.GainsRun(ctx, legacy.ID)
+	require.NoError(t, err)
+	require.Equal(t, legacy, got, "forward migration retains all original bytes and hashes")
+	// Retrieval/download never fills in missing schema-1 disclosure.
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/gains/runs/"+strconv.FormatInt(legacy.ID, 10)+"?download=true", nil, http.StatusOK)
+	var downloaded db.GainsRunRecord
+	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &downloaded))
+	downloaded.BookID = legacy.BookID
+	require.Equal(t, legacy, downloaded)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/gains/runs", app.GainsRunRequest{ReportType: "statement", From: "2026-06-01", To: "2026-06-30"}, http.StatusCreated)
+	var saved db.GainsRunRecord
+	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &saved))
+	saved.BookID = 1
+	require.Equal(t, 2, saved.SchemaVersion)
+	var savedStatement investmentGainsStatementResponse
+	require.NoError(t, json.Unmarshal(saved.OutputJSON, &savedStatement))
+	require.Len(t, savedStatement.CapitalReturns, 1)
+	requireScaledAPIAmount(t, 300, 2, &savedStatement.Rows[0].CapitalReturn.Excess.Value, &savedStatement.Rows[0].CapitalReturn.Excess.Scale)
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/transactions/"+strconv.FormatInt(receipt.Transaction.ID, 10)+"/reverse-return-of-capital", map[string]any{"reason": "withdrawn"}, http.StatusCreated)
+	for _, run := range []db.GainsRunRecord{legacy, saved} {
+		got, err := service.GainsRun(ctx, run.ID)
+		require.NoError(t, err)
+		require.Equal(t, run, got)
+	}
+	live, err := service.GainsStatement(ctx, "2026-06-01", "2026-06-30")
+	require.NoError(t, err)
+	require.Empty(t, live.CapitalReturns)
+	_, err = provider.DownTo(ctx, 7)
+	require.Error(t, err, "cannot downgrade away schema-2 contract")
+	// Existing portable export and backup tests exercise both saved schemas.
+	bundle := downloadBundle(t, handler, f.sessionCookie, "?from=2026-07-01&to=2026-07-31")
+	table := bundle.table(t, "investment-gains-runs.csv")
+	require.Len(t, table.rows, 2)
+	for i, run := range []db.GainsRunRecord{legacy, saved} {
+		require.Equal(t, string(run.OutputJSON), table.column(table.rows[i], "output_json"))
+		require.Equal(t, strconv.Itoa(run.SchemaVersion), table.column(table.rows[i], "schema_version"))
+	}
 }

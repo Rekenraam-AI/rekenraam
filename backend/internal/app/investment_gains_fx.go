@@ -29,6 +29,7 @@ type GainsFXAmount struct {
 }
 
 type GainsFXComponent struct {
+	OperationID            int64          `json:"operation_id,omitempty"`
 	Role                   string         `json:"role"`
 	LotID                  int64          `json:"lot_id,omitempty"`
 	CommodityID            int64          `json:"commodity_id"`
@@ -60,8 +61,9 @@ type GainsFXProjection struct {
 }
 
 type GainsFXStatement struct {
-	Profile                                                     GainsProfile
-	Opening, Realized, Income, Closing, UnrealizedChange, Total GainsFXFigure
+	CapitalReturnReceipt, CapitalReturnReduction, CapitalReturnExcess GainsFXFigure
+	Profile                                                           GainsProfile
+	Opening, Realized, Income, Closing, UnrealizedChange, Total       GainsFXFigure
 }
 
 func (input GainsFXInput) validated() (GainsFXInput, error) {
@@ -369,7 +371,26 @@ func (s *InvestmentService) ConvertGainsStatement(ctx context.Context, statement
 		part := GainsFXComponent{Role: "income", CommodityID: i.CommodityID, Source: &GainsFXAmount{Value: i.Value, Scale: i.Scale}, RequestedDate: date}
 		parts = append(parts, part)
 	}
-	converter, err := s.gainsFXConverter(ctx, statement.Profile, input, parts)
+	// Receipts and excess use payment date; the associated reduction uses its
+	// effective date. valuation_date_all uses closing date for all three.
+	receiptParts, reductionParts, excessParts := []GainsFXComponent{}, []GainsFXComponent{}, []GainsFXComponent{}
+	for _, receipt := range statement.CapitalReturns {
+		paymentDate, effectiveDate := receipt.PaymentOn, receipt.EffectiveOn
+		if input.Method == GainsFXValuationDateAll {
+			paymentDate, effectiveDate = statement.To, statement.To
+		}
+		receiptParts = append(receiptParts, GainsFXComponent{Role: "capital_return_receipt", OperationID: receipt.OperationID, CommodityID: receipt.CostCommodityID, Source: &GainsFXAmount{Value: receipt.AmountValue, Scale: receipt.AmountScale}, RequestedDate: paymentDate})
+		reduction := GainsFXComponent{Role: "capital_return_reduction", OperationID: receipt.OperationID, CommodityID: receipt.CostCommodityID, RequestedDate: effectiveDate}
+		excess := GainsFXComponent{Role: "capital_return_excess", OperationID: receipt.OperationID, CommodityID: receipt.CostCommodityID, RequestedDate: paymentDate}
+		if receipt.UnknownLots == 0 {
+			reduction.Source = &GainsFXAmount{Value: receipt.ReductionValue, Scale: receipt.ReductionScale}
+			excess.Source = &GainsFXAmount{Value: receipt.ExcessValue, Scale: receipt.ExcessScale}
+		}
+		reductionParts = append(reductionParts, reduction)
+		excessParts = append(excessParts, excess)
+	}
+	all := append(append(append(append([]GainsFXComponent{}, parts...), receiptParts...), reductionParts...), excessParts...)
+	converter, err := s.gainsFXConverter(ctx, statement.Profile, input, all)
 	if err != nil {
 		return GainsFXStatement{}, err
 	}
@@ -387,6 +408,15 @@ func (s *InvestmentService) ConvertGainsStatement(ctx context.Context, statement
 	result.Profile.From, result.Profile.To = statement.From, statement.To
 	result.Income, err = converter.figure(parts)
 	if err != nil {
+		return result, err
+	}
+	if result.CapitalReturnReceipt, err = converter.figure(receiptParts); err != nil {
+		return result, err
+	}
+	if result.CapitalReturnReduction, err = converter.figure(reductionParts); err != nil {
+		return result, err
+	}
+	if result.CapitalReturnExcess, err = converter.figure(excessParts); err != nil {
 		return result, err
 	}
 	negativeOpening := result.Opening

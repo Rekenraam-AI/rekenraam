@@ -480,6 +480,14 @@ non-trivial diff (yours or reviewed):
     `TestLiveStatementBoundariesDisposalsIncomeAndFXShareEffectiveHistory`,
     `TestLiveGainsAPICorrectionBetweenCompositionStages`.
 
+44. **A complete formula mistaken for a complete return** — period gains can
+    correctly sum realized + dividends + unrealized change while excluding
+    capital-return excess (#238). Disclose the excluded amount and unknown
+    coverage beside the total; retain payment versus effective dates and
+    independent FX coverage. Never add the basis reduction again. New saved
+    disclosure needs its own document version; old output bytes remain frozen.
+    Named regression: `TestGainsStatementCapitalReturnExcessIsSeparateFromLimitedTotal`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

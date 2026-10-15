@@ -4014,7 +4014,7 @@ InvestmentGainsStatementResponse:
   description: >-
     Period gains statement (R18 slice 2, #231). One row per currency that has a
     position at either valuation date, a disposal in the period or investment
-    income in the period. Not a tax computation.
+    income or return-of-capital receipt in the period. The total excludes return-of-capital excess and is not a comprehensive economic return or tax computation.
   required:
     - profile
     - from
@@ -4022,6 +4022,11 @@ InvestmentGainsStatementResponse:
     - currencies
     - rows
   properties:
+    capital_returns:
+      type: array
+      description: Schema-2 payment-date receipt evidence. Absent only in saved schema-1 statements; absence is not zero receipts.
+      items:
+        $ref: '#/CapitalReturnRead'
     reporting:
       $ref: "#/GainsFXStatement"
     profile:
@@ -4064,6 +4069,8 @@ GainsStatementRow:
     - total_value
     - total_scale
   properties:
+    capital_return:
+      $ref: '#/GainsStatementCapitalReturn'
     commodity_id:
       type: integer
       format: int64
@@ -4105,7 +4112,7 @@ GainsStatementRow:
     total_value:
       type: [string, 'null']
       pattern: '^-?(0|[1-9][0-9]{0,18})$'
-      description: Realized gain plus income plus unrealized change; null when any part is absent.
+      description: Limited-scope realized gain plus income plus unrealized change, excluding capital-return excess; null when any part is absent. See capital_return beside this figure.
     total_scale:
       type: [integer, 'null']
 
@@ -4765,10 +4772,14 @@ GainsFXComponent:
   properties:
     role:
       type: string
-      enum: [basis, proceeds, market_value, income]
+      enum: [basis, proceeds, market_value, income, capital_return_receipt, capital_return_reduction, capital_return_excess]
     lot_id:
       type: integer
       format: int64
+    operation_id:
+      type: integer
+      format: int64
+      description: Effective return-of-capital operation supplying this disclosure component.
     commodity_id:
       type: integer
       format: int64
@@ -4848,6 +4859,12 @@ GainsFXStatement:
   type: object
   required: [profile, opening, realized, income, closing, unrealized_change, total]
   properties:
+    capital_return_receipt:
+      $ref: '#/GainsFXFigure'
+    capital_return_reduction:
+      $ref: '#/GainsFXFigure'
+    capital_return_excess:
+      $ref: '#/GainsFXFigure'
     profile:
       $ref: '#/GainsProfile'
     opening:
@@ -4862,3 +4879,35 @@ GainsFXStatement:
       $ref: '#/GainsFXFigure'
     total:
       $ref: '#/GainsFXFigure'
+
+GainsStatementCapitalReturn:
+  type: object
+  description: >-
+    Payment-date receipt cohort, separate from the limited-scope gain total.
+    Reduction is associated with these receipts, not total basis movement in this
+    period. Basis changes at effective_on, which may fall outside the period.
+    Unknown effects withhold the whole reduction and excess, never a partial sum.
+    Present in live and schema-2 statements; absent in saved schema 1.
+  required: [receipt, reduction, excess, receipt_count, unresolved_count, unknown_lots]
+  properties:
+    receipt:
+      $ref: '#/GainsFXAmount'
+    reduction:
+      oneOf:
+        - $ref: '#/GainsFXAmount'
+        - type: 'null'
+    excess:
+      oneOf:
+        - $ref: '#/GainsFXAmount'
+        - type: 'null'
+    receipt_count:
+      type: integer
+      minimum: 0
+    unresolved_count:
+      type: integer
+      minimum: 0
+      description: Receipts with any unknown reduction/excess effect.
+    unknown_lots:
+      type: integer
+      minimum: 0
+      description: Unknown lot effects across these receipts; independent known effects remain in capital_returns.

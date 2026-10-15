@@ -122,7 +122,11 @@ func (s *InvestmentService) CreateGainsRun(ctx context.Context, input GainsRunIn
 	if err != nil {
 		return db.GainsRunRecord{}, err
 	}
-	run := db.GainsRunRecord{BookID: BookID, SchemaVersion: 1, ReportType: request.ReportType,
+	schemaVersion := 1
+	if request.ReportType == "statement" {
+		schemaVersion = 2
+	}
+	run := db.GainsRunRecord{BookID: BookID, SchemaVersion: schemaVersion, ReportType: request.ReportType,
 		CapturedAt: captured.Format(time.RFC3339Nano), CreatedAt: s.now().UTC().Format(time.RFC3339),
 		CreatedByUserID: input.OwnerUserID, SnapshotSHA256: fingerprint,
 		InputsJSON: inputs, OutputJSON: compact, InputsSHA256: db.GainsRunDigest(inputs), OutputSHA256: db.GainsRunDigest(compact)}

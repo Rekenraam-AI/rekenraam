@@ -247,9 +247,12 @@ six-locale Gains summary and transaction detail share this display; both use
 the existing investment mutation invalidation boundary. Original source JSON
 is displayed as exact saved text, preserving additional numeric metadata.
 
-Numeric excess remains unresolved until a separately specified reporting or
-accounting decision (#118). Viewing these facts does not post income, classify
-tax gain, change basis, or include the excess in definitive disposal gains.
+Numeric excess remains outside disposal gains and income. The
+[#238 reporting decision](investment-reporting-plan.md#return-of-capital-period-disclosure-238)
+exposes it separately in period statements beside an explicitly limited-scope
+result. A tax classification or explicit accounting-posting policy remains
+unspecified. Viewing these facts does not post income, classify tax gain,
+change basis, or include the excess in definitive disposal gains.
 This visibility slice needs neither tax profiles nor a new financial writer.
 
 ## Split and reverse split

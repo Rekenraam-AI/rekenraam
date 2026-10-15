@@ -24588,7 +24588,7 @@ export interface paths {
         };
         /**
          * Period gains statement under operational_v1
-         * @description R18 slice 2 (#231). For each currency, reports the unrealized gain of the positions held at the end of the day before `from` (opening), the realized gain of disposals dated in the period, the investment income of effective dividends paid in the period, and the unrealized gain at `to` (closing). Both valuations replay positions under the operational_v1 profile and price them with the latest live_raw_v1 observation on or before their date. A figure that depends on a missing price or an unresolved basis is null with its reason and counts, never zero. Read-only; optional reporting conversion preserves original figures. Both boundaries, disposals, income, historical basis, currency metadata and reporting FX share one consistent disposable input snapshot (#237), including effective corrections and observation retirements. No saved run or audit event is created; subsequent live requests may restate the result.
+         * @description R18 slice 2 (#231). For each currency, reports the unrealized gain of the positions held at the end of the day before `from` (opening), the realized gain of disposals dated in the period, the investment income of effective dividends paid in the period, and the unrealized gain at `to` (closing). Both valuations replay positions under the operational_v1 profile and price them with the latest live_raw_v1 observation on or before their date. A figure that depends on a missing price or an unresolved basis is null with its reason and counts, never zero. Read-only; optional reporting conversion preserves original figures. Both boundaries, disposals, income, historical basis, currency metadata and reporting FX share one consistent disposable input snapshot (#237), including effective corrections and observation retirements. No saved run or audit event is created; subsequent live requests may restate the result. The result excludes return-of-capital excess and is not a complete economic return or tax calculation (#238). Separate payment-date receipts, associated basis reductions, excluded excess and unknown-coverage counts accompany each currency row, with effective/payment dates and allocation evidence. Basis changes on its effective date, which may lie outside the receipt period. Separate FX figures use closing date under valuation_date_all, or payment date for receipts/excess and effective date for reduction under historic_basis_valuation_close; each requires its own complete coverage.
          */
         get: {
             parameters: {
@@ -30679,12 +30679,12 @@ export interface components {
             snapshot_sha256: string;
             profile: components["schemas"]["GainsProfile"];
         };
-        /** @description Immutable run under saved-document schema 1. SHA-256 fingerprints detect corruption; they are not signatures. snapshot_sha256 fingerprints the private full SQLite input image before replay, not a retained backup or a portable logical hash. inputs_sha256/output_sha256 hash the exact compact UTF-8 JSON documents. Only successful saves create rows. captured_at is the UTC copy-completion instant; profile.knowledge_cutoff is that instant. Concurrent later writes do not enter the captured book. Retrieve by ID to reproduce saved output; no recalculation occurs. */
+        /** @description Immutable run. Schema 1 retains original gains/statements; schema 2 adds payment-date capital-return disclosure to statements. Existing schema-1 bytes are never rewritten. SHA-256 fingerprints detect corruption; they are not signatures. snapshot_sha256 fingerprints the private full SQLite input image before replay, not a retained backup or a portable logical hash. inputs_sha256/output_sha256 hash the exact compact UTF-8 JSON documents. Only successful saves create rows. captured_at is the UTC copy-completion instant; profile.knowledge_cutoff is that instant. Concurrent later writes do not enter the captured book. Retrieve by ID to reproduce saved output; no recalculation occurs. */
         GainsRunSummary: {
             /** Format: int64 */
             id: number;
             /** @enum {integer} */
-            schema_version: 1;
+            schema_version: 1 | 2;
             /** @enum {string} */
             report_type: "gains" | "statement";
             /** Format: date-time */
@@ -30701,7 +30701,7 @@ export interface components {
             inputs: components["schemas"]["GainsRunInputs"];
         };
         GainsRunResponse: components["schemas"]["GainsRunSummary"] & {
-            /** @description Frozen operational gains or period statement, with saved currency metadata, null/unavailable amounts and descriptor. Alternative and reporting projections are absent in schema 1. */
+            /** @description Frozen operational gains or period statement, with saved currency metadata, null/unavailable amounts and descriptor. Alternative and reporting projections are absent in both schemas. Schema-1 statements lack capital_returns and row capital_return; absence means disclosure unavailable, never zero. */
             output: components["schemas"]["InvestmentGainsResponse"] | components["schemas"]["InvestmentGainsStatementResponse"];
         };
         GainsRunListResponse: {
@@ -30729,9 +30729,14 @@ export interface components {
         /** @description A signed contribution to the figure, with exact source and converted values. Same-currency amounts are exact no-ops, without an observation. Historic basis retains operational allocations and each lot's effective original acquisition date; an unknown date prevents foreign conversion. */
         GainsFXComponent: {
             /** @enum {string} */
-            role: "basis" | "proceeds" | "market_value" | "income";
+            role: "basis" | "proceeds" | "market_value" | "income" | "capital_return_receipt" | "capital_return_reduction" | "capital_return_excess";
             /** Format: int64 */
             lot_id?: number;
+            /**
+             * Format: int64
+             * @description Effective return-of-capital operation supplying this disclosure component.
+             */
+            operation_id?: number;
             /** Format: int64 */
             commodity_id: number;
             source: components["schemas"]["GainsFXAmount"] | null;
@@ -30766,6 +30771,9 @@ export interface components {
             unrealized_total: components["schemas"]["GainsFXFigure"];
         };
         GainsFXStatement: {
+            capital_return_receipt?: components["schemas"]["GainsFXFigure"];
+            capital_return_reduction?: components["schemas"]["GainsFXFigure"];
+            capital_return_excess?: components["schemas"]["GainsFXFigure"];
             profile: components["schemas"]["GainsProfile"];
             opening: components["schemas"]["GainsFXFigure"];
             realized: components["schemas"]["GainsFXFigure"];
@@ -30858,8 +30866,10 @@ export interface components {
             unrealized: components["schemas"]["UnrealizedGainEntry"][];
             realized_totals: components["schemas"]["RealizedGainTotal"][];
         };
-        /** @description Period gains statement (R18 slice 2, #231). One row per currency that has a position at either valuation date, a disposal in the period or investment income in the period. Not a tax computation. */
+        /** @description Period gains statement (R18 slice 2, #231). One row per currency that has a position at either valuation date, a disposal in the period or investment income or return-of-capital receipt in the period. The total excludes return-of-capital excess and is not a comprehensive economic return or tax computation. */
         InvestmentGainsStatementResponse: {
+            /** @description Schema-2 payment-date receipt evidence. Absent only in saved schema-1 statements; absence is not zero receipts. */
+            capital_returns?: components["schemas"]["CapitalReturnRead"][];
             reporting?: components["schemas"]["GainsFXStatement"];
             profile: components["schemas"]["GainsProfile"];
             /** Format: date */
@@ -30872,6 +30882,7 @@ export interface components {
         };
         /** @description One currency's statement. Every figure is exact in that currency. A null figure is absent (a missing price or unresolved basis), never zero; a currency with nothing held at a date has a known zero unrealized gain. */
         GainsStatementRow: {
+            capital_return?: components["schemas"]["GainsStatementCapitalReturn"];
             /**
              * Format: int64
              * @description The cost currency of positions and disposals; the cash currency of income.
@@ -30894,9 +30905,20 @@ export interface components {
             /** @description Closing less opening unrealized gain; null when either is absent. */
             unrealized_change_value: string | null;
             unrealized_change_scale: number | null;
-            /** @description Realized gain plus income plus unrealized change; null when any part is absent. */
+            /** @description Limited-scope realized gain plus income plus unrealized change, excluding capital-return excess; null when any part is absent. See capital_return beside this figure. */
             total_value: string | null;
             total_scale: number | null;
+        };
+        /** @description Payment-date receipt cohort, separate from the limited-scope gain total. Reduction is associated with these receipts, not total basis movement in this period. Basis changes at effective_on, which may fall outside the period. Unknown effects withhold the whole reduction and excess, never a partial sum. Present in live and schema-2 statements; absent in saved schema 1. */
+        GainsStatementCapitalReturn: {
+            receipt: components["schemas"]["GainsFXAmount"];
+            reduction: components["schemas"]["GainsFXAmount"] | null;
+            excess: components["schemas"]["GainsFXAmount"] | null;
+            receipt_count: number;
+            /** @description Receipts with any unknown reduction/excess effect. */
+            unresolved_count: number;
+            /** @description Unknown lot effects across these receipts; independent known effects remain in capital_returns. */
+            unknown_lots: number;
         };
         /** @description Unrealized gain of one currency's positions at a valuation date, with the price dates that produced it. */
         GainsStatementValuation: {

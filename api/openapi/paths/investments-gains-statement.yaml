@@ -13,6 +13,14 @@ get:
     reporting FX share one consistent disposable input snapshot (#237), including
     effective corrections and observation retirements. No saved run or audit event
     is created; subsequent live requests may restate the result.
+    The result excludes return-of-capital excess and is not a complete economic
+    return or tax calculation (#238). Separate payment-date receipts, associated
+    basis reductions, excluded excess and unknown-coverage counts accompany each
+    currency row, with effective/payment dates and allocation evidence. Basis
+    changes on its effective date, which may lie outside the receipt period.
+    Separate FX figures use closing date under valuation_date_all, or payment
+    date for receipts/excess and effective date for reduction under
+    historic_basis_valuation_close; each requires its own complete coverage.
   parameters:
     - name: from
       in: query

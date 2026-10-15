@@ -89,5 +89,13 @@
   "valuation_person_pool_method": "Personenbezogene Durchschnittskosten",
   "valuation_person_pool_note": "Jurisdiktionsnotiz (optional)",
   "valuation_person_pool_policy": "Schreibgeschützte Methode über alle Ihre Konten, bewertet am {date}. Pools bleiben nach Wertpapier, Kostenwährung und Long-/Short-Seite getrennt. Interne Übertragungen erhalten den Pool; jedes Konto zeigt seine Menge und seinen Anteil an der gepoolten Basis. Keine Steuerberechnung: keine Zuordnungsregeln für denselben Tag oder 30 Tage.",
-  "valuation_person_pool_context": "Ihr Jurisdiktionskontext: {note}"
+  "valuation_person_pool_context": "Ihr Jurisdiktionskontext: {note}",
+  "valuation_statement_roc_scope": "Das Periodenergebnis ist realisierter Gewinn + Bruttodividendenerträge + Veränderung des unrealisierten Gewinns. Es schließt Überschüsse aus Kapitalrückzahlungen aus und ist keine vollständige wirtschaftliche Rendite oder Steuerberechnung.",
+  "valuation_statement_roc_receipts": "Kapitalrückzahlungen in dieser Zahlungsperiode",
+  "valuation_statement_roc_excluded": "Vom Ergebnis ausgeschlossener Kapitalrückzahlungsüberschuss",
+  "valuation_statement_roc_title": "Belege der Kapitalrückzahlungen",
+  "valuation_statement_roc_coverage": "Zahlungen: {receipts}; ungeklärte Zahlungen: {unresolved}; Loseffekte mit unbekannter Basis: {lots}.",
+  "valuation_statement_roc_timing": "Zahlungen, zugehörige Basisminderungen und Überschüsse werden nach Zahlungsdatum gruppiert. Die Basis ändert sich am Wirksamkeitsdatum, möglicherweise außerhalb dieser Periode. Diese Beträge werden nicht zum Ergebnis addiert; die Minderung würde sonst doppelt zählen.",
+  "valuation_statement_roc_legacy": "Dieser gespeicherte Bericht stammt aus der Zeit vor der Kapitalrückzahlungsangabe. Die Abdeckung von Zahlungen und Überschüssen ist nicht verfügbar, nicht null. Die ursprünglichen Zahlen bleiben erhalten.",
+  "valuation_statement_roc_fx_timing": "Das Ergebnis in Berichtswährung schließt Kapitalrückzahlungsüberschüsse aus und ist keine vollständige wirtschaftliche Rendite oder Steuerberechnung. Zahlungen und Überschüsse verwenden den Kurs am Zahlungsdatum, zugehörige Minderungen den am Wirksamkeitsdatum. Bei Umrechnung am Bewertungsdatum verwenden alle drei das Enddatum. Fehlende Abdeckung macht den betroffenen Betrag nicht verfügbar."
 }

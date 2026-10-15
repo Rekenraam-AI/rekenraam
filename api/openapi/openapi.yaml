@@ -1481,6 +1481,8 @@ components:
       $ref: "./components/schemas/investments.yaml#/InvestmentGainsStatementResponse"
     GainsStatementRow:
       $ref: "./components/schemas/investments.yaml#/GainsStatementRow"
+    GainsStatementCapitalReturn:
+      $ref: "./components/schemas/investments.yaml#/GainsStatementCapitalReturn"
     GainsStatementValuation:
       $ref: "./components/schemas/investments.yaml#/GainsStatementValuation"
     ErrorBody:

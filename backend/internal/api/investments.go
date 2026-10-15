@@ -1890,7 +1890,7 @@ func writeInvestmentServiceError(w http.ResponseWriter, r *http.Request, logger 
 		writeAPIError(w, http.StatusServiceUnavailable, "RESOURCE_BUSY", "database snapshot is busy; retry the request")
 	case errors.As(err, &projectionDependency):
 		writeAPIError(w, http.StatusConflict, "CONFLICT", projectionDependency.Error())
-	case errors.Is(err, exact.ErrInt64Range), errors.Is(err, db.ErrInvestmentBasisRange), errors.Is(err, app.ErrGainsFXPrecision):
+	case errors.Is(err, exact.ErrInt64Range), errors.Is(err, db.ErrInvestmentBasisRange), errors.Is(err, app.ErrGainsFXPrecision), errors.Is(err, app.ErrGainsStatementPrecision):
 		writeAPIError(w, http.StatusUnprocessableEntity, "LEDGER_OVERFLOW", "investment projection exceeds supported precision")
 	case errors.As(err, &validationError):
 		writeAPIError(w, http.StatusBadRequest, "VALIDATION_FAILED", validationError.Error())

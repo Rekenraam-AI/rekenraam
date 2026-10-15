@@ -1,5 +1,6 @@
 <script lang="ts">
   import GainsFXView from './gains-fx-view.svelte';
+  import CapitalReturnSummary from './capital-return-summary.svelte';
   import type { GainsFXInput } from '#lib/api/investments.ts';
   import SaveGainsRun from './save-gains-run.svelte';
   import type { InvestmentGainsStatementResponse } from '#lib/api/investments.ts';
@@ -148,9 +149,39 @@
         value: row.total_value,
         scale: row.total_scale,
         absent: m.valuation_statement_needs_all(),
-        notes: [],
+        notes: [m.valuation_statement_roc_scope()],
         emphasis: true
-      }
+      },
+      ...(row.capital_return ? [
+        {
+          key: 'roc-receipt',
+          label: m.valuation_statement_roc_receipts(),
+          value: row.capital_return.receipt.value,
+          scale: row.capital_return.receipt.scale,
+          absent: '',
+          notes: [m.valuation_statement_roc_coverage({
+            receipts: row.capital_return.receipt_count,
+            unresolved: row.capital_return.unresolved_count,
+            lots: row.capital_return.unknown_lots
+          })]
+        },
+        {
+          key: 'roc-reduction',
+          label: m.investments_roc_reduction(),
+          value: row.capital_return.reduction?.value ?? null,
+          scale: row.capital_return.reduction?.scale ?? null,
+          absent: m.investments_roc_unresolved(),
+          notes: []
+        },
+        {
+          key: 'roc-excess',
+          label: m.valuation_statement_roc_excluded(),
+          value: row.capital_return.excess?.value ?? null,
+          scale: row.capital_return.excess?.scale ?? null,
+          absent: m.investments_roc_unresolved(),
+          notes: []
+        }
+      ] : [])
     ];
   }
 </script>
@@ -213,15 +244,26 @@
   {:else if !statement || statement.rows.length === 0}
     <StatePanel title={m.valuation_statement_empty()} copy="" />
   {:else}
+    <p class="text-xs text-muted" data-testid="statement-capital-return-policy">{m.valuation_statement_roc_scope()}</p>
+    {#if statement.capital_returns === undefined}
+      <p class="text-sm text-muted" role="note">{m.valuation_statement_roc_legacy()}</p>
+    {:else}
+      <p class="text-xs text-muted">{m.valuation_statement_roc_timing()}</p>
+    {/if}
     {#if statement.reporting}
       {@const reporting = statement.reporting}
-      <GainsFXView profile={reporting.profile} formatGain={amount} figures={[
+      <GainsFXView note={m.valuation_statement_roc_fx_timing()} profile={reporting.profile} formatGain={amount} figures={[
         { label: m.valuation_statement_opening({ date: day(statement.rows[0].opening.valuation_as_of) }), figure: reporting.opening },
         { label: m.valuation_statement_realized(), figure: reporting.realized },
         { label: m.valuation_statement_income(), figure: reporting.income },
         { label: m.valuation_statement_closing({ date: day(statement.to) }), figure: reporting.closing },
         { label: m.valuation_statement_change(), figure: reporting.unrealized_change },
-        { label: m.valuation_statement_total(), figure: reporting.total }
+        { label: m.valuation_statement_total(), figure: reporting.total },
+        ...(reporting.capital_return_receipt && reporting.capital_return_reduction && reporting.capital_return_excess ? [
+          { label: m.valuation_statement_roc_receipts(), figure: reporting.capital_return_receipt },
+          { label: m.investments_roc_reduction(), figure: reporting.capital_return_reduction },
+          { label: m.valuation_statement_roc_excluded(), figure: reporting.capital_return_excess }
+        ] : [])
       ]} />
     {/if}
     <div class="grid gap-3 md:grid-cols-2">
@@ -253,5 +295,15 @@
         </Panel>
       {/each}
     </div>
+    {#if statement.capital_returns?.length}
+      <details class="space-y-3 text-sm text-foreground" data-testid="statement-capital-return-evidence">
+        <summary class="min-h-11 cursor-pointer py-3">{m.valuation_statement_roc_title()}</summary>
+        <div class="grid gap-3 md:grid-cols-2">
+          {#each statement.capital_returns as entry (entry.operation_id)}
+            <CapitalReturnSummary {entry} />
+          {/each}
+        </div>
+      </details>
+    {/if}
   {/if}
 </section>

@@ -158,12 +158,74 @@ range of price dates used. Any figure resting on a missing price or unresolved
 basis is null with its reason, and so is every figure built from it; a
 currency with nothing held at a date has a known zero.
 
-Return-of-capital excess remains outside disposal/income totals; the separate
-gains summary exposes its recorded allocations (#171). The period statement
-does not yet disclose excluded excess or its coverage. The reporting decision
-and period disclosure are tracked in [#238](https://github.com/sergeyfarin/rekenraam/issues/238);
-the present total is the stated realized + dividend income + unrealized-change
-formula, not a comprehensive return or tax calculation.
+### Return-of-capital period disclosure (#238)
+
+**Decision (2026-10-15): preserve the existing limited-scope formula and expose
+excluded capital-return excess beside it.** The period result remains realized
+gain + gross dividend income + change in unrealized gain. It is not a complete
+economic return, a tax calculation, or an instruction to post income. Basis
+reduction already enters the dated position's basis and must not be added again.
+No new combined economic-return or tax figure is inferred.
+
+Each currency row includes `capital_return`: exact `receipt`, nullable
+`reduction` and `excess`, `receipt_count`, `unresolved_count` (receipts with an
+unknown effect) and `unknown_lots` (unknown lot effects). These describe effective
+receipts **paid** within the inclusive `from..to` period, matching #171's payment
+filter. Associated reductions are not a sum of basis movements dated in that
+period: basis changes on `effective_on`, which can precede the payment period.
+Top-level `capital_returns` retains each receipt's effective/payment dates,
+operation/revision/audit identity, exact source evidence and complete latest
+allocation set. Corrections replace retired operations; reversals remove them;
+upstream replay supplies its latest whole set. All readers share #237's capture.
+A currency with only a payment in the period still gets a row.
+
+An unknown lot effect withholds the entire receipt's reduction/excess and the
+currency's corresponding aggregate, never supplying known-only sums as totals.
+Receipts remain exact and independently known lot effects stay inspectable in
+the evidence. No receipts means known zero, distinct from unknown coverage.
+
+Example: one share with EUR 7 basis and EUR 7 market value before June, EUR 10
+return of capital effective/paid during June, unchanged closing price. The
+statement shows EUR 7 limited-scope result, EUR 10 receipts, EUR 7 associated
+basis reduction and EUR 3 **excluded excess**. Nothing calls that excess taxable
+income or posts it. If effective May / paid June, the basis change enters May's
+valuations; June discloses the receipt/reduction/excess cohort without moving that
+change to June or claiming its result is comprehensive.
+
+Reporting FX adds separate `capital_return_receipt`, `capital_return_reduction`
+and `capital_return_excess` figures, retaining component operation IDs, source
+amounts and ordinary rate provenance. `valuation_date_all` converts all three at
+the statement's closing date. `historic_basis_valuation_close` uses payment date
+for cash/excess and effective date for associated reduction; the reduction is
+not translated at a lot's acquisition date. Same-currency amounts are exact
+no-ops; foreign components use the existing inclusive age window, raw evidence
+and component half-up rounding. Unknown source amounts and missing/stale FX
+withhold the affected figure; they do not change original-currency amounts or
+silently erase an independently available limited-scope result. Converted
+receipt minus converted reduction need not equal converted excess when dates
+or rounding differ. None enters the gain formula.
+
+**Saved-document versioning:** new statements save as schema **2**, including
+this disclosure and its source evidence, still in original currencies and under
+`operational_v1`. Gains documents continue to use schema 1. Forward migration
+0008 widens the document-version CHECK and copies all existing rows, exact JSON,
+hashes, IDs and attribution unchanged; immutable guards remain. Downgrade refuses
+while schema-2 documents exist. Schema-1 statements retain their original bytes
+and meaning; the UI explicitly says their receipt/excess coverage is unavailable,
+never zero. It does not fetch current evidence into an old report. Both versions
+remain retrievable, exportable, backed up and checked for document integrity;
+no bundle-format bump is needed because the schema-12 CSV already carries each
+run's document version and exact JSON. Saved alternative/FX projections remain
+out of scope. The six-locale 390 px screen places the scope note beside native
+and converted totals, shows the three separate figures and unknown counts,
+and exposes dated allocation evidence.
+
+Named validation: `TestGainsStatementCapitalReturn*`,
+`TestGainsFXStatementCapitalReturnDatesCoverageAndUnknown`,
+`TestInvestmentGainsStatementDisclosesExcludedCapitalReturnAPI`,
+`TestInvestmentGainsStatementAPIAbsentFiguresAreNull`,
+`TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisclosure`
+and `investments-capital-return-statement.spec.ts`.
 
 ### Consistent live input state (#237)
 
@@ -346,7 +408,8 @@ report and its `investment.gains_run.create` audit commit to the live book in
 one transaction. Failed computation or persistence leaves no run or audit.
 The copied input database is disposable and is **not** retained as a backup.
 
-Each row fixes saved-document `schema_version: 1`, report type, `captured_at`
+Each row fixes its saved-document schema (1 for original gains/statements;
+2 for new statements with #238 disclosure), report type, `captured_at`
 (the UTC copy-completion boundary used as the profile's observation knowledge
 cutoff), creation time, actor/audit IDs, normalized request and full descriptor,
 exact compact output JSON and three SHA-256 fingerprints:
@@ -439,7 +502,7 @@ The comparison shares the operational valuation date, price knowledge cutoff,
 remains independent of its valuation date. All temporary lots, method locks,
 replay effects and redistribution are rolled back on success or failure. No
 migration or operational re-election occurs. Reporting FX, the period statement
-and saved schema 1 remain operational; this comparison is a live read.
+and both saved-document versions remain operational; this comparison is a live read.
 
 The six-locale Gains method selector exposes the method, optional applied note,
 pooling scope and limitations, with account-labelled comparison rows, loading,

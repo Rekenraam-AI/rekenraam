@@ -196,6 +196,13 @@ These apply across all feature phases.
   checked for document integrity without restating their figures. The
   [R18 reporting policy](plans/investment-reporting-plan.md#immutable-operational-runs-234)
   defines the saved schema and its original-currency operational scope.
+- Period investment gains retain the realized + gross dividends + unrealized-change
+  formula, explicitly labelled as limited in scope. Effective return-of-capital
+  receipts, associated basis reductions, excluded excess and unknown coverage
+  are disclosed separately by payment period, with effective/payment dates and
+  independent reporting-FX coverage. No tax classification or postings follow
+  from viewing. New saved statements use schema 2; schema-1 documents keep
+  their original bytes and disclose that this coverage is unavailable (#238).
 - A person-pooled average-cost comparison groups all owner accounts separately
   by security, original cost currency and long/short side. Internal transfers
   preserve pooled quantity and basis, and reads never change operational state.

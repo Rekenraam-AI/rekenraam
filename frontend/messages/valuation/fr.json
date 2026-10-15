@@ -89,5 +89,13 @@
   "valuation_person_pool_method": "Coût moyen mutualisé par personne",
   "valuation_person_pool_note": "Note de juridiction (facultative)",
   "valuation_person_pool_policy": "Méthode en lecture seule sur tous vos comptes, valorisée au {date}. Les groupes restent séparés par titre, devise de coût et position longue/courte. Les transferts internes préservent le groupe ; chaque compte affiche sa quantité et sa part de la base mutualisée. Ce n’est pas un calcul fiscal : aucune règle de rapprochement du même jour ou de 30 jours ne s’applique.",
-  "valuation_person_pool_context": "Votre contexte de juridiction : {note}"
+  "valuation_person_pool_context": "Votre contexte de juridiction : {note}",
+  "valuation_statement_roc_scope": "Le résultat de la période est la plus-value réalisée + les dividendes bruts + la variation de la plus-value latente. Il exclut les excédents de remboursement de capital et ne constitue ni un rendement économique complet ni un calcul fiscal.",
+  "valuation_statement_roc_receipts": "Remboursements de capital de cette période de paiement",
+  "valuation_statement_roc_excluded": "Excédent de remboursement de capital exclu du résultat",
+  "valuation_statement_roc_title": "Justificatifs des remboursements de capital",
+  "valuation_statement_roc_coverage": "Encaissements : {receipts} ; encaissements non résolus : {unresolved} ; effets de lots à base inconnue : {lots}.",
+  "valuation_statement_roc_timing": "Les encaissements, réductions de base associées et excédents sont regroupés par date de paiement. La base change à la date d’effet, qui peut être hors période. Ces montants ne sont pas ajoutés au résultat ; la réduction serait alors comptée deux fois.",
+  "valuation_statement_roc_legacy": "Ce relevé enregistré précède les informations sur les remboursements de capital. La couverture des encaissements et excédents est indisponible, et non nulle. Les chiffres d’origine sont conservés.",
+  "valuation_statement_roc_fx_timing": "Le résultat en devise de présentation exclut aussi les excédents de remboursement de capital et ne constitue ni un rendement complet ni un calcul fiscal. Les encaissements et excédents utilisent le change à la date de paiement ; les réductions associées, à la date d’effet. Avec la conversion à la date de valorisation, tous trois utilisent la date de clôture. Une couverture manquante rend le montant concerné indisponible."
 }

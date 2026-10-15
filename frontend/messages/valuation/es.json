@@ -89,5 +89,13 @@
   "valuation_person_pool_method": "Coste medio agrupado por persona",
   "valuation_person_pool_note": "Nota de jurisdicción (opcional)",
   "valuation_person_pool_policy": "Método de solo lectura para todas sus cuentas, valorado al {date}. Los grupos se separan por valor, moneda de coste y posición larga/corta. Las transferencias internas conservan el grupo; cada cuenta muestra su cantidad y parte de la base agrupada. No es un cálculo fiscal: no aplica reglas de emparejamiento del mismo día ni de 30 días.",
-  "valuation_person_pool_context": "Su contexto jurisdiccional: {note}"
+  "valuation_person_pool_context": "Su contexto jurisdiccional: {note}",
+  "valuation_statement_roc_scope": "El resultado del período es la ganancia realizada + los dividendos brutos + el cambio en la ganancia no realizada. Excluye el exceso de devolución de capital y no es una rentabilidad económica completa ni un cálculo fiscal.",
+  "valuation_statement_roc_receipts": "Devoluciones de capital en este período de pago",
+  "valuation_statement_roc_excluded": "Exceso de devolución de capital excluido del resultado",
+  "valuation_statement_roc_title": "Justificantes de las devoluciones de capital",
+  "valuation_statement_roc_coverage": "Cobros: {receipts}; cobros sin resolver: {unresolved}; efectos de lotes con base desconocida: {lots}.",
+  "valuation_statement_roc_timing": "Los cobros, las reducciones de base asociadas y los excesos se agrupan por fecha de pago. La base cambia en la fecha efectiva, que puede quedar fuera del período. Estos importes no se suman al resultado; la reducción se contaría dos veces.",
+  "valuation_statement_roc_legacy": "Este estado guardado es anterior al desglose de devoluciones de capital. La cobertura de cobros y excesos no está disponible; no es cero. Se conservan las cifras originales.",
+  "valuation_statement_roc_fx_timing": "El resultado en moneda de presentación también excluye el exceso de devolución de capital y no es una rentabilidad completa ni un cálculo fiscal. Los cobros y excesos usan el cambio de la fecha de pago; las reducciones asociadas, el de la fecha efectiva. Con la conversión en fecha de valoración, los tres usan la fecha de cierre. La falta de cobertura deja el importe afectado no disponible."
 }

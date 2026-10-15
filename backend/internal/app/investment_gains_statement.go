@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -9,6 +10,8 @@ import (
 	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/exact"
 )
+
+var ErrGainsStatementPrecision = errors.New("statement disclosure exceeds supported precision")
 
 // StatementAmount is an exact figure at the scale its sum needed.
 type StatementAmount struct {
@@ -31,9 +34,22 @@ type GainsStatementValuation struct {
 	LatestPriceDate   string
 }
 
+// GainsStatementCapitalReturn describes the payment-date receipt cohort. Its
+// reduction is associated with those receipts, not a dated basis-movement total.
+// None of these figures is added to the statement's limited-scope total.
+type GainsStatementCapitalReturn struct {
+	Receipt         *GainsFXAmount `json:"receipt"`
+	Reduction       *GainsFXAmount `json:"reduction"`
+	Excess          *GainsFXAmount `json:"excess"`
+	ReceiptCount    int            `json:"receipt_count"`
+	UnresolvedCount int            `json:"unresolved_count"`
+	UnknownLots     int            `json:"unknown_lots"`
+}
+
 // GainsStatementRow is one currency's period statement (#231).
 type GainsStatementRow struct {
 	CommodityID             int64
+	CapitalReturn           GainsStatementCapitalReturn
 	Opening                 GainsStatementValuation
 	Closing                 GainsStatementValuation
 	Realized                *StatementAmount
@@ -48,10 +64,11 @@ type GainsStatementRow struct {
 // GainsStatement is the period statement under operational_v1. Profile is
 // the closing valuation's; the opening valuation differs only in its date.
 type GainsStatement struct {
-	Profile GainsProfile
-	From    string
-	To      string
-	Rows    []GainsStatementRow
+	Profile        GainsProfile
+	CapitalReturns []CapitalReturnRead
+	From           string
+	To             string
+	Rows           []GainsStatementRow
 }
 
 // Gains statement unavailability reasons for a valuation's total.
@@ -104,12 +121,19 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 		return GainsStatement{}, fmt.Errorf("gains statement income: %w", err)
 	}
 
+	capitalReturns, err := s.ListCapitalReturns(ctx, GainsReportParams{From: from, To: to})
+	if err != nil {
+		return GainsStatement{}, fmt.Errorf("gains statement capital returns: %w", err)
+	}
+
 	type accumulator struct {
-		opening, closing      valuationAccumulator
-		realized              *exact.ScaledInt
-		disposals, unresolved int
-		income                *exact.ScaledInt
-		incomeCount           int
+		receipt, reduction, excess                    *exact.ScaledInt
+		receiptCount, unresolvedReceipts, unknownLots int
+		opening, closing                              valuationAccumulator
+		realized                                      *exact.ScaledInt
+		disposals, unresolved                         int
+		income                                        *exact.ScaledInt
+		incomeCount                                   int
 	}
 	byCurrency := map[int64]*accumulator{}
 	get := func(commodityID int64) *accumulator {
@@ -117,6 +141,7 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 			byCurrency[commodityID] = &accumulator{
 				opening: newValuationAccumulator(), closing: newValuationAccumulator(),
 				realized: exact.NewScaledInt(), income: exact.NewScaledInt(),
+				receipt: exact.NewScaledInt(), reduction: exact.NewScaledInt(), excess: exact.NewScaledInt(),
 			}
 		}
 		return byCurrency[commodityID]
@@ -142,6 +167,19 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 		row.income.AddCoefficient(dividend.Value, dividend.Scale)
 	}
 
+	for _, receipt := range capitalReturns {
+		row := get(receipt.CostCommodityID)
+		row.receiptCount++
+		row.receipt.AddCoefficient(receipt.AmountValue, receipt.AmountScale)
+		row.unknownLots += receipt.UnknownLots
+		if receipt.UnknownLots > 0 {
+			row.unresolvedReceipts++
+			continue
+		}
+		row.reduction.AddCoefficient(receipt.ReductionValue, receipt.ReductionScale)
+		row.excess.AddCoefficient(receipt.ExcessValue, receipt.ExcessScale)
+	}
+
 	commodityIDs := make([]int64, 0, len(byCurrency))
 	for id := range byCurrency {
 		commodityIDs = append(commodityIDs, id)
@@ -152,6 +190,19 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 		acc := byCurrency[id]
 		row := GainsStatementRow{CommodityID: id, DisposalCount: acc.disposals,
 			RealizedUnresolvedCount: acc.unresolved, IncomeCount: acc.incomeCount}
+		disclosure := &row.CapitalReturn
+		disclosure.ReceiptCount, disclosure.UnresolvedCount, disclosure.UnknownLots = acc.receiptCount, acc.unresolvedReceipts, acc.unknownLots
+		if disclosure.Receipt, err = capitalReturnStatementAmount(acc.receipt); err != nil {
+			return GainsStatement{}, err
+		}
+		if acc.unresolvedReceipts == 0 {
+			if disclosure.Reduction, err = capitalReturnStatementAmount(acc.reduction); err != nil {
+				return GainsStatement{}, err
+			}
+			if disclosure.Excess, err = capitalReturnStatementAmount(acc.excess); err != nil {
+				return GainsStatement{}, err
+			}
+		}
 		if row.Opening, err = acc.opening.result(openingDate); err != nil {
 			return GainsStatement{}, err
 		}
@@ -184,7 +235,7 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 		}
 		rows = append(rows, row)
 	}
-	return GainsStatement{Profile: profile, From: from, To: to, Rows: rows}, nil
+	return GainsStatement{Profile: profile, From: from, To: to, Rows: rows, CapitalReturns: capitalReturns}, nil
 }
 
 // valuationAccumulator sums one currency's positions at a valuation date
@@ -259,4 +310,16 @@ func statementAmount(sum *exact.ScaledInt) (*StatementAmount, error) {
 		return nil, fmt.Errorf("gains statement amount out of range: %w", err)
 	}
 	return &StatementAmount{Value: value, Scale: normalized.Scale()}, nil
+}
+
+func capitalReturnStatementAmount(sum *exact.ScaledInt) (*GainsFXAmount, error) {
+	value, err := sum.Coefficient()
+	if err != nil {
+		sum = sum.Normalized()
+		value, err = sum.Coefficient()
+		if err != nil {
+			return nil, ErrGainsStatementPrecision
+		}
+	}
+	return &GainsFXAmount{Value: value, Scale: sum.Scale()}, nil
 }

@@ -181,8 +181,9 @@ separate R16 completion gates above, rather than reopening delivered children.
 **Delivered parallel trust follow-up (2026-10-13):** recorded return-of-capital
 excess visibility [#171](https://github.com/sergeyfarin/rekenraam/issues/171),
 with effective allocations and immutable history in transaction detail and
-the investment summary. The period disclosure and reporting decision remain
-in [#238](https://github.com/sergeyfarin/rekenraam/issues/238). Write-off mobile entry [#172](https://github.com/sergeyfarin/rekenraam/issues/172)
+the investment summary. Period disclosure and its limited-scope reporting
+policy also ship in [#238](https://github.com/sergeyfarin/rekenraam/issues/238)
+(2026-10-15). Write-off mobile entry [#172](https://github.com/sergeyfarin/rekenraam/issues/172)
 is delivered (2026-10-13), with dated lot selection, exact/unresolved loss
 preview and shared gain/checkpoint review. Mixed-cost-currency write-off selection
 [#199](https://github.com/sergeyfarin/rekenraam/issues/199) is delivered (2026-10-13),

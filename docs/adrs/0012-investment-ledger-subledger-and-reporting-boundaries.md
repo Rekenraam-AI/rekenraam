@@ -212,3 +212,14 @@ boundary, measurements and validation.
 This is consistency within a response, not retained reproducibility or temporal
 reconstruction: later requests evaluate later effective history. The descriptor
 remains `current_effective`, and only an explicit saved run preserves its output.
+
+## Capital-return disclosure refinement — 2026-10-15 (#238)
+
+Layer 3's period result retains its realized + gross dividends + unrealized-change
+formula with an explicit limited-scope label. Return-of-capital receipts,
+associated basis reductions and excluded excess are separate payment-cohort
+disclosures; unknown reduction/excess is never zero. The
+[reporting policy](../plans/investment-reporting-plan.md#return-of-capital-period-disclosure-238)
+defines effective/payment timing, independent complete-only FX figures and new
+saved-statement schema 2. Existing schema-1 bytes and meaning are preserved.
+This is reporting disclosure, with no layer-4 posting or tax recognition policy.

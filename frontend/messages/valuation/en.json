@@ -89,5 +89,13 @@
   "valuation_person_pool_method": "Person-pooled average cost",
   "valuation_person_pool_note": "Jurisdiction note (optional)",
   "valuation_person_pool_policy": "Read-only method across all your accounts, valued on {date}. Pools stay separate by security, cost currency and long/short side. Internal transfers preserve the pool; each account shows its quantity and share of pooled basis. This is not a tax calculation: no same-day or 30-day matching rules apply.",
-  "valuation_person_pool_context": "Your jurisdiction context: {note}"
+  "valuation_person_pool_context": "Your jurisdiction context: {note}",
+  "valuation_statement_roc_scope": "The period result is realized gain + gross dividend income + change in unrealized gain. It excludes return-of-capital excess and is not a complete economic return or a tax calculation.",
+  "valuation_statement_roc_receipts": "Return-of-capital receipts in this payment period",
+  "valuation_statement_roc_excluded": "Return-of-capital excess excluded from the result",
+  "valuation_statement_roc_title": "Return-of-capital receipt evidence",
+  "valuation_statement_roc_coverage": "Receipts: {receipts}; unresolved receipts: {unresolved}; unknown lot effects: {lots}.",
+  "valuation_statement_roc_timing": "Receipts, associated basis reductions and excess are grouped by payment date. Basis changes on the effective date, which may be outside this period. These disclosures are not added to the result; adding the reduction would count it twice.",
+  "valuation_statement_roc_legacy": "This saved statement predates return-of-capital disclosure. Receipt and excess coverage is unavailable, not zero. Its original figures are preserved.",
+  "valuation_statement_roc_fx_timing": "The reporting-currency result also excludes return-of-capital excess and is not a complete economic return or tax calculation. Separate receipt and excess figures use payment-date FX; associated reductions use effective-date FX. With valuation-date conversion, all three use the closing date. Missing coverage leaves each affected figure unavailable."
 }

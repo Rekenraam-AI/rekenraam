@@ -21,6 +21,7 @@ type gainsStatementValuationResponse struct {
 }
 
 type gainsStatementRowResponse struct {
+	CapitalReturn           app.GainsStatementCapitalReturn `json:"capital_return"`
 	CommodityID             int64                           `json:"commodity_id"`
 	Opening                 gainsStatementValuationResponse `json:"opening"`
 	Closing                 gainsStatementValuationResponse `json:"closing"`
@@ -38,12 +39,13 @@ type gainsStatementRowResponse struct {
 }
 
 type investmentGainsStatementResponse struct {
-	Reporting  *gainsFXStatementResponse   `json:"reporting,omitempty"`
-	Profile    gainsProfileResponse        `json:"profile"`
-	From       string                      `json:"from"`
-	To         string                      `json:"to"`
-	Currencies []currencyResponse          `json:"currencies"`
-	Rows       []gainsStatementRowResponse `json:"rows"`
+	CapitalReturns []capitalReturnReadResponse `json:"capital_returns"`
+	Reporting      *gainsFXStatementResponse   `json:"reporting,omitempty"`
+	Profile        gainsProfileResponse        `json:"profile"`
+	From           string                      `json:"from"`
+	To             string                      `json:"to"`
+	Currencies     []currencyResponse          `json:"currencies"`
+	Rows           []gainsStatementRowResponse `json:"rows"`
 }
 
 func statementAmountFields(amount *app.StatementAmount) (*moneyCoefficient, *int) {
@@ -92,7 +94,7 @@ func investmentGainsStatement(logger *slog.Logger, authService *app.AuthService,
 		}
 		var reporting *gainsFXStatementResponse
 		if converted := read.Reporting; converted != nil {
-			reporting = &gainsFXStatementResponse{Profile: toGainsProfileResponse(converted.Profile), Opening: converted.Opening, Realized: converted.Realized, Income: converted.Income, Closing: converted.Closing, UnrealizedChange: converted.UnrealizedChange, Total: converted.Total}
+			reporting = &gainsFXStatementResponse{Profile: toGainsProfileResponse(converted.Profile), Opening: converted.Opening, Realized: converted.Realized, Income: converted.Income, Closing: converted.Closing, UnrealizedChange: converted.UnrealizedChange, Total: converted.Total, CapitalReturnReceipt: converted.CapitalReturnReceipt, CapitalReturnReduction: converted.CapitalReturnReduction, CapitalReturnExcess: converted.CapitalReturnExcess}
 		}
 		response := gainsStatementResponse(read.Statement, read.Currencies)
 		response.Reporting = reporting
@@ -107,7 +109,7 @@ func gainsStatementResponse(statement app.GainsStatement, currencies []app.Curre
 		changeValue, changeScale := statementAmountFields(row.UnrealizedChange)
 		totalValue, totalScale := statementAmountFields(row.Total)
 		rows = append(rows, gainsStatementRowResponse{
-			CommodityID:       row.CommodityID,
+			CommodityID: row.CommodityID, CapitalReturn: row.CapitalReturn,
 			Opening:           toGainsStatementValuationResponse(row.Opening),
 			Closing:           toGainsStatementValuationResponse(row.Closing),
 			RealizedGainValue: realizedValue, RealizedGainScale: realizedScale,
@@ -117,5 +119,5 @@ func gainsStatementResponse(statement app.GainsStatement, currencies []app.Curre
 			TotalValue: totalValue, TotalScale: totalScale,
 		})
 	}
-	return investmentGainsStatementResponse{Profile: toGainsProfileResponse(statement.Profile), From: statement.From, To: statement.To, Currencies: toCurrencyResponses(currencies), Rows: rows}
+	return investmentGainsStatementResponse{CapitalReturns: toCapitalReturnReads(statement.CapitalReturns), Profile: toGainsProfileResponse(statement.Profile), From: statement.From, To: statement.To, Currencies: toCurrencyResponses(currencies), Rows: rows}
 }

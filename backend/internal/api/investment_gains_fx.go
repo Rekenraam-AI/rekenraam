@@ -15,13 +15,16 @@ type gainsFXProjectionResponse struct {
 	UnrealizedTotal app.GainsFXFigure    `json:"unrealized_total"`
 }
 type gainsFXStatementResponse struct {
-	Profile          gainsProfileResponse `json:"profile"`
-	Opening          app.GainsFXFigure    `json:"opening"`
-	Realized         app.GainsFXFigure    `json:"realized"`
-	Income           app.GainsFXFigure    `json:"income"`
-	Closing          app.GainsFXFigure    `json:"closing"`
-	UnrealizedChange app.GainsFXFigure    `json:"unrealized_change"`
-	Total            app.GainsFXFigure    `json:"total"`
+	CapitalReturnReceipt   app.GainsFXFigure    `json:"capital_return_receipt"`
+	CapitalReturnReduction app.GainsFXFigure    `json:"capital_return_reduction"`
+	CapitalReturnExcess    app.GainsFXFigure    `json:"capital_return_excess"`
+	Profile                gainsProfileResponse `json:"profile"`
+	Opening                app.GainsFXFigure    `json:"opening"`
+	Realized               app.GainsFXFigure    `json:"realized"`
+	Income                 app.GainsFXFigure    `json:"income"`
+	Closing                app.GainsFXFigure    `json:"closing"`
+	UnrealizedChange       app.GainsFXFigure    `json:"unrealized_change"`
+	Total                  app.GainsFXFigure    `json:"total"`
 }
 
 func gainsFXInput(query url.Values) (*app.GainsFXInput, error) {

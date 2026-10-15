@@ -50,7 +50,8 @@ GainsRunSummary:
   - inputs_sha256
   - output_sha256
   - inputs
-  description: Immutable run under saved-document schema 1. SHA-256 fingerprints detect
+  description: >-
+    Immutable run. Schema 1 retains original gains/statements; schema 2 adds payment-date capital-return disclosure to statements. Existing schema-1 bytes are never rewritten. SHA-256 fingerprints detect
     corruption; they are not signatures. snapshot_sha256 fingerprints the private
     full SQLite input image before replay, not a retained backup or a portable logical
     hash. inputs_sha256/output_sha256 hash the exact compact UTF-8 JSON documents.
@@ -66,6 +67,7 @@ GainsRunSummary:
       type: integer
       enum:
       - 1
+      - 2
     report_type:
       type: string
       enum:
@@ -104,7 +106,7 @@ GainsRunResponse:
       output:
         description: Frozen operational gains or period statement, with saved currency
           metadata, null/unavailable amounts and descriptor. Alternative and reporting
-          projections are absent in schema 1.
+          projections are absent in both schemas. Schema-1 statements lack capital_returns and row capital_return; absence means disclosure unavailable, never zero.
         oneOf:
         - $ref: ../../openapi.yaml#/components/schemas/InvestmentGainsResponse
         - $ref: ../../openapi.yaml#/components/schemas/InvestmentGainsStatementResponse
