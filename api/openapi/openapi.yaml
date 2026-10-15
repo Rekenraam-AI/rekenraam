@@ -221,6 +221,12 @@ paths:
     $ref: "./paths/import-rule.yaml"
   /api/v1/imports/{batch_id}:
     $ref: "./paths/import.yaml"
+  /api/v1/import-dividends:
+    $ref: "./paths/import-dividends.yaml"
+  /api/v1/imports/{batch_id}/rows/{row_id}/review-dividend:
+    $ref: "./paths/import-review-dividend.yaml"
+  /api/v1/imports/{batch_id}/rows/{row_id}/review-dividend/reconciliation-impact:
+    $ref: "./paths/import-review-dividend-impact.yaml"
   /api/v1/imports/{batch_id}/preview-commit:
     $ref: "./paths/import-preview-commit.yaml"
   /api/v1/imports/{batch_id}/commit:
@@ -1051,6 +1057,12 @@ components:
       $ref: "./components/schemas/transactions.yaml#/DeletedTransactionResponse"
     DeletedTransactionsResponse:
       $ref: "./components/schemas/transactions.yaml#/DeletedTransactionsResponse"
+    ImportDividendReview:
+      $ref: "./components/schemas/imports.yaml#/ImportDividendReview"
+    ImportDividendReviewsResponse:
+      $ref: "./components/schemas/imports.yaml#/ImportDividendReviewsResponse"
+    ReviewImportDividendRequest:
+      $ref: "./components/schemas/imports.yaml#/ReviewImportDividendRequest"
     ImportBatchStatus:
       $ref: "./components/schemas/imports.yaml#/ImportBatchStatus"
     ImportDedupeStatus:

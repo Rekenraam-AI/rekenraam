@@ -1,0 +1,29 @@
+get:
+  summary: Review imported dividend payments
+  description: Paginated composed review of pending Trading 212 dividends and historical ordinary-cash fallbacks. Reads never create instruments or financial records. Gross and withholding require owner declarations; source cash is not assumed gross.
+  parameters:
+    - in: query
+      name: batch_id
+      schema: { type: integer, format: int64, minimum: 1 }
+    - in: query
+      name: cursor
+      schema: { type: string }
+    - in: query
+      name: limit
+      schema: { type: integer, minimum: 1, maximum: 100 }
+  responses:
+    '200':
+      description: Pending and repairable payments
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ImportDividendReviewsResponse' }
+    '400':
+      description: Invalid filters
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }
+    '401':
+      description: Authentication required
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }

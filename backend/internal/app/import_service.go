@@ -857,6 +857,36 @@ func (s *ImportService) PreviewCommit(ctx context.Context, input PreviewCommitIn
 			continue
 		}
 
+		if isTrading212DividendRow(batch, row) {
+			c, err := s.importDividendContext(ctx, input.OwnerUserID, batch.ID, row.ID)
+			if err != nil {
+				return PreviewCommitResult{}, err
+			}
+			dividend, _, err := s.reviewedDividendInput(ctx, c, c.resolution, input.OwnerUserID, 0, "")
+			if errors.Is(err, ErrImportDividendReviewRequired) {
+				continue
+			}
+			if err != nil {
+				return PreviewCommitResult{}, err
+			}
+			impact, err := s.investmentService.DividendReconciliationImpact(ctx, dividend)
+			var validation ValidationError
+			if errors.As(err, &validation) {
+				continue
+			}
+			if err != nil {
+				return PreviewCommitResult{}, err
+			}
+			if len(impact.AffectedCheckpoints) > 0 {
+				ids := []int64{}
+				for _, cp := range impact.AffectedCheckpoints {
+					ids = append(ids, cp.CheckpointID)
+				}
+				result.ReconciliationIssues = append(result.ReconciliationIssues, ReconciliationIssuePreview{RowIndex: row.RowIndex, CheckpointIDs: ids})
+			}
+			result.IncludableCount++
+			continue
+		}
 		if batch.SourceKind == "crypto_csv" {
 			trade, side, err := s.cryptoCSVTrade(row, input.OwnerUserID, 0, "")
 			if err != nil {
@@ -1049,19 +1079,16 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 			s.beforeImportRowCommitForTest()
 		}
 
-		// B-T212-INVST (Slice 4b): a Trading 212 order-fill/dividend row
-		// tries the investment-posting path first — if it resolves (a cash
-		// account is configured on the connection, the instrument matches
-		// or can be created, and the trade actually posts), it's committed
-		// as a real Buy/Sell/Dividend and this row is done. A row that
-		// simply isn't an investment row, or hit an expected data gap (no
-		// dividend default yet, insufficient lots), falls through unchanged
-		// to the generic buildTransactionSpec path below — a strict superset
-		// of pre-Slice-4b behavior. An unexpected error (missing system
-		// account, invalid posting, a real ledger bug) fails just this row
-		// instead of the whole batch, same as any other per-row commit
-		// failure below.
+		// Named investment writers keep financial facts and source identity
+		// atomic. Trading 212 dividends with missing declarations/accounts
+		// remain pending; only order fills retain expected-gap cash fallback.
+		// Unexpected errors fail the affected row, preserving per-row commits.
 		if handled, _, _, err := s.commitInvestmentRow(ctx, row, batch, input, nowStr); err != nil {
+			var dividendValidation ValidationError
+			if isTrading212DividendRow(batch, row) && (errors.Is(err, ErrImportDividendReviewRequired) || errors.As(err, &dividendValidation) || errors.Is(err, ErrReconciliationOverrideRequired)) {
+				result.DividendReviewRowIDs = append(result.DividendReviewRowIDs, row.ID)
+				continue
+			}
 			if errors.Is(err, db.ErrCommitIdentityConflict) {
 				if err := s.resolveConcurrentImportCommit(ctx, row); err != nil {
 					return result, fmt.Errorf("resolve concurrent investment commit row %d: %w", row.ID, err)
@@ -1212,16 +1239,17 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 	if result.CommittedCount == 0 && result.FailedCount == 0 {
 		finalStatus = "committed"
 	}
-	// Rows held for gain review are still pending: the batch stays open.
-	if len(result.GainReviewRowIDs) > 0 {
+	// Rows held for owner review are still pending: the batch stays open.
+	if len(result.GainReviewRowIDs) > 0 || len(result.DividendReviewRowIDs) > 0 {
 		finalStatus = "partially_committed"
 	}
 
 	detailJSON, _ := json.Marshal(map[string]any{
-		"committed":   result.CommittedCount,
-		"skipped":     result.SkippedCount,
-		"failed":      result.FailedCount,
-		"gain_review": len(result.GainReviewRowIDs),
+		"committed":       result.CommittedCount,
+		"skipped":         result.SkippedCount,
+		"failed":          result.FailedCount,
+		"gain_review":     len(result.GainReviewRowIDs),
+		"dividend_review": len(result.DividendReviewRowIDs),
 	})
 
 	eventKind := finalStatus

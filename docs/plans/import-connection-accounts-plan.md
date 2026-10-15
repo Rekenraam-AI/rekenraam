@@ -130,10 +130,11 @@ ALTER TABLE import_connections ADD COLUMN cash_account_id INTEGER
   the user attaches the connection to their pre-existing cash account. Nothing
   about the account changes — it is not "converted" or specially marked,
   it is just referenced.
-- If unset, BUY/SELL/DIVIDEND rows fall back to `needs_attention` exactly as
-  they do today (no regression — connections created before this ships keep
-  working, they just don't get investment auto-mapping until the user sets
-  a cash account).
+- If unset, BUY/SELL rows retain their ordinary-cash review fallback. Dividends
+  now remain pending for explicit account/gross/tax review (#242); they never
+  lose their payer through an ordinary-cash fallback. The connection's cash
+  default is optional because the owner can supply it in row review. See
+  [the dividend review contract](import-dividend-review-plan.md).
 
 ### 2. Holding accounts — one per (connection, instrument), created lazily
 

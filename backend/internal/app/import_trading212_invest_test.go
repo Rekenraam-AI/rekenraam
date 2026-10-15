@@ -1301,7 +1301,7 @@ func TestCommitImportBatch_InsufficientLotFallbackCleansCreatedInvestmentSetup(t
 	assert.Equal(t, 3, accountCount, "cash fallback must clean the newly-created holding account")
 }
 
-func TestCommitImportBatch_MissingDividendDefaultCleansCreatedInstrument(t *testing.T) {
+func TestCommitImportBatch_ReviewedDividendWithoutDefaultsRetainsCreatedPayer(t *testing.T) {
 	t.Parallel()
 	f := newInvestTestFixture(t)
 	conn := f.createConnection(t, &f.cashAccountID)
@@ -1310,14 +1310,15 @@ func TestCommitImportBatch_MissingDividendDefaultCleansCreatedInstrument(t *test
 		Quantity: "2", Amount: "4.32", Currency: "EUR", PaidOn: "2026-06-15T00:00:00Z", Type: "DIVIDEND",
 	})
 	f.resolveRowGeneric(t, batchID, rowID, f.cashAccountID)
+	declareDividendCashAsGross(t, f, batchID, rowID)
 
 	result, err := f.importService.CommitImportBatch(context.Background(), CommitImportBatchInput{OwnerUserID: f.ownerUserID, BatchID: batchID})
 	require.NoError(t, err)
-	assert.Equal(t, 1, result.CommittedCount, "missing dividend defaults should retain the generic cash fallback")
+	assert.Equal(t, 1, result.CommittedCount, "explicitly reviewed accounts must use the named dividend writer")
 
 	instruments, err := f.investmentSvc.ListInstruments(context.Background())
 	require.NoError(t, err)
-	assert.Empty(t, instruments, "cash fallback must clean the newly-created dividend instrument")
+	require.Len(t, instruments, 1, "a reviewed dividend retains its paying instrument")
 }
 
 func TestCommitImportBatch_DividendPostsAsInvestmentIncome(t *testing.T) {
@@ -1350,10 +1351,11 @@ func TestCommitImportBatch_DividendPostsAsInvestmentIncome(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	divBatch, _ := f.stageDividendRow(t, conn.ID, trading212Dividend{
+	divBatch, divRowID := f.stageDividendRow(t, conn.ID, trading212Dividend{
 		Reference: "div-1", Ticker: "AAPL_US_EQ", ISIN: "US0378331005",
 		Quantity: "2", Amount: "4.32", Currency: "EUR", PaidOn: "2026-06-15T00:00:00Z", Type: "DIVIDEND",
 	})
+	declareDividendCashAsGross(t, f, divBatch, divRowID)
 	result, err := f.importService.CommitImportBatch(context.Background(), CommitImportBatchInput{OwnerUserID: f.ownerUserID, BatchID: divBatch})
 	require.NoError(t, err)
 	assert.Equal(t, 1, result.CommittedCount, "the dividend should route through the investment path and commit")
@@ -1493,11 +1495,12 @@ func TestCommitImportBatch_InvestmentDividendRollsBackWhenIdentityRecordingFails
 	})
 	require.NoError(t, err)
 
-	dividendBatchID, _ := f.stageDividendRow(t, conn.ID, trading212Dividend{
+	dividendBatchID, dividendRowID := f.stageDividendRow(t, conn.ID, trading212Dividend{
 		Reference: "atomic-dividend", Ticker: "AAPL_US_EQ", ISIN: "US0378331005",
 		Quantity: "2", Amount: "4.32", Currency: "EUR", PaidOn: "2026-06-15T00:00:00Z", Type: "DIVIDEND",
 	})
 
+	declareDividendCashAsGross(t, f, dividendBatchID, dividendRowID)
 	failInvestmentImportIdentityWrites(t, f)
 	assertInvestmentIdentityFailure(t, f, dividendBatchID)
 	assert.Equal(t, 1, transactionCount(t, f), "identity failure must roll back the dividend ledger transaction")

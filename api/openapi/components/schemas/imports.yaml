@@ -452,6 +452,7 @@ CommitImportBatchResponse:
     - skipped_count
     - failed_count
     - gain_review_row_ids
+    - dividend_review_row_ids
   properties:
     batch_id:
       type: integer
@@ -466,6 +467,10 @@ CommitImportBatchResponse:
       type: integer
     failed_count:
       type: integer
+    dividend_review_row_ids:
+      type: array
+      description: Dividends held pending for owner economic/account review; other valid rows can commit.
+      items: { type: integer, format: int64 }
     gain_review_row_ids:
       type: array
       description: >-
@@ -628,3 +633,37 @@ ImportSplitCandidatesResponse:
       type: array
       items:
         $ref: "../schemas/imports.yaml#/ImportSplitCandidate"
+ImportDividendReview:
+  type: object
+  required: [row_id, batch_id, row_index, state, source_instrument, source_date, source_cash_amount, source_currency, resolution]
+  properties:
+    row_id: { type: integer, format: int64 }
+    batch_id: { type: integer, format: int64 }
+    row_index: { type: integer }
+    state: { type: string, enum: [pending, repairable] }
+    source_instrument: { type: string }
+    source_date: { type: string, format: date }
+    source_cash_amount: { type: string, description: 'Canonical source cash, not a declaration of gross income.' }
+    source_currency: { type: string, description: 'Original source currency hint, independent of reviewed choices.' }
+    transaction_id: { type: integer, format: int64 }
+    expected_transaction_version_id: { type: integer, format: int64 }
+    resolution: { $ref: '../../openapi.yaml#/components/schemas/ImportResolution' }
+ImportDividendReviewsResponse:
+  type: object
+  required: [rows, next_cursor]
+  properties:
+    rows:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/ImportDividendReview' }
+    next_cursor: { type: [string, 'null'] }
+ReviewImportDividendRequest:
+  type: object
+  required: [resolution]
+  properties:
+    resolution: { $ref: '../../openapi.yaml#/components/schemas/ImportResolution' }
+    expected_transaction_version_id:
+      type: integer
+      format: int64
+      description: Required for repair; must match the current posted ordinary transaction.
+    reason: { type: string, description: Required nonempty audit reason for historical repair. }
+    reconciliation_override: { type: boolean, default: false }

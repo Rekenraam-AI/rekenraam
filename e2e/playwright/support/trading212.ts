@@ -46,3 +46,14 @@ export async function setTrading212Fills(apiKey: string, instrument: StubInstrum
   });
   if (res.status !== 204) throw new Error(`trading212 stub control failed with ${res.status}: ${await res.text()}`);
 }
+
+/** Source cash only: these fixtures make no upstream gross/tax claim. */
+export async function setTrading212Dividends(apiKey: string, instrument: StubInstrument, dividends: Array<{ reference: string; amount: number; date: string }>): Promise<void> {
+  const res = await fetch(`${stubURL}/__control/accounts/${encodeURIComponent(apiKey)}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dividends: dividends.map(d => ({
+      reference: d.reference, amount: d.amount, paidOn: `${d.date}T10:00:00Z`,
+      type: 'DIVIDEND', quantity: 1, ticker: instrument.ticker, instrument, currency: instrument.currency
+    })) })
+  });
+  if (res.status !== 204) throw new Error(`trading212 stub control failed with ${res.status}: ${await res.text()}`);
+}

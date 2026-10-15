@@ -1,0 +1,45 @@
+post:
+  summary: Preview imported dividend review reconciliation impact
+  description: Read-only validation and checkpoint impact using the same pending/repair writer rules. No source acceptance or instrument creation.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ImportBatchID'
+    - in: path
+      name: row_id
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/ReviewImportDividendRequest' }
+  responses:
+    '200':
+      description: Reconciliation impact
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ReconciliationImpactResponse' }
+    '400':
+      description: Invalid or incomplete declarations
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }
+    '401':
+      description: Authentication required
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }
+    '404':
+      description: Batch not found
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }
+    '409':
+      description: Review changed or row unavailable
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }
+    '422':
+      description: Exact amount exceeds supported range
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }

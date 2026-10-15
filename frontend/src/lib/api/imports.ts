@@ -364,3 +364,23 @@ export async function linkImportSplit(batchId: number, rowId: number, operationI
     body: JSON.stringify({ operation_id: operationId })
   });
 }
+
+export type ImportDividendReview = components['schemas']['ImportDividendReview'];
+export type ReviewImportDividendRequest = components['schemas']['ReviewImportDividendRequest'];
+export const importDividendReviewsQueryKey = ['api', 'import-dividends'] as const;
+export function getImportDividendReviews(batchID?: number, cursor?: string): Promise<components['schemas']['ImportDividendReviewsResponse']> {
+  const params = new URLSearchParams();
+  if (batchID) params.set('batch_id', String(batchID));
+  if (cursor) params.set('cursor', cursor);
+  return apiFetch(`/api/v1/import-dividends?${params}`);
+}
+export function reviewImportDividend(row: ImportDividendReview, request: ReviewImportDividendRequest, csrfToken: string): Promise<components['schemas']['TransactionResponse']> {
+  return apiFetch(`/api/v1/imports/${row.batch_id}/rows/${row.row_id}/review-dividend`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify(request)
+  });
+}
+export function importDividendReviewImpact(row: ImportDividendReview, request: ReviewImportDividendRequest): Promise<ReconciliationImpactResponse> {
+  return apiFetch(`/api/v1/imports/${row.batch_id}/rows/${row.row_id}/review-dividend/reconciliation-impact`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request)
+  });
+}

@@ -33,8 +33,9 @@ records the owner's direction: provider gaps do not gate manual/file features;
 optional attribution may stay unresolved with disclosure and repair. This is a
 policy/planning change, not new runtime functionality. Existing manual commands,
 CSV input, unknown-basis resolution and manual price/FX management remain the
-shipped foundations. Known-payer fallback repair (#242), dividend attribution
-coverage (#244) and manual short-operation import linking (#245) are still open.
+shipped foundations. Known-payer fallback review/repair now ships under #242
+(below); wider dividend attribution coverage (#244) and manual short-operation
+import linking (#245) remain open.
 
 ## Cash dividend instrument attribution — #229 (2026-10-15)
 
@@ -50,9 +51,9 @@ instrument and keeps the inverse with the predecessor. Trading 212's native
 import retains its resolved instrument atomically with the journal and source
 identity. Bundle schema 13 carries `investment-dividend-facts.csv`; migration 9
 preserves existing journals and leaves historical unidentified payers unassigned.
-Explicit CSV dividend/tax mapping ships under #241 (below). #229 remains open
-for [#242](https://github.com/sergeyfarin/rekenraam/issues/242): Trading 212's
-legacy cash fallback still loses a resolved payer when dividend defaults are missing.
+Explicit CSV dividend/tax mapping ships under #241 (below). Trading 212's
+missing-default payer loss and historical fallback recovery are fixed by #242
+(below), completing #229's imported-attribution scope.
 [#240](https://github.com/sergeyfarin/rekenraam/issues/240) separately tracks
 re-reconciliation after checkpoint invalidation; it does not block attribution.
 Named evidence: `TestInstrumentActivityRetainsDividendWithholdingThroughReplacementAndReversal`,
@@ -60,6 +61,41 @@ Named evidence: `TestInstrumentActivityRetainsDividendWithholdingThroughReplacem
 `TestReplaceAndReverseDividendAPI`, `TestSeparateWithholdingIsInstrumentActivityWithoutGrossIncome`,
 `TestSeparateWithholdingAPIAndBundle`, `TestCommitImportBatch_DividendPostsAsInvestmentIncome`,
 the seeded-baseline upgrade test and the 390px instrument-activity correction journey.
+
+## Imported dividend review and same-payment repair — #242 (2026-10-15)
+
+`/app/import/dividends` exposes a composed paginated queue of pending Trading 212
+dividends and historical ordinary-cash fallbacks, reachable from import preview,
+results and the upload screen. Owners confirm gross/withholding and accounts
+without a provider refresh; local defaults are optional. New dividends never
+fall back to ordinary cash or infer gross/zero tax from source cash. Missing
+required facts keep only that row pending; other rows can commit. A payer is
+resolved from recorded source identity, explicitly selected, or left unassigned
+when no identity resolves. Instrument setup happens only at commit, with cleanup
+after failed writes and retry support even for older failed batches.
+
+Historical repair pins the current version and source eligibility inside one
+writer, appends a named dividend version to the same transaction ID, and records
+an operation-only import effect beside the original immutable transaction effect.
+It preserves exact source cash/date/currency/account, owner metadata, line keys,
+ordering and unchanged reconciliation. Reallocated reconciled legs require
+explicit override. Audit, facts, source effects and batch state commit together;
+stale/discarded review and late failures roll back. Native correction/reversal,
+instrument activity, export bundle 13 and reimport dedupe reuse the existing
+operation model. No schema migration or guessed historical backfill. All six
+locales and the 390px workflow include loading, empty, error and success states.
+Wider report coverage remains #244. See the
+[contract](plans/import-dividend-review-plan.md).
+
+Named evidence: `TestTrading212DividendOwnerReviewRetainsKnownPayerWithoutDefaults`,
+`TestTrading212DividendUnknownEconomicsStayPendingWhileCashCommits`,
+`TestImportedDividendRepairKeepsTransactionCashSourceAndNativeCorrections`,
+`TestImportedDividendRepairWriterPinsVersionAndSourceEligibility`,
+`TestImportedDividendRepairGrossTaxChangeRequiresReconciliationOverride`,
+the new-instrument late-failure/retry and queue-pagination tests, API
+`TestImportDividendReviewAPIAccountsEconomicsAuthAndExport` and
+`TestImportDividendRepairAPIKeepsSamePaymentAndRejectsStaleVersion`, and
+`import-dividend-review.spec.ts` (real stub fetch, new review, legacy repair and axe).
 
 ## CSV dividend and withholding mapping — #241 (2026-10-15)
 
@@ -163,7 +199,7 @@ existing bank CSV journey.
 | **Slice 2: Trading 212 HTTP fetcher + adapter** | ✅ | `internal/onlinesource/trading212` (`Fetcher`: paging, 429/`Retry-After` backoff, cursor); `Trading212Adapter` (`internal/app/import_trading212.go`) registered in `NewImportService`; real `Trading212Prober` closes T-11. `stageParseResult` extracted from `StartImport` so file and fetch paths share staging logic; durable queue wiring shipped in Slice 3. |
 | **Slice 3: Durable fetch worker + online batch flow** | ✅ | `app/import_fetch_worker.go` (`kind="import.fetch.trading212"`, same claim/lease/retry shape as `pricing_worker.go`); `POST /imports` content-negotiated (`application/json` → `202` fetch-driven batch, `multipart/form-data` unchanged `201`); `POST /import-connections/{id}/refresh` (incremental, `202`); atomic guard+create+enqueue via `ImportRepository.StartOnlineImportBatch` (one transaction, closing a real TOCTOU race — T-16) → `ErrImportFetchInProgress`/`409 CONFLICT`; terminal-vs-retryable fetch failure classification (401/403 fail fast, other errors retry up to 8 attempts) written to both `import_batches.status` and `source_meta_json` (the field the frontend actually polls); `import_batches.connection_id` now written + `connection_display_name` snapshotted into `source_meta_json` so deleting a connection doesn't erase batch provenance (closes T-12); pagination continuation past the fetcher's 50-page-per-call budget (T-14) via `reason="continuation"` work-item chaining; incremental cursor re-scans same-timestamp movements instead of dropping them, and refuses to follow an absolute `nextPagePath` (T-17). Frontend: per-connection Import/Refresh button + polling "fetching" step, handing off to the existing preview/commit UI unchanged. 15 service-level Go tests (`import_fetch_worker_test.go`, `fetcher_test.go`) including a 12-goroutine concurrency race test and a multi-chunk continuation test, a frontend unit test for the `source_meta` polling contract, plus manual HTTP smoke tests against a fake Trading 212 server. |
 | **Slice 4a: scheduled auto-refresh (B-T212-SCHED)** | ✅ | Per-connection `auto_refresh_enabled` toggle drives `ImportService.StartScheduler`/`runDueTrading212AutoRefreshes` (`app/import_scheduler.go`) — a 24h-since-last-fetch cadence (not a fixed wall-clock time), reusing the existing manual-refresh path and its in-flight guard. Schema is in the consolidated baseline. |
-| **Slice 4b: investment lot import (B-T212-INVST)** | ✅ | Order fills route through `InvestmentService.Buy`/`Sell` (real lots via `import_connection_holdings`, a per-connection per-instrument holding-account mapping); dividends through `InvestmentService.Dividend`. Instrument resolution: ISIN → ticker/symbol → create (`ResolveOrCreateInstrumentForImport`), creation deferred to commit time only (`docs/plans/import-connection-accounts-plan.md`: `cash_account_id` + `import_connection_holdings` in the consolidated baseline). Fetcher gained `FetchOrders`/`FetchDividends` against the real, spec-verified `/equity/history/orders`/`/equity/history/dividends` endpoints, sharing one generic `fetchPaginated[T]` pagination engine with the original cash-history `Fetch`. Multi-endpoint cursor tracking: `fetch_cursor` renamed to `transactions_cursor` + new `orders_cursor`/`dividends_cursor`, the worker walking three stages per logical fetch. Rows that can't resolve (no cash account, no instrument match, insufficient lots, no dividend default) fall back to the pre-4b plain-cash-row behavior unchanged. P1 follow-up 2026-07-11: order fills now retain and sort on full `filled_at` to preserve intraday buy→sell lot order (T-28), and the investment transaction, lot/disposal, import identity, and staged-row commit marker are atomic in one SQLite transaction (T-26). P2 follow-up 2026-07-12: failed or fallback investment routing compensates its never-used setup without deleting referenced history (T-29); settlement accounts require active, non-system assets (T-30/T-33); and transactions/lots carry Trading 212 provider provenance (T-31). Also found and fixed while building this: a severity-1, source-agnostic bug where `EntryKind: "main"` made every single `CommitImportBatch` call fail real validation since the import feature's first commit (T-22), and a holding-account creation date defaulting to "today" instead of the trade's own date (later superseded by the genesis-date fix, T-44). |
+| **Slice 4b: investment lot import (B-T212-INVST)** | ✅ | Order fills route through `InvestmentService.Buy`/`Sell` (real lots via `import_connection_holdings`, a per-connection per-instrument holding-account mapping); dividends through `InvestmentService.Dividend`. Instrument resolution: ISIN → ticker/symbol → create (`ResolveOrCreateInstrumentForImport`), creation deferred to commit time only (`docs/plans/import-connection-accounts-plan.md`: `cash_account_id` + `import_connection_holdings` in the consolidated baseline). Fetcher gained `FetchOrders`/`FetchDividends` against the real, spec-verified `/equity/history/orders`/`/equity/history/dividends` endpoints, sharing one generic `fetchPaginated[T]` pagination engine with the original cash-history `Fetch`. Multi-endpoint cursor tracking: `fetch_cursor` renamed to `transactions_cursor` + new `orders_cursor`/`dividends_cursor`, the worker walking three stages per logical fetch. Order fills that cannot resolve (no cash account, no instrument match, insufficient lots) retain the pre-4b plain-cash fallback. Dividend fallback is superseded by #242: missing accounts or economic declarations stay pending for review, preserving known payer attribution. P1 follow-up 2026-07-11: order fills now retain and sort on full `filled_at` to preserve intraday buy→sell lot order (T-28), and the investment transaction, lot/disposal, import identity, and staged-row commit marker are atomic in one SQLite transaction (T-26). P2 follow-up 2026-07-12: failed or fallback investment routing compensates its never-used setup without deleting referenced history (T-29); settlement accounts require active, non-system assets (T-30/T-33); and transactions/lots carry Trading 212 provider provenance (T-31). Also found and fixed while building this: a severity-1, source-agnostic bug where `EntryKind: "main"` made every single `CommitImportBatch` call fail real validation since the import feature's first commit (T-22), and a holding-account creation date defaulting to "today" instead of the trade's own date (later superseded by the genesis-date fix, T-44). |
 
 ## Import Pipeline (Phase 4) — 🟦 QIF plus CSV/profile lifecycle shipped
 
@@ -355,7 +391,7 @@ knowledge. Forward migration 3 preserves existing known history.
 | Capability | Status | Notes |
 |---|---|---|
 | Crypto instruments and manual/CSV lots (#117) | ✅ | Investments → Instruments creates/edits crypto and securities, declares exact provider identities, creates holdings and enables/disables quote assignments. Crypto commodities support quantity scale 24; existing lot, buy/sell/correction and reconciliation writers remain the accounting owner. Explicit crypto CSV mode selects holding and settlement accounts, stages side/quantity and exact net cash, then commits chronological trades atomically with import identity; duplicates coalesce, invalid investment rows never fall back to cash-only entries. Self-check covers crypto positions. Exchange APIs, DeFi, staking and NFTs remain rejected. [Contract](plans/quote-providers-crypto-plan.md). |
-| Investment entry in context | ✅ | [#186](https://github.com/sergeyfarin/rekenraam/issues/186), 2026-10-14: `investment-entry.svelte` holds the record buttons and forms, shared by the Investments screen, a holding account's register and an instrument's view (`/app/investments/instruments/{commodity_id}`, linked from the Instruments tab and a position's lot panel). Every record form takes one `InvestmentPrefill` (`investment-prefill.ts`): a register pre-selects its holding and the holding's instrument; an instrument pre-selects itself and its holding when exactly one active holding carries it. Instrument searches select through the form's own handler (so dividend defaults follow); position pickers select only the single position matching every pre-filled field, and re-apply after a dated picker reloads. Corrections ignore prefill. The register and instrument workspaces offer no generic editor, so no generic path writes an investment-linked posting; their rows open the existing investment detail with correction and reversal. The instrument view lists its activity in one paged request through `GET /api/v1/transactions?commodity_id=` (transactions with a posting in that commodity) with units moved into the owner's holdings per row. Cash dividends and separate withholding post no instrument units; #229 now links named dividends and their correction history to the payer in the same read, and removes the former cash-only note. The Trading 212 legacy fallback gap remains #242. Named cases: `TestListTransactionsFiltersByPostingCommodity`, API `TestCategoryIDFilter` (commodity filter composition and validation), vitest `investment-prefill.test.ts`, `instrument-activity.test.ts`, browser `investment-entry-context.spec.ts` (390 px, six locales, axe-clean). |
+| Investment entry in context | ✅ | [#186](https://github.com/sergeyfarin/rekenraam/issues/186), 2026-10-14: `investment-entry.svelte` holds the record buttons and forms, shared by the Investments screen, a holding account's register and an instrument's view (`/app/investments/instruments/{commodity_id}`, linked from the Instruments tab and a position's lot panel). Every record form takes one `InvestmentPrefill` (`investment-prefill.ts`): a register pre-selects its holding and the holding's instrument; an instrument pre-selects itself and its holding when exactly one active holding carries it. Instrument searches select through the form's own handler (so dividend defaults follow); position pickers select only the single position matching every pre-filled field, and re-apply after a dated picker reloads. Corrections ignore prefill. The register and instrument workspaces offer no generic editor, so no generic path writes an investment-linked posting; their rows open the existing investment detail with correction and reversal. The instrument view lists its activity in one paged request through `GET /api/v1/transactions?commodity_id=` (transactions with a posting in that commodity) with units moved into the owner's holdings per row. Cash dividends and separate withholding post no instrument units; #229 now links named dividends and their correction history to the payer in the same read, and removes the former cash-only note. The Trading 212 legacy fallback gap is repaired under #242 (above). Named cases: `TestListTransactionsFiltersByPostingCommodity`, API `TestCategoryIDFilter` (commodity filter composition and validation), vitest `investment-prefill.test.ts`, `instrument-activity.test.ts`, browser `investment-entry-context.spec.ts` (390 px, six locales, axe-clean). |
 | Buy/sell with commodity-trading balancing | ✅ | `app/investments.go`; lossless implied-price rounding (half-up). |
 | Required lot openings | ✅ | [#148](https://github.com/sergeyfarin/rekenraam/issues/148) (2026-10-13): every immutable lot requires its opening operation and source transaction (`NOT NULL`). The standalone lot writer is removed; repository and damaged-data fixtures use posted buys or the frozen candidate seed. Replay, dated holdings and self-check no longer skip unmodeled lots. Canonical-opening and immutability tests remain, and fresh/seeded equivalence retains opening operation, journal and audit IDs. This is a declared pre-release baseline rewrite; disposable development databases must be reset. |
 | Named investment operation foundation | ✅ | ADR 0013: posted investment commands record named operations atomically with journal and subledger effects, with explicit long/short side, typed dates, source components and correction links. Named short sale/cover commands, side-aware reads, dated replay and native correction shipped in #173–#175. Provider short mapping remains #176. |

@@ -287,12 +287,13 @@ type CommitImportBatchInput struct {
 }
 
 type CommitImportBatchResult struct {
-	BatchID        int64
-	Status         string
-	TotalRows      int
-	CommittedCount int
-	SkippedCount   int
-	FailedCount    int
+	DividendReviewRowIDs []int64
+	BatchID              int64
+	Status               string
+	TotalRows            int
+	CommittedCount       int
+	SkippedCount         int
+	FailedCount          int
 	// GainReviewRowIDs are imported acquisitions whose gain changes were not
 	// (or no longer) acknowledged. They stay pending, not skipped, so a fresh
 	// preview and commit can post them.

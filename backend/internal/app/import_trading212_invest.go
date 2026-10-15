@@ -23,19 +23,17 @@ const importHoldingAccountGenesisDate = systemAccountDate
 // dividend staged row through InvestmentService.Buy/Sell/Dividend instead of
 // the generic buildTransactionSpec path (see CommitImportBatch).
 //
-// handled=false means either this isn't a trading212 investment row, or
-// investment resolution/posting failed for any reason — the caller falls
-// back to the generic commit path unchanged. This is a strict superset of
-// pre-Slice-4b behavior: a row that would have committed as a plain cash
-// transaction before still can if anything here doesn't work out (no
-// cash_account_id configured, no instrument match, insufficient lots for a
-// sell, no dividend income-account default configured, ...). Nothing here
-// is required for a row to commit.
+// Dividends always use owner-reviewed financial facts and the named writer;
+// missing declarations/accounts leave them pending (#242). Order fills keep
+// their existing generic fallback for expected resolution/lot gaps.
 //
 // All instrument/holding-account resolution AND creation happens here, at
 // commit time, never at fetch time — see the discard-orphan concern in
 // docs/plans/import-connection-accounts-plan.md.
 func (s *ImportService) commitTrading212InvestmentRow(ctx context.Context, row db.ImportStagedRowRecord, batch db.ImportBatchRecord, input CommitImportBatchInput, nowStr string) (handled bool, transactionID int64, identityAccountID int64, err error) {
+	if isTrading212DividendRow(batch, row) {
+		return s.commitReviewedTrading212DividendRow(ctx, row, batch, input, nowStr)
+	}
 	if s.investmentService == nil || s.connectionService == nil || !batch.ConnectionID.Valid {
 		return false, 0, 0, nil
 	}
@@ -92,16 +90,6 @@ func (s *ImportService) commitTrading212InvestmentRow(ctx context.Context, row d
 			err = s.cleanupTrading212InvestmentSetup(ctx, connectionID, commodityID, instrumentID, createdInstrument, holding, input.OwnerUserID, err)
 		}
 		return handled, txnID, holding.AccountID, err
-	case trading212RawKindDividend:
-		metadataJSON := trading212ImportMetadata(connectionID, "dividend", normalized.ExternalRef)
-		postWrite := func(tx *sql.Tx, transactionID int64) error {
-			return s.recordCommitIdentityAndMarkRowInTx(ctx, tx, row.ID, row.DedupeFingerprint, batch.SourceKind, *conn.CashAccountID, transactionID, nowStr)
-		}
-		handled, txnID, err := s.commitTrading212Dividend(ctx, raw, normalized.Date, normalized.ExternalRef, metadataJSON, normalized.Amount, commodityID, *conn.CashAccountID, cashCurrency.ID, input, postWrite)
-		if !handled || err != nil {
-			err = s.cleanupTrading212InvestmentSetup(ctx, connectionID, commodityID, instrumentID, createdInstrument, trading212HoldingResolution{}, input.OwnerUserID, err)
-		}
-		return handled, txnID, *conn.CashAccountID, err
 	default:
 		return false, 0, 0, nil
 	}
@@ -266,8 +254,8 @@ func (s *ImportService) finishTrading212OrderFill(side string, transaction Trans
 }
 
 // isExpectedInvestmentCommitGap reports whether err represents a normal,
-// data-driven reason an investment row can't be posted as a real trade or
-// dividend — as opposed to a configuration or code bug that should surface
+// data-driven reason an investment row cannot be posted as a real trade,
+// rather than a configuration or code bug that should surface
 // instead of silently falling back to the generic cash commit path.
 func isExpectedInvestmentCommitGap(err error) bool {
 	if errors.Is(err, ErrInvestmentLotsInsufficient) {
@@ -276,48 +264,7 @@ func isExpectedInvestmentCommitGap(err error) bool {
 		// this sell to a lot yet.
 		return true
 	}
-	var validationErr ValidationError
-	if errors.As(err, &validationErr) && validationErr.Message == "dividend income account is required" {
-		// No dividend default configured for this instrument yet — an
-		// expected gap until the user sets one up, not a bug.
-		return true
-	}
 	return false
-}
-
-func (s *ImportService) commitTrading212Dividend(ctx context.Context, raw map[string]string, date string, externalRef string, metadataJSON string, rawAmount string, commodityID int64, cashAccountID int64, cashCommodityID int64, input CommitImportBatchInput, postWrite func(*sql.Tx, int64) error) (bool, int64, error) {
-	amountValue, amountScale, err := parsePositiveDecimalAmount(rawAmount)
-	if err != nil {
-		return false, 0, nil
-	}
-
-	transaction, err := s.investmentService.dividendWithPostWrite(ctx, DividendInput{
-		OwnerUserID:            input.OwnerUserID,
-		AuthSessionID:          input.AuthSessionID,
-		RequestID:              input.RequestID,
-		TransactionDate:        date,
-		CommodityID:            &commodityID,
-		CashAccountID:          cashAccountID,
-		CashCommodityID:        cashCommodityID,
-		AmountValue:            amountValue,
-		AmountScale:            amountScale,
-		Memo:                   "Dividend: " + raw[rawKeyTicker],
-		ExternalRefHint:        externalRef,
-		MetadataJSON:           metadataJSON,
-		ChangeReason:           "imported from trading212",
-		ReconciliationOverride: input.ReconciliationOverride,
-		OriginType:             "import",
-		Operation:              "investment.dividend.import",
-	}, postWrite)
-	if err != nil {
-		if isExpectedInvestmentCommitGap(err) {
-			// No dividend default configured for this instrument yet — fall
-			// back to the generic cash path rather than failing the batch.
-			return false, 0, nil
-		}
-		return false, 0, fmt.Errorf("post trading212 dividend: %w", err)
-	}
-	return true, transaction.ID, nil
 }
 
 // cleanupTrading212InvestmentSetup reverses only setup created by this row,

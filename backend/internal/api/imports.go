@@ -136,12 +136,13 @@ type correctTrading212SourceRequest struct {
 }
 
 type commitImportBatchResponse struct {
-	BatchID        int64  `json:"batch_id"`
-	Status         string `json:"status"`
-	TotalRows      int    `json:"total_rows"`
-	CommittedCount int    `json:"committed_count"`
-	SkippedCount   int    `json:"skipped_count"`
-	FailedCount    int    `json:"failed_count"`
+	DividendReviewRowIDs []int64 `json:"dividend_review_row_ids"`
+	BatchID              int64   `json:"batch_id"`
+	Status               string  `json:"status"`
+	TotalRows            int     `json:"total_rows"`
+	CommittedCount       int     `json:"committed_count"`
+	SkippedCount         int     `json:"skipped_count"`
+	FailedCount          int     `json:"failed_count"`
 	// GainReviewRowIDs stay pending until their current gain changes are
 	// acknowledged in another preview and commit.
 	GainReviewRowIDs []int64 `json:"gain_review_row_ids"`
@@ -759,14 +760,19 @@ func commitImportBatch(logger *slog.Logger, authService *app.AuthService, import
 		if gainReviewRowIDs == nil {
 			gainReviewRowIDs = []int64{}
 		}
+		dividendReviewRowIDs := result.DividendReviewRowIDs
+		if dividendReviewRowIDs == nil {
+			dividendReviewRowIDs = []int64{}
+		}
 		writeJSON(w, http.StatusOK, commitImportBatchResponse{
-			BatchID:          result.BatchID,
-			Status:           result.Status,
-			TotalRows:        result.TotalRows,
-			CommittedCount:   result.CommittedCount,
-			SkippedCount:     result.SkippedCount,
-			FailedCount:      result.FailedCount,
-			GainReviewRowIDs: gainReviewRowIDs,
+			BatchID:              result.BatchID,
+			Status:               result.Status,
+			TotalRows:            result.TotalRows,
+			CommittedCount:       result.CommittedCount,
+			SkippedCount:         result.SkippedCount,
+			FailedCount:          result.FailedCount,
+			GainReviewRowIDs:     gainReviewRowIDs,
+			DividendReviewRowIDs: dividendReviewRowIDs,
 		})
 	}))
 }

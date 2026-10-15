@@ -1,0 +1,54 @@
+post:
+  summary: Record or repair an imported dividend after owner review
+  description: Records a pending dividend through the named writer, or appends an investment version to the same historical cash transaction. Exact source date/account/currency/net cash and import identity are preserved. Repair requires a pinned current transaction version and reason. Nothing posts twice.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ImportBatchID'
+    - in: path
+      name: row_id
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    - in: header
+      name: X-CSRF-Token
+      required: true
+      schema: { type: string }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/ReviewImportDividendRequest' }
+  responses:
+    '200':
+      description: Recorded or repaired payment
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/TransactionResponse' }
+    '400':
+      description: Invalid or incomplete owner declarations
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }
+    '401':
+      description: Authentication required
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }
+    '403':
+      description: Origin or CSRF refused
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }
+    '404':
+      description: Batch not found
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }
+    '409':
+      description: Stale review, unavailable row or reconciliation override required
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }
+    '422':
+      description: Exact amount exceeds supported range
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ErrorResponse' }

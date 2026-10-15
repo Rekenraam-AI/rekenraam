@@ -10258,6 +10258,260 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/import-dividends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Review imported dividend payments
+         * @description Paginated composed review of pending Trading 212 dividends and historical ordinary-cash fallbacks. Reads never create instruments or financial records. Gross and withholding require owner declarations; source cash is not assumed gross.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    batch_id?: number;
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Pending and repairable payments */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ImportDividendReviewsResponse"];
+                    };
+                };
+                /** @description Invalid filters */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/rows/{row_id}/review-dividend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record or repair an imported dividend after owner review
+         * @description Records a pending dividend through the named writer, or appends an investment version to the same historical cash transaction. Exact source date/account/currency/net cash and import identity are preserved. Repair requires a pinned current transaction version and reason. Nothing posts twice.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CSRF-Token": string;
+                };
+                path: {
+                    batch_id: components["parameters"]["ImportBatchID"];
+                    row_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReviewImportDividendRequest"];
+                };
+            };
+            responses: {
+                /** @description Recorded or repaired payment */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TransactionResponse"];
+                    };
+                };
+                /** @description Invalid or incomplete owner declarations */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Origin or CSRF refused */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Batch not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Stale review, unavailable row or reconciliation override required */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Exact amount exceeds supported range */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/rows/{row_id}/review-dividend/reconciliation-impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview imported dividend review reconciliation impact
+         * @description Read-only validation and checkpoint impact using the same pending/repair writer rules. No source acceptance or instrument creation.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    batch_id: components["parameters"]["ImportBatchID"];
+                    row_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReviewImportDividendRequest"];
+                };
+            };
+            responses: {
+                /** @description Reconciliation impact */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReconciliationImpactResponse"];
+                    };
+                };
+                /** @description Invalid or incomplete declarations */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Batch not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Review changed or row unavailable */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Exact amount exceeds supported range */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/imports/{batch_id}/preview-commit": {
         parameters: {
             query?: never;
@@ -10346,7 +10600,7 @@ export interface paths {
         put?: never;
         /**
          * Commit import batch
-         * @description Commits pending rows chronologically, each in its own transaction. An imported acquisition whose replay changes committed disposal gains commits only with that row's current preview-commit acknowledgement; otherwise it stays pending, is listed in gain_review_row_ids, and the batch stays partially_committed (T-126). CSV investment rows are validated with the named dividend writer before any row commits. Unresolved mappings or mismatched gross/tax/net amounts return 400; an unacknowledged reconciliation impact returns 409, leaving the batch reviewable. Accepted rows retain per-row atomicity.
+         * @description Commits pending rows chronologically, each in its own transaction. An imported acquisition whose replay changes committed disposal gains commits only with that row's current preview-commit acknowledgement; otherwise it stays pending, is listed in gain_review_row_ids, and the batch stays partially_committed (T-126). CSV investment rows are validated with the named dividend writer before any row commits. Unresolved mappings or mismatched gross/tax/net amounts return 400; an unacknowledged reconciliation impact returns 409, leaving the batch reviewable. Trading 212 dividends require explicit owner gross/withholding declarations; missing accounts or required facts leave only those rows pending, listed in dividend_review_row_ids, while unrelated rows can commit. These dividends never fall back to ordinary cash. Accepted rows retain per-row atomicity.
          */
         post: {
             parameters: {
@@ -27599,6 +27853,43 @@ export interface components {
             /** @description Opaque deletion-time cursor for the next page (deleted_at DESC, id DESC). */
             next_cursor: string | null;
         };
+        ImportDividendReview: {
+            /** Format: int64 */
+            row_id: number;
+            /** Format: int64 */
+            batch_id: number;
+            row_index: number;
+            /** @enum {string} */
+            state: "pending" | "repairable";
+            source_instrument: string;
+            /** Format: date */
+            source_date: string;
+            /** @description Canonical source cash, not a declaration of gross income. */
+            source_cash_amount: string;
+            /** @description Original source currency hint, independent of reviewed choices. */
+            source_currency: string;
+            /** Format: int64 */
+            transaction_id?: number;
+            /** Format: int64 */
+            expected_transaction_version_id?: number;
+            resolution: components["schemas"]["ImportResolution"];
+        };
+        ImportDividendReviewsResponse: {
+            rows: components["schemas"]["ImportDividendReview"][];
+            next_cursor: string | null;
+        };
+        ReviewImportDividendRequest: {
+            resolution: components["schemas"]["ImportResolution"];
+            /**
+             * Format: int64
+             * @description Required for repair; must match the current posted ordinary transaction.
+             */
+            expected_transaction_version_id?: number;
+            /** @description Required nonempty audit reason for historical repair. */
+            reason?: string;
+            /** @default false */
+            reconciliation_override: boolean;
+        };
         /** @enum {string} */
         ImportBatchStatus: "previewing" | "committed" | "partially_committed" | "discarded" | "failed";
         /** @enum {string} */
@@ -27855,6 +28146,8 @@ export interface components {
             committed_count: number;
             skipped_count: number;
             failed_count: number;
+            /** @description Dividends held pending for owner economic/account review; other valid rows can commit. */
+            dividend_review_row_ids: number[];
             /** @description Imported acquisitions held pending because their committed-disposal gain changes were not acknowledged as they stand now. The batch stays partially_committed; preview and commit again to review them. */
             gain_review_row_ids: number[];
         };

@@ -903,6 +903,7 @@
 <!-- Upload step -->
 {#if step === 'upload'}
   <div class="max-w-2xl space-y-6">
+    <a href="/app/import/dividends" class="inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-2">{m.import_dividend_link()}</a>
     <Panel>
       <p class="text-sm font-semibold text-foreground">{m.import_upload_title()}</p>
       <p class="mt-2 text-sm leading-6 text-muted">{m.import_upload_copy()}</p>
@@ -1396,6 +1397,11 @@
 <!-- Preview step -->
 {:else if step === 'preview' && previewData}
   <div class="space-y-6">
+    {#if previewData.batch.source_kind === 'trading212' && previewData.rows.some(row => {
+      try { return JSON.parse(row.raw)?.kind === 'trading212_dividend'; } catch { return false; }
+    })}
+      <Panel><a href={`/app/import/dividends?batch_id=${batchId}`} class="inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-2">{m.import_dividend_link()}</a><p class="text-sm text-muted">{m.import_dividend_help()}</p></Panel>
+    {/if}
     <!-- Warnings -->
     {#if previewData.warnings.length > 0}
       <Panel>
@@ -1858,6 +1864,10 @@
         {/if}
         {#if commitResult.failed_count > 0}
           <p class="text-warning">{m.import_result_failed({ count: commitResult.failed_count })}</p>
+        {/if}
+        {#if commitResult.dividend_review_row_ids.length > 0}
+          <p class="text-warning">{m.import_dividend_held({ count: commitResult.dividend_review_row_ids.length })}</p>
+          <a href={`/app/import/dividends?batch_id=${batchId}`} class="inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-2">{m.import_dividend_link()}</a>
         {/if}
         {#if commitResult.gain_review_row_ids.length > 0}
           <p class="text-warning">{m.import_result_gain_review({ count: commitResult.gain_review_row_ids.length })}</p>

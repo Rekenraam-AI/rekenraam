@@ -315,6 +315,17 @@ Goal: reduce manual entry without sacrificing trust.
   use the shared named investment writer, atomic source identity, reconciliation
   guards, correction/reversal, instrument activity and export. See
   [CSV investment income contract](plans/csv-investment-income-plan.md).
+- Trading 212 dividends require explicit owner gross/withholding declarations
+  and account choices, using local defaults only where choices are absent.
+  Missing required facts leave the payment pending while unrelated rows can
+  commit; absent tax is never zero. Optional payer attribution may remain
+  unassigned when no source identity resolves. Review works without a provider
+  refresh. Historical ordinary-cash fallbacks have an audited repair that
+  appends a named dividend version to the same payment, preserves exact source
+  cash and identity, and retains owner metadata and unchanged reconciliation.
+  Changed reconciled legs require the normal explicit override. Reimport never
+  duplicates the payment or overwrites owner corrections. See
+  [imported dividend review contract](plans/import-dividend-review-plan.md).
 - QIF and CSV imports accept Unicode and legacy locale encodings. Automatic
   legacy detection must be confidence-gated, the preview must disclose the
   result, and the user must be able to select the source encoding when

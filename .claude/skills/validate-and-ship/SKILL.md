@@ -500,6 +500,19 @@ non-trivial diff (yours or reviewed):
     `TestRecoveryAndRestoreHelpersEscapeTemporaryRoot` and
     `TestRestoreDrillMatchesSourceTrialBalance`.
 
+46. **Missing defaults silently discarding known financial attribution** —
+    Trading 212's dividend writer used to fall back to ordinary cash when an
+    income default was absent, losing a payer already resolved (#242). Route
+    known dividends through explicit owner review and the named writer. Missing
+    gross/tax stays pending beside unrelated valid rows; cash does not prove
+    gross or zero tax. Historical repair must retain the same payment/source
+    identity, pin its current version inside the writer, and preserve unchanged
+    reconciliation. Test late identity failure, setup cleanup/retry and dedupe
+    after native owner correction. Named evidence:
+    `TestTrading212DividendOwnerReviewRetainsKnownPayerWithoutDefaults`,
+    `TestImportedDividendRepairKeepsTransactionCashSourceAndNativeCorrections`,
+    `TestImportedDividendRepairWriterPinsVersionAndSourceEligibility`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

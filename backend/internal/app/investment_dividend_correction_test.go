@@ -230,6 +230,7 @@ func TestImportedDividendCorrectionPreservesCommittedIdentity(t *testing.T) {
 	dividend := trading212Dividend{Reference: "div-1", Ticker: "AAPL_US_EQ", ISIN: "US0378331005",
 		Quantity: "2", Amount: "4.32", Currency: "EUR", PaidOn: "2026-06-15T00:00:00Z", Type: "DIVIDEND"}
 	divBatch, divRow := f.stageDividendRow(t, conn.ID, dividend)
+	declareDividendCashAsGross(t, f, divBatch, divRow)
 	_, err = f.importService.CommitImportBatch(ctx, CommitImportBatchInput{OwnerUserID: f.ownerUserID, BatchID: divBatch})
 	require.NoError(t, err)
 	row, err := f.importRepo.ImportStagedRowByID(ctx, divRow)
