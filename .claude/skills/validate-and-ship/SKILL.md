@@ -488,6 +488,14 @@ non-trivial diff (yours or reviewed):
     disclosure needs its own document version; old output bytes remain frozen.
     Named regression: `TestGainsStatementCapitalReturnExcessIsSeparateFromLimitedTotal`.
 
+45. **Filesystem paths treated as SQLite URI syntax** — concatenating `file:`
+    with a path lets `#`, `?` and percent escapes select a different file
+    (#128). Build file URIs with `net/url` before adding query options, including
+    template and auxiliary test connections. Exercise unnamed subtests (`#00`)
+    and punctuation in the temporary root; assert migration, copy isolation and
+    reopening the returned URL. Named regressions: `TestOpenEscapesFixturePaths`,
+    `TestTemplateAndFixturesEscapeTemporaryRoot`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 
