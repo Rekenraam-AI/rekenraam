@@ -8,7 +8,7 @@ get:
     Both valuations replay positions under the operational_v1 profile and
     price them with the latest live_raw_v1 observation on or before their
     date. A figure that depends on a missing price or an unresolved basis is
-    null with its reason and counts, never zero. Read-only; no FX conversion.
+    null with its reason and counts, never zero. Read-only; optional reporting conversion preserves original figures.
   parameters:
     - name: from
       in: query
@@ -24,6 +24,30 @@ get:
       schema:
         type: string
         format: date
+    - name: reporting_currency_id
+      in: query
+      required: false
+      description: Currency for an additive operational reporting projection; requires fx_method.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    - name: fx_method
+      in: query
+      required: false
+      description: valuation_date_all converts signed basis and proceeds/market/income components at the valuation date (each boundary for statements). historic_basis_valuation_close converts each operational lot basis at its effective original acquisition date, proceeds/income at event date, and market value at valuation date. No provider requests or writes.
+      schema:
+        type: string
+        enum: [valuation_date_all, historic_basis_valuation_close]
+    - name: fx_max_age_days
+      in: query
+      required: false
+      description: Inclusive maximum FX age in calendar days; requires reporting_currency_id and fx_method. Missing coverage leaves dependent figures and totals null, retaining originals.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 365
+        default: 7
   responses:
     "200":
       description: The period statement
@@ -48,6 +72,12 @@ get:
       headers:
         X-Request-ID:
           $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "422":
+      description: A converted amount exceeds supported exact precision.
       content:
         application/json:
           schema:

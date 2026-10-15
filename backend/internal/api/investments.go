@@ -1887,7 +1887,7 @@ func writeInvestmentServiceError(w http.ResponseWriter, r *http.Request, logger 
 	switch {
 	case errors.As(err, &projectionDependency):
 		writeAPIError(w, http.StatusConflict, "CONFLICT", projectionDependency.Error())
-	case errors.Is(err, exact.ErrInt64Range), errors.Is(err, db.ErrInvestmentBasisRange):
+	case errors.Is(err, exact.ErrInt64Range), errors.Is(err, db.ErrInvestmentBasisRange), errors.Is(err, app.ErrGainsFXPrecision):
 		writeAPIError(w, http.StatusUnprocessableEntity, "LEDGER_OVERFLOW", "investment projection exceeds supported precision")
 	case errors.As(err, &validationError):
 		writeAPIError(w, http.StatusBadRequest, "VALIDATION_FAILED", validationError.Error())
@@ -2391,6 +2391,7 @@ type alternativeGainsResponse struct {
 }
 
 type investmentGainsResponse struct {
+	Reporting      *gainsFXProjectionResponse  `json:"reporting,omitempty"`
 	Alternative    *alternativeGainsResponse   `json:"alternative,omitempty"`
 	Profile        gainsProfileResponse        `json:"profile"`
 	CapitalReturns []capitalReturnReadResponse `json:"capital_returns"`
@@ -2401,6 +2402,8 @@ type investmentGainsResponse struct {
 }
 
 type gainsProfileResponse struct {
+	ReportingCurrencyID    int64  `json:"reporting_currency_id,omitempty"`
+	FXMaxAgeDays           int    `json:"fx_max_age_days,omitempty"`
 	StructuralActionPolicy string `json:"structural_action_policy,omitempty"`
 	SpecificLotFallback    string `json:"specific_lot_fallback,omitempty"`
 	TransferPolicy         string `json:"transfer_policy,omitempty"`
@@ -2420,6 +2423,7 @@ type gainsProfileResponse struct {
 
 func toGainsProfileResponse(profile app.GainsProfile) gainsProfileResponse {
 	return gainsProfileResponse{
+		ReportingCurrencyID: profile.ReportingCurrencyID, FXMaxAgeDays: profile.FXMaxAgeDays,
 		StructuralActionPolicy: profile.StructuralActionPolicy,
 		SpecificLotFallback:    profile.SpecificLotFallback, TransferPolicy: profile.TransferPolicy, From: profile.From, To: profile.To,
 		Name: profile.Name, Purpose: profile.Purpose, BasisMethod: profile.BasisMethod,
@@ -2432,6 +2436,11 @@ func toGainsProfileResponse(profile app.GainsProfile) gainsProfileResponse {
 func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, investmentService *app.InvestmentService, currencyService *app.CurrencyService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := authenticatedOwner(w, r, logger, authService); !ok {
+			return
+		}
+		fx, err := gainsFXInput(r.URL.Query())
+		if err != nil {
+			writeInvestmentServiceError(w, r, logger, "gains FX input", err)
 			return
 		}
 		currencies, err := currencyService.ListCurrencies(r.Context())
@@ -2477,6 +2486,14 @@ func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, inve
 				return
 			}
 			response.Alternative = &alternativeGainsResponse{Profile: projection.Profile, Realized: projection.Realized, Unrealized: projection.Unrealized, RealizedTotals: projection.RealizedTotals}
+		}
+		if fx != nil {
+			converted, err := investmentService.ConvertGains(r.Context(), profile, params, realized, unrealized, *fx)
+			if err != nil {
+				writeInvestmentServiceError(w, r, logger, "convert gains", err)
+				return
+			}
+			response.Reporting = &gainsFXProjectionResponse{Profile: toGainsProfileResponse(converted.Profile), Realized: converted.Realized, Unrealized: converted.Unrealized, RealizedTotal: converted.RealizedTotal, UnrealizedTotal: converted.UnrealizedTotal}
 		}
 		writeJSON(w, http.StatusOK, response)
 	}

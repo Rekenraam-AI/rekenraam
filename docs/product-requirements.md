@@ -415,7 +415,13 @@ Goal: add power-user workflows after the core ledger is stable.
   without inferring a rate from an unknown average pool. Resolution appends
   effective revisions while preserving original evidence and all correction,
   gain-review and reconciliation guards (the #169 non-sale contract).
-- Realized gain/loss reporting.
+- Realized gain/loss reporting. Optional operational reporting-currency gains
+  and period statements retain exact original figures and identify the FX
+  method, reporting currency, inclusive rate-age window and each component's
+  dated rate provenance. Valuation-date conversion and historic lot-basis
+  conversion are explicit choices. Incomplete rates, basis or acquisition-date
+  evidence leave dependent figures and totals absent, never a partial or zero
+  result; same-currency conversion is exact. See the R18 reporting plan (#233).
 - Reproducible investment reporting with an explicit as-of date, price-knowledge
   cutoff, basis profile, valuation/FX method, staleness policy, reporting currency,
   period/date basis, and rounding. Persist report snapshots where reproducibility

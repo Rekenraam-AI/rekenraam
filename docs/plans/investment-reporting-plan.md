@@ -96,7 +96,7 @@ compliance.
 | `ledger_knowledge` | Which book history the replay sees. | `current_effective`: today's effective history — a later correction, reversal or withdrawal restates an earlier valuation date. Not reproducible as known then; see *Reproducibility* below. |
 | `quote_policy` | Observation selection. | `live_raw_v1` (above). |
 | `staleness` | Age rule for the selected price. | Holdings rule: retain the latest compatible price on or before `valuation_as_of`; mark it `stale` past seven calendar days; never a value gate. |
-| `fx_method` / `reporting_currency` | Conversion of results. | `none`: every figure stays in the position's cost currency. |
+| `fx_method` / `reporting_currency_id` / `fx_max_age_days` | Conversion of results. | `none` in original figures; additive operational conversion under `valuation_date_all` or `historic_basis_valuation_close`, in the selected currency with an explicit inclusive age window (default seven days). |
 | `rounding` | Arithmetic. | Exact; market value is one `exact.MulDivRound` half-up step at the deeper of quantity×price and basis scale. |
 
 ### Research recommendations
@@ -200,6 +200,63 @@ uses the same applied period and valuation controls as the operational figures,
 shows the selected method and read-only policy, and retains loading, empty,
 error and unavailable states in all six locales.
 
+### Reporting-currency gains (#233)
+
+Both gains endpoints accept `reporting_currency_id`, `fx_method` and optional
+`fx_max_age_days` (1–365 calendar days, default seven). Currency and method
+are required together; blank, duplicate, orphaned and invalid FX options are
+rejected. Omitting all three preserves the original response shape. The
+additive `reporting` object has its own operational profile, reporting currency,
+FX method, window, valuation/period and rounding descriptor. Original-currency
+figures and the alternative-method comparison remain available; this slice
+converts the operational profile, not hypothetical alternative allocations.
+
+- `valuation_date_all` converts each signed basis, proceeds, income and market
+  component at the selected valuation date. The statement uses its opening
+  date for opening unrealized and its closing date for closing unrealized,
+  period proceeds/basis and income.
+- `historic_basis_valuation_close` converts each operational lot's allocated
+  disposed or remaining basis at its effective **original acquisition date**;
+  proceeds (including the signed cost of a short cover) and gross income at
+  their event dates; and signed market exposure at the valuation date. Long
+  basis subtracts and short opening proceeds add. Operational pooling,
+  subsequent basis adjustments and structural elections remain as recorded;
+  this method converts the resulting per-lot amounts rather than creating a
+  separate FX cost-basis pool. Transfers retain their effective carried original
+  date (including the sourced latest-date convention of pooled transfers).
+  An unknown original date leaves foreign basis and dependent gains unavailable;
+  it never falls back to the transfer date. This is a named comparison rule,
+  not a jurisdiction's tax or historical-FX accounting engine.
+
+Rates use `live_raw_v1`, sharing the source projection's observation knowledge
+cutoff. The nearest compatible observation on or before each requested date
+must be within the inclusive window. Every signed foreign component is rounded
+once, half-up on magnitude, to the reporting currency's standard scale, using
+`exact.MulDivRound`; figures and totals sum those rounded components exactly.
+Same-currency components are exact no-ops, retaining sub-cent precision without
+requiring rates or acquisition dates. The descriptor names this rounding
+`component_half_up_currency_scale`. Overflow of the supported exact coefficient
+returns 422 `LEDGER_OVERFLOW` without changing original projections.
+
+Each converted gain retains its component role, lot ID where applicable,
+source currency and exact source/converted amount, requested date, observation
+ID/date, exact rate and base quantity, approximation and derivation flags.
+Missing, stale, incompatible, future-only or not-yet-known rates, unknown basis,
+unknown acquisition dates and missing market values carry explicit reasons;
+stale gaps also disclose the nearest prior date. A component gap makes its
+figure null; a single incomplete figure makes the relevant aggregate null.
+Known amounts in other currencies remain visible, but never form a partial
+headline total. The statement combines converted opening, realized, income and
+closing figures into exact unrealized change and period total, retaining
+boundary/disposal/income evidence. It never converts an already summed
+mixed-currency total or substitutes zero for missing coverage.
+
+The six-locale Gains screen shares currency, method and maximum-age controls
+with its period statement. Responsive reporting cards expose component/rate
+provenance in keyboard-operable disclosures and show incomplete coverage beside
+retained original figures. These remain live reads over current effective
+history; historical reproduction remains #234 and person-level pooling #235.
+
 ### Delivery slices
 
 | Slice | Issue | Scope |
@@ -207,7 +264,7 @@ error and unavailable states in all six locales.
 | 1 | [#230](https://github.com/sergeyfarin/rekenraam/issues/230) | `operational_v1` descriptor and as-of valuation: positions replayed to `valuation_as_of`, priced under `live_raw_v1`, on the gains read and screen. |
 | 2 | [#231](https://github.com/sergeyfarin/rekenraam/issues/231) | Delivered 2026-10-14. Period gains statement: opening unrealized (day before the period), realized, gross dividend income and closing unrealized per currency for a date range; absent figures are null with reason and counts. |
 | 3 | [#232](https://github.com/sergeyfarin/rekenraam/issues/232) | Delivered 2026-10-15. Alternative-method projection (FIFO/LIFO/average) beside the operational result, computed by rolled-back replay. |
-| 4 | [#233](https://github.com/sergeyfarin/rekenraam/issues/233) | Reporting-currency conversion with a named FX method and coverage disclosure. |
+| 4 | [#233](https://github.com/sergeyfarin/rekenraam/issues/233) | Delivered 2026-10-15. Operational gains and period statement in a reporting currency under two named FX methods, with per-component provenance and complete-only totals. |
 | 5 | [#234](https://github.com/sergeyfarin/rekenraam/issues/234) | Reproducible runs: knowledge-time ledger reconstruction or immutable persisted run, decided by evidence. |
 | 6 | [#235](https://github.com/sergeyfarin/rekenraam/issues/235) | Person-level pooled average-cost profile across accounts (s104/ACB/PMP style), labelled as a method, not tax advice. |
 
@@ -216,6 +273,17 @@ follow slice 3 once a provider supplies that evidence; they are not
 scheduled.
 
 ## Validation evidence
+
+- `TestGainsFX*` covers the two methods with independent expected amounts,
+  signed short proceeds, dated period boundaries and income, mixed currencies,
+  missing/stale/inclusively aged rates, exact same-currency sub-cent no-ops,
+  unknown basis/acquisition dates, transfer origin evidence, validation and
+  unchanged durable snapshots. `TestInvestmentGainsReportingCurrencyAPI`,
+  `TestInvestmentGainsFXInvalidOptionsAPI` and
+  `TestInvestmentGainsFXPrecisionOverflowIs422` verify the authenticated wire
+  contract and original figures. `investments-gains-fx.spec.ts` exercises the
+  shared mobile controls, coverage disclosure, method changes, original amounts,
+  rate evidence, same-currency conversion and axe accessibility at 390px.
 
 - `TestAlternativeGainsMethodsConserveQuantityAndBasisAcrossPartialSales`,
   `TestAlternativeGainsEqualOperationalWhenMethodsMatch`,

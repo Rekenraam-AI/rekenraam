@@ -1,4 +1,6 @@
 <script lang="ts">
+  import GainsFXView from './gains-fx-view.svelte';
+  import type { GainsFXInput, InvestmentGainsResponse } from '#lib/api/investments.ts';
   import AlternativeGains from './alternative-gains.svelte';
   import type { AlternativeBasisMethod } from '#lib/api/investments.ts';
   import ObservationStatus from '#lib/valuation/observation-status.svelte';
@@ -47,6 +49,14 @@
     appliedValuationDate = valuationDate;
   }
 
+  let reportingCurrency = $state('');
+  let fxMethod = $state<GainsFXInput['fx_method']>('valuation_date_all');
+  let fxMaxAge = $state(7);
+  const fxInvalid = $derived(!Number.isInteger(fxMaxAge) || fxMaxAge < 1 || fxMaxAge > 365);
+  const fx = $derived<GainsFXInput | undefined>(reportingCurrency && !fxInvalid ? { reporting_currency_id: Number(reportingCurrency), fx_method: fxMethod, fx_max_age_days: fxMaxAge } : undefined);
+  let currencyOptions = $state<InvestmentGainsResponse['currencies']>([]);
+  $effect(() => { if (gainsQuery.data) currencyOptions = gainsQuery.data.currencies; });
+
   let alternativeMethod = $state<AlternativeBasisMethod | ''>('');
 
   const gainsQuery = createQuery(() =>
@@ -54,7 +64,8 @@
       appliedFrom || undefined,
       appliedTo || undefined,
       appliedValuationDate === today ? undefined : appliedValuationDate,
-      alternativeMethod || undefined
+      alternativeMethod || undefined,
+      fx
     )
   );
   const profile = $derived(gainsQuery.data?.profile);
@@ -121,6 +132,41 @@
         <Panel><p class="text-sm text-destructive">{m.investments_gains_error()}</p></Panel>
       {:else if gainsQuery.data?.alternative}
         <AlternativeGains data={gainsQuery.data} {instrumentName} {formatGain} />
+      {/if}
+    {/if}
+  </section>
+  <section class="space-y-3" aria-label={m.valuation_fx_title()} data-testid="gains-fx-controls">
+    <h2 class="text-sm font-semibold text-foreground">{m.valuation_fx_title()}</h2>
+    <div class="flex flex-wrap items-end gap-3 text-sm">
+      <label class="grid gap-1 text-muted">{m.valuation_fx_currency()}
+        <select bind:value={reportingCurrency} class="rounded border border-border bg-control px-2 py-1 text-foreground">
+          <option value="">{m.valuation_fx_original()}</option>
+          {#each currencyOptions as currency (currency.id)}<option value={String(currency.id)}>{currency.code}</option>{/each}
+        </select>
+      </label>
+      <label class="grid w-full min-w-0 gap-1 text-muted sm:w-auto">{m.valuation_fx_method()}
+        <select bind:value={fxMethod} class="w-full min-w-0 max-w-full rounded border border-border bg-control px-2 py-1 text-foreground">
+          <option value="valuation_date_all">{m.valuation_fx_valuation()}</option>
+          <option value="historic_basis_valuation_close">{m.valuation_fx_historic()}</option>
+        </select>
+      </label>
+      <label class="grid gap-1 text-muted">{m.valuation_fx_age()}
+        <input type="number" min="1" max="365" step="1" bind:value={fxMaxAge} aria-invalid={fxInvalid} class="w-24 rounded border border-border bg-control px-2 py-1 text-foreground" />
+      </label>
+    </div>
+    {#if fxInvalid}<p class="text-sm text-destructive" role="alert">{m.valuation_fx_age_invalid()}</p>{/if}
+    <p class="text-xs text-muted">{fxMethod === 'valuation_date_all' ? m.valuation_fx_valuation_note() : m.valuation_fx_historic_note()}</p>
+    {#if fx}
+      {#if gainsQuery.isPending}<Panel><p role="status" class="text-sm text-muted">{m.investments_gains_loading()}</p></Panel>
+      {:else if gainsQuery.isError}<Panel><p role="alert" class="text-sm text-destructive">{m.investments_gains_error()}</p></Panel>
+      {:else if gainsQuery.data?.reporting}
+        {@const reporting = gainsQuery.data.reporting}
+        <GainsFXView profile={reporting.profile} {formatGain} figures={[
+          { label: m.investments_gains_realized_total(), figure: reporting.realized_total },
+          { label: m.investments_gains_unrealized_title(), figure: reporting.unrealized_total },
+          ...reporting.realized.map((figure, i) => ({ label: `${realized[i].disposal_date} · ${instrumentName(realized[i].commodity_id)}`, figure })),
+          ...reporting.unrealized.map((figure, i) => ({ label: instrumentName(unrealized[i].commodity_id), figure }))
+        ]} />
       {/if}
     {/if}
   </section>
@@ -222,7 +268,7 @@
     {/if}
   </section>
 
-  <GainsStatement />
+  <GainsStatement {fx} />
 
   <!-- Realized gains -->
   <section>

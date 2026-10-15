@@ -1,4 +1,7 @@
 <script lang="ts">
+  import GainsFXView from './gains-fx-view.svelte';
+  import type { GainsFXInput } from '#lib/api/investments.ts';
+  let { fx }: { fx?: GainsFXInput } = $props();
   import { createQuery } from '@tanstack/svelte-query';
   import Panel from '#lib/components/panel.svelte';
   import StatePanel from '#lib/components/state-panel.svelte';
@@ -32,7 +35,7 @@
     applied = { from: fromDate, to: toDate };
   }
 
-  const statementQuery = createQuery(() => investmentGainsStatementQueryOptions(applied.from, applied.to));
+  const statementQuery = createQuery(() => investmentGainsStatementQueryOptions(applied.from, applied.to, fx));
   const statement = $derived(statementQuery.data);
 
   function day(date: string): string {
@@ -204,6 +207,17 @@
   {:else if !statement || statement.rows.length === 0}
     <StatePanel title={m.valuation_statement_empty()} copy="" />
   {:else}
+    {#if statement.reporting}
+      {@const reporting = statement.reporting}
+      <GainsFXView profile={reporting.profile} formatGain={amount} figures={[
+        { label: m.valuation_statement_opening({ date: day(statement.rows[0].opening.valuation_as_of) }), figure: reporting.opening },
+        { label: m.valuation_statement_realized(), figure: reporting.realized },
+        { label: m.valuation_statement_income(), figure: reporting.income },
+        { label: m.valuation_statement_closing({ date: day(statement.to) }), figure: reporting.closing },
+        { label: m.valuation_statement_change(), figure: reporting.unrealized_change },
+        { label: m.valuation_statement_total(), figure: reporting.total }
+      ]} />
+    {/if}
     <div class="grid gap-3 md:grid-cols-2">
       {#each statement.rows as row (row.commodity_id)}
         <Panel>

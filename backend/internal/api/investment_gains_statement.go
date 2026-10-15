@@ -38,6 +38,7 @@ type gainsStatementRowResponse struct {
 }
 
 type investmentGainsStatementResponse struct {
+	Reporting  *gainsFXStatementResponse   `json:"reporting,omitempty"`
 	Profile    gainsProfileResponse        `json:"profile"`
 	From       string                      `json:"from"`
 	To         string                      `json:"to"`
@@ -79,6 +80,11 @@ func investmentGainsStatement(logger *slog.Logger, authService *app.AuthService,
 			return
 		}
 		query := r.URL.Query()
+		fx, err := gainsFXInput(query)
+		if err != nil {
+			writeInvestmentServiceError(w, r, logger, "statement FX input", err)
+			return
+		}
 		statement, err := investmentService.GainsStatement(r.Context(), query.Get("from"), query.Get("to"))
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "investment gains statement", err)
@@ -105,8 +111,17 @@ func investmentGainsStatement(logger *slog.Logger, authService *app.AuthService,
 				TotalValue: totalValue, TotalScale: totalScale,
 			})
 		}
+		var reporting *gainsFXStatementResponse
+		if fx != nil {
+			converted, err := investmentService.ConvertGainsStatement(r.Context(), statement, *fx)
+			if err != nil {
+				writeInvestmentServiceError(w, r, logger, "convert gains statement", err)
+				return
+			}
+			reporting = &gainsFXStatementResponse{Profile: toGainsProfileResponse(converted.Profile), Opening: converted.Opening, Realized: converted.Realized, Income: converted.Income, Closing: converted.Closing, UnrealizedChange: converted.UnrealizedChange, Total: converted.Total}
+		}
 		writeJSON(w, http.StatusOK, investmentGainsStatementResponse{
-			Profile: toGainsProfileResponse(statement.Profile), From: statement.From, To: statement.To,
+			Reporting: reporting, Profile: toGainsProfileResponse(statement.Profile), From: statement.From, To: statement.To,
 			Currencies: toCurrencyResponses(currencies), Rows: rows,
 		})
 	}

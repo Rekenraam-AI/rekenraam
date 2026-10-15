@@ -47,6 +47,30 @@ get:
       schema:
         type: string
         enum: [fifo, lifo, average_cost]
+    - name: reporting_currency_id
+      in: query
+      required: false
+      description: Currency for an additive operational reporting projection; requires fx_method.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    - name: fx_method
+      in: query
+      required: false
+      description: valuation_date_all converts signed basis and proceeds/market/income components at the valuation date (each boundary for statements). historic_basis_valuation_close converts each operational lot basis at its effective original acquisition date, proceeds/income at event date, and market value at valuation date. No provider requests or writes.
+      schema:
+        type: string
+        enum: [valuation_date_all, historic_basis_valuation_close]
+    - name: fx_max_age_days
+      in: query
+      required: false
+      description: Inclusive maximum FX age in calendar days; requires reporting_currency_id and fx_method. Missing coverage leaves dependent figures and totals null, retaining originals.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 365
+        default: 7
   responses:
     "200":
       description: Realized and unrealized gains

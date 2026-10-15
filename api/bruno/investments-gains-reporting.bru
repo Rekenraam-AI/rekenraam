@@ -1,0 +1,30 @@
+meta {
+  name: Investment Gains Reporting Currency
+  type: http
+  seq: 29
+}
+
+get {
+  url: {{baseUrl}}/api/v1/investments/gains?reporting_currency_id=1&fx_method=historic_basis_valuation_close&fx_max_age_days=7
+  body: none
+  auth: none
+}
+
+params:query {
+  reporting_currency_id: 1
+  fx_method: historic_basis_valuation_close
+  fx_max_age_days: 7
+  ~valuation_as_of: 2026-06-30
+  ~from: 2026-01-01
+  ~to: 2026-06-30
+}
+
+docs {
+  Set reporting_currency_id to the desired active currency. The reporting
+  projection preserves original cost-currency amounts; incomplete components
+  make dependent converted figures/totals null. Inspect component observation
+  IDs, rates, base quantities, requested dates and observed dates.
+  valuation_date_all is the alternative FX method. This read never fetches
+  providers or changes ledger facts. Reuse the options on gains/statement with
+  required from/to dates for opening, realized, income, closing and period total.
+}

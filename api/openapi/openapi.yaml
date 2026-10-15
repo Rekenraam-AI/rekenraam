@@ -1449,6 +1449,16 @@ components:
       $ref: "./components/schemas/investments.yaml#/RealizedGainTotal"
     InvestmentGainsResponse:
       $ref: "./components/schemas/investments.yaml#/InvestmentGainsResponse"
+    GainsFXAmount:
+      $ref: "./components/schemas/investments.yaml#/GainsFXAmount"
+    GainsFXComponent:
+      $ref: "./components/schemas/investments.yaml#/GainsFXComponent"
+    GainsFXFigure:
+      $ref: "./components/schemas/investments.yaml#/GainsFXFigure"
+    GainsFXProjection:
+      $ref: "./components/schemas/investments.yaml#/GainsFXProjection"
+    GainsFXStatement:
+      $ref: "./components/schemas/investments.yaml#/GainsFXStatement"
     GainsProfile:
       $ref: "./components/schemas/investments.yaml#/GainsProfile"
     AlternativeGainsProjection:

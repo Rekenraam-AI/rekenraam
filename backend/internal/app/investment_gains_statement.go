@@ -85,10 +85,11 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 	if err != nil {
 		return GainsStatement{}, err
 	}
-	_, opening, err := s.UnrealizedGainsProjection(ctx, openingDate)
+	openingRecords, err := s.repository.DatedPositionsWithGains(ctx, BookID, db.ObservationBoundary{AsOf: openingDate, RecordedAt: profile.KnowledgeCutoff})
 	if err != nil {
 		return GainsStatement{}, err
 	}
+	opening := unrealizedGainEntries(openingRecords)
 	realized, err := s.ListRealizedGains(ctx, GainsReportParams{From: from, To: to})
 	if err != nil {
 		return GainsStatement{}, err

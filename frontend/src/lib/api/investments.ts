@@ -66,6 +66,12 @@ export type InvestmentWriteOffRequest = components['schemas']['InvestmentWriteOf
 export type DividendRequest = components['schemas']['DividendRequest'];
 export type ReinvestedDividendRequest = components['schemas']['ReinvestedDividendRequest'];
 export type CostBasisMethod = components['schemas']['CostBasisMethod'];
+export type GainsFXInput = Required<Pick<
+  NonNullable<paths['/api/v1/investments/gains']['get']['parameters']['query']>,
+  'reporting_currency_id' | 'fx_method' | 'fx_max_age_days'
+>>;
+export type GainsFXFigure = components['schemas']['GainsFXFigure'];
+export type GainsFXComponent = components['schemas']['GainsFXComponent'];
 export type InvestmentGainsResponse = components['schemas']['InvestmentGainsResponse'];
 export type InvestmentGainsStatementResponse = components['schemas']['InvestmentGainsStatementResponse'];
 export type GainsStatementRow = components['schemas']['GainsStatementRow'];
@@ -981,18 +987,18 @@ export type AlternativeBasisMethod = NonNullable<
   NonNullable<paths['/api/v1/investments/gains']['get']['parameters']['query']>['alternative_method']
 >;
 
-export function investmentGainsQueryOptions(from?: string, to?: string, valuationAsOf?: string, alternativeMethod?: AlternativeBasisMethod) {
+export function investmentGainsQueryOptions(from?: string, to?: string, valuationAsOf?: string, alternativeMethod?: AlternativeBasisMethod, fx?: GainsFXInput) {
   return {
-    queryKey: [...investmentGainsQueryKey, { from, to, valuationAsOf, alternativeMethod }] as const,
-    queryFn: () => getInvestmentGains(from, to, valuationAsOf, alternativeMethod),
+    queryKey: [...investmentGainsQueryKey, { from, to, valuationAsOf, alternativeMethod, fx }] as const,
+    queryFn: () => getInvestmentGains(from, to, valuationAsOf, alternativeMethod, fx),
     staleTime: 30_000
   };
 }
 
-export function investmentGainsStatementQueryOptions(from: string, to: string) {
+export function investmentGainsStatementQueryOptions(from: string, to: string, fx?: GainsFXInput) {
   return {
-    queryKey: [...investmentGainsStatementQueryKey, { from, to }] as const,
-    queryFn: () => getInvestmentGainsStatement(from, to),
+    queryKey: [...investmentGainsStatementQueryKey, { from, to, fx }] as const,
+    queryFn: () => getInvestmentGainsStatement(from, to, fx),
     staleTime: 30_000
   };
 }
@@ -1019,11 +1025,12 @@ export async function getInvestmentGains(
   from?: string,
   to?: string,
   valuationAsOf?: string,
-  alternativeMethod?: AlternativeBasisMethod
+  alternativeMethod?: AlternativeBasisMethod,
+  fx?: GainsFXInput
 ): Promise<InvestmentGainsResponse> {
   try {
     const { data, error, response } = await apiClient.GET('/api/v1/investments/gains', {
-      params: { query: { from, to, valuation_as_of: valuationAsOf, alternative_method: alternativeMethod } }
+      params: { query: { from, to, valuation_as_of: valuationAsOf, alternative_method: alternativeMethod, ...fx } }
     });
 
     if (data !== undefined) {
@@ -1044,11 +1051,12 @@ export async function getInvestmentGains(
 // and income per currency for from..to, composed in one backend read.
 export async function getInvestmentGainsStatement(
   from: string,
-  to: string
+  to: string,
+  fx?: GainsFXInput
 ): Promise<InvestmentGainsStatementResponse> {
   try {
     const { data, error, response } = await apiClient.GET('/api/v1/investments/gains/statement', {
-      params: { query: { from, to } }
+      params: { query: { from, to, ...fx } }
     });
 
     if (data !== undefined) {

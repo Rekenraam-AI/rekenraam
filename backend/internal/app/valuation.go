@@ -135,13 +135,25 @@ func (s *TransactionService) NewRateTable(
 	if s.pricingRepository == nil {
 		return nil, fmt.Errorf("reporting currency requires pricing data")
 	}
+	boundary, err := s.pricingRepository.CurrentObservationBoundary(ctx, BookID, s.now())
+	if err != nil {
+		return nil, err
+	}
+	return newRateTableAtBoundary(ctx, s.pricingRepository, reporting, commodityIDs, fromDate, toDate, boundary)
+}
+
+// newRateTableAtBoundary lets projections share their observation knowledge instant.
+func newRateTableAtBoundary(ctx context.Context, pricing *db.PricingRepository, reporting ReportingCurrencyInput, commodityIDs []int64, fromDate, toDate string, boundary db.ObservationBoundary) (*RateTable, error) {
+	if pricing == nil {
+		return nil, fmt.Errorf("reporting currency requires pricing data")
+	}
 
 	staleness := reporting.MaxStalenessDay
 	if staleness <= 0 {
 		staleness = DefaultRateStalenessDays
 	}
 
-	quote, err := s.pricingRepository.ReportingCurrency(ctx, BookID, reporting.CommodityID)
+	quote, err := pricing.ReportingCurrency(ctx, BookID, reporting.CommodityID)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, ValidationError{Message: "reporting currency is invalid"}
@@ -154,10 +166,6 @@ func (s *TransactionService) NewRateTable(
 		return nil, ValidationError{Message: "reporting currency must be a currency"}
 	}
 
-	boundary, err := s.pricingRepository.CurrentObservationBoundary(ctx, BookID, s.now())
-	if err != nil {
-		return nil, err
-	}
 	boundary.AsOf = min(boundary.AsOf, toDate)
 	table := &RateTable{
 		boundary:         boundary,
@@ -184,7 +192,7 @@ func (s *TransactionService) NewRateTable(
 	if err != nil {
 		return nil, err
 	}
-	rates, err := s.pricingRepository.ReportingRates(ctx, BookID, reporting.CommodityID, needed, windowStart, toDate, boundary)
+	rates, err := pricing.ReportingRates(ctx, BookID, reporting.CommodityID, needed, windowStart, toDate, boundary)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +204,7 @@ func (s *TransactionService) NewRateTable(
 	for _, id := range needed {
 		pairs = append(pairs, [2]int64{id, reporting.CommodityID})
 	}
-	table.diagnostics, err = s.pricingRepository.ObservationDiagnostics(ctx, BookID, pairs, boundary)
+	table.diagnostics, err = pricing.ObservationDiagnostics(ctx, BookID, pairs, boundary)
 	if err != nil {
 		return nil, err
 	}

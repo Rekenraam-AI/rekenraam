@@ -3867,6 +3867,8 @@ InvestmentGainsResponse:
     - capital_returns
     - profile
   properties:
+    reporting:
+      $ref: "#/GainsFXProjection"
     alternative:
       $ref: "#/AlternativeGainsProjection"
     profile:
@@ -3913,6 +3915,15 @@ GainsProfile:
     - fx_method
     - rounding
   properties:
+    reporting_currency_id:
+      type: integer
+      format: int64
+      description: Present on converted profiles only.
+    fx_max_age_days:
+      type: integer
+      minimum: 1
+      maximum: 365
+      description: Inclusive on-or-before FX age window, in calendar days.
     name:
       type: string
       enum: [operational_v1, alternative_method_v1]
@@ -3943,11 +3954,11 @@ GainsProfile:
       description: A selected price older than this many calendar days before valuation_as_of is retained and marked stale.
     fx_method:
       type: string
-      enum: [none]
-      description: Figures stay in each position's cost currency.
+      enum: [none, valuation_date_all, historic_basis_valuation_close]
+      description: Original profile is none; reporting profiles name the chosen FX rule.
     rounding:
       type: string
-      enum: [exact_half_up]
+      enum: [exact_half_up, component_half_up_currency_scale]
 
     structural_action_policy:
       type: string
@@ -4003,6 +4014,8 @@ InvestmentGainsStatementResponse:
     - currencies
     - rows
   properties:
+    reporting:
+      $ref: "#/GainsFXStatement"
     profile:
       $ref: "../../openapi.yaml#/components/schemas/GainsProfile"
     from:
@@ -4726,3 +4739,118 @@ CapitalReturnRead:
       type: array
       items:
         $ref: "#/CapitalReturnEffect"
+
+GainsFXAmount:
+  type: object
+  required: [value, scale]
+  properties:
+    value:
+      type: string
+      pattern: '^-?[0-9]+$'
+    scale:
+      type: integer
+
+GainsFXComponent:
+  type: object
+  description: A signed contribution to the figure, with exact source and converted values. Same-currency amounts are exact no-ops, without an observation. Historic basis retains operational allocations and each lot's effective original acquisition date; an unknown date prevents foreign conversion.
+  required: [role, commodity_id, source, requested_date, amount, rate, base_quantity, approximate, derived]
+  properties:
+    role:
+      type: string
+      enum: [basis, proceeds, market_value, income]
+    lot_id:
+      type: integer
+      format: int64
+    commodity_id:
+      type: integer
+      format: int64
+    source:
+      oneOf:
+        - $ref: '#/GainsFXAmount'
+        - type: 'null'
+    requested_date:
+      type: string
+      description: Calendar date requested; empty only when original acquisition date is unknown.
+    amount:
+      oneOf:
+        - $ref: '#/GainsFXAmount'
+        - type: 'null'
+    observation_id:
+      type: integer
+      format: int64
+    observation_date:
+      type: string
+      format: date
+    rate:
+      oneOf:
+        - $ref: '#/GainsFXAmount'
+        - type: 'null'
+    base_quantity:
+      oneOf:
+        - $ref: '#/GainsFXAmount'
+        - type: 'null'
+    approximate:
+      type: boolean
+    derived:
+      type: boolean
+    unavailable_reason:
+      type: string
+      enum: [unresolved_basis, unpriced, unknown_acquisition_date, no_observation_in_window, future_only, incompatible_quote_basis, not_known_at_cutoff]
+    nearest_observation_date:
+      type: string
+      format: date
+
+GainsFXFigure:
+  type: object
+  required: [amount, components]
+  properties:
+    amount:
+      oneOf:
+        - $ref: '#/GainsFXAmount'
+        - type: 'null'
+    components:
+      type: array
+      items:
+        $ref: '#/GainsFXComponent'
+    unavailable_reason:
+      type: string
+      enum: [incomplete_components]
+
+GainsFXProjection:
+  type: object
+  description: Additive operational reporting figures. Arrays correspond by index to the original realized/unrealized arrays. A total is null if any contributing figure is incomplete. Alternative-method comparison stays in original currencies.
+  required: [profile, realized, unrealized, realized_total, unrealized_total]
+  properties:
+    profile:
+      $ref: '#/GainsProfile'
+    realized:
+      type: array
+      items:
+        $ref: '#/GainsFXFigure'
+    unrealized:
+      type: array
+      items:
+        $ref: '#/GainsFXFigure'
+    realized_total:
+      $ref: '#/GainsFXFigure'
+    unrealized_total:
+      $ref: '#/GainsFXFigure'
+
+GainsFXStatement:
+  type: object
+  required: [profile, opening, realized, income, closing, unrealized_change, total]
+  properties:
+    profile:
+      $ref: '#/GainsProfile'
+    opening:
+      $ref: '#/GainsFXFigure'
+    realized:
+      $ref: '#/GainsFXFigure'
+    income:
+      $ref: '#/GainsFXFigure'
+    closing:
+      $ref: '#/GainsFXFigure'
+    unrealized_change:
+      $ref: '#/GainsFXFigure'
+    total:
+      $ref: '#/GainsFXFigure'

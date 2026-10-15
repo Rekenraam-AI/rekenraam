@@ -24257,6 +24257,12 @@ export interface paths {
                     valuation_as_of?: string;
                     /** @description Read-only cost-basis comparison beside the operational result. */
                     alternative_method?: "fifo" | "lifo" | "average_cost";
+                    /** @description Currency for an additive operational reporting projection; requires fx_method. */
+                    reporting_currency_id?: number;
+                    /** @description valuation_date_all converts signed basis and proceeds/market/income components at the valuation date (each boundary for statements). historic_basis_valuation_close converts each operational lot basis at its effective original acquisition date, proceeds/income at event date, and market value at valuation date. No provider requests or writes. */
+                    fx_method?: "valuation_date_all" | "historic_basis_valuation_close";
+                    /** @description Inclusive maximum FX age in calendar days; requires reporting_currency_id and fx_method. Missing coverage leaves dependent figures and totals null, retaining originals. */
+                    fx_max_age_days?: number;
                 };
                 header?: never;
                 path?: never;
@@ -24341,7 +24347,7 @@ export interface paths {
         };
         /**
          * Period gains statement under operational_v1
-         * @description R18 slice 2 (#231). For each currency, reports the unrealized gain of the positions held at the end of the day before `from` (opening), the realized gain of disposals dated in the period, the investment income of effective dividends paid in the period, and the unrealized gain at `to` (closing). Both valuations replay positions under the operational_v1 profile and price them with the latest live_raw_v1 observation on or before their date. A figure that depends on a missing price or an unresolved basis is null with its reason and counts, never zero. Read-only; no FX conversion.
+         * @description R18 slice 2 (#231). For each currency, reports the unrealized gain of the positions held at the end of the day before `from` (opening), the realized gain of disposals dated in the period, the investment income of effective dividends paid in the period, and the unrealized gain at `to` (closing). Both valuations replay positions under the operational_v1 profile and price them with the latest live_raw_v1 observation on or before their date. A figure that depends on a missing price or an unresolved basis is null with its reason and counts, never zero. Read-only; optional reporting conversion preserves original figures.
          */
         get: {
             parameters: {
@@ -24350,6 +24356,12 @@ export interface paths {
                     from: string;
                     /** @description Last day of the period (ISO date, inclusive, not after owner-local today). */
                     to: string;
+                    /** @description Currency for an additive operational reporting projection; requires fx_method. */
+                    reporting_currency_id?: number;
+                    /** @description valuation_date_all converts signed basis and proceeds/market/income components at the valuation date (each boundary for statements). historic_basis_valuation_close converts each operational lot basis at its effective original acquisition date, proceeds/income at event date, and market value at valuation date. No provider requests or writes. */
+                    fx_method?: "valuation_date_all" | "historic_basis_valuation_close";
+                    /** @description Inclusive maximum FX age in calendar days; requires reporting_currency_id and fx_method. Missing coverage leaves dependent figures and totals null, retaining originals. */
+                    fx_max_age_days?: number;
                 };
                 header?: never;
                 path?: never;
@@ -24381,6 +24393,15 @@ export interface paths {
                 401: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description A converted amount exceeds supported exact precision. */
+                422: {
+                    headers: {
                         [name: string]: unknown;
                     };
                     content: {
@@ -30385,6 +30406,7 @@ export interface components {
             total_gain_scale: number | null;
         };
         InvestmentGainsResponse: {
+            reporting?: components["schemas"]["GainsFXProjection"];
             alternative?: components["schemas"]["AlternativeGainsProjection"];
             profile: components["schemas"]["GainsProfile"];
             /** @description Effective return-of-capital allocations at the latest whole-effect revision, filtered inclusively by payment date using from/to. Separate from realized gains and income. */
@@ -30396,8 +30418,67 @@ export interface components {
             /** @description Pre-aggregated totals by cost commodity, suitable for display. */
             realized_totals: components["schemas"]["RealizedGainTotal"][];
         };
+        GainsFXAmount: {
+            value: string;
+            scale: number;
+        };
+        /** @description A signed contribution to the figure, with exact source and converted values. Same-currency amounts are exact no-ops, without an observation. Historic basis retains operational allocations and each lot's effective original acquisition date; an unknown date prevents foreign conversion. */
+        GainsFXComponent: {
+            /** @enum {string} */
+            role: "basis" | "proceeds" | "market_value" | "income";
+            /** Format: int64 */
+            lot_id?: number;
+            /** Format: int64 */
+            commodity_id: number;
+            source: components["schemas"]["GainsFXAmount"] | null;
+            /** @description Calendar date requested; empty only when original acquisition date is unknown. */
+            requested_date: string;
+            amount: components["schemas"]["GainsFXAmount"] | null;
+            /** Format: int64 */
+            observation_id?: number;
+            /** Format: date */
+            observation_date?: string;
+            rate: components["schemas"]["GainsFXAmount"] | null;
+            base_quantity: components["schemas"]["GainsFXAmount"] | null;
+            approximate: boolean;
+            derived: boolean;
+            /** @enum {string} */
+            unavailable_reason?: "unresolved_basis" | "unpriced" | "unknown_acquisition_date" | "no_observation_in_window" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff";
+            /** Format: date */
+            nearest_observation_date?: string;
+        };
+        GainsFXFigure: {
+            amount: components["schemas"]["GainsFXAmount"] | null;
+            components: components["schemas"]["GainsFXComponent"][];
+            /** @enum {string} */
+            unavailable_reason?: "incomplete_components";
+        };
+        /** @description Additive operational reporting figures. Arrays correspond by index to the original realized/unrealized arrays. A total is null if any contributing figure is incomplete. Alternative-method comparison stays in original currencies. */
+        GainsFXProjection: {
+            profile: components["schemas"]["GainsProfile"];
+            realized: components["schemas"]["GainsFXFigure"][];
+            unrealized: components["schemas"]["GainsFXFigure"][];
+            realized_total: components["schemas"]["GainsFXFigure"];
+            unrealized_total: components["schemas"]["GainsFXFigure"];
+        };
+        GainsFXStatement: {
+            profile: components["schemas"]["GainsProfile"];
+            opening: components["schemas"]["GainsFXFigure"];
+            realized: components["schemas"]["GainsFXFigure"];
+            income: components["schemas"]["GainsFXFigure"];
+            closing: components["schemas"]["GainsFXFigure"];
+            unrealized_change: components["schemas"]["GainsFXFigure"];
+            total: components["schemas"]["GainsFXFigure"];
+        };
         /** @description The named read-only rules the unrealized projection ran under (R18, docs/plans/investment-reporting-plan.md). Figures compare only when their profiles match. Not a tax computation. */
         GainsProfile: {
+            /**
+             * Format: int64
+             * @description Present on converted profiles only.
+             */
+            reporting_currency_id?: number;
+            /** @description Inclusive on-or-before FX age window, in calendar days. */
+            fx_max_age_days?: number;
             /** @enum {string} */
             name: "operational_v1" | "alternative_method_v1";
             /** @enum {string} */
@@ -30427,12 +30508,12 @@ export interface components {
             /** @description A selected price older than this many calendar days before valuation_as_of is retained and marked stale. */
             stale_after_days: number;
             /**
-             * @description Figures stay in each position's cost currency.
+             * @description Original profile is none; reporting profiles name the chosen FX rule.
              * @enum {string}
              */
-            fx_method: "none";
+            fx_method: "none" | "valuation_date_all" | "historic_basis_valuation_close";
             /** @enum {string} */
-            rounding: "exact_half_up";
+            rounding: "exact_half_up" | "component_half_up_currency_scale";
             /**
              * @description Sourced structural-action lot entitlements stay fixed; a method that cannot satisfy them is refused with the operation named.
              * @enum {string}
@@ -30468,6 +30549,7 @@ export interface components {
         };
         /** @description Period gains statement (R18 slice 2, #231). One row per currency that has a position at either valuation date, a disposal in the period or investment income in the period. Not a tax computation. */
         InvestmentGainsStatementResponse: {
+            reporting?: components["schemas"]["GainsFXStatement"];
             profile: components["schemas"]["GainsProfile"];
             /** Format: date */
             from: string;
