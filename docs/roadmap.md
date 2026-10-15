@@ -99,6 +99,17 @@ small-business accounting, a hosted service, and broker trade execution are out
 of current scope. The trade-execution decision and market analysis are retained
 in `docs/reviews/competitive-analysis-2026-07.md`.
 
+## Provider independence decision (2026-10-15)
+
+[ADR 0017](adrs/0017-provider-independent-features-and-incomplete-data.md)
+separates app delivery from online automation. Build manual/file-based workflows
+and explicit partial attribution without waiting for Trading 212, another API,
+or live provider samples. Missing required financial effects still need manual
+input or a supported unknown-state workflow; optional enrichment may remain
+unresolved with visible coverage. Provider evidence gates apply only to their
+adapter mappings. Later R15 placement is sequencing, not a hard dependency for
+core features or the existing event/suggestion infrastructure.
+
 ## Current plan
 
 Do not start a new roadmap initiative until the current one has met its
@@ -124,9 +135,13 @@ below is execution order, not a chain of hard dependencies.
    ([#229](https://github.com/sergeyfarin/rekenraam/issues/229), 2026-10-15). CSV
    dividend/tax mapping and phone review are delivered in
    [#241](https://github.com/sergeyfarin/rekenraam/issues/241) (2026-10-15).
-   #229 remains open for Trading 212's missing-default cash fallback
-   [#242](https://github.com/sergeyfarin/rekenraam/issues/242); reconciliation
-   recovery is tracked independently in #240. Approval preserves the journal
+   App-owned partial-data work proceeds independently of provider automation:
+   dividend fallback review/repair [#242](https://github.com/sergeyfarin/rekenraam/issues/242),
+   visible attribution coverage [#244](https://github.com/sergeyfarin/rekenraam/issues/244),
+   and manual short-operation import links [#245](https://github.com/sergeyfarin/rekenraam/issues/245).
+   #229 remains open for the known-payer fallback defect until its repair;
+   it does not gate R13 or other features. Reconciliation recovery is tracked
+   independently in #240. Approval preserves the journal
    (#219); guarded void/unvoid/delete/restore preview their own impact (#220,
    2026-10-14; trash restore too, #225), register rows are per posting line
    (#221), the register status filter is explicit Posted/Voided (#223) and
@@ -203,10 +218,13 @@ correction [#197](https://github.com/sergeyfarin/rekenraam/issues/197) is also
 delivered: immutable evidence revisions at unchanged exact basis, without
 financial writes, with transfer history, export and stale-correction guards.
 
-**Blocked on provider evidence:** [#145](https://github.com/sergeyfarin/rekenraam/issues/145), [#136](https://github.com/sergeyfarin/rekenraam/issues/136).
+**Automation only, awaiting provider evidence:** [#145](https://github.com/sergeyfarin/rekenraam/issues/145), [#136](https://github.com/sergeyfarin/rekenraam/issues/136).
 The [2026-10-13 split evidence recheck](reviews/trading212-split-evidence-2026-10-13.md)
 records the current official schema, missing live payloads and collection guide
-for #145; the provider-mapping gate remains.
+for #145; the provider-mapping gate remains. Neither it nor execution-cancellation
+mapping #136 or short mapping #176 blocks native manual entry/correction or
+unrelated app features. Manual split linking already ships; broader manual
+linking is app-owned work (#245).
 
 ### Completed initiatives through R10
 
@@ -305,7 +323,12 @@ portfolio versus security scope, missing-price behavior, FX policy, benchmark
 selection, and period reproducibility before implementing charts. Use
 [Portfolio Performance's documented methods](https://help.portfolio-performance.info/en/concepts/performance/time-weighted/)
 as a comparison, not an implicit formula choice. Keep the figures read-only;
-reports do not create postings.
+reports do not create postings. Core implementation uses existing manual/file
+ledger and price/FX inputs with explicit incomplete coverage; Trading 212 history,
+a broker-comparison feed and a live benchmark are optional integration work,
+not start or completion gates. Manual benchmark observations are a valid input
+once their series contract is specified. Missing calculation inputs suppress
+only the affected figures under the chosen policy.
 
 ## Deliberately later
 
@@ -327,7 +350,9 @@ These are valuable, but they are not allowed to displace the current plan:
   documentation-plus-fixtures tasks, not adapters. All bring-your-own-key;
   assessment matrix, free-vs-paid verdicts, and slice designs in
   `docs/plans/connections-plan.md`. Both first slices carry blocking
-  provider-verification preconditions — see that plan.
+  provider-verification preconditions for their online adapters — see that plan.
+  These do not block shared manual/file workflows or unrelated app features;
+  #111's later position is order, not an IBKR/GoCardless technical prerequisite.
 - R7a daily-entry convenience: transaction templates, payee defaults, saved
   views, and keyboard-first entry plus general entry review/edit helpers such
   as previous/next entry, open/edit, save-and-next, duplicate, split, and

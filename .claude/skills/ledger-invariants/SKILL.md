@@ -129,6 +129,11 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
 - External market data is untrusted: provider dividends/corporate actions
   become **suggestions** unless an automation rule explicitly permits
   auto-posting.
+- Provider coverage never gates independent manual/file-based features (ADR
+  0017). Optional attribution may stay unresolved with visible coverage and a
+  repair path; unknown is not zero. Required effects still obey the domain
+  command. Keep owner declarations separate from source evidence and preserve
+  corrections/dedupe when linking manual work or importing later updates.
 - Every lot requires its immutable opening operation and source journal
   (`operation_id`/`source_transaction_id` are `NOT NULL`, #148), including test
   fixtures. Journal-free operations never open lots.

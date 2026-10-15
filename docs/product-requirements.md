@@ -48,6 +48,28 @@ Primary product goal:
 - Attachments such as statement PDFs and receipts are intentionally out of scope for now.
 - The minimum mobile requirement is responsive support for full core workflows, including transaction entry.
 
+## Provider Independence And Incomplete Data
+
+Owner decision (2026-10-15), governed by
+[ADR 0017](adrs/0017-provider-independent-features-and-incomplete-data.md):
+
+- App features must work through manual entry/correction or explicit file input
+  without a particular provider, credentials, successful refresh or complete API
+  coverage. Provider-specific automation has separate acceptance and evidence.
+- Missing optional attribution may remain incomplete. Show missing facts and
+  affected report coverage, preserve known cash/quantities and keep unrelated
+  work usable. Offer manual repair without requiring enrichment to continue.
+- Required financial effects must be supplied or explicitly supported as unknown
+  by the domain command. Preserve unresolved source rows and manual linking;
+  never invent gross income, tax, basis, a split ratio or a short/cancellation.
+- Owner assertions and provider evidence remain separate and auditable. Repairs
+  and reimports preserve source identity, dedupe, correction and reconciliation.
+  Known values must not be silently discarded because a local default is absent.
+- Report missing attribution as unassigned where identifiable. Unknown inputs
+  remain unavailable with reasons; known-only subtotals disclose coverage.
+  Existing per-report complete-only aggregate and immutable-statement rules stay
+  in force. A provider-only gap cannot block delivery of an independent feature.
+
 ## Decisions To Confirm Before Implementation
 
 - No remaining product-wide decisions block Phase 0 foundation coding. Feature-specific decisions remain listed below and should be resolved before their related slices.

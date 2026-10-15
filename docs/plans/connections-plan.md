@@ -9,6 +9,17 @@ for the two priority adapters — **IBKR Flex Query** and **EU/UK banks via
 GoCardless Bank Account Data** — with an assessment matrix for everything
 else that was evaluated.
 
+## Provider-independent delivery (2026-10-15)
+
+[ADR 0017](../adrs/0017-provider-independent-features-and-incomplete-data.md)
+governs this plan. An online adapter is optional enrichment of usable manual/file
+workflows. Missing fields may remain explicitly unresolved; users can supply
+facts or link manual operations. Required financial effects and verified automatic
+mapping remain guarded. The historical assessment below is not a promise that a
+provider covers all domain features. Its adapter-start checks never block core
+feature development, manual recovery or another adapter. The roadmap's R15 order
+does not create a hard IBKR/GoCardless prerequisite for #111.
+
 ## Ground rules (from product requirements, restated)
 
 1. **Bring-your-own-key adapters, never coverage promises.** The user owns
@@ -305,14 +316,14 @@ market-data registry's `PriceProvider` alongside FX. `DividendProvider` and
    [quote/crypto contract](quote-providers-crypto-plan.md) records current evidence,
    exact raw-quote normalization, staleness and recovery. Stooq remains a benchmark
    candidate for R13 rather than a shipped quote adapter.
-2. **Dividend/corporate-action events — the T-34 producer**: Financial
-   Modeling Prep's dividend + split endpoints are the leading free
-   candidate (verify EU coverage). Events land as
-   `investment_provider_events` → suggestions, which the accept/ignore UI
-   and automation rules already handle end to end. Dividend suggestions
-   work today; structural actions stay blocked on their per-kind posting,
-   basis, date, and replay specifications under the investment operation
-   plan, and should stage as informational until their commands ship.
+2. **Dividend/corporate-action events — #111**: choose and verify one bounded
+   source/event mapping when implementation starts; the historical FMP assessment
+   is not a coverage or free-tier promise. Events land as
+   `investment_provider_events` → suggestions. Dividend acceptance and the
+   native structural commands already exist; each new suggestion family still
+   needs explicit reviewed admission to its named command. Incomplete or
+   unsupported events remain informational with manual guidance. Lack of an
+   automated source never disables those native commands or their corrections.
 3. **Benchmarks for R13** (TWR/MWR comparison): an index series via
    Stooq/the chosen quote provider; no new architecture.
 
@@ -338,10 +349,9 @@ R15 itself is then:
 
 1. **IBKR Flex** (investor persona, roadmap already points here, no consent
    treadmill — the gentlest second adapter). Lands after R16, so its
-   corporate-action rows have a specified review path. Write-off (T-38)
-   is available; each other action remains in review until its per-kind
-   specification and command ship, even if the shared operation schema
-   exists by then.
+   corporate-action rows can reuse the delivered native commands through a
+   per-kind reviewed mapping. An unverified or incomplete row stays in review
+   with manual guidance; adapter evidence does not gate those domain commands.
 2. **GoCardless BAD** (EU+UK banks — biggest manual-entry win, hardest UX
    due to consent renewals; benefits from landing after R5's rules/profile
    work).
@@ -356,8 +366,9 @@ R15 itself is then:
 Reclassified 2026-08-05: these were sitting in `todo.md` as "decisions
 awaiting the owner", where they could never be actioned — they are
 verification gates, not choices. Every "verify" marked inline above is
-re-checked when its slice starts, and these two block their slice from
-beginning:
+re-checked when its online adapter slice starts, and these two block that
+adapter's integration work only. Manual/file input, shared domain services and
+partial-data recovery can proceed:
 
 - **IBKR-1 cannot start** until the Flex Web Service `SendRequest` /
   `GetStatement` URLs, version parameter, and error-code classes are

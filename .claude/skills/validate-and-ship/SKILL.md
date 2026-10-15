@@ -545,6 +545,17 @@ Branch only when the work genuinely needs isolation (a throwaway spike, or
 something you want CI to see first). This flips at the `v0.1.0` release — see
 *Branches And PRs* in `docs/developer-workflow.md`, which governs.
 
+## Provider-independent delivery (ADR 0017)
+
+Review core/manual acceptance separately from verified provider automation.
+Missing API data, credentials or live samples block only the adapter mapping.
+Check explicit partial attribution, affected report coverage, manual repair and
+reimport without duplicate effects or lost owner corrections. A real app-owned
+recovery gap stays actionable; do not call it implemented through a policy change.
+Use deterministic core fixtures without live provider access; synthetic examples
+do not establish unverified wire semantics. Keep the roadmap and issue dependency
+claims consistent with this boundary.
+
 ## Definition of done for a slice
 
 1. App still runnable end-to-end (`pnpm dev` or `pnpm build`).

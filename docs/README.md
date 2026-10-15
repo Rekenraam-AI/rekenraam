@@ -51,6 +51,11 @@ or sequencing change.
 
 ## Initiative and design references
 
+[ADR 0017](adrs/0017-provider-independent-features-and-incomplete-data.md) defines
+provider-independent features, explicit incomplete attribution and manual repair.
+The [2026-10-15 review](reviews/provider-independence-review-2026-10-15.md) audits
+existing manual paths, provider-only gates and app-owned recovery gaps.
+
 The [quote/crypto contract](plans/quote-providers-crypto-plan.md) records #117’s
 instrument identity/precision, provider evidence and entitlements, durable quote
 refresh/recovery, and the fixed crypto CSV interchange format.

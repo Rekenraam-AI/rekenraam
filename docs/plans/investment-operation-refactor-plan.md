@@ -17,6 +17,17 @@ bounded follow-ups.
 Use GitHub `#numbers` for active references. Existing local `T-nn` codes
 remain historical aliases; `docs/backlog.md` maps them without renumbering.
 
+## Provider-independent admission
+
+[ADR 0017](../adrs/0017-provider-independent-features-and-incomplete-data.md)
+separates native domain commands from verified provider mappings. Build and test
+manual entry/correction with local evidence. Optional attribution may remain
+unresolved with visible coverage; unknown required effects stay in review until
+the owner supplies them or links a valid manual operation. Preserve the current
+unknown-basis and named-command contracts. #136/#145/#176 gate their automatic
+adapter semantics only. Broader manual import linking (#245) does not require
+those mappings, and never infers a short or corporate action from a raw code.
+
 ## Outcome and boundaries
 
 Make the canonical journal, investment operation, and immutable lot effects

@@ -527,8 +527,12 @@ figures, internal transfer, plain-text note and accessibility in six locales.
 | 6 | [#235](https://github.com/sergeyfarin/rekenraam/issues/235) | Delivered 2026-10-15. Person-pooled average-cost comparison across all owner accounts, with a user-supplied jurisdiction note and no tax matching rules. |
 
 Broker-comparison reads (retained broker-reported basis beside the book's)
-follow slice 3 once a provider supplies that evidence; they are not
-scheduled.
+are not scheduled. A future slice may accept owner-entered statement values
+with provenance; an online broker feed is optional input, not a prerequisite.
+[ADR 0017](../adrs/0017-provider-independent-features-and-incomplete-data.md)
+also keeps core reporting and R13 independent of complete provider coverage.
+Known original-currency figures remain usable; existing missing-input reasons,
+complete-only totals and immutable saved-document rules continue to apply.
 
 ## Validation evidence
 

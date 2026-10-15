@@ -26,6 +26,16 @@ Last documentation reconciliation: 2026-09-28 (R16 runtime extraction,
 foundation, exact trade economics and correction sub-slices 4a–4u). R12a closed 2026-08-30; ADR 0012
 governs the journal/subledger boundary and ADR 0013 the R16 operation model.
 
+## Provider independence policy — 2026-10-15
+
+[ADR 0017](adrs/0017-provider-independent-features-and-incomplete-data.md)
+records the owner's direction: provider gaps do not gate manual/file features;
+optional attribution may stay unresolved with disclosure and repair. This is a
+policy/planning change, not new runtime functionality. Existing manual commands,
+CSV input, unknown-basis resolution and manual price/FX management remain the
+shipped foundations. Known-payer fallback repair (#242), dividend attribution
+coverage (#244) and manual short-operation import linking (#245) are still open.
+
 ## Cash dividend instrument attribution — #229 (2026-10-15)
 
 Cash dividends store an optional immutable paying-instrument fact on the named

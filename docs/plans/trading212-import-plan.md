@@ -113,6 +113,23 @@ through T-17 — see `docs/backlog.md`).
 
 ---
 
+## Provider limitations and manual recovery (2026-10-15)
+
+[ADR 0017](../adrs/0017-provider-independent-features-and-incomplete-data.md)
+governs how this historical adapter plan relates to app scope. Trading 212 does
+not define the domain feature set. Missing optional data can stay explicitly
+unattributed, and missing required effects need owner-supplied facts or a manual
+operation link rather than guessed semantics. Split linking already supports
+that pattern; explicit manual short/cover linking is #245. Verified automatic
+split, cancellation and short mappings remain their own adapter issues.
+
+The legacy missing-dividend-default cash fallback still loses a resolved payer
+(#242). It is an app review/repair gap, not missing upstream evidence. #244 owns
+visible attribution/economics coverage. These workflows are planned, not shipped
+by this policy update. Keep original provider evidence, owner choices and import
+identity separate; subsequent imports must not duplicate manual work or erase
+corrections. A cash-only amount never establishes a gross/tax breakdown by itself.
+
 ## Why Trading 212 first
 
 - It is the user's concrete second source after the MS Money (QIF) migration.

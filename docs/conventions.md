@@ -189,6 +189,17 @@ When a feature introduces a durable new rule, update one of those documents in t
   distributions, and corporate actions become suggestions unless an explicit
   automation rule scopes the source/instrument/event family and permits
   auto-posting with required account mappings and audit attribution.
+- Core features and provider automation have separate admission and delivery
+  contracts ([ADR 0017](adrs/0017-provider-independent-features-and-incomplete-data.md)).
+  Manual entry/correction and explicit file input must not depend on a provider
+  connection, refresh or verified automatic mapping. Test core behavior locally.
+- Missing optional attribution is an explicit supported partial state; preserve
+  known facts, expose affected coverage and offer manual repair. Required effects
+  still obey the named domain command, exactness, audit and reconciliation rules.
+  Unknown is not zero; absent withholding does not prove a zero tax amount.
+- Keep owner declarations separate from immutable provider evidence. Manual
+  linking must not duplicate financial effects; later refresh must not overwrite
+  owner corrections. A missing local mapping/default is an app review gap.
 - Market-data provider secrets belong in operator configuration, not SQLite
   business tables.
 - Market-data providers should be added in this order: built-in Go adapters for
@@ -703,6 +714,11 @@ has actual installations, its migration files are immutable.
   they are required on the issue; a later roadmap slot alone is not a blocker.
   A `blocked` issue names the missing prerequisite or evidence and what would
   unblock it. Recheck active blockers when the initiative or evidence changes.
+- A provider evidence/availability blocker applies only to that adapter's
+  automation. Separate it from core/manual feature acceptance and unrelated
+  providers. Do not label later roadmap placement as a technical blocker.
+  Keep app-owned partial-data disclosure and repair defects actionable without
+  an upstream prerequisite; never describe a still-missing workflow as shipped.
 - Future initiative issues may stay brief. Before implementation starts, the
   issue must state the problem/evidence, bounded delivery scope, measurable
   acceptance, dependencies and relevant validation. Use the work-item template;
