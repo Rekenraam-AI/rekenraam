@@ -5,7 +5,10 @@ post:
     imported acquisition whose replay changes committed disposal gains commits
     only with that row's current preview-commit acknowledgement; otherwise it
     stays pending, is listed in gain_review_row_ids, and the batch stays
-    partially_committed (T-126).
+    partially_committed (T-126). CSV investment rows are validated with the named
+    dividend writer before any row commits. Unresolved mappings or mismatched
+    gross/tax/net amounts return 400; an unacknowledged reconciliation impact
+    returns 409, leaving the batch reviewable. Accepted rows retain per-row atomicity.
   parameters:
     - $ref: "../openapi.yaml#/components/parameters/ImportBatchID"
     - in: header
@@ -27,7 +30,7 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/CommitImportBatchResponse"
     "400":
-      description: Invalid request
+      description: Invalid request or CSV investment row requiring review
       content:
         application/json:
           schema:
@@ -51,7 +54,7 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
-      description: Import batch is not open
+      description: Import batch is not open, or reconciliation override required
       content:
         application/json:
           schema:

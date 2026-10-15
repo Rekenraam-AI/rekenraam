@@ -39,20 +39,21 @@ func (a *CSVAdapter) Detect(input RawInput) Confidence {
 }
 
 type csvProfileConfig struct {
-	Delimiter         string   `json:"delimiter"`
-	DateColumn        string   `json:"date_column"`
-	PayeeColumn       string   `json:"payee_column"`
-	MemoColumn        string   `json:"memo_column"`
-	CategoryColumn    string   `json:"category_column"`
-	ExternalRefColumn string   `json:"external_ref_column"`
-	AmountColumn      string   `json:"amount_column"`
-	DebitColumn       string   `json:"debit_column"`
-	CreditColumn      string   `json:"credit_column"`
-	DateLayout        string   `json:"date_layout"`
-	DecimalSeparator  string   `json:"decimal_separator"`
-	InvertAmount      bool     `json:"invert_amount"`
-	SourceFilename    string   `json:"source_filename"`
-	Headers           []string `json:"headers"`
+	Investment        *CSVInvestmentMapping `json:"investment,omitempty"`
+	Delimiter         string                `json:"delimiter"`
+	DateColumn        string                `json:"date_column"`
+	PayeeColumn       string                `json:"payee_column"`
+	MemoColumn        string                `json:"memo_column"`
+	CategoryColumn    string                `json:"category_column"`
+	ExternalRefColumn string                `json:"external_ref_column"`
+	AmountColumn      string                `json:"amount_column"`
+	DebitColumn       string                `json:"debit_column"`
+	CreditColumn      string                `json:"credit_column"`
+	DateLayout        string                `json:"date_layout"`
+	DecimalSeparator  string                `json:"decimal_separator"`
+	InvertAmount      bool                  `json:"invert_amount"`
+	SourceFilename    string                `json:"source_filename"`
+	Headers           []string              `json:"headers"`
 }
 
 func validateCSVProfileConfig(raw string) error {
@@ -96,6 +97,11 @@ func parseCSVProfileConfig(raw string) (csvProfileConfig, error) {
 	}
 	if _, err := csvDelimiter(config.Delimiter); err != nil {
 		return config, err
+	}
+	if config.Investment != nil {
+		if err := validateCSVInvestmentMapping(config); err != nil {
+			return config, err
+		}
 	}
 	return config, nil
 }
@@ -175,6 +181,15 @@ func (a *CSVAdapter) Parse(_ context.Context, input RawInput, profile *ImportPro
 				amounts = append(amounts, raw)
 			}
 		}
+		if mapping := config.Investment; mapping != nil {
+			for _, record := range records[1:] {
+				for _, column := range []string{mapping.GrossColumn, mapping.WithholdingColumn} {
+					if column != "" {
+						amounts = append(amounts, csvValue(record, headers, column))
+					}
+				}
+			}
+		}
 		detection := detectDecimalSeparatorAcrossValues(amounts)
 		decimalSeparator = detection.Separator
 		if detection.Conflict {
@@ -220,7 +235,15 @@ func (a *CSVAdapter) Parse(_ context.Context, input RawInput, profile *ImportPro
 			ExternalRef:  csvValue(record, headers, config.ExternalRefColumn),
 			Raw:          rawFields,
 		}
+		if config.Investment != nil {
+			row.Investment = parseCSVInvestmentRow(record, headers, config.Investment, decimalSeparator)
+			row.Investment.CashValid = amountErr == nil
+		}
 		baseFingerprint := fmt.Sprintf("csv|profile:%d|%s|%s|%s|%s", profile.ID, row.Date, row.Amount, strings.ToLower(row.PayeeHint), row.Memo)
+		if row.Investment != nil {
+			evidence, _ := json.Marshal(row.Investment)
+			baseFingerprint += "|investment:" + string(evidence)
+		}
 		if row.ExternalRef != "" {
 			baseFingerprint = fmt.Sprintf("csv|profile:%d|external:%s", profile.ID, row.ExternalRef)
 		}
@@ -340,6 +363,13 @@ func requiredCSVColumns(config csvProfileConfig) []string {
 	for _, column := range []string{config.PayeeColumn, config.MemoColumn, config.CategoryColumn, config.ExternalRefColumn, config.AmountColumn, config.DebitColumn, config.CreditColumn} {
 		if strings.TrimSpace(column) != "" {
 			columns = append(columns, strings.TrimSpace(column))
+		}
+	}
+	if mapping := config.Investment; mapping != nil {
+		for _, column := range []string{mapping.KindColumn, mapping.InstrumentColumn, mapping.GrossColumn, mapping.WithholdingColumn} {
+			if column != "" {
+				columns = append(columns, column)
+			}
 		}
 	}
 	return columns

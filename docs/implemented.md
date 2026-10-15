@@ -40,13 +40,49 @@ instrument and keeps the inverse with the predecessor. Trading 212's native
 import retains its resolved instrument atomically with the journal and source
 identity. Bundle schema 13 carries `investment-dividend-facts.csv`; migration 9
 preserves existing journals and leaves historical unidentified payers unassigned.
-Bank CSV profiles remain cash-only: instrument-aware dividend/tax mapping is
-tracked separately in [#241](https://github.com/sergeyfarin/rekenraam/issues/241).
+Explicit CSV dividend/tax mapping ships under #241 (below). #229 remains open
+for [#242](https://github.com/sergeyfarin/rekenraam/issues/242): Trading 212's
+legacy cash fallback still loses a resolved payer when dividend defaults are missing.
+[#240](https://github.com/sergeyfarin/rekenraam/issues/240) separately tracks
+re-reconciliation after checkpoint invalidation; it does not block attribution.
 Named evidence: `TestInstrumentActivityRetainsDividendWithholdingThroughReplacementAndReversal`,
 `TestDividendInstrumentReplacementKeepsInverseWithOriginalPayer`,
 `TestReplaceAndReverseDividendAPI`, `TestSeparateWithholdingIsInstrumentActivityWithoutGrossIncome`,
 `TestSeparateWithholdingAPIAndBundle`, `TestCommitImportBatch_DividendPostsAsInvestmentIncome`,
 the seeded-baseline upgrade test and the 390px instrument-activity correction journey.
+
+## CSV dividend and withholding mapping — #241 (2026-10-15)
+
+Saved CSV profiles can opt into explicit dividend, separate withholding or mixed
+row kinds, exact existing instrument commodity codes, independent gross/tax
+columns and cash/income/tax account defaults. Signed cash is never assumed gross;
+all amount columns use one file-level separator and exact gross minus tax must
+match cash. Unknown kinds/instruments, invalid source cash and inconsistent
+amounts require review before any row commits. The phone review can select
+instrument, kind, accounts, cash currency and localized gross/tax amounts; one
+catalog request serves all rows. Bank-only profiles and preview rules retain
+their existing behavior. Investment rows do not apply bank categorization rules.
+
+The shared named dividend writer records gross and combined tax, or cash/tax
+only for separate withholding. Journal, operation/payer facts, source identity
+and row result commit atomically; reimport deduplicates and native audited
+correction/reversal and bundle schema 13 reuse #229. Reconciliation preview is
+read-only; refusal keeps the batch reviewable. An accepted batch retains the
+existing per-row commit/rollback contract. No implicit instruments, guessed
+provider semantics or schema migration. See the
+[contract](plans/csv-investment-income-plan.md).
+
+Named evidence: `TestCSVInvestmentIncomeCommitsCorrectsExportsAndDeduplicates`,
+`TestCSVInvestmentIncomeRefusesUnresolvedAndMismatchedRowsWithoutWrites`,
+`TestCSVInvestmentIncomeReviewCanResolveUnknownKindAndInstrument`,
+`TestCSVInvestmentIdentityFailureRollsBackJournalAndFacts`,
+`TestCSVInvestmentPreviewAndReconciliationRefusalLeaveNoWrites`,
+`TestCSVInvestmentAutoDecimalDetectionIncludesGrossAndTax`, API
+`TestCSVInvestmentImportAPIReviewCommitActivityAndExport` and
+`TestCSVInvestmentImportAPIReconciliationConflictLeavesBatchReviewable`,
+`csv-investment.test.ts` (exact review amounts in six locales), and the 390px
+`csv-investment-income.spec.ts` mapping/review/reimport journey alongside the
+existing bank CSV journey.
 
 ## Foundation (Phase 0) — ✅ Complete
 
@@ -309,7 +345,7 @@ knowledge. Forward migration 3 preserves existing known history.
 | Capability | Status | Notes |
 |---|---|---|
 | Crypto instruments and manual/CSV lots (#117) | ✅ | Investments → Instruments creates/edits crypto and securities, declares exact provider identities, creates holdings and enables/disables quote assignments. Crypto commodities support quantity scale 24; existing lot, buy/sell/correction and reconciliation writers remain the accounting owner. Explicit crypto CSV mode selects holding and settlement accounts, stages side/quantity and exact net cash, then commits chronological trades atomically with import identity; duplicates coalesce, invalid investment rows never fall back to cash-only entries. Self-check covers crypto positions. Exchange APIs, DeFi, staking and NFTs remain rejected. [Contract](plans/quote-providers-crypto-plan.md). |
-| Investment entry in context | ✅ | [#186](https://github.com/sergeyfarin/rekenraam/issues/186), 2026-10-14: `investment-entry.svelte` holds the record buttons and forms, shared by the Investments screen, a holding account's register and an instrument's view (`/app/investments/instruments/{commodity_id}`, linked from the Instruments tab and a position's lot panel). Every record form takes one `InvestmentPrefill` (`investment-prefill.ts`): a register pre-selects its holding and the holding's instrument; an instrument pre-selects itself and its holding when exactly one active holding carries it. Instrument searches select through the form's own handler (so dividend defaults follow); position pickers select only the single position matching every pre-filled field, and re-apply after a dated picker reloads. Corrections ignore prefill. The register and instrument workspaces offer no generic editor, so no generic path writes an investment-linked posting; their rows open the existing investment detail with correction and reversal. The instrument view lists its activity in one paged request through `GET /api/v1/transactions?commodity_id=` (transactions with a posting in that commodity) with units moved into the owner's holdings per row. Cash dividends post no instrument units and are not linked to their instrument yet ([#229](https://github.com/sergeyfarin/rekenraam/issues/229)); the view says so. Named cases: `TestListTransactionsFiltersByPostingCommodity`, API `TestCategoryIDFilter` (commodity filter composition and validation), vitest `investment-prefill.test.ts`, `instrument-activity.test.ts`, browser `investment-entry-context.spec.ts` (390 px, six locales, axe-clean). |
+| Investment entry in context | ✅ | [#186](https://github.com/sergeyfarin/rekenraam/issues/186), 2026-10-14: `investment-entry.svelte` holds the record buttons and forms, shared by the Investments screen, a holding account's register and an instrument's view (`/app/investments/instruments/{commodity_id}`, linked from the Instruments tab and a position's lot panel). Every record form takes one `InvestmentPrefill` (`investment-prefill.ts`): a register pre-selects its holding and the holding's instrument; an instrument pre-selects itself and its holding when exactly one active holding carries it. Instrument searches select through the form's own handler (so dividend defaults follow); position pickers select only the single position matching every pre-filled field, and re-apply after a dated picker reloads. Corrections ignore prefill. The register and instrument workspaces offer no generic editor, so no generic path writes an investment-linked posting; their rows open the existing investment detail with correction and reversal. The instrument view lists its activity in one paged request through `GET /api/v1/transactions?commodity_id=` (transactions with a posting in that commodity) with units moved into the owner's holdings per row. Cash dividends and separate withholding post no instrument units; #229 now links named dividends and their correction history to the payer in the same read, and removes the former cash-only note. The Trading 212 legacy fallback gap remains #242. Named cases: `TestListTransactionsFiltersByPostingCommodity`, API `TestCategoryIDFilter` (commodity filter composition and validation), vitest `investment-prefill.test.ts`, `instrument-activity.test.ts`, browser `investment-entry-context.spec.ts` (390 px, six locales, axe-clean). |
 | Buy/sell with commodity-trading balancing | ✅ | `app/investments.go`; lossless implied-price rounding (half-up). |
 | Required lot openings | ✅ | [#148](https://github.com/sergeyfarin/rekenraam/issues/148) (2026-10-13): every immutable lot requires its opening operation and source transaction (`NOT NULL`). The standalone lot writer is removed; repository and damaged-data fixtures use posted buys or the frozen candidate seed. Replay, dated holdings and self-check no longer skip unmodeled lots. Canonical-opening and immutability tests remain, and fresh/seeded equivalence retains opening operation, journal and audit IDs. This is a declared pre-release baseline rewrite; disposable development databases must be reset. |
 | Named investment operation foundation | ✅ | ADR 0013: posted investment commands record named operations atomically with journal and subledger effects, with explicit long/short side, typed dates, source components and correction links. Named short sale/cover commands, side-aware reads, dated replay and native correction shipped in #173–#175. Provider short mapping remains #176. |

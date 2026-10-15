@@ -424,6 +424,15 @@ R4–R7.
 - **Acceptance:** two different banks' CSV layouts import via two saved profiles
   with no code changes.
 
+### Explicit CSV investment income — #241 (2026-10-15)
+
+Opt-in profiles map existing instrument codes and explicit dividend/withholding
+kinds, signed cash, separate gross/tax and account defaults. Review choices,
+exact net checks, named writer admission and source-identity atomicity follow
+[the CSV investment income contract](csv-investment-income-plan.md). Bank-only
+profiles retain Slice 2 behavior. Trading 212's separate missing-default fallback
+is #242, not part of this CSV slice.
+
 ### Slice 3 — XLSX + duplicate-review depth
 - XLSX adapter (reuse CSV's row pipeline; XLSX → `[][]string`).
 - Richer duplicate review UI; import audit-trail/history view; explicit

@@ -10269,7 +10269,7 @@ export interface paths {
         put?: never;
         /**
          * Preview import commit
-         * @description Read-only commit preview. gain_impacts runs each pending imported acquisition with an existing instrument and holding through the rolled-back buy writer against the current ledger (T-126). Also open for a partially_committed batch so held rows can be reviewed again.
+         * @description Read-only commit preview. gain_impacts runs each pending imported acquisition with an existing instrument and holding through the rolled-back buy writer against the current ledger (T-126). Also open for a partially_committed batch so held rows can be reviewed again. CSV investment rows use named dividend validation and reconciliation preview; unresolved mappings and inconsistent gross/tax/net amounts return 400 without writes.
          */
         post: {
             parameters: {
@@ -10291,7 +10291,7 @@ export interface paths {
                         "application/json": components["schemas"]["PreviewCommitResponse"];
                     };
                 };
-                /** @description Invalid batch id */
+                /** @description Invalid batch id or CSV investment row requiring review */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -10346,7 +10346,7 @@ export interface paths {
         put?: never;
         /**
          * Commit import batch
-         * @description Commits pending rows chronologically, each in its own transaction. An imported acquisition whose replay changes committed disposal gains commits only with that row's current preview-commit acknowledgement; otherwise it stays pending, is listed in gain_review_row_ids, and the batch stays partially_committed (T-126).
+         * @description Commits pending rows chronologically, each in its own transaction. An imported acquisition whose replay changes committed disposal gains commits only with that row's current preview-commit acknowledgement; otherwise it stays pending, is listed in gain_review_row_ids, and the batch stays partially_committed (T-126). CSV investment rows are validated with the named dividend writer before any row commits. Unresolved mappings or mismatched gross/tax/net amounts return 400; an unacknowledged reconciliation impact returns 409, leaving the batch reviewable. Accepted rows retain per-row atomicity.
          */
         post: {
             parameters: {
@@ -10374,7 +10374,7 @@ export interface paths {
                         "application/json": components["schemas"]["CommitImportBatchResponse"];
                     };
                 };
-                /** @description Invalid request */
+                /** @description Invalid request or CSV investment row requiring review */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -10410,7 +10410,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Import batch is not open */
+                /** @description Import batch is not open, or reconciliation override required */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -27632,6 +27632,15 @@ export interface components {
             memo: string;
         };
         ImportNormalizedRow: {
+            /** @description Explicit CSV investment source evidence, separate from owner-reviewed resolution. */
+            investment?: {
+                cash_valid: boolean;
+                /** @enum {string} */
+                kind: "" | "dividend" | "withholding";
+                instrument_code: string;
+                gross_amount: string;
+                withholding_amount: string;
+            };
             /** Format: date */
             date: string;
             amount: string;
@@ -27645,6 +27654,19 @@ export interface components {
             splits: components["schemas"]["ImportStagedSplit"][];
         };
         ImportResolution: {
+            /**
+             * Format: int64
+             * @description Existing paying instrument, distinct from commodity_id (cash currency).
+             */
+            instrument_commodity_id?: number;
+            /** @enum {string} */
+            investment_kind?: "dividend" | "withholding";
+            /** @description Reviewed canonical dot-decimal gross amount; never inferred from signed cash. */
+            gross_amount?: string;
+            /** @description Reviewed canonical dot-decimal tax magnitude, including explicit zero. */
+            withholding_amount?: string;
+            /** Format: int64 */
+            withholding_account_id?: number;
             /** Format: int64 */
             account_id?: number;
             /** Format: int64 */
@@ -27853,7 +27875,7 @@ export interface components {
             name: string;
             /** @enum {string} */
             adapter_kind: "csv";
-            /** @description JSON object string containing the adapter mapping. */
+            /** @description JSON object string containing the adapter mapping, including optional explicit investment mapping. */
             config: string;
             /** Format: date-time */
             created_at: string;
@@ -27867,12 +27889,12 @@ export interface components {
             name: string;
             /** @enum {string} */
             adapter_kind: "csv";
-            /** @description JSON object string containing header mappings and locale/sign rules. */
+            /** @description JSON object string containing header mappings and locale/sign rules. Optional investment mapping has kind (dividend, withholding, column), instrument_column (exact existing commodity code), gross_column (required except withholding), withholding_column (omitted means zero), and optional cash_account_id, income_account_id, withholding_account_id defaults. Column kind also requires kind_column and distinct dividend_value and withholding_value source texts. Amount/debit/credit columns remain signed cash. All amounts use the file-level decimal separator. */
             config: string;
         };
         UpdateImportProfileRequest: {
             name?: string;
-            /** @description JSON object string containing header mappings, matching hints, and locale/sign rules. */
+            /** @description JSON object string containing the same mappings as creation, matching hints, locale/sign rules, and optional investment mapping. */
             config?: string;
         };
         /** @enum {string} */

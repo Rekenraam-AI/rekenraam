@@ -65,11 +65,15 @@
   } from '#lib/api/imports.ts';
   import {
     parseCSVProfileConfig,
+    validCSVInvestmentMapping,
+    type CSVInvestmentMapping,
     rankCSVProfiles,
     uniqueCSVProfileSuggestion,
     type CSVDelimiter,
     type CSVProfileConfig
   } from '#lib/imports/csv-profile.ts';
+  import CSVInvestmentMappingForm from '#lib/imports/csv-investment-mapping.svelte';
+  import CSVInvestmentReview from '#lib/imports/csv-investment-review.svelte';
   import { textEncodingOptions } from '#lib/imports/text-encodings.ts';
   import {
     listImportConnections,
@@ -116,6 +120,7 @@
   let csvDateLayout = $state<'DMY' | 'MDY' | 'YMD'>('DMY');
   let csvDecimalSeparator = $state<'.' | ','>(',');
   let csvInvertAmount = $state(false);
+  let csvInvestment = $state<CSVInvestmentMapping | undefined>();
   let profileSelectionTouched = $state(false);
   let editingProfileId = $state<number | null>(null);
   let savingProfile = $state(false);
@@ -218,7 +223,7 @@
   });
   const csvMappingValid = $derived(
     !!profileName.trim() && !!csvDateColumn &&
-    (csvAmountMode === 'single' ? !!csvAmountColumn : !!csvDebitColumn && !!csvCreditColumn)
+    (csvAmountMode === 'single' ? !!csvAmountColumn : !!csvDebitColumn && !!csvCreditColumn) && validCSVInvestmentMapping(csvInvestment)
   );
   const newCSVProfileValid = $derived(
     !selectedProfileId && csvMappingValid
@@ -289,6 +294,7 @@
 
   function csvProfileConfig(): CSVProfileConfig {
     return {
+      investment: csvInvestment,
       delimiter: csvDelimiter,
       date_column: csvDateColumn,
       payee_column: csvPayeeColumn || undefined,
@@ -334,6 +340,7 @@
     csvDateLayout = config.date_layout;
     csvDecimalSeparator = config.decimal_separator;
     csvInvertAmount = config.invert_amount;
+    csvInvestment = config.investment;
     editingProfileId = profile.id;
     profileSelectionTouched = true;
     profileMutationError = undefined;
@@ -508,7 +515,7 @@
   function applyGlobalAccount() {
     if (!previewData) return;
     for (const row of previewData.rows) {
-      if (row.dedupe_status === 'excluded') continue;
+      if (row.dedupe_status === 'excluded' || parseNormalized(row).investment) continue;
       if (isTransferRow(row)) {
         updateResolution(row.id, {
           account_id: globalAccountId,
@@ -1067,6 +1074,7 @@
                   <label class="flex flex-col gap-1.5 text-xs font-medium text-muted">{m.import_csv_decimal_separator()}<select class="rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" bind:value={csvDecimalSeparator}><option value=",">1.234,56</option><option value=".">1,234.56</option></select></label>
                 </div>
                 <label class="flex items-center gap-2 text-sm text-foreground"><input type="checkbox" bind:checked={csvInvertAmount} />{m.import_csv_invert_amount()}</label>
+                <CSVInvestmentMappingForm bind:value={csvInvestment} headers={csvHeaders} {accounts} />
                 {#if editingProfileId}
                   <div class="flex items-center gap-3">
                     <button type="button" class="rounded-(--radius-control) bg-foreground px-3 py-2 text-sm font-semibold text-background disabled:opacity-60" onclick={saveProfileEdit} disabled={savingProfile || !csvMappingValid}>
@@ -1511,6 +1519,9 @@
 
     {/if}
 
+    {#if previewData.rows.some(row => parseNormalized(row).investment)}
+      <CSVInvestmentReview rows={previewData.rows} resolutions={rowResolutions} {accounts} {currencies} onchange={updateResolution} />
+    {/if}
     <!-- Rows table -->
     {#if sourceCorrectionSuccessID}
       <Panel>
@@ -1542,7 +1553,7 @@
               {@const cryptoSummary = cryptoCSVSummary(row.raw, getLocale())}
               {@const res = getResolution(row.id)}
               {@const isDuplicate = row.dedupe_status === 'duplicate'}
-              {@const unsupportedFill = unsupportedSourceFill(row)}
+              {@const unsupportedFill = !norm.investment && unsupportedSourceFill(row)}
               {@const isBlocked = unsupportedFill || isDuplicate || row.source_changed || row.commit_status === 'committed' || previewData.batch.status !== 'previewing'}
               {@const isExcluded = res.exclude || row.dedupe_status === 'excluded'}
               {@const isTransfer = !!norm.transfer_hint}
@@ -1603,7 +1614,7 @@
                   {/if}
                 </td>
                 <td class="px-4 py-2.5">
-                  {#if !isBlocked && !cryptoSummary}
+                  {#if !isBlocked && !cryptoSummary && !norm.investment}
                     <select
                       class="rounded-(--radius-control) border border-border bg-control px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"
                       value={res.account_id}
@@ -1618,11 +1629,11 @@
                       {/each}
                     </select>
                   {:else}
-                    <span class="text-xs text-muted">{cryptoSummary ? accounts.find(a => a.id === res.account_id)?.name : '—'}</span>
+                    <span class="text-xs text-muted">{cryptoSummary || norm.investment ? accounts.find(a => a.id === res.account_id)?.name : '—'}</span>
                   {/if}
                 </td>
                 <td class="px-4 py-2.5">
-                  {#if !isBlocked && !cryptoSummary}
+                  {#if !isBlocked && !cryptoSummary && !norm.investment}
                     <select
                       class="rounded-(--radius-control) border border-border bg-control px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"
                       value={res.commodity_id}
@@ -1637,11 +1648,11 @@
                       {/each}
                     </select>
                   {:else}
-                    <span class="text-xs text-muted">{cryptoSummary ? currencies.find(c => c.id === res.commodity_id)?.code : '—'}</span>
+                    <span class="text-xs text-muted">{cryptoSummary || norm.investment ? currencies.find(c => c.id === res.commodity_id)?.code : '—'}</span>
                   {/if}
                 </td>
                 <td class="px-4 py-2.5">
-                  {#if !isBlocked && !cryptoSummary}
+                  {#if !isBlocked && !cryptoSummary && !norm.investment}
                     {#if isTransfer}
                       <select
                         class="rounded-(--radius-control) border border-border bg-control px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"

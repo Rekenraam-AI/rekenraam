@@ -1002,6 +1002,8 @@ func listImportBatches(logger *slog.Logger, authService *app.AuthService, import
 
 func writeImportServiceError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, op string, err error) {
 	switch {
+	case errors.Is(err, app.ErrReconciliationOverrideRequired):
+		writeAPIError(w, http.StatusConflict, "CONFLICT", "reconciliation override required")
 	case errors.Is(err, app.ErrImportBatchNotFound):
 		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "import batch not found")
 	case errors.Is(err, app.ErrImportBatchNotOpen):

@@ -175,6 +175,9 @@ func (s *ImportService) cryptoCSVTrade(row db.ImportStagedRowRecord, ownerID, se
 }
 
 func (s *ImportService) commitInvestmentRow(ctx context.Context, row db.ImportStagedRowRecord, batch db.ImportBatchRecord, input CommitImportBatchInput, now string) (bool, int64, int64, error) {
+	if isCSVInvestmentRow(batch, row) {
+		return s.commitCSVInvestmentRow(ctx, row, batch, input, now)
+	}
 	if batch.SourceKind != "crypto_csv" {
 		return s.commitTrading212InvestmentRow(ctx, row, batch, input, now)
 	}

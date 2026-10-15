@@ -4,7 +4,9 @@ post:
     Read-only commit preview. gain_impacts runs each pending imported
     acquisition with an existing instrument and holding through the rolled-back
     buy writer against the current ledger (T-126). Also open for a
-    partially_committed batch so held rows can be reviewed again.
+    partially_committed batch so held rows can be reviewed again. CSV investment
+    rows use named dividend validation and reconciliation preview; unresolved
+    mappings and inconsistent gross/tax/net amounts return 400 without writes.
   parameters:
     - $ref: "../openapi.yaml#/components/parameters/ImportBatchID"
   responses:
@@ -15,7 +17,7 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/PreviewCommitResponse"
     "400":
-      description: Invalid batch id
+      description: Invalid batch id or CSV investment row requiring review
       content:
         application/json:
           schema:

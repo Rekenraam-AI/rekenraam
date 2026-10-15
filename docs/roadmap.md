@@ -122,8 +122,11 @@ below is execution order, not a chain of hard dependencies.
    dividends and their withholding now retain the paying instrument through
    corrections and appear in that activity
    ([#229](https://github.com/sergeyfarin/rekenraam/issues/229), 2026-10-15). CSV
-   dividend/tax instrument mapping remains
-   [#241](https://github.com/sergeyfarin/rekenraam/issues/241). Approval preserves the journal
+   dividend/tax mapping and phone review are delivered in
+   [#241](https://github.com/sergeyfarin/rekenraam/issues/241) (2026-10-15).
+   #229 remains open for Trading 212's missing-default cash fallback
+   [#242](https://github.com/sergeyfarin/rekenraam/issues/242); reconciliation
+   recovery is tracked independently in #240. Approval preserves the journal
    (#219); guarded void/unvoid/delete/restore preview their own impact (#220,
    2026-10-14; trash restore too, #225), register rows are per posting line
    (#221), the register status filter is explicit Posted/Voided (#223) and

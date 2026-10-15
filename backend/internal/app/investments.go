@@ -521,6 +521,7 @@ func optionalPositiveID(value int64) *int64 {
 }
 
 type DividendInput struct {
+	NeedsReview bool
 	// WithholdingOnly records a separate tax payment: AmountValue is tax, with no income leg.
 	WithholdingOnly      bool
 	OwnerUserID          int64
@@ -1793,6 +1794,7 @@ func (s *InvestmentService) dividendPlan(ctx context.Context, input DividendInpu
 				Status:                  status,
 				TransactionKind:         "investment",
 				InvestmentOperationKind: "dividend",
+				NeedsReview:             input.NeedsReview,
 				TransactionDate:         date,
 				PayeeID:                 input.PayeeID,
 				Description:             memo,

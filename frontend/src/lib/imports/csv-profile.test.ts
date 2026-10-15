@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rankCSVProfiles, uniqueCSVProfileSuggestion } from './csv-profile';
+import { rankCSVProfiles, uniqueCSVProfileSuggestion, validCSVInvestmentMapping } from './csv-profile';
 
 describe('CSV profile suggestions', () => {
   const profile = (id: number, config: object) => ({ id, config: JSON.stringify(config) });
@@ -31,5 +31,20 @@ describe('CSV profile suggestions', () => {
 
   it('excludes a profile whose mapped columns are missing', () => {
     expect(rankCSVProfiles([profile(1, base)], 'statement.csv', 'semicolon', ['Date', 'Amount'])).toEqual([]);
+  });
+});
+
+
+describe('investment CSV profile matching', () => {
+  const investment = { kind: 'column' as const, kind_column: 'Type', dividend_value: 'DIV', withholding_value: 'TAX', instrument_column: 'Code', gross_column: 'Gross', withholding_column: 'Tax' };
+  it('requires separate gross evidence and distinct source kinds', () => {
+    expect(validCSVInvestmentMapping({ ...investment, gross_column: '' })).toBe(false);
+    expect(validCSVInvestmentMapping({ ...investment, withholding_value: 'DIV' })).toBe(false);
+    expect(validCSVInvestmentMapping({ kind: 'withholding', instrument_column: 'Code' })).toBe(true);
+  });
+  it('does not suggest a mapping when investment evidence columns are missing', () => {
+    const profiles = [{ id: 1, config: JSON.stringify({ delimiter: 'semicolon', date_column: 'Date', amount_column: 'Cash', date_layout: 'YMD', decimal_separator: ',', investment }) }];
+    expect(rankCSVProfiles(profiles, 'income.csv', 'semicolon', ['Date', 'Cash', 'Code', 'Type'])).toEqual([]);
+    expect(rankCSVProfiles(profiles, 'income.csv', 'semicolon', ['Date', 'Cash', 'Code', 'Type', 'Gross', 'Tax'])).toHaveLength(1);
   });
 });

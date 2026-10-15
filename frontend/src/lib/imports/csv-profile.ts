@@ -1,6 +1,28 @@
 export type CSVDelimiter = 'comma' | 'semicolon' | 'tab';
 
+export interface CSVInvestmentMapping {
+  kind: 'dividend' | 'withholding' | 'column';
+  kind_column?: string;
+  dividend_value?: string;
+  withholding_value?: string;
+  instrument_column: string;
+  gross_column?: string;
+  withholding_column?: string;
+  cash_account_id?: number;
+  income_account_id?: number;
+  withholding_account_id?: number;
+}
+
+export function validCSVInvestmentMapping(value: CSVInvestmentMapping | undefined): boolean {
+  if (!value) return true;
+  const text = (field: string | undefined) => field?.trim() ?? '';
+  return ['dividend', 'withholding', 'column'].includes(value.kind) && !!text(value.instrument_column) &&
+    (value.kind === 'withholding' || !!text(value.gross_column)) &&
+    (value.kind !== 'column' || (!!text(value.kind_column) && !!text(value.dividend_value) && !!text(value.withholding_value) && text(value.dividend_value) !== text(value.withholding_value)));
+}
+
 export interface CSVProfileConfig {
+  investment?: CSVInvestmentMapping;
   delimiter: CSVDelimiter;
   date_column: string;
   payee_column?: string;
@@ -40,7 +62,7 @@ export function parseCSVProfileConfig(raw: string): CSVProfileConfig | null {
       !['DMY', 'MDY', 'YMD'].includes(value.date_layout ?? '') ||
       !['.', ','].includes(value.decimal_separator ?? '') ||
       (value.invert_amount !== undefined && typeof value.invert_amount !== 'boolean') ||
-      hasAmount === hasDebitCredit
+      hasAmount === hasDebitCredit || !validCSVInvestmentMapping(value.investment)
     ) return null;
     return { ...value, invert_amount: value.invert_amount ?? false } as CSVProfileConfig;
   } catch {
@@ -82,7 +104,11 @@ function requiredMappedHeaders(config: CSVProfileConfig): string[] {
     config.payee_column,
     config.memo_column,
     config.category_column,
-    config.external_ref_column
+    config.external_ref_column,
+    config.investment?.kind === 'column' ? config.investment.kind_column : undefined,
+    config.investment?.instrument_column,
+    config.investment?.kind !== 'withholding' ? config.investment?.gross_column : undefined,
+    config.investment?.kind !== 'withholding' ? config.investment?.withholding_column : undefined
   ].filter((value): value is string => !!value);
 }
 

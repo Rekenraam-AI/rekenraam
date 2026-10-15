@@ -80,6 +80,7 @@ type StagedSplit struct {
 
 // StagedRow is the canonical, format-independent row produced by a SourceAdapter.
 type StagedRow struct {
+	Investment        *CSVInvestmentRow
 	DedupeFingerprint string
 	Date              string
 	Amount            string
@@ -211,16 +212,21 @@ type DeleteImportRuleInput struct {
 
 // ImportRowResolution carries the user-chosen account/category/payee for a staged row.
 type ImportRowResolution struct {
-	AccountID         int64   `json:"account_id,omitempty"`
-	CommodityID       int64   `json:"commodity_id,omitempty"`
-	PayeeID           *int64  `json:"payee_id,omitempty"`
-	PayeeName         string  `json:"payee_name,omitempty"`
-	CategoryID        *int64  `json:"category_id,omitempty"`
-	TransferAccountID *int64  `json:"transfer_account_id,omitempty"`
-	TagIDs            []int64 `json:"tag_ids,omitempty"`
-	AppliedRuleID     *int64  `json:"applied_rule_id,omitempty"`
-	AppliedRuleName   string  `json:"applied_rule_name,omitempty"`
-	Exclude           bool    `json:"exclude,omitempty"`
+	InstrumentCommodityID int64   `json:"instrument_commodity_id,omitempty"`
+	InvestmentKind        string  `json:"investment_kind,omitempty"`
+	GrossAmount           *string `json:"gross_amount,omitempty"`
+	WithholdingAmount     *string `json:"withholding_amount,omitempty"`
+	WithholdingAccountID  *int64  `json:"withholding_account_id,omitempty"`
+	AccountID             int64   `json:"account_id,omitempty"`
+	CommodityID           int64   `json:"commodity_id,omitempty"`
+	PayeeID               *int64  `json:"payee_id,omitempty"`
+	PayeeName             string  `json:"payee_name,omitempty"`
+	CategoryID            *int64  `json:"category_id,omitempty"`
+	TransferAccountID     *int64  `json:"transfer_account_id,omitempty"`
+	TagIDs                []int64 `json:"tag_ids,omitempty"`
+	AppliedRuleID         *int64  `json:"applied_rule_id,omitempty"`
+	AppliedRuleName       string  `json:"applied_rule_name,omitempty"`
+	Exclude               bool    `json:"exclude,omitempty"`
 }
 
 // --- Input types for service methods ---

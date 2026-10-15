@@ -354,7 +354,7 @@ func newSetupTestHandlerWithInvestment(t *testing.T, options HandlerOptions) (ht
 	// Reports can be denominated in a reporting currency, which needs rates.
 	transactionService.SetPricingRepository(db.NewPricingRepository(database))
 	investmentService := app.NewInvestmentService(db.NewInvestmentRepository(database), accountService, transactionService, pricingService)
-	importService := app.NewImportService(db.NewImportRepository(database), transactionService, accountRepository, nil, nil, nil)
+	importService := app.NewImportService(db.NewImportRepository(database), transactionService, accountRepository, nil, nil, investmentService)
 	exportService := app.NewExportService(db.NewExportRepository(readOnlyDatabase))
 	selfCheckService := app.NewSelfCheckService(db.NewSelfCheckRepository(database, readOnlyDatabase))
 	forecastService := app.NewForecastService(db.NewForecastRepository(readOnlyDatabase))

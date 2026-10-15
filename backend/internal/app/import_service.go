@@ -135,6 +135,9 @@ func (s *ImportService) StartImport(ctx context.Context, input StartImportInput)
 		return StartImportResult{}, fmt.Errorf("parse import: %w", err)
 	}
 
+	if err := s.prepareCSVInvestmentRows(ctx, &parseResult); err != nil {
+		return StartImportResult{}, err
+	}
 	if adapter.Kind() == "crypto_csv" {
 		if err := s.prepareCryptoCSV(ctx, input, &parseResult); err != nil {
 			return StartImportResult{}, err
@@ -529,7 +532,7 @@ func (s *ImportService) stageParseResult(ctx context.Context, batchID int64, par
 	fillSnapshots := make(map[string]committedFillSnapshot)
 	for i, row := range parseResult.Rows {
 		rawJSON, _ := json.Marshal(row.Raw)
-		normalizedJSON, _ := json.Marshal(map[string]any{
+		normalized := map[string]any{
 			"date":           row.Date,
 			"amount":         row.Amount,
 			"commodity_hint": row.CommodityHint,
@@ -540,13 +543,17 @@ func (s *ImportService) stageParseResult(ctx context.Context, batchID int64, par
 			"memo":           row.Memo,
 			"external_ref":   row.ExternalRef,
 			"splits":         row.Splits,
-		})
+		}
+		if row.Investment != nil {
+			normalized["investment"] = row.Investment
+		}
+		normalizedJSON, _ := json.Marshal(normalized)
 
 		dedupeStatus := "new"
 		if fpCommittedDupe[row.DedupeFingerprint] {
 			// Exists in commit_identities → duplicate of a previously committed row.
 			dedupeStatus = "duplicate"
-			if row.Raw[rawKeyKind] == trading212RawKindOrderFill {
+			if row.Investment == nil && row.Raw[rawKeyKind] == trading212RawKindOrderFill {
 				snapshot, checked := fillSnapshots[row.DedupeFingerprint]
 				if !checked {
 					originalRaw, originalNormalized, found, err := s.repository.FindCommittedTrading212FillSnapshot(ctx, BookID, row.DedupeFingerprint)
@@ -573,7 +580,7 @@ func (s *ImportService) stageParseResult(ctx context.Context, batchID int64, par
 		seenInBatch[row.DedupeFingerprint] = true
 		// An unsupported fill never posts, so it needs review — unless its
 		// unchanged identity was already linked to a recorded action (T-122).
-		if unsupportedTrading212Fill(row.Raw) && dedupeStatus != "duplicate" {
+		if row.Investment == nil && unsupportedTrading212Fill(row.Raw) && dedupeStatus != "duplicate" {
 			dedupeStatus = "needs_attention"
 		}
 
@@ -592,6 +599,16 @@ func (s *ImportService) stageParseResult(ctx context.Context, batchID int64, par
 			encoded, _ := json.Marshal(ImportRowResolution{AccountID: cashID, CommodityID: commodityID})
 			resolutionJSON = string(encoded)
 		}
+		if row.Investment != nil {
+			encoded, _ := json.Marshal(row.Investment.Resolution)
+			resolutionJSON = string(encoded)
+			if row.Investment.Kind == "" || row.Investment.Resolution.InstrumentCommodityID == 0 {
+				if dedupeStatus != "duplicate" {
+					dedupeStatus = "needs_attention"
+				}
+			}
+		}
+
 		dbRows = append(dbRows, db.CreateImportStagedRowParams{
 			BatchID:           batchID,
 			BookID:            BookID,
@@ -816,10 +833,30 @@ func (s *ImportService) PreviewCommit(ctx context.Context, input PreviewCommitIn
 		if row.CommitStatus == "committed" || row.CommitStatus == "skipped" {
 			continue
 		}
-		if row.DedupeStatus == "duplicate" || row.DedupeStatus == "excluded" || row.SourceChanged || unsupportedTrading212FillJSON(row.RawJSON) {
+		if row.DedupeStatus == "duplicate" || row.DedupeStatus == "excluded" || row.SourceChanged || (!isCSVInvestmentRow(batch, row) && unsupportedTrading212FillJSON(row.RawJSON)) {
 			result.DuplicateCount++
 			continue
 		}
+		if isCSVInvestmentRow(batch, row) {
+			dividend, err := s.csvInvestmentDividend(ctx, row, input.OwnerUserID, 0, "")
+			if err != nil {
+				return PreviewCommitResult{}, err
+			}
+			impact, err := s.investmentService.DividendReconciliationImpact(ctx, dividend)
+			if err != nil {
+				return PreviewCommitResult{}, err
+			}
+			if len(impact.AffectedCheckpoints) > 0 {
+				ids := []int64{}
+				for _, cp := range impact.AffectedCheckpoints {
+					ids = append(ids, cp.CheckpointID)
+				}
+				result.ReconciliationIssues = append(result.ReconciliationIssues, ReconciliationIssuePreview{RowIndex: row.RowIndex, CheckpointIDs: ids})
+			}
+			result.IncludableCount++
+			continue
+		}
+
 		if batch.SourceKind == "crypto_csv" {
 			trade, side, err := s.cryptoCSVTrade(row, input.OwnerUserID, 0, "")
 			if err != nil {
@@ -934,6 +971,23 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 	result.TotalRows = len(rows)
 
 	for _, row := range rows {
+		if !isCSVInvestmentRow(batch, row) || row.CommitStatus == "committed" || row.CommitStatus == "skipped" || row.DedupeStatus == "duplicate" || row.DedupeStatus == "excluded" {
+			continue
+		}
+		dividend, err := s.csvInvestmentDividend(ctx, row, input.OwnerUserID, input.AuthSessionID, input.RequestID)
+		if err != nil {
+			return result, err
+		}
+		impact, err := s.investmentService.DividendReconciliationImpact(ctx, dividend)
+		if err != nil {
+			return result, err
+		}
+		if len(impact.AffectedCheckpoints) > 0 && !input.ReconciliationOverride {
+			return result, ErrReconciliationOverrideRequired
+		}
+	}
+
+	for _, row := range rows {
 		if row.CommitStatus == "committed" || row.CommitStatus == "skipped" {
 			// Already committed or skipped in a prior partial-commit run — count and continue.
 			if row.CommitStatus == "committed" {
@@ -944,7 +998,7 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 			continue
 		}
 
-		if unsupportedTrading212FillJSON(row.RawJSON) {
+		if !isCSVInvestmentRow(batch, row) && unsupportedTrading212FillJSON(row.RawJSON) {
 			if err := s.recordImportStagedRowTerminal(ctx, &result, db.CommitImportStagedRowParams{
 				RowID: row.ID, CommitStatus: "skipped",
 				CommitError: sql.NullString{String: "unsupported fill type; review required", Valid: true},

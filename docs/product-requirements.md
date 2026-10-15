@@ -284,7 +284,15 @@ Goal: make records trustworthy over time.
 
 Goal: reduce manual entry without sacrificing trust.
 
-- CSV import preview and commit.
+- CSV import preview and commit. Saved profiles may explicitly map cash dividends
+  and separate withholding to an existing instrument's exact commodity code, with
+  owner review for unresolved identities and account choices. Signed cash remains
+  distinct from gross income and tax; combined rows must satisfy exact gross minus
+  withholding equals cash. Separate tax records no gross income. Invalid investment
+  rows never fall back to ordinary bank cash. Profile defaults and reviewed choices
+  use the shared named investment writer, atomic source identity, reconciliation
+  guards, correction/reversal, instrument activity and export. See
+  [CSV investment income contract](plans/csv-investment-income-plan.md).
 - QIF and CSV imports accept Unicode and legacy locale encodings. Automatic
   legacy detection must be confidence-gated, the preview must disclose the
   result, and the user must be able to select the source encoding when
