@@ -889,7 +889,8 @@ Expenses:Groceries:Dairy     +40 EUR
 Expenses:Beauty              +40 EUR
 ```
 
-Delayed transfer:
+Delayed transfer (entered with `posted_on` on the account postings, #187;
+see `docs/conventions.md`, Posting dates):
 
 ```text
 Entry 1, 2026-06-01:

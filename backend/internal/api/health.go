@@ -159,6 +159,7 @@ func RegisterRoutesWithAuth(mux *http.ServeMux, logger *slog.Logger, services Se
 	mux.HandleFunc("POST /api/v1/transactions/{transaction_id}/move", moveTransaction(logger, services.Auth, services.Transaction, options))
 	mux.HandleFunc("POST /api/v1/transactions/{transaction_id}/place", placeTransaction(logger, services.Auth, services.Transaction, options))
 	mux.HandleFunc("POST /api/v1/accounts/{account_id}/postings/{posting_line_id}/move", movePosting(logger, services.Auth, services.Transaction, options))
+	mux.HandleFunc("POST /api/v1/accounts/{account_id}/postings/{posting_line_id}/move-day", movePostingToDay(logger, services.Auth, services.Transaction, options))
 	mux.HandleFunc("POST /api/v1/transactions/reconciliation-impact", createReconciliationImpact(logger, services.Auth, services.Transaction))
 	mux.HandleFunc("POST /api/v1/transactions/{transaction_id}/reconciliation-impact", updateReconciliationImpact(logger, services.Auth, services.Transaction))
 	mux.HandleFunc("POST /api/v1/accounts/{account_id}/reconciliations/start", startReconciliation(logger, services.Auth, services.Transaction, options))

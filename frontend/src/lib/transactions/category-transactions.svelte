@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { otherPostingDays } from './posted-on';
   import { transactionTitle } from '#lib/transactions/transaction-title.ts';
   import { systemLabelText } from '#lib/transactions/system-label.ts';
   import { createInfiniteQuery, useQueryClient } from '@tanstack/svelte-query';
@@ -126,6 +127,10 @@
 
   {#snippet dateCell(tx: TransactionResponse)}
     <span class="tabular-nums text-muted">{tx.transaction_date}</span>
+    {@const postedDays = otherPostingDays(tx)}
+    {#if postedDays.length}
+      <span class="block text-xs tabular-nums text-muted">{m.transactions_posted_on_note({ dates: postedDays.join(', ') })}</span>
+    {/if}
   {/snippet}
 
   {#snippet payeeCell(tx: TransactionResponse)}

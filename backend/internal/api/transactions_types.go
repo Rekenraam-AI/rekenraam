@@ -197,6 +197,7 @@ type journalEntryRequest struct {
 
 type postingRequest struct {
 	LineKey       string            `json:"line_key"`
+	PostedOn      string            `json:"posted_on"`
 	AccountID     int64             `json:"account_id"`
 	QuantityValue exact.Coefficient `json:"quantity_value"`
 	QuantityScale int               `json:"quantity_scale"`
@@ -218,6 +219,7 @@ func toTransactionInput(request transactionRequest) app.TransactionInput {
 		for _, posting := range entry.Postings {
 			postings = append(postings, app.PostingInput{
 				LineKey:       posting.LineKey,
+				PostedOn:      posting.PostedOn,
 				AccountID:     posting.AccountID,
 				QuantityValue: posting.QuantityValue,
 				QuantityScale: posting.QuantityScale,

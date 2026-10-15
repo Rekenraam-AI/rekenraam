@@ -13,6 +13,7 @@
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { isSubledgerManagedAccountKind } from '#lib/accounts/subledger-accounts.ts';
   import { isOrdinaryEntryAccount } from './entry-account';
+  import { editablePostings, hasPostingDay, postedOnForRequest } from './posted-on';
   import { m } from '#lib/paraglide/messages.js';
   import { accountsQueryOptions } from '#lib/api/accounts.ts';
   import { categoriesQueryOptions } from '#lib/api/categories.ts';
@@ -67,6 +68,9 @@
     amountStr: string;       // user-entered, e.g. "25.00" or "-25.00"
     memo: string;
     lineKey?: string;
+    /** The day this account posting posts on, '' when it follows the
+     *  transaction date (#187). */
+    postedOn: string;
   };
 
   // ── Props ─────────────────────────────────────────────────────────
@@ -152,6 +156,11 @@
   let categoryLabel = $state('');
   let amountStr = $state(''); // user-entered amount string, e.g. "25.00"
   let accountID = $state<number | undefined>(undefined);
+  // The day the account posting posts on, '' when it follows the date (#187).
+  let accountPostedOn = $state('');
+  let showAccountPostedOn = $state(false);
+  // Split legs whose posted-on field the user opened (by leg index).
+  let splitPostedOnOpen = $state<Record<number, boolean>>({});
   // Manually chosen commodity when the selected account has no default_commodity_id.
   let simpleCommodityID = $state<number | undefined>(undefined);
 
@@ -162,8 +171,8 @@
 
   // Tier 3: split legs
   let splitLegs = $state<SplitLeg[]>([
-    { accountID: '', commodityID: '', amountStr: '', memo: '' },
-    { accountID: '', commodityID: '', amountStr: '', memo: '' }
+    { accountID: '', commodityID: '', amountStr: '', memo: '', postedOn: '' },
+    { accountID: '', commodityID: '', amountStr: '', memo: '', postedOn: '' }
   ]);
 
   // ── Form state ────────────────────────────────────────────────────
@@ -254,6 +263,7 @@
   // ── Initialise from existing transaction (edit mode) ──────────────
   $effect(() => {
     tagIDs = [...(transaction?.tag_ids ?? initialValues?.tag_ids ?? [])];
+    splitPostedOnOpen = {};
     if (mode === 'template' && initialValues) {
       transactionDate = initialValues.transaction_date ?? untrack(ownerToday);
       payeeID = initialValues.payee_id ?? undefined;
@@ -267,7 +277,7 @@
       if (postings.length) splitLegs = postings.map((p: JournalEntryPostingRequest) => ({
         accountID: String(p.account_id), commodityID: String(p.commodity_id),
         amountStr: formatEditableAmount(p.quantity_value ?? '0', p.quantity_scale ?? 0),
-        memo: p.memo ?? '', lineKey: p.line_key
+        memo: p.memo ?? '', lineKey: p.line_key, postedOn: ''
       }));
       return;
     }
@@ -283,14 +293,16 @@
       categoryLabel = '';
       amountStr = '';
       accountID = untrack(() => createDefaults?.accountID);
+      accountPostedOn = '';
+      showAccountPostedOn = false;
       simpleCommodityID = undefined;
       transactionKind = 'ordinary';
       noteMarkdown = '';
       externalRefHint = '';
       tier = 'simple';
       splitLegs = [
-        { accountID: '', commodityID: '', amountStr: '', memo: '' },
-        { accountID: '', commodityID: '', amountStr: '', memo: '' }
+        { accountID: '', commodityID: '', amountStr: '', memo: '', postedOn: '' },
+        { accountID: '', commodityID: '', amountStr: '', memo: '', postedOn: '' }
       ];
       formError = undefined;
       return;
@@ -306,25 +318,30 @@
     externalRefHint = transaction.external_ref_hint ?? '';
     formError = undefined;
 
-    // Determine tier based on journal entry complexity.
+    // Determine tier based on journal entry complexity. A journal posted on
+    // several days loses its transfer_clearing bridge here; the server
+    // rebuilds it from each leg's posted date (#187).
     const entries: JournalEntryResponse[] = transaction.journal_entries ?? [];
-    const postings: PostingResponse[] = entries.flatMap((e: JournalEntryResponse) => e.postings ?? []);
-    const nonSystemPostings: PostingResponse[] = postings.filter((p: PostingResponse) => !p.account_system_role);
+    const loaded = editablePostings<PostingResponse>(entries, transaction.transaction_date);
+    const shown = preservePostings ? loaded : loaded.filter(({ posting }) => !posting.account_system_role);
+    const assetLegs = shown.filter(({ posting }) => hasPostingDay(posting));
+    const categoryLegs = shown.filter(
+      ({ posting }) => posting.account_class === 'income' || posting.account_class === 'expense'
+    );
 
-    if (!preservePostings && nonSystemPostings.length <= 2) {
+    // The simple form is one account and one category; anything else (a
+    // transfer between two accounts included) opens as splits.
+    if (!preservePostings && shown.length <= 2 && assetLegs.length <= 1 && categoryLegs.length <= 1 && assetLegs.length + categoryLegs.length === shown.length) {
       tier = 'simple';
-      // Find the asset/liability leg and the income/expense leg.
-      const assetLeg = nonSystemPostings.find(
-        (p: PostingResponse) => p.account_class === 'asset' || p.account_class === 'liability'
-      );
-      const catLeg = nonSystemPostings.find(
-        (p: PostingResponse) => p.account_class === 'income' || p.account_class === 'expense'
-      );
+      const assetLeg = assetLegs[0];
+      const catLeg = categoryLegs[0]?.posting;
       if (assetLeg) {
-        accountID = assetLeg.account_id;
-        simpleCommodityID = assetLeg.commodity_id;
+        accountID = assetLeg.posting.account_id;
+        simpleCommodityID = assetLeg.posting.commodity_id;
         // Format the amount with correct sign: positive = inflow to account.
-        amountStr = inflowPositiveAmount(assetLeg);
+        amountStr = inflowPositiveAmount(assetLeg.posting);
+        accountPostedOn = assetLeg.postedOn;
+        showAccountPostedOn = assetLeg.postedOn !== '';
       }
       if (catLeg) {
         categoryID = catLeg.account_id;
@@ -334,12 +351,13 @@
       }
     } else {
       tier = 'split';
-      splitLegs = (preservePostings ? postings : nonSystemPostings).map((p: PostingResponse) => ({
+      splitLegs = shown.map(({ posting: p, postedOn }) => ({
         accountID: String(p.account_id),
         commodityID: String(p.commodity_id),
         amountStr: formatEditableAmount(p.quantity_value, p.quantity_scale),
         memo: p.memo ?? '',
-        lineKey: p.line_key
+        lineKey: p.line_key,
+        postedOn
       }));
     }
   });
@@ -541,6 +559,7 @@
         postings: [
           {
             account_id: accountID,
+            posted_on: mode === 'template' ? undefined : postedOnForRequest(accountPostedOn, transactionDate, account),
             commodity_id: effectiveCommodityID,
             quantity_value: assetLedgerValue,
             quantity_scale: scale,
@@ -572,6 +591,7 @@
       postings.push({
         line_key: leg.lineKey,
         account_id: Number(leg.accountID),
+        posted_on: mode === 'template' ? undefined : postedOnForRequest(leg.postedOn, transactionDate, accountForLeg(leg.accountID)),
         commodity_id: Number(leg.commodityID),
         quantity_value: parsed.value,
         quantity_scale: parsed.scale,
@@ -600,7 +620,7 @@
   }
 
   function addSplitLeg() {
-    splitLegs = [...splitLegs, { accountID: '', commodityID: '', amountStr: '', memo: '' }];
+    splitLegs = [...splitLegs, { accountID: '', commodityID: '', amountStr: '', memo: '', postedOn: '' }];
   }
 
   function removeSplitLeg(i: number) {
@@ -619,13 +639,15 @@
           accountID: String(accountID),
           commodityID: inferredCommodityID ? String(inferredCommodityID) : '',
           amountStr: formatEditableAmount(assetLedger, scale),
-          memo: ''
+          memo: '',
+          postedOn: accountPostedOn
         },
         {
           accountID: categoryID ? String(categoryID) : '',
           commodityID: inferredCommodityID ? String(inferredCommodityID) : '',
           amountStr: formatEditableAmount(negateCoefficient(assetLedger), scale),
-          memo: ''
+          memo: '',
+          postedOn: ''
         }
       ];
     }
@@ -657,6 +679,17 @@
     if (!accIDStr) return '';
     const acc = (accountsQuery.data?.accounts ?? []).find((a: AccountResponse) => a.id === Number(accIDStr));
     return acc?.default_commodity_id ? String(acc.default_commodity_id) : '';
+  }
+
+  function accountForLeg(accIDStr: string): AccountResponse | undefined {
+    if (!accIDStr) return undefined;
+    return (accountsQuery.data?.accounts ?? []).find((a: AccountResponse) => a.id === Number(accIDStr));
+  }
+
+  function setLegPostedOn(i: number, postedOn: string) {
+    const legs = [...splitLegs];
+    legs[i] = { ...legs[i], postedOn };
+    splitLegs = legs;
   }
 
   function onSplitAccountChange(i: number, e: Event) {
@@ -767,17 +800,43 @@
   <div class="grid gap-3 sm:grid-cols-2">
     <!-- Date -->
     {#if mode !== 'template'}
-    <label>
-      <span class={labelClass}>{m.transactions_field_date()}</span>
-      <input
-        type="date"
-        bind:value={transactionDate}
-        class={inputClass}
-        required
-        disabled={isVoided && mode === 'edit'}
-      />
-    </label>
-
+    <div>
+      <label>
+        <span class={labelClass}>{m.transactions_field_date()}</span>
+        <input
+          type="date"
+          bind:value={transactionDate}
+          class={inputClass}
+          required
+          disabled={isVoided && mode === 'edit'}
+        />
+      </label>
+      {#if tier === 'simple'}
+        {#if showAccountPostedOn}
+          <label class="mt-2 block">
+            <span class={labelClass}>{m.transactions_field_posted_on()}</span>
+            <input
+              type="date"
+              value={accountPostedOn || transactionDate}
+              oninput={(e) => { accountPostedOn = e.currentTarget.value; }}
+              class={inputClass}
+              aria-describedby="transaction-posted-on-hint"
+              disabled={isVoided && mode === 'edit'}
+            />
+            <span id="transaction-posted-on-hint" class="mt-1 block text-xs text-muted">{m.transactions_posted_on_hint()}</span>
+          </label>
+        {:else}
+          <button
+            type="button"
+            class="mt-1 min-h-10 text-xs font-medium text-accent underline-offset-2 hover:underline"
+            onclick={() => { showAccountPostedOn = true; }}
+            disabled={isVoided && mode === 'edit'}
+          >
+            {m.transactions_posted_on_toggle()}
+          </button>
+        {/if}
+      {/if}
+    </div>
     {/if}
     <!-- Payee autocomplete -->
     <label class="relative">
@@ -1068,6 +1127,30 @@
                 <Trash2 size={14} aria-hidden="true" />
               </button>
             </div>
+
+            {#if mode !== 'template' && hasPostingDay(accountForLeg(leg.accountID))}
+              {#if leg.postedOn !== '' || splitPostedOnOpen[i]}
+                <label class="sm:col-span-3">
+                  <span class={labelClass}>{m.transactions_field_posted_on()}</span>
+                  <input
+                    type="date"
+                    value={leg.postedOn || transactionDate}
+                    oninput={(e) => setLegPostedOn(i, e.currentTarget.value)}
+                    class={inputClass}
+                  />
+                </label>
+              {:else}
+                <div class="sm:col-span-3">
+                  <button
+                    type="button"
+                    class="min-h-10 text-xs font-medium text-accent underline-offset-2 hover:underline"
+                    onclick={() => { splitPostedOnOpen = { ...splitPostedOnOpen, [i]: true }; }}
+                  >
+                    {m.transactions_posted_on_toggle()}
+                  </button>
+                </div>
+              {/if}
+            {/if}
 
             {#if mode === 'template' || preservePostings}
               <label class="sm:col-span-3">

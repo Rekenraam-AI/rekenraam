@@ -243,8 +243,12 @@ func (s *TransactionService) cleanTransactionSpec(ctx context.Context, input Tra
 		return db.TransactionSpec{}, err
 	}
 
-	entries := make([]db.JournalEntrySpec, 0, len(input.JournalEntries))
-	for entryIndex, entryInput := range input.JournalEntries {
+	journalEntries, err := s.groupPostingsByPostedOn(ctx, input, transactionDate)
+	if err != nil {
+		return db.TransactionSpec{}, err
+	}
+	entries := make([]db.JournalEntrySpec, 0, len(journalEntries))
+	for entryIndex, entryInput := range journalEntries {
 		entry, err := s.cleanJournalEntry(ctx, entryInput, transactionDate, status, options)
 		if err != nil {
 			return db.TransactionSpec{}, err

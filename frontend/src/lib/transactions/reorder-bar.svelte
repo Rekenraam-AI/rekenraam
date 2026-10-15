@@ -47,6 +47,29 @@
         {m.transactions_reorder_only_account()}
       </label>
     {/if}
+    {#if mode.dayMove}
+      <div class="space-y-2 rounded-(--radius-control) border border-accent/40 bg-surface px-3 py-2" role="alert">
+        <p class="text-sm text-foreground">{m.transactions_reorder_day_confirm({ date: mode.dayMove.date })}</p>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            class="rounded-(--radius-control) bg-foreground px-3 py-2 text-sm font-semibold text-background transition hover:opacity-90"
+            disabled={mode.pending}
+            onclick={() => mode.confirmDayMove()}
+            {@attach (node) => node.focus()}
+          >
+            {m.transactions_reorder_day_confirm_button({ date: mode.dayMove.date })}
+          </button>
+          <button
+            type="button"
+            class="rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground"
+            onclick={() => mode.cancelDayMove()}
+          >
+            {m.investments_form_cancel()}
+          </button>
+        </div>
+      </div>
+    {/if}
     {#if mode.awaitingOverride}
       <div class="space-y-2 rounded-(--radius-control) border border-warning/50 bg-warning-soft px-3 py-2" role="alert">
         <p class="text-sm text-foreground">{m.transactions_reorder_override()}</p>

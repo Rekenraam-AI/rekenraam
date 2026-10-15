@@ -83,6 +83,18 @@
     allPostings.filter((p) => !p.account_system_role)
   );
 
+  // The day each posting posts on when it differs from the transaction date
+  // (#187), keyed by posting line.
+  const postingDays = $derived(
+    new Map(
+      (transaction.journal_entries ?? []).flatMap((e) =>
+        e.entry_date === transaction.transaction_date
+          ? []
+          : (e.postings ?? []).map((p) => [p.posting_line_id, e.entry_date] as const)
+      )
+    )
+  );
+
   const kindLabel = $derived.by(() => {
     switch (transaction.transaction_kind) {
       case 'ordinary': return m.transaction_kind_ordinary();
@@ -427,7 +439,12 @@
       <ul class="space-y-1">
         {#each visiblePostings as p (p.posting_line_id)}
           <li class="flex items-center justify-between rounded-[var(--radius-control)] border border-border bg-surface px-3 py-2 text-sm">
-            <span class="min-w-0 truncate text-foreground">{resolveAccountLabel(p)}</span>
+            <span class="min-w-0">
+              <span class="block truncate text-foreground">{resolveAccountLabel(p)}</span>
+              {#if postingDays.has(p.posting_line_id)}
+                <span class="block text-xs tabular-nums text-muted">{m.transactions_posted_on_note({ dates: postingDays.get(p.posting_line_id) ?? '' })}</span>
+              {/if}
+            </span>
             <span class={`ml-3 shrink-0 font-medium tabular-nums ${p.quantity_value.startsWith('-') ? 'text-danger' : 'text-foreground'}`}>
               {joinCommodityAmount(
                 commodityDisplay(p),

@@ -469,6 +469,18 @@ PostingRequest:
     line_key:
       type: string
       description: Server-generated line key from a previous response. Omit for new lines.
+    posted_on:
+      type: string
+      format: date
+      description: >-
+        The day this account posting appears on its statement, when it differs
+        from the entry date (#187). Allowed only on asset and liability
+        postings, and only in a request with exactly one journal entry. The
+        server builds one journal entry per date: with one account, every
+        other posting follows its date; with several, they stay on the entry
+        date, and each dated entry is balanced per commodity through
+        transfer_clearing. Not stored on the posting; responses carry the
+        resulting journal entries.
     account_id:
       type: integer
       format: int64

@@ -11942,6 +11942,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{account_id}/postings/{posting_line_id}/move-day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move an account posting to the previous or next calendar day
+         * @description Re-dates one asset or liability posting by one calendar day (#187), as an edit of its transaction: with one account in the transaction the whole entry moves; otherwise each dated entry is rebalanced through transfer_clearing. The posting lands at the end of its new day. A journal the posted-date rule would not rebuild exactly as stored is refused with VALIDATION_FAILED.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CSRF-Token": string;
+                };
+                path: {
+                    account_id: components["parameters"]["AccountID"];
+                    posting_line_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MoveRequest"];
+                };
+            };
+            responses: {
+                /** @description Posting moved to the adjacent day; a new transaction version was written */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TransactionResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Posting not found in this account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description The move changes a reconciled period; reconciliation_override is required (CONFLICT), or the transaction changed meanwhile (TRANSACTION_VERSION_STALE) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reconciliations/{reconciliation_id}": {
         parameters: {
             query?: never;
@@ -27982,6 +28057,11 @@ export interface components {
         PostingRequest: {
             /** @description Server-generated line key from a previous response. Omit for new lines. */
             line_key?: string;
+            /**
+             * Format: date
+             * @description The day this account posting appears on its statement, when it differs from the entry date (#187). Allowed only on asset and liability postings, and only in a request with exactly one journal entry. The server builds one journal entry per date: with one account, every other posting follows its date; with several, they stay on the entry date, and each dated entry is balanced per commodity through transfer_clearing. Not stored on the posting; responses carry the resulting journal entries.
+             */
+            posted_on?: string;
             /** Format: int64 */
             account_id: number;
             quantity_value: string;

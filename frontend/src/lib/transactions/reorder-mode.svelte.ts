@@ -18,6 +18,8 @@ export class ReorderMode {
   error = $state<unknown>(undefined);
   /** A refused move waiting for the user's decision on the override. */
   awaitingOverride = $state<((override: boolean) => Promise<unknown>) | null>(null);
+  /** A move to another posting day (#187) waiting for the user's confirmation. */
+  dayMove = $state<{ date: string; action: (override: boolean) => Promise<unknown> } | null>(null);
 
   constructor(private readonly queryClient: QueryClient) {}
 
@@ -30,6 +32,7 @@ export class ReorderMode {
     this.active = false;
     this.onlyThisAccount = false;
     this.awaitingOverride = null;
+    this.dayMove = null;
     this.error = undefined;
   }
 
@@ -68,6 +71,24 @@ export class ReorderMode {
 
   cancelOverride() {
     this.awaitingOverride = null;
+  }
+
+  /** At a day's edge an arrow offers the adjacent day; the move waits for a yes. */
+  proposeDayMove(date: string, action: (override: boolean) => Promise<unknown>) {
+    this.error = undefined;
+    this.awaitingOverride = null;
+    this.dayMove = { date, action };
+  }
+
+  async confirmDayMove() {
+    const proposal = this.dayMove;
+    if (!proposal) return;
+    this.dayMove = null;
+    await this.move(proposal.action);
+  }
+
+  cancelDayMove() {
+    this.dayMove = null;
   }
 
   // A move can change the journal, any register's running balance and the forecast.

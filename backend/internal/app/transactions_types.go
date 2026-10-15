@@ -258,7 +258,11 @@ type JournalEntryInput struct {
 }
 
 type PostingInput struct {
-	LineKey       string
+	LineKey string
+	// PostedOn is the day this account posting appears on its statement when
+	// it differs from the entry date (#187). The service turns it into dated
+	// journal entries; it is never stored on the posting.
+	PostedOn      string
 	AccountID     int64
 	QuantityValue exact.Coefficient
 	QuantityScale int

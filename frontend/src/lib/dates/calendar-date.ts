@@ -19,6 +19,35 @@ export function isCalendarDate(value: string): boolean {
   return dayNumber <= daysInMonth(Number(year), monthNumber);
 }
 
+/**
+ * The calendar date one day before or after an ISO date, by arithmetic for the
+ * same reason as above. Used to name the day a posting moves to (#187); the
+ * server computes the move itself.
+ */
+export function adjacentCalendarDate(value: string, step: 1 | -1): string {
+  const match = ISO_DATE.exec(value);
+  if (!match) throw new Error(`not a calendar date: ${value}`);
+  let year = Number(match[1]);
+  let month = Number(match[2]);
+  let day = Number(match[3]) + step;
+  if (day < 1) {
+    month -= 1;
+    if (month < 1) {
+      month = 12;
+      year -= 1;
+    }
+    day = daysInMonth(year, month);
+  } else if (day > daysInMonth(year, month)) {
+    day = 1;
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+  }
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 function daysInMonth(year: number, month: number): number {
   if (month === 2) {
     const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;

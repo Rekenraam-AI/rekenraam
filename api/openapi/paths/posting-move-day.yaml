@@ -1,0 +1,53 @@
+post:
+  summary: Move an account posting to the previous or next calendar day
+  description: >-
+    Re-dates one asset or liability posting by one calendar day (#187), as an
+    edit of its transaction: with one account in the transaction the whole
+    entry moves; otherwise each dated entry is rebalanced through
+    transfer_clearing. The posting lands at the end of its new day. A journal
+    the posted-date rule would not rebuild exactly as stored is refused with
+    VALIDATION_FAILED.
+  parameters:
+    - $ref: "../openapi.yaml#/components/parameters/AccountID"
+    - name: posting_line_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    - in: header
+      name: X-CSRF-Token
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../openapi.yaml#/components/schemas/MoveRequest"
+  responses:
+    "200":
+      description: Posting moved to the adjacent day; a new transaction version was written
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/TransactionResponse"
+    "400":
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "404":
+      description: Posting not found in this account
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "409":
+      description: The move changes a reconciled period; reconciliation_override is required (CONFLICT), or the transaction changed meanwhile (TRANSACTION_VERSION_STALE)
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"

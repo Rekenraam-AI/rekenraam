@@ -411,6 +411,32 @@ export async function movePosting(accountID: number, postingLineID: number, dire
   }
 }
 
+/** Moves one account posting to the previous or next calendar day (#187). */
+export async function movePostingToDay(accountID: number, postingLineID: number, direction: MoveRequest['direction'], csrfToken: string,
+  reconciliationOverride = false): Promise<TransactionResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST('/api/v1/accounts/{account_id}/postings/{posting_line_id}/move-day', {
+      params: {
+        path: { account_id: accountID, posting_line_id: postingLineID },
+        header: { 'X-CSRF-Token': csrfToken }
+      },
+      body: { direction, ...(reconciliationOverride ? { reconciliation_override: true } : {}) }
+    });
+
+    if (data !== undefined) {
+      return data;
+    }
+
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) {
+      throw error;
+    }
+
+    throw toNetworkError(error);
+  }
+}
+
 export async function reconciliationImpactForCreate(input: TransactionRequest): Promise<ReconciliationImpactResponse> {
   try {
     const { data, error, response } = await apiClient.POST('/api/v1/transactions/reconciliation-impact', {

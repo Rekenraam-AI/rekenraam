@@ -207,3 +207,31 @@ func (r *TransactionRepository) ActiveTagIDs(ctx context.Context, bookID int64, 
 
 	return result, nil
 }
+
+// SystemAccountID returns the book's system account with the given role.
+func (r *TransactionRepository) SystemAccountID(ctx context.Context, bookID int64, role string) (int64, error) {
+	var accountID int64
+	if err := r.database.QueryRowContext(ctx, `
+		SELECT id FROM accounts WHERE book_id = ? AND system_role = ?
+	`, bookID, role).Scan(&accountID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, ErrNotFound
+		}
+		return 0, fmt.Errorf("read %s account: %w", role, err)
+	}
+	return accountID, nil
+}
+
+// PostingLineTransactionID returns the transaction a posting line belongs to.
+func (r *TransactionRepository) PostingLineTransactionID(ctx context.Context, bookID int64, postingLineID int64) (int64, error) {
+	var transactionID int64
+	if err := r.database.QueryRowContext(ctx, `
+		SELECT transaction_id FROM posting_lines WHERE book_id = ? AND id = ?
+	`, bookID, postingLineID).Scan(&transactionID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, ErrNotFound
+		}
+		return 0, fmt.Errorf("read posting line: %w", err)
+	}
+	return transactionID, nil
+}

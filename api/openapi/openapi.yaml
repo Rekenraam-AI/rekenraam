@@ -257,6 +257,8 @@ paths:
     $ref: "./paths/import-connection-refresh.yaml"
   /api/v1/accounts/{account_id}/postings/{posting_line_id}/move:
     $ref: "./paths/posting-move.yaml"
+  /api/v1/accounts/{account_id}/postings/{posting_line_id}/move-day:
+    $ref: "./paths/posting-move-day.yaml"
   /api/v1/reconciliations/{reconciliation_id}:
     $ref: "./paths/reconciliation.yaml"
   /api/v1/reconciliations/{reconciliation_id}/preview:

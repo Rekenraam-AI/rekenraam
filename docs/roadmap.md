@@ -127,7 +127,9 @@ below is execution order, not a chain of hard dependencies.
 2. Daily-use parallel work. The shared transaction workspace
    [#185](https://github.com/sergeyfarin/rekenraam/issues/185) is delivered
    (2026-10-14): contextual entry, same-day reorder and row actions on the
-   journal, account and category screens. Investment entry from holding
+   journal, account and category screens. Posting dates that differ from the
+   transaction date (delayed card postings, two-day transfers) are delivered
+   in [#187](https://github.com/sergeyfarin/rekenraam/issues/187) (2026-10-15). Investment entry from holding
    accounts and instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186)
    is delivered (2026-10-14) with a per-instrument activity view. Cash
    dividends and their withholding now retain the paying instrument through

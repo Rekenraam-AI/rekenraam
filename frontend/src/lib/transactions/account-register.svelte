@@ -11,6 +11,7 @@
   import {
     accountRegisterInfiniteQueryOptions,
     movePosting,
+    movePostingToDay,
     placeTransaction,
     type AccountRegisterEntryResponse
   } from '#lib/api/transactions.ts';
@@ -25,6 +26,8 @@
   import ReorderArrows from './reorder-arrows.svelte';
   import { ReorderMode } from './reorder-mode.svelte.ts';
   import { placePosition, sameDayNeighbor, type ReorderDirection } from './reorder';
+  import { hasPostingDay } from './posted-on';
+  import { adjacentCalendarDate } from '#lib/dates/calendar-date.ts';
 
   import type { TransactionWorkspaceActions } from './transaction-workspace.svelte';
   import TransactionRowActions from './transaction-row-actions.svelte';
@@ -110,9 +113,31 @@
     return sameDayNeighbor(rows, rows.findIndex((row) => rowKey(row) === rowKey(entry)), direction, entryDay);
   }
 
+  // At a day's edge the arrow offers to move this account's posting to the
+  // adjacent calendar day (#187): the bank posted it a day later or earlier.
+  // Other accounts and the transaction date stay; investment postings have
+  // their own workflows.
+  function canMoveDay(entry: AccountRegisterEntryResponse): boolean {
+    return entry.status === 'posted' && entry.transaction_kind !== 'investment' && hasPostingDay(entry.posting);
+  }
+
+  function arrowLabel(entry: AccountRegisterEntryResponse, direction: ReorderDirection): string | undefined {
+    if (neighbor(entry, direction) || !canMoveDay(entry)) return undefined;
+    return direction === 'later' ? m.transactions_reorder_next_day() : m.transactions_reorder_previous_day();
+  }
+
   function move(entry: AccountRegisterEntryResponse, direction: ReorderDirection) {
     const anchor = neighbor(entry, direction);
-    if (!anchor || !csrfToken) return;
+    if (!csrfToken) return;
+    if (!anchor) {
+      if (!canMoveDay(entry)) return;
+      const token = csrfToken;
+      reorder.proposeDayMove(
+        adjacentCalendarDate(entry.entry_date, direction === 'later' ? 1 : -1),
+        (override) => movePostingToDay(accountID, entry.posting.posting_line_id, direction, token, override)
+      );
+      return;
+    }
     const token = csrfToken;
     const local = reorder.onlyThisAccount || anchor.transaction_id === entry.transaction_id;
     void reorder.move((override) => local
@@ -137,6 +162,9 @@
 
   {#snippet dateCell(entry: AccountRegisterEntryResponse)}
     <span class="tabular-nums text-muted">{entry.entry_date}</span>
+    {#if entry.transaction_date !== entry.entry_date}
+      <span class="block text-xs tabular-nums text-muted">{m.transactions_transaction_date_note({ date: entry.transaction_date })}</span>
+    {/if}
   {/snippet}
 
   {#snippet payeeCell(entry: AccountRegisterEntryResponse)}
@@ -201,8 +229,10 @@
     <div class="flex items-center justify-end gap-2">
       {#if reorder.active}
         <ReorderArrows
-          canMoveLater={!!neighbor(entry, 'later')}
-          canMoveEarlier={!!neighbor(entry, 'earlier')}
+          canMoveLater={!!neighbor(entry, 'later') || canMoveDay(entry)}
+          canMoveEarlier={!!neighbor(entry, 'earlier') || canMoveDay(entry)}
+          laterLabel={arrowLabel(entry, 'later')}
+          earlierLabel={arrowLabel(entry, 'earlier')}
           pending={reorder.pending}
           onLater={() => move(entry, 'later')}
           onEarlier={() => move(entry, 'earlier')}
