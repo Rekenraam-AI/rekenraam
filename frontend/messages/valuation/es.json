@@ -85,5 +85,9 @@
   "valuation_runs_fingerprints": "Huellas del informe",
   "valuation_runs_inputs": "Entradas SHA-256",
   "valuation_runs_output": "Resultado SHA-256",
-  "valuation_runs_position": "Instrumento #{instrument} · Cuenta #{account}"
+  "valuation_runs_position": "Instrumento #{instrument} · Cuenta #{account}",
+  "valuation_person_pool_method": "Coste medio agrupado por persona",
+  "valuation_person_pool_note": "Nota de jurisdicción (opcional)",
+  "valuation_person_pool_policy": "Método de solo lectura para todas sus cuentas, valorado al {date}. Los grupos se separan por valor, moneda de coste y posición larga/corta. Las transferencias internas conservan el grupo; cada cuenta muestra su cantidad y parte de la base agrupada. No es un cálculo fiscal: no aplica reglas de emparejamiento del mismo día ni de 30 días.",
+  "valuation_person_pool_context": "Su contexto jurisdiccional: {note}"
 }

@@ -85,5 +85,9 @@
   "valuation_runs_fingerprints": "Prüfsummen des Berichts",
   "valuation_runs_inputs": "Eingaben SHA-256",
   "valuation_runs_output": "Ausgabe SHA-256",
-  "valuation_runs_position": "Instrument #{instrument} · Konto #{account}"
+  "valuation_runs_position": "Instrument #{instrument} · Konto #{account}",
+  "valuation_person_pool_method": "Personenbezogene Durchschnittskosten",
+  "valuation_person_pool_note": "Jurisdiktionsnotiz (optional)",
+  "valuation_person_pool_policy": "Schreibgeschützte Methode über alle Ihre Konten, bewertet am {date}. Pools bleiben nach Wertpapier, Kostenwährung und Long-/Short-Seite getrennt. Interne Übertragungen erhalten den Pool; jedes Konto zeigt seine Menge und seinen Anteil an der gepoolten Basis. Keine Steuerberechnung: keine Zuordnungsregeln für denselben Tag oder 30 Tage.",
+  "valuation_person_pool_context": "Ihr Jurisdiktionskontext: {note}"
 }

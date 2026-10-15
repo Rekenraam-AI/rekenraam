@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"rekenraam/backend/internal/app"
 	"rekenraam/backend/internal/db"
@@ -2404,6 +2405,8 @@ type investmentGainsResponse struct {
 }
 
 type gainsProfileResponse struct {
+	PoolScope              string `json:"pool_scope,omitempty"`
+	JurisdictionNote       string `json:"jurisdiction_note,omitempty"`
 	ReportingCurrencyID    int64  `json:"reporting_currency_id,omitempty"`
 	FXMaxAgeDays           int    `json:"fx_max_age_days,omitempty"`
 	StructuralActionPolicy string `json:"structural_action_policy,omitempty"`
@@ -2425,6 +2428,7 @@ type gainsProfileResponse struct {
 
 func toGainsProfileResponse(profile app.GainsProfile) gainsProfileResponse {
 	return gainsProfileResponse{
+		PoolScope: profile.PoolScope, JurisdictionNote: profile.JurisdictionNote,
 		ReportingCurrencyID: profile.ReportingCurrencyID, FXMaxAgeDays: profile.FXMaxAgeDays,
 		StructuralActionPolicy: profile.StructuralActionPolicy,
 		SpecificLotFallback:    profile.SpecificLotFallback, TransferPolicy: profile.TransferPolicy, From: profile.From, To: profile.To,
@@ -2443,6 +2447,16 @@ func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, inve
 		fx, err := gainsFXInput(r.URL.Query())
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "gains FX input", err)
+			return
+		}
+		for _, name := range []string{"alternative_method", "jurisdiction_note"} {
+			if values, exists := r.URL.Query()[name]; exists && (len(values) != 1 || strings.TrimSpace(values[0]) == "") {
+				writeInvestmentServiceError(w, r, logger, "alternative gains input", app.ValidationError{Message: "comparison options must be nonblank and supplied once"})
+				return
+			}
+		}
+		if r.URL.Query().Has("jurisdiction_note") && r.URL.Query().Get("alternative_method") != "person_pooled_average" {
+			writeInvestmentServiceError(w, r, logger, "alternative gains input", app.ValidationError{Message: "jurisdiction note requires person_pooled_average"})
 			return
 		}
 		currencies, err := currencyService.ListCurrencies(r.Context())
@@ -2477,7 +2491,7 @@ func listInvestmentGains(logger *slog.Logger, authService *app.AuthService, inve
 		}
 		response.CapitalReturns, response.Currencies = toCapitalReturnReads(capitalReturns), toCurrencyResponses(currencies)
 		if method := r.URL.Query().Get("alternative_method"); method != "" {
-			alternative, err := investmentService.AlternativeGainsForProfile(r.Context(), method, profile, params)
+			alternative, err := investmentService.AlternativeGainsForProfile(r.Context(), method, r.URL.Query().Get("jurisdiction_note"), profile, params)
 			if err != nil {
 				writeInvestmentServiceError(w, r, logger, "alternative gains", err)
 				return

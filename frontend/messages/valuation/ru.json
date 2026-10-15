@@ -85,5 +85,9 @@
   "valuation_runs_fingerprints": "Контрольные суммы отчёта",
   "valuation_runs_inputs": "Входные данные SHA-256",
   "valuation_runs_output": "Результат SHA-256",
-  "valuation_runs_position": "Инструмент №{instrument} · Счёт №{account}"
+  "valuation_runs_position": "Инструмент №{instrument} · Счёт №{account}",
+  "valuation_person_pool_method": "Средняя стоимость по всем счетам владельца",
+  "valuation_person_pool_note": "Примечание о юрисдикции (необязательно)",
+  "valuation_person_pool_policy": "Метод только для чтения по всем вашим счетам, оценка на {date}. Пулы разделены по ценной бумаге, валюте затрат и длинной/короткой позиции. Внутренние переводы сохраняют пул; каждый счёт показывает своё количество и долю общей базы. Это не налоговый расчёт: правила сопоставления сделок одного дня или 30 дней не применяются.",
+  "valuation_person_pool_context": "Ваш контекст юрисдикции: {note}"
 }

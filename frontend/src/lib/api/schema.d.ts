@@ -24244,7 +24244,7 @@ export interface paths {
         };
         /**
          * List realized and unrealized investment gains
-         * @description Returns all realized gains (from closed lot disposal events) and unrealized gains (from open positions vs. latest price). Realized gains can be filtered by disposal date. Unrealized gain fields are omitted when no price observation exists for the instrument. Effective return-of-capital allocation sets are included separately, filtered by payment date. Their unresolved excess is not included in disposal gains or totals; viewing does not post income. Unrealized gains are a read-only operational_v1 projection (R18, #230): without `valuation_as_of` they value today's positions; with it, every position is replayed to that date and priced with the latest compatible observation on or before it. `profile` names the rules used. Optional `alternative_method` adds an alternative_method_v1 projection beside the operational results. It replays effective history under FIFO, LIFO or average cost in a rolled-back read, including specific-lot decisions using the selected method. It never changes operational elections or journals.
+         * @description Returns all realized gains (from closed lot disposal events) and unrealized gains (from open positions vs. latest price). Realized gains can be filtered by disposal date. Unrealized gain fields are omitted when no price observation exists for the instrument. Effective return-of-capital allocation sets are included separately, filtered by payment date. Their unresolved excess is not included in disposal gains or totals; viewing does not post income. Unrealized gains are a read-only operational_v1 projection (R18, #230): without `valuation_as_of` they value today's positions; with it, every position is replayed to that date and priced with the latest compatible observation on or before it. `profile` names the rules used. Optional `alternative_method` adds an alternative_method_v1 projection beside the operational results. It replays effective history under FIFO, LIFO or average cost in a rolled-back read, including specific-lot decisions using the selected method. It never changes operational elections or journals. person_pooled_average adds person_pooled_average_v1: all owner accounts pool each security, cost currency and position side. Internal transfers conserve the pool; rows retain their account quantities with prorated pooled basis. This method is not a tax computation and applies no same-day or 30-day rules.
          */
         get: {
             parameters: {
@@ -24256,7 +24256,9 @@ export interface paths {
                     /** @description Valuation date for unrealized gains (ISO date, not after owner-local today). Positions are replayed to that date under today's effective history; disposal-date filters are independent. */
                     valuation_as_of?: string;
                     /** @description Read-only cost-basis comparison beside the operational result. */
-                    alternative_method?: "fifo" | "lifo" | "average_cost";
+                    alternative_method?: "fifo" | "lifo" | "average_cost" | "person_pooled_average";
+                    /** @description Optional user-supplied context for person_pooled_average only; trimmed, nonblank, at most 500 characters. It selects no tax rules. Comparison options must be supplied once. */
+                    jurisdiction_note?: string;
                     /** @description Currency for an additive operational reporting projection; requires fx_method. */
                     reporting_currency_id?: number;
                     /** @description valuation_date_all converts signed basis and proceeds/market/income components at the valuation date (each boundary for statements). historic_basis_valuation_close converts each operational lot basis at its effective original acquisition date, proceeds/income at event date, and market value at valuation date. No provider requests or writes. */
@@ -30762,14 +30764,14 @@ export interface components {
             /** @description Inclusive on-or-before FX age window, in calendar days. */
             fx_max_age_days?: number;
             /** @enum {string} */
-            name: "operational_v1" | "alternative_method_v1";
+            name: "operational_v1" | "alternative_method_v1" | "person_pooled_average_v1";
             /** @enum {string} */
             purpose: "operational" | "alternative_method";
             /**
              * @description Operational elections, or the selected alternative method applied to every disposal and transfer depletion.
              * @enum {string}
              */
-            basis_method: "operational_elections" | "fifo" | "lifo" | "average_cost";
+            basis_method: "operational_elections" | "fifo" | "lifo" | "average_cost" | "person_pooled_average";
             /**
              * Format: date
              * @description Date positions are replayed to and priced at.
@@ -30797,6 +30799,13 @@ export interface components {
             /** @enum {string} */
             rounding: "exact_half_up" | "component_half_up_currency_scale";
             /**
+             * @description Person pooling includes all owner accounts, including archived accounts, but separates cost currencies and long/short sides. Unrealized rows retain account quantities with prorated pool basis, not operational carried basis.
+             * @enum {string}
+             */
+            pool_scope?: "owner_security_cost_currency_position_side";
+            /** @description Trimmed user-supplied context only, echoed for person pooling. No jurisdiction rules, same-day matching or 30-day matching are applied. */
+            jurisdiction_note?: string;
+            /**
              * @description Sourced structural-action lot entitlements stay fixed; a method that cannot satisfy them is refused with the operation named.
              * @enum {string}
              */
@@ -30807,10 +30816,10 @@ export interface components {
              */
             specific_lot_fallback?: "selected_method";
             /**
-             * @description Transfer link quantities, destination identities and acquisition-date evidence stay fixed; the selected method supplies hypothetical carried basis.
+             * @description Transfer link quantities, destination identities and acquisition-date evidence stay fixed; the selected method supplies hypothetical carried basis. internal_pool_neutral pools across owner accounts; an internal transfer changes no total quantity or basis.
              * @enum {string}
              */
-            transfer_policy?: "selected_method_fixed_link_quantities";
+            transfer_policy?: "selected_method_fixed_link_quantities" | "internal_pool_neutral";
             /**
              * Format: date
              * @description Inclusive realized period start, omitted when unbounded.

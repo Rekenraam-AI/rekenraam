@@ -3013,6 +3013,8 @@ func (s *InvestmentService) ListUnrealizedGains(ctx context.Context) ([]Unrealiz
 // #230). Two figures compare only when their profiles match; see the R18
 // reporting plan for each field's contract.
 type GainsProfile struct {
+	PoolScope              string `json:"pool_scope,omitempty"`
+	JurisdictionNote       string `json:"jurisdiction_note,omitempty"`
 	ReportingCurrencyID    int64  `json:"reporting_currency_id,omitempty"`
 	FXMaxAgeDays           int    `json:"fx_max_age_days,omitempty"`
 	StructuralActionPolicy string `json:"structural_action_policy,omitempty"`

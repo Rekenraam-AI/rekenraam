@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"unicode/utf8"
 
 	"rekenraam/backend/internal/db"
 )
@@ -26,7 +28,7 @@ func (e AlternativeGainsDependencyError) Error() string {
 	return fmt.Sprintf("alternative projection cannot preserve the lot entitlements of operation %d", e.OperationID)
 }
 
-func (s *InvestmentService) AlternativeGainsProjection(ctx context.Context, method, valuationDate string, period GainsReportParams) (AlternativeGains, error) {
+func (s *InvestmentService) AlternativeGainsProjection(ctx context.Context, method, jurisdictionNote, valuationDate string, period GainsReportParams) (AlternativeGains, error) {
 	boundary, err := s.repository.CurrentObservationBoundary(ctx, BookID, s.now())
 	if err != nil {
 		return AlternativeGains{}, err
@@ -41,18 +43,22 @@ func (s *InvestmentService) AlternativeGainsProjection(ctx context.Context, meth
 		}
 		boundary.AsOf = date
 	}
-	return s.alternativeGainsAtBoundary(ctx, method, boundary, period)
+	return s.alternativeGainsAtBoundary(ctx, method, jurisdictionNote, boundary, period)
 }
 
 // AlternativeGainsForProfile shares the operational read's price/date boundary
 // so observations recorded between the two computations cannot skew comparison.
-func (s *InvestmentService) AlternativeGainsForProfile(ctx context.Context, method string, operational GainsProfile, period GainsReportParams) (AlternativeGains, error) {
-	return s.alternativeGainsAtBoundary(ctx, method, db.ObservationBoundary{AsOf: operational.ValuationAsOf, RecordedAt: operational.KnowledgeCutoff}, period)
+func (s *InvestmentService) AlternativeGainsForProfile(ctx context.Context, method, jurisdictionNote string, operational GainsProfile, period GainsReportParams) (AlternativeGains, error) {
+	return s.alternativeGainsAtBoundary(ctx, method, jurisdictionNote, db.ObservationBoundary{AsOf: operational.ValuationAsOf, RecordedAt: operational.KnowledgeCutoff}, period)
 }
 
-func (s *InvestmentService) alternativeGainsAtBoundary(ctx context.Context, method string, boundary db.ObservationBoundary, period GainsReportParams) (AlternativeGains, error) {
-	if method != "fifo" && method != "lifo" && method != "average_cost" {
-		return AlternativeGains{}, ValidationError{Message: "alternative method must be fifo, lifo or average_cost"}
+func (s *InvestmentService) alternativeGainsAtBoundary(ctx context.Context, method, jurisdictionNote string, boundary db.ObservationBoundary, period GainsReportParams) (AlternativeGains, error) {
+	jurisdictionNote = strings.TrimSpace(jurisdictionNote)
+	if utf8.RuneCountInString(jurisdictionNote) > 500 || (jurisdictionNote != "" && method != "person_pooled_average") {
+		return AlternativeGains{}, ValidationError{Message: "jurisdiction note is limited to 500 characters and requires person_pooled_average"}
+	}
+	if method != "fifo" && method != "lifo" && method != "average_cost" && method != "person_pooled_average" {
+		return AlternativeGains{}, ValidationError{Message: "alternative method must be fifo, lifo, average_cost or person_pooled_average"}
 	}
 	for _, date := range []string{period.From, period.To} {
 		if date != "" {
@@ -81,5 +87,11 @@ func (s *InvestmentService) alternativeGainsAtBoundary(ctx context.Context, meth
 	profile.SpecificLotFallback, profile.TransferPolicy = "selected_method", "selected_method_fixed_link_quantities"
 	profile.StructuralActionPolicy = "recorded_entitlements"
 	profile.From, profile.To = period.From, period.To
+	if method == "person_pooled_average" {
+		profile.Name = "person_pooled_average_v1"
+		profile.PoolScope = "owner_security_cost_currency_position_side"
+		profile.JurisdictionNote = jurisdictionNote
+		profile.TransferPolicy = "internal_pool_neutral"
+	}
 	return AlternativeGains{Profile: profile, Realized: realizedGainEntries(realized), Unrealized: unrealizedGainEntries(unrealized)}, nil
 }

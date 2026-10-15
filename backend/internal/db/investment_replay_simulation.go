@@ -231,7 +231,7 @@ func applyInvestmentReplayIntentTx(ctx context.Context, tx *sql.Tx, bookID, acco
 			return fmt.Errorf("replay opening lot %d: %w", intent.LotID, err)
 		}
 	case "disposal":
-		params := DisposeLotsParams{BookID: bookID, AccountID: accountID,
+		params := DisposeLotsParams{personPooledAverage: intent.personPooledAverage, BookID: bookID, AccountID: accountID,
 			CommodityID: commodityID, CostCommodityID: costCommodityID,
 			ProceedsScale: intent.AmountScale,
 			TransactionID: intent.TransactionID, EventDate: intent.EventDate,

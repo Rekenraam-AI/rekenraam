@@ -85,5 +85,9 @@
   "valuation_runs_fingerprints": "Empreintes du relevé",
   "valuation_runs_inputs": "Données d’entrée SHA-256",
   "valuation_runs_output": "Résultat SHA-256",
-  "valuation_runs_position": "Instrument #{instrument} · Compte #{account}"
+  "valuation_runs_position": "Instrument #{instrument} · Compte #{account}",
+  "valuation_person_pool_method": "Coût moyen mutualisé par personne",
+  "valuation_person_pool_note": "Note de juridiction (facultative)",
+  "valuation_person_pool_policy": "Méthode en lecture seule sur tous vos comptes, valorisée au {date}. Les groupes restent séparés par titre, devise de coût et position longue/courte. Les transferts internes préservent le groupe ; chaque compte affiche sa quantité et sa part de la base mutualisée. Ce n’est pas un calcul fiscal : aucune règle de rapprochement du même jour ou de 30 jours ne s’applique.",
+  "valuation_person_pool_context": "Votre contexte de juridiction : {note}"
 }

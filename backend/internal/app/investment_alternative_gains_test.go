@@ -11,7 +11,7 @@ import (
 
 func alternativeGains(t *testing.T, f *investmentsTestFixture, method, date string, period GainsReportParams) AlternativeGains {
 	t.Helper()
-	result, err := f.investmentService.AlternativeGainsProjection(context.Background(), method, date, period)
+	result, err := f.investmentService.AlternativeGainsProjection(context.Background(), method, "", date, period)
 	require.NoError(t, err)
 	return result
 }
@@ -90,7 +90,7 @@ func TestAlternativeGainsReadLeavesLotsElectionsJournalsAndAuditUnchanged(t *tes
 		assert.Equal(t, "2026-02-01", result.Profile.From)
 		assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 	}
-	_, err = f.investmentService.AlternativeGainsProjection(context.Background(), "specific_lot", "", GainsReportParams{})
+	_, err = f.investmentService.AlternativeGainsProjection(context.Background(), "specific_lot", "", "", GainsReportParams{})
 	require.Error(t, err)
 	assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 	requireInvestmentSelfCheckPasses(t, f)
@@ -196,7 +196,7 @@ func TestAlternativeGainsFailureRollsBackTemporaryProjection(t *testing.T) {
  WHEN NEW.event_kind = 'disposal' BEGIN SELECT RAISE(ABORT, 'injected replay failure'); END`)
 	require.NoError(t, err)
 	before := buyReplacementPreviewSnapshot(t, f.database)
-	_, err = f.investmentService.AlternativeGainsProjection(context.Background(), "average_cost", "2026-02-02", GainsReportParams{})
+	_, err = f.investmentService.AlternativeGainsProjection(context.Background(), "average_cost", "", "2026-02-02", GainsReportParams{})
 	require.ErrorContains(t, err, "injected replay failure")
 	assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 }
@@ -273,7 +273,7 @@ func TestAlternativeGainsPreserveStructuralEntitlementsOrRefuseWithoutWrites(t *
 	operational := alternativeGains(t, f, "fifo", "2026-03-02", GainsReportParams{})
 	require.Len(t, operational.Unrealized, 1)
 	assertMoneyValue(t, 14000, 2, operational.Unrealized[0].RemainingCostBasisValue, operational.Unrealized[0].RemainingCostBasisScale, "effective structural basis")
-	_, err = f.investmentService.AlternativeGainsProjection(context.Background(), "lifo", "2026-03-02", GainsReportParams{})
+	_, err = f.investmentService.AlternativeGainsProjection(context.Background(), "lifo", "", "2026-03-02", GainsReportParams{})
 	var dependency AlternativeGainsDependencyError
 	require.ErrorAs(t, err, &dependency)
 	require.Positive(t, dependency.OperationID)

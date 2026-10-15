@@ -3926,13 +3926,13 @@ GainsProfile:
       description: Inclusive on-or-before FX age window, in calendar days.
     name:
       type: string
-      enum: [operational_v1, alternative_method_v1]
+      enum: [operational_v1, alternative_method_v1, person_pooled_average_v1]
     purpose:
       type: string
       enum: [operational, alternative_method]
     basis_method:
       type: string
-      enum: [operational_elections, fifo, lifo, average_cost]
+      enum: [operational_elections, fifo, lifo, average_cost, person_pooled_average]
       description: Operational elections, or the selected alternative method applied to every disposal and transfer depletion.
     valuation_as_of:
       type: string
@@ -3960,6 +3960,14 @@ GainsProfile:
       type: string
       enum: [exact_half_up, component_half_up_currency_scale]
 
+    pool_scope:
+      type: string
+      enum: [owner_security_cost_currency_position_side]
+      description: Person pooling includes all owner accounts, including archived accounts, but separates cost currencies and long/short sides. Unrealized rows retain account quantities with prorated pool basis, not operational carried basis.
+    jurisdiction_note:
+      type: string
+      maxLength: 500
+      description: Trimmed user-supplied context only, echoed for person pooling. No jurisdiction rules, same-day matching or 30-day matching are applied.
     structural_action_policy:
       type: string
       enum: [recorded_entitlements]
@@ -3970,8 +3978,8 @@ GainsProfile:
       description: Alternative profiles ignore specific-lot elections and apply basis_method.
     transfer_policy:
       type: string
-      enum: [selected_method_fixed_link_quantities]
-      description: Transfer link quantities, destination identities and acquisition-date evidence stay fixed; the selected method supplies hypothetical carried basis.
+      enum: [selected_method_fixed_link_quantities, internal_pool_neutral]
+      description: Transfer link quantities, destination identities and acquisition-date evidence stay fixed; the selected method supplies hypothetical carried basis. internal_pool_neutral pools across owner accounts; an internal transfer changes no total quantity or basis.
     from:
       type: string
       format: date

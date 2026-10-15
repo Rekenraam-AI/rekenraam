@@ -15,6 +15,7 @@ import (
 // excluded from current replay. A disposal carries its elected method and any
 // explicit specific-lot choice, never the lots selected by FIFO/LIFO/average.
 type InvestmentReplayIntent struct {
+	personPooledAverage bool // Only alternative gains replay sets this flag.
 	// BasisKnowledge is an opening's consideration or a transfer link's
 	// recorded carried basis; empty means known for legacy callers.
 	BasisKnowledge string

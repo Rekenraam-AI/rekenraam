@@ -190,7 +190,7 @@ and audit rows stay unchanged. The profile retains `current_effective` history,
 `live_raw_v1` observations (using the operational read's same price knowledge
 cutoff and valuation date), original cost currencies, the seven-day stale
 warning and exact half-up valuation. As with `operational_v1`, later corrected
-history or observation evidence can restate the result; immutable operational runs ship separately in #234. Cross-account person-level pooling remains #235. The period statement
+history or observation evidence can restate the result; immutable operational runs ship separately in #234. Cross-account person-level pooling is defined below (#235). The period statement
 endpoint continues to use `operational_v1`.
 
 The Gains screen offers an optional method selector and compares realized
@@ -254,7 +254,7 @@ The six-locale Gains screen shares currency, method and maximum-age controls
 with its period statement. Responsive reporting cards expose component/rate
 provenance in keyboard-operable disclosures and show incomplete coverage beside
 retained original figures. These remain live reads over current effective
-history; immutable operational runs are defined below (#234); person-level pooling remains #235.
+history; immutable operational runs are defined below (#234); person-level pooling is defined below (#235).
 
 ### Immutable operational runs (#234)
 
@@ -346,6 +346,61 @@ failed writes and isolation from a source write before report persistence
 (`TestGainsRunSnapshot*`). `investments-gains-runs.spec.ts` exercises save,
 reversal, reopen, download, six locales and 390px accessibility.
 
+### Person-pooled average cost (#235)
+
+`GET /api/v1/investments/gains?alternative_method=person_pooled_average`
+adds `person_pooled_average_v1` in the existing `alternative` comparison.
+Its purpose is `alternative_method`, basis method `person_pooled_average`,
+`pool_scope: owner_security_cost_currency_position_side` and transfer policy
+`internal_pool_neutral`. All owner accounts, including archived accounts, form
+one pool for each security **and original cost currency and long/short side**.
+There is no currency conversion or netting of long and short positions.
+
+Every disposal uses the owner's pooled average, including specific-lot elections.
+Only the selling account's quantities are depleted. Unrealized rows retain each
+account's quantity and its proportional share of pooled remaining basis, so those
+rows no longer claim that account's operational carried basis. The exact average
+allocator also redistributes after acquisitions and structural effects. Basis is
+split at the currency's dated maximum allocation scale, backing off for supported
+integer range without narrowing recorded precision. Allocation truncates and the
+last surviving lot receives the remainder; a final close consumes the full basis.
+Sum of disposed and remaining basis equals acquired basis, adjusted for external
+movements and sourced basis actions. Internal transfers create no realization and
+leave total pool quantity and basis unchanged, for both source-lot and pooled-lot
+lineage. Their destination receives hypothetical carried basis before it opens.
+
+Structural actions retain recorded lot entitlements, with the same explicit 409
+refusal as other alternatives if those entitlements cannot be satisfied. External
+outbound transfers remove pooled basis without creating disposal gain. A single
+unknown lot leaves the whole pool without a known rate; gains and all surviving
+pool shares stay unresolved until sourced resolution or exhaustion. A subsequent
+known acquisition after full exhaustion starts a known pool.
+
+Optional `jurisdiction_note` is trimmed user-supplied context, at most 500 Unicode
+characters, echoed in this profile and displayed as text. It is accepted only with
+this method; supplied comparison options must be nonblank and unique. The note
+selects no jurisdiction rules. **This is a method comparison, not a tax
+computation**: no UK same-day/30-day matching, Canadian adjustments or French tax
+rules are inferred. No account exemptions or residency rules are inferred either.
+
+The comparison shares the operational valuation date, price knowledge cutoff,
+`current_effective` history and `live_raw_v1` prices. Its optional disposal period
+remains independent of its valuation date. All temporary lots, method locks,
+replay effects and redistribution are rolled back on success or failure. No
+migration or operational re-election occurs. Reporting FX, the period statement
+and saved schema 1 remain operational; this comparison is a live read.
+
+The six-locale Gains method selector exposes the method, optional applied note,
+pooling scope and limitations, with account-labelled comparison rows, loading,
+empty, error and unavailable states. Named `TestPersonPooledGains*` cases verify
+buys in two accounts then a sale from one, both transfer lineages, exact residual
+conservation, long/short and currency separation, unknown basis, corrected
+history/splits/exchanges and unchanged durable snapshots including injected
+failure. `TestInvestmentGainsPersonPooledAverageAPI` covers both descriptors,
+amounts, authentication and invalid query options. The 390px
+`investments-person-pooled-gains.spec.ts` journey checks pooled versus operational
+figures, internal transfer, plain-text note and accessibility in six locales.
+
 ### Delivery slices
 
 | Slice | Issue | Scope |
@@ -355,7 +410,7 @@ reversal, reopen, download, six locales and 390px accessibility.
 | 3 | [#232](https://github.com/sergeyfarin/rekenraam/issues/232) | Delivered 2026-10-15. Alternative-method projection (FIFO/LIFO/average) beside the operational result, computed by rolled-back replay. |
 | 4 | [#233](https://github.com/sergeyfarin/rekenraam/issues/233) | Delivered 2026-10-15. Operational gains and period statement in a reporting currency under two named FX methods, with per-component provenance and complete-only totals. |
 | 5 | [#234](https://github.com/sergeyfarin/rekenraam/issues/234) | Delivered 2026-10-15. Explicit immutable operational gains/statement runs with snapshot/input/output fingerprints, audit, save/reopen/download UI, bundle schema 12 and document self-check. |
-| 6 | [#235](https://github.com/sergeyfarin/rekenraam/issues/235) | Person-level pooled average-cost profile across accounts (s104/ACB/PMP style), labelled as a method, not tax advice. |
+| 6 | [#235](https://github.com/sergeyfarin/rekenraam/issues/235) | Delivered 2026-10-15. Person-pooled average-cost comparison across all owner accounts, with a user-supplied jurisdiction note and no tax matching rules. |
 
 Broker-comparison reads (retained broker-reported basis beside the book's)
 follow slice 3 once a provider supplies that evidence; they are not

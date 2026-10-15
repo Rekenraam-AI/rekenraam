@@ -196,6 +196,12 @@ These apply across all feature phases.
   checked for document integrity without restating their figures. The
   [R18 reporting policy](plans/investment-reporting-plan.md#immutable-operational-runs-234)
   defines the saved schema and its original-currency operational scope.
+- A person-pooled average-cost comparison groups all owner accounts separately
+  by security, original cost currency and long/short side. Internal transfers
+  preserve pooled quantity and basis, and reads never change operational state.
+  A user-supplied jurisdiction note is context only: no same-day/30-day matching
+  or jurisdiction tax rules are inferred. See the
+  [R18 pooling policy](plans/investment-reporting-plan.md#person-pooled-average-cost-235).
 - Cost-basis, period, jurisdiction/accounting-purpose, price, FX, and knowledge-time
   choices belong to named reporting projections. Multiple analytical projections
   may coexist without rewriting canonical facts. Any future realized-gain,

@@ -15,8 +15,7 @@ Do not restate shipped detail here; when a focus item ships, delete it and
 record the capability in `implemented.md`.
 
 Last reviewed: 2026-10-15. R16’s agreed gates, R11 price management and R17
-quotes/crypto are delivered. The current order is R18 gains projections, then
-R13 returns analytics.
+quotes/crypto are delivered. R18’s six gains-projection slices are delivered; R13 returns analytics is next.
 Owner-local date correctness is delivered; native catalog review remains
 parallel work. Prior roadmap detail is retained in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md).
 
@@ -49,7 +48,7 @@ Statuses: ✅ shipped · ◐ partly shipped ahead of its slice · ▶ current ·
 | R15 | Connections expansion (IBKR Flex → GoCardless → #111 producer) | ⏸ | `docs/plans/connections-plan.md` |
 | R16 | Investment lifecycle completeness (correction, transfers, basis actions, splits, short sales) | ✅ agreed gates; related work open | `docs/plans/investment-operation-refactor-plan.md`; ADR 0013 |
 | R17 | Crypto instrument type + `PriceProvider` registry and quote adapters | ✅ | `docs/plans/quote-providers-crypto-plan.md` |
-| R18 | Reproducible investment basis + gains projections | ▶ | ADR 0012; `docs/plans/investment-reporting-plan.md` |
+| R18 | Reproducible investment basis + gains projections | ✅ | ADR 0012; `docs/plans/investment-reporting-plan.md` |
 
 ## Decisions adopted 2026-08-05
 
@@ -110,10 +109,9 @@ below is execution order, not a chain of hard dependencies.
 
 **Now**
 
-1. R18 reproducible investment basis and gains projections
-   [#118](https://github.com/sergeyfarin/rekenraam/issues/118), following the
-   delivered [R17 quote/crypto contract](plans/quote-providers-crypto-plan.md)
-   [#117](https://github.com/sergeyfarin/rekenraam/issues/117) (2026-10-14).
+1. R13 investment returns and allocation analytics, following the delivered
+   R18 gains-projection slices [#230–#235](plans/investment-reporting-plan.md#delivery-slices)
+   (2026-10-15).
 2. Daily-use parallel work. The shared transaction workspace
    [#185](https://github.com/sergeyfarin/rekenraam/issues/185) is delivered
    (2026-10-14): contextual entry, same-day reorder and row actions on the
@@ -237,7 +235,7 @@ and Refresh reach for revised fills
 **Remaining R16-related work.** Delivery of the agreed gates does not mean
 that every investment-lifecycle issue is closed. These retained issues keep
 their stated scope and placement. R11’s bounded operator surface is delivered;
-R17 is also delivered; the next initiative is R18.
+R17 and R18 are also delivered; the next initiative is R13.
 
 | Issue | Remaining gap | Disposition |
 |---|---|---|
@@ -282,40 +280,11 @@ shipped capabilities live in [implemented.md](implemented.md).
 
 ### R18 — reproducible investment basis and gains projections
 
-Build after R12a has trustworthy immutable events, T-76 preserves disposal
-policy provenance, R16 supplies the missing
-corporate-action/basis-adjustment lifecycle, and R17 supplies explicit quote
-provider and staleness policy. The [R18 reporting plan](plans/investment-reporting-plan.md)
-now defines the bounded #203 `live_raw_v1` observation slice: shared compatible
-quotes and priority, date/knowledge ceilings and explicit consumer age rules.
-The plan now also fixes the profile contract and research recommendations
-(#118) and splits delivery into slices: `operational_v1` as-of valuation
-[#230](https://github.com/sergeyfarin/rekenraam/issues/230) and the period
-statement [#231](https://github.com/sergeyfarin/rekenraam/issues/231) are
-delivered (2026-10-14), along with alternative methods
-[#232](https://github.com/sergeyfarin/rekenraam/issues/232) and reporting-currency
-FX [#233](https://github.com/sergeyfarin/rekenraam/issues/233) (2026-10-15): two
-named FX methods, component rate provenance and complete-only gains/statement
-totals with original currencies retained. Immutable operational runs [#234](https://github.com/sergeyfarin/rekenraam/issues/234)
-are delivered (2026-10-15), including saved gains/statements, provenance, export
-and document self-check. Person-pooled average cost [#235](https://github.com/sergeyfarin/rekenraam/issues/235)
-remains. I-04 formal postings are out of R18 until a need is evidenced.
-
-The plan must specify named basis profiles rather than a tax-engine promise. A
-profile states purpose/scope, cost-basis method, effective period/date basis,
-valuation date and recorded-at knowledge cutoff, quote/source policy, FX method,
-staleness, reporting currency, and rounding. It produces read-only operational,
-alternative-method, broker-comparison, and as-of realized/unrealized projections
-without mutating operational lots. Persist a report definition/run or snapshot
-only where immutable inputs plus versioned policy cannot cheaply reproduce it.
-
-Research inside the planning slice must answer which measures belong on the
-portfolio dashboard versus a period report, how a user labels a jurisdiction or
-accounting purpose without Rekenraam claiming tax compliance, and how unrealized
-movement is presented without price-refresh flip-flop. I-04 is narrowed by ADR
-0012: reports never silently post gains; if formal realized-gain, revaluation, or
-tax-liability entries are wanted, scope an explicit linked accounting workflow
-and decide separately whether it belongs in R18.
+The six delivery slices [#230–#235](plans/investment-reporting-plan.md#delivery-slices)
+are delivered (2026-10-15). Their contracts and retained limits live in the
+[reporting policy](plans/investment-reporting-plan.md); shipped capabilities and
+validation live in [the feature ledger](implemented.md). Formal postings remain
+outside this bounded initiative until a need is evidenced. R13 follows.
 
 ### R13 — investment returns and allocation analytics
 

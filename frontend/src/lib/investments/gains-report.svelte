@@ -62,6 +62,8 @@
   let currencyOptions = $state<InvestmentGainsResponse['currencies']>([]);
   $effect(() => { if (gainsQuery.data) currencyOptions = gainsQuery.data.currencies; });
 
+  let jurisdictionNote = $state('');
+  let appliedJurisdictionNote = $state('');
   let alternativeMethod = $state<AlternativeBasisMethod | ''>('');
 
   const gainsQuery = createQuery(() =>
@@ -70,7 +72,8 @@
       appliedTo || undefined,
       appliedValuationDate === today ? undefined : appliedValuationDate,
       alternativeMethod || undefined,
-      fx
+      fx,
+      alternativeMethod === 'person_pooled_average' ? appliedJurisdictionNote || undefined : undefined
     )
   );
   const profile = $derived(gainsQuery.data?.profile);
@@ -125,13 +128,22 @@
   <section class="space-y-3" data-testid="alternative-gains">
     <label class="flex flex-wrap items-center gap-2 text-sm text-foreground">
       {m.valuation_alternative_method()}
-      <select bind:value={alternativeMethod} class="rounded border border-border bg-control px-2 py-1 text-foreground">
+      <select bind:value={alternativeMethod} class="max-w-full rounded border border-border bg-control px-2 py-1 text-foreground">
         <option value="">{m.valuation_alternative_none()}</option>
         <option value="fifo">{m.transactions_investment_replace_method_fifo()}</option>
         <option value="lifo">{m.transactions_investment_replace_method_lifo()}</option>
         <option value="average_cost">{m.transactions_investment_replace_method_average()}</option>
+        <option value="person_pooled_average">{m.valuation_person_pool_method()}</option>
       </select>
     </label>
+    {#if alternativeMethod === 'person_pooled_average'}
+      <form class="flex flex-wrap items-end gap-2 text-sm" onsubmit={(event) => { event.preventDefault(); appliedJurisdictionNote = jurisdictionNote.trim(); }}>
+        <label class="grid gap-1 text-muted">{m.valuation_person_pool_note()}
+          <input bind:value={jurisdictionNote} maxlength="500" class="rounded border border-border bg-control px-2 py-1 text-foreground" />
+        </label>
+        <button type="submit" class="rounded border border-border bg-control px-3 py-1 text-foreground hover:bg-control-hover">{m.investments_gains_filter_apply()}</button>
+      </form>
+    {/if}
     {#if alternativeMethod}
       {#if gainsQuery.isPending}
         <Panel><p class="text-sm text-muted">{m.investments_gains_loading()}</p></Panel>

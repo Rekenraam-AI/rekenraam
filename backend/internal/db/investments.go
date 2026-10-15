@@ -381,18 +381,20 @@ type DisposalDecisionRecord struct {
 }
 
 type DisposeLotsParams struct {
-	BookID          int64
-	AccountID       int64
-	CommodityID     int64
-	CostCommodityID int64
-	ProceedsValue   int64
-	ProceedsScale   int
-	TransactionID   int64
-	EventDate       string
-	QuantityValue   exact.Coefficient
-	QuantityScale   int
-	Allocations     []LotAllocation
-	CostBasisMethod string
+	// personPooledAverage is restricted to rolled-back reporting replay.
+	personPooledAverage bool
+	BookID              int64
+	AccountID           int64
+	CommodityID         int64
+	CostCommodityID     int64
+	ProceedsValue       int64
+	ProceedsScale       int
+	TransactionID       int64
+	EventDate           string
+	QuantityValue       exact.Coefficient
+	QuantityScale       int
+	Allocations         []LotAllocation
+	CostBasisMethod     string
 	// EventKind is transfer_out only for an explicit in-kind movement. Empty
 	// preserves the ordinary disposal event used by trades and replay.
 	EventKind string
@@ -1416,6 +1418,9 @@ func requirePositionEventInOrderTx(ctx context.Context, tx *sql.Tx, bookID int64
 }
 
 func disposeLotsWithAuditTx(ctx context.Context, tx *sql.Tx, params DisposeLotsParams, auditEventID int64, replaySimulation bool) ([]LotDisposalRecord, error) {
+	if params.personPooledAverage && (!replaySimulation || params.CostBasisMethod != "average_cost") {
+		return nil, ErrInvalidDisposalParams
+	}
 	method := params.CostBasisMethod
 	if method == "" {
 		method = "fifo"
@@ -1699,6 +1704,7 @@ func disposeFIFOOrLIFOTx(ctx context.Context, tx *sql.Tx, params DisposeLotsPara
 }
 
 type avgCostLotRef struct {
+	accountID      int64
 	id             int64
 	quantityValue  exact.Coefficient
 	quantityScale  int
@@ -1718,13 +1724,13 @@ func disposeAverageCostTx(ctx context.Context, tx *sql.Tx, params DisposeLotsPar
 		return nil, fmt.Errorf("%w: unsupported lot depletion event %q", ErrInvalidDisposalParams, eventKind)
 	}
 	rows, err := tx.QueryContext(ctx, `
-		SELECT id, remaining_quantity_value, remaining_quantity_scale,
+		SELECT id, account_id, remaining_quantity_value, remaining_quantity_scale,
 		       remaining_cost_basis_value, remaining_cost_basis_scale, basis_knowledge
 		FROM current_investment_lots
-		WHERE book_id = ? AND account_id = ? AND commodity_id = ? AND cost_commodity_id = ? AND position_side = ? AND status = 'open'
+		WHERE book_id = ? AND (? OR account_id = ?) AND commodity_id = ? AND cost_commodity_id = ? AND position_side = ? AND status = 'open'
 			AND opened_on <= ?
 		ORDER BY opened_on, id
-	`, params.BookID, params.AccountID, params.CommodityID, params.CostCommodityID, positionSideOrLong(params.PositionSide), params.EventDate)
+	`, params.BookID, params.personPooledAverage, params.AccountID, params.CommodityID, params.CostCommodityID, positionSideOrLong(params.PositionSide), params.EventDate)
 	if err != nil {
 		return nil, fmt.Errorf("read average-cost lots: %w", err)
 	}
@@ -1735,7 +1741,7 @@ func disposeAverageCostTx(ctx context.Context, tx *sql.Tx, params DisposeLotsPar
 		var lot avgCostLotRef
 		var basis, basisScale sql.NullInt64
 		var knowledge string
-		if err := rows.Scan(&lot.id, &lot.quantityValue, &lot.quantityScale, &basis, &basisScale, &knowledge); err != nil {
+		if err := rows.Scan(&lot.id, &lot.accountID, &lot.quantityValue, &lot.quantityScale, &basis, &basisScale, &knowledge); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("scan average-cost lot: %w", err)
 		}
@@ -1827,7 +1833,7 @@ func disposeAverageCostTx(ctx context.Context, tx *sql.Tx, params DisposeLotsPar
 	remainingToTake := new(big.Int).Set(sellQty)
 	for i, lot := range lots {
 		takes[i] = new(big.Int)
-		if remainingToTake.Sign() == 0 {
+		if remainingToTake.Sign() == 0 || lot.accountID != params.AccountID {
 			continue
 		}
 		takes[i].Set(lot.quantityValue.BigInt())
@@ -3107,9 +3113,9 @@ func positionBasisAllocationScaleTx(ctx context.Context, tx *sql.Tx, params Disp
 	rows, err := tx.QueryContext(ctx, `
 		SELECT remaining_cost_basis_value, remaining_cost_basis_scale
 		FROM current_investment_lots
-		WHERE book_id = ? AND account_id = ? AND commodity_id = ? AND cost_commodity_id = ? AND position_side = ?
+		WHERE book_id = ? AND (? OR account_id = ?) AND commodity_id = ? AND cost_commodity_id = ? AND position_side = ?
 			AND status = 'open' AND opened_on <= ? AND (? = 0 OR basis_knowledge = 'known')
-	`, params.BookID, params.AccountID, params.CommodityID, params.CostCommodityID, positionSideOrLong(params.PositionSide), params.EventDate, params.AdmitUnknownBasis)
+	`, params.BookID, params.personPooledAverage, params.AccountID, params.CommodityID, params.CostCommodityID, positionSideOrLong(params.PositionSide), params.EventDate, params.AdmitUnknownBasis)
 	if err != nil {
 		return 0, fmt.Errorf("read position basis for allocation scale: %w", err)
 	}

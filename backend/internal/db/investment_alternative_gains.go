@@ -20,6 +20,10 @@ type alternativePositionKey struct {
 // destination lots before they open, including chains and transfers back.
 // No operational decisions, link revisions or journals are persisted.
 func (r *InvestmentRepository) AlternativeMethodGains(ctx context.Context, bookID int64, method string, boundary ObservationBoundary, period RealizedGainsParams) ([]RealizedGainRecord, []UnrealizedGainRecord, error) {
+	personPooled := method == "person_pooled_average"
+	if personPooled {
+		method = "average_cost"
+	}
 	if method != "fifo" && method != "lifo" && method != "average_cost" || !isDisposalCalendarDate(boundary.AsOf) || boundary.RecordedAt == "" {
 		return nil, nil, ErrInvalidDisposalParams
 	}
@@ -73,6 +77,7 @@ func (r *InvestmentRepository) AlternativeMethodGains(ctx context.Context, bookI
 	var positions []InvestmentPositionRecord
 	for _, item := range stream {
 		intent, key := item.intent, item.key
+		intent.personPooledAverage = personPooled
 		if positions == nil && intent.EventDate > boundary.AsOf {
 			positions, err = alternativePositionsTx(ctx, tx, bookID, keys)
 			if err != nil {
@@ -101,6 +106,11 @@ func (r *InvestmentRepository) AlternativeMethodGains(ctx context.Context, bookI
 		}
 		if err != nil {
 			return nil, nil, fmt.Errorf("alternative %s operation %d: %w", method, intent.OperationID, err)
+		}
+		if personPooled {
+			if err := rebalancePersonPoolTx(ctx, tx, bookID, key, intent); err != nil {
+				return nil, nil, err
+			}
 		}
 		for _, revision := range projection.TransferRevisions[beforeTransfers:] {
 			var destination sql.NullInt64
@@ -196,7 +206,7 @@ func alternativeTransferTx(ctx context.Context, tx *sql.Tx, bookID int64, key al
 		links = intent.PooledLinks
 	}
 	for _, link := range links {
-		allocations, err := disposeLotsWithAuditTx(ctx, tx, DisposeLotsParams{BookID: bookID, AccountID: key.accountID,
+		allocations, err := disposeLotsWithAuditTx(ctx, tx, DisposeLotsParams{personPooledAverage: intent.personPooledAverage, BookID: bookID, AccountID: key.accountID,
 			CommodityID: key.commodityID, CostCommodityID: key.costCommodityID, PositionSide: key.side,
 			TransactionID: intent.TransactionID, EventDate: intent.EventDate, EventKind: "transfer_out", MetadataJSON: "{}",
 			QuantityValue: link.QuantityValue, QuantityScale: link.QuantityScale, CostBasisMethod: method, AdmitUnknownBasis: true,
@@ -259,4 +269,40 @@ func alternativeRealizedGain(key alternativePositionKey, intent InvestmentReplay
 	record.RealizedGainValue, err = proceeds.Int64()
 	record.RealizedGainScale = proceeds.Scale()
 	return record, err
+}
+
+// Reuse the exact average-cost redistribution with a zero depletion: no lot
+// event is generated. Account quantities stay in their recorded accounts while
+// every surviving lot receives its share of the owner's pool, including after
+// acquisitions and structural effects. All of this state is rolled back.
+func rebalancePersonPoolTx(ctx context.Context, tx *sql.Tx, bookID int64, key alternativePositionKey, intent InvestmentReplayIntent) error {
+	var count int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM current_investment_lots
+		WHERE book_id = ? AND commodity_id = ? AND cost_commodity_id = ? AND position_side = ?
+		AND status = 'open' AND opened_on <= ?`, bookID, key.commodityID, key.costCommodityID, key.side, intent.EventDate).Scan(&count); err != nil {
+		return err
+	}
+	if count == 0 {
+		return nil
+	}
+	params := DisposeLotsParams{personPooledAverage: true, BookID: bookID, AccountID: key.accountID,
+		CommodityID: key.commodityID, CostCommodityID: key.costCommodityID, PositionSide: key.side,
+		EventDate: intent.EventDate, QuantityValue: exact.New(0), AdmitUnknownBasis: true,
+		CreatedAt: intent.CreatedAt, ActorUserID: intent.CreatedByUserID}
+	// Opening intents do not need attribution for ordinary activation. The
+	// pooled redistribution also touches their neighbours, so retain the
+	// opening's existing, same-book attribution for these temporary writes.
+	if intent.Kind == "opening" {
+		if err := tx.QueryRowContext(ctx, `SELECT created_at, created_by_user_id, created_audit_event_id
+			FROM investment_lots WHERE book_id = ? AND id = ?`, bookID, intent.LotID).
+			Scan(&params.CreatedAt, &params.ActorUserID, &intent.AuditEventID); err != nil {
+			return err
+		}
+	}
+	scale, err := positionBasisAllocationScaleTx(ctx, tx, params)
+	if err != nil {
+		return err
+	}
+	_, err = disposeAverageCostTx(ctx, tx, params, intent.AuditEventID, scale)
+	return err
 }

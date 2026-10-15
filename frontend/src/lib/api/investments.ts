@@ -987,10 +987,10 @@ export type AlternativeBasisMethod = NonNullable<
   NonNullable<paths['/api/v1/investments/gains']['get']['parameters']['query']>['alternative_method']
 >;
 
-export function investmentGainsQueryOptions(from?: string, to?: string, valuationAsOf?: string, alternativeMethod?: AlternativeBasisMethod, fx?: GainsFXInput) {
+export function investmentGainsQueryOptions(from?: string, to?: string, valuationAsOf?: string, alternativeMethod?: AlternativeBasisMethod, fx?: GainsFXInput, jurisdictionNote?: string) {
   return {
-    queryKey: [...investmentGainsQueryKey, { from, to, valuationAsOf, alternativeMethod, fx }] as const,
-    queryFn: () => getInvestmentGains(from, to, valuationAsOf, alternativeMethod, fx),
+    queryKey: [...investmentGainsQueryKey, { from, to, valuationAsOf, alternativeMethod, fx, jurisdictionNote }] as const,
+    queryFn: () => getInvestmentGains(from, to, valuationAsOf, alternativeMethod, fx, jurisdictionNote),
     staleTime: 30_000
   };
 }
@@ -1026,11 +1026,12 @@ export async function getInvestmentGains(
   to?: string,
   valuationAsOf?: string,
   alternativeMethod?: AlternativeBasisMethod,
-  fx?: GainsFXInput
+  fx?: GainsFXInput,
+  jurisdictionNote?: string
 ): Promise<InvestmentGainsResponse> {
   try {
     const { data, error, response } = await apiClient.GET('/api/v1/investments/gains', {
-      params: { query: { from, to, valuation_as_of: valuationAsOf, alternative_method: alternativeMethod, ...fx } }
+      params: { query: { from, to, valuation_as_of: valuationAsOf, alternative_method: alternativeMethod, jurisdiction_note: jurisdictionNote, ...fx } }
     });
 
     if (data !== undefined) {

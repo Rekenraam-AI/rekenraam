@@ -15,6 +15,10 @@ get:
     the operational results. It replays effective history under FIFO, LIFO or
     average cost in a rolled-back read, including specific-lot decisions using
     the selected method. It never changes operational elections or journals.
+    person_pooled_average adds person_pooled_average_v1: all owner accounts pool
+    each security, cost currency and position side. Internal transfers conserve
+    the pool; rows retain their account quantities with prorated pooled basis.
+    This method is not a tax computation and applies no same-day or 30-day rules.
   parameters:
     - name: from
       in: query
@@ -46,7 +50,15 @@ get:
       description: Read-only cost-basis comparison beside the operational result.
       schema:
         type: string
-        enum: [fifo, lifo, average_cost]
+        enum: [fifo, lifo, average_cost, person_pooled_average]
+    - name: jurisdiction_note
+      in: query
+      required: false
+      description: Optional user-supplied context for person_pooled_average only; trimmed, nonblank, at most 500 characters. It selects no tax rules. Comparison options must be supplied once.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 500
     - name: reporting_currency_id
       in: query
       required: false

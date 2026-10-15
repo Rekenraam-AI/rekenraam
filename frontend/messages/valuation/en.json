@@ -85,5 +85,9 @@
   "valuation_runs_fingerprints": "Report fingerprints",
   "valuation_runs_inputs": "Inputs SHA-256",
   "valuation_runs_output": "Output SHA-256",
-  "valuation_runs_position": "Instrument #{instrument} · Account #{account}"
+  "valuation_runs_position": "Instrument #{instrument} · Account #{account}",
+  "valuation_person_pool_method": "Person-pooled average cost",
+  "valuation_person_pool_note": "Jurisdiction note (optional)",
+  "valuation_person_pool_policy": "Read-only method across all your accounts, valued on {date}. Pools stay separate by security, cost currency and long/short side. Internal transfers preserve the pool; each account shows its quantity and share of pooled basis. This is not a tax calculation: no same-day or 30-day matching rules apply.",
+  "valuation_person_pool_context": "Your jurisdiction context: {note}"
 }

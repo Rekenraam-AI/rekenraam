@@ -85,5 +85,9 @@
   "valuation_runs_fingerprints": "Vingerafdrukken van het overzicht",
   "valuation_runs_inputs": "Invoer SHA-256",
   "valuation_runs_output": "Uitvoer SHA-256",
-  "valuation_runs_position": "Instrument #{instrument} · Rekening #{account}"
+  "valuation_runs_position": "Instrument #{instrument} · Rekening #{account}",
+  "valuation_person_pool_method": "Gemiddelde kostprijs per persoon",
+  "valuation_person_pool_note": "Jurisdictienotitie (optioneel)",
+  "valuation_person_pool_policy": "Alleen-lezen methode over al uw rekeningen, gewaardeerd op {date}. Pools blijven gescheiden per effect, kostvaluta en long-/shortpositie. Interne overdrachten behouden de pool; elke rekening toont haar aantal en aandeel in de gepoolde kostprijs. Dit is geen belastingberekening: er gelden geen matchingregels voor dezelfde dag of 30 dagen.",
+  "valuation_person_pool_context": "Uw jurisdictiecontext: {note}"
 }
