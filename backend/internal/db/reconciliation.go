@@ -78,6 +78,9 @@ type ReconciliationPostingRecord struct {
 	AccountID            int64
 	CommodityID          int64
 	EntryDate            string
+	// AccountDaySequence is set only on the versions the status writer has
+	// just inserted; finish derives the checkpoint's same-day boundary from it.
+	AccountDaySequence   int64
 	QuantityValue        exact.Coefficient
 	QuantityScale        int
 	ReconciliationStatus string
@@ -420,21 +423,15 @@ func (r *TransactionRepository) FinishReconciliationSession(ctx context.Context,
 		return ReconciliationSessionRecord{}, err
 	}
 
-	// Compute statement_account_sequence: greatest account_day_sequence among
-	// newly-reconciled postings whose entry_date matches the statement_date.
+	// #247. statement_account_sequence is the greatest account_day_sequence
+	// among the newly reconciled postings on the statement date. The versions
+	// the status writer just inserted already carry it, so no follow-up query
+	// can fail (or be ignored) and leave the same-day boundary at 0.
 	var stmtAccountSeq int64
-	if len(reconciledPostingIDs) > 0 {
-		postingIDs := make([]string, 0, len(reconciledPostingIDs))
-		for _, p := range reconciledPostingIDs {
-			postingIDs = append(postingIDs, fmt.Sprintf("%d", p.PostingID))
+	for _, posting := range reconciledPostingIDs {
+		if posting.EntryDate == session.StatementDate && posting.AccountDaySequence > stmtAccountSeq {
+			stmtAccountSeq = posting.AccountDaySequence
 		}
-		_ = tx.QueryRowContext(ctx, `
-			SELECT COALESCE(MAX(pv.account_day_sequence), 0)
-			FROM posting_versions pv
-			JOIN journal_entries je ON je.id = pv.journal_entry_id
-			WHERE pv.id IN (`+strings.Join(postingIDs, ",")+`)
-				AND je.entry_date = ?
-		`, session.StatementDate).Scan(&stmtAccountSeq)
 	}
 
 	checkpointResult, err := tx.ExecContext(ctx, `
@@ -808,6 +805,7 @@ func (r *TransactionRepository) appendReconciliationStatusVersions(ctx context.C
 						AccountID:            posting.AccountID,
 						CommodityID:          posting.CommodityID,
 						EntryDate:            entry.EntryDate,
+						AccountDaySequence:   posting.AccountDaySequence,
 						QuantityValue:        posting.QuantityValue,
 						QuantityScale:        posting.QuantityScale,
 						ReconciliationStatus: posting.ReconciliationStatus,
