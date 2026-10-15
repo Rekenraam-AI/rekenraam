@@ -4926,3 +4926,97 @@ GainsStatementCapitalReturn:
       type: integer
       minimum: 0
       description: Unknown lot effects across these receipts; independent known effects remain in capital_returns.
+IncomeCoverageInstrument:
+  type: object
+  required: [commodity_id, cash_commodity_id, currency_code, income_state, withholding_state, gross, withholding, net_cash, dividend_count, withholding_payment_count, imported_unclassified_count, imported_unclassified_cash]
+  description: One paying instrument's owner-confirmed income in one cash currency. Imported cash whose source names the instrument is disclosed separately and never added.
+  properties:
+    commodity_id: { type: integer, format: int64 }
+    cash_commodity_id: { type: integer, format: int64 }
+    currency_code: { type: string }
+    income_state: { type: string, enum: [none, known], description: none means no recorded gross dividend income. }
+    withholding_state: { type: string, enum: [none, known_zero, known] }
+    gross:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/GainsFXAmount'
+        - type: 'null'
+    withholding:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/GainsFXAmount'
+        - type: 'null'
+    net_cash:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/GainsFXAmount'
+        - type: 'null'
+    dividend_count: { type: integer }
+    withholding_payment_count: { type: integer }
+    imported_unclassified_count: { type: integer }
+    imported_unclassified_cash:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/GainsFXAmount'
+        - type: 'null'
+IncomeCoverageTotal:
+  type: object
+  required: [cash_commodity_id, currency_code, cash, item_count, payer_unassigned_count, economics_unresolved_count]
+  description: Exact unassigned investment cash in one original currency; not gross income.
+  properties:
+    cash_commodity_id: { type: integer, format: int64 }
+    currency_code: { type: string }
+    cash: { $ref: '../../openapi.yaml#/components/schemas/GainsFXAmount' }
+    item_count: { type: integer }
+    payer_unassigned_count: { type: integer }
+    economics_unresolved_count: { type: integer }
+IncomeCoverageSource:
+  type: object
+  required: [batch_id, row_id, instrument, date, cash_amount, currency]
+  description: Original import evidence, unchanged.
+  properties:
+    batch_id: { type: integer, format: int64 }
+    row_id: { type: integer, format: int64 }
+    instrument: { type: string }
+    date: { type: string, format: date }
+    cash_amount: { type: string }
+    currency: { type: string }
+IncomeCoverageItem:
+  type: object
+  required: [kind, transaction_id, date, cash_commodity_id, currency_code, cash, gross_state, gross, withholding_state, withholding, payer_state, source_payer_commodity_id, reasons, source]
+  properties:
+    kind: { type: string, enum: [named_unassigned, imported_cash] }
+    transaction_id: { type: integer, format: int64 }
+    date: { type: string, format: date }
+    cash_commodity_id: { type: integer, format: int64 }
+    currency_code: { type: string }
+    cash: { $ref: '../../openapi.yaml#/components/schemas/GainsFXAmount' }
+    gross_state: { type: string, enum: [none, known, unresolved] }
+    gross:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/GainsFXAmount'
+        - type: 'null'
+    withholding_state: { type: string, enum: [known_zero, known, unresolved] }
+    withholding:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/GainsFXAmount'
+        - type: 'null'
+    payer_state: { type: string, enum: [unassigned, source_identified] }
+    source_payer_commodity_id: { type: [integer, 'null'], format: int64, description: Existing instrument the source's typed identifiers name; not a recorded payer. }
+    reasons:
+      type: array
+      items: { type: string, enum: [payer_unassigned, payer_unlinked, gross_unresolved, withholding_unresolved] }
+    source:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/IncomeCoverageSource'
+        - type: 'null'
+IncomeCoverageResponse:
+  type: object
+  required: [instruments, unassigned_totals, unassigned, next_cursor]
+  properties:
+    instruments:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/IncomeCoverageInstrument' }
+    unassigned_totals:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/IncomeCoverageTotal' }
+    unassigned:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/IncomeCoverageItem' }
+    next_cursor: { type: [string, 'null'] }

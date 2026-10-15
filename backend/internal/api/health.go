@@ -200,6 +200,7 @@ func RegisterRoutesWithAuth(mux *http.ServeMux, logger *slog.Logger, services Se
 	mux.HandleFunc("GET /api/v1/investments/cost-basis-profiles", listCostBasisProfiles(logger, services.Auth, services.Investment))
 	mux.HandleFunc("POST /api/v1/investments/cost-basis-profiles", saveCostBasisProfile(logger, services.Auth, services.Investment, options, false))
 	mux.HandleFunc("PATCH /api/v1/investments/cost-basis-profiles/{profile_id}", saveCostBasisProfile(logger, services.Auth, services.Investment, options, true))
+	mux.HandleFunc("GET /api/v1/investments/income-coverage", readDividendCoverage(logger, services.Auth, services.Investment))
 	mux.HandleFunc("GET /api/v1/investments/dividend-defaults", listDividendDefaults(logger, services.Auth, services.Investment))
 	mux.HandleFunc("POST /api/v1/investments/dividend-defaults", saveDividendDefault(logger, services.Auth, services.Investment, options, false))
 	mux.HandleFunc("PATCH /api/v1/investments/dividend-defaults/{default_id}", saveDividendDefault(logger, services.Auth, services.Investment, options, true))

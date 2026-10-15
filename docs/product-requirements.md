@@ -326,6 +326,12 @@ Goal: reduce manual entry without sacrificing trust.
   Changed reconciled legs require the normal explicit override. Reimport never
   duplicates the payment or overwrites owner corrections. See
   [imported dividend review contract](plans/import-dividend-review-plan.md).
+- Dividend attribution coverage shows owner-confirmed income per paying
+  instrument beside identifiable unassigned investment cash by original
+  currency, with the unresolved payer, gross or withholding facts named. Cash
+  alone is not gross income and absent withholding is not zero. Instrument
+  summaries disclose the book's excluded scope; repair is optional. See the
+  [coverage contract](plans/dividend-income-coverage-plan.md).
 - QIF and CSV imports accept Unicode and legacy locale encodings. Automatic
   legacy detection must be confidence-gated, the preview must disclose the
   result, and the user must be able to select the source encoding when

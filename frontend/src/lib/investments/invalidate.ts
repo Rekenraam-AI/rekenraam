@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/svelte-query';
 import { priceManagementQueryKey } from '#lib/api/price-management.ts';
 import { forecastQueryKey } from '#lib/api/forecast.ts';
 import {
-  cashInLieuLotsQueryKey, datedHoldingsQueryKey, investmentCorrectionChainQueryKey, investmentGainsQueryKey, investmentInstrumentsQueryKey,
+  cashInLieuLotsQueryKey, datedHoldingsQueryKey, incomeCoverageQueryKey, investmentCorrectionChainQueryKey, investmentGainsQueryKey, investmentInstrumentsQueryKey,
   investmentLotsQueryKey, investmentPositionsQueryKey, investmentSplitsQueryKey
 } from '#lib/api/investments.ts';
 import { accountRegisterQueryKey, transactionsQueryKey } from '#lib/api/transactions.ts';
@@ -22,7 +22,8 @@ export const investmentMutationQueryKeys = [
   datedHoldingsQueryKey,
   investmentGainsQueryKey,
   investmentInstrumentsQueryKey,
-  investmentCorrectionChainQueryKey
+  investmentCorrectionChainQueryKey,
+  incomeCoverageQueryKey
 ] as const;
 
 export async function invalidateInvestmentReads(queryClient: QueryClient): Promise<void> {

@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/svelte-query';
 import { describe, expect, it } from 'vitest';
 import { forecastQueryKey } from '#lib/api/forecast.ts';
 import {
-  cashInLieuLotsQueryKey, investmentCorrectionChainQueryKey, investmentGainsQueryKey, investmentInstrumentsQueryKey,
+  cashInLieuLotsQueryKey, incomeCoverageQueryKey, investmentCorrectionChainQueryKey, investmentGainsQueryKey, investmentInstrumentsQueryKey,
   investmentLotsQueryKey, investmentPositionsQueryKey, investmentSplitsQueryKey
 } from '#lib/api/investments.ts';
 import { accountRegisterQueryKey, transactionsQueryKey } from '#lib/api/transactions.ts';
@@ -20,7 +20,7 @@ describe('invalidateInvestmentReads', () => {
     expect(invalidated).toEqual(expect.arrayContaining([
       cashInLieuLotsQueryKey, investmentGainsQueryKey, investmentPositionsQueryKey, investmentLotsQueryKey,
       investmentInstrumentsQueryKey, investmentCorrectionChainQueryKey, investmentSplitsQueryKey,
-      forecastQueryKey, transactionsQueryKey, accountRegisterQueryKey
+      forecastQueryKey, transactionsQueryKey, accountRegisterQueryKey, incomeCoverageQueryKey
     ]));
   });
 });

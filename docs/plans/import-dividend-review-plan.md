@@ -1,7 +1,7 @@
 # Imported dividend review and repair (#242)
 
 Governed by product requirements and ADRs 0011–0013 and 0017. This slice repairs
-Trading 212's known-payer cash fallback; #244 owns wider completeness reporting.
+Trading 212's known-payer cash fallback; #244 adds wider completeness reporting ([coverage contract](dividend-income-coverage-plan.md)).
 
 New Trading 212 dividend rows never enter the ordinary cash fallback. A reviewer
 can supply cash/currency/income/tax accounts and choose an existing payer; absent

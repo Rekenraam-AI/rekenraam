@@ -2301,3 +2301,33 @@ export async function getGainsRuns(cursor?: string): Promise<GainsRunListRespons
     throw toNetworkError(error);
   }
 }
+
+// Income attribution coverage (#244): one composed read per view, never a
+// fetch per instrument or payment.
+export type IncomeCoverageResponse = components['schemas']['IncomeCoverageResponse'];
+export type IncomeCoverageInstrument = components['schemas']['IncomeCoverageInstrument'];
+export type IncomeCoverageTotal = components['schemas']['IncomeCoverageTotal'];
+export type IncomeCoverageItem = components['schemas']['IncomeCoverageItem'];
+export const incomeCoverageQueryKey = ['api', 'investments', 'income-coverage'] as const;
+
+export async function getIncomeCoverage(params: { commodityID?: number; cursor?: string; limit?: number } = {}): Promise<IncomeCoverageResponse> {
+  try {
+    const { data, error, response } = await apiClient.GET('/api/v1/investments/income-coverage', {
+      params: { query: { commodity_id: params.commodityID, cursor: params.cursor, limit: params.limit } }
+    });
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+/** An instrument's income beside the book's unassigned scope, without items. */
+export function instrumentIncomeCoverageQueryOptions(commodityID: number) {
+  return {
+    queryKey: [...incomeCoverageQueryKey, { commodityID }] as const,
+    queryFn: () => getIncomeCoverage({ commodityID, limit: 0 }),
+    staleTime: 30_000
+  };
+}

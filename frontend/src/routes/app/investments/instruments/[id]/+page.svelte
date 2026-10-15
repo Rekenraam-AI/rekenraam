@@ -8,6 +8,7 @@
   import Panel from '#lib/components/panel.svelte';
   import StatePanel from '#lib/components/state-panel.svelte';
   import InstrumentActivity from '#lib/investments/instrument-activity.svelte';
+  import InstrumentIncomeSummary from '#lib/investments/instrument-income-summary.svelte';
   import { instrumentPrefill } from '#lib/investments/investment-prefill.ts';
   import TransactionWorkspace, { type TransactionWorkspaceCreate } from '#lib/transactions/transaction-workspace.svelte';
 
@@ -50,6 +51,7 @@
     {#snippet header()}
       {@render back()}
       <h2 class="text-sm font-semibold text-foreground">{instrument.display_name} ({instrument.symbol || instrument.commodity_code})</h2>
+      <InstrumentIncomeSummary {commodityID} />
     {/snippet}
     {#snippet list(actions, csrfToken)}
       <InstrumentActivity {commodityID} {csrfToken} {actions} />

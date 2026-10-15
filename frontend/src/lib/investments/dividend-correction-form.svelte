@@ -7,6 +7,7 @@
   import { getLocale } from '#lib/paraglide/runtime.js';
   import { accountsQueryOptions, type AccountResponse } from '#lib/api/accounts.ts';
   import { currenciesQueryOptions, type CurrencyResponse } from '#lib/api/currencies.ts';
+  import { investmentInstrumentsQueryOptions } from '#lib/api/investments.ts';
   import { formatEditableAmount } from '#lib/money/amount.ts';
   import { parseDividendAmounts, type AmountFieldError } from '#lib/investments/form-amounts.ts';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
@@ -33,8 +34,9 @@
   import { invalidateInvestmentReads } from './invalidate';
 
   // Replaces a posted cash dividend or reinvested dividend (T-115). Only the
-  // amounts, withholding, quantity, income account and memo are editable: the
-  // date, account and currency are fixed, so the form shows them read-only.
+  // amounts, withholding, quantity, income account, a cash dividend's payer
+  // (#244) and memo are editable: the date, account and currency are fixed,
+  // so the form shows them read-only.
   let {
     csrfToken,
     transactionID,
@@ -60,6 +62,7 @@
   const queryClient = useQueryClient();
   const accountsQuery = createQuery(() => accountsQueryOptions(false, false));
   const currenciesQuery = createQuery(() => currenciesQueryOptions());
+  const instrumentsQuery = createQuery(() => investmentInstrumentsQueryOptions());
 
   let reason = $state('');
   let amountStr = $state(formatEditableAmount(terms.amount_value, terms.amount_scale));
@@ -71,6 +74,10 @@
     ? formatEditableAmount(initialDividend.withholding_value, initialDividend.withholding_scale) : '');
   let withholdingAccountID = $state(initialDividend?.withholding_account_id ? String(initialDividend.withholding_account_id) : '');
   let memo = $state(terms.memo ?? '');
+  // A cash dividend's payer may be assigned or changed by replacement (#244).
+  // Omission keeps the recorded payer, so "unassigned" is offered only when
+  // none was recorded.
+  let payerID = $state(initialDividend?.commodity_id ? String(initialDividend.commodity_id) : '');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
   let reasonInputElement: HTMLInputElement | undefined = $state();
@@ -144,7 +151,7 @@
       } };
     } else {
       target = { kind: 'cash', payload: {
-        commodity_id: initialDividend!.commodity_id,
+        commodity_id: payerID ? Number(payerID) : initialDividend!.commodity_id,
         withholding_only: withholdingOnly,
         transaction_date: terms.event_date, cash_account_id: initialDividend!.cash_account_id,
         cash_commodity_id: terms.cash_commodity_id, income_account_id: withholdingOnly ? undefined : Number(incomeAccountID),
@@ -269,6 +276,19 @@
     <input id="dividend-correction-amount" type="text" inputmode="decimal" bind:value={amountStr} required
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 font-mono text-sm text-foreground" />
   </div>
+
+  {#if !reinvested && !withholdingOnly}
+    <div>
+      <label for="dividend-correction-payer" class="mb-1 block text-sm font-medium text-foreground">{m.income_coverage_payer()}</label>
+      <select id="dividend-correction-payer" bind:value={payerID}
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground">
+        {#if !initialDividend?.commodity_id}<option value="">{m.income_coverage_payer_unassigned()}</option>{/if}
+        {#each instrumentsQuery.data?.instruments ?? [] as instrument (instrument.commodity_id)}
+          <option value={String(instrument.commodity_id)}>{instrument.display_name} ({instrument.symbol || instrument.commodity_code})</option>
+        {/each}
+      </select>
+    </div>
+  {/if}
 
   {#if !withholdingOnly}
     <div>

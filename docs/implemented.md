@@ -34,8 +34,34 @@ optional attribution may stay unresolved with disclosure and repair. This is a
 policy/planning change, not new runtime functionality. Existing manual commands,
 CSV input, unknown-basis resolution and manual price/FX management remain the
 shipped foundations. Known-payer fallback review/repair now ships under #242
-and manual short-operation import linking under #245 (both below); wider
-dividend attribution coverage (#244) remains open.
+and manual short-operation import linking under #245, and dividend attribution
+coverage under #244 (all below).
+
+## Dividend income attribution coverage — #244 (2026-10-15)
+
+`GET /api/v1/investments/income-coverage` composes owner-confirmed dividend
+income per paying instrument and cash currency (gross, withholding, net cash;
+no recorded income, known zero and known tax stay distinct) beside the book's
+identifiable unassigned investment cash in its original currencies. Unassigned
+items are named dividends without a payer and committed Trading 212 dividend
+sources still posted as ordinary cash, identified only through operation facts
+and import provenance. Their cash is exact; unknown gross and withholding are
+reported as unresolved, never as income or zero. A source ISIN/ticker that
+names an existing instrument is disclosed beside it as unclassified cash and
+never added. Reads never write; items page by cursor while totals cover all.
+
+A phone-ready coverage page (linked from Investments) and an instrument income
+summary show these states, the book-wide excluded scope, raw source evidence and
+optional repair links: #242's same-payment review for imported cash, or the
+dividend correction form, which can now assign a payer to a payer-less dividend.
+Six locales; loading, empty, error and success states. No schema, export or
+report-total change. See the [contract](plans/dividend-income-coverage-plan.md).
+
+Named evidence: `TestDividendCoverageSeparatesKnownUnassignedAndCashOnlyIncome`,
+`TestDividendCoverageCursorPagesUnassignedItemsWithoutGapsOrDuplicates`, API
+`TestIncomeCoverageAPIDisclosesCashOnlyImportAndFollowsRepair`; browser
+`income-coverage.spec.ts` (390 px, axe, named payer correction, imported
+cash disclosure and repair link).
 
 ## Manual short-operation import links — #245 (2026-10-15)
 
@@ -120,7 +146,7 @@ stale/discarded review and late failures roll back. Native correction/reversal,
 instrument activity, export bundle 13 and reimport dedupe reuse the existing
 operation model. No schema migration or guessed historical backfill. All six
 locales and the 390px workflow include loading, empty, error and success states.
-Wider report coverage remains #244. See the
+Wider attribution coverage is delivered by #244. See the
 [contract](plans/import-dividend-review-plan.md).
 
 Named evidence: `TestTrading212DividendOwnerReviewRetainsKnownPayerWithoutDefaults`,

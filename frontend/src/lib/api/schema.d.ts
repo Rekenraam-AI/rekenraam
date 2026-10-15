@@ -14651,6 +14651,72 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/investments/income-coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read investment income attribution coverage
+         * @description Composed read (#244) of owner-confirmed dividend income per paying instrument and cash currency, beside the book's identifiable unassigned investment cash. Unassigned items are named dividends without a payer and committed Trading 212 dividends that still post only as ordinary cash; they are identified through operation facts and import provenance only. Cash alone is not gross income and absent withholding is not zero. Reads never write. Items are ordered newest first by date.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Narrow per-instrument rows to one instrument. Unassigned totals always describe the whole book. */
+                    commodity_id?: number;
+                    cursor?: string;
+                    /** @description Page size of unassigned items; 0 returns the summary without items. */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Income attribution coverage */
+                200: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IncomeCoverageResponse"];
+                    };
+                };
+                /** @description Invalid filter, limit or cursor */
+                400: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication is required */
+                401: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/investments/dividend-defaults": {
         parameters: {
             query?: never;
@@ -31288,6 +31354,83 @@ export interface components {
         GainsFXAmount: {
             value: string;
             scale: number;
+        };
+        /** @description One paying instrument's owner-confirmed income in one cash currency. Imported cash whose source names the instrument is disclosed separately and never added. */
+        IncomeCoverageInstrument: {
+            /** Format: int64 */
+            commodity_id: number;
+            /** Format: int64 */
+            cash_commodity_id: number;
+            currency_code: string;
+            /**
+             * @description none means no recorded gross dividend income.
+             * @enum {string}
+             */
+            income_state: "none" | "known";
+            /** @enum {string} */
+            withholding_state: "none" | "known_zero" | "known";
+            gross: components["schemas"]["GainsFXAmount"] | null;
+            withholding: components["schemas"]["GainsFXAmount"] | null;
+            net_cash: components["schemas"]["GainsFXAmount"] | null;
+            dividend_count: number;
+            withholding_payment_count: number;
+            imported_unclassified_count: number;
+            imported_unclassified_cash: components["schemas"]["GainsFXAmount"] | null;
+        };
+        /** @description Exact unassigned investment cash in one original currency; not gross income. */
+        IncomeCoverageTotal: {
+            /** Format: int64 */
+            cash_commodity_id: number;
+            currency_code: string;
+            cash: components["schemas"]["GainsFXAmount"];
+            item_count: number;
+            payer_unassigned_count: number;
+            economics_unresolved_count: number;
+        };
+        /** @description Original import evidence, unchanged. */
+        IncomeCoverageSource: {
+            /** Format: int64 */
+            batch_id: number;
+            /** Format: int64 */
+            row_id: number;
+            instrument: string;
+            /** Format: date */
+            date: string;
+            cash_amount: string;
+            currency: string;
+        };
+        IncomeCoverageItem: {
+            /** @enum {string} */
+            kind: "named_unassigned" | "imported_cash";
+            /** Format: int64 */
+            transaction_id: number;
+            /** Format: date */
+            date: string;
+            /** Format: int64 */
+            cash_commodity_id: number;
+            currency_code: string;
+            cash: components["schemas"]["GainsFXAmount"];
+            /** @enum {string} */
+            gross_state: "none" | "known" | "unresolved";
+            gross: components["schemas"]["GainsFXAmount"] | null;
+            /** @enum {string} */
+            withholding_state: "known_zero" | "known" | "unresolved";
+            withholding: components["schemas"]["GainsFXAmount"] | null;
+            /** @enum {string} */
+            payer_state: "unassigned" | "source_identified";
+            /**
+             * Format: int64
+             * @description Existing instrument the source's typed identifiers name; not a recorded payer.
+             */
+            source_payer_commodity_id: number | null;
+            reasons: ("payer_unassigned" | "payer_unlinked" | "gross_unresolved" | "withholding_unresolved")[];
+            source: components["schemas"]["IncomeCoverageSource"] | null;
+        };
+        IncomeCoverageResponse: {
+            instruments: components["schemas"]["IncomeCoverageInstrument"][];
+            unassigned_totals: components["schemas"]["IncomeCoverageTotal"][];
+            unassigned: components["schemas"]["IncomeCoverageItem"][];
+            next_cursor: string | null;
         };
         /** @description A signed contribution to the figure, with exact source and converted values. Same-currency amounts are exact no-ops, without an observation. Historic basis retains operational allocations and each lot's effective original acquisition date; an unknown date prevents foreign conversion. */
         GainsFXComponent: {

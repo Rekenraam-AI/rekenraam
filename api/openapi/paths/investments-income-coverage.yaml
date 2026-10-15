@@ -1,0 +1,50 @@
+get:
+  summary: Read investment income attribution coverage
+  description: >-
+    Composed read (#244) of owner-confirmed dividend income per paying
+    instrument and cash currency, beside the book's identifiable unassigned
+    investment cash. Unassigned items are named dividends without a payer and
+    committed Trading 212 dividends that still post only as ordinary cash;
+    they are identified through operation facts and import provenance only.
+    Cash alone is not gross income and absent withholding is not zero.
+    Reads never write. Items are ordered newest first by date.
+  parameters:
+    - in: query
+      name: commodity_id
+      schema: { type: integer, format: int64, minimum: 1 }
+      description: Narrow per-instrument rows to one instrument. Unassigned totals always describe the whole book.
+    - in: query
+      name: cursor
+      schema: { type: string }
+    - in: query
+      name: limit
+      schema: { type: integer, minimum: 0, maximum: 100, default: 50 }
+      description: Page size of unassigned items; 0 returns the summary without items.
+  responses:
+    "200":
+      description: Income attribution coverage
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/IncomeCoverageResponse"
+    "400":
+      description: Invalid filter, limit or cursor
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "401":
+      description: Authentication is required
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"

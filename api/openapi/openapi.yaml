@@ -313,6 +313,8 @@ paths:
     $ref: "./paths/investments-cost-basis-profiles.yaml"
   /api/v1/investments/cost-basis-profiles/{profile_id}:
     $ref: "./paths/investments-cost-basis-profile.yaml"
+  /api/v1/investments/income-coverage:
+    $ref: "./paths/investments-income-coverage.yaml"
   /api/v1/investments/dividend-defaults:
     $ref: "./paths/investments-dividend-defaults.yaml"
   /api/v1/investments/dividend-defaults/{default_id}:
@@ -1489,6 +1491,16 @@ components:
       $ref: "./components/schemas/investments.yaml#/InvestmentGainsResponse"
     GainsFXAmount:
       $ref: "./components/schemas/investments.yaml#/GainsFXAmount"
+    IncomeCoverageInstrument:
+      $ref: "./components/schemas/investments.yaml#/IncomeCoverageInstrument"
+    IncomeCoverageTotal:
+      $ref: "./components/schemas/investments.yaml#/IncomeCoverageTotal"
+    IncomeCoverageSource:
+      $ref: "./components/schemas/investments.yaml#/IncomeCoverageSource"
+    IncomeCoverageItem:
+      $ref: "./components/schemas/investments.yaml#/IncomeCoverageItem"
+    IncomeCoverageResponse:
+      $ref: "./components/schemas/investments.yaml#/IncomeCoverageResponse"
     GainsFXComponent:
       $ref: "./components/schemas/investments.yaml#/GainsFXComponent"
     GainsFXFigure:
