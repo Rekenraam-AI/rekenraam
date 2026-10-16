@@ -143,8 +143,8 @@ test('bulk review preserves completed posts when a later draft fails',async({pag
  await page.getByRole('dialog').getByRole('button',{name:'Confirm',exact:true}).click();
  await expect(firstCard).not.toBeVisible();
  const dialog=page.getByRole('dialog');
- await expect(dialog.getByText(`${name} first`,{exact:false})).toHaveCount(0);
  await expect(dialog.getByText(`${name} second`,{exact:false})).toBeVisible();
+ await expect(dialog.getByText(`${name} first`,{exact:false})).toHaveCount(0);
  await page.unroute(`**/api/v1/transactions/${secondID}/post`);
  await dialog.getByRole('button',{name:'Confirm',exact:true}).click();
  await expect(dialog).not.toBeVisible();await expect(secondCard).not.toBeVisible();

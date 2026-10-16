@@ -95,7 +95,12 @@ test('a return of capital beyond the basis previews its excess, then is reversed
   }).toBe(true);
   await page.goto('/app/investments');
   await page.getByRole('button', { name: 'Gains', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Return-of-capital results' }).getByRole('article').filter({ hasText: name })).toHaveCount(0);
+  // The region renders a loading panel first; wait for its loaded state (empty
+  // or listing other receipts) before checking this one is gone.
+  const results = page.getByRole('region', { name: 'Return-of-capital results' });
+  await expect(results.getByText('No effective return-of-capital receipts in this payment-date range.')
+    .or(results.getByRole('article')).first()).toBeVisible();
+  await expect(results.getByRole('article').filter({ hasText: name })).toHaveCount(0);
 });
 
 // The position is already closed today. Correction must still use the original

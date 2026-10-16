@@ -80,8 +80,9 @@ test('[acceptance] estimated spending is opt-in, explained and reversible', asyn
   // Off by default: no estimate anywhere on the screen.
   const toggle = page.getByTestId('forecast-learning-toggle');
   await expect(toggle).not.toBeChecked();
-  await expect(page.getByTestId('forecast-learning-status')).toHaveCount(0);
   const table = page.getByRole('table').first();
+  await expect(table.getByRole('columnheader', { name: 'With recurring', exact: true })).toBeVisible();
+  await expect(page.getByTestId('forecast-learning-status')).toHaveCount(0);
   await expect(table.getByRole('columnheader', { name: 'With estimated spending' })).toHaveCount(0);
 
   // Opting in requires the owner to confirm when recording became complete.
@@ -120,6 +121,9 @@ test('[acceptance] estimated spending is opt-in, explained and reversible', asyn
   await page.getByTestId('forecast-learning-toggle').uncheck();
   await page.getByRole('button', { name: 'Apply', exact: true }).click();
   await expect(page).not.toHaveURL(/spending_model/);
+  // The new URL refetches with no placeholder data, so wait for the reloaded
+  // table before checking what it lacks.
+  await expect(page.getByRole('table').first().getByRole('columnheader', { name: 'With recurring', exact: true })).toBeVisible();
   await expect(page.getByTestId('forecast-learning-status')).toHaveCount(0);
   await expect(page.getByRole('table').first().getByRole('columnheader', { name: 'With estimated spending' })).toHaveCount(0);
 
@@ -148,7 +152,9 @@ test('[acceptance] a category without enough history says why', async ({ page })
   await expect(status).toContainText('16 complete weeks or months are required.');
   // An unavailable overlay shows no estimated column at all, rather than a
   // reassuring zero-spending curve.
-  await expect(page.getByRole('table').first().getByRole('columnheader', { name: 'With estimated spending' })).toHaveCount(0);
+  const sparseTable = page.getByRole('table').first();
+  await expect(sparseTable.getByRole('columnheader', { name: 'With recurring', exact: true })).toBeVisible();
+  await expect(sparseTable.getByRole('columnheader', { name: 'With estimated spending' })).toHaveCount(0);
 });
 
 test('[acceptance] a seasonal request explains the 36-month requirement', async ({ page }) => {

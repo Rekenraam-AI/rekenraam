@@ -40,6 +40,9 @@ test('a holding register records a pre-filled buy and opens it in the investment
 
   await page.goto(`/app/accounts/${holding.id}/register`);
   await expect(page.getByRole('heading', { name: `Context holding ${suffix}` })).toBeVisible();
+  // The investment entry point replaces the generic one; wait for it so the
+  // absence below is checked on a rendered register, not a loading one.
+  await expect(page.getByRole('button', { name: 'Record investment activity' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'New transaction' })).toHaveCount(0);
 
   await openActivity(page, 'Record investment activity', 'Record buy');
@@ -60,8 +63,8 @@ test('a holding register records a pre-filled buy and opens it in the investment
   // The register lists it without a reload, and the row opens the investment
   // detail with its correction and reversal history, not the generic editor.
   await page.getByText(memo).first().click();
-  await expect(page.getByRole('heading', { name: 'Edit transaction' })).toHaveCount(0);
   await expect(page.locator('#investment-correction-heading')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Edit transaction' })).toHaveCount(0);
 });
 
 test('an instrument view lists its activity and pre-fills the instrument and its only holding', async ({ page }) => {
@@ -128,6 +131,9 @@ test('instrument activity includes a cash dividend with withholding and retains 
     withholding_account_id: withholding.id, memo
   });
   await page.goto(`/app/investments/instruments/${instrument.commodity_id}`);
+  // The dividend is listed here, so the old "appears on the cash register
+  // instead" note must not come back on the loaded activity list.
+  await expect(page.getByText(memo, { exact: true })).toBeVisible();
   await expect(page.getByText('Cash dividends move no units', { exact: false })).toHaveCount(0);
   await page.getByText(memo, { exact: true }).click();
   await page.getByRole('button', { name: 'Correct dividend…' }).click();

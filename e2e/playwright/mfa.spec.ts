@@ -73,8 +73,8 @@ test.describe.serial('two-factor authentication journey', () => {
     await expect(page.getByRole('heading', { name: 'Two-factor authentication' })).toBeVisible();
     // A missing REKENRAAM_SECRET_KEY would refuse enrollment rather than store
     // the secret in the clear, so assert the server is actually configured.
-    await expect(page.getByText(/needs REKENRAAM_SECRET_KEY/)).toHaveCount(0);
     await expect(page.getByText('Off', { exact: true })).toBeVisible();
+    await expect(page.getByText(/needs REKENRAAM_SECRET_KEY/)).toHaveCount(0);
 
     await page.getByLabel('Your password').fill(OWNER_PASSWORD);
     await page.getByRole('button', { name: 'Set up' }).click();

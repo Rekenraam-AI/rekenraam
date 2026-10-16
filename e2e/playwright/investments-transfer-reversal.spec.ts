@@ -70,6 +70,10 @@ test.describe('on a phone', () => {
     await expect(dialog).toBeHidden();
     await expect.poll(() => held(page, source.id, instrument.commodity_id)).toBe('10');
     await expect.poll(() => held(page, destination.id, instrument.commodity_id)).toBe('0');
+    // Reversing closes the detail, so an absence check here would pass on the
+    // bare list. Reopen the reversed transfer and check its own actions.
+    await page.goto(`/app/transactions?transaction_id=${moved.transaction.id}`);
+    await expect(page.locator('#investment-correction-heading')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Reverse transfer…' })).toHaveCount(0);
   });
 

@@ -147,8 +147,10 @@ test('reorder mode moves a posting past the day edge to the next day after confi
   await page.getByRole('button', { name: 'Reorder' }).click();
   const row = page.getByRole('row').filter({ hasText: description });
   // The only entry of its day: the arrows offer the adjacent days instead.
+  const nextDay = row.getByRole('button', { name: 'Move to the next day' });
+  await expect(nextDay).toBeVisible();
   await expect(row.getByRole('button', { name: 'Move later in the day' })).toHaveCount(0);
-  await row.getByRole('button', { name: 'Move to the next day' }).click();
+  await nextDay.click();
   await expect(page.getByText(`Move this posting to ${tomorrow}?`)).toBeVisible();
   const confirm = page.getByRole('button', { name: `Move to ${tomorrow}` });
   await expect(confirm).toBeFocused();

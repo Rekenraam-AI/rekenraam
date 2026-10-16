@@ -97,9 +97,9 @@ test('an outbound transfer is corrected and then reversed on mobile', async ({ p
   await page.goto(`/app/transactions?transaction_id=${out.transaction.id}`);
   await page.getByRole('button', { name: 'Correct transfer…' }).click();
   const form = page.getByRole('dialog', { name: 'Correct this transfer out' });
-  await expect(form.getByLabel('Destination holding account')).toHaveCount(0);
   const lot = form.getByLabel(/^Lot #/);
   await expect(lot).toHaveValue('2');
+  await expect(form.getByLabel('Destination holding account')).toHaveCount(0);
   await form.getByLabel('Reason for correction').fill('only one share left');
   await lot.fill('1');
   await form.getByRole('button', { name: 'Review and replace' }).click();

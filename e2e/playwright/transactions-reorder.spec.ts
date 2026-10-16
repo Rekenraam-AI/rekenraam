@@ -89,8 +89,10 @@ test('reordering in a category applies in the account both entries share', async
 
   await page.goto(`/app/categories/${s.category.id}`);
   await page.getByRole('button', { name: 'Reorder' }).click();
+  const later = row(page, `Bread ${s.suffix}`).getByRole('button', { name: 'Move later in the day' });
+  await expect(later).toBeVisible();
   await expect(page.getByLabel('Only in this account')).toHaveCount(0);
-  await row(page, `Bread ${s.suffix}`).getByRole('button', { name: 'Move later in the day' }).click();
+  await later.click();
 
   await expect.poll(() => registerOrder(page, s.category.id)).toEqual([milk.id, bread.id]);
   expect(await registerOrder(page, s.checking.id)).toEqual([milk.id, bread.id]);
