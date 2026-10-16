@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './support/fixtures';
 import { readFileSync } from 'node:fs';
 import { readyForLedger } from './support/ledger';
 import { apiJSON, csrfTokenFor } from './support/api';

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './support/fixtures';
 import AxeBuilder from '@axe-core/playwright';
 import { apiJSON } from './support/api';
 import { readyForLedger } from './support/ledger';

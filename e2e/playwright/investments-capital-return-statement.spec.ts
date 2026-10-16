@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './support/fixtures';
 import AxeBuilder from '@axe-core/playwright';
 import { apiJSON } from './support/api';
 import { ensureCurrency, readyForLedger } from './support/ledger';
@@ -76,8 +76,8 @@ test.describe.serial('period statements disclose capital-return excess and unkno
   let knownID: number;
   let saved: { id: number; schema_version: number };
 
-  test.beforeAll(async ({ browser }, testInfo) => {
-    const context = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
+  test.beforeAll(async ({ browser, backend }) => {
+    const context = await browser.newContext({ baseURL: backend.url });
     const page = await context.newPage();
     try {
       const { csrfToken } = await readyForLedger(page);

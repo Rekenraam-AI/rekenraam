@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './support/fixtures';
 import { readyForLedger } from './support/ledger';
 import { apiJSON } from './support/api';
 

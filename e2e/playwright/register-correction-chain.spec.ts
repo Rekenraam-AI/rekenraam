@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './support/fixtures';
 import { apiJSON } from './support/api';
 import { expectNoAccessibilityViolations } from './support/a11y';
 import { readyForLedger } from './support/ledger';

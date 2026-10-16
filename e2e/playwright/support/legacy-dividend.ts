@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import process from 'node:process';
 
 /**
  * Frozen pre-#242 source linkage: the payment itself uses the real API.
@@ -8,7 +8,9 @@ import { fileURLToPath } from 'node:url';
  * Callers skip when E2E_BASE_URL points at an external app.
  */
 export function linkLegacyCashDividend(rowID: number, transactionID: number, accountID: number): void {
-  const databasePath = fileURLToPath(new URL('../../../backend/var/e2e.sqlite', import.meta.url));
+  // The calling worker's own database, published by fixtures.ts.
+  const databasePath = process.env.E2E_DATABASE_PATH;
+  if (!databasePath) throw new Error('E2E_DATABASE_PATH is unset: legacy fixtures need a self-managed e2e app');
   execFileSync('python3', ['-c', `
 import sqlite3, sys
 path, row_id, transaction_id, account_id = sys.argv[1:]

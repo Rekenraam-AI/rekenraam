@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './support/fixtures';
 import { apiJSON, csrfTokenFor } from './support/api';
 import { todayISO } from './support/dates';
 import { createCashAccount, readyForLedger } from './support/ledger';

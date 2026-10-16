@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './support/fixtures';
 import { completeCurrencySetupIfNeeded } from './support/session';
 
 test('bootstraps the owner account, signs out, and signs back in', async ({ page }) => {

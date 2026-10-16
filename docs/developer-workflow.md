@@ -357,13 +357,14 @@ pnpm test:release-preflight
 ```
 
 - **Do not read the exit code of a piped run.** `./scripts/test-e2e-smoke.sh | tail -25` reports `tail`'s status, which is always 0, so a failing suite looks green — that is shell pipeline semantics, and nothing inside the script can change it. Run it unpiped, or set `set -o pipefail` in the calling shell first, which is what the CI step that tees backend coverage does.
-- `./scripts/test-e2e.sh` now builds the integrated app, starts a fresh local instance on `127.0.0.1:16889`, and uses a dedicated SQLite file at `backend/var/e2e.sqlite` unless `E2E_BASE_URL` is set.
-- The Playwright suite runs with one worker because the default harness shares one app instance and SQLite database.
-- Set `E2E_PORT` when the self-managed e2e port needs to move.
-- Set `E2E_BASE_URL` when you want Playwright to target an already-running app instead of booting its own fresh instance.
+- `./scripts/test-e2e.sh` builds the integrated app once (Playwright global setup), then every worker starts its own instance of `dist/rekenraam` on its own port (consecutive from `127.0.0.1:16900`; move the base with `E2E_PORT`) against its own SQLite file and backup directory under `backend/var/e2e/<project>-<index>/`, where its `app.log` also lands. The fixture lives in `e2e/playwright/support/fixtures.ts`; specs import `test` and `expect` from there, not from `@playwright/test`, or they would reach no app at all.
+- Workers run side by side because no two share a book: 50% of the cores locally, 3 under `CI` (the 4-vCPU GitHub runner). Override with `E2E_WORKERS` or `--workers`. Files still run serially inside a worker, and a worker restarted after a failure reuses its database, so a spec may rely on its own file's earlier tests but never on another file's data — which file runs in which worker is not fixed.
+- `auth.spec.ts` needs an owner-less database. It runs in its own `bootstrap` project, which gets its own worker database, so nothing has to run before or after it.
+- Set `E2E_SKIP_BUILD=1` to reuse the existing `dist/rekenraam` while iterating on specs, e.g. `E2E_SKIP_BUILD=1 pnpm --dir e2e exec playwright test investments-split`.
+- Set `E2E_BASE_URL` when you want Playwright to target an already-running app instead of booting its own. That app has one book, so the run drops to one worker and orders `bootstrap` first.
 - The harness also boots the Trading 212 provider stub on `127.0.0.1:16890` (move it with `TRADING212_STUB_PORT`) and starts the app with `TRADING212_BASE_URL` pointing at it, so import journeys can create connections and fetch fills without the real provider. `MARKET_DATA_BASE_URL` points every built-in quote/FX provider at the same stub, whose 404s keep background FX coverage from importing live rates into the shared e2e book (#226); both overrides are refused outside `APP_ENV=development`. Specs that need it call `requireTrading212Stub()`; against an external `E2E_BASE_URL` they skip unless `E2E_TRADING212_STUB_URL` names a stub that app is configured to use.
 - The harness sets a throwaway `REKENRAAM_SECRET_KEY` for the instance it boots, because the MFA journey cannot enrol without one — enrolment returns `CONFIG_REQUIRED` rather than storing the shared secret in the clear. Export your own `REKENRAAM_SECRET_KEY` to override it.
-- `mfa.spec.ts` shares the run's database with every other spec, so it turns MFA back off in `afterAll`. A spec that changes account-wide authentication state must clean up the same way.
+- `mfa.spec.ts` shares its worker's database with the other files that worker runs, so it turns MFA back off in `afterAll`. A spec that changes account-wide authentication state must clean up the same way. A hook (`beforeAll`/`afterAll`) that opens its own page or context passes `baseURL: backend.url` from the worker fixture, since test-scoped `baseURL` is not available there.
 - Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to an existing Chromium binary when the sandbox or image cannot download the revision this Playwright release pins (`pnpm exec playwright install` fails, and the run dies with "Executable doesn't exist"). Container images that preinstall a browser usually expose one at `/opt/pw-browsers/chromium`. Prefer this over patching the browser cache by hand; leave it unset locally so Playwright uses its own pinned build.
 
 ## Area Notes
@@ -655,8 +656,9 @@ Workflow conventions:
   whose manifests fail CI's frozen install.
 - Browser journeys run in the `E2E Smoke` job of `ci.yml` on every push and pull
   request: `./scripts/test-e2e-smoke.sh`, which builds the single binary, boots
-  a throwaway instance, and runs every spec except `release-preflight.spec.ts`.
-  The Playwright report uploads as an artifact on failure. The preflight suite
+  a throwaway instance per worker (3 workers), and runs every spec except
+  `release-preflight.spec.ts`. The Playwright report and each worker's
+  `app.log` upload as an artifact on failure. The preflight suite
   stays out of CI and is run deliberately before a release.
 - Use `pnpm install --frozen-lockfile` in CI.
 - Keep CI commands aligned with the local wrapper scripts in `scripts/`.

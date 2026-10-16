@@ -37,7 +37,7 @@ checks; CI must not need a separate warm-up or skip catalog validation.
 | `frontend/**` | `./scripts/test-frontend.sh` (openapi:generate + paraglide:compile + svelte-check); `pnpm --dir frontend run test` for unit-tested logic |
 | OpenAPI | both scripts above |
 | Integrated shape / static serving / embed | `pnpm build` (builds frontend, copies into `backend/internal/web/dist/`, runs embed test, compiles `dist/rekenraam`) |
-| User journeys | `./scripts/test-e2e.sh` (self-contained: builds app, boots on 127.0.0.1:16889, fresh `backend/var/e2e.sqlite`) |
+| User journeys | `./scripts/test-e2e.sh` (self-contained: builds app once, one instance + fresh SQLite per worker under `backend/var/e2e/`, ports from 127.0.0.1:16900; `E2E_SKIP_BUILD=1` to reuse the binary) |
 
 Native SQLite requires CGO and a C compiler with development headers. Supported
 commands source `scripts/native-sqlite-env.sh` and enable `fts5,netgo,osusergo`.
@@ -458,7 +458,7 @@ non-trivial diff (yours or reviewed):
 
 42. **Browser journeys that depend on live providers or late handlers** —
     the e2e app runs its background workers, so a real network call can add
-    evidence to the shared book (#226: a live ECB fixing outranked a voided
+    evidence to a worker's book (#226: a live ECB fixing outranked a voided
     fixture in evening CI runs). Every outbound provider goes through a
     development-only stub override (`TRADING212_BASE_URL`,
     `MARKET_DATA_BASE_URL`) refused outside `APP_ENV=development`. A

@@ -11,7 +11,7 @@
  * again by the end or every later spec's sign-in would meet a challenge.
  */
 
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from './support/fixtures';
 import { apiJSON, csrfTokenFor } from './support/api';
 import { ensureBrowserSession } from './support/session';
 import { currentStep, secretFromOTPAuthURI, totpCode } from './support/totp';
@@ -51,9 +51,9 @@ async function signInWithPassword(page: Page) {
 }
 
 test.describe.serial('two-factor authentication journey', () => {
-  test.afterAll(async ({ browser }) => {
-    // Whatever happened above, the shared database must be left with MFA off.
-    const page = await browser.newPage();
+  test.afterAll(async ({ browser, backend }) => {
+    // Whatever happened above, the worker's database must be left with MFA off.
+    const page = await browser.newPage({ baseURL: backend.url });
     try {
       await ensureBrowserSessionThroughMFA(page);
       const csrfToken = await csrfTokenFor(page);

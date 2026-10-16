@@ -10,7 +10,7 @@
  * read the console.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from './support/fixtures';
 import { ensureBrowserSession } from './support/session';
 
 type Violation = {

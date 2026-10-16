@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './support/fixtures';
 import { apiJSON } from './support/api';
 import { readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
@@ -70,7 +70,9 @@ test('a split of a holding sold since is entered by its date on mobile', async (
   await page.goto('/app/investments');
   await page.getByRole('button', { name: 'Record split' }).click();
   const holding = page.getByLabel('Holding', { exact: true });
-  await expect(holding.locator('option', { hasText: s.holdingLabel })).toHaveCount(0);
+  // Sold out today, it is still offered as a configured empty holding (#146).
+  // An absence check here passed only while the form was still loading.
+  await expect(holding.locator('option', { hasText: s.holdingLabel })).toHaveCount(1);
   await page.getByLabel('Split effective date').fill(daysFromTodayISO(-20));
   await expect(holding.locator('option', { hasText: s.holdingLabel })).toHaveCount(1);
   await holding.selectOption({ label: s.holdingLabel });

@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from './support/fixtures';
 import { apiJSON, csrfTokenFor } from './support/api';
 import { todayISO } from './support/dates';
 import { createCashAccount, createLiabilityAccount, ensureCurrency, readyForLedger } from './support/ledger';

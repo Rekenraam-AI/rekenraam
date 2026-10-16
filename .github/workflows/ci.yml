@@ -90,9 +90,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Install Chromium
         run: pnpm --dir e2e exec playwright install --with-deps chromium
-      # The suite builds the single binary and boots its own instance against a
-      # throwaway SQLite file; see e2e/playwright.config.ts. release-preflight
-      # stays out of this job and runs before a release.
+      # The suite builds the single binary once and boots one instance per
+      # worker, each against its own throwaway SQLite file; see
+      # e2e/playwright/support/fixtures.ts. release-preflight stays out of this
+      # job and runs before a release.
       - name: Run browser smoke journeys
         run: ./scripts/test-e2e-smoke.sh
       - name: Upload Playwright report
@@ -103,6 +104,7 @@ jobs:
           path: |
             e2e/playwright-report
             e2e/test-results
+            backend/var/e2e/*/app.log
           retention-days: 7
 
   app-build:

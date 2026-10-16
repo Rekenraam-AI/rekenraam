@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support/fixtures';
 import AxeBuilder from '@axe-core/playwright';
 import { apiJSON } from './support/api';
 import { ensureCurrency, readyForLedger } from './support/ledger';

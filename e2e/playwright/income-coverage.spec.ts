@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './support/fixtures';
 import process from 'node:process';
 import { apiJSON } from './support/api';
 import { readyForLedger, createCashAccount } from './support/ledger';

@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from './support/fixtures';
 import { apiJSON, csrfTokenFor } from './support/api';
 import { daysFromTodayISO, todayISO } from './support/dates';
 import { createCashAccount, ensureCurrency, readyForLedger } from './support/ledger';
