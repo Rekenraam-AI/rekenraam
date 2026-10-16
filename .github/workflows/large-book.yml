@@ -1,0 +1,28 @@
+name: Large-Book Measurement
+
+# Bundle export and self-check on a generated 250k-posting book (#108). Too
+# slow and too noisy for the push gate; weekly is enough to catch a sharp
+# regression before a user exporting their own ledger does.
+on:
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CGO_ENABLED: "1"
+
+jobs:
+  large-book:
+    name: Large-Book Export And Self-Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Measure export and self-check on a large book
+        run: ./scripts/measure-large-book.sh

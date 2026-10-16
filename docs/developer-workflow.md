@@ -226,6 +226,32 @@ non-gating `backend-coverage` job and fails it below a soft floor
 the floor deliberately when the level rises; never lower it to make a change
 pass.
 
+#### Large-book measurement
+
+`./scripts/measure-large-book.sh` (`pnpm measure:large-book`) generates a book
+at a realistic upper bound — 250,000 posted postings over 3,020 accounts in two
+currencies across five years — and runs the bundle export and the self-check
+against it (#108). It asserts the right answer at that size (every posting in
+`ledger.csv`, one trial-balance row per leaf and commodity, a passing check)
+and fails when wall time or peak live heap crosses a ceiling set several times
+above the measured figures, so a sharp regression fails and a slow runner does
+not. `BENCH=1` also runs the `testing.B` benchmarks with `ReportAllocs`. The
+test skips unless `REKENRAAM_LARGE_BOOK=1`, so the push gate never pays for it;
+CI runs it weekly in `.github/workflows/large-book.yml`.
+
+Measured 2026-10-16 on an 8-core AMD EPYC 3251, without `-race`:
+
+| Operation | Wall | Allocated (cumulative) | Peak live heap |
+| --- | --- | --- | --- |
+| Bundle export | 11.2 s | 413 MiB | 24 MiB |
+| Self-check | 11.8 s | 137 MiB | 39 MiB |
+
+Both are SQLite-bound (over 90% of CPU in cgo), and the peak heap shows the
+whole-book folds — the trial balance, account paths, the self-check
+balances — stay per-account rather than per-posting. Ceilings: 60 s and
+256 MiB each, in `backend/internal/app/large_book_test.go`. Raise them only
+with a new measurement here.
+
 ### Local Owner Recovery
 
 Reset the owner password locally with a verified SQLite backup first:
@@ -642,6 +668,9 @@ Workflow conventions:
 - Go vulnerability scanning runs in `.github/workflows/govulncheck.yml` with
   `govulncheck ./...` from `backend/` on a weekly schedule, manually via
   `workflow_dispatch`, and on backend-affecting pushes to main and pull requests.
+- The large-book export and self-check measurement runs in
+  `.github/workflows/large-book.yml` weekly and via `workflow_dispatch`, never
+  on push: `./scripts/measure-large-book.sh` (see Large-book measurement).
 - CodeQL code scanning runs as GitHub's **default setup**, configured in
   repository settings (Security → Code scanning), covering `actions`, Go, and
   the JS/TS languages. There is no committed CodeQL workflow.
