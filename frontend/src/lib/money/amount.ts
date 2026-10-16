@@ -316,3 +316,27 @@ export function roundAmountForDisplay(value: string, scale: number, displayScale
 	const rounded = (magnitude + divisor / 2n) / divisor;
 	return (coefficient < 0n ? -rounded : rounded).toString();
 }
+
+/** Display-only division: `numerator / denominator` as a coefficient at
+ * `resultScale`, rounded to the nearest unit with ties away from zero — the
+ * same rule as the backend's `scaledDivision`. Used for implied prices such as
+ * an FX rate stored as a price-per-quantity pair. Returns `null` when the
+ * denominator is zero. Never use this to allocate, persist, or sum amounts. */
+export function divideAmountsForDisplay(
+	numerator: ScaledAmount,
+	denominator: ScaledAmount,
+	resultScale: number
+): string | null {
+	let n = BigInt(numerator.value);
+	let d = BigInt(denominator.value);
+	if (d === 0n) return null;
+	const exponent = resultScale + denominator.scale - numerator.scale;
+	if (exponent >= 0) n *= 10n ** BigInt(exponent);
+	else d *= 10n ** BigInt(-exponent);
+	const negative = n < 0n !== d < 0n;
+	const absN = n < 0n ? -n : n;
+	const absD = d < 0n ? -d : d;
+	let quotient = absN / absD;
+	if ((absN % absD) * 2n >= absD) quotient += 1n;
+	return (negative && quotient !== 0n ? -quotient : quotient).toString();
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { formatExactMoney, formatQuantity, formatMoney, joinCommodityAmount } from './format';
-import { formatLedgerAmount, parseDecimalAmount } from './amount';
+import { formatExactMoney, formatQuantity, formatMoney, formatRatio, joinCommodityAmount } from './format';
+import { divideAmountsForDisplay, formatLedgerAmount, parseDecimalAmount } from './amount';
 
 describe('formatQuantity', () => {
   it('scale 0: integer amount', () => {
@@ -160,4 +160,57 @@ describe('formatExactMoney', () => {
 		expect(formatExactMoney('5', 0, 2, 'en-US')).toBe('5.00');
 		expect(formatExactMoney('0', 6, 2, 'en-US')).toBe('0.00');
 	});
+});
+
+describe('divideAmountsForDisplay (#106)', () => {
+  it('rounds half-up, ties away from zero, like the backend scaledDivision', () => {
+    // 2 / 3 = 0.666666666… → 0.66666667 at 8 decimals (truncation gave 0.66666666).
+    expect(divideAmountsForDisplay({ value: '2', scale: 0 }, { value: '3', scale: 0 }, 8)).toBe('66666667');
+    // 1 / 8 = 0.125 → tie at 2 decimals rounds away from zero.
+    expect(divideAmountsForDisplay({ value: '1', scale: 0 }, { value: '8', scale: 0 }, 2)).toBe('13');
+    expect(divideAmountsForDisplay({ value: '-1', scale: 0 }, { value: '8', scale: 0 }, 2)).toBe('-13');
+    expect(divideAmountsForDisplay({ value: '1', scale: 0 }, { value: '-8', scale: 0 }, 2)).toBe('-13');
+  });
+
+  it('handles a numerator scale deeper than the result scale', () => {
+    // 1.23456789012 / 1 at 8 decimals → 1.23456789
+    expect(divideAmountsForDisplay({ value: '123456789012', scale: 11 }, { value: '1', scale: 0 }, 8)).toBe('123456789');
+  });
+
+  it('stays exact beyond Number.MAX_SAFE_INTEGER', () => {
+    expect(
+      divideAmountsForDisplay({ value: '123456789012345678901234567890', scale: 2 }, { value: '10', scale: 1 }, 2)
+    ).toBe('123456789012345678901234567890');
+  });
+
+  it('returns null for a zero denominator', () => {
+    expect(divideAmountsForDisplay({ value: '5', scale: 0 }, { value: '0', scale: 4 }, 8)).toBeNull();
+  });
+});
+
+describe('formatRatio (#106)', () => {
+  it('formats an FX rate stored as price per quantity, dropping trailing zeros', () => {
+    // 108.50 USD per 100 EUR → 1.085
+    expect(formatRatio({ value: '10850', scale: 2 }, { value: '100', scale: 0 }, 8, 'en-US')).toBe('1.085');
+    expect(formatRatio({ value: '10850', scale: 2 }, { value: '100', scale: 0 }, 8, 'de-DE')).toBe('1,085');
+  });
+
+  it('rounds the 8th decimal half-up instead of truncating', () => {
+    expect(formatRatio({ value: '2', scale: 0 }, { value: '3', scale: 0 }, 8, 'en-US')).toBe('0.66666667');
+  });
+
+  it('shows whole rates without a decimal separator and groups large ones', () => {
+    expect(formatRatio({ value: '1600000', scale: 2 }, { value: '1', scale: 0 }, 8, 'en-US')).toBe('16,000');
+    expect(formatRatio({ value: '0', scale: 2 }, { value: '1', scale: 0 }, 8, 'en-US')).toBe('0');
+  });
+
+  it('keeps exact digits for a rate beyond double precision', () => {
+    expect(formatRatio({ value: '900719925474099312345678', scale: 8 }, { value: '1', scale: 0 }, 8, 'en-US')).toBe(
+      '9,007,199,254,740,993.12345678'
+    );
+  });
+
+  it('shows an em dash when the quantity is zero', () => {
+    expect(formatRatio({ value: '5', scale: 0 }, { value: '0', scale: 0 }, 8, 'en-US')).toBe('\u2014');
+  });
 });

@@ -1,4 +1,4 @@
-import { roundAmountForDisplay } from './amount';
+import { divideAmountsForDisplay, roundAmountForDisplay, type ScaledAmount } from './amount';
 
 /**
  * The frontend's single money-*display* layer.
@@ -134,4 +134,24 @@ export function formatExactMoney(value: string, scale: number, standardScale: nu
 		displayScale = standardScale;
 	}
 	return formatQuantity(coefficient, displayScale, locale);
+}
+
+/** Implied-price display, e.g. an FX rate stored as `price` per `quantity`:
+ * divides exactly, rounds half-up (ties away from zero) at `maxDecimals`, and
+ * drops trailing zeros. A zero quantity has no rate and shows an em dash. */
+export function formatRatio(
+	price: ScaledAmount,
+	quantity: ScaledAmount,
+	maxDecimals: number,
+	locale: string
+): string {
+	let coefficient = divideAmountsForDisplay(price, quantity, maxDecimals);
+	if (coefficient === null) return '\u2014';
+	let scale = maxDecimals;
+	while (scale > 0 && coefficient.endsWith('0')) {
+		coefficient = coefficient.slice(0, -1);
+		scale--;
+	}
+	if (/^-?0*$/.test(coefficient)) return formatQuantity('0', 0, locale);
+	return formatQuantity(coefficient, scale, locale);
 }

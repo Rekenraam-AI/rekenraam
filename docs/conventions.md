@@ -531,6 +531,10 @@ has actual installations, its migration files are immutable.
   allocation or posting rule: stored amounts, fractional share quantities, and
   detailed lot values retain their precision. Use `formatMoney` for these summary
   amounts and `formatQuantity` for exact quantities.
+- A displayed rate implied by a price/quantity pair (an FX rate) is divided
+  exactly and rounded **half-up** (ties away from zero) at 8 decimals, the same
+  rule as the backend's `scaledDivision`, then trailing zeros are dropped. Use
+  `formatRatio`; never truncate or route the quotient through `Number` (#106).
 - The two halves of `#lib/money` are not interchangeable, and a report or export must
   pick the right one rather than growing inline math: `format.ts` for anything a user
   only reads, `amount.ts` (`formatLedgerAmount`) for anything that must round-trip

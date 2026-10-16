@@ -34,6 +34,8 @@
   import { localizedCurrencyCatalog, type LocalizedCurrencyCatalogEntry } from '#lib/install-gate/currency-options.ts';
   import { priceManagementQueryKey } from '#lib/api/price-management.ts';
   import { m } from '#lib/paraglide/messages.js';
+  import { getLocale } from '#lib/paraglide/runtime.js';
+  import { formatRatio } from '#lib/money/format.ts';
 
   const ownerToday = useOwnerToday();
 
@@ -68,19 +70,20 @@
   let addCurrencyPending = $state(false);
   let addCurrencyError = $state<unknown>(undefined);
 
-  const currencyDisplayNames = new Intl.DisplayNames(undefined, { type: 'currency' });
-  const numberFormatter = new Intl.NumberFormat(undefined, {
-    maximumFractionDigits: 8,
-    minimumFractionDigits: 0
-  });
-  const dateFormatter = new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
+  // FX rates are implied prices: display rounds half-up at this many decimals (#106).
+  const RATE_DISPLAY_DECIMALS = 8;
+  const locale = $derived(getLocale());
+  const currencyDisplayNames = $derived(new Intl.DisplayNames(locale, { type: 'currency' }));
+  const dateFormatter = $derived(
+    new Intl.DateTimeFormat(locale, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  );
   const preferencesTimeZone = $derived(pageQuery.data?.preferences.time_zone ?? 'UTC');
   const dateTimeFormatter = $derived(
-    new Intl.DateTimeFormat(undefined, {
+    new Intl.DateTimeFormat(locale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -380,50 +383,16 @@
   }
 
   function formatRate(price: PriceObservationResponse): string {
-    const decimalText = scaledRatioToDecimalText(
-      BigInt(price.price_value),
-      price.price_scale,
-      BigInt(price.base_quantity_value),
-      price.base_quantity_scale,
-      8
+    return formatRatio(
+      { value: price.price_value, scale: price.price_scale },
+      { value: price.base_quantity_value, scale: price.base_quantity_scale },
+      RATE_DISPLAY_DECIMALS,
+      locale
     );
-
-    return numberFormatter.format(Number(decimalText));
   }
 
   function numberOrUndefined(value: string): number | undefined {
     return value === '' ? undefined : Number(value);
-  }
-
-  function scaledRatioToDecimalText(
-    priceValue: bigint,
-    priceScale: number,
-    baseQuantityValue: bigint,
-    baseQuantityScale: number,
-    maxDecimals: number
-  ): string {
-    if (baseQuantityValue === 0n) {
-      return '0';
-    }
-
-    const numerator = priceValue * pow10(baseQuantityScale);
-    const denominator = baseQuantityValue * pow10(priceScale);
-    const integer = numerator / denominator;
-    let remainder = numerator % denominator;
-    let decimals = '';
-
-    for (let index = 0; index < maxDecimals && remainder !== 0n; index += 1) {
-      remainder *= 10n;
-      decimals += String(remainder / denominator);
-      remainder %= denominator;
-    }
-
-    decimals = decimals.replace(/0+$/, '');
-    return decimals ? `${integer}.${decimals}` : String(integer);
-  }
-
-  function pow10(exponent: number): bigint {
-    return 10n ** BigInt(exponent);
   }
 </script>
 
