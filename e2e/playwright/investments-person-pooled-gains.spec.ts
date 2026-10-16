@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { apiJSON } from './support/api';
 import { readyForLedger } from './support/ledger';
@@ -6,9 +6,11 @@ import { todayISO, daysFromTodayISO } from './support/dates';
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-test('person-pooled gains preserve internal transfers and operational basis in six locales at 390px', async ({ page }) => {
+// Two holding accounts of one instrument: an internal transfer moves half of
+// account 0's lot into account 1, then a write-off disposes of one unit.
+async function setup(page: Page, locale: string) {
   const { csrfToken, currencyID } = await readyForLedger(page);
-  const suffix = Date.now();
+  const suffix = `${locale.toUpperCase()}${Date.now()}`;
   const name = `Person pool ${suffix}`;
   const opened = daysFromTodayISO(-60);
   const instrument = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
@@ -42,41 +44,46 @@ test('person-pooled gains preserve internal transfers and operational basis in s
     base_commodity_id: instrument.commodity_id, quote_commodity_id: currencyID, quote_type: 'manual', adjustment_basis: 'raw',
     price_value: 3000, price_scale: 2, valuation_date: todayISO(), is_manual: true
   });
-  const note = 'Owner context <s104 / ACB / PMP>'; // plain text, never a rule selector or markup
-  const locales = [
-    ['en', 'Gains', 'Person-pooled average cost', 'Jurisdiction note (optional)'],
-    ['nl', 'Winsten', 'Gemiddelde kostprijs per persoon', 'Jurisdictienotitie (optioneel)'],
-    ['de', 'Gewinne', 'Personenbezogene Durchschnittskosten', 'Jurisdiktionsnotiz (optional)'],
-    ['fr', 'Plus-values', 'Coût moyen mutualisé par personne', 'Note de juridiction (facultative)'],
-    ['es', 'Ganancias', 'Coste medio agrupado por persona', 'Nota de jurisdicción (opcional)'],
-    ['ru', 'Прибыль', 'Средняя стоимость по всем счетам владельца', 'Примечание о юрисдикции (необязательно)']
-  ] as const;
-  try {
-    for (const [locale, tab, method, noteLabel] of locales) {
-      await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
-      await page.goto('/app/investments');
-      await page.getByRole('button', { name: tab, exact: true }).click();
-      const comparison = page.getByTestId('alternative-gains');
-      await comparison.getByRole('combobox').selectOption('person_pooled_average');
-      await expect(comparison.getByRole('heading')).toContainText(method);
-      await comparison.getByLabel(noteLabel, { exact: true }).fill(note);
-      const request = page.waitForResponse((res) => new URL(res.url()).searchParams.get('jurisdiction_note') === note);
-      await comparison.locator('form button').click();
-      const result = await (await request).json();
-      expect(result.alternative.profile.jurisdiction_note).toBe(note);
-      await expect(comparison.locator('p').filter({ hasText: note })).toBeVisible();
-      const positions = comparison.getByRole('row').filter({ hasText: name });
-      await expect(positions).toHaveCount(2);
-      // Account 1: operational basis 10, pool basis 20, market 30.
-      await expect(positions.first()).toContainText(/20[,.]00/);
-      await expect(positions.first()).toContainText(/10[,.]00/);
-      // Account 2: operational basis 140, pooled basis 120, market 180.
-      await expect(positions.last()).toContainText(/40[,.]00/);
-      await expect(positions.last()).toContainText(/60[,.]00/);
-      expect((await new AxeBuilder({ page }).include('main').analyze()).violations).toEqual([]);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-    }
-  } finally {
-    await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
-  }
-});
+  return name;
+}
+
+const note = 'Owner context <s104 / ACB / PMP>'; // plain text, never a rule selector or markup
+const locales = [
+  ['en', 'Gains', 'Person-pooled average cost', 'Jurisdiction note (optional)'],
+  ['nl', 'Winsten', 'Gemiddelde kostprijs per persoon', 'Jurisdictienotitie (optioneel)'],
+  ['de', 'Gewinne', 'Personenbezogene Durchschnittskosten', 'Jurisdiktionsnotiz (optional)'],
+  ['fr', 'Plus-values', 'Coût moyen mutualisé par personne', 'Note de juridiction (facultative)'],
+  ['es', 'Ganancias', 'Coste medio agrupado por persona', 'Nota de jurisdicción (opcional)'],
+  ['ru', 'Прибыль', 'Средняя стоимость по всем счетам владельца', 'Примечание о юрисдикции (необязательно)']
+] as const;
+
+// One test per locale (#250): six passes in one body outgrew the default
+// budget under full-suite load. Each test runs in a fresh browser context, so
+// the locale it stores never leaks into the next spec.
+for (const [locale, tab, method, noteLabel] of locales) {
+  test(`person-pooled gains preserve internal transfers and operational basis at 390px in ${locale}`, async ({ page }) => {
+    const name = await setup(page, locale);
+    await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
+    await page.goto('/app/investments');
+    await page.getByRole('button', { name: tab, exact: true }).click();
+    const comparison = page.getByTestId('alternative-gains');
+    await comparison.getByRole('combobox').selectOption('person_pooled_average');
+    await expect(comparison.getByRole('heading')).toContainText(method);
+    await comparison.getByLabel(noteLabel, { exact: true }).fill(note);
+    const request = page.waitForResponse((res) => new URL(res.url()).searchParams.get('jurisdiction_note') === note);
+    await comparison.locator('form button').click();
+    const result = await (await request).json();
+    expect(result.alternative.profile.jurisdiction_note).toBe(note);
+    await expect(comparison.locator('p').filter({ hasText: note })).toBeVisible();
+    const positions = comparison.getByRole('row').filter({ hasText: name });
+    await expect(positions).toHaveCount(2);
+    // Account 1: operational basis 10, pool basis 20, market 30.
+    await expect(positions.first()).toContainText(/20[,.]00/);
+    await expect(positions.first()).toContainText(/10[,.]00/);
+    // Account 2: operational basis 140, pooled basis 120, market 180.
+    await expect(positions.last()).toContainText(/40[,.]00/);
+    await expect(positions.last()).toContainText(/60[,.]00/);
+    expect((await new AxeBuilder({ page }).include('main').analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+}
