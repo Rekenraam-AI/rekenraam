@@ -1780,6 +1780,43 @@ func TestCreateTransaction_BeforeAccountOpenedReportsTheDateNotTheAccount(t *tes
 		"the account exists; only the date is wrong, and the message must say which")
 }
 
+// #107. The account opened in 2020 but its first version takes effect in 2026,
+// so on a 2020 date it is open yet has no version to post against. The write
+// must still be refused — a posting before the first version would make the
+// export's account-version fallback load-bearing (ADR 0011) — but the message
+// must name the gap and where it ends, not call the account invalid.
+func TestCreateTransaction_AccountVersionGapNamesTheEarliestEffectiveDate(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newSetupTestHandler(t)
+	sessionCookie, csrfToken, commodityID := setupAccountAPITest(t, handler)
+	checking := createAccountForSession(t, handler, sessionCookie, csrfToken, `{
+		"name":"Versioned Later",
+		"account_class":"asset",
+		"account_kind":"checking",
+		"default_commodity_id":`+strconvFormatInt(commodityID)+`,
+		"quantity_scale_override":2,
+		"allows_postings":true,
+		"opened_on":"2020-01-01",
+		"effective_from":"2026-01-01"
+	}`)
+	groceries := createCategoryForSession(t, handler, sessionCookie, csrfToken, `{"name":"Gap Groceries","category_type":"expense"}`)
+
+	res := createTransactionResponseForSession(t, handler, sessionCookie, csrfToken, `{
+		"transaction_date":"2020-06-01",
+		"description":"Inside the version gap",
+		"journal_entries":[{"entry_date":"2020-06-01","postings":[
+			{"account_id":`+strconvFormatInt(checking.ID)+`,"quantity_value":"-1000","quantity_scale":2,"commodity_id":`+strconvFormatInt(commodityID)+`},
+			{"account_id":`+strconvFormatInt(groceries.ID)+`,"quantity_value":"1000","quantity_scale":2,"commodity_id":`+strconvFormatInt(commodityID)+`}
+		]}]
+	}`, http.StatusBadRequest)
+
+	var body errorResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
+	assert.Equal(t, "VALIDATION_FAILED", body.Error.Code)
+	assert.Equal(t, "posting account has no version effective on 2020-06-01; its earliest version is effective from 2026-01-01", body.Error.Message)
+}
+
 // The account genuinely does not exist — this must keep the original message,
 // because there is no date the user could pick that would make it work.
 func TestCreateTransaction_UnknownAccountStillReportsAnInvalidAccount(t *testing.T) {

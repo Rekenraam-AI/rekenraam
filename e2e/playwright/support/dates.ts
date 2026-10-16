@@ -3,9 +3,10 @@
  *
  * Accounts created during a run get `effective_from` set to the run date, and
  * `PostingAccountRule` resolves the account version as-of the posting's entry
- * date. A hard-coded posting date therefore starts failing with
- * `VALIDATION_FAILED: posting account is invalid` as soon as wall-clock time
- * passes it — so every posting date must be derived from today.
+ * date. A hard-coded posting date therefore starts failing with a
+ * `VALIDATION_FAILED` date rejection (`posting date is before account opened
+ * date`, or `posting account has no version effective on …`) as soon as
+ * wall-clock time passes it — so every posting date must be derived from today.
  */
 
 function pad(n: number): string {

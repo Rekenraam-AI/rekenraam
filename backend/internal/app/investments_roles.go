@@ -86,7 +86,18 @@ func (s *InvestmentService) accountInRole(ctx context.Context, accountID int64, 
 	rule, err := s.transactionService.repository.PostingAccountRule(ctx, BookID, accountID, date)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			return db.PostingAccountRule{}, ValidationError{Message: role.label + " is invalid"}
+			miss, earliest, missErr := s.transactionService.explainAccountRuleMiss(ctx, accountID, date)
+			if missErr != nil {
+				return db.PostingAccountRule{}, missErr
+			}
+			switch miss {
+			case accountNotYetOpened:
+				return db.PostingAccountRule{}, ValidationError{Message: fmt.Sprintf("%s was not open yet on %s; it opened on %s", role.label, date, earliest.OpenedOn)}
+			case accountVersionGap:
+				return db.PostingAccountRule{}, ValidationError{Message: fmt.Sprintf("%s has no version effective on %s; its earliest version is effective from %s", role.label, date, earliest.EffectiveFrom)}
+			default:
+				return db.PostingAccountRule{}, ValidationError{Message: role.label + " is invalid"}
+			}
 		}
 		return db.PostingAccountRule{}, fmt.Errorf("read %s rule: %w", role.label, err)
 	}

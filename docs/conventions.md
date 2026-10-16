@@ -691,7 +691,7 @@ has actual installations, its migration files are immutable.
 - Frontend logic gets Svelte checks and focused component or unit tests when introduced.
 - Bruno covers important API workflows.
 - Playwright covers critical user journeys.
-- Playwright specs must never hard-code a ledger date. Accounts created during a run get `effective_from` set to the run date, and `PostingAccountRule` resolves the account version as-of the posting's entry date, so a fixed posting date starts failing with `VALIDATION_FAILED: posting account is invalid` the moment wall-clock time passes it. Derive dates from `todayISO()` / `todayQIF()` / `monthStartISO()` in `e2e/playwright/support/dates.ts`.
+- Playwright specs must never hard-code a ledger date. Accounts created during a run get `effective_from` set to the run date, and `PostingAccountRule` resolves the account version as-of the posting's entry date, so a fixed posting date starts failing with a `VALIDATION_FAILED` date rejection (`posting date is before account opened date`, or `posting account has no version effective on …`) the moment wall-clock time passes it. Derive dates from `todayISO()` / `todayQIF()` / `monthStartISO()` in `e2e/playwright/support/dates.ts`.
 - Financial invariants, reconciliation behavior, imports, and calculations require named backend test cases.
 - Financial calculation and report suites must include independent expected
   amounts as well as conservation identities. A balanced journal does not prove

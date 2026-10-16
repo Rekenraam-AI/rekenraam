@@ -407,6 +407,10 @@ type PostingAccountRule struct {
 	AllowsPostings        bool
 	IsSystem              bool
 	AccountKind           string
+	// EffectiveFrom is the date the resolved version takes effect. It can be
+	// later than OpenedOn, which leaves a gap where an open account has no
+	// version to post against (#107).
+	EffectiveFrom string
 	// VersionID is the account version this rule was resolved from — the one
 	// effective on the entry date.
 	VersionID int64

@@ -233,3 +233,74 @@ func TestWriteOffPreviewRefusesTheSameRolesItsCommitWould(t *testing.T) {
 	_, err = f.investmentService.WriteOff(ctx, input)
 	require.EqualError(t, err, "holding account must be a holding account managed by the investment subledger")
 }
+
+// #107. accountInRole's as-of lookup misses alike for an unknown account, one
+// opened after the trade date, and one open but without a version yet on that
+// date; each must say which, while the trade is still refused.
+func TestBuyExplainsWhyAnAccountHasNoVersionOnTheTradeDate(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name    string
+		mutate  func(*testing.T, *investmentsTestFixture, *InvestmentTradeInput)
+		message string
+	}{
+		{
+			name: "cash account opened after the trade date",
+			mutate: func(t *testing.T, f *investmentsTestFixture, in *InvestmentTradeInput) {
+				in.CashAccountID = seedCashAccountVersionedOn(t, f, "2026-03-01", "2026-03-01")
+			},
+			message: "cash account was not open yet on 2026-02-01; it opened on 2026-03-01",
+		},
+		{
+			name: "cash account open but versioned only later",
+			mutate: func(t *testing.T, f *investmentsTestFixture, in *InvestmentTradeInput) {
+				in.CashAccountID = seedCashAccountVersionedOn(t, f, "2026-01-01", "2026-03-01")
+			},
+			message: "cash account has no version effective on 2026-02-01; its earliest version is effective from 2026-03-01",
+		},
+		{
+			name: "cash account does not exist",
+			mutate: func(t *testing.T, f *investmentsTestFixture, in *InvestmentTradeInput) {
+				in.CashAccountID = 999999
+			},
+			message: "cash account is invalid",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newInvestmentsTestFixture(t)
+			ctx := context.Background()
+			input := validBuy(f)
+			input.TransactionDate = "2026-02-01"
+			tc.mutate(t, f, &input)
+
+			_, err := f.investmentService.Buy(ctx, input)
+			require.EqualError(t, err, tc.message)
+
+			lots, listErr := f.investmentService.ListLots(ctx, input.HoldingAccountID, input.CommodityID)
+			require.NoError(t, listErr)
+			require.Empty(t, lots)
+		})
+	}
+}
+
+func seedCashAccountVersionedOn(t *testing.T, f *investmentsTestFixture, openedOn string, effectiveFrom string) int64 {
+	t.Helper()
+	ctx := context.Background()
+	result, err := f.database.ExecContext(ctx, `
+		INSERT INTO accounts (book_id, created_at, created_by_user_id)
+		VALUES (?, '2026-01-01T00:00:00Z', 1)
+	`, BookID)
+	require.NoError(t, err)
+	accountID, err := result.LastInsertId()
+	require.NoError(t, err)
+	_, err = f.database.ExecContext(ctx, `
+		INSERT INTO account_versions (
+			account_id, version_seq, effective_from, recorded_at, changed_by_user_id,
+			change_reason, status, opened_on, code, name, account_class,
+			account_kind, allows_postings
+		) VALUES (?, 1, ?, '2026-01-01T00:00:00Z', 1, 'test fixture', 'active', ?, 'LATE', 'Late Cash', 'asset', 'checking', 1)
+	`, accountID, effectiveFrom, openedOn)
+	require.NoError(t, err)
+	return accountID
+}

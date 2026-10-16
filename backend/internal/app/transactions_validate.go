@@ -367,6 +367,46 @@ func isSubledgerManagedAccount(rule db.PostingAccountRule) bool {
 	return rule.BaseKind == subledgerManagedBaseKind
 }
 
+// accountRuleMiss is why an as-of PostingAccountRule lookup found nothing.
+type accountRuleMiss int
+
+const (
+	// accountMissing: there is no such account in the book, so no date the
+	// user could pick would make the write work.
+	accountMissing accountRuleMiss = iota
+	// accountNotYetOpened: the date is before the account opened — entering
+	// history for a later-opened account, an ordinary user mistake.
+	accountNotYetOpened
+	// accountVersionGap: the account was open on the date, but its earliest
+	// version takes effect later, so nothing describes the account then.
+	accountVersionGap
+)
+
+// explainAccountRuleMiss tells apart the cases PostingAccountRule's as-of
+// lookup reports alike as ErrNotFound, so the rejection names the actual
+// reason instead of claiming the account itself is invalid. The rejection
+// stays either way: a posting before the account's first version would make
+// the ledger export's account-version fallback load-bearing (ADR 0011, #107).
+func (s *TransactionService) explainAccountRuleMiss(ctx context.Context, accountID int64, date string) (accountRuleMiss, db.PostingAccountRule, error) {
+	earliest, err := s.repository.EarliestPostingAccountRule(ctx, BookID, accountID)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			return accountMissing, db.PostingAccountRule{}, nil
+		}
+		return accountMissing, db.PostingAccountRule{}, fmt.Errorf("read earliest posting account rule: %w", err)
+	}
+	switch {
+	case date < earliest.OpenedOn:
+		return accountNotYetOpened, earliest, nil
+	case date < earliest.EffectiveFrom:
+		return accountVersionGap, earliest, nil
+	default:
+		// Unreachable while the as-of lookup and this one read the same
+		// rows; if they ever disagree, the generic message is the safe one.
+		return accountMissing, earliest, nil
+	}
+}
+
 func (s *TransactionService) cleanPosting(ctx context.Context, input PostingInput, entryDate string, status string, options cleanTransactionOptions) (db.PostingSpec, error) {
 	if input.AccountID <= 0 {
 		return db.PostingSpec{}, ValidationError{Message: "posting account is required"}
@@ -381,17 +421,18 @@ func (s *TransactionService) cleanPosting(ctx context.Context, input PostingInpu
 	accountRule, err := s.repository.PostingAccountRule(ctx, BookID, input.AccountID, entryDate)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			// The as-of lookup misses both for an account that does not exist
-			// and for one that existed only after this date. Entering history
-			// for an account opened later is an ordinary user mistake and must
-			// say so — otherwise the opened-date check below is unreachable in
-			// exactly the case it was written for.
-			if earliest, earliestErr := s.repository.EarliestPostingAccountRule(ctx, BookID, input.AccountID); earliestErr == nil {
-				if entryDate < earliest.OpenedOn {
-					return db.PostingSpec{}, ValidationError{Message: "posting date is before account opened date"}
-				}
+			miss, earliest, missErr := s.explainAccountRuleMiss(ctx, input.AccountID, entryDate)
+			if missErr != nil {
+				return db.PostingSpec{}, missErr
 			}
-			return db.PostingSpec{}, ValidationError{Message: "posting account is invalid"}
+			switch miss {
+			case accountNotYetOpened:
+				return db.PostingSpec{}, ValidationError{Message: "posting date is before account opened date"}
+			case accountVersionGap:
+				return db.PostingSpec{}, ValidationError{Message: fmt.Sprintf("posting account has no version effective on %s; its earliest version is effective from %s", entryDate, earliest.EffectiveFrom)}
+			default:
+				return db.PostingSpec{}, ValidationError{Message: "posting account is invalid"}
+			}
 		}
 		return db.PostingSpec{}, fmt.Errorf("read posting account rule: %w", err)
 	}
