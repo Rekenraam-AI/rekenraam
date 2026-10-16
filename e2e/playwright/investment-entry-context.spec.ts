@@ -90,30 +90,25 @@ test('an instrument view lists its activity and pre-fills the instrument and its
   await expect(dialog.locator('#sell-holding-account')).toHaveValue(String(holding.id));
 });
 
-test('investment entry in context is translated in every locale', async ({ page }) => {
-  const { holding, instrument } = await setup(page);
-  const locales: Array<[string, string, string]> = [
-    ['en', 'Record investment activity', 'Back to investments'],
-    ['de', 'Wertpapiervorgang erfassen', 'Zurück zur Geldanlage'],
-    ['es', 'Registrar operación de inversión', 'Volver a inversiones'],
-    ['fr', 'Enregistrer une opération de placement', 'Retour aux investissements'],
-    ['nl', 'Beleggingsactiviteit vastleggen', 'Terug naar beleggingen'],
-    ['ru', 'Записать инвестиционную операцию', 'Назад к инвестициям']
-  ];
-  try {
-    for (const [locale, menu, back] of locales) {
-      await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
-      await page.goto(`/app/accounts/${holding.id}/register`);
-      await expect(page.getByRole('button', { name: menu })).toBeVisible();
-      await page.goto(`/app/investments/instruments/${instrument.commodity_id}`);
-      await expect(page.getByRole('button', { name: menu })).toBeVisible();
-      await expect(page.getByRole('link', { name: back })).toBeVisible();
-    }
-  } finally {
-    await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
-  }
-});
-
+const contextLocales: Array<[string, string, string]> = [
+  ['en', 'Record investment activity', 'Back to investments'],
+  ['de', 'Wertpapiervorgang erfassen', 'Zurück zur Geldanlage'],
+  ['es', 'Registrar operación de inversión', 'Volver a inversiones'],
+  ['fr', 'Enregistrer une opération de placement', 'Retour aux investissements'],
+  ['nl', 'Beleggingsactiviteit vastleggen', 'Terug naar beleggingen'],
+  ['ru', 'Записать инвестиционную операцию', 'Назад к инвестициям']
+];
+for (const [locale, menu, back] of contextLocales) {
+  test(`investment entry in context is translated in ${locale}`, async ({ page }) => {
+    const { holding, instrument } = await setup(page);
+    await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
+    await page.goto(`/app/accounts/${holding.id}/register`);
+    await expect(page.getByRole('button', { name: menu })).toBeVisible();
+    await page.goto(`/app/investments/instruments/${instrument.commodity_id}`);
+    await expect(page.getByRole('button', { name: menu })).toBeVisible();
+    await expect(page.getByRole('link', { name: back })).toBeVisible();
+  });
+}
 
 test('instrument activity includes a cash dividend with withholding and retains it after correction', async ({ page }) => {
   const { csrfToken, currencyID, suffix, instrument } = await setup(page);

@@ -65,46 +65,51 @@ test('[acceptance] a dividend without payer stays usable and gets its payer thro
   await expect(page.getByText('· None withheld (recorded)')).toBeVisible();
 });
 
-test('[acceptance] imported cash with unresolved gross and tax is disclosed beside its instrument, never as income', async ({ page }) => {
+// The locale passes reuse the journey's imported cash, so they run serially
+// after it, one test per locale (#251).
+test.describe.serial('imported cash payments', () => {
   requireTrading212Stub();
   test.skip(Boolean(process.env.E2E_BASE_URL), 'historical source-link fixture needs the disposable local e2e database');
-  const f = await ledger(page, 'CASH');
-  const apiKey = `coverage-${f.suffix}`;
-  await setTrading212Dividends(apiKey, { ticker: f.ticker, isin: '', currency: 'USD' }, [{ reference: `coverage-${f.suffix}`, amount: 12.34, date: todayISO() }]);
-  const connectionName = `Coverage broker ${f.suffix}`;
-  await apiJSON(page, 'POST', '/api/v1/import-connections', f.csrfToken, {
-    source: 'trading212', display_name: connectionName, api_key: apiKey, cash_account_id: f.cash.id
-  });
-  await page.goto('/app/import');
-  await page.getByRole('row').filter({ hasText: connectionName }).getByRole('button', { name: 'Import', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Commit to ledger' })).toBeVisible({ timeout: 15_000 });
-  const reviews = await apiJSON<{ rows: Array<{ batch_id: number; row_id: number; state: string; resolution: { account_id?: number } }> }>(page, 'GET', '/api/v1/import-dividends');
-  const row = reviews.rows.find(r => r.state === 'pending' && r.resolution.account_id === f.cash.id)!;
-  expect(row).toBeTruthy();
-  const legacy = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/transactions', f.csrfToken, {
-    transaction_date: todayISO(), description: 'Historical cash dividend',
-    journal_entries: [{ entry_date: todayISO(), entry_kind: 'ordinary', postings: [
-      { account_id: f.cash.id, commodity_id: f.currencyID, quantity_value: '1234', quantity_scale: 2 },
-      { account_id: f.income.id, commodity_id: f.currencyID, quantity_value: '-1234', quantity_scale: 2 }
-    ] }]
-  });
-  linkLegacyCashDividend(row.row_id, legacy.id, f.cash.id);
 
-  await page.goto(`/app/investments/instruments/${f.instrument.commodity_id}`);
-  await expect(page.getByText(/^No recorded gross income/)).toBeVisible();
-  await expect(page.getByText(/^1 imported payments naming this instrument \(.*12\.34 cash\) are not classified/)).toBeVisible();
-  expect(await noHorizontalScroll(page)).toBe(true);
-  await expectNoAccessibilityViolations(page, 'Instrument income summary on a phone');
+  test('[acceptance] imported cash with unresolved gross and tax is disclosed beside its instrument, never as income', async ({ page }) => {
+    const f = await ledger(page, 'CASH');
+    const apiKey = `coverage-${f.suffix}`;
+    await setTrading212Dividends(apiKey, { ticker: f.ticker, isin: '', currency: 'USD' }, [{ reference: `coverage-${f.suffix}`, amount: 12.34, date: todayISO() }]);
+    const connectionName = `Coverage broker ${f.suffix}`;
+    await apiJSON(page, 'POST', '/api/v1/import-connections', f.csrfToken, {
+      source: 'trading212', display_name: connectionName, api_key: apiKey, cash_account_id: f.cash.id
+    });
+    await page.goto('/app/import');
+    await page.getByRole('row').filter({ hasText: connectionName }).getByRole('button', { name: 'Import', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Commit to ledger' })).toBeVisible({ timeout: 15_000 });
+    const reviews = await apiJSON<{ rows: Array<{ batch_id: number; row_id: number; state: string; resolution: { account_id?: number } }> }>(page, 'GET', '/api/v1/import-dividends');
+    const row = reviews.rows.find(r => r.state === 'pending' && r.resolution.account_id === f.cash.id)!;
+    expect(row).toBeTruthy();
+    const legacy = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/transactions', f.csrfToken, {
+      transaction_date: todayISO(), description: 'Historical cash dividend',
+      journal_entries: [{ entry_date: todayISO(), entry_kind: 'ordinary', postings: [
+        { account_id: f.cash.id, commodity_id: f.currencyID, quantity_value: '1234', quantity_scale: 2 },
+        { account_id: f.income.id, commodity_id: f.currencyID, quantity_value: '-1234', quantity_scale: 2 }
+      ] }]
+    });
+    linkLegacyCashDividend(row.row_id, legacy.id, f.cash.id);
 
-  await page.goto('/app/investments/income');
-  const card = page.getByRole('listitem').filter({ hasText: '12.34' }).filter({ hasText: 'Imported cash payment' });
-  await expect(card.getByText('Unknown — only the cash received is known', { exact: true })).toBeVisible();
-  await expect(card.getByText('Unknown — not assumed to be zero', { exact: true })).toBeVisible();
-  await expect(card.getByText(new RegExp(`Source names Coverage payer ${f.suffix}`))).toBeVisible();
-  await expect(card.getByText(new RegExp(`Source evidence: ${f.ticker}`))).toBeVisible();
-  await card.getByRole('link', { name: 'Review gross, tax and payer', exact: true }).click();
-  await page.waitForURL(`**/app/import/dividends?batch_id=${row.batch_id}`);
-  await expect(page.getByRole('heading', { name: 'Repair previously imported cash payment', exact: true })).toBeVisible();
+    await page.goto(`/app/investments/instruments/${f.instrument.commodity_id}`);
+    await expect(page.getByText(/^No recorded gross income/)).toBeVisible();
+    await expect(page.getByText(/^1 imported payments naming this instrument \(.*12\.34 cash\) are not classified/)).toBeVisible();
+    expect(await noHorizontalScroll(page)).toBe(true);
+    await expectNoAccessibilityViolations(page, 'Instrument income summary on a phone');
+
+    await page.goto('/app/investments/income');
+    const card = page.getByRole('listitem').filter({ hasText: '12.34' }).filter({ hasText: 'Imported cash payment' });
+    await expect(card.getByText('Unknown — only the cash received is known', { exact: true })).toBeVisible();
+    await expect(card.getByText('Unknown — not assumed to be zero', { exact: true })).toBeVisible();
+    await expect(card.getByText(new RegExp(`Source names Coverage payer ${f.suffix}`))).toBeVisible();
+    await expect(card.getByText(new RegExp(`Source evidence: ${f.ticker}`))).toBeVisible();
+    await card.getByRole('link', { name: 'Review gross, tax and payer', exact: true }).click();
+    await page.waitForURL(`**/app/import/dividends?batch_id=${row.batch_id}`);
+    await expect(page.getByRole('heading', { name: 'Repair previously imported cash payment', exact: true })).toBeVisible();
+  });
 
   // #246: the period statement discloses the same cash beside income, never in it.
   const locales = [
@@ -115,8 +120,9 @@ test('[acceptance] imported cash with unresolved gross and tax is disclosed besi
     ['es', 'Ganancias', 'Efectivo de dividendos importados sin clasificar'],
     ['ru', 'Прибыль', 'Неклассифицированные импортированные дивидендные поступления']
   ] as const;
-  try {
-    for (const [locale, tab, label] of locales) {
+  for (const [locale, tab, label] of locales) {
+    test(`[acceptance] the period statement discloses unclassified imported cash beside income in ${locale}`, async ({ page }) => {
+      await readyForLedger(page);
       await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
       await page.goto('/app/investments');
       await page.getByRole('button', { name: tab, exact: true }).click();
@@ -126,8 +132,6 @@ test('[acceptance] imported cash with unresolved gross and tax is disclosed besi
       await expect(disclosure.getByRole('link')).toHaveAttribute('href', '/app/investments/income');
       expect(await noHorizontalScroll(page)).toBe(true);
       await expectNoAccessibilityViolations(page, `Statement dividend disclosure (${locale})`);
-    }
-  } finally {
-    await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
+    });
   }
 });
