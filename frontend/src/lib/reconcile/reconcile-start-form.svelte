@@ -14,10 +14,13 @@
 
   let {
     csrfToken,
-    onStarted
+    onStarted,
+    onAccountChange
   }: {
     csrfToken: string | undefined;
     onStarted: (session: ReconciliationSessionResponse) => void;
+    // Lets the page show the selected account's checkpoints beside the form.
+    onAccountChange?: (accountID: number | undefined, commodityID: number | undefined) => void;
   } = $props();
 
   const inputClass =
@@ -56,6 +59,10 @@
   );
   const commodityID = $derived(selectedAccount?.default_commodity_id);
   const currency = $derived(commodityID !== undefined ? currenciesByID.get(commodityID) : undefined);
+
+  $effect(() => {
+    onAccountChange?.(selectedAccount?.id, commodityID);
+  });
 
   const canSubmit = $derived(
     !!csrfToken &&

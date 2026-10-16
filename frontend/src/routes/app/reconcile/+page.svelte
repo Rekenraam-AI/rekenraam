@@ -25,6 +25,15 @@
 
   let view = $state<View>({ type: 'start' });
 
+  // The account picked in the start form, so its checkpoints can be shown
+  // (and voided, #248) before a new reconciliation starts.
+  let startSelection = $state<{ accountID: number; commodityID: number } | undefined>(undefined);
+
+  function handleAccountChange(accountID: number | undefined, commodityID: number | undefined) {
+    startSelection =
+      accountID !== undefined && commodityID !== undefined ? { accountID, commodityID } : undefined;
+  }
+
   const activeAccountID = $derived(
     view.type === 'start' ? undefined : view.session.account_id
   );
@@ -57,9 +66,18 @@
   <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
     <div class="min-w-0">
       <Panel>
-        <ReconcileStartForm {csrfToken} onStarted={handleStarted} />
+        <ReconcileStartForm {csrfToken} onStarted={handleStarted} onAccountChange={handleAccountChange} />
       </Panel>
     </div>
+    {#if startSelection}
+      <div class="mt-6 min-w-0 lg:mt-0">
+        <ReconcileCheckpoints
+          accountID={startSelection.accountID}
+          commodityID={startSelection.commodityID}
+          {csrfToken}
+        />
+      </div>
+    {/if}
   </div>
 {:else if view.type === 'session'}
   <div class="mb-4">
@@ -84,7 +102,7 @@
 
   {#if activeAccountID !== undefined}
     <div class="mt-6 max-w-md">
-      <ReconcileCheckpoints accountID={activeAccountID} commodityID={view.session.commodity_id} />
+      <ReconcileCheckpoints accountID={activeAccountID} commodityID={view.session.commodity_id} voidable={false} />
     </div>
   {/if}
 {:else if view.type === 'finished'}
@@ -101,6 +119,6 @@
       </button>
     </Panel>
 
-    <ReconcileCheckpoints accountID={view.session.account_id} commodityID={view.session.commodity_id} />
+    <ReconcileCheckpoints accountID={view.session.account_id} commodityID={view.session.commodity_id} {csrfToken} />
   </div>
 {/if}
