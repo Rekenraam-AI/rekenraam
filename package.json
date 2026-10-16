@@ -13,6 +13,7 @@
     "test:e2e": "./scripts/test-e2e.sh",
     "test:e2e-smoke": "./scripts/test-e2e-smoke.sh",
     "test:release-preflight": "./scripts/test-release-preflight.sh",
+    "check:post-merge": "./scripts/check-post-merge.sh",
     "build": "./scripts/build-single-binary.sh"
   },
   "devDependencies": {

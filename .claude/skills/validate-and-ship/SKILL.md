@@ -37,6 +37,7 @@ checks; CI must not need a separate warm-up or skip catalog validation.
 | `frontend/**` | `./scripts/test-frontend.sh` (openapi:generate + paraglide:compile + svelte-check); `pnpm --dir frontend run test` for unit-tested logic |
 | OpenAPI | both scripts above |
 | Integrated shape / static serving / embed | `pnpm build` (builds frontend, copies into `backend/internal/web/dist/`, runs embed test, compiles `dist/rekenraam`) |
+| After a non-trivial merge | `./scripts/check-post-merge.sh` — migration/ADR number collisions, OpenAPI client drift, duplicate doc paragraphs, duplicate workflows, colliding IDs, tests lost by the merge (*Post-Merge Audit* in `docs/developer-workflow.md`) |
 | User journeys | `./scripts/test-e2e.sh` (self-contained: builds app once, one instance + fresh SQLite per worker under `backend/var/e2e/`, ports from 127.0.0.1:16900; `E2E_SKIP_BUILD=1` to reuse the binary) |
 
 Native SQLite requires CGO and a C compiler with development headers. Supported

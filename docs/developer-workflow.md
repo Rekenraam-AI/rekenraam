@@ -583,6 +583,27 @@ migrations (see *Project Lifecycle And Migration Immutability* in
 `docs/conventions.md`). From that tag, feature branches and PRs become the norm:
 once a released version exists, `main` is something users can be running.
 
+### Post-Merge Audit
+
+After any non-trivial merge — two branches that both changed code, or any merge
+with resolved conflicts — run, before pushing:
+
+```sh
+./scripts/check-post-merge.sh                  # after committing the merge, or mid-resolution
+./scripts/check-post-merge.sh REF_A REF_B      # compare tests against chosen refs
+```
+
+It mechanically checks the shapes the 2026-08 merge shipped: migration and ADR
+number collisions, a generated OpenAPI client that changes on regeneration
+(`SKIP_OPENAPI=1` skips it without frontend deps), duplicated paragraphs in
+Markdown docs, workflow files that share a name, action, or run command,
+work-item IDs mapped or headed twice, and Go/Vitest/Playwright tests present
+on a merged side but missing from the result. Every finding is a prompt to
+look, not proof: a test the merge deliberately replaced is reported too, and is
+acknowledged once its coverage is confirmed elsewhere. Run on that merge
+(`d1ba2c10`), the lost-test check lists the reports tests of the side whose
+implementation was dropped — exactly the review that merge never got.
+
 ## Validation Expectations By Area
 
 ### Backend
