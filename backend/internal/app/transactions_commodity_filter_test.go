@@ -159,7 +159,7 @@ func TestDividendInstrumentFactsAreImmutableAndValidatePayer(t *testing.T) {
 	require.ErrorContains(t, err, "invalid dividend instrument fact")
 	provider, err := goose.NewProvider(goose.DialectSQLite3, f.database, migrations.FS)
 	require.NoError(t, err)
-	_, err = provider.Down(ctx)
+	_, err = provider.DownTo(ctx, 8)
 	require.ErrorContains(t, err, "CHECK constraint failed", "downgrade must preserve paying-instrument evidence")
 	var count int
 	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM investment_dividend_facts`).Scan(&count))

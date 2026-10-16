@@ -122,9 +122,11 @@ func (s *InvestmentService) CreateGainsRun(ctx context.Context, input GainsRunIn
 	if err != nil {
 		return db.GainsRunRecord{}, err
 	}
+	// Statement schema 2 added capital-return disclosure (#238); schema 3
+	// adds unclassified imported dividend cash beside income (#246).
 	schemaVersion := 1
 	if request.ReportType == "statement" {
-		schemaVersion = 2
+		schemaVersion = 3
 	}
 	run := db.GainsRunRecord{BookID: BookID, SchemaVersion: schemaVersion, ReportType: request.ReportType,
 		CapturedAt: captured.Format(time.RFC3339Nano), CreatedAt: s.now().UTC().Format(time.RFC3339),

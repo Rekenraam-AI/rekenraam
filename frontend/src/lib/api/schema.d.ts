@@ -31389,12 +31389,12 @@ export interface components {
             snapshot_sha256: string;
             profile: components["schemas"]["GainsProfile"];
         };
-        /** @description Immutable run. Schema 1 retains original gains/statements; schema 2 adds payment-date capital-return disclosure to statements. Existing schema-1 bytes are never rewritten. SHA-256 fingerprints detect corruption; they are not signatures. snapshot_sha256 fingerprints the private full SQLite input image before replay, not a retained backup or a portable logical hash. inputs_sha256/output_sha256 hash the exact compact UTF-8 JSON documents. Only successful saves create rows. captured_at is the UTC copy-completion instant; profile.knowledge_cutoff is that instant. Concurrent later writes do not enter the captured book. Retrieve by ID to reproduce saved output; no recalculation occurs. */
+        /** @description Immutable run. Schema 1 retains original gains/statements; schema 2 adds payment-date capital-return disclosure to statements; schema 3 adds unclassified imported dividend cash beside statement income. Existing schema-1 and schema-2 bytes are never rewritten. SHA-256 fingerprints detect corruption; they are not signatures. snapshot_sha256 fingerprints the private full SQLite input image before replay, not a retained backup or a portable logical hash. inputs_sha256/output_sha256 hash the exact compact UTF-8 JSON documents. Only successful saves create rows. captured_at is the UTC copy-completion instant; profile.knowledge_cutoff is that instant. Concurrent later writes do not enter the captured book. Retrieve by ID to reproduce saved output; no recalculation occurs. */
         GainsRunSummary: {
             /** Format: int64 */
             id: number;
             /** @enum {integer} */
-            schema_version: 1 | 2;
+            schema_version: 1 | 2 | 3;
             /** @enum {string} */
             report_type: "gains" | "statement";
             /** Format: date-time */
@@ -31411,7 +31411,7 @@ export interface components {
             inputs: components["schemas"]["GainsRunInputs"];
         };
         GainsRunResponse: components["schemas"]["GainsRunSummary"] & {
-            /** @description Frozen operational gains or period statement, with saved currency metadata, null/unavailable amounts and descriptor. Alternative and reporting projections are absent in both schemas. Schema-1 statements lack capital_returns and row capital_return; absence means disclosure unavailable, never zero. */
+            /** @description Frozen operational gains or period statement, with saved currency metadata, null/unavailable amounts and descriptor. Alternative and reporting projections are absent in every schema. Schema-1 statements lack capital_returns and row capital_return; schema-1 and schema-2 statements lack row unclassified_dividends; absence means disclosure unavailable, never zero. */
             output: components["schemas"]["InvestmentGainsResponse"] | components["schemas"]["InvestmentGainsStatementResponse"];
         };
         GainsRunListResponse: {
@@ -31653,7 +31653,7 @@ export interface components {
             unrealized: components["schemas"]["UnrealizedGainEntry"][];
             realized_totals: components["schemas"]["RealizedGainTotal"][];
         };
-        /** @description Period gains statement (R18 slice 2, #231). One row per currency that has a position at either valuation date, a disposal in the period or investment income or return-of-capital receipt in the period. The total excludes return-of-capital excess and is not a comprehensive economic return or tax computation. */
+        /** @description Period gains statement (R18 slice 2, #231). One row per currency that has a position at either valuation date, a disposal in the period or investment income, unclassified imported dividend cash or return-of-capital receipt in the period. The total excludes return-of-capital excess and is not a comprehensive economic return or tax computation. */
         InvestmentGainsStatementResponse: {
             /** @description Schema-2 payment-date receipt evidence. Absent only in saved schema-1 statements; absence is not zero receipts. */
             capital_returns?: components["schemas"]["CapitalReturnRead"][];
@@ -31670,6 +31670,7 @@ export interface components {
         /** @description One currency's statement. Every figure is exact in that currency. A null figure is absent (a missing price or unresolved basis), never zero; a currency with nothing held at a date has a known zero unrealized gain. */
         GainsStatementRow: {
             capital_return?: components["schemas"]["GainsStatementCapitalReturn"];
+            unclassified_dividends?: components["schemas"]["GainsStatementUnclassifiedDividends"];
             /**
              * Format: int64
              * @description The cost currency of positions and disposals; the cash currency of income.
@@ -31706,6 +31707,11 @@ export interface components {
             unresolved_count: number;
             /** @description Unknown lot effects across these receipts; independent known effects remain in capital_returns. */
             unknown_lots: number;
+        };
+        /** @description Committed imported dividend payments dated (by payment) in the period whose gross and withholding are unresolved. This is net cash, not income: it is never added to income_value or total_value. Reviewing the imported dividend moves a payment into income. Present in live and schema-3 statements; absent in saved schema 1 and 2, where absence means disclosure unavailable, never zero. */
+        GainsStatementUnclassifiedDividends: {
+            payment_count: number;
+            cash: components["schemas"]["GainsFXAmount"];
         };
         /** @description Unrealized gain of one currency's positions at a valuation date, with the price dates that produced it. */
         GainsStatementValuation: {

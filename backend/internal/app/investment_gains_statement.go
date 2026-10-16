@@ -46,10 +46,20 @@ type GainsStatementCapitalReturn struct {
 	UnknownLots     int            `json:"unknown_lots"`
 }
 
+// GainsStatementUnclassifiedDividends discloses committed imported dividend
+// cash dated in the period whose gross and withholding are unresolved (#246).
+// It is cash, not income, and never enters Income or Total; repair through
+// import dividend review moves a payment from here into Income.
+type GainsStatementUnclassifiedDividends struct {
+	PaymentCount int           `json:"payment_count"`
+	Cash         GainsFXAmount `json:"cash"`
+}
+
 // GainsStatementRow is one currency's period statement (#231).
 type GainsStatementRow struct {
 	CommodityID             int64
 	CapitalReturn           GainsStatementCapitalReturn
+	UnclassifiedDividends   GainsStatementUnclassifiedDividends
 	Opening                 GainsStatementValuation
 	Closing                 GainsStatementValuation
 	Realized                *StatementAmount
@@ -125,6 +135,10 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 	if err != nil {
 		return GainsStatement{}, fmt.Errorf("gains statement capital returns: %w", err)
 	}
+	fallbacks, err := s.repository.ImportedDividendCashFallbacks(ctx, BookID)
+	if err != nil {
+		return GainsStatement{}, fmt.Errorf("gains statement imported dividend cash: %w", err)
+	}
 
 	type accumulator struct {
 		receipt, reduction, excess                    *exact.ScaledInt
@@ -134,6 +148,8 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 		disposals, unresolved                         int
 		income                                        *exact.ScaledInt
 		incomeCount                                   int
+		unclassified                                  *exact.ScaledInt
+		unclassifiedCount                             int
 	}
 	byCurrency := map[int64]*accumulator{}
 	get := func(commodityID int64) *accumulator {
@@ -142,6 +158,7 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 				opening: newValuationAccumulator(), closing: newValuationAccumulator(),
 				realized: exact.NewScaledInt(), income: exact.NewScaledInt(),
 				receipt: exact.NewScaledInt(), reduction: exact.NewScaledInt(), excess: exact.NewScaledInt(),
+				unclassified: exact.NewScaledInt(),
 			}
 		}
 		return byCurrency[commodityID]
@@ -165,6 +182,16 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 		row := get(dividend.CommodityID)
 		row.incomeCount++
 		row.income.AddCoefficient(dividend.Value, dividend.Scale)
+	}
+	// Cash-only imported dividends are disclosed beside income by payment
+	// date: their gross is unknown, so they are never added to it.
+	for _, fallback := range fallbacks {
+		if fallback.TransactionDate < from || fallback.TransactionDate > to {
+			continue
+		}
+		row := get(fallback.CashCommodityID)
+		row.unclassifiedCount++
+		row.unclassified.AddScaled(fallback.Cash)
 	}
 
 	for _, receipt := range capitalReturns {
@@ -203,6 +230,12 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 				return GainsStatement{}, err
 			}
 		}
+		row.UnclassifiedDividends.PaymentCount = acc.unclassifiedCount
+		unclassified, err := capitalReturnStatementAmount(acc.unclassified)
+		if err != nil {
+			return GainsStatement{}, err
+		}
+		row.UnclassifiedDividends.Cash = *unclassified
 		if row.Opening, err = acc.opening.result(openingDate); err != nil {
 			return GainsStatement{}, err
 		}

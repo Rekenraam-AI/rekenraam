@@ -477,6 +477,12 @@ journals; historical payers remain unassigned. A populated fact table refuses
 downgrade so payer/tax evidence is not lost. Bundle schema 13 adds
 `investment-dividend-facts.csv`; use verified backup/restore for rollback.
 
+Forward migration `0010_unclassified_dividend_statement_documents.sql` (#246,
+2026-10-16) widens the saved gains-run document version to allow schema-3
+statements. Startup copies every saved run, its exact JSON and hashes unchanged.
+A schema-3 document refuses downgrade. Bundle schema is unchanged: the CSV
+already carries each run's version and exact JSON.
+
 The e2e database resets itself on every self-managed run and needs no manual reset.
 
 - Keep nothing in a local database you would be sorry to lose. Reproducible

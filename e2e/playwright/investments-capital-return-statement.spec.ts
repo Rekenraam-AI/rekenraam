@@ -80,7 +80,7 @@ test('period statements disclose excluded capital-return excess and unknown cove
     const savedResponse = page.waitForResponse((res) => res.url().endsWith('/api/v1/investments/gains/runs') && res.request().method() === 'POST');
     await liveStatement.getByRole('button', { name: 'Save period statement', exact: true }).click();
     const saved = await (await savedResponse).json();
-    expect(saved.schema_version).toBe(2);
+    expect(saved.schema_version).toBe(3);
     const frozen = page.getByTestId('saved-gains-run');
     await expect(frozen.getByTestId('gains-statement-row').filter({ has: page.getByRole('heading', { name: 'DKK', exact: true }) }).locator('[data-line="roc-excess"]')).toContainText('3.00');
     await apiJSON(page, 'POST', `/api/v1/investments/transactions/${known.transaction.id}/reverse-return-of-capital`, csrfToken, { reason: 'Notice withdrawn after saving' });

@@ -1521,6 +1521,8 @@ components:
       $ref: "./components/schemas/investments.yaml#/GainsStatementRow"
     GainsStatementCapitalReturn:
       $ref: "./components/schemas/investments.yaml#/GainsStatementCapitalReturn"
+    GainsStatementUnclassifiedDividends:
+      $ref: "./components/schemas/investments.yaml#/GainsStatementUnclassifiedDividends"
     GainsStatementValuation:
       $ref: "./components/schemas/investments.yaml#/GainsStatementValuation"
     ErrorBody:

@@ -78,6 +78,8 @@ func TestInvestmentGainsStatementAPI(t *testing.T) {
 	assert.Equal(t, 1, row.DisposalCount)
 	assert.Equal(t, equals("5.00"), amount(&row.IncomeValue, &row.IncomeScale))
 	assert.Equal(t, 1, row.IncomeCount)
+	assert.Zero(t, row.UnclassifiedDividends.PaymentCount, "a named dividend is income, not unclassified cash")
+	assert.Equal(t, "0", row.UnclassifiedDividends.Cash.Value.String())
 	assert.Equal(t, equals("30.00"), amount(row.UnrealizedChangeValue, row.UnrealizedChangeScale))
 	assert.Equal(t, equals("65.00"), amount(row.TotalValue, row.TotalScale), "realized + income + change")
 
@@ -213,6 +215,7 @@ func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisc
 	require.NoError(t, json.Unmarshal(output["rows"], &rows))
 	for _, row := range rows {
 		delete(row, "capital_return")
+		delete(row, "unclassified_dividends")
 	}
 	output["rows"], err = json.Marshal(rows)
 	require.NoError(t, err)
@@ -249,7 +252,9 @@ func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisc
 	var saved db.GainsRunRecord
 	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &saved))
 	saved.BookID = 1
-	require.Equal(t, 2, saved.SchemaVersion)
+	require.Equal(t, 3, saved.SchemaVersion)
+	require.Contains(t, string(saved.OutputJSON), `"unclassified_dividends":{"payment_count":0`, "schema 3 freezes the dividend disclosure")
+	require.NotContains(t, string(legacy.OutputJSON), "unclassified_dividends")
 	var savedStatement investmentGainsStatementResponse
 	require.NoError(t, json.Unmarshal(saved.OutputJSON, &savedStatement))
 	require.Len(t, savedStatement.CapitalReturns, 1)
@@ -264,7 +269,7 @@ func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisc
 	require.NoError(t, err)
 	require.Empty(t, live.CapitalReturns)
 	_, err = provider.DownTo(ctx, 7)
-	require.Error(t, err, "cannot downgrade away schema-2 contract")
+	require.Error(t, err, "cannot downgrade away schema-2 and schema-3 contracts")
 	// Goose rolls back one migration at a time; later migrations can already
 	// have been removed before schema 8 refuses. Restore the head before using
 	// the current server's export contract.

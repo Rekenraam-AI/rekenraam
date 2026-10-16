@@ -36,8 +36,8 @@ batch's dividend review (#242 same-payment repair); a payer-less named dividend
 goes to its transaction detail, where native replacement may now assign a payer
 (omission still keeps a recorded payer, and an assigned payer cannot be removed
 by omission). Reports keep their complete-only rules; the R18 statement's
-income remains named dividends only; disclosing in-period unclassified cash
-beside it is [#246](https://github.com/sergeyfarin/rekenraam/issues/246).
+income remains named dividends only; in-period unclassified cash is disclosed
+beside it since [#246](https://github.com/sergeyfarin/rekenraam/issues/246).
 
 Validation: `TestDividendCoverageSeparatesKnownUnassignedAndCashOnlyIncome`,
 `TestDividendCoverageCursorPagesUnassignedItemsWithoutGapsOrDuplicates`,

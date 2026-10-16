@@ -21,21 +21,22 @@ type gainsStatementValuationResponse struct {
 }
 
 type gainsStatementRowResponse struct {
-	CapitalReturn           app.GainsStatementCapitalReturn `json:"capital_return"`
-	CommodityID             int64                           `json:"commodity_id"`
-	Opening                 gainsStatementValuationResponse `json:"opening"`
-	Closing                 gainsStatementValuationResponse `json:"closing"`
-	RealizedGainValue       *moneyCoefficient               `json:"realized_gain_value"`
-	RealizedGainScale       *int                            `json:"realized_gain_scale"`
-	DisposalCount           int                             `json:"disposal_count"`
-	RealizedUnresolvedCount int                             `json:"realized_unresolved_count"`
-	IncomeValue             moneyCoefficient                `json:"income_value"`
-	IncomeScale             int                             `json:"income_scale"`
-	IncomeCount             int                             `json:"income_count"`
-	UnrealizedChangeValue   *moneyCoefficient               `json:"unrealized_change_value"`
-	UnrealizedChangeScale   *int                            `json:"unrealized_change_scale"`
-	TotalValue              *moneyCoefficient               `json:"total_value"`
-	TotalScale              *int                            `json:"total_scale"`
+	CapitalReturn           app.GainsStatementCapitalReturn         `json:"capital_return"`
+	UnclassifiedDividends   app.GainsStatementUnclassifiedDividends `json:"unclassified_dividends"`
+	CommodityID             int64                                   `json:"commodity_id"`
+	Opening                 gainsStatementValuationResponse         `json:"opening"`
+	Closing                 gainsStatementValuationResponse         `json:"closing"`
+	RealizedGainValue       *moneyCoefficient                       `json:"realized_gain_value"`
+	RealizedGainScale       *int                                    `json:"realized_gain_scale"`
+	DisposalCount           int                                     `json:"disposal_count"`
+	RealizedUnresolvedCount int                                     `json:"realized_unresolved_count"`
+	IncomeValue             moneyCoefficient                        `json:"income_value"`
+	IncomeScale             int                                     `json:"income_scale"`
+	IncomeCount             int                                     `json:"income_count"`
+	UnrealizedChangeValue   *moneyCoefficient                       `json:"unrealized_change_value"`
+	UnrealizedChangeScale   *int                                    `json:"unrealized_change_scale"`
+	TotalValue              *moneyCoefficient                       `json:"total_value"`
+	TotalScale              *int                                    `json:"total_scale"`
 }
 
 type investmentGainsStatementResponse struct {
@@ -109,7 +110,7 @@ func gainsStatementResponse(statement app.GainsStatement, currencies []app.Curre
 		changeValue, changeScale := statementAmountFields(row.UnrealizedChange)
 		totalValue, totalScale := statementAmountFields(row.Total)
 		rows = append(rows, gainsStatementRowResponse{
-			CommodityID: row.CommodityID, CapitalReturn: row.CapitalReturn,
+			CommodityID: row.CommodityID, CapitalReturn: row.CapitalReturn, UnclassifiedDividends: row.UnclassifiedDividends,
 			Opening:           toGainsStatementValuationResponse(row.Opening),
 			Closing:           toGainsStatementValuationResponse(row.Closing),
 			RealizedGainValue: realizedValue, RealizedGainScale: realizedScale,

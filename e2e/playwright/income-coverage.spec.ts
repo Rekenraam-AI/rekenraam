@@ -105,4 +105,29 @@ test('[acceptance] imported cash with unresolved gross and tax is disclosed besi
   await card.getByRole('link', { name: 'Review gross, tax and payer', exact: true }).click();
   await page.waitForURL(`**/app/import/dividends?batch_id=${row.batch_id}`);
   await expect(page.getByRole('heading', { name: 'Repair previously imported cash payment', exact: true })).toBeVisible();
+
+  // #246: the period statement discloses the same cash beside income, never in it.
+  const locales = [
+    ['en', 'Gains', 'Unclassified imported dividend cash'],
+    ['nl', 'Winsten', 'Niet-geclassificeerde geïmporteerde dividendontvangsten'],
+    ['de', 'Gewinne', 'Nicht klassifizierte importierte Dividendenzahlungen'],
+    ['fr', 'Plus-values', 'Encaissements de dividendes importés non classés'],
+    ['es', 'Ganancias', 'Efectivo de dividendos importados sin clasificar'],
+    ['ru', 'Прибыль', 'Неклассифицированные импортированные дивидендные поступления']
+  ] as const;
+  try {
+    for (const [locale, tab, label] of locales) {
+      await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
+      await page.goto('/app/investments');
+      await page.getByRole('button', { name: tab, exact: true }).click();
+      const statement = page.getByTestId('gains-statement').first();
+      const disclosure = statement.locator('[data-line="unclassified-dividends"]');
+      await expect(disclosure).toContainText(label);
+      await expect(disclosure.getByRole('link')).toHaveAttribute('href', '/app/investments/income');
+      expect(await noHorizontalScroll(page)).toBe(true);
+      await expectNoAccessibilityViolations(page, `Statement dividend disclosure (${locale})`);
+    }
+  } finally {
+    await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
+  }
 });

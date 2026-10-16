@@ -227,6 +227,32 @@ Named validation: `TestGainsStatementCapitalReturn*`,
 `TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisclosure`
 and `investments-capital-return-statement.spec.ts`.
 
+### Unclassified imported dividend cash (#246)
+
+Income stays the gross of effective named dividends only. Beside it, each
+currency row discloses `unclassified_dividends`: the count and exact net cash
+of committed imported dividend payments dated (by transaction/payment date) in
+the period that still post as ordinary cash, identified only through #244's
+import provenance (`ImportedDividendCashFallbacks`), never memo text. Their
+gross and withholding are unknown, so the cash is never added to income, the
+limited-scope total or any converted figure; a currency with only such cash
+still gets a row. Dividend review (#242) links the payment to a named dividend,
+which moves it from the disclosure into income at its gross. The UI links the
+line to the income coverage page.
+
+The reporting-currency projection does not convert this cash (it is not
+income); the screen states beside it how many such payments are excluded and
+points to the native rows. New saved statements use schema **3** with the
+disclosure frozen; forward migration 0010 widens the document-version CHECK
+and copies every row, exact JSON and hash unchanged, and downgrade refuses
+while schema-3 documents exist. Schema-1/2 statements keep their bytes and the
+UI says this disclosure is unavailable there, never zero.
+
+Named validation: `TestGainsStatementDisclosesUnclassifiedImportedDividendCash`
+(fallback, period boundary, repair, frozen saved run), `TestInvestmentGainsStatementAPI`,
+`TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisclosure`
+and the six-locale 390 px statement check in `income-coverage.spec.ts`.
+
 ### Consistent live input state (#237)
 
 Each live gains or period-statement request captures one consistent disposable

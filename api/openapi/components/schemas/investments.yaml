@@ -4029,7 +4029,7 @@ InvestmentGainsStatementResponse:
   description: >-
     Period gains statement (R18 slice 2, #231). One row per currency that has a
     position at either valuation date, a disposal in the period or investment
-    income or return-of-capital receipt in the period. The total excludes return-of-capital excess and is not a comprehensive economic return or tax computation.
+    income, unclassified imported dividend cash or return-of-capital receipt in the period. The total excludes return-of-capital excess and is not a comprehensive economic return or tax computation.
   required:
     - profile
     - from
@@ -4086,6 +4086,8 @@ GainsStatementRow:
   properties:
     capital_return:
       $ref: '#/GainsStatementCapitalReturn'
+    unclassified_dividends:
+      $ref: '#/GainsStatementUnclassifiedDividends'
     commodity_id:
       type: integer
       format: int64
@@ -4894,6 +4896,22 @@ GainsFXStatement:
       $ref: '#/GainsFXFigure'
     total:
       $ref: '#/GainsFXFigure'
+
+GainsStatementUnclassifiedDividends:
+  type: object
+  description: >-
+    Committed imported dividend payments dated (by payment) in the period whose
+    gross and withholding are unresolved. This is net cash, not income: it is
+    never added to income_value or total_value. Reviewing the imported dividend
+    moves a payment into income. Present in live and schema-3 statements; absent
+    in saved schema 1 and 2, where absence means disclosure unavailable, never zero.
+  required: [payment_count, cash]
+  properties:
+    payment_count:
+      type: integer
+      minimum: 0
+    cash:
+      $ref: '#/GainsFXAmount'
 
 GainsStatementCapitalReturn:
   type: object

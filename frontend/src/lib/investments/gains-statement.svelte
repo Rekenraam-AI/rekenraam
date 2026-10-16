@@ -98,6 +98,7 @@
     absent: string;
     notes: string[];
     emphasis?: boolean;
+    link?: { href: string; label: string };
   };
 
   function valuationLine(key: string, label: string, valuation: GainsStatementValuation): Line {
@@ -113,6 +114,10 @@
       absent: valuation.unavailable_reason ? valuationReason(valuation) : '',
       notes
     };
+  }
+
+  function unclassifiedCount(rows: GainsStatementRow[]): number {
+    return rows.reduce((sum, row) => sum + (row.unclassified_dividends?.payment_count ?? 0), 0);
   }
 
   function lines(row: GainsStatementRow): Line[] {
@@ -134,6 +139,19 @@
         absent: '',
         notes: [m.valuation_statement_dividends({ count: row.income_count })]
       },
+      // Imported dividend cash with unknown gross is disclosed beside income,
+      // never added to it (#246). Absent in saved statements before schema 3.
+      ...(row.unclassified_dividends && row.unclassified_dividends.payment_count > 0 ? [
+        {
+          key: 'unclassified-dividends',
+          label: m.valuation_statement_unclassified(),
+          value: row.unclassified_dividends.cash.value,
+          scale: row.unclassified_dividends.cash.scale,
+          absent: '',
+          notes: [m.valuation_statement_unclassified_note({ count: row.unclassified_dividends.payment_count })],
+          link: { href: '/app/investments/income', label: m.valuation_statement_unclassified_review() }
+        }
+      ] : []),
       valuationLine('closing', m.valuation_statement_closing({ date: day(row.closing.valuation_as_of) }), row.closing),
       {
         key: 'change',
@@ -250,6 +268,9 @@
     {:else}
       <p class="text-xs text-muted">{m.valuation_statement_roc_timing()}</p>
     {/if}
+    {#if statement.rows.some((row) => row.unclassified_dividends === undefined)}
+      <p class="text-sm text-muted" role="note">{m.valuation_statement_unclassified_legacy()}</p>
+    {/if}
     {#if statement.reporting}
       {@const reporting = statement.reporting}
       <GainsFXView note={m.valuation_statement_roc_fx_timing()} profile={reporting.profile} formatGain={amount} figures={[
@@ -265,6 +286,9 @@
           { label: m.valuation_statement_roc_excluded(), figure: reporting.capital_return_excess }
         ] : [])
       ]} />
+      {#if unclassifiedCount(statement.rows) > 0}
+        <p class="text-xs text-muted" role="note" data-testid="statement-unclassified-fx">{m.valuation_statement_unclassified_fx({ count: unclassifiedCount(statement.rows) })}</p>
+      {/if}
     {/if}
     <div class="grid gap-3 md:grid-cols-2">
       {#each statement.rows as row (row.commodity_id)}
@@ -279,6 +303,9 @@
                     {#each line.notes as note}
                       <span class="block text-xs text-muted">{note}</span>
                     {/each}
+                    {#if line.link}
+                      <a href={line.link.href} class="inline-flex min-h-11 items-center text-xs font-semibold text-foreground underline underline-offset-2">{line.link.label}</a>
+                    {/if}
                   </dt>
                   <dd class="text-right font-mono {line.emphasis ? 'font-semibold' : ''}">
                     {#if line.value !== null && line.scale !== null}

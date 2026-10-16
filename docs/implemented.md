@@ -37,6 +37,19 @@ shipped foundations. Known-payer fallback review/repair now ships under #242
 and manual short-operation import linking under #245, and dividend attribution
 coverage under #244 (all below).
 
+## Statement disclosure of unclassified imported dividend cash — #246 (2026-10-16)
+
+Each R18 period statement currency row now discloses the count and exact cash
+of in-period committed Trading 212 dividends still posted as ordinary cash
+(unknown gross and withholding), beside income and never in income, the
+limited-scope total or the reporting-currency figures. Review through #242
+moves a payment into income at its gross. New saved statements are schema 3
+(migration 0010 preserves earlier bytes and hashes); schema-1/2 statements say
+the disclosure is unavailable. Six locales, 390 px, linked to income coverage.
+See the [policy](plans/investment-reporting-plan.md#unclassified-imported-dividend-cash-246).
+Named evidence: `TestGainsStatementDisclosesUnclassifiedImportedDividendCash`
+and `income-coverage.spec.ts`.
+
 ## Dividend income attribution coverage — #244 (2026-10-15)
 
 `GET /api/v1/investments/income-coverage` composes owner-confirmed dividend

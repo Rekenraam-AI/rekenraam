@@ -97,5 +97,10 @@
   "valuation_statement_roc_coverage": "Receipts: {receipts}; unresolved receipts: {unresolved}; unknown lot effects: {lots}.",
   "valuation_statement_roc_timing": "Receipts, associated basis reductions and excess are grouped by payment date. Basis changes on the effective date, which may be outside this period. These disclosures are not added to the result; adding the reduction would count it twice.",
   "valuation_statement_roc_legacy": "This saved statement predates return-of-capital disclosure. Receipt and excess coverage is unavailable, not zero. Its original figures are preserved.",
-  "valuation_statement_roc_fx_timing": "The reporting-currency result also excludes return-of-capital excess and is not a complete economic return or tax calculation. Separate receipt and excess figures use payment-date FX; associated reductions use effective-date FX. With valuation-date conversion, all three use the closing date. Missing coverage leaves each affected figure unavailable."
+  "valuation_statement_roc_fx_timing": "The reporting-currency result also excludes return-of-capital excess and is not a complete economic return or tax calculation. Separate receipt and excess figures use payment-date FX; associated reductions use effective-date FX. With valuation-date conversion, all three use the closing date. Missing coverage leaves each affected figure unavailable.",
+  "valuation_statement_unclassified": "Unclassified imported dividend cash",
+  "valuation_statement_unclassified_note": "Imported payments with unknown gross and withholding: {count}. Net cash only, not included in income or the total.",
+  "valuation_statement_unclassified_review": "Review in income coverage",
+  "valuation_statement_unclassified_legacy": "This saved statement predates unclassified dividend disclosure. Imported dividend cash with unknown gross is unavailable here, not zero. Its original figures are preserved.",
+  "valuation_statement_unclassified_fx": "Reporting-currency income also excludes imported dividend payments with unknown gross ({count}). Their native cash is shown in each currency below."
 }

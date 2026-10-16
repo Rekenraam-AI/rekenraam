@@ -97,5 +97,10 @@
   "valuation_statement_roc_coverage": "Cobros: {receipts}; cobros sin resolver: {unresolved}; efectos de lotes con base desconocida: {lots}.",
   "valuation_statement_roc_timing": "Los cobros, las reducciones de base asociadas y los excesos se agrupan por fecha de pago. La base cambia en la fecha efectiva, que puede quedar fuera del período. Estos importes no se suman al resultado; la reducción se contaría dos veces.",
   "valuation_statement_roc_legacy": "Este estado guardado es anterior al desglose de devoluciones de capital. La cobertura de cobros y excesos no está disponible; no es cero. Se conservan las cifras originales.",
-  "valuation_statement_roc_fx_timing": "El resultado en moneda de presentación también excluye el exceso de devolución de capital y no es una rentabilidad completa ni un cálculo fiscal. Los cobros y excesos usan el cambio de la fecha de pago; las reducciones asociadas, el de la fecha efectiva. Con la conversión en fecha de valoración, los tres usan la fecha de cierre. La falta de cobertura deja el importe afectado no disponible."
+  "valuation_statement_roc_fx_timing": "El resultado en moneda de presentación también excluye el exceso de devolución de capital y no es una rentabilidad completa ni un cálculo fiscal. Los cobros y excesos usan el cambio de la fecha de pago; las reducciones asociadas, el de la fecha efectiva. Con la conversión en fecha de valoración, los tres usan la fecha de cierre. La falta de cobertura deja el importe afectado no disponible.",
+  "valuation_statement_unclassified": "Efectivo de dividendos importados sin clasificar",
+  "valuation_statement_unclassified_note": "Pagos importados con bruto y retención desconocidos: {count}. Solo efectivo neto; no se incluye en los ingresos ni en el total.",
+  "valuation_statement_unclassified_review": "Revisar en cobertura de ingresos",
+  "valuation_statement_unclassified_legacy": "Este estado guardado es anterior al desglose de dividendos sin clasificar. El efectivo de dividendos importados con bruto desconocido no está disponible aquí; no es cero. Se conservan las cifras originales.",
+  "valuation_statement_unclassified_fx": "Los ingresos en la moneda de informe tampoco incluyen pagos de dividendos importados con bruto desconocido ({count}). Su efectivo en moneda original se muestra abajo en cada moneda."
 }
