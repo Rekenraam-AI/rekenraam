@@ -518,6 +518,10 @@ has actual installations, its migration files are immutable.
   module, defaulting to Paraglide’s active locale. Machine-readable decimal
   output (including CSV) uses `formatLedgerAmount`; never feed that unlocalized
   string directly into a localized editable field (#100).
+- Every `Intl` formatter, collator and display-names instance takes Paraglide's
+  `getLocale()`, never `undefined`: the browser locale may differ from the app
+  language the user picked (#252). Browser languages may still seed a *guess*,
+  such as the setup screen's suggested currency.
 - All frontend money **display** goes through `frontend/src/lib/money/format.ts`
   (`formatQuantity`) — locale-aware presentation via `Intl.NumberFormat` over a
   `BigInt`, for read-only money only. **No money-formatting dependency**: G-08 was

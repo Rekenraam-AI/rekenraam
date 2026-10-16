@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getLocale } from '#lib/paraglide/runtime.js';
   import { m } from '#lib/paraglide/messages.js';
   import StatusBadge from '#lib/components/status-badge.svelte';
   import {
@@ -84,10 +85,10 @@
     const option = options.find((candidate) => candidate.account_id === id);
     return option ? optionName(option) : `#${id}`;
   };
+  // UTC on both sides: a local-time format of a UTC midnight shows the previous month west of Greenwich.
+  const monthFormatter = $derived(new Intl.DateTimeFormat(getLocale(), { month: 'short', timeZone: 'UTC' }));
   const monthNames = $derived(
-    Array.from({ length: 12 }, (_, index) =>
-      new Intl.DateTimeFormat(undefined, { month: 'short' }).format(new Date(Date.UTC(2024, index, 1)))
-    )
+    Array.from({ length: 12 }, (_, index) => monthFormatter.format(new Date(Date.UTC(2024, index, 1))))
   );
   const statusTone = $derived(
     learned?.status === 'ready' ? 'positive' : learned?.status === 'partial' ? 'warning' : 'neutral'

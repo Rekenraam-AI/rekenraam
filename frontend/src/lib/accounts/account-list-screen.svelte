@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getLocale } from '#lib/paraglide/runtime.js';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import Building2 from '@lucide/svelte/icons/building-2';
   import Plus from '@lucide/svelte/icons/plus';
@@ -65,8 +66,8 @@
   let actionPendingKey = $state('');
   let collapsedNodeIDs = $state<Set<string>>(new Set());
 
-  const countryNames = new Intl.DisplayNames(undefined, { type: 'region' });
-  const currencyDisplayNames = new Intl.DisplayNames(undefined, { type: 'currency' });
+  const countryNames = $derived(new Intl.DisplayNames(getLocale(), { type: 'region' }));
+  const currencyDisplayNames = $derived(new Intl.DisplayNames(getLocale(), { type: 'currency' }));
 
   const institutionsByID = $derived.by(() => {
     return new Map<number, InstitutionResponse>(

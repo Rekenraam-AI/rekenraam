@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getLocale } from '#lib/paraglide/runtime.js';
   import { createQuery } from '@tanstack/svelte-query';
   import Archive from '@lucide/svelte/icons/archive';
   import Edit3 from '@lucide/svelte/icons/edit-3';
@@ -54,7 +55,7 @@
   const categoriesQuery = createQuery(() => categoriesQueryOptions({ includeArchived: true }));
   const sessionQuery = createQuery(() => authSessionQueryOptions());
   const setupQuery = createQuery(() => setupStatusQueryOptions());
-  const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
+  const collator = $derived(new Intl.Collator(getLocale(), { sensitivity: 'base', numeric: true }));
 
   let query = $state('');
   let typeFilter = $state<TypeFilter>('all');

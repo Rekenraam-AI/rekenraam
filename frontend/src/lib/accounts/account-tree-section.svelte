@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getLocale } from '#lib/paraglide/runtime.js';
   import Archive from '@lucide/svelte/icons/archive';
   import Building2 from '@lucide/svelte/icons/building-2';
   import Edit3 from '@lucide/svelte/icons/edit-3';
@@ -69,7 +70,7 @@
     actionPendingKey: string;
   }>();
 
-  const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
+  const collator = $derived(new Intl.Collator(getLocale(), { sensitivity: 'base', numeric: true }));
   const accountTreeRoots = $derived.by(() => buildInstitutionRoots(accounts, institutions));
   const visibleAccountChildCounts = $derived.by(() => countAccountChildren(accounts));
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getLocale } from '#lib/paraglide/runtime.js';
   import { browser } from '$app/env';
   import { goto } from '$app/navigation';
   import { createQuery } from '@tanstack/svelte-query';
@@ -83,7 +84,7 @@
 
   const currencyDisplayNames = $derived.by(() => {
     if (!browser || typeof Intl.DisplayNames === 'undefined') return null;
-    return new Intl.DisplayNames(undefined, { type: 'currency' });
+    return new Intl.DisplayNames(getLocale(), { type: 'currency' });
   });
 
   const catalog = $derived(localizedCurrencyCatalog(currencyCatalogQuery.data?.currencies ?? [], currencyDisplayNames));
