@@ -24,7 +24,9 @@ type cashflowFixture struct {
 
 // newCashflowFixture builds the liquid-cash shape the cashflow report is
 // defined over: two accounts inside the default scope, one liability outside
-// it, and income and expense categories to move against.
+// it, and income and expense categories to move against. Figures that the
+// browser must also show belong in the shared scenario
+// (fixtures/report-scenario.json, report_scenario_test.go).
 func newCashflowFixture(t *testing.T, handler http.Handler) cashflowFixture {
 	t.Helper()
 

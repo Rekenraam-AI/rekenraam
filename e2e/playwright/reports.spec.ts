@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, type Page, test } from './support/fixtures';
 import { apiJSON, csrfTokenFor } from './support/api';
-import { todayISO } from './support/dates';
+import { daysFromTodayISO, todayISO } from './support/dates';
 import { createCashAccount, createLiabilityAccount, ensureCurrency, readyForLedger } from './support/ledger';
 
 test('spending report ranks categories, nets refunds, and ignores transfers', async ({ page }) => {
@@ -491,6 +491,173 @@ test('a report keeps each measure at its own scale, in the table and the export'
   expect(dataRow.split(',')).toContain('100');
   expect(dataRow.split(',')).toContain('50.00');
 });
+
+/**
+ * The shared report scenario (#110). backend/internal/api/report_scenario_test.go
+ * reads the same file, so both layers assert one set of exact figures about one
+ * ledger; change the figures in the file, never here.
+ */
+type ReportScenario = {
+  scale: number;
+  commodities: string[];
+  accounts: Array<{ key: string; name: string; class: string; kind: string; commodity: string }>;
+  categories: Array<{ key: string; name: string; type: string }>;
+  transactions: Array<{ why: string; day: number; commodity: string; void?: boolean; postings: Array<[string, string]> }>;
+  reports: {
+    spending: {
+      accounts: string[];
+      expense: Array<{ category: string; commodity: string; amount: string }>;
+      income: Array<{ category: string; commodity: string; amount: string }>;
+    };
+    cashflow: {
+      accounts: string[];
+      rows: Array<Record<'commodity' | CashflowMeasure, string>>;
+    };
+  };
+};
+
+const cashflowMeasures = [
+  'inflow',
+  'outflow',
+  'operating_net',
+  'transfer_in',
+  'transfer_out',
+  'transfer_net',
+  'net_movement'
+] as const;
+type CashflowMeasure = (typeof cashflowMeasures)[number];
+
+test('[acceptance] the shared report scenario downloads exactly its declared figures', async ({ page }) => {
+  const scenario = JSON.parse(
+    await readFile(new URL('../../fixtures/report-scenario.json', import.meta.url), 'utf8')
+  ) as ReportScenario;
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const suffix = Date.now();
+  const today = todayISO();
+
+  // The first commodity is the book's default, as in the Go reader.
+  const commodityIDs = new Map<string, number>([[scenario.commodities[0], currencyID]]);
+  for (const code of scenario.commodities.slice(1)) {
+    commodityIDs.set(code, await ensureCurrency(page, csrfToken, code, code));
+  }
+
+  // Names carry the run's suffix: the e2e database is shared within a run, and
+  // the CSV is read back by name.
+  const ids = new Map<string, number>();
+  const keyByName = new Map<string, string>();
+  for (const account of scenario.accounts) {
+    const created = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+      name: `${account.name} ${suffix}`,
+      account_class: account.class,
+      account_kind: account.kind,
+      default_commodity_id: commodityIDs.get(account.commodity),
+      allows_postings: true,
+      opened_on: daysFromTodayISO(-30)
+    });
+    ids.set(account.key, created.id);
+  }
+  for (const category of scenario.categories) {
+    const name = `${category.name} ${suffix}`;
+    const created = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/categories', csrfToken, {
+      name,
+      category_type: category.type
+    });
+    ids.set(category.key, created.id);
+    keyByName.set(name, category.key);
+  }
+
+  for (const transaction of scenario.transactions) {
+    const date = daysFromTodayISO(transaction.day);
+    const created = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/transactions', await csrfTokenFor(page), {
+      status: 'posted',
+      transaction_date: date,
+      description: transaction.why,
+      journal_entries: [
+        {
+          entry_date: date,
+          postings: transaction.postings.map(([key, value]) => ({
+            account_id: ids.get(key),
+            commodity_id: commodityIDs.get(transaction.commodity),
+            quantity_value: value,
+            quantity_scale: scenario.scale
+          }))
+        }
+      ]
+    }, [201]);
+    if (transaction.void) {
+      await apiJSON(page, 'POST', `/api/v1/transactions/${created.id}/void`, await csrfTokenFor(page), {
+        change_reason: 'report scenario'
+      }, [200]);
+    }
+  }
+
+  const scope = (keys: string[]) =>
+    `start_date=${today}&end_date=${today}&bucket=day&include_descendants=false` +
+    keys.map((key) => `&account_id=${ids.get(key)}`).join('');
+  const commodities = new Set(scenario.commodities);
+
+  // --- Spending, both directions: the table has one row per expected figure,
+  // and the CSV carries those figures exactly, in the declared order.
+  for (const mode of ['expense', 'income'] as const) {
+    const expected = scenario.reports.spending[mode];
+    await page.goto(
+      `/app/reports?view=spending&group_by=category${mode === 'income' ? '&mode=income' : ''}&${scope(scenario.reports.spending.accounts)}`
+    );
+    await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(expected.length);
+    const rows = (await downloadReportCSV(page))
+      .filter((fields) => commodities.has(fields[1]))
+      .map(([label, commodity, amount]) => ({ category: keyByName.get(label) ?? label, commodity, amount }));
+    expect(rows, mode).toEqual(expected);
+  }
+
+  // --- Cashflow: one row per commodity, every measure exact.
+  await page.goto(`/app/reports?view=cashflow&${scope(scenario.reports.cashflow.accounts)}`);
+  await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(scenario.reports.cashflow.rows.length);
+  const cashflow = (await downloadReportCSV(page))
+    .filter((fields) => commodities.has(fields[2]))
+    .map(([, , commodity, ...figures]) => ({
+      commodity,
+      ...Object.fromEntries(cashflowMeasures.map((measure, index) => [measure, figures[index]]))
+    }));
+  expect(cashflow).toEqual(scenario.reports.cashflow.rows);
+});
+
+/** Downloads the current report's CSV and returns its rows as fields. */
+async function downloadReportCSV(page: Page): Promise<string[][]> {
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download CSV' }).click();
+  const content = await readFile((await (await download).path()) as string, 'utf8');
+  return content.split('\r\n').map(parseCSVLine);
+}
+
+/** Splits one RFC 4180 line; quoted fields may hold commas and doubled quotes. */
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = [];
+  let field = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (quoted) {
+      if (char === '"' && line[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      quoted = true;
+    } else if (char === ',') {
+      fields.push(field);
+      field = '';
+    } else {
+      field += char;
+    }
+  }
+  fields.push(field);
+  return fields;
+}
 
 async function postTransaction(
   page: Page,

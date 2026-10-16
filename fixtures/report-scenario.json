@@ -1,0 +1,98 @@
+{
+  "_comment": "One reporting scenario, two readers (#110). backend/internal/api/report_scenario_test.go seeds it through the HTTP API and checks the spending and cashflow responses; e2e/playwright/reports.spec.ts seeds it the same way and checks the exact CSV each report downloads in the browser. A classification change that alters one report's answer therefore fails in both layers at once. Change the expected figures here, never in either reader. Every amount is an exact coefficient at the scenario's scale; every expected figure is the exact decimal that scale renders. 'day' is an offset from the scenario's anchor date, and every report covers the anchor day alone, so day -1 is outside the range.",
+  "scale": 2,
+  "commodities": ["USD", "EUR"],
+  "accounts": [
+    { "key": "checking", "name": "Scenario checking", "class": "asset", "kind": "checking", "commodity": "USD" },
+    { "key": "savings", "name": "Scenario savings", "class": "asset", "kind": "savings", "commodity": "USD" },
+    { "key": "card", "name": "Scenario card", "class": "liability", "kind": "credit_card", "commodity": "USD" },
+    { "key": "euro_cash", "name": "Scenario euro cash", "class": "asset", "kind": "cash", "commodity": "EUR" }
+  ],
+  "categories": [
+    { "key": "groceries", "name": "Scenario groceries", "type": "expense" },
+    { "key": "travel", "name": "Scenario travel", "type": "expense" },
+    { "key": "salary", "name": "Scenario salary", "type": "income" }
+  ],
+  "transactions": [
+    {
+      "why": "salary into checking: income and cash inflow",
+      "day": 0, "commodity": "USD",
+      "postings": [["checking", "200000"], ["salary", "-200000"]]
+    },
+    {
+      "why": "groceries from checking",
+      "day": 0, "commodity": "USD",
+      "postings": [["checking", "-12000"], ["groceries", "12000"]]
+    },
+    {
+      "why": "a grocery refund nets against the category and the outflow, never becoming income",
+      "day": 0, "commodity": "USD",
+      "postings": [["checking", "2000"], ["groceries", "-2000"]]
+    },
+    {
+      "why": "checking to savings: both are measured cash, so cashflow cancels it and spending never sees it",
+      "day": 0, "commodity": "USD",
+      "postings": [["checking", "-30000"], ["savings", "30000"]]
+    },
+    {
+      "why": "travel on the card: spending, but no measured cash moved",
+      "day": 0, "commodity": "USD",
+      "postings": [["card", "-30000"], ["travel", "30000"]]
+    },
+    {
+      "why": "card payment: financing out of cash, not spending",
+      "day": 0, "commodity": "USD",
+      "postings": [["checking", "-5000"], ["card", "5000"]]
+    },
+    {
+      "why": "drawing on the card into checking: financing into cash",
+      "day": 0, "commodity": "USD",
+      "postings": [["checking", "100000"], ["card", "-100000"]]
+    },
+    {
+      "why": "a voided expense is not financial truth",
+      "day": 0, "commodity": "USD", "void": true,
+      "postings": [["checking", "-9900"], ["groceries", "9900"]]
+    },
+    {
+      "why": "travel in a second commodity: never summed with USD",
+      "day": 0, "commodity": "EUR",
+      "postings": [["euro_cash", "-5000"], ["travel", "5000"]]
+    },
+    {
+      "why": "outside the reported range",
+      "day": -1, "commodity": "USD",
+      "postings": [["checking", "-7700"], ["groceries", "7700"]]
+    }
+  ],
+  "reports": {
+    "spending": {
+      "accounts": ["checking", "savings", "card", "euro_cash"],
+      "expense": [
+        { "category": "travel", "commodity": "USD", "amount": "300.00" },
+        { "category": "travel", "commodity": "EUR", "amount": "50.00" },
+        { "category": "groceries", "commodity": "USD", "amount": "100.00" }
+      ],
+      "income": [
+        { "category": "salary", "commodity": "USD", "amount": "2000.00" }
+      ]
+    },
+    "cashflow": {
+      "accounts": ["checking", "savings", "euro_cash"],
+      "rows": [
+        {
+          "commodity": "USD",
+          "inflow": "2000.00", "outflow": "100.00", "operating_net": "1900.00",
+          "transfer_in": "1000.00", "transfer_out": "50.00", "transfer_net": "950.00",
+          "net_movement": "2850.00"
+        },
+        {
+          "commodity": "EUR",
+          "inflow": "0.00", "outflow": "50.00", "operating_net": "-50.00",
+          "transfer_in": "0.00", "transfer_out": "0.00", "transfer_net": "0.00",
+          "net_movement": "-50.00"
+        }
+      ]
+    }
+  }
+}

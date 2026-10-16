@@ -30,6 +30,9 @@ type spendingFixture struct {
 	salary        categoryResponse
 }
 
+// newSpendingFixture serves this suite's focused cases. Figures that the browser
+// must also show belong in the shared scenario (fixtures/report-scenario.json,
+// report_scenario_test.go), so the two layers cannot assert different numbers.
 func newSpendingFixture(t *testing.T, handler http.Handler) spendingFixture {
 	t.Helper()
 
