@@ -4,6 +4,14 @@ These closed-item explanations were moved from `docs/backlog.md` to keep that
 file an actionable list. Status and evidence reflect the original closure;
 consult `docs/implemented.md` and current code for today's capability boundary.
 
+**Colliding IDs.** T-90 and T-91 were each allocated twice on 2026-09-07/09 and
+2026-09-12. They stay unrenumbered, as historical aliases do; read them by
+section. Under *MS Money QIF compatibility* and *R10 learned-spending
+acceptance*, T-90 is legacy text decoding and T-91 learned/converted curves (as
+cited in `docs/plans/forecast-learning-plan.md` and the 2026-09-09 R10 review).
+Under *Release documentation*, T-90 is the upgrade sequence and T-91 the
+file-wide decimal separator (as cited in `docs/roadmap.md`).
+
 ## General
 
 ### T-94 Reconciliation guard can go stale before commit `[x]`
