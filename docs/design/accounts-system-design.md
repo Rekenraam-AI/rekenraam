@@ -549,7 +549,15 @@ shows that a group should be exclusive, add a later constraint such as "only one
   commodities, such as brokerage cash and security-holding accounts.
 - `allows_postings=false` makes a container or placeholder account. Reports roll
   up child balances, but transaction entry cannot post directly to it.
-- Active accounts cannot be parented under archived accounts.
+- Active accounts cannot be parented under archived accounts. Both sides are
+  enforced inside the account write (#294): archiving a parent whose children
+  are not all archived is refused (`409 CONFLICT`), and so is archiving an
+  institution that a non-archived account uses. Restoring a child or an
+  institution's account while its parent or institution stays archived is
+  refused (`400 VALIDATION_FAILED`). Archive the dependents first; restore the
+  parent or institution first.
+- System accounts are never parents of user accounts (#295). Their subtrees are
+  hidden and excluded from user report scopes.
 
 This is stricter than free-form plain-text ledgers, but it gives a web UI safer
 defaults and better validation.

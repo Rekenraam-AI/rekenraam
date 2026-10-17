@@ -4298,6 +4298,16 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description An account that is not archived still uses the institution */
+                409: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Internal server error */
                 500: {
                     headers: {
@@ -5152,7 +5162,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Lifecycle transition is invalid, the account is a system account or a category (managed through the category API), or the new version would leave an existing posting outside the account's open dates (for example a closed_on before the last posting); the message names the earliest such date. */
+                /** @description Lifecycle transition is invalid, the account is a system account or a category (managed through the category API), a child account is not archived yet, or the new version would leave an existing posting outside the account's open dates (for example a closed_on before the last posting); the message names the earliest such date. */
                 409: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];

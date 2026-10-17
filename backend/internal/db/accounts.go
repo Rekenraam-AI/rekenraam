@@ -19,6 +19,14 @@ var (
 	// names the field; these fire when the answer changed before the write.
 	ErrAccountStructureLocked = errors.New("account structure cannot be changed after postings exist")
 	ErrAccountCurrencyLocked  = errors.New("account currency cannot be changed after postings exist")
+	// ErrAccountHasUnarchivedChildren refuses archiving a parent while a
+	// child is still active or closed, and ErrAccountParentArchived and
+	// ErrAccountInstitutionArchived refuse the reverse: a non-archived version
+	// under an archived parent or institution. Either state leaves an account
+	// that no later write can keep (#294).
+	ErrAccountHasUnarchivedChildren = errors.New("account has child accounts that are not archived")
+	ErrAccountParentArchived        = errors.New("account parent is archived")
+	ErrAccountInstitutionArchived   = errors.New("account institution is archived")
 )
 
 // AccountPostingsOutsideDatesError reports an account version that would
@@ -451,6 +459,9 @@ func (r *AccountRepository) UpdateAccount(ctx context.Context, params UpdateAcco
 	if status == "" {
 		status = current.Status
 	}
+	if err := requireArchiveConsistencyTx(ctx, tx, params.BookID, params.AccountID, status, params.Spec); err != nil {
+		return AccountRecord{}, err
+	}
 
 	changeReason := strings.TrimSpace(params.ChangeReason)
 	if changeReason == "" {
@@ -514,6 +525,57 @@ func (r *AccountRepository) UpdateAccount(ctx context.Context, params UpdateAcco
 	committed = true
 
 	return record, nil
+}
+
+// requireArchiveConsistencyTx keeps "no account in use under an archived
+// parent or institution" true at commit (#294). Asked inside the write so a
+// concurrent archive or restore of the other side cannot slip between the
+// service's check and this version.
+func requireArchiveConsistencyTx(ctx context.Context, tx *sql.Tx, bookID int64, accountID int64, status string, spec AccountSpec) error {
+	if status == "archived" {
+		var children int
+		if err := tx.QueryRowContext(ctx, `
+			SELECT COUNT(1)
+			FROM accounts a
+			JOIN current_account_versions av ON av.account_id = a.id
+			WHERE a.book_id = ? AND av.parent_account_id = ? AND av.status <> 'archived'
+		`, bookID, accountID).Scan(&children); err != nil {
+			return fmt.Errorf("check account children: %w", err)
+		}
+		if children > 0 {
+			return ErrAccountHasUnarchivedChildren
+		}
+		return nil
+	}
+	if spec.ParentAccountID.Valid {
+		var parentStatus string
+		if err := tx.QueryRowContext(ctx, `
+			SELECT av.status
+			FROM accounts a
+			JOIN current_account_versions av ON av.account_id = a.id
+			WHERE a.book_id = ? AND a.id = ?
+		`, bookID, spec.ParentAccountID.Int64).Scan(&parentStatus); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("check account parent status: %w", err)
+		}
+		if parentStatus == "archived" {
+			return ErrAccountParentArchived
+		}
+	}
+	if spec.InstitutionID.Valid {
+		var institutionStatus string
+		if err := tx.QueryRowContext(ctx, `
+			SELECT iv.status
+			FROM institutions i
+			JOIN current_institution_versions iv ON iv.institution_id = i.id
+			WHERE i.book_id = ? AND i.id = ?
+		`, bookID, spec.InstitutionID.Int64).Scan(&institutionStatus); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("check account institution status: %w", err)
+		}
+		if institutionStatus == "archived" {
+			return ErrAccountInstitutionArchived
+		}
+	}
+	return nil
 }
 
 // requirePostingsStayEligibleTx refuses a new account version that would

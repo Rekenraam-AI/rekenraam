@@ -25,6 +25,9 @@ const (
 var (
 	ErrInstitutionNotFound         = errors.New("institution not found")
 	ErrInstitutionDeleteNotAllowed = errors.New("institution cannot be deleted")
+	// ErrInstitutionInUse refuses archiving an institution while an account
+	// that is not archived still uses it (#294).
+	ErrInstitutionInUse = errors.New("institution cannot be archived while accounts that are not archived use it")
 )
 
 var institutionKinds = map[string]bool{
@@ -355,6 +358,9 @@ func (s *InstitutionService) changeInstitutionStatus(ctx context.Context, input 
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return Institution{}, ErrInstitutionNotFound
+		}
+		if errors.Is(err, db.ErrInstitutionHasUnarchivedAccounts) {
+			return Institution{}, ErrInstitutionInUse
 		}
 		return Institution{}, fmt.Errorf("persist institution status: %w", err)
 	}

@@ -39,6 +39,9 @@ var (
 	// (protected built-ins, sibling names, immutable type, metadata), and the
 	// account API writing them would bypass every one of those (#291).
 	ErrCategoryAccountProtected = errors.New("category accounts are managed through the category API")
+	// ErrAccountHasDependents refuses archiving a parent while a child account
+	// is not archived; the child could no longer be edited under it (#294).
+	ErrAccountHasDependents = errors.New("account cannot be archived while child accounts are not archived")
 	// ErrAccountPostingsOutsideDates refuses a version — usually a close dated
 	// before the account's last posting — that would leave an existing posting
 	// on a day the account no longer accepts it (#292). The wrapped message
@@ -444,8 +447,8 @@ func (s *AccountService) UpdateAccount(ctx context.Context, input UpdateAccountI
 		case errors.Is(err, db.ErrAccountStructureLocked):
 			return Account{}, ErrAccountStructureLocked
 		}
-		if outside, ok := accountPostingsOutsideDates(err); ok {
-			return Account{}, outside
+		if refusal, ok := accountWriteRefusal(err); ok {
+			return Account{}, refusal
 		}
 		return Account{}, fmt.Errorf("persist account update: %w", err)
 	}
@@ -623,8 +626,8 @@ func (s *AccountService) changeAccountStatus(ctx context.Context, input AccountL
 		if errors.Is(err, db.ErrNotFound) {
 			return Account{}, ErrAccountNotFound
 		}
-		if outside, ok := accountPostingsOutsideDates(err); ok {
-			return Account{}, outside
+		if refusal, ok := accountWriteRefusal(err); ok {
+			return Account{}, refusal
 		}
 		return Account{}, fmt.Errorf("persist account status: %w", err)
 	}
@@ -651,7 +654,17 @@ func hasCategoryMetadata(metadataJSON string) bool {
 	return ok
 }
 
-func accountPostingsOutsideDates(err error) (error, bool) {
+// accountWriteRefusal translates the refusals an account write raises inside
+// its own transaction (#292, #294) into the service's errors.
+func accountWriteRefusal(err error) (error, bool) {
+	switch {
+	case errors.Is(err, db.ErrAccountHasUnarchivedChildren):
+		return ErrAccountHasDependents, true
+	case errors.Is(err, db.ErrAccountParentArchived):
+		return ErrAccountParentInvalid, true
+	case errors.Is(err, db.ErrAccountInstitutionArchived):
+		return ErrAccountReferenceInvalid, true
+	}
 	var outside db.AccountPostingsOutsideDatesError
 	if !errors.As(err, &outside) {
 		return nil, false
@@ -744,6 +757,11 @@ func (s *AccountService) accountSpec(ctx context.Context, input accountSpecInput
 		// A child under a category is part of the category tree, which only
 		// the category API may build (#291).
 		if isCategoryAccount(parent) {
+			return db.AccountSpec{}, ErrAccountParentInvalid
+		}
+		// A system account's subtree is hidden and excluded from user scopes,
+		// so a user account under one would vanish from both (#295).
+		if parent.IsSystem {
 			return db.AccountSpec{}, ErrAccountParentInvalid
 		}
 		if parent.AccountClass != accountClass {

@@ -8,7 +8,12 @@ import (
 	"strings"
 )
 
-var ErrInstitutionDeleteNotPermitted = errors.New("institution cannot be deleted")
+var (
+	ErrInstitutionDeleteNotPermitted = errors.New("institution cannot be deleted")
+	// ErrInstitutionHasUnarchivedAccounts refuses archiving an institution
+	// that an active or closed account still uses (#294).
+	ErrInstitutionHasUnarchivedAccounts = errors.New("institution has accounts that are not archived")
+)
 
 type InstitutionRepository struct {
 	database *sql.DB
@@ -245,6 +250,22 @@ func (r *InstitutionRepository) UpdateInstitution(ctx context.Context, params Up
 	status := params.Status
 	if status == "" {
 		status = current.Status
+	}
+	// An archived institution cannot be kept by an account write, so archiving
+	// one that an account still uses would strand that account (#294).
+	if status == "archived" {
+		var accounts int
+		if err := tx.QueryRowContext(ctx, `
+			SELECT COUNT(1)
+			FROM accounts a
+			JOIN current_account_versions av ON av.account_id = a.id
+			WHERE a.book_id = ? AND av.institution_id = ? AND av.status <> 'archived'
+		`, params.BookID, params.InstitutionID).Scan(&accounts); err != nil {
+			return InstitutionRecord{}, fmt.Errorf("check institution accounts: %w", err)
+		}
+		if accounts > 0 {
+			return InstitutionRecord{}, ErrInstitutionHasUnarchivedAccounts
+		}
 	}
 
 	changeReason := strings.TrimSpace(params.ChangeReason)
