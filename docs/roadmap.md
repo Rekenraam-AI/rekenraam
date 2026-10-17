@@ -135,7 +135,7 @@ below is execution order, not a chain of hard dependencies.
    and the targeted identity-concurrency/proxy-browser follow-ups remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with
-   [evidence](reviews/reference-book-audit-2026-10-17.md) and finding #281):
+   [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):
    ledger/reconciliation #270, investment
    operations #272/#273, reports and R13 readiness #275, and recovery #277;
    then planning #276, imports #271, reference data #269, prices and durable

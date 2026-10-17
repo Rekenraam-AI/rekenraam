@@ -13,7 +13,19 @@ RateUse:
       description: True when the observation is from an earlier date than the one asked for.
     derived:
       type: boolean
-      description: True when the observation was triangulated rather than observed directly.
+      description: >
+        True when the observation was triangulated rather than observed
+        directly, including a chained security conversion.
+    via_commodity_id:
+      type: integer
+      format: int64
+      description: >
+        Present for a chained conversion: the commodity was priced in this
+        currency by observation_id, and the currency converted into the
+        reporting currency by via_observation_id. stale is true when either
+        leg is from an earlier date than requested.
+    via_observation_id: { type: integer, format: int64 }
+    via_observation_date: { type: string, format: date }
 RateGap:
   type: object
   description: A commodity that could not be converted, and why.
@@ -30,6 +42,13 @@ RateGap:
         The closest observation outside the staleness window, when one exists.
         "No rate" and "no rate recently" are different problems with different
         fixes, so the response distinguishes them.
+    via_commodity_id:
+      type: integer
+      format: int64
+      description: >
+        Set when the commodity has a usable price in this currency but the
+        currency has no usable reporting rate. The missing leg is the
+        currency's; reason and nearest_observation_date describe it.
 Valuation:
   type: object
   description: >

@@ -63,6 +63,7 @@
   "reports_converted_row_note": "Пересчитанные строки добавляются, а не заменяют: каждая величина пересчитана по курсу своей даты, а точные итоги выше остаются нетронутыми.",
   "reports_converted_total": "Итог по всем группам, пересчитанный в {commodity}: {amount}",
   "reports_valuation_stale": "Некоторые курсы взяты за более ранний день, чем запрошенный: {dates}.",
+  "reports_valuation_gap_via": "{commodity} через {via}",
   "reports_valuation_incomplete": "Курс для {commodities} не найден, поэтому величины, которые включали бы их, опущены, а не показаны заниженными. На точные итоги это не влияет.",
   "reports_column_period": "Период",
   "reports_column_commodity": "Инструмент",

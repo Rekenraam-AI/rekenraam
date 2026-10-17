@@ -63,6 +63,7 @@
   "reports_converted_row_note": "Umgerechnete Zeilen kommen hinzu, sie ersetzen nichts: Jeder Betrag wird zum Kurs seines eigenen Datums umgerechnet, während die exakten Summen darüber unverändert bleiben.",
   "reports_converted_total": "Summe über alle Gruppen, umgerechnet in {commodity}: {amount}",
   "reports_valuation_stale": "Einige Kurse stammen von einem früheren Tag als dem angefragten: {dates}.",
+  "reports_valuation_gap_via": "{commodity} über {via}",
   "reports_valuation_incomplete": "Für {commodities} wurde kein Kurs gefunden; Beträge, die sie enthalten hätten, entfallen deshalb, statt zu niedrig ausgewiesen zu werden. Die exakten Summen bleiben davon unberührt.",
   "reports_column_period": "Periode",
   "reports_column_commodity": "Instrument",

@@ -27881,8 +27881,17 @@ export interface components {
             requested_date: string;
             /** @description True when the observation is from an earlier date than the one asked for. */
             stale: boolean;
-            /** @description True when the observation was triangulated rather than observed directly. */
+            /** @description True when the observation was triangulated rather than observed directly, including a chained security conversion. */
             derived: boolean;
+            /**
+             * Format: int64
+             * @description Present for a chained conversion: the commodity was priced in this currency by observation_id, and the currency converted into the reporting currency by via_observation_id. stale is true when either leg is from an earlier date than requested.
+             */
+            via_commodity_id?: number;
+            /** Format: int64 */
+            via_observation_id?: number;
+            /** Format: date */
+            via_observation_date?: string;
         };
         /** @description A commodity that could not be converted, and why. */
         RateGap: {
@@ -27895,6 +27904,11 @@ export interface components {
              * @description The closest observation outside the staleness window, when one exists. "No rate" and "no rate recently" are different problems with different fixes, so the response distinguishes them.
              */
             nearest_observation_date?: string;
+            /**
+             * Format: int64
+             * @description Set when the commodity has a usable price in this currency but the currency has no usable reporting rate. The missing leg is the currency's; reason and nearest_observation_date describe it.
+             */
+            via_commodity_id?: number;
         };
         /** @description How a response's converted figures were produced and what they could not cover. Present only when a reporting currency was asked for. A converted figure without this block would be a number with no provenance. */
         Valuation: {

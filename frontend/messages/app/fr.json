@@ -63,6 +63,7 @@
   "reports_converted_row_note": "Les lignes converties viennent en plus, jamais en remplacement : chaque montant est converti au taux de sa propre date, tandis que les totaux exacts ci-dessus restent inchangés.",
   "reports_converted_total": "Total de tous les groupes, converti en {commodity} : {amount}",
   "reports_valuation_stale": "Certains taux proviennent d’un jour antérieur à celui demandé : {dates}.",
+  "reports_valuation_gap_via": "{commodity} via {via}",
   "reports_valuation_incomplete": "Aucun taux n’a été trouvé pour {commodities} ; les montants qui les auraient inclus sont donc omis plutôt que présentés incomplets. Les totaux exacts ne sont pas affectés.",
   "reports_column_period": "Période",
   "reports_column_commodity": "Instrument",

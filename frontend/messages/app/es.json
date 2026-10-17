@@ -63,6 +63,7 @@
   "reports_converted_row_note": "Las filas reexpresadas son adicionales, nunca un reemplazo: cada cifra se convierte al tipo de su propia fecha, mientras que los totales exactos de arriba quedan intactos.",
   "reports_converted_total": "Total de todos los grupos, reexpresado en {commodity}: {amount}",
   "reports_valuation_stale": "Algunos tipos provienen de un día anterior al solicitado: {dates}.",
+  "reports_valuation_gap_via": "{commodity} vía {via}",
   "reports_valuation_incomplete": "No se encontró tipo de cambio para {commodities}, así que las cifras que los habrían incluido se omiten en lugar de mostrarse incompletas. Los totales exactos no se ven afectados.",
   "reports_column_period": "Periodo",
   "reports_column_commodity": "Instrumento",

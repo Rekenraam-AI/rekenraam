@@ -70,6 +70,12 @@ type RateUse struct {
 	RequestedDate   string `json:"requested_date"`
 	Stale           bool   `json:"stale"`
 	Derived         bool   `json:"derived"`
+	// Via* name the second leg of a chained conversion (#281): the commodity was
+	// priced in ViaCommodityID by the observation above, and that currency was
+	// converted by ViaObservationID. Zero for a direct rate.
+	ViaCommodityID     int64  `json:"via_commodity_id,omitempty"`
+	ViaObservationID   int64  `json:"via_observation_id,omitempty"`
+	ViaObservationDate string `json:"via_observation_date,omitempty"`
 }
 
 // RateGap is a commodity that could not be converted, and why.
@@ -80,6 +86,11 @@ type RateGap struct {
 	// window, when there is one. "No rate" and "no rate recently" are different
 	// problems and lead to different fixes.
 	NearestObservationDate string `json:"nearest_observation_date,omitempty"`
+	// ViaCommodityID is set when the commodity has a usable price in that
+	// currency but the currency itself has no usable reporting rate: the
+	// missing leg is the currency's, and Reason/NearestObservationDate are
+	// about it.
+	ViaCommodityID int64 `json:"via_commodity_id,omitempty"`
 }
 
 // ValuationCoverage is what a response says about its own conversions.
@@ -101,8 +112,8 @@ type ValuationCoverage struct {
 }
 
 type rateUseKey struct {
-	commodityID, observationID int64
-	requestedDate              string
+	commodityID, observationID, viaObservationID int64
+	requestedDate                                string
 }
 
 // RateTable resolves a commodity and a date to a rate, once, for a whole
@@ -115,6 +126,9 @@ type RateTable struct {
 	stalenessDays    int
 	// byCommodity holds each commodity's observations in date order.
 	byCommodity map[int64][]db.ReportingRateRecord
+	// chainQuotes holds, per non-currency commodity, its observations in each
+	// other currency, in date order: the first legs of chained conversions.
+	chainQuotes map[int64]map[int64][]db.ReportingRateRecord
 
 	used map[rateUseKey]RateUse
 	gaps map[int64]RateGap
@@ -173,6 +187,7 @@ func newRateTableAtBoundary(ctx context.Context, pricing *db.PricingRepository, 
 		quoteScale:       quote.StandardScale,
 		stalenessDays:    staleness,
 		byCommodity:      map[int64][]db.ReportingRateRecord{},
+		chainQuotes:      map[int64]map[int64][]db.ReportingRateRecord{},
 
 		used: map[rateUseKey]RateUse{},
 		gaps: map[int64]RateGap{},
@@ -192,7 +207,28 @@ func newRateTableAtBoundary(ctx context.Context, pricing *db.PricingRepository, 
 	if err != nil {
 		return nil, err
 	}
-	rates, err := pricing.ReportingRates(ctx, BookID, reporting.CommodityID, needed, windowStart, toDate, boundary)
+	// A security is usually priced in its quote currency, not the reporting
+	// currency, so its rate is chained: security → quote currency → reporting
+	// currency, each leg under the same on-or-before and staleness rules. Only
+	// one currency hop is attempted; currency-to-currency triangulation stays
+	// with the FX refresh worker's derived observations.
+	chainQuotes, err := pricing.ReportingChainQuotes(ctx, BookID, reporting.CommodityID, needed, windowStart, toDate, boundary)
+	if err != nil {
+		return nil, err
+	}
+	rateBases := append([]int64(nil), needed...)
+	for _, quote := range chainQuotes {
+		byQuote := table.chainQuotes[quote.BaseCommodityID]
+		if byQuote == nil {
+			byQuote = map[int64][]db.ReportingRateRecord{}
+			table.chainQuotes[quote.BaseCommodityID] = byQuote
+		}
+		byQuote[quote.QuoteCommodityID] = append(byQuote[quote.QuoteCommodityID], quote)
+		rateBases = append(rateBases, quote.QuoteCommodityID)
+	}
+	rateBases = dedupeIDs(rateBases)
+
+	rates, err := pricing.ReportingRates(ctx, BookID, reporting.CommodityID, rateBases, windowStart, toDate, boundary)
 	if err != nil {
 		return nil, err
 	}
@@ -200,8 +236,8 @@ func newRateTableAtBoundary(ctx context.Context, pricing *db.PricingRepository, 
 		table.byCommodity[rate.BaseCommodityID] = append(table.byCommodity[rate.BaseCommodityID], rate)
 	}
 
-	pairs := make([][2]int64, 0, len(needed))
-	for _, id := range needed {
+	pairs := make([][2]int64, 0, len(rateBases))
+	for _, id := range rateBases {
 		pairs = append(pairs, [2]int64{id, reporting.CommodityID})
 	}
 	table.diagnostics, err = pricing.ObservationDiagnostics(ctx, BookID, pairs, boundary)
@@ -233,9 +269,9 @@ func (t *RateTable) Convert(value exact.Coefficient, scale int, commodityID int6
 		return aligned.BigInt(), true
 	}
 
-	rate, found := t.rateFor(commodityID, onDate)
+	rate, found := t.observationOnOrBefore(t.byCommodity[commodityID], onDate)
 	if !found {
-		return nil, false
+		return t.convertChained(value, scale, commodityID, onDate)
 	}
 
 	converted, err := exact.MulDivRound(
@@ -252,7 +288,7 @@ func (t *RateTable) Convert(value exact.Coefficient, scale int, commodityID int6
 	stale := rate.ValuationDate != onDate
 	// Preserve each selected observation/date, so a later estimated or stale
 	// use cannot disappear behind the first exact quote of that currency.
-	t.used[rateUseKey{commodityID, rate.ObservationID, onDate}] = RateUse{
+	t.used[rateUseKey{commodityID, rate.ObservationID, 0, onDate}] = RateUse{
 		ObservationID: rate.ObservationID, Approximate: rate.IsApproximate,
 		CommodityID: commodityID, ObservationDate: rate.ValuationDate, RequestedDate: onDate, Stale: stale, Derived: rate.IsDerived,
 	}
@@ -260,18 +296,92 @@ func (t *RateTable) Convert(value exact.Coefficient, scale int, commodityID int6
 	return converted, true
 }
 
-// rateFor finds the applicable observation: the latest one on or before the
-// date, provided it is inside the staleness window.
+// convertChained values a commodity with no direct reporting rate through a
+// currency it is priced in: value × price in that currency × that currency's
+// reporting rate, rounded once (#281). A direct rate, when usable, always wins;
+// a chain never stands in for a missing leg.
+//
+// With several usable quote currencies, the freshest first leg wins, then the
+// freshest second leg, then the lowest currency id, so the choice is
+// deterministic. When a price exists but no quote currency converts, the gap
+// names that currency, because its rate is what the owner has to add.
+func (t *RateTable) convertChained(value exact.Coefficient, scale int, commodityID int64, onDate string) (*big.Int, bool) {
+	byQuote := t.chainQuotes[commodityID]
+	quoteIDs := make([]int64, 0, len(byQuote))
+	for quoteID := range byQuote {
+		quoteIDs = append(quoteIDs, quoteID)
+	}
+	sort.Slice(quoteIDs, func(i, j int) bool { return quoteIDs[i] < quoteIDs[j] })
+
+	var first, second db.ReportingRateRecord
+	var found bool
+	var missingLeg int64
+	var missingLegDate string
+	for _, quoteID := range quoteIDs {
+		price, ok := t.observationOnOrBefore(byQuote[quoteID], onDate)
+		if !ok {
+			continue
+		}
+		rate, ok := t.observationOnOrBefore(t.byCommodity[quoteID], onDate)
+		if !ok {
+			if missingLeg == 0 || price.ValuationDate > missingLegDate {
+				missingLeg, missingLegDate = quoteID, price.ValuationDate
+			}
+			continue
+		}
+		if !found || price.ValuationDate > first.ValuationDate ||
+			(price.ValuationDate == first.ValuationDate && rate.ValuationDate > second.ValuationDate) {
+			first, second, found = price, rate, true
+		}
+	}
+	if !found {
+		if missingLeg != 0 {
+			t.recordChainGap(commodityID, missingLeg, onDate)
+		} else {
+			t.recordGap(commodityID, onDate)
+		}
+		return nil, false
+	}
+
+	converted, err := exact.MulDivRound(
+		value.BigInt(), scale,
+		new(big.Int).Mul(big.NewInt(first.PriceValue), big.NewInt(second.PriceValue)), first.PriceScale+second.PriceScale,
+		new(big.Int).Mul(big.NewInt(first.BaseQuantityValue), big.NewInt(second.BaseQuantityValue)), first.BaseQuantityScale+second.BaseQuantityScale,
+		t.quoteScale,
+	)
+	if err != nil {
+		t.gaps[commodityID] = RateGap{CommodityID: commodityID, Reason: RateMissingNoObservation}
+		return nil, false
+	}
+
+	t.used[rateUseKey{commodityID, first.ObservationID, second.ObservationID, onDate}] = RateUse{
+		ObservationID: first.ObservationID, Approximate: first.IsApproximate || second.IsApproximate,
+		CommodityID: commodityID, ObservationDate: first.ValuationDate, RequestedDate: onDate,
+		Stale:   first.ValuationDate != onDate || second.ValuationDate != onDate,
+		Derived: true, ViaCommodityID: second.BaseCommodityID, ViaObservationID: second.ObservationID, ViaObservationDate: second.ValuationDate,
+	}
+	return converted, true
+}
+
+// rateFor finds a commodity's direct reporting rate, recording a gap on a miss.
 func (t *RateTable) rateFor(commodityID int64, onDate string) (db.ReportingRateRecord, bool) {
-	observations := t.byCommodity[commodityID]
-	if len(observations) == 0 {
+	rate, found := t.observationOnOrBefore(t.byCommodity[commodityID], onDate)
+	if !found {
 		t.recordGap(commodityID, onDate)
+	}
+	return rate, found
+}
+
+// observationOnOrBefore finds the applicable observation: the latest one on or
+// before the date, provided it is inside the staleness window. It records
+// nothing; the caller decides which gap a miss is.
+func (t *RateTable) observationOnOrBefore(observations []db.ReportingRateRecord, onDate string) (db.ReportingRateRecord, bool) {
+	if len(observations) == 0 {
 		return db.ReportingRateRecord{}, false
 	}
 
 	earliestUsable, err := shiftISODate(onDate, -t.stalenessDays)
 	if err != nil {
-		t.recordGap(commodityID, onDate)
 		return db.ReportingRateRecord{}, false
 	}
 
@@ -286,25 +396,38 @@ func (t *RateTable) rateFor(commodityID int64, onDate string) (db.ReportingRateR
 		}
 		best, found = observation, true
 	}
-	if !found {
-		t.recordGap(commodityID, onDate)
-		return db.ReportingRateRecord{}, false
-	}
-	return best, true
+	return best, found
 }
 
 func (t *RateTable) recordGap(commodityID int64, onDate string) {
 	if _, ok := t.gaps[commodityID]; ok {
 		return
 	}
+	t.gaps[commodityID] = t.pairGap(commodityID, commodityID, onDate)
+}
+
+// recordChainGap records a commodity whose price leg exists but whose quote
+// currency has no usable reporting rate; the reason is the currency's.
+func (t *RateTable) recordChainGap(commodityID, viaCommodityID int64, onDate string) {
+	if _, ok := t.gaps[commodityID]; ok {
+		return
+	}
+	gap := t.pairGap(commodityID, viaCommodityID, onDate)
+	gap.ViaCommodityID = viaCommodityID
+	t.gaps[commodityID] = gap
+}
+
+// pairGap explains why rateCommodityID has no usable reporting rate on onDate,
+// reported against commodityID.
+func (t *RateTable) pairGap(commodityID, rateCommodityID int64, onDate string) RateGap {
 	gap := RateGap{CommodityID: commodityID, Reason: RateMissingNoObservation}
-	reason := t.diagnostics[[2]int64{commodityID, t.quoteCommodityID}]
+	reason := t.diagnostics[[2]int64{rateCommodityID, t.quoteCommodityID}]
 	if reason != "" && reason != "usable" {
 		gap.Reason = reason
 	}
 	// Never identify an observation after this specific bucket/posting as a
 	// nearest prior rate, even when a later bucket in the same report has one.
-	for _, observation := range t.byCommodity[commodityID] {
+	for _, observation := range t.byCommodity[rateCommodityID] {
 		if observation.ValuationDate > onDate {
 			break
 		}
@@ -313,7 +436,7 @@ func (t *RateTable) recordGap(commodityID int64, onDate string) {
 	if gap.NearestObservationDate == "" && reason == "usable" {
 		gap.Reason = "future_only"
 	}
-	t.gaps[commodityID] = gap
+	return gap
 }
 
 // Coverage reports what the table actually did, for the response to carry.

@@ -63,6 +63,7 @@
   "reports_converted_row_note": "Restated rows are additional, never a replacement: each figure is converted at the rate for its own date, while the exact totals above stay untouched.",
   "reports_converted_total": "Total across every group, restated in {commodity}: {amount}",
   "reports_valuation_stale": "Some rates came from an earlier day than the one asked for: {dates}.",
+  "reports_valuation_gap_via": "{commodity} via {via}",
   "reports_valuation_incomplete": "No rate was found for {commodities}, so the figures that would have included them are left out rather than shown short. The exact totals are unaffected.",
   "reports_column_period": "Period",
   "reports_column_commodity": "Commodity",

@@ -63,6 +63,7 @@
   "reports_converted_row_note": "Omgerekende regels komen erbij, nooit in de plaats: elk bedrag wordt omgerekend tegen de koers van zijn eigen datum, terwijl de exacte totalen hierboven onaangetast blijven.",
   "reports_converted_total": "Totaal over alle groepen, omgerekend in {commodity}: {amount}",
   "reports_valuation_stale": "Sommige koersen komen van een eerdere dag dan gevraagd: {dates}.",
+  "reports_valuation_gap_via": "{commodity} via {via}",
   "reports_valuation_incomplete": "Voor {commodities} is geen koers gevonden, dus de bedragen die deze zouden bevatten worden weggelaten in plaats van te laag getoond. De exacte totalen blijven ongewijzigd.",
   "reports_column_period": "Periode",
   "reports_column_commodity": "Instrument",

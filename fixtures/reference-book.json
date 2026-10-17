@@ -254,7 +254,6 @@
       { "as_of": "2026-03-31",
         "totals": [{ "commodity": "EUR", "value": "5275.00" }, { "commodity": "USD", "value": "2792.00" }, { "commodity": "REF", "value": "13.5" }, { "commodity": "SHRT", "value": "-6" }],
         "converted_eur": "8247.45",
-        "known_defect": "#281",
         "why": "EUR 5275.00. USD 2792 at 0.85 = 2373.20. REF 13.5 at 70 USD = 945 USD at 0.85 = 803.25. SHRT -6 at 40 USD = -240 USD at 0.85 = -204.00. 5275 + 2373.20 + 803.25 - 204 = 8247.45" }
     ],
     "positions": [

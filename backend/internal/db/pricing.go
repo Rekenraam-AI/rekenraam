@@ -1443,6 +1443,7 @@ type ReportingRateRecord struct {
 	ObservationID     int64
 	IsApproximate     bool
 	BaseCommodityID   int64
+	QuoteCommodityID  int64
 	PriceValue        int64
 	PriceScale        int
 	BaseQuantityValue int64
@@ -1476,7 +1477,7 @@ func (r *PricingRepository) ReportingRates(ctx context.Context, bookID int64, qu
 	queryArgs = append(queryArgs, fromDate, toDate, fromDate)
 
 	rows, err := r.database.QueryContext(ctx, observationSelectionCTE+`
-  SELECT po.base_commodity_id, po.price_value, po.price_scale,
+  SELECT po.base_commodity_id, po.quote_commodity_id, po.price_value, po.price_scale,
    po.base_quantity_value, po.base_quantity_scale, po.valuation_date, po.is_derived,
    po.id, po.is_approximate
   FROM selection_daily po
@@ -1492,11 +1493,50 @@ func (r *PricingRepository) ReportingRates(ctx context.Context, bookID int64, qu
 		return nil, fmt.Errorf("read reporting rates: %w", err)
 	}
 	defer rows.Close()
+	return scanReportingRates(rows)
+}
 
+// ReportingChainQuotes returns every non-voided observation that prices one of
+// baseCommodityIDs — securities and other non-currency commodities — in a
+// currency other than reportingCommodityID, over the same window rule as
+// ReportingRates. They are the first leg of a chained conversion: the security
+// in its quote currency, then that currency into the reporting currency (#281).
+func (r *PricingRepository) ReportingChainQuotes(ctx context.Context, bookID int64, reportingCommodityID int64, baseCommodityIDs []int64, fromDate string, toDate string, boundary ObservationBoundary) ([]ReportingRateRecord, error) {
+	if len(baseCommodityIDs) == 0 {
+		return nil, nil
+	}
+	clause, args := inClause("po.base_commodity_id", baseCommodityIDs)
+	queryArgs := append([]any{bookID, boundary.AsOf, boundary.RecordedAt, reportingCommodityID}, args...)
+	queryArgs = append(queryArgs, fromDate, toDate, fromDate)
+
+	rows, err := r.database.QueryContext(ctx, observationSelectionCTE+`
+  SELECT po.base_commodity_id, po.quote_commodity_id, po.price_value, po.price_scale,
+   po.base_quantity_value, po.base_quantity_scale, po.valuation_date, po.is_derived,
+   po.id, po.is_approximate
+  FROM selection_daily po
+  JOIN commodities base ON base.id = po.base_commodity_id
+  JOIN commodities quote ON quote.id = po.quote_commodity_id
+  WHERE base.kind <> 'currency' AND quote.kind = 'currency'
+   AND po.quote_commodity_id <> ? AND `+clause+`
+   AND (po.valuation_date BETWEEN ? AND ? OR po.id IN (
+    SELECT id FROM (SELECT id, ROW_NUMBER() OVER (
+     PARTITION BY base_commodity_id,quote_commodity_id ORDER BY valuation_date DESC
+    ) AS prior_rank FROM selection_daily WHERE valuation_date < ?) WHERE prior_rank = 1
+   ))
+  ORDER BY po.base_commodity_id, po.quote_commodity_id, po.valuation_date
+ `, queryArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("read reporting chain quotes: %w", err)
+	}
+	defer rows.Close()
+	return scanReportingRates(rows)
+}
+
+func scanReportingRates(rows *sql.Rows) ([]ReportingRateRecord, error) {
 	var rates []ReportingRateRecord
 	for rows.Next() {
 		var rate ReportingRateRecord
-		if err := rows.Scan(&rate.BaseCommodityID, &rate.PriceValue, &rate.PriceScale,
+		if err := rows.Scan(&rate.BaseCommodityID, &rate.QuoteCommodityID, &rate.PriceValue, &rate.PriceScale,
 			&rate.BaseQuantityValue, &rate.BaseQuantityScale, &rate.ValuationDate, &rate.IsDerived, &rate.ObservationID, &rate.IsApproximate); err != nil {
 			return nil, fmt.Errorf("scan reporting rate: %w", err)
 		}
@@ -1505,7 +1545,6 @@ func (r *PricingRepository) ReportingRates(ctx context.Context, bookID int64, qu
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate reporting rates: %w", err)
 	}
-
 	return rates, nil
 }
 

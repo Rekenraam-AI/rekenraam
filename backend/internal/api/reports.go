@@ -72,12 +72,18 @@ type rateUseResponse struct {
 	RequestedDate   string `json:"requested_date"`
 	Stale           bool   `json:"stale"`
 	Derived         bool   `json:"derived"`
+	// The second leg of a chained security conversion (#281); absent for a
+	// direct rate.
+	ViaCommodityID     int64  `json:"via_commodity_id,omitempty"`
+	ViaObservationID   int64  `json:"via_observation_id,omitempty"`
+	ViaObservationDate string `json:"via_observation_date,omitempty"`
 }
 
 type rateGapResponse struct {
 	CommodityID            int64  `json:"commodity_id"`
 	Reason                 string `json:"reason"`
 	NearestObservationDate string `json:"nearest_observation_date,omitempty"`
+	ViaCommodityID         int64  `json:"via_commodity_id,omitempty"`
 }
 
 type valuationResponse struct {

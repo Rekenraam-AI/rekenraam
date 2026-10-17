@@ -36,7 +36,14 @@
 {#if valuation}
   <p class="mt-2 text-sm text-muted">{m.valuation_report_policy()}</p>
   {#each valuation.gaps as gap (gap.commodity_id)}
-    <p class="mt-1 text-sm text-muted">{commodityLabel(gap.commodity_id)}: <ObservationStatus status={gap.reason} /></p>
+    <p class="mt-1 text-sm text-muted">
+      {gap.via_commodity_id
+        ? m.reports_valuation_gap_via({
+            commodity: commodityLabel(gap.commodity_id),
+            via: commodityLabel(gap.via_commodity_id)
+          })
+        : commodityLabel(gap.commodity_id)}: <ObservationStatus status={gap.reason} />
+    </p>
   {/each}
   {#if valuation.rates_used.some((rate) => rate.approximate)}
     <p class="mt-1 text-sm text-muted">{m.investments_trade_price_approximate()}</p>
