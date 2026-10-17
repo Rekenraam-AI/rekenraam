@@ -664,14 +664,50 @@ type InvestmentEventSuggestion struct {
 	ID                      int64
 	BookID                  int64
 	ProviderEventID         int64
+	EventFamily             string
+	EventDate               string
+	EventStatus             string
+	SourceCode              string
+	EventEvidenceJSON       string
 	InstrumentID            *int64
 	ConfidenceBPS           int
 	Status                  string
 	ProposedTransactionJSON string
 	GeneratedTransactionID  *int64
+	LinkedTransactionID     *int64
 	FailureReason           string
 	CreatedAt               string
 	UpdatedAt               string
+	// LinkCandidates are owner-recorded dividends a pending suggestion may be
+	// linked to instead of posting again; composed only by the list read.
+	LinkCandidates []InvestmentEventLinkCandidate
+}
+
+// InvestmentEventLinkCandidate is an effective posted cash dividend of the
+// suggestion's instrument dated within the link window after the ex-date.
+type InvestmentEventLinkCandidate struct {
+	TransactionID   int64
+	TransactionDate string
+	CashCode        string
+	GrossValue      exact.Coefficient
+	GrossScale      int
+}
+
+// SuggestionCompletion is what the owner supplies for an incomplete provider
+// proposal: the facts a per-share announcement cannot state. Income and
+// withholding accounts may still come from the instrument's dividend default.
+type SuggestionCompletion struct {
+	TransactionDate        string
+	CashAccountID          int64
+	CashCommodityID        int64
+	AmountValue            int64
+	AmountScale            int
+	IncomeAccountID        *int64
+	WithholdingValue       *int64
+	WithholdingScale       *int
+	WithholdingAccountID   *int64
+	Memo                   string
+	ReconciliationOverride bool
 }
 
 type InvestmentAutomationRule struct {
@@ -2055,19 +2091,48 @@ func (s *InvestmentService) ListEventSuggestions(ctx context.Context) ([]Investm
 	if err != nil {
 		return nil, fmt.Errorf("list investment event suggestions: %w", err)
 	}
-	return toInvestmentEventSuggestions(records), nil
+	suggestions := toInvestmentEventSuggestions(records)
+	candidates, err := s.repository.DividendLinkCandidates(ctx, BookID)
+	if err != nil {
+		return nil, fmt.Errorf("list investment event link candidates: %w", err)
+	}
+	bySuggestion := map[int64][]InvestmentEventLinkCandidate{}
+	for _, candidate := range candidates {
+		normalized := candidate.Gross.Normalized()
+		value, err := normalized.Coefficient()
+		if err != nil {
+			return nil, fmt.Errorf("link candidate gross: %w", err)
+		}
+		bySuggestion[candidate.SuggestionID] = append(bySuggestion[candidate.SuggestionID], InvestmentEventLinkCandidate{
+			TransactionID: candidate.TransactionID, TransactionDate: candidate.TransactionDate, CashCode: candidate.CashCode,
+			GrossValue: value, GrossScale: normalized.Scale()})
+	}
+	for index := range suggestions {
+		suggestions[index].LinkCandidates = bySuggestion[suggestions[index].ID]
+	}
+	return suggestions, nil
 }
 
-// AcceptSuggestion parses the suggestion's proposed_transaction_json and
-// posts it as a real ledger transaction, recording the result on the
-// suggestion in the same DB transaction as the post (see
-// MarkSuggestionAcceptedInTx). A malformed proposal, an unsupported kind, or
-// a downstream validation failure moves the suggestion to 'failed' with a
-// reason and returns it with a nil error — the suggestion's own state
-// reflects the failure, this is not an API-level error. Only a genuine
-// infra failure or an already-non-pending suggestion is returned as an
-// error.
+// AcceptSuggestion posts a complete proposal unchanged; see
+// AcceptSuggestionWithCompletion.
 func (s *InvestmentService) AcceptSuggestion(ctx context.Context, ownerUserID int64, authSessionID int64, requestID string, suggestionID int64) (InvestmentEventSuggestion, error) {
+	return s.AcceptSuggestionWithCompletion(ctx, ownerUserID, authSessionID, requestID, suggestionID, nil)
+}
+
+// AcceptSuggestionWithCompletion parses the suggestion's
+// proposed_transaction_json and posts it through the native dividend command,
+// recording the result on the suggestion and its provider event in the same
+// DB transaction as the post (see MarkSuggestionAcceptedInTx).
+//
+// A complete proposal that is malformed, unsupported, or refused downstream
+// moves to 'failed' with a reason and returns with a nil error — the
+// suggestion's own state reflects the failure. An incomplete provider
+// proposal (#111) needs the owner's completion; a missing or invalid
+// completion is returned as a ValidationError and the suggestion stays
+// pending so the owner can correct it. Informational events cannot be
+// accepted at all. Only infra failures and non-pending suggestions are
+// returned as other errors.
+func (s *InvestmentService) AcceptSuggestionWithCompletion(ctx context.Context, ownerUserID int64, authSessionID int64, requestID string, suggestionID int64, completion *SuggestionCompletion) (InvestmentEventSuggestion, error) {
 	if ownerUserID <= 0 {
 		return InvestmentEventSuggestion{}, ValidationError{Message: "owner user is required"}
 	}
@@ -2091,8 +2156,11 @@ func (s *InvestmentService) AcceptSuggestion(ctx context.Context, ownerUserID in
 		return s.failSuggestion(ctx, suggestionID, "return of capital or cash in lieu requires an investment basis workflow", now, ownerUserID, authSessionID, requestID)
 	}
 
-	proposal, err := parseProposedDividendTransaction(record.ProposedTransactionJSON)
+	proposal, ownerCompleted, err := resolveProposedDividendTransaction(record.ProposedTransactionJSON, completion)
 	if err != nil {
+		if validationErr, ok := errors.AsType[ValidationError](err); ok {
+			return InvestmentEventSuggestion{}, validationErr
+		}
 		return s.failSuggestion(ctx, suggestionID, err.Error(), now, ownerUserID, authSessionID, requestID)
 	}
 
@@ -2106,29 +2174,38 @@ func (s *InvestmentService) AcceptSuggestion(ctx context.Context, ownerUserID in
 	}
 
 	dividendInput := DividendInput{
-		OwnerUserID:          ownerUserID,
-		AuthSessionID:        authSessionID,
-		RequestID:            requestID,
-		TransactionDate:      proposal.TransactionDate,
-		CommodityID:          commodityID,
-		CashAccountID:        proposal.CashAccountID,
-		CashCommodityID:      proposal.CashCommodityID,
-		IncomeAccountID:      proposal.IncomeAccountID,
-		AmountValue:          proposal.AmountValue,
-		AmountScale:          proposal.AmountScale,
-		WithholdingValue:     proposal.WithholdingValue,
-		WithholdingScale:     proposal.WithholdingScale,
-		WithholdingAccountID: proposal.WithholdingAccountID,
-		Memo:                 proposal.Memo,
-		ExternalRefHint:      proposal.ExternalRefHint,
-		PayeeID:              proposal.PayeeID,
-		ChangeReason:         "accepted provider event suggestion",
-		Operation:            "investment.event_suggestion.accept",
+		OwnerUserID:            ownerUserID,
+		AuthSessionID:          authSessionID,
+		RequestID:              requestID,
+		TransactionDate:        proposal.TransactionDate,
+		CommodityID:            commodityID,
+		CashAccountID:          proposal.CashAccountID,
+		CashCommodityID:        proposal.CashCommodityID,
+		IncomeAccountID:        proposal.IncomeAccountID,
+		AmountValue:            proposal.AmountValue,
+		AmountScale:            proposal.AmountScale,
+		WithholdingValue:       proposal.WithholdingValue,
+		WithholdingScale:       proposal.WithholdingScale,
+		WithholdingAccountID:   proposal.WithholdingAccountID,
+		Memo:                   proposal.Memo,
+		ExternalRefHint:        proposal.ExternalRefHint,
+		PayeeID:                proposal.PayeeID,
+		ReconciliationOverride: ownerCompleted && completion.ReconciliationOverride,
+		ChangeReason:           "accepted provider event suggestion",
+		Operation:              "investment.event_suggestion.accept",
 	}
 	_, err = s.dividendWithPostWrite(ctx, dividendInput, func(tx *sql.Tx, transactionID int64) error {
 		return s.repository.MarkSuggestionAcceptedInTx(ctx, tx, BookID, suggestionID, transactionID, now, ownerUserID, authSessionID, requestID)
 	})
 	if err != nil {
+		if errors.Is(err, db.ErrEventSuggestionNotPending) {
+			return InvestmentEventSuggestion{}, ErrInvestmentSuggestionNotPending
+		}
+		if ownerCompleted {
+			// The owner's facts were refused (or need the reconciliation
+			// override); nothing posted and the suggestion stays reviewable.
+			return InvestmentEventSuggestion{}, err
+		}
 		if validationErr, ok := errors.AsType[ValidationError](err); ok {
 			return s.failSuggestion(ctx, suggestionID, validationErr.Error(), now, ownerUserID, authSessionID, requestID)
 		}
@@ -2140,6 +2217,30 @@ func (s *InvestmentService) AcceptSuggestion(ctx context.Context, ownerUserID in
 		return InvestmentEventSuggestion{}, fmt.Errorf("reload accepted investment event suggestion: %w", err)
 	}
 	return toInvestmentEventSuggestion(accepted), nil
+}
+
+// LinkSuggestion records that an owner-recorded cash dividend is this
+// provider dividend, so nothing posts and later fetches stay duplicates.
+func (s *InvestmentService) LinkSuggestion(ctx context.Context, ownerUserID int64, authSessionID int64, requestID string, suggestionID int64, transactionID int64) (InvestmentEventSuggestion, error) {
+	if ownerUserID <= 0 {
+		return InvestmentEventSuggestion{}, ValidationError{Message: "owner user is required"}
+	}
+	if suggestionID <= 0 || transactionID <= 0 {
+		return InvestmentEventSuggestion{}, ValidationError{Message: "suggestion id and transaction id are required"}
+	}
+	record, err := s.repository.LinkSuggestion(ctx, db.LinkSuggestionParams{BookID: BookID, SuggestionID: suggestionID, TransactionID: transactionID,
+		ActorUserID: ownerUserID, AuthSessionID: authSessionID, RequestID: requestID, RecordedAt: s.now().UTC().Format(time.RFC3339)})
+	switch {
+	case errors.Is(err, db.ErrNotFound):
+		return InvestmentEventSuggestion{}, ErrInvestmentSuggestionNotFound
+	case errors.Is(err, db.ErrEventSuggestionNotPending):
+		return InvestmentEventSuggestion{}, ErrInvestmentSuggestionNotPending
+	case errors.Is(err, db.ErrEventLinkTarget):
+		return InvestmentEventSuggestion{}, ValidationError{Message: "only an unlinked posted cash dividend of this instrument dated on or after the ex-date can be linked"}
+	case err != nil:
+		return InvestmentEventSuggestion{}, fmt.Errorf("link investment event suggestion: %w", err)
+	}
+	return toInvestmentEventSuggestion(record), nil
 }
 
 func (s *InvestmentService) failSuggestion(ctx context.Context, suggestionID int64, reason string, now string, ownerUserID int64, authSessionID int64, requestID string) (InvestmentEventSuggestion, error) {
@@ -2189,11 +2290,15 @@ func (s *InvestmentService) setSuggestionStatus(ctx context.Context, ownerUserID
 // provider-import boundaries in docs/implemented.md.
 const proposedTransactionKindDividendIncome = "dividend_income"
 
-// proposedDividendTransaction is the contract a future provider-event
-// producer must write into investment_event_suggestions.proposed_transaction_json
-// for AcceptSuggestion to post it.
+// proposedDividendTransaction is the contract a provider-event producer writes
+// into investment_event_suggestions.proposed_transaction_json. The Twelve Data
+// dividend producer (#111) writes complete=false and leaves the payment facts
+// to the owner's SuggestionCompletion; an "informational" kind never posts.
 type proposedDividendTransaction struct {
-	Kind                 string `json:"kind"`
+	Kind string `json:"kind"`
+	// Complete is false for a provider proposal that still needs the owner's
+	// facts (#111); absent means the proposal is complete as written.
+	Complete             *bool  `json:"complete,omitempty"`
 	TransactionDate      string `json:"transaction_date"`
 	CashAccountID        int64  `json:"cash_account_id"`
 	CashCommodityID      int64  `json:"cash_commodity_id"`
@@ -2209,30 +2314,71 @@ type proposedDividendTransaction struct {
 	PayeeID              *int64 `json:"payee_id,omitempty"`
 }
 
+// resolveProposedDividendTransaction merges the owner's completion into an
+// incomplete provider proposal. ownerCompleted reports whether the posted
+// facts came from the owner, whose refusals are returned rather than recorded
+// as a failed suggestion.
+func resolveProposedDividendTransaction(raw string, completion *SuggestionCompletion) (proposedDividendTransaction, bool, error) {
+	var kind struct {
+		Kind   string `json:"kind"`
+		Reason string `json:"reason"`
+	}
+	if err := json.Unmarshal([]byte(raw), &kind); err == nil && kind.Kind == proposedTransactionKindInfoRow {
+		return proposedDividendTransaction{}, false, ValidationError{Message: "this provider event is informational and cannot be posted; record it manually or ignore it"}
+	}
+	var proposal proposedDividendTransaction
+	if err := json.Unmarshal([]byte(raw), &proposal); err == nil && proposal.Kind == proposedTransactionKindDividendIncome && proposal.Complete != nil && !*proposal.Complete {
+		if completion == nil {
+			return proposedDividendTransaction{}, false, ValidationError{Message: "this provider dividend is incomplete: supply the payment date, cash account and received gross amount"}
+		}
+		proposal.TransactionDate = completion.TransactionDate
+		proposal.CashAccountID = completion.CashAccountID
+		proposal.CashCommodityID = completion.CashCommodityID
+		proposal.AmountValue, proposal.AmountScale = completion.AmountValue, completion.AmountScale
+		proposal.IncomeAccountID = completion.IncomeAccountID
+		proposal.WithholdingValue, proposal.WithholdingScale = completion.WithholdingValue, completion.WithholdingScale
+		proposal.WithholdingAccountID = completion.WithholdingAccountID
+		proposal.Memo = completion.Memo
+		if err := validateProposedDividendTransaction(proposal); err != nil {
+			return proposedDividendTransaction{}, true, ValidationError{Message: err.Error()}
+		}
+		return proposal, true, nil
+	}
+	if completion != nil {
+		return proposedDividendTransaction{}, false, ValidationError{Message: "this suggestion is already complete and takes no owner completion"}
+	}
+	proposal, err := parseProposedDividendTransaction(raw)
+	return proposal, false, err
+}
+
 func parseProposedDividendTransaction(raw string) (proposedDividendTransaction, error) {
 	var proposal proposedDividendTransaction
 	if err := json.Unmarshal([]byte(raw), &proposal); err != nil {
 		return proposedDividendTransaction{}, fmt.Errorf("proposed transaction is not valid JSON: %w", err)
 	}
+	return proposal, validateProposedDividendTransaction(proposal)
+}
+
+func validateProposedDividendTransaction(proposal proposedDividendTransaction) error {
 	if proposal.Kind != proposedTransactionKindDividendIncome {
-		return proposedDividendTransaction{}, fmt.Errorf("unsupported proposed transaction kind %q", proposal.Kind)
+		return fmt.Errorf("unsupported proposed transaction kind %q", proposal.Kind)
 	}
 	if strings.TrimSpace(proposal.TransactionDate) == "" {
-		return proposedDividendTransaction{}, fmt.Errorf("proposed transaction date is required")
+		return fmt.Errorf("proposed transaction date is required")
 	}
 	if proposal.CashAccountID <= 0 {
-		return proposedDividendTransaction{}, fmt.Errorf("proposed cash account is required")
+		return fmt.Errorf("proposed cash account is required")
 	}
 	if proposal.CashCommodityID <= 0 {
-		return proposedDividendTransaction{}, fmt.Errorf("proposed cash commodity is required")
+		return fmt.Errorf("proposed cash commodity is required")
 	}
 	if proposal.AmountValue <= 0 {
-		return proposedDividendTransaction{}, fmt.Errorf("proposed amount is required")
+		return fmt.Errorf("proposed amount is required")
 	}
 	if proposal.AmountScale < 0 {
-		return proposedDividendTransaction{}, fmt.Errorf("proposed amount scale is invalid")
+		return fmt.Errorf("proposed amount scale is invalid")
 	}
-	return proposal, nil
+	return nil
 }
 
 func (s *InvestmentService) ListAutomationRules(ctx context.Context) ([]InvestmentAutomationRule, error) {
@@ -2848,7 +2994,7 @@ func toInvestmentProviderEvents(records []db.InvestmentProviderEventRecord) []In
 }
 
 func toInvestmentEventSuggestion(record db.EventSuggestionRecord) InvestmentEventSuggestion {
-	return InvestmentEventSuggestion{ID: record.ID, BookID: record.BookID, ProviderEventID: record.ProviderEventID, InstrumentID: nullableSQLInt64Ptr(record.InstrumentID), ConfidenceBPS: record.ConfidenceBPS, Status: record.Status, ProposedTransactionJSON: record.ProposedTransactionJSON, GeneratedTransactionID: nullableSQLInt64Ptr(record.GeneratedTransactionID), FailureReason: record.FailureReason, CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt}
+	return InvestmentEventSuggestion{ID: record.ID, BookID: record.BookID, ProviderEventID: record.ProviderEventID, EventFamily: record.EventFamily, EventDate: record.EventDate, EventStatus: record.EventStatus, SourceCode: record.SourceCode, EventEvidenceJSON: record.EventNormalizedJSON, InstrumentID: nullableSQLInt64Ptr(record.InstrumentID), ConfidenceBPS: record.ConfidenceBPS, Status: record.Status, ProposedTransactionJSON: record.ProposedTransactionJSON, GeneratedTransactionID: nullableSQLInt64Ptr(record.GeneratedTransactionID), LinkedTransactionID: nullableSQLInt64Ptr(record.LinkedTransactionID), FailureReason: record.FailureReason, CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt}
 }
 
 func toInvestmentEventSuggestions(records []db.EventSuggestionRecord) []InvestmentEventSuggestion {

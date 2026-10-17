@@ -1110,17 +1110,72 @@ export async function getInvestmentAutomationRules(): Promise<InvestmentAutomati
   }
 }
 
+export type EventSuggestionCompletion = components['schemas']['EventSuggestionCompletion'];
+export type InvestmentEventLinkCandidate = components['schemas']['InvestmentEventLinkCandidate'];
+export type DividendEventFetchAccepted = components['schemas']['DividendEventFetchAccepted'];
+
 export async function acceptEventSuggestion(
   suggestionId: number,
-  csrfToken: string
+  csrfToken: string,
+  completion?: EventSuggestionCompletion
 ): Promise<InvestmentEventSuggestionResponse> {
   try {
     const { data, error, response } = await apiClient.POST(
       '/api/v1/investments/event-suggestions/{suggestion_id}/accept',
       {
-        params: { path: { suggestion_id: suggestionId }, header: { 'X-CSRF-Token': csrfToken } }
+        params: { path: { suggestion_id: suggestionId }, header: { 'X-CSRF-Token': csrfToken } },
+        ...(completion ? { body: { completion } } : {})
       }
     );
+
+    if (data !== undefined) {
+      return data;
+    }
+
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) {
+      throw error;
+    }
+
+    throw toNetworkError(error);
+  }
+}
+
+export async function linkEventSuggestion(
+  suggestionId: number,
+  transactionId: number,
+  csrfToken: string
+): Promise<InvestmentEventSuggestionResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/event-suggestions/{suggestion_id}/link',
+      {
+        params: { path: { suggestion_id: suggestionId }, header: { 'X-CSRF-Token': csrfToken } },
+        body: { transaction_id: transactionId }
+      }
+    );
+
+    if (data !== undefined) {
+      return data;
+    }
+
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) {
+      throw error;
+    }
+
+    throw toNetworkError(error);
+  }
+}
+
+export async function queueDividendEventFetch(csrfToken: string): Promise<DividendEventFetchAccepted> {
+  try {
+    const { data, error, response } = await apiClient.POST('/api/v1/investments/event-suggestions/fetch', {
+      params: { header: { 'X-CSRF-Token': csrfToken } },
+      body: {}
+    });
 
     if (data !== undefined) {
       return data;

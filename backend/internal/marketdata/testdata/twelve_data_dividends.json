@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "symbol": "ASML",
+    "name": "ASML Holding NV",
+    "currency": "EUR",
+    "exchange": "Euronext",
+    "mic_code": "XAMS",
+    "exchange_timezone": "Europe/Amsterdam"
+  },
+  "dividends": [
+    { "ex_date": "2026-07-29", "amount": 1.6 },
+    { "ex_date": "2026-04-28", "amount": 1.84 },
+    { "ex_date": "2026-02-02", "amount": "not-a-number" },
+    { "ex_date": "2025-10-28", "amount": 1.6 }
+  ]
+}

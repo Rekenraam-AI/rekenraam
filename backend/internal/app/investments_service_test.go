@@ -108,8 +108,9 @@ func newInvestmentsTestFixtureWithOptions(t *testing.T, withPricing bool) *inves
 }
 
 // seedSuggestion inserts a provider event + a 'suggested' event suggestion
-// directly (there is no service method to create one — no producer of
-// investment_provider_events exists yet; see docs/backlog.md).
+// directly, to pin AcceptSuggestion's handling of arbitrary complete
+// proposals. The real producer (#111) is covered in
+// investment_dividend_events_test.go.
 func (f *investmentsTestFixture) seedSuggestion(t *testing.T, proposedTransactionJSON string) int64 {
 	t.Helper()
 	ctx := context.Background()

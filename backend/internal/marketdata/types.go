@@ -19,6 +19,7 @@ type ProviderCapabilities struct {
 	Prices            bool
 	FXRates           bool
 	HistoricalFXRates bool
+	Dividends         bool
 }
 
 type Provider interface {

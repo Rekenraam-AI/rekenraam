@@ -1,0 +1,75 @@
+post:
+  summary: Link a provider dividend suggestion to an owner-recorded cash dividend (posts nothing)
+  description: >-
+    The transaction must be an effective posted cash dividend of the suggestion's instrument dated from the
+    ex-date up to 90 days after it, and not already admitted by another provider event. The link and the event
+    status commit atomically; later fetches of the same event stay duplicates.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../openapi.yaml#/components/schemas/LinkEventSuggestionRequest"
+  parameters:
+    - $ref: "../openapi.yaml#/components/parameters/SuggestionID"
+    - in: header
+      name: X-CSRF-Token
+      required: true
+      schema:
+        type: string
+      description: Session-bound CSRF token for authenticated mutating requests.
+  responses:
+    "200":
+      description: Suggestion ignored
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/InvestmentEventSuggestionResponse"
+    "400":
+      description: Not a linkable dividend for this event
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "401":
+      description: Authentication is required
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "403":
+      description: Origin or CSRF validation failed
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "404":
+      description: Suggestion not found
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "500":
+      description: Internal server error
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"

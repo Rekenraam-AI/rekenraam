@@ -322,6 +322,8 @@ func RegisterRoutesWithAuth(mux *http.ServeMux, logger *slog.Logger, services Se
 	mux.HandleFunc("GET /api/v1/investments/event-suggestions", listInvestmentEventSuggestions(logger, services.Auth, services.Investment))
 	mux.HandleFunc("POST /api/v1/investments/event-suggestions/{suggestion_id}/accept", acceptInvestmentEventSuggestion(logger, services.Auth, services.Investment, options))
 	mux.HandleFunc("POST /api/v1/investments/event-suggestions/{suggestion_id}/ignore", ignoreInvestmentEventSuggestion(logger, services.Auth, services.Investment, options))
+	mux.HandleFunc("POST /api/v1/investments/event-suggestions/{suggestion_id}/link", linkInvestmentEventSuggestion(logger, services.Auth, services.Investment, options))
+	mux.HandleFunc("POST /api/v1/investments/event-suggestions/fetch", queueDividendEventFetch(logger, services.Auth, services.Pricing, options))
 	mux.HandleFunc("GET /api/v1/investments/automation-rules", listInvestmentAutomationRules(logger, services.Auth, services.Investment))
 	mux.HandleFunc("PUT /api/v1/investments/automation-rules", saveInvestmentAutomationRules(logger, services.Auth, services.Investment, options))
 	mux.HandleFunc("GET /api/v1/investments/gains", listInvestmentGains(logger, services.Auth, services.Investment))

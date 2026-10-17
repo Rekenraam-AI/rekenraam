@@ -460,7 +460,8 @@ that allocation rather than rewriting the 8.00 EUR receipt.
    entry (#167) was delivered 2026-10-10; resolution recovery (#168) remains
    a separate contract.
    Provider suggestions stay in review until their command and verified
-   mapping are supported; #145 and #111 track that boundary.
+   mapping are supported; #145 tracks that boundary (the #111 producer maps
+   dividends only).
 4. Mobile entry and unresolved labels ship for the bounded family. Dated
    historical-entry selectors (#166), stronger provenance declarations (#170),
    and persistent return-of-capital excess visibility (#171, delivered 2026-10-13) have their own

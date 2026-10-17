@@ -1,5 +1,16 @@
 post:
   summary: Accept an investment event suggestion (posts the proposed transaction)
+  description: >-
+    A complete proposal is accepted with no body. An incomplete provider dividend (proposed_transaction.complete
+    = false, #111) requires `completion` with the facts a per-share announcement cannot state; a missing or
+    refused completion returns an error and the suggestion stays pending. Informational events cannot be accepted.
+    The posted dividend, the suggestion and the provider event status commit atomically.
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          $ref: "../openapi.yaml#/components/schemas/AcceptEventSuggestionRequest"
   parameters:
     - $ref: "../openapi.yaml#/components/parameters/SuggestionID"
     - in: header
@@ -18,6 +29,15 @@ post:
         application/json:
           schema:
             $ref: "../openapi.yaml#/components/schemas/InvestmentEventSuggestionResponse"
+    "400":
+      description: Completion missing or invalid, or the event is informational; the suggestion stays pending
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "401":
       description: Authentication is required
       headers:
@@ -38,6 +58,15 @@ post:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "404":
       description: Suggestion not found
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "409":
+      description: Suggestion is no longer pending, or the completed dividend needs a reconciliation override
       headers:
         X-Request-ID:
           $ref: "../openapi.yaml#/components/headers/XRequestID"

@@ -465,6 +465,11 @@ type EventSuggestionRecord struct {
 	BookID                  int64
 	ProviderEventID         int64
 	EventFamily             string
+	EventDate               string
+	EventStatus             string
+	SourceCode              string
+	EventNormalizedJSON     string
+	LinkedTransactionID     sql.NullInt64
 	InstrumentID            sql.NullInt64
 	ConfidenceBPS           int
 	Status                  string
@@ -2397,12 +2402,9 @@ func (r *InvestmentRepository) ListProviderEvents(ctx context.Context, bookID in
 }
 
 func (r *InvestmentRepository) ListEventSuggestions(ctx context.Context, bookID int64) ([]EventSuggestionRecord, error) {
-	rows, err := r.database.QueryContext(ctx, `
-		SELECT id, book_id, provider_event_id, instrument_id, confidence_bps, status, proposed_transaction_json,
-			generated_transaction_id, failure_reason, created_at, updated_at
-		FROM investment_event_suggestions
-		WHERE book_id = ?
-		ORDER BY created_at DESC, id DESC
+	rows, err := r.database.QueryContext(ctx, eventSuggestionSelect+`
+		WHERE s.book_id = ?
+		ORDER BY s.created_at DESC, s.id DESC
 	`, bookID)
 	if err != nil {
 		return nil, fmt.Errorf("list event suggestions: %w", err)
@@ -2410,9 +2412,9 @@ func (r *InvestmentRepository) ListEventSuggestions(ctx context.Context, bookID 
 	defer rows.Close()
 	var records []EventSuggestionRecord
 	for rows.Next() {
-		var record EventSuggestionRecord
-		if err := rows.Scan(&record.ID, &record.BookID, &record.ProviderEventID, &record.InstrumentID, &record.ConfidenceBPS, &record.Status, &record.ProposedTransactionJSON, &record.GeneratedTransactionID, &record.FailureReason, &record.CreatedAt, &record.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("scan event suggestion: %w", err)
+		record, err := scanEventSuggestion(rows)
+		if err != nil {
+			return nil, err
 		}
 		records = append(records, record)
 	}
@@ -2420,6 +2422,30 @@ func (r *InvestmentRepository) ListEventSuggestions(ctx context.Context, bookID 
 		return nil, fmt.Errorf("iterate event suggestions: %w", err)
 	}
 	return records, nil
+}
+
+// eventSuggestionSelect reads a suggestion with its immutable event evidence.
+const eventSuggestionSelect = `
+		SELECT s.id, s.book_id, s.provider_event_id, e.event_family, e.event_date, e.status, src.code, e.normalized_json,
+			s.instrument_id, s.confidence_bps, s.status, s.proposed_transaction_json,
+			s.generated_transaction_id, s.linked_transaction_id, s.failure_reason, s.created_at, s.updated_at
+		FROM investment_event_suggestions s
+		JOIN investment_provider_events e ON e.id = s.provider_event_id AND e.book_id = s.book_id
+		JOIN market_data_sources src ON src.id = e.source_id`
+
+func scanEventSuggestion(row interface{ Scan(...any) error }) (EventSuggestionRecord, error) {
+	var record EventSuggestionRecord
+	err := row.Scan(&record.ID, &record.BookID, &record.ProviderEventID, &record.EventFamily, &record.EventDate, &record.EventStatus,
+		&record.SourceCode, &record.EventNormalizedJSON, &record.InstrumentID, &record.ConfidenceBPS, &record.Status,
+		&record.ProposedTransactionJSON, &record.GeneratedTransactionID, &record.LinkedTransactionID, &record.FailureReason,
+		&record.CreatedAt, &record.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return EventSuggestionRecord{}, ErrNotFound
+	}
+	if err != nil {
+		return EventSuggestionRecord{}, fmt.Errorf("scan event suggestion: %w", err)
+	}
+	return record, nil
 }
 
 func (r *InvestmentRepository) SetSuggestionStatus(ctx context.Context, bookID int64, suggestionID int64, status string, actorUserID int64, authSessionID int64, requestID string, now string) (EventSuggestionRecord, error) {
@@ -2471,6 +2497,12 @@ func (r *InvestmentRepository) SetSuggestionStatus(ctx context.Context, bookID i
 	if err != nil {
 		return EventSuggestionRecord{}, err
 	}
+	if status == "ignored" {
+		if err := setProviderEventStatusTx(ctx, tx, bookID, record.ProviderEventID, "ignored"); err != nil {
+			return EventSuggestionRecord{}, err
+		}
+		record.EventStatus = "ignored"
+	}
 	if err := tx.Commit(); err != nil {
 		return EventSuggestionRecord{}, fmt.Errorf("commit set event suggestion status: %w", err)
 	}
@@ -2480,22 +2512,7 @@ func (r *InvestmentRepository) SetSuggestionStatus(ctx context.Context, bookID i
 
 // EventSuggestionByID reads one suggestion outside a transaction.
 func (r *InvestmentRepository) EventSuggestionByID(ctx context.Context, bookID int64, suggestionID int64) (EventSuggestionRecord, error) {
-	var record EventSuggestionRecord
-	err := r.database.QueryRowContext(ctx, `
-		SELECT s.id, s.book_id, s.provider_event_id, e.event_family, s.instrument_id,
-			s.confidence_bps, s.status, s.proposed_transaction_json,
-			s.generated_transaction_id, s.failure_reason, s.created_at, s.updated_at
-		FROM investment_event_suggestions s
-		JOIN investment_provider_events e ON e.id = s.provider_event_id AND e.book_id = s.book_id
-		WHERE s.book_id = ? AND s.id = ?
-	`, bookID, suggestionID).Scan(&record.ID, &record.BookID, &record.ProviderEventID, &record.EventFamily, &record.InstrumentID, &record.ConfidenceBPS, &record.Status, &record.ProposedTransactionJSON, &record.GeneratedTransactionID, &record.FailureReason, &record.CreatedAt, &record.UpdatedAt)
-	if errors.Is(err, sql.ErrNoRows) {
-		return EventSuggestionRecord{}, ErrNotFound
-	}
-	if err != nil {
-		return EventSuggestionRecord{}, fmt.Errorf("read event suggestion: %w", err)
-	}
-	return record, nil
+	return scanEventSuggestion(r.database.QueryRowContext(ctx, eventSuggestionSelect+` WHERE s.book_id = ? AND s.id = ?`, bookID, suggestionID))
 }
 
 // MarkSuggestionAcceptedInTx records a suggestion's generated transaction
@@ -2535,7 +2552,11 @@ func (r *InvestmentRepository) MarkSuggestionAcceptedInTx(ctx context.Context, t
 	if rowsAffected == 0 {
 		return ErrEventSuggestionNotPending
 	}
-	return nil
+	current, err := eventSuggestionByIDTx(ctx, tx, bookID, suggestionID)
+	if err != nil {
+		return err
+	}
+	return setProviderEventStatusTx(ctx, tx, bookID, current.ProviderEventID, "matched")
 }
 
 // MarkSuggestionFailed records why a suggestion's proposed transaction could
@@ -3263,19 +3284,7 @@ func proratedCostBasis(remainingCost int64, quantity exact.Coefficient, remainin
 }
 
 func eventSuggestionByIDTx(ctx context.Context, tx *sql.Tx, bookID int64, suggestionID int64) (EventSuggestionRecord, error) {
-	var record EventSuggestionRecord
-	if err := tx.QueryRowContext(ctx, `
-		SELECT id, book_id, provider_event_id, instrument_id, confidence_bps, status, proposed_transaction_json,
-			generated_transaction_id, failure_reason, created_at, updated_at
-		FROM investment_event_suggestions
-		WHERE book_id = ? AND id = ?
-	`, bookID, suggestionID).Scan(&record.ID, &record.BookID, &record.ProviderEventID, &record.InstrumentID, &record.ConfidenceBPS, &record.Status, &record.ProposedTransactionJSON, &record.GeneratedTransactionID, &record.FailureReason, &record.CreatedAt, &record.UpdatedAt); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return EventSuggestionRecord{}, ErrNotFound
-		}
-		return EventSuggestionRecord{}, fmt.Errorf("scan event suggestion: %w", err)
-	}
-	return record, nil
+	return scanEventSuggestion(tx.QueryRowContext(ctx, eventSuggestionSelect+` WHERE s.book_id = ? AND s.id = ?`, bookID, suggestionID))
 }
 
 func automationRuleByIDTx(ctx context.Context, tx *sql.Tx, bookID int64, ruleID int64) (AutomationRuleRecord, error) {

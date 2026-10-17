@@ -543,6 +543,10 @@ paths:
     $ref: "./paths/investments-event-suggestion-accept.yaml"
   /api/v1/investments/event-suggestions/{suggestion_id}/ignore:
     $ref: "./paths/investments-event-suggestion-ignore.yaml"
+  /api/v1/investments/event-suggestions/{suggestion_id}/link:
+    $ref: "./paths/investments-event-suggestion-link.yaml"
+  /api/v1/investments/event-suggestions/fetch:
+    $ref: "./paths/investments-event-suggestions-fetch.yaml"
   /api/v1/investments/automation-rules:
     $ref: "./paths/investments-automation-rules.yaml"
   /api/v1/investments/gains:
@@ -1465,6 +1469,16 @@ components:
       $ref: "./components/schemas/investments.yaml#/InvestmentEventSuggestionResponse"
     InvestmentEventSuggestionsResponse:
       $ref: "./components/schemas/investments.yaml#/InvestmentEventSuggestionsResponse"
+    InvestmentEventLinkCandidate:
+      $ref: "./components/schemas/investments.yaml#/InvestmentEventLinkCandidate"
+    AcceptEventSuggestionRequest:
+      $ref: "./components/schemas/investments.yaml#/AcceptEventSuggestionRequest"
+    EventSuggestionCompletion:
+      $ref: "./components/schemas/investments.yaml#/EventSuggestionCompletion"
+    LinkEventSuggestionRequest:
+      $ref: "./components/schemas/investments.yaml#/LinkEventSuggestionRequest"
+    DividendEventFetchAccepted:
+      $ref: "./components/schemas/investments.yaml#/DividendEventFetchAccepted"
     InvestmentAutomationRuleResponse:
       $ref: "./components/schemas/investments.yaml#/InvestmentAutomationRuleResponse"
     InvestmentAutomationRulesResponse:

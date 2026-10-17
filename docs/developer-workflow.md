@@ -740,6 +740,12 @@ Create/edit instruments and explicit provider identifiers under Investments →
 Instruments, select a quote currency, save, and enable its provider assignment.
 **Refresh quotes** queues durable work; source health and pricing refresh history
 show completion. The saved daily pricing schedule also queues assigned quotes.
+Twelve Data assignments with a symbol and MIC also feed **Check provider
+dividends** on Investments → Suggestions (#111): it queues durable
+`investment.dividend_events` work only when clicked (no schedule), needs a plan
+whose entitlement includes `/dividends`, and reports failures in pricing failed
+work. The e2e harness sets a placeholder `TWELVE_DATA_API_KEY` that only ever
+reaches the `MARKET_DATA_BASE_URL` stub.
 For provider evidence, failure recovery and the fixed crypto CSV columns, see the
 [quote/crypto contract](plans/quote-providers-crypto-plan.md).
 

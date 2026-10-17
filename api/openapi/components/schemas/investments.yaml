@@ -3498,9 +3498,15 @@ InvestmentEventSuggestionResponse:
     - id
     - book_id
     - provider_event_id
+    - event_family
+    - event_date
+    - event_status
+    - source_code
+    - evidence
     - confidence_bps
     - status
     - proposed_transaction
+    - link_candidates
     - created_at
     - updated_at
   properties:
@@ -3513,6 +3519,31 @@ InvestmentEventSuggestionResponse:
     provider_event_id:
       type: integer
       format: int64
+    event_family:
+      type: string
+    event_date:
+      type: string
+      format: date
+      description: For a dividend, the provider's ex-date.
+    event_status:
+      type: string
+      enum: [new, matched, ignored, superseded]
+    source_code:
+      type: string
+    evidence:
+      type: object
+      additionalProperties: true
+      description: >-
+        Immutable normalized provider evidence. Provider dividends (schema 1) carry symbol, mic, ex_date,
+        entitlement_date, amount_per_share, listing_currency, holdings, entitled_units, estimated_gross
+        (decimals as {value, scale}; null when unknown), missing reason codes and an optional unsupported code.
+    linked_transaction_id:
+      type: integer
+      format: int64
+    link_candidates:
+      type: array
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/InvestmentEventLinkCandidate"
     instrument_id:
       type: integer
       format: int64
@@ -3520,6 +3551,7 @@ InvestmentEventSuggestionResponse:
       type: integer
     status:
       type: string
+      enum: [suggested, accepted, linked, ignored, auto_posted, failed, superseded]
     proposed_transaction:
       type: object
       additionalProperties: true
@@ -3534,6 +3566,84 @@ InvestmentEventSuggestionResponse:
     updated_at:
       type: string
       format: date-time
+
+InvestmentEventLinkCandidate:
+  type: object
+  required: [transaction_id, transaction_date, cash_code, gross_value, gross_scale]
+  properties:
+    transaction_id:
+      type: integer
+      format: int64
+    transaction_date:
+      type: string
+      format: date
+    cash_code:
+      type: string
+    gross_value:
+      type: string
+      pattern: '^-?(0|[1-9][0-9]{0,37})$'
+    gross_scale:
+      type: integer
+
+AcceptEventSuggestionRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    completion:
+      $ref: "../../openapi.yaml#/components/schemas/EventSuggestionCompletion"
+
+EventSuggestionCompletion:
+  type: object
+  additionalProperties: false
+  required: [transaction_date, cash_account_id, cash_commodity_id, amount_value, amount_scale]
+  properties:
+    transaction_date:
+      type: string
+      format: date
+      description: Payment date, which becomes the dividend's transaction date.
+    cash_account_id:
+      type: integer
+      format: int64
+    cash_commodity_id:
+      type: integer
+      format: int64
+    amount_value:
+      type: string
+      pattern: '^(0|[1-9][0-9]{0,18})$'
+      description: Received gross dividend coefficient.
+    amount_scale:
+      type: integer
+    income_account_id:
+      type: integer
+      format: int64
+    withholding_value:
+      type: string
+      pattern: '^(0|[1-9][0-9]{0,18})$'
+    withholding_scale:
+      type: integer
+    withholding_account_id:
+      type: integer
+      format: int64
+    memo:
+      type: string
+    reconciliation_override:
+      type: boolean
+
+LinkEventSuggestionRequest:
+  type: object
+  additionalProperties: false
+  required: [transaction_id]
+  properties:
+    transaction_id:
+      type: integer
+      format: int64
+
+DividendEventFetchAccepted:
+  type: object
+  required: [queued_count]
+  properties:
+    queued_count:
+      type: integer
 
 InvestmentEventSuggestionsResponse:
   type: object

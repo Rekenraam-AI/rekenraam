@@ -24531,7 +24531,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Accept an investment event suggestion (posts the proposed transaction) */
+        /**
+         * Accept an investment event suggestion (posts the proposed transaction)
+         * @description A complete proposal is accepted with no body. An incomplete provider dividend (proposed_transaction.complete = false, #111) requires `completion` with the facts a per-share announcement cannot state; a missing or refused completion returns an error and the suggestion stays pending. Informational events cannot be accepted. The posted dividend, the suggestion and the provider event status commit atomically.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -24544,7 +24547,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AcceptEventSuggestionRequest"];
+                };
+            };
             responses: {
                 /** @description Suggestion accepted and transaction posted */
                 200: {
@@ -24554,6 +24561,16 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["InvestmentEventSuggestionResponse"];
+                    };
+                };
+                /** @description Completion missing or invalid, or the event is informational; the suggestion stays pending */
+                400: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description Authentication is required */
@@ -24578,6 +24595,16 @@ export interface paths {
                 };
                 /** @description Suggestion not found */
                 404: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Suggestion is no longer pending, or the completed dividend needs a reconciliation override */
+                409: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
                         [name: string]: unknown;
@@ -24672,6 +24699,186 @@ export interface paths {
                 500: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/event-suggestions/{suggestion_id}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link a provider dividend suggestion to an owner-recorded cash dividend (posts nothing)
+         * @description The transaction must be an effective posted cash dividend of the suggestion's instrument dated from the ex-date up to 90 days after it, and not already admitted by another provider event. The link and the event status commit atomically; later fetches of the same event stay duplicates.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description Session-bound CSRF token for authenticated mutating requests. */
+                    "X-CSRF-Token": string;
+                };
+                path: {
+                    suggestion_id: components["parameters"]["SuggestionID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LinkEventSuggestionRequest"];
+                };
+            };
+            responses: {
+                /** @description Suggestion ignored */
+                200: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InvestmentEventSuggestionResponse"];
+                    };
+                };
+                /** @description Not a linkable dividend for this event */
+                400: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication is required */
+                401: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Origin or CSRF validation failed */
+                403: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Suggestion not found */
+                404: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/event-suggestions/fetch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue provider dividend event fetches
+         * @description Accepts durable work for each active instrument assignment whose provider has a verified dividend mapping (Twelve Data,
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CSRF-Token": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            responses: {
+                /** @description Accepted (including already queued listings) */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DividendEventFetchAccepted"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Origin or CSRF rejected */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Failed to queue */
+                500: {
+                    headers: {
                         [name: string]: unknown;
                     };
                     content: {
@@ -31177,10 +31384,27 @@ export interface components {
             book_id: number;
             /** Format: int64 */
             provider_event_id: number;
+            event_family: string;
+            /**
+             * Format: date
+             * @description For a dividend, the provider's ex-date.
+             */
+            event_date: string;
+            /** @enum {string} */
+            event_status: "new" | "matched" | "ignored" | "superseded";
+            source_code: string;
+            /** @description Immutable normalized provider evidence. Provider dividends (schema 1) carry symbol, mic, ex_date, entitlement_date, amount_per_share, listing_currency, holdings, entitled_units, estimated_gross (decimals as {value, scale}; null when unknown), missing reason codes and an optional unsupported code. */
+            evidence: {
+                [key: string]: unknown;
+            };
+            /** Format: int64 */
+            linked_transaction_id?: number;
+            link_candidates: components["schemas"]["InvestmentEventLinkCandidate"][];
             /** Format: int64 */
             instrument_id?: number;
             confidence_bps: number;
-            status: string;
+            /** @enum {string} */
+            status: "suggested" | "accepted" | "linked" | "ignored" | "auto_posted" | "failed" | "superseded";
             proposed_transaction: {
                 [key: string]: unknown;
             };
@@ -31194,6 +31418,47 @@ export interface components {
         };
         InvestmentEventSuggestionsResponse: {
             suggestions: components["schemas"]["InvestmentEventSuggestionResponse"][];
+        };
+        InvestmentEventLinkCandidate: {
+            /** Format: int64 */
+            transaction_id: number;
+            /** Format: date */
+            transaction_date: string;
+            cash_code: string;
+            gross_value: string;
+            gross_scale: number;
+        };
+        AcceptEventSuggestionRequest: {
+            completion?: components["schemas"]["EventSuggestionCompletion"];
+        };
+        EventSuggestionCompletion: {
+            /**
+             * Format: date
+             * @description Payment date, which becomes the dividend's transaction date.
+             */
+            transaction_date: string;
+            /** Format: int64 */
+            cash_account_id: number;
+            /** Format: int64 */
+            cash_commodity_id: number;
+            /** @description Received gross dividend coefficient. */
+            amount_value: string;
+            amount_scale: number;
+            /** Format: int64 */
+            income_account_id?: number;
+            withholding_value?: string;
+            withholding_scale?: number;
+            /** Format: int64 */
+            withholding_account_id?: number;
+            memo?: string;
+            reconciliation_override?: boolean;
+        };
+        LinkEventSuggestionRequest: {
+            /** Format: int64 */
+            transaction_id: number;
+        };
+        DividendEventFetchAccepted: {
+            queued_count: number;
         };
         InvestmentAutomationRuleResponse: {
             /** Format: int64 */

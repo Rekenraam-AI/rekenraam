@@ -4,12 +4,25 @@
   import StatePanel from '#lib/components/state-panel.svelte';
   import {
     investmentEventSuggestionsQueryOptions,
+    investmentEventSuggestionsQueryKey,
+    investmentInstrumentsQueryOptions,
     acceptEventSuggestion,
     ignoreEventSuggestion,
+    linkEventSuggestion,
+    queueDividendEventFetch,
     type InvestmentEventSuggestionResponse
   } from '#lib/api/investments.ts';
+  import { formatQuantity } from '#lib/money/format.ts';
+  import { getLocale } from '#lib/paraglide/runtime.js';
   import { m } from '#lib/paraglide/messages.js';
   import { invalidateInvestmentReads } from './invalidate';
+  import ProviderDividendCompletion from './provider-dividend-completion.svelte';
+  import {
+    parseProviderDividendEvidence,
+    proposalCommodityID,
+    proposalShape,
+    type ProviderDecimal
+  } from './provider-dividend.ts';
 
   interface Props {
     csrfToken: string;
@@ -18,43 +31,77 @@
   const { csrfToken }: Props = $props();
 
   const queryClient = useQueryClient();
-  const suggestionsQuery = createQuery(() => investmentEventSuggestionsQueryOptions());
+  // After queueing a fetch, poll briefly so staged events appear without a reload.
+  let pollUntil = $state(0);
+  const suggestionsQuery = createQuery(() => ({
+    ...investmentEventSuggestionsQueryOptions(),
+    refetchInterval: () => (Date.now() < pollUntil ? 5_000 : false)
+  }));
+  const instrumentsQuery = createQuery(() => investmentInstrumentsQueryOptions());
 
   const suggestions = $derived(suggestionsQuery.data?.suggestions ?? []);
   const pending = $derived(suggestions.filter((s) => s.status === 'suggested'));
   const history = $derived(suggestions.filter((s) => s.status !== 'suggested'));
+  const instrumentNames = $derived(
+    new Map((instrumentsQuery.data?.instruments ?? []).map((instrument) => [instrument.id, instrument.display_name]))
+  );
 
-  let accepting = $state<Set<number>>(new Set());
-  let ignoring = $state<Set<number>>(new Set());
+  let busy = $state<Set<number>>(new Set());
   let errors = $state<Map<number, string>>(new Map());
+  let completing = $state<number | null>(null);
+  let fetchPending = $state(false);
+  let fetchMessage = $state<{ tone: 'info' | 'error'; text: string } | null>(null);
 
-  async function accept(s: InvestmentEventSuggestionResponse) {
-    accepting = new Set([...accepting, s.id]);
-    errors = new Map([...errors].filter(([k]) => k !== s.id));
+  function setBusy(id: number, on: boolean) {
+    busy = on ? new Set([...busy, id]) : new Set([...busy].filter((other) => other !== id));
+  }
+
+  function setError(id: number, message: string | null) {
+    const next = new Map([...errors].filter(([key]) => key !== id));
+    if (message) next.set(id, message);
+    errors = next;
+  }
+
+  async function refreshAfterPosting() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: investmentEventSuggestionsQueryKey }),
+      invalidateInvestmentReads(queryClient)
+    ]);
+  }
+
+  async function act(s: InvestmentEventSuggestionResponse, action: () => Promise<unknown>, failure: string, posts: boolean) {
+    setBusy(s.id, true);
+    setError(s.id, null);
     try {
-      await acceptEventSuggestion(s.id, csrfToken);
-      // Accepting posts the proposed dividend.
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['api', 'investments', 'event-suggestions'] }),
-        invalidateInvestmentReads(queryClient)
-      ]);
+      await action();
+      if (posts) {
+        await refreshAfterPosting();
+      } else {
+        await queryClient.invalidateQueries({ queryKey: investmentEventSuggestionsQueryKey });
+      }
     } catch {
-      errors = new Map([...errors, [s.id, m.investments_suggestion_accept_error()]]);
+      setError(s.id, failure);
     } finally {
-      accepting = new Set([...accepting].filter((id) => id !== s.id));
+      setBusy(s.id, false);
     }
   }
 
-  async function ignore(s: InvestmentEventSuggestionResponse) {
-    ignoring = new Set([...ignoring, s.id]);
-    errors = new Map([...errors].filter(([k]) => k !== s.id));
+  async function checkProviders() {
+    fetchPending = true;
+    fetchMessage = null;
     try {
-      await ignoreEventSuggestion(s.id, csrfToken);
-      await queryClient.invalidateQueries({ queryKey: ['api', 'investments', 'event-suggestions'] });
+      const result = await queueDividendEventFetch(csrfToken);
+      if (result.queued_count === 0) {
+        fetchMessage = { tone: 'info', text: m.investments_suggestions_fetch_none() };
+      } else {
+        fetchMessage = { tone: 'info', text: m.investments_suggestions_fetch_queued({ count: result.queued_count }) };
+        pollUntil = Date.now() + 60_000;
+        await queryClient.invalidateQueries({ queryKey: investmentEventSuggestionsQueryKey });
+      }
     } catch {
-      errors = new Map([...errors, [s.id, m.investments_suggestion_ignore_error()]]);
+      fetchMessage = { tone: 'error', text: m.investments_suggestions_fetch_error() };
     } finally {
-      ignoring = new Set([...ignoring].filter((id) => id !== s.id));
+      fetchPending = false;
     }
   }
 
@@ -62,6 +109,7 @@
     switch (status) {
       case 'suggested': return m.investments_suggestion_status_suggested();
       case 'accepted': return m.investments_suggestion_status_accepted();
+      case 'linked': return m.investments_suggestion_status_linked();
       case 'ignored': return m.investments_suggestion_status_ignored();
       case 'auto_posted': return m.investments_suggestion_status_auto_posted();
       case 'failed': return m.investments_suggestion_status_failed();
@@ -72,9 +120,10 @@
 
   function statusClass(status: string): string {
     switch (status) {
-      case 'suggested': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
+      case 'suggested': return 'bg-warning-soft text-warning';
       case 'accepted':
-      case 'auto_posted': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case 'linked':
+      case 'auto_posted': return 'bg-positive-soft text-positive';
       case 'ignored':
       case 'superseded': return 'bg-muted/30 text-muted';
       case 'failed': return 'bg-destructive/10 text-destructive';
@@ -82,12 +131,48 @@
     }
   }
 
+  function missingLabel(code: string): string {
+    switch (code) {
+      case 'payment_date': return m.investments_suggestion_missing_payment_date();
+      case 'cash_account': return m.investments_suggestion_missing_cash_account();
+      case 'received_amount': return m.investments_suggestion_missing_received_amount();
+      case 'dividend_currency': return m.investments_suggestion_missing_dividend_currency();
+      case 'amount_per_share': return m.investments_suggestion_missing_amount_per_share();
+      default: return code;
+    }
+  }
+
+  function sourceLabel(code: string): string {
+    return code === 'twelve_data' ? m.investments_suggestion_source_twelve_data() : code;
+  }
+
+  function amount(decimal: ProviderDecimal | null): string {
+    return decimal ? formatQuantity(decimal.value, decimal.scale, getLocale()) : m.investments_suggestion_unknown();
+  }
+
+  function title(s: InvestmentEventSuggestionResponse): string {
+    return (s.instrument_id !== undefined && instrumentNames.get(s.instrument_id)) || m.investments_suggestion_instrument_unknown();
+  }
+
   function confidencePct(bps: number): string {
-    return `${(bps / 100).toFixed(0)}%`;
+    return new Intl.NumberFormat(getLocale(), { style: 'percent', maximumFractionDigits: 0 }).format(bps / 10_000);
   }
 </script>
 
 <div class="space-y-6">
+  <Panel>
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <p class="min-w-0 flex-1 text-sm text-muted">{m.investments_suggestions_intro()}</p>
+      <button type="button" onclick={checkProviders} disabled={fetchPending}
+        class="rounded-(--radius-control) border border-border bg-control px-3 py-1.5 text-sm font-semibold text-foreground transition hover:bg-control-hover disabled:opacity-40">
+        {fetchPending ? m.investments_suggestions_fetch_pending() : m.investments_suggestions_fetch()}
+      </button>
+    </div>
+    {#if fetchMessage}
+      <p role="status" class="mt-2 text-sm {fetchMessage.tone === 'error' ? 'text-destructive' : 'text-foreground'}">{fetchMessage.text}</p>
+    {/if}
+  </Panel>
+
   {#if suggestionsQuery.isPending}
     <Panel>
       <p class="text-sm text-muted">{m.investments_suggestions_loading()}</p>
@@ -96,81 +181,136 @@
     <Panel>
       <p class="text-sm text-destructive">{m.investments_suggestions_error()}</p>
     </Panel>
-  {:else if pending.length === 0 && history.length === 0}
-    <StatePanel title={m.investments_suggestions_empty()} copy="" />
   {:else}
-    <!-- Pending suggestions -->
     {#if pending.length > 0}
-      <div class="space-y-3">
+      <ul class="space-y-3" aria-label={m.investments_suggestions_pending_title()}>
         {#each pending as s (s.id)}
-          <Panel>
-            <div class="flex flex-wrap items-start justify-between gap-3">
-              <div class="min-w-0 flex-1 space-y-1">
+          {@const evidence = parseProviderDividendEvidence(s.evidence)}
+          {@const shape = proposalShape(s.proposed_transaction)}
+          <li>
+            <Panel>
+              <div class="space-y-2" data-testid="event-suggestion">
                 <div class="flex flex-wrap items-center gap-2">
-                  <span class="rounded-full px-2 py-0.5 text-xs font-medium {statusClass(s.status)}">
-                    {statusLabel(s.status)}
-                  </span>
-                  <span class="text-xs text-muted">
-                    {m.investments_suggestion_confidence()}: {confidencePct(s.confidence_bps)}
-                  </span>
+                  <span class="rounded-full px-2 py-0.5 text-xs font-medium {statusClass(s.status)}">{statusLabel(s.status)}</span>
+                  <h3 class="text-sm font-semibold text-foreground">{title(s)}</h3>
+                  <span class="text-xs text-muted">{m.investments_suggestion_ex_date({ date: s.event_date })}</span>
+                  <span class="text-xs text-muted">{sourceLabel(s.source_code)}</span>
+                  <span class="text-xs text-muted">{m.investments_suggestion_confidence()}: {confidencePct(s.confidence_bps)}</span>
                 </div>
-                <details class="mt-2">
-                  <summary class="cursor-pointer text-xs text-muted hover:text-foreground">
-                    {m.investments_suggestion_proposed()}
-                  </summary>
-                  <pre class="mt-1 overflow-x-auto rounded bg-surface-strong p-2 text-xs text-foreground">{JSON.stringify(s.proposed_transaction, null, 2)}</pre>
-                </details>
+
+                {#if evidence}
+                  <dl class="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+                    <div>
+                      <dt class="text-xs text-muted">{m.investments_suggestion_per_share()}</dt>
+                      <dd class="tabular-nums text-foreground">
+                        {amount(evidence.amountPerShare)}
+                        {#if evidence.amountPerShare && evidence.listingCurrency}
+                          <span class="block text-xs text-muted">{m.investments_suggestion_listing_currency_note({ currency: evidence.listingCurrency })}</span>
+                        {/if}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt class="text-xs text-muted">{m.investments_suggestion_units({ date: evidence.entitlementDate })}</dt>
+                      <dd class="tabular-nums text-foreground">{amount(evidence.entitledUnits)}</dd>
+                    </div>
+                    <div>
+                      <dt class="text-xs text-muted">{m.investments_suggestion_estimated_gross()}</dt>
+                      <dd class="tabular-nums text-foreground">{amount(evidence.estimatedGross)}</dd>
+                    </div>
+                  </dl>
+                  {#if shape === 'needs_completion' && evidence.missing.length > 0}
+                    <p class="text-xs text-muted">
+                      {m.investments_suggestion_needs()}: {evidence.missing.map(missingLabel).join(', ')}
+                    </p>
+                  {/if}
+                {:else if shape === 'complete'}
+                  <details>
+                    <summary class="cursor-pointer text-xs text-muted hover:text-foreground">{m.investments_suggestion_proposed()}</summary>
+                    <pre class="mt-1 overflow-x-auto rounded bg-surface-strong p-2 text-xs text-foreground">{JSON.stringify(s.proposed_transaction, null, 2)}</pre>
+                  </details>
+                {/if}
+
+                {#if shape === 'informational'}
+                  <p class="text-sm text-foreground" role="note">{m.investments_suggestion_short_position()}</p>
+                {/if}
+
+                {#if shape === 'needs_completion' && s.link_candidates.length > 0}
+                  <div class="rounded-(--radius-panel) border border-border p-3">
+                    <p class="text-sm font-medium text-foreground">{m.investments_suggestion_link_title()}</p>
+                    <ul class="mt-2 space-y-2">
+                      {#each s.link_candidates as candidate (candidate.transaction_id)}
+                        <li class="flex flex-wrap items-center justify-between gap-2 text-sm">
+                          <span class="tabular-nums text-foreground">
+                            {m.investments_suggestion_link_candidate({ date: candidate.transaction_date, amount: formatQuantity(candidate.gross_value, candidate.gross_scale, getLocale()), currency: candidate.cash_code })}
+                          </span>
+                          <button type="button" disabled={busy.has(s.id)}
+                            onclick={() => act(s, () => linkEventSuggestion(s.id, candidate.transaction_id, csrfToken), m.investments_suggestion_link_error(), false)}
+                            class="rounded-(--radius-control) border border-border bg-control px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-control-hover disabled:opacity-40">
+                            {m.investments_suggestion_link()}
+                          </button>
+                        </li>
+                      {/each}
+                    </ul>
+                  </div>
+                {/if}
+
                 {#if errors.has(s.id)}
-                  <p class="text-xs text-destructive">{errors.get(s.id)}</p>
+                  <p class="text-xs text-destructive" role="alert">{errors.get(s.id)}</p>
+                {/if}
+
+                <div class="flex flex-wrap justify-end gap-2">
+                  {#if shape === 'complete'}
+                    <button type="button" disabled={busy.has(s.id)}
+                      onclick={() => act(s, () => acceptEventSuggestion(s.id, csrfToken), m.investments_suggestion_accept_error(), true)}
+                      class="rounded-(--radius-control) bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition hover:opacity-90 disabled:opacity-40">
+                      {m.investments_suggestion_accept()}
+                    </button>
+                  {:else if shape === 'needs_completion' && completing !== s.id}
+                    <button type="button" disabled={busy.has(s.id)} onclick={() => (completing = s.id)}
+                      class="rounded-(--radius-control) bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition hover:opacity-90 disabled:opacity-40">
+                      {m.investments_suggestion_complete()}
+                    </button>
+                  {/if}
+                  <button type="button" disabled={busy.has(s.id)}
+                    onclick={() => act(s, () => ignoreEventSuggestion(s.id, csrfToken), m.investments_suggestion_ignore_error(), false)}
+                    class="rounded-(--radius-control) border border-border bg-control px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-control-hover disabled:opacity-40">
+                    {m.investments_suggestion_ignore()}
+                  </button>
+                </div>
+
+                {#if completing === s.id}
+                  <ProviderDividendCompletion suggestionID={s.id} commodityID={proposalCommodityID(s.proposed_transaction)} {evidence} {csrfToken}
+                    onPosted={async () => { completing = null; await refreshAfterPosting(); }}
+                    onCancel={() => (completing = null)} />
                 {/if}
               </div>
-              <div class="flex shrink-0 gap-2">
-                <button
-                  type="button"
-                  disabled={accepting.has(s.id) || ignoring.has(s.id)}
-                  onclick={() => accept(s)}
-                  class="rounded-(--radius-control) bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition hover:opacity-90 disabled:opacity-40"
-                >
-                  {m.investments_suggestion_accept()}
-                </button>
-                <button
-                  type="button"
-                  disabled={accepting.has(s.id) || ignoring.has(s.id)}
-                  onclick={() => ignore(s)}
-                  class="rounded-(--radius-control) border border-border bg-control px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-control-hover disabled:opacity-40"
-                >
-                  {m.investments_suggestion_ignore()}
-                </button>
-              </div>
-            </div>
-          </Panel>
+            </Panel>
+          </li>
         {/each}
-      </div>
+      </ul>
     {:else}
-      <StatePanel title={m.investments_suggestions_empty()} copy="" />
+      <StatePanel title={m.investments_suggestions_empty()} copy={m.investments_suggestions_empty_copy()} />
     {/if}
 
-    <!-- History -->
     {#if history.length > 0}
       <section>
         <h2 class="mb-3 text-sm font-semibold text-foreground">{m.investments_suggestions_history_title()}</h2>
-        <div class="space-y-2">
+        <ul class="space-y-2">
           {#each history as s (s.id)}
-            <Panel>
-              <div class="flex flex-wrap items-center justify-between gap-2">
-                <span class="rounded-full px-2 py-0.5 text-xs font-medium {statusClass(s.status)}">
-                  {statusLabel(s.status)}
-                </span>
-                <span class="text-xs text-muted">
-                  {m.investments_suggestion_confidence()}: {confidencePct(s.confidence_bps)}
-                </span>
-              </div>
-              {#if s.failure_reason}
-                <p class="mt-1 text-xs text-destructive">{s.failure_reason}</p>
-              {/if}
-            </Panel>
+            <li>
+              <Panel>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="rounded-full px-2 py-0.5 text-xs font-medium {statusClass(s.status)}">{statusLabel(s.status)}</span>
+                  <span class="text-sm text-foreground">{title(s)}</span>
+                  <span class="text-xs text-muted">{m.investments_suggestion_ex_date({ date: s.event_date })}</span>
+                </div>
+                {#if s.failure_reason}
+                  <p class="mt-1 text-xs text-destructive">{s.failure_reason}</p>
+                {/if}
+              </Panel>
+            </li>
           {/each}
-        </div>
+        </ul>
       </section>
     {/if}
   {/if}

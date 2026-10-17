@@ -14,7 +14,7 @@ Other questions have exactly one home each:
 Do not restate shipped detail here; when a focus item ships, delete it and
 record the capability in `implemented.md`.
 
-Last reviewed: 2026-10-15. R16’s agreed gates, R11 price management and R17
+Last reviewed: 2026-10-17 (#111 dividend producer delivered out of order at the owner's request). R16’s agreed gates, R11 price management and R17
 quotes/crypto are delivered. R18’s six gains-projection slices are delivered; R13 returns analytics is next.
 Owner-local date correctness is delivered; native catalog review remains
 parallel work. Prior roadmap detail is retained in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md).
@@ -45,7 +45,7 @@ Statuses: ✅ shipped · ◐ partly shipped ahead of its slice · ▶ current ·
 | R13 | Investment return analytics (TWR/MWR) | ⏭ | this file |
 | R14 | Receipts & attachments (capture, OCR, inbox) | ⏸ | `docs/plans/receipts-plan.md` |
 | R14a | Attachment storage + manual attach (after R5) | ⏭ | `docs/plans/receipts-plan.md` |
-| R15 | Connections expansion (IBKR Flex → GoCardless → #111 producer) | ⏸ | `docs/plans/connections-plan.md` |
+| R15 | Connections expansion (IBKR Flex → GoCardless; the #111 dividend producer shipped early, 2026-10-17) | ⏸ | `docs/plans/connections-plan.md` |
 | R16 | Investment lifecycle completeness (correction, transfers, basis actions, splits, short sales) | ✅ agreed gates; related work open | `docs/plans/investment-operation-refactor-plan.md`; ADR 0013 |
 | R17 | Crypto instrument type + `PriceProvider` registry and quote adapters | ✅ | `docs/plans/quote-providers-crypto-plan.md` |
 | R18 | Reproducible investment basis + gains projections | ✅ | ADR 0012; `docs/plans/investment-reporting-plan.md` |
@@ -347,8 +347,10 @@ These are valuable, but they are not allowed to displace the current plan:
   `needs_review` queue. (The minimal contains-match rules are in R5 as of
   2026-08-05.)
 - R15 connections expansion, in this order (adopted 2026-08-05):
-  **IBKR Flex Query → GoCardless EU/UK banks → the #111 dividend/
-  corporate-action event producer**, then SimpleFIN Bridge (US) later.
+  **IBKR Flex Query → GoCardless EU/UK banks**, then SimpleFIN Bridge (US)
+  later. The #111 dividend event producer (Twelve Data, dividends only) was
+  delivered ahead of this order on 2026-10-17 at the owner's request; other
+  corporate-action provider mappings remain separate issues (#145, #136, #176).
   Security quotes moved out of R15 into R17. CSV mapping-profile presets for
   API-less brokers (Trade Republic, DeGiro, Raisin, HL/AJ Bell/ii) are R5
   documentation-plus-fixtures tasks, not adapters. All bring-your-own-key;
@@ -356,7 +358,6 @@ These are valuable, but they are not allowed to displace the current plan:
   `docs/plans/connections-plan.md`. Both first slices carry blocking
   provider-verification preconditions for their online adapters — see that plan.
   These do not block shared manual/file workflows or unrelated app features;
-  #111's later position is order, not an IBKR/GoCardless technical prerequisite.
 - R7a daily-entry convenience: transaction templates, payee defaults, saved
   views, and keyboard-first entry plus general entry review/edit helpers such
   as previous/next entry, open/edit, save-and-next, duplicate, split, and

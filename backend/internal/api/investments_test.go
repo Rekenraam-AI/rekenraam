@@ -1710,3 +1710,66 @@ func TestBuyReplacementPreviewAPIRejectsDependentDisposal(t *testing.T) {
 	require.NoError(t, database.QueryRow(`SELECT count(*) FROM transactions`).Scan(&after))
 	require.Equal(t, before, after)
 }
+
+// TestProviderDividendSuggestionCompletionLinkAndFetch_HTTP covers the #111
+// review contract over HTTP: an incomplete provider proposal refuses a bare
+// accept, takes the owner's completion, links only valid targets, and the
+// fetch endpoint only queues durable work.
+func TestProviderDividendSuggestionCompletionLinkAndFetch_HTTP(t *testing.T) {
+	t.Parallel()
+	handler, database := newSetupTestHandler(t)
+	f := bootstrapInvestmentAPITest(t, handler)
+	ctx := context.Background()
+	var sourceID int64
+	require.NoError(t, database.QueryRowContext(ctx, `SELECT id FROM market_data_sources WHERE code = 'twelve_data'`).Scan(&sourceID))
+	seed := func(identity string) int64 {
+		res, err := database.ExecContext(ctx, `
+			INSERT INTO investment_provider_events (book_id, source_id, provider_event_id, event_family, event_date, status, normalized_json, created_at)
+			VALUES (1, ?, ?, 'dividend', '2026-06-01', 'new', '{"schema":1,"missing":["payment_date"]}', '2026-06-01T00:00:00Z')`, sourceID, identity)
+		require.NoError(t, err)
+		eventID, err := res.LastInsertId()
+		require.NoError(t, err)
+		res, err = database.ExecContext(ctx, `
+			INSERT INTO investment_event_suggestions (book_id, provider_event_id, confidence_bps, status, proposed_transaction_json, created_at, updated_at)
+			VALUES (1, ?, 7000, 'suggested', '{"kind":"dividend_income","complete":false,"missing":["payment_date"]}', '2026-06-01T00:00:00Z', '2026-06-01T00:00:00Z')`, eventID)
+		require.NoError(t, err)
+		id, err := res.LastInsertId()
+		require.NoError(t, err)
+		return id
+	}
+	acceptID, linkID := seed("a"), seed("b")
+	path := func(id int64, action string) string {
+		return "/api/v1/investments/event-suggestions/" + strconv.FormatInt(id, 10) + "/" + action
+	}
+
+	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, path(acceptID, "accept"), nil, http.StatusBadRequest)
+	var refused errorResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&refused))
+	assert.Equal(t, "VALIDATION_FAILED", refused.Error.Code)
+
+	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, path(acceptID, "accept"), acceptEventSuggestionRequest{Completion: &eventSuggestionCompletionRequest{
+		TransactionDate: "2026-06-15", CashAccountID: f.cashAccount.ID, CashCommodityID: f.commodityID, AmountValue: 1250, AmountScale: 2, IncomeAccountID: &f.incomeAccount.ID}}, http.StatusOK)
+	var accepted investmentEventSuggestionResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&accepted))
+	assert.Equal(t, "accepted", accepted.Status)
+	assert.Equal(t, "matched", accepted.EventStatus)
+	assert.Equal(t, "twelve_data", accepted.SourceCode)
+	require.NotNil(t, accepted.GeneratedTransactionID)
+
+	// A payment without an instrument fact is no candidate for this event.
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, path(linkID, "link"), linkEventSuggestionRequest{TransactionID: *accepted.GeneratedTransactionID}, http.StatusBadRequest)
+
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/event-suggestions", nil, http.StatusOK)
+	var listed investmentEventSuggestionsResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&listed))
+	require.Len(t, listed.Suggestions, 2)
+	for _, suggestion := range listed.Suggestions {
+		assert.JSONEq(t, `{"schema":1,"missing":["payment_date"]}`, string(suggestion.Evidence))
+		assert.NotNil(t, suggestion.LinkCandidates, "candidates serialize as a list")
+	}
+
+	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/event-suggestions/fetch", struct{}{}, http.StatusAccepted)
+	var queued dividendEventFetchAccepted
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&queued))
+	assert.Zero(t, queued.QueuedCount, "no listing is assigned to a dividend provider")
+}

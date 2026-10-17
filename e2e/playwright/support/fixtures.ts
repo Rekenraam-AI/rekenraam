@@ -80,7 +80,9 @@ export const test = base.extend<object, { backend: Backend }>({
           // return 404, so background FX coverage never imports a live rate
           // that would change what a journey expects (#226).
           TRADING212_BASE_URL: `http://127.0.0.1:${trading212StubPort}/api/v0`,
-          MARKET_DATA_BASE_URL: `http://127.0.0.1:${trading212StubPort}/market-data`
+          MARKET_DATA_BASE_URL: `http://127.0.0.1:${trading212StubPort}/market-data`,
+          // Only the stub ever sees this key (MARKET_DATA_BASE_URL above).
+          TWELVE_DATA_API_KEY: 'e2e-twelve-data'
         },
         stdio: ['ignore', 'pipe', 'pipe']
       });

@@ -97,6 +97,7 @@ var ExportExcludedData = []string{
 	"authentication sessions and multi-factor enrolment",
 	"audit events and authentication events",
 	"import profiles, batches, and staged rows",
+	"provider events and their review suggestions (posted or linked dividends are exported)",
 	"connection configuration",
 	"background work items",
 	"superseded, draft, and voided transaction versions",

@@ -193,7 +193,7 @@ func NewTwelveDataProvider(client *http.Client, baseURL, apiKey string) *TwelveD
 func (p *TwelveDataProvider) Code() string { return "twelve_data" }
 func (p *TwelveDataProvider) Name() string { return "Twelve Data" }
 func (p *TwelveDataProvider) Capabilities() ProviderCapabilities {
-	return ProviderCapabilities{Prices: true}
+	return ProviderCapabilities{Prices: true, Dividends: true}
 }
 func (p *TwelveDataProvider) FetchPrices(ctx context.Context, request PriceRequest) ([]PriceObservation, error) {
 	if p.apiKey == "" {

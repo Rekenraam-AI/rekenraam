@@ -681,17 +681,60 @@ type investmentProviderEventsResponse struct {
 }
 
 type investmentEventSuggestionResponse struct {
-	ID                     int64           `json:"id"`
-	BookID                 int64           `json:"book_id"`
-	ProviderEventID        int64           `json:"provider_event_id"`
-	InstrumentID           *int64          `json:"instrument_id,omitempty"`
-	ConfidenceBPS          int             `json:"confidence_bps"`
-	Status                 string          `json:"status"`
-	ProposedTransaction    json.RawMessage `json:"proposed_transaction"`
-	GeneratedTransactionID *int64          `json:"generated_transaction_id,omitempty"`
-	FailureReason          string          `json:"failure_reason,omitempty"`
-	CreatedAt              string          `json:"created_at"`
-	UpdatedAt              string          `json:"updated_at"`
+	ID                     int64                                `json:"id"`
+	BookID                 int64                                `json:"book_id"`
+	ProviderEventID        int64                                `json:"provider_event_id"`
+	EventFamily            string                               `json:"event_family"`
+	EventDate              string                               `json:"event_date"`
+	EventStatus            string                               `json:"event_status"`
+	SourceCode             string                               `json:"source_code"`
+	Evidence               json.RawMessage                      `json:"evidence"`
+	InstrumentID           *int64                               `json:"instrument_id,omitempty"`
+	ConfidenceBPS          int                                  `json:"confidence_bps"`
+	Status                 string                               `json:"status"`
+	ProposedTransaction    json.RawMessage                      `json:"proposed_transaction"`
+	GeneratedTransactionID *int64                               `json:"generated_transaction_id,omitempty"`
+	LinkedTransactionID    *int64                               `json:"linked_transaction_id,omitempty"`
+	LinkCandidates         []investmentEventLinkCandidateResult `json:"link_candidates"`
+	FailureReason          string                               `json:"failure_reason,omitempty"`
+	CreatedAt              string                               `json:"created_at"`
+	UpdatedAt              string                               `json:"updated_at"`
+}
+
+type investmentEventLinkCandidateResult struct {
+	TransactionID   int64             `json:"transaction_id"`
+	TransactionDate string            `json:"transaction_date"`
+	CashCode        string            `json:"cash_code"`
+	GrossValue      exact.Coefficient `json:"gross_value"`
+	GrossScale      int               `json:"gross_scale"`
+}
+
+// acceptEventSuggestionRequest is optional: a complete proposal is accepted
+// with no body, an incomplete provider dividend needs completion (#111).
+type acceptEventSuggestionRequest struct {
+	Completion *eventSuggestionCompletionRequest `json:"completion"`
+}
+
+type eventSuggestionCompletionRequest struct {
+	TransactionDate        string            `json:"transaction_date"`
+	CashAccountID          int64             `json:"cash_account_id"`
+	CashCommodityID        int64             `json:"cash_commodity_id"`
+	AmountValue            moneyCoefficient  `json:"amount_value"`
+	AmountScale            int               `json:"amount_scale"`
+	IncomeAccountID        *int64            `json:"income_account_id"`
+	WithholdingValue       *moneyCoefficient `json:"withholding_value"`
+	WithholdingScale       *int              `json:"withholding_scale"`
+	WithholdingAccountID   *int64            `json:"withholding_account_id"`
+	Memo                   string            `json:"memo"`
+	ReconciliationOverride bool              `json:"reconciliation_override"`
+}
+
+type linkEventSuggestionRequest struct {
+	TransactionID int64 `json:"transaction_id"`
+}
+
+type dividendEventFetchAccepted struct {
+	QueuedCount int `json:"queued_count"`
 }
 
 type investmentEventSuggestionsResponse struct {
@@ -1802,6 +1845,42 @@ func ignoreInvestmentEventSuggestion(logger *slog.Logger, authService *app.AuthS
 	return eventSuggestionStatusMutation(logger, authService, investmentService, options, "ignore")
 }
 
+func linkInvestmentEventSuggestion(logger *slog.Logger, authService *app.AuthService, investmentService *app.InvestmentService, options HandlerOptions) http.HandlerFunc {
+	return eventSuggestionStatusMutation(logger, authService, investmentService, options, "link")
+}
+
+func (request *eventSuggestionCompletionRequest) toApp() *app.SuggestionCompletion {
+	if request == nil {
+		return nil
+	}
+	return &app.SuggestionCompletion{TransactionDate: request.TransactionDate, CashAccountID: request.CashAccountID, CashCommodityID: request.CashCommodityID,
+		AmountValue: int64(request.AmountValue), AmountScale: request.AmountScale, IncomeAccountID: request.IncomeAccountID,
+		WithholdingValue: moneyInt64Pointer(request.WithholdingValue), WithholdingScale: request.WithholdingScale,
+		WithholdingAccountID: request.WithholdingAccountID, Memo: request.Memo, ReconciliationOverride: request.ReconciliationOverride}
+}
+
+// queueDividendEventFetch accepts durable work; it never calls a provider
+// within the request.
+func queueDividendEventFetch(logger *slog.Logger, auth *app.AuthService, pricing *app.PricingService, options HandlerOptions) http.HandlerFunc {
+	return requireAuthenticatedMutation(logger, auth, options, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		owner, ok := authenticatedMutationOwner(w, r)
+		if !ok {
+			return
+		}
+		var body struct{}
+		if err := decodeJSONBody(r, &body); err != nil {
+			writeDecodeError(w, err)
+			return
+		}
+		count, err := pricing.QueueDividendEventFetch(r.Context(), owner.ID)
+		if err != nil {
+			writePricingServiceError(w, r, logger, "queue dividend event fetch", err)
+			return
+		}
+		writeJSON(w, http.StatusAccepted, dividendEventFetchAccepted{QueuedCount: count})
+	}))
+}
+
 func eventSuggestionStatusMutation(logger *slog.Logger, authService *app.AuthService, investmentService *app.InvestmentService, options HandlerOptions, action string) http.HandlerFunc {
 	return requireAuthenticatedMutation(logger, authService, options, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		owner, ok := authenticatedMutationOwner(w, r)
@@ -1815,7 +1894,19 @@ func eventSuggestionStatusMutation(logger *slog.Logger, authService *app.AuthSer
 		var suggestion app.InvestmentEventSuggestion
 		var err error
 		if action == "accept" {
-			suggestion, err = investmentService.AcceptSuggestion(r.Context(), owner.ID, authenticatedSessionID(r), RequestIDFromContext(r.Context()), suggestionID)
+			var request acceptEventSuggestionRequest
+			if err := decodeOptionalJSONBody(r, &request); err != nil {
+				writeDecodeError(w, err)
+				return
+			}
+			suggestion, err = investmentService.AcceptSuggestionWithCompletion(r.Context(), owner.ID, authenticatedSessionID(r), RequestIDFromContext(r.Context()), suggestionID, request.Completion.toApp())
+		} else if action == "link" {
+			var request linkEventSuggestionRequest
+			if err := decodeJSONBody(r, &request); err != nil {
+				writeDecodeError(w, err)
+				return
+			}
+			suggestion, err = investmentService.LinkSuggestion(r.Context(), owner.ID, authenticatedSessionID(r), RequestIDFromContext(r.Context()), suggestionID, request.TransactionID)
 		} else {
 			suggestion, err = investmentService.IgnoreSuggestion(r.Context(), owner.ID, authenticatedSessionID(r), RequestIDFromContext(r.Context()), suggestionID)
 		}
@@ -2297,7 +2388,21 @@ func toInvestmentProviderEventResponses(events []app.InvestmentProviderEvent) []
 }
 
 func toInvestmentEventSuggestionResponse(suggestion app.InvestmentEventSuggestion) investmentEventSuggestionResponse {
-	return investmentEventSuggestionResponse{ID: suggestion.ID, BookID: suggestion.BookID, ProviderEventID: suggestion.ProviderEventID, InstrumentID: suggestion.InstrumentID, ConfidenceBPS: suggestion.ConfidenceBPS, Status: suggestion.Status, ProposedTransaction: json.RawMessage(suggestion.ProposedTransactionJSON), GeneratedTransactionID: suggestion.GeneratedTransactionID, FailureReason: suggestion.FailureReason, CreatedAt: suggestion.CreatedAt, UpdatedAt: suggestion.UpdatedAt}
+	candidates := make([]investmentEventLinkCandidateResult, 0, len(suggestion.LinkCandidates))
+	for _, candidate := range suggestion.LinkCandidates {
+		candidates = append(candidates, investmentEventLinkCandidateResult{TransactionID: candidate.TransactionID, TransactionDate: candidate.TransactionDate,
+			CashCode: candidate.CashCode, GrossValue: candidate.GrossValue, GrossScale: candidate.GrossScale})
+	}
+	evidence := suggestion.EventEvidenceJSON
+	if evidence == "" {
+		evidence = "{}"
+	}
+	return investmentEventSuggestionResponse{ID: suggestion.ID, BookID: suggestion.BookID, ProviderEventID: suggestion.ProviderEventID,
+		EventFamily: suggestion.EventFamily, EventDate: suggestion.EventDate, EventStatus: suggestion.EventStatus, SourceCode: suggestion.SourceCode,
+		Evidence: json.RawMessage(evidence), InstrumentID: suggestion.InstrumentID, ConfidenceBPS: suggestion.ConfidenceBPS, Status: suggestion.Status,
+		ProposedTransaction: json.RawMessage(suggestion.ProposedTransactionJSON), GeneratedTransactionID: suggestion.GeneratedTransactionID,
+		LinkedTransactionID: suggestion.LinkedTransactionID, LinkCandidates: candidates, FailureReason: suggestion.FailureReason,
+		CreatedAt: suggestion.CreatedAt, UpdatedAt: suggestion.UpdatedAt}
 }
 
 func toInvestmentEventSuggestionResponses(suggestions []app.InvestmentEventSuggestion) []investmentEventSuggestionResponse {

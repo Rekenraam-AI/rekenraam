@@ -187,8 +187,10 @@ and notification on backup failure (no notification channel exists yet).
 
 **Explicitly not exported in R3, and named in the manifest so nobody has to
 guess:** credentials and secrets, auth sessions, MFA enrolment, audit events,
-authentication events, import profiles/batches/staged rows, connection
-configuration, background work items, and non-current (superseded) versions.
+authentication events, import profiles/batches/staged rows, provider events
+and their review suggestions (#111; the dividends they posted or were linked to
+are ordinary exported transactions), connection configuration, background work
+items, and non-current (superseded) versions.
 The SQLite backup is the audit-complete artifact; the export is the portable
 one. Say this in the UI, not only here.
 

@@ -240,7 +240,8 @@ coverage, so they were fixed first (see
   `investment_provider_events`/suggestions** — this fix makes the existing
   endpoints correct for whatever data exists, but nothing generates that data
   yet (T-34, deliberately out of scope here: needs a chosen data source and
-  its own design).
+  its own design). The producer later shipped as #111 (2026-10-17, Twelve
+  Data dividends; see `docs/implemented.md`).
 
 Also corrected during this pass: the plan's original assumption that
 `SaveAutomationRules` already had "replace-all semantics" and that "accept

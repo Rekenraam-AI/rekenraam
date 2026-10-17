@@ -1,0 +1,80 @@
+import { expect, test } from './support/fixtures';
+import process from 'node:process';
+import { apiJSON } from './support/api';
+import { readyForLedger, createCashAccount } from './support/ledger';
+import { daysFromTodayISO } from './support/dates';
+import { expectNoAccessibilityViolations } from './support/a11y';
+
+// #111: a provider dividend announcement is staged through the durable queue
+// and posts only after the owner completes it from the statement, on a phone.
+test.use({ viewport: { width: 390, height: 844 } });
+test.skip(Boolean(process.env.E2E_BASE_URL), 'needs the local market-data stub for Twelve Data dividends');
+
+test('[acceptance] a provider dividend is reviewed, completed and posted through the native command', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const suffix = `${Date.now()}`;
+  const openedOn = daysFromTodayISO(-60);
+  const cash = await createCashAccount(page, csrfToken, `Provider cash ${suffix}`, currencyID, openedOn);
+  const income = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: `Provider income ${suffix}`, account_class: 'income', account_kind: 'income',
+    default_commodity_id: currencyID, allows_postings: true, opened_on: openedOn, effective_from: openedOn
+  });
+  const symbol = `E2EDIV${suffix}`;
+  const name = `Provider payer ${suffix}`;
+  const instrument = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
+    commodity_code: symbol, instrument_type: 'stock', display_name: name, symbol, mic: 'XNYS',
+    identifiers: { twelve_data_symbol: symbol },
+    quote_commodity_id: currencyID, trading_commodity_id: currencyID, quantity_scale: 0, price_scale: 2, effective_from: openedOn
+  });
+  const holding = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/holding-accounts', csrfToken, {
+    instrument_id: instrument.id, name: `Provider holding ${suffix}`, opened_on: openedOn, effective_from: openedOn
+  });
+  await apiJSON(page, 'POST', '/api/v1/investments/buy', csrfToken, {
+    transaction_date: daysFromTodayISO(-30), commodity_id: instrument.commodity_id, holding_account_id: holding.id,
+    cash_account_id: cash.id, quantity_value: '10', quantity_scale: 0, cash_amount_value: '100000',
+    cash_amount_scale: 2, cash_commodity_id: currencyID
+  });
+  const sources = await apiJSON<{ sources: Array<{ id: number; code: string }> }>(page, 'GET', '/api/v1/pricing/sources');
+  const twelveData = sources.sources.find((source) => source.code === 'twelve_data');
+  if (!twelveData) throw new Error('expected the Twelve Data source');
+  await apiJSON(page, 'POST', '/api/v1/pricing/source-assignments', csrfToken, {
+    commodity_id: instrument.commodity_id, quote_commodity_id: currencyID, source_id: twelveData.id, effective_from: openedOn
+  });
+
+  await page.goto('/app/investments');
+  await page.getByRole('button', { name: /^Suggestions/ }).click();
+  await page.getByRole('button', { name: 'Check provider dividends', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Dividend check queued for listings:');
+
+  const exDate = daysFromTodayISO(-10);
+  const card = page.getByTestId('event-suggestion').filter({ hasText: name });
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  await expect(card.getByText(`Ex-date ${exDate}`, { exact: true })).toBeVisible();
+  await expect(card.getByText('Reported in the listing currency USD; the payment currency is not stated.')).toBeVisible();
+  await expect(card).toContainText('You supply: payment date, cash account, amount received, payment currency');
+  // Nothing posts until the owner completes it: no Accept on an incomplete proposal.
+  await expect(card.getByRole('button', { name: 'Complete and post', exact: true })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Accept', exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expectNoAccessibilityViolations(page, 'Provider dividend suggestion on a phone');
+
+  await card.getByRole('button', { name: 'Complete and post', exact: true }).click();
+  const form = card.getByRole('form', { name: 'Dividend from your statement' });
+  await expect(form.getByLabel('Payment date')).toHaveValue(exDate);
+  await form.getByLabel('Payment date').fill(daysFromTodayISO(-3));
+  await form.getByLabel('Cash account').selectOption(String(cash.id));
+  await form.getByLabel(/^Income account/).selectOption(String(income.id));
+  // 10 units × 0.50 in the cash currency pre-fills the gross for confirmation.
+  await expect(form.getByLabel(/Gross amount received/)).toHaveValue('5.00');
+  await expect(form.getByText('Pre-filled from the estimate; check it against your statement.')).toBeVisible();
+  await form.getByLabel(/Gross amount received/).fill('4.80');
+  await expectNoAccessibilityViolations(page, 'Provider dividend completion on a phone');
+  await form.getByRole('button', { name: 'Post dividend', exact: true }).click();
+
+  const settled = page.getByRole('listitem').filter({ hasText: name }).filter({ hasText: 'Accepted' });
+  await expect(settled).toBeVisible();
+  await expect(card).toHaveCount(0);
+
+  await page.goto(`/app/investments/instruments/${instrument.commodity_id}`);
+  await expect(page.getByText(/^Gross income: .*4\.80/)).toBeVisible();
+});

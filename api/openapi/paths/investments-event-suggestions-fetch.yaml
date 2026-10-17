@@ -1,0 +1,40 @@
+post:
+  summary: Queue provider dividend event fetches
+  description: Accepts durable work for each active instrument assignment whose provider has a verified dividend mapping (Twelve Data, #111). Does not download synchronously; exact active duplicates coalesce. Each held ex-date in the last year is staged once as an immutable provider event with a pending suggestion. Failures appear in pricing failed work and never affect manual entry.
+  parameters:
+    - in: header
+      name: X-CSRF-Token
+      required: true
+      schema: { type: string }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { type: object, additionalProperties: false }
+  responses:
+    "202":
+      description: Accepted (including already queued listings)
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/DividendEventFetchAccepted"
+    "400":
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: "../openapi.yaml#/components/schemas/ErrorResponse" }
+    "401":
+      description: Authentication required
+      content:
+        application/json:
+          schema: { $ref: "../openapi.yaml#/components/schemas/ErrorResponse" }
+    "403":
+      description: Origin or CSRF rejected
+      content:
+        application/json:
+          schema: { $ref: "../openapi.yaml#/components/schemas/ErrorResponse" }
+    "500":
+      description: Failed to queue
+      content:
+        application/json:
+          schema: { $ref: "../openapi.yaml#/components/schemas/ErrorResponse" }

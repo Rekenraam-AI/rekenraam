@@ -8,14 +8,14 @@ import (
 )
 
 type QuoteRefreshTarget struct {
-	AssignmentID, BaseCommodityID, QuoteCommodityID, SourceID              int64
-	InstrumentType, IdentifiersJSON, MIC, ProviderKey, BaseCode, QuoteCode string
+	AssignmentID, BaseCommodityID, QuoteCommodityID, SourceID, InstrumentID int64
+	InstrumentType, IdentifiersJSON, MIC, ProviderKey, BaseCode, QuoteCode  string
 }
 
 // Explicit dated assignments opt in to network fetching. There is no ticker
 // guessing or fallback from a currency-wide FX default into equities/crypto.
 func (r *PricingRepository) QuoteRefreshTargets(ctx context.Context, bookID int64, date string, sourceID int64) ([]QuoteRefreshTarget, error) {
-	rows, err := r.database.QueryContext(ctx, `SELECT a.id,a.base_commodity_id,a.quote_commodity_id,a.source_id,
+	rows, err := r.database.QueryContext(ctx, `SELECT a.id,a.base_commodity_id,a.quote_commodity_id,a.source_id,ii.id,
  iiv.instrument_type,iiv.identifiers_json,COALESCE(iiv.mic,''),COALESCE(s.provider_key,s.code),b.code,q.code
  FROM pricing_source_assignments a
  JOIN investment_instruments ii ON ii.book_id=a.book_id AND ii.commodity_id=a.base_commodity_id
@@ -34,7 +34,7 @@ func (r *PricingRepository) QuoteRefreshTargets(ctx context.Context, bookID int6
 	var targets []QuoteRefreshTarget
 	for rows.Next() {
 		var target QuoteRefreshTarget
-		if err := rows.Scan(&target.AssignmentID, &target.BaseCommodityID, &target.QuoteCommodityID, &target.SourceID, &target.InstrumentType, &target.IdentifiersJSON, &target.MIC, &target.ProviderKey, &target.BaseCode, &target.QuoteCode); err != nil {
+		if err := rows.Scan(&target.AssignmentID, &target.BaseCommodityID, &target.QuoteCommodityID, &target.SourceID, &target.InstrumentID, &target.InstrumentType, &target.IdentifiersJSON, &target.MIC, &target.ProviderKey, &target.BaseCode, &target.QuoteCode); err != nil {
 			return nil, err
 		}
 		targets = append(targets, target)

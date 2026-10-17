@@ -75,6 +75,9 @@ Optional quote adapters use operator environment keys `COINGECKO_DEMO_API_KEY`
 and `TWELVE_DATA_API_KEY`. Configure instrument identifiers and quote assignments
 in Investments → Instruments; the [quote/crypto contract](docs/plans/quote-providers-crypto-plan.md)
 records provider entitlements, unofficial Yahoo limits and crypto CSV entry.
+With a Twelve Data plan that includes dividends, Investments → Suggestions →
+**Check provider dividends** stages held ex-dates for review; nothing posts until
+you complete or link each one ([contract](docs/plans/connections-plan.md#provider-dividend-producer-111-delivered-2026-10-17)).
 
 For LAN or internet access, put the app behind HTTPS and follow the
 [deployment security guide](docs/deployment-security.md). Before exposing real

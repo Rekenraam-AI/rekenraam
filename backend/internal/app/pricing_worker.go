@@ -43,7 +43,11 @@ func (s *PricingService) StartBackgroundWorker(ctx context.Context, logger *slog
 		quoteDone := make(chan struct{})
 		go func() {
 			defer close(quoteDone)
-			s.runDueQuoteRefresh(ctx, logger, workerID)
+			runQuotes := func() {
+				s.runDueQuoteRefresh(ctx, logger, workerID)
+				s.runDueDividendEvents(ctx, logger, workerID)
+			}
+			runQuotes()
 			ticker := time.NewTicker(time.Minute)
 			defer ticker.Stop()
 			for {
@@ -51,9 +55,9 @@ func (s *PricingService) StartBackgroundWorker(ctx context.Context, logger *slog
 				case <-ctx.Done():
 					return
 				case <-s.wake:
-					s.runDueQuoteRefresh(ctx, logger, workerID)
+					runQuotes()
 				case <-ticker.C:
-					s.runDueQuoteRefresh(ctx, logger, workerID)
+					runQuotes()
 				}
 			}
 		}()
@@ -170,6 +174,11 @@ func (s *PricingService) FailedBackgroundWork(ctx context.Context) ([]PricingBac
 		return nil, err
 	}
 	records = append(records, quotes...)
+	dividends, err := s.repository.ListBackgroundWorkByStatus(ctx, BookID, dividendEventWorkKind, "failed", 50)
+	if err != nil {
+		return nil, err
+	}
+	records = append(records, dividends...)
 	items := make([]PricingBackgroundWorkItem, 0, len(records))
 	for _, record := range records {
 		items = append(items, toPricingBackgroundWorkItem(record))
@@ -190,7 +199,7 @@ func (s *PricingService) RetryBackgroundWork(ctx context.Context, workID int64) 
 	if err != nil {
 		return PricingBackgroundWorkItem{}, fmt.Errorf("read pricing background work: %w", err)
 	}
-	if item.BookID != BookID || (item.Kind != fxCoverageWorkKind && item.Kind != quoteRefreshWorkKind) {
+	if item.BookID != BookID || (item.Kind != fxCoverageWorkKind && item.Kind != quoteRefreshWorkKind && item.Kind != dividendEventWorkKind) {
 		return PricingBackgroundWorkItem{}, ErrPricingBackgroundWorkNotFound
 	}
 	now := s.now().UTC().Format(time.RFC3339)

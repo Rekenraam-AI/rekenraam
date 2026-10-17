@@ -65,7 +65,7 @@ time (free tiers and signup policies shift).
 | **Wikifolio** | Social investing | Trading API exists but automation is ToS-restricted | — | — | No adapter. Wikifolio certificates have ISINs (DE000LS9…) and trade on Lang & Schwarz — they price like any other security once a quote provider covers L&S/German certificates |
 | Alpha Vantage | Quotes + fundamentals | ✅ | Free 25 req/day (verify; adjusted series moved partly to premium) | BYO API key | Quote-provider candidate |
 | Twelve Data | Quotes | ✅ | Plan/market/display entitlements apply; free EU coverage is not assumed | BYO API key | Delivered #117; [current provider evidence](quote-providers-crypto-plan.md#provider-review-primary-sources-checked-2026-10-14) |
-| Financial Modeling Prep | Quotes + dividends + splits | ✅ | Free ~250 req/day (verify EU coverage) | BYO API key | **T-34 producer candidate** (dividend/split event feed) |
+| Financial Modeling Prep | Quotes + dividends + splits | ✅ | Free ~250 req/day (verify EU coverage) | BYO API key | Historical T-34 candidate, not chosen: #111 shipped on Twelve Data, which already had BYO-key identity plumbing (see *Provider dividend producer*) |
 | Stooq | EOD quotes + indices (incl. EU) | quasi-official CSV endpoints | Free, keyless | none | Benchmark-series candidate for R13 |
 | CoinGecko | Crypto prices | ✅ | Demo key; plan limits and attribution apply | BYO API key | Delivered #117; [current provider evidence](quote-providers-crypto-plan.md#provider-review-primary-sources-checked-2026-10-14) |
 | **Yahoo Finance** | Quotes (broadest EU coverage) | ❌ undocumented (public, keyless — no app impersonation) | Free | none | **Adapter — ship** (decided 2026-08-05). Keyless `PriceProvider`, opt-in, labeled "unofficial" in the provider picker; breakage is expected and non-blocking because a BYO-key provider is always available as the fallback |
@@ -316,14 +316,15 @@ market-data registry's `PriceProvider` alongside FX. `DividendProvider` and
    [quote/crypto contract](quote-providers-crypto-plan.md) records current evidence,
    exact raw-quote normalization, staleness and recovery. Stooq remains a benchmark
    candidate for R13 rather than a shipped quote adapter.
-2. **Dividend/corporate-action events — #111**: choose and verify one bounded
-   source/event mapping when implementation starts; the historical FMP assessment
-   is not a coverage or free-tier promise. Events land as
-   `investment_provider_events` → suggestions. Dividend acceptance and the
-   native structural commands already exist; each new suggestion family still
-   needs explicit reviewed admission to its named command. Incomplete or
-   unsupported events remain informational with manual guidance. Lack of an
-   automated source never disables those native commands or their corrections.
+2. **Dividend events — #111, delivered 2026-10-17** on Twelve Data; see
+   *Provider dividend producer* below. Events land as
+   `investment_provider_events` → suggestions and commit only through the
+   native dividend command after owner completion, or link to an
+   owner-recorded dividend. Other corporate-action families still need their
+   own verified source mapping and reviewed admission to their named command
+   (#145 splits, #136 cancellations, #176 short dividends); incomplete or
+   unsupported events remain informational. Lack of an automated source never
+   disables those native commands or their corrections.
 3. **Benchmarks for R13** (TWR/MWR comparison): an index series via
    Stooq/the chosen quote provider; no new architecture.
 
@@ -355,11 +356,52 @@ R15 itself is then:
 2. **GoCardless BAD** (EU+UK banks — biggest manual-entry win, hardest UX
    due to consent renewals; benefits from landing after R5's rules/profile
    work).
-3. **T-34 producer via FMP** (shares the BYO-key plumbing the R17 registry
-   establishes).
+3. **T-34 producer** — delivered ahead of this order on 2026-10-17 at the
+   owner's request (#111), on Twelve Data rather than FMP because it reuses
+   the R17 registry's BYO-key and explicit listing identity.
 4. Raisin / Trade Republic / DeGiro / UK brokers ship as **R5 CSV mapping
    profile presets** — a documentation-plus-fixtures task per broker, not
    adapters.
+
+## Provider dividend producer (#111, delivered 2026-10-17)
+
+Bounded mapping: **Twelve Data `GET /dividends` → `dividend` family only.**
+
+Primary-source contract, checked 2026-10-17 against Twelve Data's published
+OpenAPI document (`https://api.twelvedata.com/doc/swagger/openapi.json`,
+operation `GetDividends`):
+
+- Parameters used: `symbol`, `mic_code`, `start_date`, `end_date`
+  (`range` would take precedence, so it is never sent) and `adjust`, a boolean
+  defaulting to `true`; the producer always sends `adjust=false` so a later
+  split never rewrites the announced per-share amount.
+- Response: `meta{symbol, name, currency, exchange, mic_code,
+  exchange_timezone}` and `dividends[{ex_date, amount}]`; both row fields are
+  required. `meta.currency` is documented as the currency the instrument is
+  traded in, so it is kept as the listing currency and never as the payment
+  currency. There is no payment date, record date, withholding, frequency or
+  revision identity in the contract.
+- Entitlement: `x-starting-plan: grow,venture` (paid plans) and
+  `x-api-credits-cost: 20` per symbol. A key without the plan gets a provider
+  error recorded as terminal work; nothing else changes.
+- Representative fixture: `backend/internal/marketdata/testdata/twelve_data_dividends.json`
+  (synthetic, shaped exactly to the schema above; it does not claim live
+  coverage of any listing).
+
+Mapping rules: opt-in only through an explicit `twelve_data_symbol` and MIC
+on an active Twelve Data quote assignment; one fetch covers the last 365
+owner-local days; an ex-date not yet reached, or one the ledger does not show
+held (long or short) at the close of the previous day, is not retained. Each
+retained row becomes one immutable event keyed by
+`twelve_data:dividend:{symbol}:{mic}:{ex_date}` (two amounts for one ex-date
+refuse the response). A later different amount for a staged ex-date is not
+re-staged: the first observation and the owner's decision stand, and the
+owner supplies the received amount anyway. Surfacing such revisions as
+evidence is [#254](https://github.com/sergeyfarin/rekenraam/issues/254). Because the payment date, cash,
+currency and withholding are never stated, every proposal is incomplete by
+design; the owner's statement completes it. Short holdings make the event
+informational. There is no scheduler and no automation-rule auto-post; the
+owner triggers *Check provider dividends*.
 
 ## Slice-start preconditions (blocking)
 
