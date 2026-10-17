@@ -27,9 +27,16 @@ What it does and does not do:
 - A verified password alone no longer produces a session once MFA is active.
   It produces a five-minute, single-use challenge cookie that grants nothing.
 - Wrong **sign-in** codes spend the same five-in-fifteen throttle budget as
-  wrong sign-in passwords. MFA-settings password confirmation and pending
-  activation attempts need a separate bounded policy; see
-  [#262](https://github.com/sergeyfarin/rekenraam/issues/262).
+  wrong sign-in passwords.
+- Wrong **settings** confirmations — passwords for enrolling, disabling, or
+  regenerating recovery codes, and pending activation codes — share one
+  five-in-fifteen budget per session
+  ([#262](https://github.com/sergeyfarin/rekenraam/issues/262)). Once spent,
+  that session gets `429 RATE_LIMITED` with `Retry-After` for every settings
+  confirmation, even a correct one, and nothing changes. The budget belongs to
+  the session, not the owner: a stolen session cannot lock the owner out, and
+  the owner's way back is simply to sign in again. It neither spends nor
+  clears the sign-in budget.
 - A code cannot be replayed inside its own 30-second step. Enrollment writes
   cannot overwrite an already active secret; activation pins the exact pending
   secret whose code was verified (#261).

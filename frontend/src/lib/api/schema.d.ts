@@ -2564,6 +2564,18 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description This session spent its MFA-settings reauthentication budget (five wrong passwords or activation codes, shared across enrollment, activation, disable, and recovery-code regeneration). Refused before verification, even for correct input, until Retry-After elapses; signing in again starts a new session with its own budget. */
+                429: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        /** @description Seconds until this session may confirm again. */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Internal server error */
                 500: {
                     headers: {
@@ -2671,6 +2683,18 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description This session spent its MFA-settings reauthentication budget (five wrong passwords or activation codes, shared across enrollment, activation, disable, and recovery-code regeneration). Refused before verification, even for correct input, until Retry-After elapses; signing in again starts a new session with its own budget. */
+                429: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        /** @description Seconds until this session may confirm again. */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Internal server error */
                 500: {
                     headers: {
@@ -2760,6 +2784,18 @@ export interface paths {
                 403: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description This session spent its MFA-settings reauthentication budget (five wrong passwords or activation codes, shared across enrollment, activation, disable, and recovery-code regeneration). Refused before verification, even for correct input, until Retry-After elapses; signing in again starts a new session with its own budget. */
+                429: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        /** @description Seconds until this session may confirm again. */
+                        "Retry-After"?: number;
                         [name: string]: unknown;
                     };
                     content: {
@@ -2857,6 +2893,18 @@ export interface paths {
                 409: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description This session spent its MFA-settings reauthentication budget (five wrong passwords or activation codes, shared across enrollment, activation, disable, and recovery-code regeneration). Refused before verification, even for correct input, until Retry-After elapses; signing in again starts a new session with its own budget. */
+                429: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        /** @description Seconds until this session may confirm again. */
+                        "Retry-After"?: number;
                         [name: string]: unknown;
                     };
                     content: {

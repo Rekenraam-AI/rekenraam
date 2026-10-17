@@ -2,7 +2,8 @@
 
 **Status:** first bounded audit in [#260](https://github.com/sergeyfarin/rekenraam/issues/260)
 completed with findings. #261, #263 and #264 are corrected in this change;
-[#262](https://github.com/sergeyfarin/rekenraam/issues/262) remains open.
+[#262](https://github.com/sergeyfarin/rekenraam/issues/262) was retained here and
+corrected afterwards (see the resolution note below).
 This evaluates the first checklist area, not the whole app or an internet-facing
 deployment. The roadmap owns remaining audit order.
 
@@ -95,6 +96,14 @@ The risk interpretation follows OWASP's
 [sensitive-feature reauthentication and automated-attack guidance](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html).
 A suitable budget must account for this app's approved-device recovery model;
 this review does not adopt a generic lockout policy as a product decision.
+
+**Resolution (#262).** A follow-up change added a per-session reauthentication
+budget shared by enrollment, activation, disable and recovery-code regeneration
+(policy in `docs/conventions.md` and `docs/deployment-security.md`). The probe's
+sequence (wrong passwords switching from regeneration to disable) is covered by
+`backend/internal/app/auth_mfa_reauth_test.go` and
+`backend/internal/api/auth_mfa_reauth_test.go`. Approved-device and sign-in
+budgets are untouched.
 
 ## Additional targeted audits to record in #260
 

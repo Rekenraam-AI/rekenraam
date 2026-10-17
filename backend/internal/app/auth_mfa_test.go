@@ -34,7 +34,7 @@ func enrollAndActivate(t *testing.T, service *AuthService, now time.Time) string
 	ctx := context.Background()
 
 	enrollment, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{
-		UserID: 1, Password: "correct-horse-battery", ClientIP: "198.51.100.4",
+		UserID: 1, SessionID: 1, Password: "correct-horse-battery", ClientIP: "198.51.100.4",
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, enrollment.Secret)
@@ -44,7 +44,7 @@ func enrollAndActivate(t *testing.T, service *AuthService, now time.Time) string
 	// burn it, and every login below would then be rejected as a replay.
 	code, err := totp.Code(enrollment.Secret, totp.Step(now)-1)
 	require.NoError(t, err)
-	codes, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, Code: code, ClientIP: "198.51.100.4"})
+	codes, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, SessionID: 1, Code: code, ClientIP: "198.51.100.4"})
 	require.NoError(t, err)
 	require.Len(t, codes, mfaRecoveryCodeCount)
 
@@ -188,11 +188,11 @@ func TestRecoveryCodeCompletesLoginOnceAndOnlyOnce(t *testing.T) {
 	now := time.Date(2026, 8, 7, 9, 0, 0, 0, time.UTC)
 	_, service := newMFATestService(t, now)
 
-	enrollment, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, Password: "correct-horse-battery"})
+	enrollment, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery"})
 	require.NoError(t, err)
 	activationCode, err := totp.Code(enrollment.Secret, totp.Step(now)-1)
 	require.NoError(t, err)
-	recoveryCodes, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, Code: activationCode})
+	recoveryCodes, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, SessionID: 1, Code: activationCode})
 	require.NoError(t, err)
 
 	challenge, err := service.Login(ctx, LoginInput{Username: "owner", Password: "correct-horse-battery", ClientIP: "198.51.100.4"})
@@ -222,11 +222,11 @@ func TestRecoveryCodeAcceptsTheWayPeopleTypeItBack(t *testing.T) {
 	now := time.Date(2026, 8, 7, 9, 0, 0, 0, time.UTC)
 	_, service := newMFATestService(t, now)
 
-	enrollment, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, Password: "correct-horse-battery"})
+	enrollment, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery"})
 	require.NoError(t, err)
 	activationCode, err := totp.Code(enrollment.Secret, totp.Step(now)-1)
 	require.NoError(t, err)
-	recoveryCodes, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, Code: activationCode})
+	recoveryCodes, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, SessionID: 1, Code: activationCode})
 	require.NoError(t, err)
 
 	messy := " " + strings.ToLower(strings.ReplaceAll(recoveryCodes[0], "-", " ")) + " "
@@ -247,7 +247,7 @@ func TestPendingEnrollmentDoesNotGateLogin(t *testing.T) {
 	now := time.Date(2026, 8, 7, 9, 0, 0, 0, time.UTC)
 	_, service := newMFATestService(t, now)
 
-	_, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, Password: "correct-horse-battery"})
+	_, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery"})
 	require.NoError(t, err)
 
 	result, err := service.Login(ctx, LoginInput{Username: "owner", Password: "correct-horse-battery", ClientIP: "198.51.100.4"})
@@ -267,9 +267,9 @@ func TestActivateTOTPRejectsAWrongCode(t *testing.T) {
 	now := time.Date(2026, 8, 7, 9, 0, 0, 0, time.UTC)
 	_, service := newMFATestService(t, now)
 
-	_, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, Password: "correct-horse-battery"})
+	_, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery"})
 	require.NoError(t, err)
-	_, err = service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, Code: "000000"})
+	_, err = service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, SessionID: 1, Code: "000000"})
 	assert.ErrorIs(t, err, ErrMFACodeInvalid)
 
 	status, err := service.MFAStatusFor(ctx, 1)
@@ -285,18 +285,18 @@ func TestMFAChangesRequireThePasswordAgain(t *testing.T) {
 	now := time.Date(2026, 8, 7, 9, 0, 0, 0, time.UTC)
 	_, service := newMFATestService(t, now)
 
-	_, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, Password: "wrong-password"})
+	_, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "wrong-password"})
 	assert.ErrorIs(t, err, ErrInvalidCredentials)
 
 	enrollAndActivate(t, service, now)
 
-	err = service.DisableMFA(ctx, MFAPasswordInput{UserID: 1, Password: "wrong-password"})
+	err = service.DisableMFA(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "wrong-password"})
 	assert.ErrorIs(t, err, ErrInvalidCredentials)
 	status, err := service.MFAStatusFor(ctx, 1)
 	require.NoError(t, err)
 	assert.Equal(t, "active", status.Status)
 
-	_, err = service.RegenerateRecoveryCodes(ctx, MFAPasswordInput{UserID: 1, Password: "wrong-password"})
+	_, err = service.RegenerateRecoveryCodes(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "wrong-password"})
 	assert.ErrorIs(t, err, ErrInvalidCredentials)
 }
 
@@ -309,7 +309,7 @@ func TestEnrollmentIsRefusedWhileMFAIsActive(t *testing.T) {
 	_, service := newMFATestService(t, now)
 	enrollAndActivate(t, service, now)
 
-	_, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, Password: "correct-horse-battery"})
+	_, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery"})
 	assert.ErrorIs(t, err, ErrMFAAlreadyActive)
 }
 
@@ -320,7 +320,7 @@ func TestDisableMFARemovesTheEnrollmentAndItsRecoveryCodes(t *testing.T) {
 	database, service := newMFATestService(t, now)
 	enrollAndActivate(t, service, now)
 
-	require.NoError(t, service.DisableMFA(ctx, MFAPasswordInput{UserID: 1, Password: "correct-horse-battery"}))
+	require.NoError(t, service.DisableMFA(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery"}))
 
 	status, err := service.MFAStatusFor(ctx, 1)
 	require.NoError(t, err)
@@ -342,14 +342,14 @@ func TestRegenerateRecoveryCodesInvalidatesTheOldSet(t *testing.T) {
 	now := time.Date(2026, 8, 7, 9, 0, 0, 0, time.UTC)
 	_, service := newMFATestService(t, now)
 
-	enrollment, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, Password: "correct-horse-battery"})
+	enrollment, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery"})
 	require.NoError(t, err)
 	activationCode, err := totp.Code(enrollment.Secret, totp.Step(now)-1)
 	require.NoError(t, err)
-	original, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, Code: activationCode})
+	original, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, SessionID: 1, Code: activationCode})
 	require.NoError(t, err)
 
-	replacement, err := service.RegenerateRecoveryCodes(ctx, MFAPasswordInput{UserID: 1, Password: "correct-horse-battery"})
+	replacement, err := service.RegenerateRecoveryCodes(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery"})
 	require.NoError(t, err)
 	require.Len(t, replacement, mfaRecoveryCodeCount)
 	assert.NotEqual(t, original[0], replacement[0])
@@ -370,7 +370,7 @@ func TestEnrollmentRefusesWithoutAConfiguredSecretKey(t *testing.T) {
 	now := time.Date(2026, 8, 7, 9, 0, 0, 0, time.UTC)
 	_, service := newAuthEventTestService(t, now)
 
-	_, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, Password: "correct-horse-battery"})
+	_, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery"})
 	assert.ErrorIs(t, err, ErrSecretKeyMissing)
 
 	status, err := service.MFAStatusFor(ctx, 1)
@@ -423,11 +423,11 @@ func TestRecoveryCodesStillWorkWhenTheSecretCannotBeOpened(t *testing.T) {
 	now := time.Date(2026, 8, 7, 9, 0, 0, 0, time.UTC)
 	_, service := newMFATestService(t, now)
 
-	enrollment, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, Password: "correct-horse-battery"})
+	enrollment, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery"})
 	require.NoError(t, err)
 	activationCode, err := totp.Code(enrollment.Secret, totp.Step(now)-1)
 	require.NoError(t, err)
-	recoveryCodes, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, Code: activationCode})
+	recoveryCodes, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, SessionID: 1, Code: activationCode})
 	require.NoError(t, err)
 
 	// The operator rotated or lost the key.
