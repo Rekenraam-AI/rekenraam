@@ -134,7 +134,10 @@ below is execution order, not a chain of hard dependencies.
    #261/#262/#263/#264 are corrected. The identity-concurrency follow-up #267
    is complete ([evidence](reviews/identity-concurrency-audit-2026-10-17.md));
    its findings #285/#286/#287 are fixed and attribution gap #288 is closed.
-   The other eleven areas and the proxy-browser follow-up remain pending
+   The proxy/shared-browser follow-up #268 is complete
+   ([evidence](reviews/proxy-browser-privacy-audit-2026-10-17.md)); its
+   key-loss sign-in finding #290 (P3) is open.
+   The other eleven areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):
@@ -142,7 +145,7 @@ below is execution order, not a chain of hard dependencies.
    operations #272/#273, reports and R13 readiness #275, and recovery #277;
    then planning #276, imports #271, reference data #269, prices and durable
    work #274; then frontend #278, deployment
-   #279 and proxy/shared-browser privacy #268. Architecture/quality #280
+   #279. Architecture/quality #280
    runs last, with the shared gates once at the candidate SHA.
    Fix confirmed integrity/security defects before affected feature slices.
    This is a bounded review, not a recurring full-suite gate. Each open

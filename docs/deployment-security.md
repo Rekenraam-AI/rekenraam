@@ -84,13 +84,21 @@ example is:
 
 ```caddyfile
 finance.example.com {
-    reverse_proxy 127.0.0.1:16888 {
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Host {host}
-        header_up X-Forwarded-Proto {scheme}
-    }
+    reverse_proxy 127.0.0.1:16888
 }
 ```
+
+Caddy's defaults already do what the app needs. They pass `Host` through and
+replace any client-supplied `X-Forwarded-For`, `X-Forwarded-Host` and
+`X-Forwarded-Proto` with the values Caddy observed, unless Caddy's own
+`trusted_proxies` says otherwise. Explicit `header_up` lines for those headers
+are redundant, and Caddy warns about them. Caddy passes `Forwarded` and
+`X-Real-IP` through unchanged; Rekenraam ignores both. This behavior was
+observed through a real Caddy deployment in the
+[#268 audit](reviews/proxy-browser-privacy-audit-2026-10-17.md). Its
+disposable recipe is in
+[`deploy/docker/proxy-audit/`](../deploy/docker/proxy-audit/README.md). For
+another proxy, confirm the same overwrite behavior before trusting it.
 
 Enable forwarded headers in Rekenraam only when the direct proxy source is
 known, and allowlist only that source:
@@ -99,12 +107,19 @@ known, and allowlist only that source:
 TRUST_PROXY_HEADERS=1 TRUSTED_PROXY_CIDRS=127.0.0.1/32,::1/128
 ```
 
-For a containerized proxy, use the exact container-network address or narrow
-CIDR observed by Rekenraam instead. Never use `0.0.0.0/0`, never allowlist an
+For a containerized proxy, give it a fixed address on its own network and
+allowlist exactly that address (`/32`), as the audit recipe does. Never use `0.0.0.0/0`, never allowlist an
 entire LAN merely for convenience, and never enable proxy-header trust when a
 client can connect to the app directly. The app parses XFF right-to-left and
 stops at the first non-trusted hop; the proxy must overwrite or append the
 actual client address instead of forwarding unverified client headers unchanged.
+
+After deploying, check the `client_ip` values in `GET /api/v1/auth/events`.
+They are the addresses the proxy saw. When clients reach a containerized proxy
+through a loopback-published port, Docker's userland proxy hides them, and
+every event shows the bridge gateway. That result is correct, but the per-IP
+throttle budget is then one budget shared by every client. Approved devices,
+not the IP budget, are what keep a remote attacker from locking the owner out.
 
 ## Monitoring authentication
 
@@ -169,7 +184,15 @@ it up with the SQLite database. Losing it leaves ledger data intact but makes
 stored provider credentials and any MFA enrolment unreadable — recover with a
 recovery code, or with the `recover-owner` command from the host; see the
 [developer workflow](developer-workflow.md#local-owner-recovery) for the
-backup-first recovery procedure. Do not change it casually: no in-place key
+backup-first recovery procedure.
+
+With a changed or missing key, the authenticator app's codes stop working.
+Today the sign-in screen reports them as invalid, and each one spends a
+sign-in attempt ([#290](https://github.com/sergeyfarin/rekenraam/issues/290)).
+Enter a recovery code instead. Then, at Settings → Security, turn two-factor
+off with your password and set it up again. Setup needs a configured key:
+without one it refuses with `CONFIG_REQUIRED`. The status still reads "On"
+until you do this. Do not change it casually: no in-place key
 rotation command exists yet.
 
 The app enforces mode `0600` on the SQLite database and its `-wal` and `-shm`
