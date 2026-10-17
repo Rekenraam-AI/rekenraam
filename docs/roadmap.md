@@ -143,13 +143,22 @@ below is execution order, not a chain of hard dependencies.
    #279 and proxy/shared-browser privacy #268. Architecture/quality #280
    runs last, with the shared gates once at the candidate SHA.
    Fix confirmed integrity/security defects before affected feature slices.
-   This is a bounded review, not a recurring full-suite gate.
-2. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
+   This is a bounded review, not a recurring full-suite gate. Each open
+   sub-audit also records maintainability notes, without fixing them.
+2. **Rank evidence-gated refactoring candidates in
+   [#284](https://github.com/sergeyfarin/rekenraam/issues/284).** After the
+   #260 sub-audits report, measure duplication, change amplification and
+   invariants enforced in more than one place. Publish a ranked list with
+   the rejected candidates; each accepted refactor gets its own issue and
+   preserves behavior. Refactoring only to change style or file length is
+   out of scope. R13 specification can proceed in parallel, but R13
+   implementation waits for #284's investment/reporting dispositions.
+3. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
    Use the delivered R18 valuation contracts; resolve portfolio scope,
    external-flow classification, return equations, numerical failure states,
    coverage and reproducibility before implementation. The reporting/investment
    audit informs this contract; unrelated provider evidence is not a prerequisite.
-3. **Continue independent readiness work.**
+4. **Continue independent readiness work.**
    [#102](https://github.com/sergeyfarin/rekenraam/issues/102) needs native
    terminology review, not another catalog-parity implementation. Recheck
    [#112](https://github.com/sergeyfarin/rekenraam/issues/112)'s upstream
