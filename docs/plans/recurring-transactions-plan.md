@@ -518,6 +518,10 @@ Implemented slice-2 contract:
   through the real transaction validator without writing a transaction. Actual
   generation must revalidate at each occurrence date. Investment postings are
   outside this producer's scope even if the entry's kind says `ordinary`.
+  Exception ([#283](https://github.com/sergeyfarin/rekenraam/issues/283)): a
+  PATCH that only renames and/or sets `enabled=false` checks the name alone, so
+  a template whose posting account was archived can still be paused or renamed.
+  Enabling, or any other field in the same PATCH, validates in full.
 
 Errors: `RECURRING_TEMPLATE_UNBALANCED`, `RECURRING_SCHEDULE_INVALID`,
 `RECURRING_OCCURRENCE_ALREADY_MATERIALIZED`, `RECURRING_TEMPLATE_ARCHIVED`,

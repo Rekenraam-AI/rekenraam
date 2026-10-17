@@ -169,7 +169,20 @@ func (s *RecurringService) UpdateTemplate(ctx context.Context, input WriteRecurr
 		// retain their identities and the generator will exclude them (slice 3).
 		spec.GenerateFrom = max(today, strings.TrimSpace(spec.StartsOn))
 	}
-	spec, err = s.cleanTemplate(ctx, spec, today)
+	if recurringPauseOrRenamePatch(input.Patch) {
+		// #283: a template whose posting account was archived must still be
+		// pausable and renamable without first repairing its postings. Neither
+		// change can produce a transaction, so the posting validation that
+		// guards generation is not this write's business.
+		spec.Name, err = cleanRecurringTemplateName(spec.Name)
+		if spec.PayeeID != nil {
+			// The read model fills the linked payee's name; storage keeps one or
+			// the other, as cleanTemplate's own normalization does.
+			spec.PayeeName = ""
+		}
+	} else {
+		spec, err = s.cleanTemplate(ctx, spec, today)
+	}
 	if err != nil {
 		return RecurringTemplate{}, err
 	}
@@ -256,6 +269,21 @@ func recurringSchedulePatched(p RecurringTemplatePatch) bool {
 		p.LastDayOfMonth != nil || p.MonthOfYear.Set || p.StartsOn != nil || p.EndsOn.Set || p.MaxOccurrences.Set
 }
 
+// recurringPauseOrRenamePatch reports a patch that only renames and/or
+// disables a template. Enabling keeps full validation so a template is never
+// knowingly turned on to produce blocked occurrences.
+func recurringPauseOrRenamePatch(p RecurringTemplatePatch) bool {
+	if p.Name == nil && p.Enabled == nil {
+		return false
+	}
+	if p.Enabled != nil && *p.Enabled {
+		return false
+	}
+	rest := p
+	rest.Name, rest.Enabled = nil, nil
+	return rest == RecurringTemplatePatch{}
+}
+
 func recurringSchedule(spec db.RecurringTemplateSpec) recur.ScheduleSpec {
 	result := recur.ScheduleSpec{Frequency: recur.Frequency(spec.Frequency), IntervalCount: spec.IntervalCount,
 		LastDayOfMonth: spec.LastDayOfMonth, StartsOn: spec.StartsOn, EndsOn: spec.EndsOn}
@@ -269,14 +297,22 @@ func recurringSchedule(spec db.RecurringTemplateSpec) recur.ScheduleSpec {
 	return result
 }
 
+func cleanRecurringTemplateName(name string) (string, error) {
+	name, err := cleanOptionalText(name, "template name", transactionTextMaxBytes)
+	if err != nil {
+		return name, err
+	}
+	if name == "" {
+		return name, ValidationError{Message: "template name is required"}
+	}
+	return name, nil
+}
+
 func (s *RecurringService) cleanTemplate(ctx context.Context, spec db.RecurringTemplateSpec, today string) (db.RecurringTemplateSpec, error) {
 	var err error
-	spec.Name, err = cleanOptionalText(spec.Name, "template name", transactionTextMaxBytes)
+	spec.Name, err = cleanRecurringTemplateName(spec.Name)
 	if err != nil {
 		return spec, err
-	}
-	if spec.Name == "" {
-		return spec, ValidationError{Message: "template name is required"}
 	}
 	spec.Frequency = strings.TrimSpace(spec.Frequency)
 	spec.StartsOn = strings.TrimSpace(spec.StartsOn)

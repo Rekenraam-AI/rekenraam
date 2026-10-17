@@ -215,3 +215,40 @@ func TestRecurringTemplateAllowsCurrencyClearingWithoutInvestmentEffects(t *test
 	_, err = service.CreateTemplate(context.Background(), input)
 	require.NoError(t, err, "currency exchange clearing is not an investment lot effect")
 }
+
+func TestRecurringTemplateWithArchivedAccountCanBePausedAndRenamedButNotEnabled(t *testing.T) {
+	t.Parallel()
+	f, service, input := recurringFixture(t)
+	ctx := context.Background()
+	created, err := service.CreateTemplate(ctx, input)
+	require.NoError(t, err)
+	lifecycle := AccountLifecycleInput{OwnerUserID: input.OwnerUserID, OriginType: "browser_api", AccountID: f.cashAccountID,
+		EffectiveFrom: "2026-08-30", ClosedOn: "2026-08-30"}
+	_, err = f.accountService.CloseAccount(ctx, lifecycle)
+	require.NoError(t, err)
+	_, err = f.accountService.ArchiveAccount(ctx, lifecycle)
+	require.NoError(t, err)
+	patch := func(p RecurringTemplatePatch) (RecurringTemplate, error) {
+		return service.UpdateTemplate(ctx, WriteRecurringTemplateInput{OwnerUserID: input.OwnerUserID, TemplateID: created.ID, Patch: p})
+	}
+
+	paused, err := patch(RecurringTemplatePatch{Enabled: recurringTestPtr(false)})
+	require.NoError(t, err)
+	assert.False(t, paused.Spec.Enabled)
+	renamed, err := patch(RecurringTemplatePatch{Name: recurringTestPtr("  Old salary  ")})
+	require.NoError(t, err)
+	expected := created.Spec
+	expected.Name, expected.Enabled = "Old salary", false
+	assert.Equal(t, expected, renamed.Spec)
+	_, err = patch(RecurringTemplatePatch{Name: recurringTestPtr("   ")})
+	require.ErrorContains(t, err, "template name is required")
+
+	// Enabling, or any change beyond name and pausing, still validates postings.
+	_, err = patch(RecurringTemplatePatch{Enabled: recurringTestPtr(true)})
+	require.ErrorContains(t, err, "posting account is not active for postings")
+	_, err = patch(RecurringTemplatePatch{Enabled: recurringTestPtr(false), Description: recurringTestPtr("x")})
+	require.ErrorContains(t, err, "posting account is not active for postings")
+	unchanged, err := service.Template(ctx, input.OwnerUserID, created.ID)
+	require.NoError(t, err)
+	assert.Equal(t, renamed.Revision, unchanged.Revision)
+}
