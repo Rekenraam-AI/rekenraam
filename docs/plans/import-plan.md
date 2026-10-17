@@ -282,6 +282,13 @@ Account scope matters: the same transfer can legitimately appear in two accounts
 exports, so the fingerprint includes the resolved account and the importer pairs
 two-account transfers into one balanced transaction rather than double-counting.
 
+> **Audit status (2026-10-17, [#271](https://github.com/sergeyfarin/rekenraam/issues/271)).**
+> The implementation does not yet match this contract. QIF hashes the file name
+> and the record's position in the file instead of an occurrence index among
+> identical rows ([#299](https://github.com/sergeyfarin/rekenraam/issues/299)).
+> No adapter includes the resolved account, which is only known after staging;
+> CSV is scoped by profile ([#302](https://github.com/sergeyfarin/rekenraam/issues/302)).
+
 ---
 
 ## API surface (OpenAPI-first, `/api/v1`)
@@ -336,6 +343,12 @@ clean 500-row statement.
   skipped/failed), with counts in the response and an `import_batch_events` row.
 - The user can fix resolutions/overrides on the remaining rows and call `commit`
   again — idempotency ensures already-committed rows are not duplicated.
+
+> **Audit status (2026-10-17, [#301](https://github.com/sergeyfarin/rekenraam/issues/301)).**
+> Not yet implemented as written: `skipped` and `failed` are terminal in the
+> batch, `PATCH` is refused once a batch leaves `previewing`, and a retry with
+> `reconciliation_override` does not revisit skipped rows. Re-uploading the file
+> recovers them, because identities are recorded only on commit.
 
 ### Rollback
 

@@ -143,13 +143,16 @@ below is execution order, not a chain of hard dependencies.
    The ledger/reconciliation audit #270 is complete
    ([evidence](reviews/ledger-reconciliation-audit-2026-10-17.md)); its
    finding #296 (P2) is fixed; #297/#298 (P3) are open.
-   The other nine areas remain pending
+   The import audit #271 is complete
+   ([evidence](reviews/import-audit-2026-10-17.md)); its findings #299 (P2)
+   and #300/#301/#302/#303 (P3) are open.
+   The other eight areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):
    investment
    operations #272/#273, reports and R13 readiness #275, and recovery #277;
-   then planning #276, imports #271, prices and durable work #274; then frontend #278, deployment
+   then planning #276, prices and durable work #274; then frontend #278, deployment
    #279. Architecture/quality #280
    runs last, with the shared gates once at the candidate SHA.
    Fix confirmed integrity/security defects before affected feature slices.
