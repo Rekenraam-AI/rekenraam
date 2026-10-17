@@ -410,6 +410,43 @@ design; the owner's statement completes it. Short holdings make the event
 informational. There is no scheduler and no automation-rule auto-post; the
 owner triggers *Check provider dividends*.
 
+### Twelve Data splits — contract reviewed, not mapped (2026-10-17)
+
+A second bounded mapping, Twelve Data `GET /splits` → `split` provider events
+admitted through the native split command, was evaluated against the same
+OpenAPI document (operation `GetSplits`) and **is not implemented**: the
+contract does not state an unambiguous ratio or effective date.
+
+- Parameters: `symbol` (or `figi`/`isin`/`cusip`), `exchange`, `mic_code`,
+  `country`, `range` (`last` by default; `1m`…`full`), `start_date`,
+  `end_date`. No `adjust` flag.
+- Response: the same `meta` as `GetDividends` and
+  `splits[{date, description, ratio, from_factor, to_factor}]`, all five
+  required. `/splits_calendar` returns the same row shape plus `symbol`,
+  `mic_code`, `exchange`.
+- Entitlement: `x-starting-plan: grow,venture`, `x-api-credits-cost: 20` per
+  symbol — identical to `/dividends`.
+- **Ratio is ambiguous.** `ratio` is described as "the ratio by which the
+  number of … outstanding shares … are increased", yet its example for a
+  `4-for-1 split` is `0.25` (the inverse: a price factor). `from_factor` and
+  `to_factor` are described only as "From/To factor of the split", with the
+  example `from_factor: 4, to_factor: 1` for that same forward split — read
+  literally, "from 4 to 1" is a reverse split. The contract shows no reverse
+  split, so the direction of every field is inferred from one example, never
+  stated, and `description` is free text.
+- **Date is ambiguous.** `date` "stands for the split date". The contract does
+  not say whether it is the announcement, record, ex/effective or payable
+  date, and the native split command needs the date the position changes.
+
+Consequence: a guessed direction would post a reversed split (a 4× unit error
+on the lot replay), and a guessed date would land on the wrong side of trades
+around the split. The mapping stays unbuilt until the provider documents the
+field semantics or live responses for a known forward **and** reverse split
+(with a known ex-date) pin them. Owners record splits manually through the
+native split command in the meantime. This is a Twelve Data evidence gap only;
+per ADR 0017 it neither blocks nor is blocked by Trading 212 split fills
+([#145](https://github.com/sergeyfarin/rekenraam/issues/145)).
+
 ## Slice-start preconditions (blocking)
 
 Reclassified 2026-08-05: these were sitting in `todo.md` as "decisions
