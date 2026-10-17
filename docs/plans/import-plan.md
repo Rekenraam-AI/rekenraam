@@ -282,12 +282,26 @@ Account scope matters: the same transfer can legitimately appear in two accounts
 exports, so the fingerprint includes the resolved account and the importer pairs
 two-account transfers into one balanced transaction rather than double-counting.
 
-> **Audit status (2026-10-17, [#271](https://github.com/sergeyfarin/rekenraam/issues/271)).**
-> The implementation does not yet match this contract. QIF hashes the file name
-> and the record's position in the file instead of an occurrence index among
-> identical rows ([#299](https://github.com/sergeyfarin/rekenraam/issues/299)).
-> No adapter includes the resolved account, which is only known after staging;
-> CSV is scoped by profile ([#302](https://github.com/sergeyfarin/rekenraam/issues/302)).
+> **Implemented identity (2026-10-17, [#299](https://github.com/sergeyfarin/rekenraam/issues/299)).**
+> QIF and CSV content keys are built the same way: `qif|date|amount|payee|memo`
+> and `csv|profile:<id>|date|amount|payee|memo` (payee lower-cased), each plus
+> `|occurrence:<n>`, where `n` counts the identical rows above it **in the same
+> file**. Neither includes the file name or the row's position, so a renamed or
+> overlapping re-export finds the rows it already committed
+> (`TestImportAuditQIFReexportIdentityIgnoresFileNameAndPosition`).
+>
+> **Account scope, decided for QIF: not in the identity yet.** The resolved
+> account is only known in review, after the fingerprint is computed at
+> staging. The QIF `!Account` name is not used either: a single-account
+> `!Type:Bank` export normally omits it, so the same row would get a different
+> identity depending on how the file was exported, which is the #299 failure
+> again (a silent double post). The cost of leaving it out is the safer
+> direction: an identical row in two accounts' QIF exports stages as
+> `duplicate` in the second (flagged and overridable, never hidden). That is
+> the same gap CSV has ([#302](https://github.com/sergeyfarin/rekenraam/issues/302)),
+> and #302 owns the account-scope fix for both adapters (a staging-time account
+> input or a per-account check at commit). Until then, the composite above
+> describes the target, not the current key.
 
 ---
 

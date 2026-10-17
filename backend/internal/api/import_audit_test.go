@@ -258,3 +258,52 @@ func TestImportAuditLargeBatchPartialCommitAndRepeatImportAreIdempotent(t *testi
 	assert.Equal(t, 0, none.CommittedCount)
 	assert.Equal(t, auditRat(t, "-31375.59"), c.balance(checking.ID, eur, "2026-12-31"))
 }
+
+// TestImportAuditQIFReexportIdentityIgnoresFileNameAndPosition is the #299
+// regression. A QIF row's identity is its content plus its occurrence among
+// identical rows in the file, so an overlapping re-export that starts one row
+// earlier, or the same rows under another file name, flags the already
+// committed rows as duplicates instead of posting them twice.
+func TestImportAuditQIFReexportIdentityIgnoresFileNameAndPosition(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	cookie, csrf, eur, checking, groceries := bootstrapImportAPITest(t, handler)
+	c := ledgerAuditClient{t: t, handler: handler, cookie: cookie, csrf: csrf}
+
+	commitAll := func(started startImportResponse) commitImportBatchResponse {
+		t.Helper()
+		rows := allImportRowsForAudit(t, c, started.Batch.ID)
+		patchImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, resolutionPatchBody(t, checking.ID, eur, groceries.ID, rowIDsForAudit(rows)...), http.StatusNoContent)
+		return commitImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, "", http.StatusOK)
+	}
+
+	coffeeAndLunch := qifRow("06/01/26", "-10.00", "Coffee") + qifRow("06/02/26", "-20.00", "Lunch")
+	first := uploadImportForAudit(t, c, "bank.qif", []byte(coffeeAndLunch), nil)
+	require.Equal(t, map[string]int{"new": 2}, dedupeCountsForAudit(allImportRowsForAudit(t, c, first.Batch.ID)))
+	committed := commitAll(first)
+	require.Equal(t, 2, committed.CommittedCount)
+	require.Equal(t, "-30", c.balance(checking.ID, eur, "2026-12-31")) // -10.00 - 20.00
+
+	// The same file name, one extra earlier row: Bus is new, Coffee and Lunch
+	// moved down one position but are the same transactions.
+	overlapping := uploadImportForAudit(t, c, "bank.qif", []byte(qifRow("05/31/26", "-5.00", "Bus")+coffeeAndLunch), nil)
+	overlapRows := allImportRowsForAudit(t, c, overlapping.Batch.ID)
+	assert.Equal(t, map[string]int{"new": 1, "duplicate": 2}, dedupeCountsForAudit(overlapRows))
+	for _, row := range overlapRows {
+		assert.Equalf(t, row.RowIndex == 0, row.DedupeStatus == "new", "only Bus (row 0) is new, row %d is %s", row.RowIndex, row.DedupeStatus)
+	}
+
+	// The original rows under another file name.
+	renamed := uploadImportForAudit(t, c, "bank-2026-06.qif", []byte(coffeeAndLunch), nil)
+	assert.Equal(t, map[string]int{"duplicate": 2}, dedupeCountsForAudit(allImportRowsForAudit(t, c, renamed.Batch.ID)))
+
+	overlapCommit := commitAll(overlapping)
+	assert.Equal(t, 1, overlapCommit.CommittedCount)
+	assert.Equal(t, 2, overlapCommit.SkippedCount)
+	assert.Equal(t, "-35", c.balance(checking.ID, eur, "2026-12-31"), "only Bus may post: -30 - 5.00")
+
+	renamedCommit := commitAll(renamed)
+	assert.Equal(t, 0, renamedCommit.CommittedCount)
+	assert.Equal(t, 2, renamedCommit.SkippedCount)
+	assert.Equal(t, "-35", c.balance(checking.ID, eur, "2026-12-31"), "the renamed copy must post nothing")
+}

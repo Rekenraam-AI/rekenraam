@@ -337,6 +337,10 @@ func normalizeQIFRecords(result *ParseResult, records []qifParsedRecord, filenam
 		}
 	}
 
+	// occurrences counts identical rows seen so far in this file, so two
+	// genuine identical rows keep distinct identities without the identity
+	// depending on the row's position (#299).
+	occurrences := map[string]int{}
 	for i, parsed := range records {
 		rec := parsed.record
 
@@ -379,7 +383,10 @@ func normalizeQIFRecords(result *ParseResult, records []qifParsedRecord, filenam
 			rec.splits[j].amount = canonical
 		}
 
-		row := qifRecordToStagedRow(rec, i, parsed.recordType, filename)
+		baseFingerprint := qifContentFingerprint(rec)
+		occurrence := occurrences[baseFingerprint]
+		occurrences[baseFingerprint]++
+		row := qifRecordToStagedRow(rec, fmt.Sprintf("%s|occurrence:%d", baseFingerprint, occurrence), parsed.recordType, filename)
 		result.Rows = append(result.Rows, row)
 
 		// Date range metadata: ISO dates compare correctly as strings.
@@ -398,7 +405,7 @@ func newQIFRecord() *qifRecord {
 	return &qifRecord{rawFields: make(map[string][]string)}
 }
 
-func qifRecordToStagedRow(rec *qifRecord, occurrenceIndex int, recordType, filename string) StagedRow {
+func qifRecordToStagedRow(rec *qifRecord, fingerprint, recordType, filename string) StagedRow {
 	// Build raw map (flatten multi-value fields to first value for display).
 	rawCap := 2
 	if len(rec.rawFields) <= math.MaxInt-2 {
@@ -438,12 +445,8 @@ func qifRecordToStagedRow(rec *qifRecord, occurrenceIndex int, recordType, filen
 		})
 	}
 
-	// Build the dedupe fingerprint.
-	// QIF has no bank-provided transaction ID, so we use a scoped content hash.
-	fp := buildQIFFingerprint(filename, rec, occurrenceIndex)
-
 	return StagedRow{
-		DedupeFingerprint: fp,
+		DedupeFingerprint: fingerprint,
 		Date:              rec.date,
 		Amount:            rec.amount,
 		PayeeHint:         rec.payee,
@@ -456,16 +459,12 @@ func qifRecordToStagedRow(rec *qifRecord, occurrenceIndex int, recordType, filen
 	}
 }
 
-func buildQIFFingerprint(filename string, rec *qifRecord, occurrence int) string {
-	// Scoped content hash: source_kind|filename|date|amount|payee|memo|occurrence
-	// We use a simple deterministic string rather than crypto hash for readability/debuggability.
-	// The service layer will hash this to a fixed-length fingerprint.
-	return fmt.Sprintf("qif|%s|%s|%s|%s|%s|%d",
-		filename,
-		rec.date,
-		rec.amount,
-		rec.payee,
-		rec.memo,
-		occurrence,
-	)
+// qifContentFingerprint is a QIF row's identity before the occurrence count.
+// QIF has no bank-provided transaction ID, so it is a content key over
+// source_kind|date|amount|payee|memo, built like the CSV one. The file name and
+// the row's position are deliberately absent: a renamed or overlapping
+// re-export must find the rows it already committed (#299). The service layer
+// hashes the full string to a fixed-length fingerprint.
+func qifContentFingerprint(rec *qifRecord) string {
+	return fmt.Sprintf("qif|%s|%s|%s|%s", rec.date, rec.amount, strings.ToLower(rec.payee), rec.memo)
 }
