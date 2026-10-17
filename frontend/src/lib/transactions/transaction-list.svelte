@@ -120,7 +120,7 @@
     const anchor = neighbor(tx, direction);
     if (!anchor || !csrfToken) return;
     const token = csrfToken;
-    void reorder.move((override) => placeTransaction(tx.id, anchor.id, placePosition(direction), token, override));
+    void reorder.move((reviewed) => placeTransaction(tx.id, anchor.id, placePosition(direction), token, reviewed));
   }
 </script>
 

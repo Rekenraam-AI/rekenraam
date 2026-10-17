@@ -134,15 +134,15 @@
       const token = csrfToken;
       reorder.proposeDayMove(
         adjacentCalendarDate(entry.entry_date, direction === 'later' ? 1 : -1),
-        (override) => movePostingToDay(accountID, entry.posting.posting_line_id, direction, token, override)
+        (reviewed) => movePostingToDay(accountID, entry.posting.posting_line_id, direction, token, reviewed)
       );
       return;
     }
     const token = csrfToken;
     const local = reorder.onlyThisAccount || anchor.transaction_id === entry.transaction_id;
-    void reorder.move((override) => local
-      ? movePosting(accountID, entry.posting.posting_line_id, direction, token, override)
-      : placeTransaction(entry.transaction_id, anchor.transaction_id, placePosition(direction), token, override));
+    void reorder.move((reviewed) => local
+      ? movePosting(accountID, entry.posting.posting_line_id, direction, token, reviewed)
+      : placeTransaction(entry.transaction_id, anchor.transaction_id, placePosition(direction), token, reviewed));
   }
 
 </script>

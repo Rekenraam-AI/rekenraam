@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -46,9 +47,24 @@ func (s *TransactionService) rejectIfCheckpointAlreadyInTheWay(ctx context.Conte
 		return err
 	}
 	if len(refs) > 0 {
-		return ErrReconciliationOverrideRequired
+		return checkpointImpactRefusal(ErrReconciliationOverrideRequired, refs)
 	}
 	return nil
+}
+
+// checkpointImpactRefusal names the resolved set on an early refusal, as the
+// write transaction's own guard does (#296).
+func checkpointImpactRefusal(err error, refs []db.CheckpointInvalidationRef) error {
+	seen := map[int64]bool{}
+	ids := []int64{}
+	for _, ref := range refs {
+		if !seen[ref.CheckpointID] {
+			seen[ref.CheckpointID] = true
+			ids = append(ids, ref.CheckpointID)
+		}
+	}
+	slices.Sort(ids)
+	return CheckpointImpactError{Err: err, CheckpointIDs: ids}
 }
 
 func (s *TransactionService) prepareCreateTransactionForWrite(ctx context.Context, input CreateTransactionInput) (db.CreateTransactionParams, error) {
@@ -109,11 +125,12 @@ func (s *TransactionService) prepareCreateTransactionForWriteWithOptions(ctx con
 			return db.CreateTransactionParams{}, err
 		}
 		if len(refs) > 0 {
-			return db.CreateTransactionParams{}, ErrReconciliationOverrideRequired
+			return db.CreateTransactionParams{}, checkpointImpactRefusal(ErrReconciliationOverrideRequired, refs)
 		}
 	}
 	params.CheckpointCandidates = candidates
 	params.ReconciliationOverride = input.ReconciliationOverride
+	params.ReviewedCheckpointIDs = input.ReconciliationOverrideCheckpointIDs
 	params.InvalidateCheckpointReason = params.ChangeReason
 
 	return params, nil
@@ -272,6 +289,7 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, input Update
 		ChangeReason:               changeReason,
 		CheckpointCandidates:       candidates,
 		ReconciliationOverride:     input.ReconciliationOverride,
+		ReviewedCheckpointIDs:      input.ReconciliationOverrideCheckpointIDs,
 		InvalidateCheckpointReason: changeReason,
 		// The spec and the candidates above both describe this version; the
 		// write refuses them if the transaction has moved on since (T-94).
@@ -293,6 +311,9 @@ func (s *TransactionService) PostTransaction(ctx context.Context, input PostTran
 	if err != nil {
 		return Transaction{}, err
 	}
+	if err := requireReviewedVersion(input.ExpectedVersionID, current.VersionID); err != nil {
+		return Transaction{}, err
+	}
 	if current.Status == "voided" {
 		return Transaction{}, ErrTransactionVoided
 	}
@@ -310,17 +331,18 @@ func (s *TransactionService) PostTransaction(ctx context.Context, input PostTran
 		// version it came from. UpdateTransaction reads the draft again, and an
 		// edit landing between the two reads must fail the promotion rather
 		// than post this spec's dates against that read's version (T-94).
-		ExpectedVersionID:      current.VersionID,
-		OwnerUserID:            input.OwnerUserID,
-		AuthSessionID:          input.AuthSessionID,
-		RequestID:              input.RequestID,
-		OriginType:             input.OriginType,
-		Operation:              "transaction.post",
-		TransactionID:          input.TransactionID,
-		Spec:                   spec,
-		ChangeReason:           input.ChangeReason,
-		AllowDraftPromotion:    true,
-		ReconciliationOverride: input.ReconciliationOverride,
+		ExpectedVersionID:                   current.VersionID,
+		OwnerUserID:                         input.OwnerUserID,
+		AuthSessionID:                       input.AuthSessionID,
+		RequestID:                           input.RequestID,
+		OriginType:                          input.OriginType,
+		Operation:                           "transaction.post",
+		TransactionID:                       input.TransactionID,
+		Spec:                                spec,
+		ChangeReason:                        input.ChangeReason,
+		AllowDraftPromotion:                 true,
+		ReconciliationOverride:              input.ReconciliationOverride,
+		ReconciliationOverrideCheckpointIDs: input.ReconciliationOverrideCheckpointIDs,
 	})
 }
 
@@ -344,6 +366,9 @@ func (s *TransactionService) VoidTransaction(ctx context.Context, input VoidTran
 	if err != nil {
 		return Transaction{}, err
 	}
+	if err := requireReviewedVersion(input.ExpectedVersionID, current.VersionID); err != nil {
+		return Transaction{}, err
+	}
 	if !changes {
 		return s.enrichOne(ctx, toTransaction(current))
 	}
@@ -363,6 +388,7 @@ func (s *TransactionService) VoidTransaction(ctx context.Context, input VoidTran
 		ChangeReason:               changeReason,
 		CheckpointCandidates:       candidates,
 		ReconciliationOverride:     input.ReconciliationOverride,
+		ReviewedCheckpointIDs:      input.ReconciliationOverrideCheckpointIDs,
 		InvalidateCheckpointReason: changeReason,
 		ExpectedVersionID:          current.VersionID,
 	})
@@ -393,6 +419,7 @@ func (s *TransactionService) UnvoidTransaction(ctx context.Context, input Transa
 		AuthSessionID: input.AuthSessionID, RequestID: input.RequestID, OriginType: input.OriginType,
 		Operation: "transaction.unvoid", RecordedAt: now, ChangeReason: changeReason,
 		CheckpointCandidates: candidates, ReconciliationOverride: input.ReconciliationOverride,
+		ReviewedCheckpointIDs:      input.ReconciliationOverrideCheckpointIDs,
 		InvalidateCheckpointReason: changeReason, ExpectedVersionID: current.VersionID,
 	})
 	if err != nil {
@@ -434,6 +461,7 @@ func (s *TransactionService) setTransactionDeleted(ctx context.Context, input Tr
 			AuthSessionID: input.AuthSessionID, RequestID: input.RequestID, OriginType: input.OriginType,
 			Operation: operation, RecordedAt: now, ChangeReason: changeReason,
 			CheckpointCandidates: candidates, ReconciliationOverride: input.ReconciliationOverride,
+			ReviewedCheckpointIDs:      input.ReconciliationOverrideCheckpointIDs,
 			InvalidateCheckpointReason: changeReason, ExpectedVersionID: current.VersionID,
 		}, Deleted: deleted,
 	})
@@ -502,6 +530,17 @@ func planSetDeleted(current Transaction, deleted bool) ([]db.PeriodScopedCheckpo
 	return periodScopedCandidatesFromTransaction(current), true, nil
 }
 
+// requireReviewedVersion refuses a lifecycle write the owner decided on from a
+// version that is no longer current (#296). Zero means the caller named none.
+// The write itself is bound to the service's own read (T-94); this binds that
+// read to what the owner saw.
+func requireReviewedVersion(expected, current int64) error {
+	if expected > 0 && expected != current {
+		return ErrTransactionVersionStale
+	}
+	return nil
+}
+
 func (s *TransactionService) prepareLifecycleChange(ctx context.Context, input TransactionLifecycleInput, requireReason bool) (Transaction, string, string, error) {
 	if input.OwnerUserID <= 0 {
 		return Transaction{}, "", "", ValidationError{Message: "owner user is required"}
@@ -512,6 +551,9 @@ func (s *TransactionService) prepareLifecycleChange(ctx context.Context, input T
 	record, err := s.repository.TransactionByIDIncludingDeleted(ctx, BookID, input.TransactionID)
 	if err != nil {
 		return Transaction{}, "", "", mapTransactionDBError(err)
+	}
+	if err := requireReviewedVersion(input.ExpectedVersionID, record.VersionID); err != nil {
+		return Transaction{}, "", "", err
 	}
 	if err := s.rejectInvestmentLinkedMutation(ctx, input.TransactionID); err != nil {
 		return Transaction{}, "", "", err

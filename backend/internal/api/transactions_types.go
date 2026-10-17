@@ -185,6 +185,12 @@ type transactionRequest struct {
 	JournalEntries         []journalEntryRequest `json:"journal_entries"`
 	ChangeReason           string                `json:"change_reason"`
 	ReconciliationOverride bool                  `json:"reconciliation_override"`
+	// ReconciliationOverrideCheckpointIDs is the set the owner reviewed for
+	// the override; it is required with the override (#296).
+	ReconciliationOverrideCheckpointIDs []int64 `json:"reconciliation_override_checkpoint_ids"`
+	// ExpectedVersionID is the version an edit was composed against; PATCH
+	// requires it (#296). Create and correct ignore it.
+	ExpectedVersionID int64 `json:"expected_version_id"`
 }
 
 type journalEntryRequest struct {
@@ -208,8 +214,29 @@ type postingRequest struct {
 }
 
 type voidTransactionRequest struct {
-	ChangeReason           string `json:"change_reason"`
-	ReconciliationOverride bool   `json:"reconciliation_override"`
+	ChangeReason                        string  `json:"change_reason"`
+	ReconciliationOverride              bool    `json:"reconciliation_override"`
+	ReconciliationOverrideCheckpointIDs []int64 `json:"reconciliation_override_checkpoint_ids"`
+	// ExpectedVersionID, when positive, is the version the owner decided on.
+	ExpectedVersionID int64 `json:"expected_version_id"`
+}
+
+type approveTransactionRequest struct {
+	ChangeReason string `json:"change_reason"`
+}
+
+// reviewedOverride is the checkpoint set a browser override acknowledges. An
+// override must name the set its preview (or a reorder's refusal) returned,
+// so the write can refuse a set the owner never saw (#296); without an
+// override the set is ignored.
+func reviewedOverride(override bool, checkpointIDs []int64) ([]int64, error) {
+	if !override {
+		return nil, nil
+	}
+	if checkpointIDs == nil {
+		return nil, app.ValidationError{Message: "reconciliation_override_checkpoint_ids must name the checkpoints the override was reviewed against"}
+	}
+	return checkpointIDs, nil
 }
 
 func toTransactionInput(request transactionRequest) app.TransactionInput {

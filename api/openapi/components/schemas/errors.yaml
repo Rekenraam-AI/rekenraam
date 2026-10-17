@@ -81,6 +81,7 @@ ErrorBody:
         - IMPORT_UPLOAD_TOO_LARGE
         - TRANSACTION_DRAFT_NOT_USER_CREATABLE
         - TRANSACTION_VERSION_STALE
+        - RECONCILIATION_IMPACT_STALE
         - POSTING_ACCOUNT_VERSION_STALE
         - RECURRING_TEMPLATE_UNBALANCED
         - RECONCILIATION_START_STALE
@@ -96,6 +97,16 @@ ErrorBody:
         - INTERNAL_ERROR
     message:
       type: string
+    checkpoint_ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+      description: >
+        On a reconciliation guard refusal of a generic ledger write (CONFLICT
+        "reconciliation override is required", or RECONCILIATION_IMPACT_STALE):
+        the checkpoints the write would invalidate right now. A reorder, which
+        has no preview, binds its override to this set (#296).
 ErrorResponse:
   type: object
   required:

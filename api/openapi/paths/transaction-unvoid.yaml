@@ -11,7 +11,7 @@ post:
     content:
       application/json:
         schema:
-          $ref: "../openapi.yaml#/components/schemas/TransactionLifecycleRequest"
+          $ref: "../openapi.yaml#/components/schemas/TransactionLifecycleWriteRequest"
   responses:
     "200":
       description: Transaction unvoided

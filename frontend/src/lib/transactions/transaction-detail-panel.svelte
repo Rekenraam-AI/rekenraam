@@ -17,6 +17,9 @@
     approveTransaction,
     getLifecycleReconciliationImpact,
     isReconciliationOverrideRequired,
+    isReconciliationImpactStale,
+    isTransactionVersionStale,
+    reviewedOverride,
     type TransactionLifecycleAction,
     type TransactionResponse,
     type ReconciliationImpactResponse,
@@ -132,16 +135,18 @@
     const kind = activeModal;
     const reason = reasonInput.trim();
     try {
-      const result = await runLifecycle(kind, reason, false);
+      const result = await runLifecycle(kind, reason);
       closeModal();
       finishLifecycle(kind, result);
     } catch (error) {
       if (!isReconciliationOverrideRequired(error)) {
         actionError = error;
+        // A version the owner never saw is reloaded, not acted on (#296).
+        if (isTransactionVersionStale(error)) onRefresh?.();
         return;
       }
-      // The refusal names no checkpoints; ask for the action's own impact so
-      // the owner sees the full invalidation set before continuing (#220).
+      // Ask for the action's own impact so the owner sees the full
+      // invalidation set, with labels, before continuing (#220).
       try {
         const impact = await getLifecycleReconciliationImpact(transaction.id, kind);
         reconciliationModal = {
@@ -159,10 +164,13 @@
     }
   }
 
-  function runLifecycle(kind: TransactionLifecycleAction, reason: string, override: boolean) {
+  /** reviewed is the previewed impact an override acknowledges; absent, no override. */
+  function runLifecycle(kind: TransactionLifecycleAction, reason: string, reviewed?: ReconciliationImpactResponse) {
     const input: TransactionLifecycleRequest = {
       change_reason: reason || undefined,
-      reconciliation_override: override || undefined
+      // The write is bound to the version shown and to the reviewed set (#296).
+      expected_version_id: transaction.version_id,
+      ...(reviewed ? reviewedOverride(reviewed) : {})
     };
     switch (kind) {
       case 'void': return voidTransaction(transaction.id, csrfToken!, input);
@@ -187,12 +195,25 @@
     actionPending = true;
     actionError = undefined;
     try {
-      // The write rechecks the guard itself; the preview is never authority.
-      const result = await runLifecycle(pendingKind, pendingReason, true);
+      // The write rechecks the guard itself and refuses a set other than the
+      // one shown here (#296); the preview is never authority.
+      const result = await runLifecycle(pendingKind, pendingReason, { affected_checkpoints: reconciliationModal.impacts });
       reconciliationModal = { ...reconciliationModal, open: false };
       finishLifecycle(pendingKind, result);
     } catch (error) {
       actionError = error;
+      if (isReconciliationImpactStale(error)) {
+        // Show the set as it is now; the owner confirms again or cancels.
+        try {
+          const impact = await getLifecycleReconciliationImpact(transaction.id, pendingKind);
+          reconciliationModal = { ...reconciliationModal, impacts: impact.affected_checkpoints };
+        } catch (previewError) {
+          actionError = previewError;
+        }
+      } else if (isTransactionVersionStale(error)) {
+        reconciliationModal = { ...reconciliationModal, open: false };
+        onRefresh?.();
+      }
     } finally {
       actionPending = false;
     }

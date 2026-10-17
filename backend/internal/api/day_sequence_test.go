@@ -499,7 +499,10 @@ func TestMovePostingWithOverrideInvalidatesCheckpoint(t *testing.T) {
 	reconcilePostingForSession(t, handler, sessionCookie, csrfToken, checking.ID, commodityID, tx1.JournalEntries[0].Postings[0], "2026-06-07")
 
 	tx2CheckingLineID := tx2.JournalEntries[0].Postings[0].PostingLineID
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/accounts/"+strconvFormatInt(checking.ID)+"/postings/"+strconvFormatInt(tx2CheckingLineID)+"/move", strings.NewReader(`{"direction":"earlier","reconciliation_override":true}`))
+	crossed := listCheckpointsForSession(t, handler, sessionCookie, checking.ID)
+	require.Len(t, crossed, 1)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/accounts/"+strconvFormatInt(checking.ID)+"/postings/"+strconvFormatInt(tx2CheckingLineID)+"/move",
+		strings.NewReader(`{"direction":"earlier","reconciliation_override":true,"reconciliation_override_checkpoint_ids":[`+strconvFormatInt(crossed[0].ID)+`]}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(csrfTokenHeader, csrfToken)
 	setSameOrigin(req)

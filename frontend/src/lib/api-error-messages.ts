@@ -78,6 +78,7 @@ const apiErrorMessageByCode: Record<APIErrorCode, () => string> = {
   IMPORT_UPLOAD_TOO_LARGE: () => m.api_error_import_upload_too_large(),
   TRANSACTION_DRAFT_NOT_USER_CREATABLE: () => m.api_error_transaction_draft_not_user_creatable(),
   TRANSACTION_VERSION_STALE: () => m.api_error_transaction_version_stale(),
+  RECONCILIATION_IMPACT_STALE: () => m.api_error_reconciliation_impact_stale(),
   POSTING_ACCOUNT_VERSION_STALE: () => m.api_error_posting_account_version_stale(),
   RECURRING_TEMPLATE_UNBALANCED: () => m.api_error_recurring_template_unbalanced(),
   RECONCILIATION_START_STALE: () => m.api_error_reconciliation_start_stale(),

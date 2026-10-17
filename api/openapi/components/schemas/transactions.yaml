@@ -565,6 +565,26 @@ TransactionRequest:
     reconciliation_override:
       type: boolean
       description: Required when editing reconciled account-side posting facts and accepting checkpoint invalidation.
+    reconciliation_override_checkpoint_ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+      description: >
+        Required with reconciliation_override=true (#296): the checkpoint ids
+        the owner reviewed, as the reconciliation-impact preview returned them. The write
+        refuses with 409 RECONCILIATION_IMPACT_STALE, invalidating nothing, when
+        the set it would invalidate now differs; that refusal's checkpoint_ids
+        name the current set.
+    expected_version_id:
+      type: integer
+      format: int64
+      description: >
+        The transaction version this form was composed against (#296). Required
+        by PATCH, which replaces the whole spec: a different current version is
+        refused with 409 TRANSACTION_VERSION_STALE and nothing is written. The
+        update reconciliation-impact preview checks it the same way when given.
+        Create and correct ignore it.
   additionalProperties: false
 TransactionLifecycleRequest:
   type: object
@@ -573,6 +593,32 @@ TransactionLifecycleRequest:
       type: string
     reconciliation_override:
       type: boolean
+  additionalProperties: false
+TransactionLifecycleWriteRequest:
+  type: object
+  description: Body of post, void, unvoid, soft-delete and restore.
+  properties:
+    change_reason:
+      type: string
+    reconciliation_override:
+      type: boolean
+    reconciliation_override_checkpoint_ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+      description: >
+        Required with reconciliation_override=true (#296): the checkpoint ids
+        the owner reviewed, as the action's reconciliation-impact preview returned them. The write
+        refuses with 409 RECONCILIATION_IMPACT_STALE, invalidating nothing, when
+        the set it would invalidate now differs; that refusal's checkpoint_ids
+        name the current set.
+    expected_version_id:
+      type: integer
+      format: int64
+      description: >
+        Optional (#296): the version the owner decided on. A different current
+        version is refused with 409 TRANSACTION_VERSION_STALE.
   additionalProperties: false
 PlaceTransactionRequest:
   type: object
@@ -592,6 +638,17 @@ PlaceTransactionRequest:
     reconciliation_override:
       type: boolean
       description: Required when the change would cross an active reconciliation checkpoint boundary; accepts checkpoint invalidation.
+    reconciliation_override_checkpoint_ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+      description: >
+        Required with reconciliation_override=true (#296): the checkpoint ids
+        the owner reviewed, as the refusal's checkpoint_ids (a reorder has no preview) returned them. The write
+        refuses with 409 RECONCILIATION_IMPACT_STALE, invalidating nothing, when
+        the set it would invalidate now differs; that refusal's checkpoint_ids
+        name the current set.
   additionalProperties: false
 MoveRequest:
   type: object
@@ -607,6 +664,17 @@ MoveRequest:
     reconciliation_override:
       type: boolean
       description: Required when the move would cross an active reconciliation checkpoint boundary; accepts checkpoint invalidation.
+    reconciliation_override_checkpoint_ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+      description: >
+        Required with reconciliation_override=true (#296): the checkpoint ids
+        the owner reviewed, as the refusal's checkpoint_ids (a reorder has no preview) returned them. The write
+        refuses with 409 RECONCILIATION_IMPACT_STALE, invalidating nothing, when
+        the set it would invalidate now differs; that refusal's checkpoint_ids
+        name the current set.
   additionalProperties: false
 ReconciliationImpactResponse:
   type: object

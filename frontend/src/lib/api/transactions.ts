@@ -7,7 +7,8 @@ export type TransactionsResponse = components['schemas']['TransactionsResponse']
 export type AccountRegisterResponse = components['schemas']['AccountRegisterResponse'];
 export type AccountRegisterEntryResponse = components['schemas']['AccountRegisterEntryResponse'];
 export type TransactionRequest = components['schemas']['TransactionRequest'];
-export type TransactionLifecycleRequest = components['schemas']['TransactionLifecycleRequest'];
+export type TransactionLifecycleRequest = components['schemas']['TransactionLifecycleWriteRequest'];
+export type ApproveTransactionRequest = components['schemas']['TransactionLifecycleRequest'];
 export type MoveRequest = components['schemas']['MoveRequest'];
 export type ReconciliationImpactResponse = components['schemas']['ReconciliationImpactResponse'];
 export type DeletedTransactionResponse = components['schemas']['DeletedTransactionResponse'];
@@ -277,7 +278,7 @@ export async function restoreTransaction(transactionID: number, csrfToken: strin
   return transactionLifecycleMutation('/api/v1/transactions/{transaction_id}/restore', transactionID, csrfToken, input);
 }
 
-export async function approveTransaction(transactionID: number, csrfToken: string, input: TransactionLifecycleRequest = {}): Promise<TransactionResponse> {
+export async function approveTransaction(transactionID: number, csrfToken: string, input: ApproveTransactionRequest = {}): Promise<TransactionResponse> {
   return transactionLifecycleMutation('/api/v1/transactions/{transaction_id}/approve', transactionID, csrfToken, input);
 }
 
@@ -361,18 +362,29 @@ export async function moveTransaction(transactionID: number, direction: MoveRequ
 }
 
 /**
+ * A reorder's override names the checkpoints its refusal reported (a reorder
+ * has no preview), so a set that grew meanwhile is refused, not invalidated
+ * (#296). Undefined means no override.
+ */
+function reorderOverride(reviewedCheckpointIDs: number[] | undefined) {
+  return reviewedCheckpointIDs
+    ? { reconciliation_override: true, reconciliation_override_checkpoint_ids: reviewedCheckpointIDs }
+    : {};
+}
+
+/**
  * Place a transaction before or after another on their shared day (#185): in
  * the journal order and in every account register holding both that day.
  */
 export async function placeTransaction(transactionID: number, anchorTransactionID: number, position: 'before' | 'after',
-  csrfToken: string, reconciliationOverride = false): Promise<TransactionResponse> {
+  csrfToken: string, reviewedCheckpointIDs?: number[]): Promise<TransactionResponse> {
   try {
     const { data, error, response } = await apiClient.POST('/api/v1/transactions/{transaction_id}/place', {
       params: {
         path: { transaction_id: transactionID },
         header: { 'X-CSRF-Token': csrfToken }
       },
-      body: { anchor_transaction_id: anchorTransactionID, position, ...(reconciliationOverride ? { reconciliation_override: true } : {}) }
+      body: { anchor_transaction_id: anchorTransactionID, position, ...reorderOverride(reviewedCheckpointIDs) }
     });
     if (data !== undefined) {
       return data;
@@ -387,14 +399,14 @@ export async function placeTransaction(transactionID: number, anchorTransactionI
 }
 
 export async function movePosting(accountID: number, postingLineID: number, direction: MoveRequest['direction'], csrfToken: string,
-  reconciliationOverride = false): Promise<TransactionResponse> {
+  reviewedCheckpointIDs?: number[]): Promise<TransactionResponse> {
   try {
     const { data, error, response } = await apiClient.POST('/api/v1/accounts/{account_id}/postings/{posting_line_id}/move', {
       params: {
         path: { account_id: accountID, posting_line_id: postingLineID },
         header: { 'X-CSRF-Token': csrfToken }
       },
-      body: { direction, ...(reconciliationOverride ? { reconciliation_override: true } : {}) }
+      body: { direction, ...reorderOverride(reviewedCheckpointIDs) }
     });
 
     if (data !== undefined) {
@@ -413,14 +425,14 @@ export async function movePosting(accountID: number, postingLineID: number, dire
 
 /** Moves one account posting to the previous or next calendar day (#187). */
 export async function movePostingToDay(accountID: number, postingLineID: number, direction: MoveRequest['direction'], csrfToken: string,
-  reconciliationOverride = false): Promise<TransactionResponse> {
+  reviewedCheckpointIDs?: number[]): Promise<TransactionResponse> {
   try {
     const { data, error, response } = await apiClient.POST('/api/v1/accounts/{account_id}/postings/{posting_line_id}/move-day', {
       params: {
         path: { account_id: accountID, posting_line_id: postingLineID },
         header: { 'X-CSRF-Token': csrfToken }
       },
-      body: { direction, ...(reconciliationOverride ? { reconciliation_override: true } : {}) }
+      body: { direction, ...reorderOverride(reviewedCheckpointIDs) }
     });
 
     if (data !== undefined) {
@@ -531,6 +543,24 @@ export function isReconciliationOverrideRequired(error: unknown): boolean {
     error.code === 'CONFLICT' &&
     (error.detail?.includes('reconciliation override') ?? false)
   );
+}
+
+/** True when an override was refused because the checkpoint set it acknowledged is no longer the set the write would invalidate (#296). */
+export function isReconciliationImpactStale(error: unknown): boolean {
+  return error instanceof APIClientError && error.code === 'RECONCILIATION_IMPACT_STALE';
+}
+
+/** True when the write was composed against a version another write has replaced (#296). */
+export function isTransactionVersionStale(error: unknown): boolean {
+  return error instanceof APIClientError && error.code === 'TRANSACTION_VERSION_STALE';
+}
+
+/** The override fields that acknowledge exactly the previewed checkpoints (#296). */
+export function reviewedOverride(impact: ReconciliationImpactResponse) {
+  return {
+    reconciliation_override: true,
+    reconciliation_override_checkpoint_ids: impact.affected_checkpoints.map((checkpoint) => checkpoint.checkpoint_id)
+  };
 }
 
 const lifecycleImpactPaths = {

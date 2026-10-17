@@ -9,17 +9,21 @@ export class APIClientError extends Error {
   code?: APIErrorCode;
   detail?: string;
   requestId?: string;
+  /** On a reconciliation guard refusal: the checkpoints the write would invalidate now (#296). */
+  checkpointIDs?: number[];
 
   constructor({
     status,
     code,
     detail,
-    requestId
+    requestId,
+    checkpointIDs
   }: {
     status: number;
     code?: APIErrorCode;
     detail?: string;
     requestId?: string;
+    checkpointIDs?: number[];
   }) {
     super(code ?? 'API_REQUEST_FAILED');
 
@@ -28,6 +32,7 @@ export class APIClientError extends Error {
     this.code = code;
     this.detail = detail;
     this.requestId = requestId;
+    this.checkpointIDs = checkpointIDs;
   }
 }
 
@@ -49,7 +54,8 @@ export function toAPIClientError(
     status: response?.status ?? 0,
     code: errorBody?.code,
     detail: errorBody?.message,
-    requestId: response?.headers.get('X-Request-ID') ?? undefined
+    requestId: response?.headers.get('X-Request-ID') ?? undefined,
+    checkpointIDs: errorBody?.checkpoint_ids
   });
 }
 

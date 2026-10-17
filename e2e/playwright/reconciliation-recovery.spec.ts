@@ -50,8 +50,11 @@ test('an invalidated statement can be reconciled again to the corrected balance'
   });
   await apiJSON(page, 'POST', `/api/v1/reconciliations/${first.id}/finish`, csrfToken, { change_reason: 'matched statement' });
 
-  // Withholding entered late, with the explicit override.
-  await move(`Withholding ${suffix}`, -1500, { reconciliation_override: true, change_reason: 'withholding entered late' });
+  // Withholding entered late, with the explicit override of the reviewed checkpoint (#296).
+  const reviewed = (await checkpoints()).map((c) => c.id);
+  await move(`Withholding ${suffix}`, -1500, {
+    reconciliation_override: true, reconciliation_override_checkpoint_ids: reviewed, change_reason: 'withholding entered late'
+  });
   expect((await checkpoints()).map((c) => c.status)).toEqual(['invalidated']);
 
   await page.goto('/app/reconcile');

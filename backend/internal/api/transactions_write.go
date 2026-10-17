@@ -20,16 +20,22 @@ func createTransaction(logger *slog.Logger, authService *app.AuthService, transa
 			writeDecodeError(w, err)
 			return
 		}
+		reviewed, err := reviewedOverride(request.ReconciliationOverride, request.ReconciliationOverrideCheckpointIDs)
+		if err != nil {
+			writeTransactionServiceError(w, r, logger, "create transaction", err)
+			return
+		}
 
 		transaction, err := transactionService.CreateTransaction(r.Context(), app.CreateTransactionInput{
-			OwnerUserID:            owner.ID,
-			AuthSessionID:          authenticatedSessionID(r),
-			RequestID:              RequestIDFromContext(r.Context()),
-			OriginType:             "browser_api",
-			Operation:              "transaction.create",
-			Spec:                   toTransactionInput(request),
-			ChangeReason:           request.ChangeReason,
-			ReconciliationOverride: request.ReconciliationOverride,
+			OwnerUserID:                         owner.ID,
+			AuthSessionID:                       authenticatedSessionID(r),
+			RequestID:                           RequestIDFromContext(r.Context()),
+			OriginType:                          "browser_api",
+			Operation:                           "transaction.create",
+			Spec:                                toTransactionInput(request),
+			ChangeReason:                        request.ChangeReason,
+			ReconciliationOverride:              request.ReconciliationOverride,
+			ReconciliationOverrideCheckpointIDs: reviewed,
 		})
 		if err != nil {
 			writeTransactionServiceError(w, r, logger, "create transaction", err)
@@ -56,17 +62,30 @@ func updateTransaction(logger *slog.Logger, authService *app.AuthService, transa
 			writeDecodeError(w, err)
 			return
 		}
+		reviewed, err := reviewedOverride(request.ReconciliationOverride, request.ReconciliationOverrideCheckpointIDs)
+		if err != nil {
+			writeTransactionServiceError(w, r, logger, "update transaction", err)
+			return
+		}
+		if request.ExpectedVersionID <= 0 {
+			// A PATCH replaces the whole spec, so one composed against an older
+			// version would silently revert whatever changed since (#296).
+			writeAPIError(w, http.StatusBadRequest, "VALIDATION_FAILED", "expected_version_id must name the version this edit was composed against")
+			return
+		}
 
 		transaction, err := transactionService.UpdateTransaction(r.Context(), app.UpdateTransactionInput{
-			OwnerUserID:            owner.ID,
-			AuthSessionID:          authenticatedSessionID(r),
-			RequestID:              RequestIDFromContext(r.Context()),
-			OriginType:             "browser_api",
-			Operation:              "transaction.update",
-			TransactionID:          transactionID,
-			Spec:                   toTransactionInput(request),
-			ChangeReason:           request.ChangeReason,
-			ReconciliationOverride: request.ReconciliationOverride,
+			ExpectedVersionID:                   request.ExpectedVersionID,
+			OwnerUserID:                         owner.ID,
+			AuthSessionID:                       authenticatedSessionID(r),
+			RequestID:                           RequestIDFromContext(r.Context()),
+			OriginType:                          "browser_api",
+			Operation:                           "transaction.update",
+			TransactionID:                       transactionID,
+			Spec:                                toTransactionInput(request),
+			ChangeReason:                        request.ChangeReason,
+			ReconciliationOverride:              request.ReconciliationOverride,
+			ReconciliationOverrideCheckpointIDs: reviewed,
 		})
 		if err != nil {
 			writeTransactionServiceError(w, r, logger, "update transaction", err)
@@ -93,15 +112,22 @@ func postTransaction(logger *slog.Logger, authService *app.AuthService, transact
 			writeDecodeError(w, err)
 			return
 		}
+		reviewed, err := reviewedOverride(request.ReconciliationOverride, request.ReconciliationOverrideCheckpointIDs)
+		if err != nil {
+			writeTransactionServiceError(w, r, logger, "post transaction", err)
+			return
+		}
 
 		transaction, err := transactionService.PostTransaction(r.Context(), app.PostTransactionInput{
-			OwnerUserID:            owner.ID,
-			AuthSessionID:          authenticatedSessionID(r),
-			RequestID:              RequestIDFromContext(r.Context()),
-			OriginType:             "browser_api",
-			TransactionID:          transactionID,
-			ChangeReason:           request.ChangeReason,
-			ReconciliationOverride: request.ReconciliationOverride,
+			OwnerUserID:                         owner.ID,
+			AuthSessionID:                       authenticatedSessionID(r),
+			RequestID:                           RequestIDFromContext(r.Context()),
+			OriginType:                          "browser_api",
+			TransactionID:                       transactionID,
+			ChangeReason:                        request.ChangeReason,
+			ReconciliationOverride:              request.ReconciliationOverride,
+			ReconciliationOverrideCheckpointIDs: reviewed,
+			ExpectedVersionID:                   request.ExpectedVersionID,
 		})
 		if err != nil {
 			writeTransactionServiceError(w, r, logger, "post transaction", err)
@@ -128,15 +154,22 @@ func voidTransaction(logger *slog.Logger, authService *app.AuthService, transact
 			writeDecodeError(w, err)
 			return
 		}
+		reviewed, err := reviewedOverride(request.ReconciliationOverride, request.ReconciliationOverrideCheckpointIDs)
+		if err != nil {
+			writeTransactionServiceError(w, r, logger, "void transaction", err)
+			return
+		}
 
 		transaction, err := transactionService.VoidTransaction(r.Context(), app.VoidTransactionInput{
-			OwnerUserID:            owner.ID,
-			AuthSessionID:          authenticatedSessionID(r),
-			RequestID:              RequestIDFromContext(r.Context()),
-			OriginType:             "browser_api",
-			TransactionID:          transactionID,
-			ChangeReason:           request.ChangeReason,
-			ReconciliationOverride: request.ReconciliationOverride,
+			OwnerUserID:                         owner.ID,
+			AuthSessionID:                       authenticatedSessionID(r),
+			RequestID:                           RequestIDFromContext(r.Context()),
+			OriginType:                          "browser_api",
+			TransactionID:                       transactionID,
+			ChangeReason:                        request.ChangeReason,
+			ReconciliationOverride:              request.ReconciliationOverride,
+			ReconciliationOverrideCheckpointIDs: reviewed,
+			ExpectedVersionID:                   request.ExpectedVersionID,
 		})
 		if err != nil {
 			writeTransactionServiceError(w, r, logger, "void transaction", err)
@@ -174,11 +207,17 @@ func transactionLifecycleHandler(logger *slog.Logger, authService *app.AuthServi
 			writeDecodeError(w, err)
 			return
 		}
+		reviewed, err := reviewedOverride(request.ReconciliationOverride, request.ReconciliationOverrideCheckpointIDs)
+		if err != nil {
+			writeTransactionServiceError(w, r, logger, action, err)
+			return
+		}
 		transaction, err := mutate(r.Context(), app.TransactionLifecycleInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r),
 			RequestID: RequestIDFromContext(r.Context()), OriginType: "browser_api",
 			TransactionID: transactionID, ChangeReason: request.ChangeReason,
-			ReconciliationOverride: request.ReconciliationOverride,
+			ReconciliationOverride:              request.ReconciliationOverride,
+			ReconciliationOverrideCheckpointIDs: reviewed, ExpectedVersionID: request.ExpectedVersionID,
 		})
 		if err != nil {
 			writeTransactionServiceError(w, r, logger, action, err)
@@ -261,7 +300,7 @@ func approveTransaction(logger *slog.Logger, authService *app.AuthService, trans
 			return
 		}
 
-		var request voidTransactionRequest
+		var request approveTransactionRequest
 		if err := decodeJSONBody(r, &request); err != nil {
 			writeDecodeError(w, err)
 			return

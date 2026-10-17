@@ -28,11 +28,14 @@ var (
 	ErrInvestmentWorkflowRequired     = errors.New("investment-linked transaction requires an investment workflow")
 	ErrTransactionTag                 = errors.New("transaction tag is invalid")
 	ErrReconciliationOverrideRequired = errors.New("reconciliation override is required")
-	ErrReconciliationNotFound         = errors.New("reconciliation not found")
-	ErrReconciliationClosed           = errors.New("reconciliation is not open")
-	ErrReconciliationNotBalanced      = errors.New("reconciliation difference must be zero")
-	ErrReconciliationPosting          = errors.New("reconciliation posting is invalid")
-	ErrReconciliationStartStale       = errors.New("reconciliation starting balance is no longer current")
+	// ErrReconciliationImpactStale refuses an override reviewed against a
+	// checkpoint set other than the one the write would invalidate now (#296).
+	ErrReconciliationImpactStale = errors.New("the checkpoints this write would invalidate changed after they were reviewed")
+	ErrReconciliationNotFound    = errors.New("reconciliation not found")
+	ErrReconciliationClosed      = errors.New("reconciliation is not open")
+	ErrReconciliationNotBalanced = errors.New("reconciliation difference must be zero")
+	ErrReconciliationPosting     = errors.New("reconciliation posting is invalid")
+	ErrReconciliationStartStale  = errors.New("reconciliation starting balance is no longer current")
 )
 
 type Transaction struct {
@@ -177,6 +180,10 @@ type CreateTransactionInput struct {
 	Spec                      TransactionInput
 	ChangeReason              string
 	ReconciliationOverride    bool
+	// ReconciliationOverrideCheckpointIDs, when non-nil, is the checkpoint set
+	// the owner reviewed for the override; the write refuses a different set
+	// (#296). Nil leaves an internal caller's override unbound.
+	ReconciliationOverrideCheckpointIDs []int64
 }
 
 type UpdateTransactionInput struct {
@@ -189,7 +196,11 @@ type UpdateTransactionInput struct {
 	Spec                   TransactionInput
 	ChangeReason           string
 	ReconciliationOverride bool
-	AllowDraftPromotion    bool
+	// ReconciliationOverrideCheckpointIDs, when non-nil, is the checkpoint set
+	// the owner reviewed for the override; the write refuses a different set
+	// (#296). Nil leaves an internal caller's override unbound.
+	ReconciliationOverrideCheckpointIDs []int64
+	AllowDraftPromotion                 bool
 	// ExpectedVersionID is the transaction version the caller composed Spec
 	// from. It is how a caller that read the transaction itself — PostTransaction
 	// builds the promotion spec out of its own read — binds that spec to the
@@ -209,6 +220,13 @@ type PostTransactionInput struct {
 	TransactionID          int64
 	ChangeReason           string
 	ReconciliationOverride bool
+	// ReconciliationOverrideCheckpointIDs, when non-nil, is the checkpoint set
+	// the owner reviewed for the override; the write refuses a different set
+	// (#296). Nil leaves an internal caller's override unbound.
+	ReconciliationOverrideCheckpointIDs []int64
+	// ExpectedVersionID, when positive, is the version the caller reviewed;
+	// any other current version refuses the write as stale (#296).
+	ExpectedVersionID int64
 }
 
 type VoidTransactionInput struct {
@@ -219,9 +237,21 @@ type VoidTransactionInput struct {
 	TransactionID          int64
 	ChangeReason           string
 	ReconciliationOverride bool
+	// ReconciliationOverrideCheckpointIDs, when non-nil, is the checkpoint set
+	// the owner reviewed for the override; the write refuses a different set
+	// (#296). Nil leaves an internal caller's override unbound.
+	ReconciliationOverrideCheckpointIDs []int64
+	// ExpectedVersionID, when positive, is the version the caller reviewed;
+	// any other current version refuses the write as stale (#296).
+	ExpectedVersionID int64
 }
 
 type TransactionLifecycleInput = VoidTransactionInput
+
+// CheckpointImpactError is a guard refusal naming the checkpoints the write
+// would invalidate now; it unwraps to ErrReconciliationOverrideRequired or
+// ErrReconciliationImpactStale (#296).
+type CheckpointImpactError = db.CheckpointImpactError
 
 type DeleteDraftTransactionInput struct {
 	OwnerUserID   int64
@@ -299,6 +329,10 @@ type PlaceTransactionInput struct {
 	AnchorTransactionID    int64
 	Position               string // "before" | "after"
 	ReconciliationOverride bool
+	// ReconciliationOverrideCheckpointIDs, when non-nil, is the checkpoint set
+	// the owner reviewed for the override; the write refuses a different set
+	// (#296). Nil leaves an internal caller's override unbound.
+	ReconciliationOverrideCheckpointIDs []int64
 }
 
 type MovePostingInput struct {
@@ -310,6 +344,10 @@ type MovePostingInput struct {
 	PostingLineID          int64
 	Direction              string // "earlier" | "later"
 	ReconciliationOverride bool
+	// ReconciliationOverrideCheckpointIDs, when non-nil, is the checkpoint set
+	// the owner reviewed for the override; the write refuses a different set
+	// (#296). Nil leaves an internal caller's override unbound.
+	ReconciliationOverrideCheckpointIDs []int64
 }
 
 type ReconciliationImpact struct {
@@ -349,6 +387,9 @@ type UpdateReconciliationImpactInput struct {
 	OwnerUserID   int64
 	TransactionID int64
 	Spec          TransactionInput
+	// ExpectedVersionID, when positive, is the version the form was composed
+	// against; a preview of a newer transaction is refused as stale (#296).
+	ExpectedVersionID int64
 }
 
 type cleanTransactionOptions struct {

@@ -245,8 +245,11 @@ type CreateTransactionParams struct {
 	// and applies the override guard there (T-94). Callers pass candidates, not
 	// resolved refs, because a ref list resolved before BeginTx is a statement
 	// about checkpoint state at a moment that has already passed.
-	CheckpointCandidates       []PeriodScopedCheckpointRef
-	ReconciliationOverride     bool
+	CheckpointCandidates   []PeriodScopedCheckpointRef
+	ReconciliationOverride bool
+	// ReviewedCheckpointIDs, when non-nil, is the checkpoint set the owner
+	// acknowledged with the override; the write refuses a different set (#296).
+	ReviewedCheckpointIDs      []int64
 	InvalidateCheckpointReason string
 	// AccountRuleDependencies are the accounts whose versions the posting
 	// checks in Spec were decided against. The write transaction refuses the
@@ -322,8 +325,11 @@ type UpdateTransactionParams struct {
 	// and applies the override guard there (T-94). Callers pass candidates, not
 	// resolved refs, because a ref list resolved before BeginTx is a statement
 	// about checkpoint state at a moment that has already passed.
-	CheckpointCandidates       []PeriodScopedCheckpointRef
-	ReconciliationOverride     bool
+	CheckpointCandidates   []PeriodScopedCheckpointRef
+	ReconciliationOverride bool
+	// ReviewedCheckpointIDs, when non-nil, is the checkpoint set the owner
+	// acknowledged with the override; the write refuses a different set (#296).
+	ReviewedCheckpointIDs      []int64
 	InvalidateCheckpointReason string
 	// ExpectedVersionID is the transaction version this write was prepared
 	// against. The write transaction refuses to apply the spec if the
@@ -351,8 +357,11 @@ type VoidTransactionParams struct {
 	// and applies the override guard there (T-94). Callers pass candidates, not
 	// resolved refs, because a ref list resolved before BeginTx is a statement
 	// about checkpoint state at a moment that has already passed.
-	CheckpointCandidates       []PeriodScopedCheckpointRef
-	ReconciliationOverride     bool
+	CheckpointCandidates   []PeriodScopedCheckpointRef
+	ReconciliationOverride bool
+	// ReviewedCheckpointIDs, when non-nil, is the checkpoint set the owner
+	// acknowledged with the override; the write refuses a different set (#296).
+	ReviewedCheckpointIDs      []int64
 	InvalidateCheckpointReason string
 	// ExpectedVersionID is the transaction version whose positions the
 	// candidates above were derived from. See UpdateTransactionParams (T-94).
@@ -502,6 +511,7 @@ type MovePostingParams struct {
 	OriginType             string
 	RecordedAt             string
 	ReconciliationOverride bool
+	ReviewedCheckpointIDs  []int64
 }
 
 type insertTransactionVersionParams struct {

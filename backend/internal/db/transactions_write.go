@@ -77,6 +77,7 @@ func invalidateCreateTransactionCheckpointsTx(ctx context.Context, tx *sql.Tx, p
 		BookID:                 params.BookID,
 		Candidates:             params.CheckpointCandidates,
 		ReconciliationOverride: params.ReconciliationOverride,
+		ReviewedCheckpointIDs:  params.ReviewedCheckpointIDs,
 		ActorUserID:            params.ActorUserID,
 		AuditEventID:           auditEventID,
 		OccurredAt:             params.CreatedAt,
@@ -343,6 +344,7 @@ func (r *TransactionRepository) UpdateTransaction(ctx context.Context, params Up
 			BookID:                 params.BookID,
 			Candidates:             params.CheckpointCandidates,
 			ReconciliationOverride: params.ReconciliationOverride,
+			ReviewedCheckpointIDs:  params.ReviewedCheckpointIDs,
 			ActorUserID:            params.ActorUserID,
 			AuditEventID:           auditEventID,
 			OccurredAt:             params.RecordedAt,
@@ -423,6 +425,7 @@ func (r *TransactionRepository) VoidTransaction(ctx context.Context, params Void
 			BookID:                 params.BookID,
 			Candidates:             params.CheckpointCandidates,
 			ReconciliationOverride: params.ReconciliationOverride,
+			ReviewedCheckpointIDs:  params.ReviewedCheckpointIDs,
 			ActorUserID:            params.ActorUserID,
 			AuditEventID:           auditEventID,
 			OccurredAt:             params.RecordedAt,
@@ -499,6 +502,7 @@ func (r *TransactionRepository) UnvoidTransaction(ctx context.Context, params Tr
 		invalidated, err := enforceCheckpointBoundaryTx(ctx, tx, checkpointBoundaryParams{
 			BookID: params.BookID, Candidates: params.CheckpointCandidates, ActorUserID: params.ActorUserID,
 			ReconciliationOverride: params.ReconciliationOverride,
+			ReviewedCheckpointIDs:  params.ReviewedCheckpointIDs,
 			AuditEventID:           auditEventID, OccurredAt: params.RecordedAt, Reason: params.InvalidateCheckpointReason,
 		})
 		if err != nil {
@@ -560,6 +564,7 @@ func (r *TransactionRepository) SetTransactionDeleted(ctx context.Context, param
 		invalidated, err := enforceCheckpointBoundaryTx(ctx, tx, checkpointBoundaryParams{
 			BookID: params.BookID, Candidates: params.CheckpointCandidates, ActorUserID: params.ActorUserID,
 			ReconciliationOverride: params.ReconciliationOverride,
+			ReviewedCheckpointIDs:  params.ReviewedCheckpointIDs,
 			AuditEventID:           auditEventID, OccurredAt: params.RecordedAt, Reason: params.InvalidateCheckpointReason,
 		})
 		if err != nil {

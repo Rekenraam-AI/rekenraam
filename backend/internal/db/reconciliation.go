@@ -891,10 +891,13 @@ type checkpointBoundaryParams struct {
 	// caller built them.
 	Candidates             []PeriodScopedCheckpointRef
 	ReconciliationOverride bool
-	ActorUserID            int64
-	AuditEventID           int64
-	OccurredAt             string
-	Reason                 string
+	// ReviewedCheckpointIDs, when non-nil, binds the override to the set the
+	// owner reviewed (#296): nil leaves an internal caller's override unbound.
+	ReviewedCheckpointIDs []int64
+	ActorUserID           int64
+	AuditEventID          int64
+	OccurredAt            string
+	Reason                string
 }
 
 // enforceCheckpointBoundaryTx resolves the candidates against the checkpoints
@@ -915,11 +918,11 @@ func enforceCheckpointBoundaryTx(ctx context.Context, tx *sql.Tx, params checkpo
 	if err != nil {
 		return nil, err
 	}
+	if err := bindCheckpointOverride(refs, params.ReconciliationOverride, params.ReviewedCheckpointIDs); err != nil {
+		return nil, err
+	}
 	if len(refs) == 0 {
 		return nil, nil
-	}
-	if !params.ReconciliationOverride {
-		return nil, ErrReconciliationOverrideRequired
 	}
 	return invalidateReconciliationCheckpoints(ctx, tx, checkpointInvalidationParams{
 		BookID:       params.BookID,
@@ -929,6 +932,60 @@ func enforceCheckpointBoundaryTx(ctx context.Context, tx *sql.Tx, params checkpo
 		OccurredAt:   params.OccurredAt,
 		Reason:       params.Reason,
 	})
+}
+
+// CheckpointImpactError is a guard refusal that names the checkpoints the
+// write would invalidate right now, so a caller with no preview of its own (a
+// reorder) can show the owner that set and bind its override to it (#296). It
+// unwraps to ErrReconciliationOverrideRequired or ErrReconciliationImpactStale.
+type CheckpointImpactError struct {
+	Err           error
+	CheckpointIDs []int64
+}
+
+func (e CheckpointImpactError) Error() string { return e.Err.Error() }
+func (e CheckpointImpactError) Unwrap() error { return e.Err }
+
+// ErrReconciliationImpactStale refuses an override whose reviewed checkpoint
+// set is not the set the write would invalidate now: a later statement was
+// finished, or one was voided or invalidated, after the owner's review (#296).
+var ErrReconciliationImpactStale = errors.New("the checkpoints this write would invalidate changed after they were reviewed")
+
+// bindCheckpointOverride applies the guard to the resolved set: without an
+// override any checkpoint refuses the write; with one, a reviewed set that is
+// not exactly the resolved set refuses it too. A nil reviewed set is an
+// internal caller's unbound override. Both refusals name the current set.
+func bindCheckpointOverride(refs []CheckpointInvalidationRef, override bool, reviewed []int64) error {
+	ids := uniqueCheckpointIDs(refs)
+	if !override {
+		if len(ids) == 0 {
+			return nil
+		}
+		return CheckpointImpactError{Err: ErrReconciliationOverrideRequired, CheckpointIDs: ids}
+	}
+	if reviewed != nil && !sameCheckpointIDSet(ids, reviewed) {
+		return CheckpointImpactError{Err: ErrReconciliationImpactStale, CheckpointIDs: ids}
+	}
+	return nil
+}
+
+func uniqueCheckpointIDs(refs []CheckpointInvalidationRef) []int64 {
+	seen := map[int64]bool{}
+	ids := []int64{}
+	for _, ref := range refs {
+		if ref.CheckpointID > 0 && !seen[ref.CheckpointID] {
+			seen[ref.CheckpointID] = true
+			ids = append(ids, ref.CheckpointID)
+		}
+	}
+	slices.Sort(ids)
+	return ids
+}
+
+func sameCheckpointIDSet(sortedUnique []int64, reviewed []int64) bool {
+	other := slices.Clone(reviewed)
+	slices.Sort(other)
+	return slices.Equal(sortedUnique, slices.Compact(other))
 }
 
 // invalidateReconciliationCheckpoints invalidates exactly the resolved refs.

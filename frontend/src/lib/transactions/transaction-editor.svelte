@@ -31,7 +31,11 @@
     correctTransaction,
     reconciliationImpactForCreate,
     reconciliationImpactForUpdate,
+    getTransaction,
     isReconciliationOverrideRequired,
+    isReconciliationImpactStale,
+    isTransactionVersionStale,
+    reviewedOverride,
     type TransactionRequest,
     type TransactionResponse,
     type ReconciliationImpactResponse
@@ -78,7 +82,7 @@
 
   let {
     mode,
-    transaction,
+    transaction: transactionProp,
     csrfToken,
     onSaved,
     onCancel,
@@ -103,6 +107,18 @@
     onPendingChange?: (pending: boolean) => void;
     onCancel: () => void;
   }>();
+
+  // A save refused because the transaction changed elsewhere reloads it here,
+  // so the form shows the newer version instead of re-sending a stale one
+  // (#296). A newer version handed down by the parent wins.
+  let reloaded = $state<TransactionResponse | undefined>(undefined);
+  const transaction = $derived(
+    reloaded && transactionProp && reloaded.id === transactionProp.id && reloaded.version_seq > transactionProp.version_seq
+      ? reloaded
+      : transactionProp
+  );
+  /** Shown once the form has been reloaded with a newer version. */
+  let reloadedNotice = $state(false);
 
   let tagIDs = $state<number[]>([]);
   const tagsQuery = createQuery(() => tagsQueryOptions());
@@ -400,10 +416,11 @@
   async function savePayee() {
     pending = true;
     formError = undefined;
+    reloadedNotice = false;
 
     try {
       const payload = buildPayload();
-      await submitPayload(payload, false);
+      await submitPayload(payload);
     } catch (error) {
       if (isReconciliationOverrideRequired(error)) {
         // Fetch impact details and open modal.
@@ -412,8 +429,11 @@
           const impact = await fetchImpact(payload);
           reconciliationModal = { open: true, impacts: impact.affected_checkpoints, pendingPayload: payload };
         } catch (impactErr) {
-          formError = impactErr;
+          if (isTransactionVersionStale(impactErr)) await reloadNewerVersion();
+          else formError = impactErr;
         }
+      } else if (isTransactionVersionStale(error)) {
+        await reloadNewerVersion();
       } else {
         formError = error;
       }
@@ -465,23 +485,49 @@
     pending = true;
     formError = undefined;
     try {
-      await submitPayload(reconciliationModal.pendingPayload, true);
+      // The override acknowledges exactly the checkpoints this modal showed;
+      // the write refuses a set that changed meanwhile (#296).
+      await submitPayload(reconciliationModal.pendingPayload, { affected_checkpoints: reconciliationModal.impacts });
     } catch (error) {
-      formError = error;
+      if (isTransactionVersionStale(error)) {
+        await reloadNewerVersion();
+      } else if (isReconciliationImpactStale(error)) {
+        // Show the set as it is now; the owner confirms again or cancels.
+        formError = error;
+        try {
+          const impact = await fetchImpact(reconciliationModal.pendingPayload);
+          reconciliationModal = { ...reconciliationModal, open: true, impacts: impact.affected_checkpoints };
+        } catch (impactErr) {
+          if (isTransactionVersionStale(impactErr)) await reloadNewerVersion();
+          else formError = impactErr;
+        }
+      } else {
+        formError = error;
+      }
     } finally {
       pending = false;
     }
   }
 
-  async function submitPayload(payload: TransactionRequest, withOverride: boolean) {
+  /** Loads the version that refused this save into the form (#296). */
+  async function reloadNewerVersion() {
+    if (!transaction) return;
+    try {
+      reloaded = await getTransaction(transaction.id);
+      reloadedNotice = true;
+    } catch (error) {
+      formError = error;
+    }
+  }
+
+  /** reviewed is the previewed impact an override acknowledges; absent, no override. */
+  async function submitPayload(payload: TransactionRequest, reviewed?: ReconciliationImpactResponse) {
     if (mode === 'template') {
       if (!saveTemplate) throw new Error(m.recurring_unavailable());
       await saveTemplate(payload);
       return;
     }
-    const finalPayload = withOverride
-      ? { ...payload, reconciliation_override: true }
-      : payload;
+    const finalPayload = reviewed ? { ...payload, ...reviewedOverride(reviewed) } : payload;
 
     let saved: TransactionResponse;
 
@@ -516,6 +562,12 @@
 
     if (transactionKind && transactionKind !== 'ordinary') {
       payload.transaction_kind = transactionKind as TransactionRequest['transaction_kind'];
+    }
+
+    // An edit names the version this form shows; the server refuses it if
+    // another write replaced that version meanwhile (#296).
+    if (mode === 'edit' && transaction) {
+      payload.expected_version_id = transaction.version_id;
     }
 
     if (payeeID !== undefined) {
@@ -791,6 +843,12 @@
   {#if isVoided && mode === 'edit'}
     <div class="rounded-[var(--radius-control)] border border-border bg-surface px-3 py-2.5 text-sm text-muted">
       {m.transactions_voided_edit_blocked()}
+    </div>
+  {/if}
+
+  {#if reloadedNotice}
+    <div class="rounded-[var(--radius-control)] border border-warning/50 bg-warning-soft px-3 py-2.5 text-sm text-foreground" role="status">
+      {m.transactions_form_reloaded_newer_version()}
     </div>
   {/if}
 

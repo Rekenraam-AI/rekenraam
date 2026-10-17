@@ -221,8 +221,11 @@ func (r *TransactionRepository) MovePosting(ctx context.Context, params MovePost
 				crossesCheckpoint = true
 			}
 		}
-		if crossesCheckpoint && !params.ReconciliationOverride {
-			return TransactionRecord{}, ErrReconciliationOverrideRequired
+		if !crossesCheckpoint {
+			reached = nil
+		}
+		if err := bindCheckpointOverride(reached, params.ReconciliationOverride, params.ReviewedCheckpointIDs); err != nil {
+			return TransactionRecord{}, err
 		}
 
 		auditEventID, err := insertAuditEvent(ctx, tx, AuditEventParams{

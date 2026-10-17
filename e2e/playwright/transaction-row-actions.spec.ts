@@ -75,6 +75,44 @@ for (const screen of ['journal', 'account', 'category'] as const) {
   });
 }
 
+test('a stale edit is refused, the editor reloads the newer version and its save keeps it (#296)', async ({ page }) => {
+  const s = await seed(page);
+  await page.goto(s.paths.journal);
+  await row(page, s.description).getByRole('button', { name: 'Edit', exact: true }).click();
+  const form = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Edit transaction', exact: true }) });
+  await expect(form.getByLabel('Amount', { exact: true })).toHaveValue('-4.50');
+
+  // Another tab changes the amount to 9.00 while this form is open.
+  type Stored = { version_id: number; description: string; journal_entries: Array<{ postings: Array<{ line_key: string; account_id: number; quantity_value: string }> }> };
+  const opened = await apiJSON<Stored>(page, 'GET', `/api/v1/transactions/${s.transaction.id}`);
+  await apiJSON(page, 'PATCH', `/api/v1/transactions/${s.transaction.id}`, await csrfTokenFor(page), {
+    expected_version_id: opened.version_id, transaction_date: todayISO(), description: s.description, change_reason: 'other tab',
+    journal_entries: [{ entry_date: todayISO(), postings: opened.journal_entries[0].postings.map((p) => ({
+      line_key: p.line_key, account_id: p.account_id, commodity_id: s.currencyID,
+      quantity_value: p.account_id === s.account.id ? '-900' : '900', quantity_scale: 2
+    })) }]
+  });
+
+  // This form still carries 4.50: its description-only save must not revert 9.00.
+  await form.getByLabel('Description', { exact: true }).fill(`${s.description} edited`);
+  const refused = page.waitForResponse((r) => r.request().method() === 'PATCH' && new URL(r.url()).pathname === `/api/v1/transactions/${s.transaction.id}`);
+  await form.getByRole('button', { name: 'Save transaction', exact: true }).click();
+  expect((await refused).status()).toBe(409);
+  await expect(form.getByRole('status').filter({ hasText: 'The form now shows the latest version' })).toBeVisible();
+  await expect(form.getByLabel('Amount', { exact: true })).toHaveValue('-9.00');
+  const kept = await apiJSON<Stored>(page, 'GET', `/api/v1/transactions/${s.transaction.id}`);
+  expect(kept.journal_entries[0].postings.find((p) => p.account_id === s.account.id)?.quantity_value).toBe('-900');
+
+  // Saved again from the reloaded form, the change lands on the newer version.
+  await form.getByLabel('Description', { exact: true }).fill(`${s.description} edited`);
+  const saved = page.waitForResponse((r) => r.request().method() === 'PATCH' && new URL(r.url()).pathname === `/api/v1/transactions/${s.transaction.id}`);
+  await form.getByRole('button', { name: 'Save transaction', exact: true }).click();
+  expect((await saved).status()).toBe(200);
+  const final = await apiJSON<Stored>(page, 'GET', `/api/v1/transactions/${s.transaction.id}`);
+  expect(final.description).toBe(`${s.description} edited`);
+  expect(final.journal_entries[0].postings.find((p) => p.account_id === s.account.id)?.quantity_value).toBe('-900');
+});
+
 for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
   test(`row actions use ${locale} labels and keyboard controls on all three screens at 390px`, async ({ page }) => {
     const s = await seed(page);
@@ -129,11 +167,19 @@ test('unvoid asks before retrying a reconciliation refusal with override', async
   const s = await seed(page);
   await apiJSON(page, 'POST', `/api/v1/transactions/${s.transaction.id}/void`, await csrfTokenFor(page), { change_reason: 'Review duplicate' });
   const overrides: boolean[] = [];
+  const reviewedSets: unknown[] = [];
   await page.route(`**/api/v1/transactions/${s.transaction.id}/unvoid`, async route => {
-    const override = route.request().postDataJSON().reconciliation_override === true;
+    const body = route.request().postDataJSON();
+    const override = body.reconciliation_override === true;
     overrides.push(override);
-    if (override) await route.continue();
-    else await route.fulfill({ status: 409, json: { error: { code: 'CONFLICT', message: 'reconciliation override is required' } } });
+    if (!override) {
+      await route.fulfill({ status: 409, json: { error: { code: 'CONFLICT', message: 'reconciliation override is required' } } });
+      return;
+    }
+    // The override names the previewed set (#296); the real book has no
+    // checkpoint, so the request reaches it acknowledging the real, empty set.
+    reviewedSets.push(body.reconciliation_override_checkpoint_ids);
+    await route.continue({ postData: JSON.stringify({ ...body, reconciliation_override_checkpoint_ids: [] }) });
   });
   // Isolate the lifecycle dialog's override negotiation; the real unvoid
   // preview is covered in transactions-lifecycle-reconciliation.spec.ts (#220).
@@ -158,6 +204,7 @@ test('unvoid asks before retrying a reconciliation refusal with override', async
   await warning.getByRole('button', { name: 'Proceed and invalidate', exact: true }).click();
   await expect.poll(async () => (await readTransaction(page, s.transaction.id)).status).toBe('posted');
   expect(overrides).toEqual([false, false, true]);
+  expect(reviewedSets).toEqual([[1]]);
 });
 
 for (const screen of ['journal', 'account', 'category'] as const) {

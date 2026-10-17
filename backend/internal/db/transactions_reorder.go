@@ -44,6 +44,7 @@ type PlaceTransactionParams struct {
 	OriginType             string
 	RecordedAt             string
 	ReconciliationOverride bool
+	ReviewedCheckpointIDs  []int64
 }
 
 // reorderItem is one entry of a same-day scope: a transaction in the journal
@@ -216,8 +217,11 @@ func (r *TransactionRepository) PlaceTransaction(ctx context.Context, params Pla
 		if !sameDay {
 			return TransactionRecord{}, ErrReorderNotSameDay
 		}
-		if crossesCheckpoint && !params.ReconciliationOverride {
-			return TransactionRecord{}, ErrReconciliationOverrideRequired
+		if !crossesCheckpoint {
+			reached = nil
+		}
+		if err := bindCheckpointOverride(reached, params.ReconciliationOverride, params.ReviewedCheckpointIDs); err != nil {
+			return TransactionRecord{}, err
 		}
 
 		affected := map[int64]bool{}

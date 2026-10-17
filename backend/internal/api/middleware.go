@@ -29,6 +29,9 @@ type errorResponse struct {
 type errorBody struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+	// CheckpointIDs names the checkpoints a refused write would invalidate
+	// right now, on a reconciliation guard refusal (#296).
+	CheckpointIDs []int64 `json:"checkpoint_ids,omitempty"`
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

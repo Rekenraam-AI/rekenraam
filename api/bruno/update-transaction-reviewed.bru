@@ -1,0 +1,39 @@
+meta {
+  name: Update Transaction - Reviewed Version And Override
+  type: http
+  seq: 36
+}
+
+docs {
+  A browser edit names the version its form was composed against
+  (expected_version_id, required): a newer current version answers
+  409 TRANSACTION_VERSION_STALE and nothing is written (#296).
+  An override names the checkpoint ids the reconciliation-impact preview
+  returned; a different set answers 409 RECONCILIATION_IMPACT_STALE with the
+  current set in error.checkpoint_ids, and nothing is invalidated.
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/transactions/{{transactionId}}
+  body: json
+  auth: none
+}
+
+headers {
+  X-CSRF-Token: {{csrfToken}}
+}
+
+body:json {
+  {
+    "expected_version_id": {{transactionVersionId}},
+    "transaction_date": "2026-05-04",
+    "description": "Weekly groceries",
+    "change_reason": "receipt was 92.40",
+    "journal_entries": [{"entry_date": "2026-05-04", "postings": [
+      {"line_key": "{{accountLineKey}}", "account_id": {{accountId}}, "commodity_id": {{commodityId}}, "quantity_value": "-9240", "quantity_scale": 2},
+      {"line_key": "{{categoryLineKey}}", "account_id": {{categoryId}}, "commodity_id": {{commodityId}}, "quantity_value": "9240", "quantity_scale": 2}
+    ]}],
+    "reconciliation_override": true,
+    "reconciliation_override_checkpoint_ids": [{{reviewedCheckpointId}}]
+  }
+}

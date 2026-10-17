@@ -83,6 +83,9 @@ func (s *TransactionService) ReconciliationImpactForUpdate(ctx context.Context, 
 		}
 		return ReconciliationImpact{}, fmt.Errorf("read transaction: %w", err)
 	}
+	if err := requireReviewedVersion(input.ExpectedVersionID, current.VersionID); err != nil {
+		return ReconciliationImpact{}, err
+	}
 	// This preview endpoint has no draft-promotion input, so the transaction's
 	// current status is always the final status — pin it the same way
 	// UpdateTransaction does, so the balance-validation check here matches
@@ -397,6 +400,11 @@ func (s *TransactionService) enrichCheckpointRefs(ctx context.Context, refs []db
 }
 
 func mapTransactionDBError(err error) error {
+	var impact db.CheckpointImpactError
+	if errors.As(err, &impact) {
+		// Keep the named set: a reorder's refusal is its only preview (#296).
+		return CheckpointImpactError{Err: mapTransactionDBError(impact.Err), CheckpointIDs: impact.CheckpointIDs}
+	}
 	switch {
 	case errors.Is(err, db.ErrInvestmentBasisRange):
 		return ValidationError{Message: err.Error()}
@@ -433,6 +441,8 @@ func mapTransactionDBError(err error) error {
 		return ErrReconciliationPosting
 	case errors.Is(err, db.ErrReconciliationOverrideRequired):
 		return ErrReconciliationOverrideRequired
+	case errors.Is(err, db.ErrReconciliationImpactStale):
+		return ErrReconciliationImpactStale
 	default:
 		return fmt.Errorf("transaction repository: %w", err)
 	}

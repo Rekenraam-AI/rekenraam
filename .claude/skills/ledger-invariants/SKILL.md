@@ -100,6 +100,11 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   an invalidation or void it is offered again for re-verification. Never
   filter reconciliation candidates on `reconciliation_status` alone, and a
   session finishes only from the account's current latest active checkpoint.
+- An override acknowledges a set, not a boolean (#296): a browser write names
+  the previewed `reconciliation_override_checkpoint_ids` and the write
+  transaction refuses a different set (`RECONCILIATION_IMPACT_STALE`). A
+  full-spec edit names `expected_version_id`, the version the form showed;
+  binding the service's own read (T-94) does not bind what the owner saw.
 - Every new mutation path over postings must be wired through the guard — see
   how `app/transactions_write.go` and `app/reconciliation.go` do it. Forgetting
   the guard on a new path is a severity-1 bug.

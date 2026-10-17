@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -1190,6 +1191,7 @@ func createTransactionForSession(t *testing.T, handler http.Handler, sessionCook
 
 func mutateTransaction(t *testing.T, handler http.Handler, sessionCookie *http.Cookie, csrfToken string, method string, path string, body string, wantStatus int) transactionResponse {
 	t.Helper()
+	body = asReviewedByBrowser(t, handler, sessionCookie, csrfToken, method, path, body, wantStatus)
 
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -1207,6 +1209,55 @@ func mutateTransaction(t *testing.T, handler http.Handler, sessionCookie *http.C
 		require.NoError(t, json.NewDecoder(res.Body).Decode(&response))
 	}
 	return response
+}
+
+var transactionEditPath = regexp.MustCompile(`^/api/v1/transactions/(\d+)$`)
+
+// asReviewedByBrowser completes a test body the way the editor does (#296),
+// for tests about something else: a PATCH names the version a freshly opened
+// form shows, and a successful override names the checkpoint set the guard's
+// refusal reports (the same set the previews return). The refusal is asserted,
+// so an override sent where nothing is in the way still fails the test. Tests
+// of the binding itself set both fields explicitly and are left alone.
+func asReviewedByBrowser(t *testing.T, handler http.Handler, sessionCookie *http.Cookie, csrfToken, method, path, body string, wantStatus int) string {
+	t.Helper()
+	if method == http.MethodPatch && !strings.Contains(body, `"expected_version_id"`) {
+		if match := transactionEditPath.FindStringSubmatch(path); match != nil {
+			version := int64(1) // a missing transaction is refused before the version is read
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			req.AddCookie(sessionCookie)
+			res := httptest.NewRecorder()
+			handler.ServeHTTP(res, req)
+			if res.Code == http.StatusOK {
+				var current transactionResponse
+				require.NoError(t, json.NewDecoder(res.Body).Decode(&current))
+				version = current.VersionID
+			}
+			body = strings.Replace(body, "{", `{"expected_version_id":`+strconvFormatInt(version)+`,`, 1)
+		}
+	}
+	override := regexp.MustCompile(`"reconciliation_override"\s*:\s*true`)
+	if wantStatus < 200 || wantStatus >= 300 || !override.MatchString(body) || strings.Contains(body, `"reconciliation_override_checkpoint_ids"`) {
+		return body
+	}
+	probe := httptest.NewRequest(method, path, strings.NewReader(override.ReplaceAllString(body, `"reconciliation_override":false`)))
+	probe.Header.Set("Content-Type", "application/json")
+	probe.Header.Set(csrfTokenHeader, csrfToken)
+	setSameOrigin(probe)
+	probe.AddCookie(sessionCookie)
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, probe)
+	require.Equalf(t, http.StatusConflict, res.Code, "override probe of %s %s: %s", method, path, res.Body.String())
+	var refusal struct {
+		Error struct {
+			CheckpointIDs []int64 `json:"checkpoint_ids"`
+		} `json:"error"`
+	}
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&refusal))
+	require.NotEmptyf(t, refusal.Error.CheckpointIDs, "override probe of %s %s names no checkpoint", method, path)
+	ids, err := json.Marshal(refusal.Error.CheckpointIDs)
+	require.NoError(t, err)
+	return override.ReplaceAllString(body, `"reconciliation_override":true,"reconciliation_override_checkpoint_ids":`+string(ids))
 }
 
 func mutateTransactionNoBody(t *testing.T, handler http.Handler, sessionCookie *http.Cookie, csrfToken string, method string, path string, wantStatus int) {
@@ -1924,7 +1975,8 @@ func TestTransactionUpdateRejectsLineKeyUsedTwice(t *testing.T) {
 		]}]
 	}`
 
-	req := httptest.NewRequest(http.MethodPatch, "/api/v1/transactions/"+strconvFormatInt(created.ID), strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/transactions/"+strconvFormatInt(created.ID),
+		strings.NewReader(strings.Replace(body, "{", `{"expected_version_id":`+strconvFormatInt(created.VersionID)+`,`, 1)))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(csrfTokenHeader, csrfToken)
 	setSameOrigin(req)

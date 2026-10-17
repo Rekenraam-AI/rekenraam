@@ -16,6 +16,8 @@
     restoreTransaction,
     getLifecycleReconciliationImpact,
     isReconciliationOverrideRequired,
+    isReconciliationImpactStale,
+    reviewedOverride,
     type DeletedTransactionResponse,
     type ReconciliationImpactResponse
   } from '#lib/api/transactions.ts';
@@ -62,11 +64,13 @@
     return token;
   }
 
-  async function restore(row: DeletedTransactionResponse, withOverride: boolean) {
+  /** reviewed is the previewed set an override acknowledges; absent, no override (#296). */
+  async function restore(row: DeletedTransactionResponse, reviewed?: ReconciliationImpactResponse['affected_checkpoints']) {
     const token = await csrfToken();
     await restoreTransaction(row.id, token, {
       change_reason: 'restored from trash',
-      reconciliation_override: withOverride || undefined
+      expected_version_id: row.version_id,
+      ...(reviewed ? reviewedOverride({ affected_checkpoints: reviewed }) : {})
     });
     // Invalidate both the trash list and the main transactions list.
     await queryClient.invalidateQueries({ queryKey: deletedTransactionsQueryKey });
@@ -83,7 +87,7 @@
     }
     restorePendingID = row.id;
     try {
-      await restore(row, false);
+      await restore(row);
     } catch (error) {
       // The list flag can be stale: a statement finished since it loaded.
       if (isReconciliationOverrideRequired(error)) void openOverride(row);
@@ -109,10 +113,20 @@
     overrideModal.pending = true;
     overrideModal.writeError = undefined;
     try {
-      await restore(row, true);
+      await restore(row, overrideModal.impacts);
       cancelOverride();
     } catch (error) {
       overrideModal.writeError = error;
+      // A statement finished or was voided since the preview: show the set
+      // as it is now and let the owner confirm again (#296).
+      if (isReconciliationImpactStale(error)) {
+        try {
+          const impact = await getLifecycleReconciliationImpact(row.id, 'restore');
+          if (overrideModal.row?.id === row.id) overrideModal.impacts = impact.affected_checkpoints;
+        } catch (previewError) {
+          overrideModal.writeError = previewError;
+        }
+      }
     } finally {
       overrideModal.pending = false;
     }

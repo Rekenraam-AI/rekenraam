@@ -142,7 +142,7 @@ below is execution order, not a chain of hard dependencies.
    #291/#292 (P2) and #293/#294/#295 (P3) are fixed.
    The ledger/reconciliation audit #270 is complete
    ([evidence](reviews/ledger-reconciliation-audit-2026-10-17.md)); its
-   findings #296 (P2) and #297/#298 (P3) are open.
+   finding #296 (P2) is fixed; #297/#298 (P3) are open.
    The other nine areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with

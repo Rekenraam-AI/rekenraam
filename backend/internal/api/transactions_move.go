@@ -9,8 +9,9 @@ import (
 )
 
 type moveRequest struct {
-	Direction              string `json:"direction"`
-	ReconciliationOverride bool   `json:"reconciliation_override"`
+	Direction                           string  `json:"direction"`
+	ReconciliationOverride              bool    `json:"reconciliation_override"`
+	ReconciliationOverrideCheckpointIDs []int64 `json:"reconciliation_override_checkpoint_ids"`
 }
 
 func moveTransaction(logger *slog.Logger, authService *app.AuthService, transactionService *app.TransactionService, options HandlerOptions) http.HandlerFunc {
@@ -63,15 +64,21 @@ func movePosting(logger *slog.Logger, authService *app.AuthService, transactionS
 			writeDecodeError(w, err)
 			return
 		}
+		reviewed, err := reviewedOverride(req.ReconciliationOverride, req.ReconciliationOverrideCheckpointIDs)
+		if err != nil {
+			writeTransactionServiceError(w, r, logger, "reorder", err)
+			return
+		}
 		transaction, err := transactionService.MovePosting(r.Context(), app.MovePostingInput{
-			OwnerUserID:            owner.ID,
-			AuthSessionID:          authenticatedSessionID(r),
-			RequestID:              RequestIDFromContext(r.Context()),
-			OriginType:             "browser_api",
-			AccountID:              accountID,
-			PostingLineID:          postingLineID,
-			Direction:              req.Direction,
-			ReconciliationOverride: req.ReconciliationOverride,
+			OwnerUserID:                         owner.ID,
+			AuthSessionID:                       authenticatedSessionID(r),
+			RequestID:                           RequestIDFromContext(r.Context()),
+			OriginType:                          "browser_api",
+			AccountID:                           accountID,
+			PostingLineID:                       postingLineID,
+			Direction:                           req.Direction,
+			ReconciliationOverride:              req.ReconciliationOverride,
+			ReconciliationOverrideCheckpointIDs: reviewed,
 		})
 		if err != nil {
 			writeTransactionServiceError(w, r, logger, "move posting", err)
@@ -84,9 +91,10 @@ func movePosting(logger *slog.Logger, authService *app.AuthService, transactionS
 // placeRequest states that a transaction happened before or after another on
 // their shared day (#185).
 type placeRequest struct {
-	AnchorTransactionID    int64  `json:"anchor_transaction_id"`
-	Position               string `json:"position"`
-	ReconciliationOverride bool   `json:"reconciliation_override"`
+	AnchorTransactionID                 int64   `json:"anchor_transaction_id"`
+	Position                            string  `json:"position"`
+	ReconciliationOverride              bool    `json:"reconciliation_override"`
+	ReconciliationOverrideCheckpointIDs []int64 `json:"reconciliation_override_checkpoint_ids"`
 }
 
 func placeTransaction(logger *slog.Logger, authService *app.AuthService, transactionService *app.TransactionService, options HandlerOptions) http.HandlerFunc {
@@ -104,15 +112,21 @@ func placeTransaction(logger *slog.Logger, authService *app.AuthService, transac
 			writeDecodeError(w, err)
 			return
 		}
+		reviewed, err := reviewedOverride(req.ReconciliationOverride, req.ReconciliationOverrideCheckpointIDs)
+		if err != nil {
+			writeTransactionServiceError(w, r, logger, "reorder", err)
+			return
+		}
 		transaction, err := transactionService.PlaceTransaction(r.Context(), app.PlaceTransactionInput{
-			OwnerUserID:            owner.ID,
-			AuthSessionID:          authenticatedSessionID(r),
-			RequestID:              RequestIDFromContext(r.Context()),
-			OriginType:             "browser_api",
-			TransactionID:          transactionID,
-			AnchorTransactionID:    req.AnchorTransactionID,
-			Position:               req.Position,
-			ReconciliationOverride: req.ReconciliationOverride,
+			OwnerUserID:                         owner.ID,
+			AuthSessionID:                       authenticatedSessionID(r),
+			RequestID:                           RequestIDFromContext(r.Context()),
+			OriginType:                          "browser_api",
+			TransactionID:                       transactionID,
+			AnchorTransactionID:                 req.AnchorTransactionID,
+			Position:                            req.Position,
+			ReconciliationOverride:              req.ReconciliationOverride,
+			ReconciliationOverrideCheckpointIDs: reviewed,
 		})
 		if err != nil {
 			writeTransactionServiceError(w, r, logger, "place transaction", err)
@@ -153,15 +167,21 @@ func movePostingToDay(logger *slog.Logger, authService *app.AuthService, transac
 			writeDecodeError(w, err)
 			return
 		}
+		reviewed, err := reviewedOverride(req.ReconciliationOverride, req.ReconciliationOverrideCheckpointIDs)
+		if err != nil {
+			writeTransactionServiceError(w, r, logger, "reorder", err)
+			return
+		}
 		transaction, err := transactionService.MovePostingToDay(r.Context(), app.MovePostingToDayInput{
-			OwnerUserID:            owner.ID,
-			AuthSessionID:          authenticatedSessionID(r),
-			RequestID:              RequestIDFromContext(r.Context()),
-			OriginType:             "browser_api",
-			AccountID:              accountID,
-			PostingLineID:          postingLineID,
-			Direction:              req.Direction,
-			ReconciliationOverride: req.ReconciliationOverride,
+			OwnerUserID:                         owner.ID,
+			AuthSessionID:                       authenticatedSessionID(r),
+			RequestID:                           RequestIDFromContext(r.Context()),
+			OriginType:                          "browser_api",
+			AccountID:                           accountID,
+			PostingLineID:                       postingLineID,
+			Direction:                           req.Direction,
+			ReconciliationOverride:              req.ReconciliationOverride,
+			ReconciliationOverrideCheckpointIDs: reviewed,
 		})
 		if err != nil {
 			writeTransactionServiceError(w, r, logger, "move posting to day", err)

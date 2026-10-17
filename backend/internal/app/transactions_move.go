@@ -62,6 +62,7 @@ func (s *TransactionService) MovePosting(ctx context.Context, input MovePostingI
 			OriginType:             input.OriginType,
 			RecordedAt:             s.now().UTC().Format(time.RFC3339),
 			ReconciliationOverride: input.ReconciliationOverride,
+			ReviewedCheckpointIDs:  input.ReconciliationOverrideCheckpointIDs,
 		})
 	})
 }
@@ -88,6 +89,7 @@ func (s *TransactionService) PlaceTransaction(ctx context.Context, input PlaceTr
 			OriginType:             input.OriginType,
 			RecordedAt:             s.now().UTC().Format(time.RFC3339),
 			ReconciliationOverride: input.ReconciliationOverride,
+			ReviewedCheckpointIDs:  input.ReconciliationOverrideCheckpointIDs,
 		})
 	})
 	if errors.Is(err, db.ErrReorderNotSameDay) || errors.Is(err, db.ErrInvalidReorder) {

@@ -10,7 +10,7 @@
   import { authSessionQueryOptions } from '#lib/api/auth.ts';
   import { currenciesQueryOptions } from '#lib/api/currencies.ts';
   import { forecastQueryKey } from '#lib/api/forecast.ts';
-  import { getTransaction, getPostReconciliationImpact, postTransaction, deleteDraftTransaction, transactionsQueryKey, type TransactionResponse, type ReconciliationImpactResponse } from '#lib/api/transactions.ts';
+  import { getTransaction, getPostReconciliationImpact, postTransaction, deleteDraftTransaction, isReconciliationImpactStale, reviewedOverride, transactionsQueryKey, type TransactionResponse, type ReconciliationImpactResponse } from '#lib/api/transactions.ts';
   import { recurringTemplatesQueryOptions, recurringDueInfiniteQueryOptions, recurringSummaryQueryOptions, getRecurringOccurrences, archiveRecurringTemplate, updateRecurringTemplate, skipRecurringOccurrence, retryRecurringOccurrence, runRecurringNow, type RecurringTemplate, type RecurringDueResponse } from '#lib/api/recurring.ts';
   import { formatQuantity } from '#lib/money/format.ts';
   import { displayDate, scheduleLabel } from './recurring-model';
@@ -96,7 +96,14 @@
           const approved = current.impacts[i].affected_checkpoints.map(c => c.checkpoint_id).sort();
           const actual = fresh.affected_checkpoints.map(c => c.checkpoint_id).sort();
           if (JSON.stringify(approved) !== JSON.stringify(actual)) { impactChanged = true; return; }
-          await postTransaction(item.transaction_id!, csrf, { reconciliation_override: actual.length > 0 });
+          // The post itself is bound to the approved set too: a statement
+          // finished after the check above is refused, not invalidated (#296).
+          try {
+            await postTransaction(item.transaction_id!, csrf, actual.length > 0 ? reviewedOverride(current.impacts[i]) : {});
+          } catch (error) {
+            if (isReconciliationImpactStale(error)) { impactChanged = true; return; }
+            throw error;
+          }
           count++;
           // A later failure must leave only unposted items in the confirmation.
           review = { kind: 'post', items: current.items.slice(i + 1), impacts: current.impacts.slice(i + 1) };

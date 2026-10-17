@@ -207,6 +207,10 @@ type MovePostingToDayInput struct {
 	PostingLineID          int64
 	Direction              string // "earlier" | "later"
 	ReconciliationOverride bool
+	// ReconciliationOverrideCheckpointIDs, when non-nil, is the checkpoint set
+	// the owner reviewed for the override; the write refuses a different set
+	// (#296). Nil leaves an internal caller's override unbound.
+	ReconciliationOverrideCheckpointIDs []int64
 }
 
 // MovePostingToDay re-dates one account posting by a calendar day and keeps
@@ -281,16 +285,17 @@ func (s *TransactionService) MovePostingToDay(ctx context.Context, input MovePos
 	}
 
 	return s.UpdateTransaction(ctx, UpdateTransactionInput{
-		ExpectedVersionID:      current.VersionID,
-		OwnerUserID:            input.OwnerUserID,
-		AuthSessionID:          input.AuthSessionID,
-		RequestID:              input.RequestID,
-		OriginType:             input.OriginType,
-		Operation:              "posting.move_day",
-		TransactionID:          current.ID,
-		Spec:                   spec,
-		ChangeReason:           "moved posting " + input.Direction + " by a day",
-		ReconciliationOverride: input.ReconciliationOverride,
+		ExpectedVersionID:                   current.VersionID,
+		OwnerUserID:                         input.OwnerUserID,
+		AuthSessionID:                       input.AuthSessionID,
+		RequestID:                           input.RequestID,
+		OriginType:                          input.OriginType,
+		Operation:                           "posting.move_day",
+		TransactionID:                       current.ID,
+		Spec:                                spec,
+		ChangeReason:                        "moved posting " + input.Direction + " by a day",
+		ReconciliationOverride:              input.ReconciliationOverride,
+		ReconciliationOverrideCheckpointIDs: input.ReconciliationOverrideCheckpointIDs,
 	})
 }
 

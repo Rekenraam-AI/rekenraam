@@ -8631,7 +8631,7 @@ export interface paths {
         head?: never;
         /**
          * Update a transaction
-         * @description PATCH on a draft appends a new draft version. PATCH on a posted transaction appends a new posted version.
+         * @description PATCH on a draft appends a new draft version. PATCH on a posted transaction appends a new posted version. The body must name expected_version_id, the version the form was composed against; a newer current version is refused with 409 TRANSACTION_VERSION_STALE so a stale form never reverts it (#296). An override must name the reviewed reconciliation_override_checkpoint_ids.
          */
         patch: {
             parameters: {
@@ -8731,7 +8731,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["TransactionLifecycleRequest"];
+                    "application/json": components["schemas"]["TransactionLifecycleWriteRequest"];
                 };
             };
             responses: {
@@ -8793,7 +8793,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["TransactionLifecycleRequest"];
+                    "application/json": components["schemas"]["TransactionLifecycleWriteRequest"];
                 };
             };
             responses: {
@@ -8855,7 +8855,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["TransactionLifecycleRequest"];
+                    "application/json": components["schemas"]["TransactionLifecycleWriteRequest"];
                 };
             };
             responses: {
@@ -8917,7 +8917,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["TransactionLifecycleRequest"];
+                    "application/json": components["schemas"]["TransactionLifecycleWriteRequest"];
                 };
             };
             responses: {
@@ -8979,7 +8979,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["TransactionLifecycleRequest"];
+                    "application/json": components["schemas"]["TransactionLifecycleWriteRequest"];
                 };
             };
             responses: {
@@ -28945,10 +28945,29 @@ export interface components {
             change_reason?: string;
             /** @description Required when editing reconciled account-side posting facts and accepting checkpoint invalidation. */
             reconciliation_override?: boolean;
+            /** @description Required with reconciliation_override=true (#296): the checkpoint ids the owner reviewed, as the reconciliation-impact preview returned them. The write refuses with 409 RECONCILIATION_IMPACT_STALE, invalidating nothing, when the set it would invalidate now differs; that refusal's checkpoint_ids name the current set. */
+            reconciliation_override_checkpoint_ids?: number[];
+            /**
+             * Format: int64
+             * @description The transaction version this form was composed against (#296). Required by PATCH, which replaces the whole spec: a different current version is refused with 409 TRANSACTION_VERSION_STALE and nothing is written. The update reconciliation-impact preview checks it the same way when given. Create and correct ignore it.
+             */
+            expected_version_id?: number;
         };
         TransactionLifecycleRequest: {
             change_reason?: string;
             reconciliation_override?: boolean;
+        };
+        /** @description Body of post, void, unvoid, soft-delete and restore. */
+        TransactionLifecycleWriteRequest: {
+            change_reason?: string;
+            reconciliation_override?: boolean;
+            /** @description Required with reconciliation_override=true (#296): the checkpoint ids the owner reviewed, as the action's reconciliation-impact preview returned them. The write refuses with 409 RECONCILIATION_IMPACT_STALE, invalidating nothing, when the set it would invalidate now differs; that refusal's checkpoint_ids name the current set. */
+            reconciliation_override_checkpoint_ids?: number[];
+            /**
+             * Format: int64
+             * @description Optional (#296): the version the owner decided on. A different current version is refused with 409 TRANSACTION_VERSION_STALE.
+             */
+            expected_version_id?: number;
         };
         MoveRequest: {
             /**
@@ -28958,6 +28977,8 @@ export interface components {
             direction: "earlier" | "later";
             /** @description Required when the move would cross an active reconciliation checkpoint boundary; accepts checkpoint invalidation. */
             reconciliation_override?: boolean;
+            /** @description Required with reconciliation_override=true (#296): the checkpoint ids the owner reviewed, as the refusal's checkpoint_ids (a reorder has no preview) returned them. The write refuses with 409 RECONCILIATION_IMPACT_STALE, invalidating nothing, when the set it would invalidate now differs; that refusal's checkpoint_ids name the current set. */
+            reconciliation_override_checkpoint_ids?: number[];
         };
         PlaceTransactionRequest: {
             /**
@@ -28969,6 +28990,8 @@ export interface components {
             position: "before" | "after";
             /** @description Required when the change would cross an active reconciliation checkpoint boundary; accepts checkpoint invalidation. */
             reconciliation_override?: boolean;
+            /** @description Required with reconciliation_override=true (#296): the checkpoint ids the owner reviewed, as the refusal's checkpoint_ids (a reorder has no preview) returned them. The write refuses with 409 RECONCILIATION_IMPACT_STALE, invalidating nothing, when the set it would invalidate now differs; that refusal's checkpoint_ids name the current set. */
+            reconciliation_override_checkpoint_ids?: number[];
         };
         ReconciliationImpactResponse: {
             /** @description Complete active checkpoint set the proposed operation would invalidate, including later checkpoints, once per checkpoint. Statement fields belong to each named checkpoint; entry_date names a triggering posting date. Empty when no reconciliation guard applies. Commit rechecks the set against current state; a preview is not an override. */
@@ -32769,8 +32792,10 @@ export interface components {
         };
         ErrorBody: {
             /** @enum {string} */
-            code: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "PRICE_IMPACT_STALE" | "CONFLICT" | "CSRF_INVALID" | "RATE_LIMITED" | "MFA_AUTHENTICATOR_UNAVAILABLE" | "RESOURCE_BUSY" | "LEDGER_OVERFLOW" | "FORECAST_TOO_LARGE" | "FORECAST_BASIS_CHANGED" | "INVESTMENT_WORKFLOW_REQUIRED" | "INVESTMENT_EVENT_OUT_OF_ORDER" | "INVESTMENT_POSITION_SIDE_CONFLICT" | "INVESTMENT_SHORT_DEPENDENCY" | "INVESTMENT_TRANSFER_POOL_REQUIRED" | "INVESTMENT_TRANSFER_POOL_UNAVAILABLE" | "INVESTMENT_SALE_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SALE" | "INVESTMENT_SALE_CHANGED" | "INVESTMENT_SALE_DEPENDENCY" | "INVESTMENT_BUY_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_BUY" | "INVESTMENT_BUY_CHANGED" | "INVESTMENT_BUY_DEPENDENCY" | "INVESTMENT_DIVIDEND_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_DIVIDEND" | "INVESTMENT_DIVIDEND_CHANGED" | "INVESTMENT_PAYMENT_IN_LIEU_ALREADY_CORRECTED" | "INVESTMENT_PAYMENT_IN_LIEU_CHANGED" | "INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT" | "INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY" | "INVESTMENT_WRITE_OFF_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_CHANGED" | "INVESTMENT_TRANSFER_DEPENDENCY" | "INVESTMENT_IMPORTED_TRANSFER" | "INVESTMENT_TRANSFER_BASIS_RESOLVED" | "INVESTMENT_TRANSFER_BASIS_NOT_UNKNOWN" | "INVESTMENT_TRANSFER_BASIS_NOT_RESOLVED" | "INVESTMENT_BASIS_RESOLUTION_ALREADY_CORRECTED" | "INVESTMENT_BASIS_RESOLUTION_CHANGED" | "INVESTMENT_WRITE_OFF_CHANGED" | "INVESTMENT_REINVESTMENT_ALREADY_CORRECTED" | "INVESTMENT_REINVESTMENT_CHANGED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE" | "INVESTMENT_SPLIT_NO_HOLDINGS" | "INVESTMENT_CAPITAL_RETURN_DEPENDENCY" | "INVESTMENT_CAPITAL_RETURN_NO_HOLDINGS" | "INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE" | "INVESTMENT_SPLIT_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPLIT_CHANGED" | "INVESTMENT_SPLIT_DEPENDENCY" | "INVESTMENT_SPLIT_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SPLIT" | "INVESTMENT_EXCHANGE_NO_HOLDINGS" | "INVESTMENT_EXCHANGE_FRACTION_UNREPRESENTABLE" | "INVESTMENT_EXCHANGE_CHANGED" | "INVESTMENT_EXCHANGE_ALREADY_CORRECTED" | "INVESTMENT_SPIN_OFF_NO_HOLDINGS" | "INVESTMENT_SPIN_OFF_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPIN_OFF_CHANGED" | "INVESTMENT_SPIN_OFF_ALREADY_CORRECTED" | "INVESTMENT_MERGER_ALREADY_CORRECTED" | "IMPORT_SPLIT_LINK_UNAVAILABLE" | "IMPORT_SHORT_LINK_UNAVAILABLE" | "IMPORT_SHORT_LINK_CHANGED" | "IMPORT_SHORT_LINK_MISMATCH" | "IMPORT_UPLOAD_TOO_LARGE" | "TRANSACTION_DRAFT_NOT_USER_CREATABLE" | "TRANSACTION_VERSION_STALE" | "POSTING_ACCOUNT_VERSION_STALE" | "RECURRING_TEMPLATE_UNBALANCED" | "RECONCILIATION_START_STALE" | "RECURRING_SCHEDULE_INVALID" | "RECURRING_TEMPLATE_ARCHIVED" | "RECURRING_OCCURRENCE_ALREADY_MATERIALIZED" | "SETUP_REQUIRED" | "SETUP_ALREADY_COMPLETE" | "CONFIG_REQUIRED" | "PROVIDER_ERROR" | "EXPORT_SCOPE_UNSUPPORTED" | "QIF_ACCOUNT_UNSUPPORTED" | "INTERNAL_ERROR";
+            code: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "PRICE_IMPACT_STALE" | "CONFLICT" | "CSRF_INVALID" | "RATE_LIMITED" | "MFA_AUTHENTICATOR_UNAVAILABLE" | "RESOURCE_BUSY" | "LEDGER_OVERFLOW" | "FORECAST_TOO_LARGE" | "FORECAST_BASIS_CHANGED" | "INVESTMENT_WORKFLOW_REQUIRED" | "INVESTMENT_EVENT_OUT_OF_ORDER" | "INVESTMENT_POSITION_SIDE_CONFLICT" | "INVESTMENT_SHORT_DEPENDENCY" | "INVESTMENT_TRANSFER_POOL_REQUIRED" | "INVESTMENT_TRANSFER_POOL_UNAVAILABLE" | "INVESTMENT_SALE_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SALE" | "INVESTMENT_SALE_CHANGED" | "INVESTMENT_SALE_DEPENDENCY" | "INVESTMENT_BUY_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_BUY" | "INVESTMENT_BUY_CHANGED" | "INVESTMENT_BUY_DEPENDENCY" | "INVESTMENT_DIVIDEND_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_DIVIDEND" | "INVESTMENT_DIVIDEND_CHANGED" | "INVESTMENT_PAYMENT_IN_LIEU_ALREADY_CORRECTED" | "INVESTMENT_PAYMENT_IN_LIEU_CHANGED" | "INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT" | "INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY" | "INVESTMENT_WRITE_OFF_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_CHANGED" | "INVESTMENT_TRANSFER_DEPENDENCY" | "INVESTMENT_IMPORTED_TRANSFER" | "INVESTMENT_TRANSFER_BASIS_RESOLVED" | "INVESTMENT_TRANSFER_BASIS_NOT_UNKNOWN" | "INVESTMENT_TRANSFER_BASIS_NOT_RESOLVED" | "INVESTMENT_BASIS_RESOLUTION_ALREADY_CORRECTED" | "INVESTMENT_BASIS_RESOLUTION_CHANGED" | "INVESTMENT_WRITE_OFF_CHANGED" | "INVESTMENT_REINVESTMENT_ALREADY_CORRECTED" | "INVESTMENT_REINVESTMENT_CHANGED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE" | "INVESTMENT_SPLIT_NO_HOLDINGS" | "INVESTMENT_CAPITAL_RETURN_DEPENDENCY" | "INVESTMENT_CAPITAL_RETURN_NO_HOLDINGS" | "INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE" | "INVESTMENT_SPLIT_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPLIT_CHANGED" | "INVESTMENT_SPLIT_DEPENDENCY" | "INVESTMENT_SPLIT_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SPLIT" | "INVESTMENT_EXCHANGE_NO_HOLDINGS" | "INVESTMENT_EXCHANGE_FRACTION_UNREPRESENTABLE" | "INVESTMENT_EXCHANGE_CHANGED" | "INVESTMENT_EXCHANGE_ALREADY_CORRECTED" | "INVESTMENT_SPIN_OFF_NO_HOLDINGS" | "INVESTMENT_SPIN_OFF_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPIN_OFF_CHANGED" | "INVESTMENT_SPIN_OFF_ALREADY_CORRECTED" | "INVESTMENT_MERGER_ALREADY_CORRECTED" | "IMPORT_SPLIT_LINK_UNAVAILABLE" | "IMPORT_SHORT_LINK_UNAVAILABLE" | "IMPORT_SHORT_LINK_CHANGED" | "IMPORT_SHORT_LINK_MISMATCH" | "IMPORT_UPLOAD_TOO_LARGE" | "TRANSACTION_DRAFT_NOT_USER_CREATABLE" | "TRANSACTION_VERSION_STALE" | "RECONCILIATION_IMPACT_STALE" | "POSTING_ACCOUNT_VERSION_STALE" | "RECURRING_TEMPLATE_UNBALANCED" | "RECONCILIATION_START_STALE" | "RECURRING_SCHEDULE_INVALID" | "RECURRING_TEMPLATE_ARCHIVED" | "RECURRING_OCCURRENCE_ALREADY_MATERIALIZED" | "SETUP_REQUIRED" | "SETUP_ALREADY_COMPLETE" | "CONFIG_REQUIRED" | "PROVIDER_ERROR" | "EXPORT_SCOPE_UNSUPPORTED" | "QIF_ACCOUNT_UNSUPPORTED" | "INTERNAL_ERROR";
             message: string;
+            /** @description On a reconciliation guard refusal of a generic ledger write (CONFLICT "reconciliation override is required", or RECONCILIATION_IMPACT_STALE): the checkpoints the write would invalidate right now. A reorder, which has no preview, binds its override to this set (#296). */
+            checkpoint_ids?: number[];
         };
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];

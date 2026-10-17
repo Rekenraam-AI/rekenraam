@@ -258,7 +258,7 @@ func TestLedgerAuditJourneyBalancesOnBothDateAxesThroughLifecycleAndReReconcilia
 
 	// A back-dated amount edit inside the period is refused, previewed with
 	// the checkpoint, and with the override invalidates exactly that set.
-	amountEdit := `{
+	amountEdit := `{"expected_version_id":` + strconvFormatInt(edited.VersionID) + `,
 		"transaction_date":"2026-05-04","description":"Weekly groceries","change_reason":"receipt was 92.40",
 		"journal_entries":[{"entry_date":"2026-05-04","postings":[
 			{"line_key":"` + groceryRun.JournalEntries[0].Postings[0].LineKey + `","account_id":` + strconvFormatInt(checking.ID) + `,"commodity_id":` + strconvFormatInt(eur) + `,"quantity_value":"-9240","quantity_scale":2},
@@ -269,7 +269,7 @@ func TestLedgerAuditJourneyBalancesOnBothDateAxesThroughLifecycleAndReReconcilia
 	assert.Equal(t, firstCheckpoint, impact.AffectedCheckpoints[0].CheckpointID)
 	eq("2805.50", c.balance(checking.ID, eur, "2026-05-10"), "refusal and preview write nothing")
 	overridden := mutateTransaction(t, handler, cookie, csrf, http.MethodPatch, "/api/v1/transactions/"+strconvFormatInt(groceryRun.ID),
-		amountEdit+`,"reconciliation_override":true}`, http.StatusOK)
+		amountEdit+`,"reconciliation_override":true,"reconciliation_override_checkpoint_ids":[`+strconvFormatInt(firstCheckpoint)+`]}`, http.StatusOK)
 	assert.Equal(t, []int64{firstCheckpoint}, overridden.InvalidatedCheckpointIDs, "preview equals write")
 	eq("2795.50", c.balance(checking.ID, eur, "2026-05-10"), "2805.50 - 10.00")
 	eq("3407.60", c.balance(checking.ID, eur, "2026-05-04"), "1000 + 2500 - 92.40 on the edited day")

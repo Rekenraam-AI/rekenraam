@@ -98,6 +98,8 @@ func updateReconciliationImpact(logger *slog.Logger, authService *app.AuthServic
 			OwnerUserID:   owner.ID,
 			TransactionID: transactionID,
 			Spec:          toTransactionInput(request),
+			// The version binds the preview to the form as the write is (#296).
+			ExpectedVersionID: request.ExpectedVersionID,
 		})
 		if err != nil {
 			writeTransactionServiceError(w, r, logger, "reconciliation impact", err)

@@ -11,6 +11,19 @@ import (
 func writeTransactionServiceError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, action string, err error) {
 	var validationError app.ValidationError
 	var overflowError app.LedgerOverflowError
+	var impactError app.CheckpointImpactError
+	if errors.As(err, &impactError) {
+		// A guard refusal names the set the write would invalidate now, so a
+		// caller without a preview can show it and bind its override (#296).
+		switch {
+		case errors.Is(err, app.ErrReconciliationImpactStale):
+			writeCheckpointRefusal(w, "RECONCILIATION_IMPACT_STALE", "the checkpoints this write would invalidate changed after they were reviewed; review them again", impactError.CheckpointIDs)
+			return
+		case errors.Is(err, app.ErrReconciliationOverrideRequired):
+			writeCheckpointRefusal(w, "CONFLICT", "reconciliation override is required", impactError.CheckpointIDs)
+			return
+		}
+	}
 	switch {
 	case errors.Is(err, app.ErrTransactionDraftNotUserCreatable):
 		writeAPIError(w, http.StatusBadRequest, "TRANSACTION_DRAFT_NOT_USER_CREATABLE", "draft transactions can only be created by a system producer")
@@ -40,6 +53,8 @@ func writeTransactionServiceError(w http.ResponseWriter, r *http.Request, logger
 		writeAPIError(w, http.StatusConflict, "CONFLICT", "transaction tag is invalid")
 	case errors.Is(err, app.ErrReconciliationOverrideRequired):
 		writeAPIError(w, http.StatusConflict, "CONFLICT", "reconciliation override is required")
+	case errors.Is(err, app.ErrReconciliationImpactStale):
+		writeAPIError(w, http.StatusConflict, "RECONCILIATION_IMPACT_STALE", "the checkpoints this write would invalidate changed after they were reviewed; review them again")
 	case errors.Is(err, app.ErrReconciliationNotFound):
 		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "reconciliation not found")
 	case errors.Is(err, app.ErrReconciliationClosed):
@@ -53,4 +68,8 @@ func writeTransactionServiceError(w http.ResponseWriter, r *http.Request, logger
 	default:
 		writeServiceInternalError(w, r, logger, action, err)
 	}
+}
+
+func writeCheckpointRefusal(w http.ResponseWriter, code, message string, checkpointIDs []int64) {
+	writeJSON(w, http.StatusConflict, errorResponse{Error: errorBody{Code: code, Message: message, CheckpointIDs: checkpointIDs}})
 }
