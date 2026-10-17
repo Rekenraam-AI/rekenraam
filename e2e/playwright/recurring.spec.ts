@@ -155,14 +155,30 @@ test('bulk review preserves completed posts when a later draft fails',async({pag
 test('blocked recurring occurrence can be repaired and explicitly retried',async({page})=>{
  const {csrfToken,currencyID}=await readyForLedger(page);
  const name=`Blocked recurring ${Date.now()}`;
- const oldAccount=await createCashAccount(page,csrfToken,`${name} old`,currencyID);
  const replacement=await createCashAccount(page,csrfToken,`${name} replacement`,currencyID);
- const template=await seedDue(page,name,oldAccount.id,currencyID);
+ // The once-a-minute scheduler sweeps every enabled template, so a tick can
+ // land between saving the template and archiving its account (#282). No
+ // ordering avoids that window: closure cannot be future-dated and every
+ // template save, enabling included, rejects an archived account. Read the
+ // occurrence the app actually recorded rather than run-now's count (a tick
+ // after the archive blocks it too), and start over on a fresh account if
+ // the tick materialized an ordinary draft first.
+ let oldAccount!:{id:number;name:string},template!:{id:number};
+ for(let attempt=1;;attempt++){
+  oldAccount=await createCashAccount(page,csrfToken,`${name} old ${attempt}`,currencyID);
+  template=await seedDue(page,name,oldAccount.id,currencyID);
+  await apiJSON(page,'POST',`/api/v1/accounts/${oldAccount.id}/close`,await csrfTokenFor(page),{});
+  await apiJSON(page,'POST',`/api/v1/accounts/${oldAccount.id}/archive`,await csrfTokenFor(page),{});
+  await apiJSON(page,'POST',`/api/v1/recurring/templates/${template.id}/run-now`,await csrfTokenFor(page),{});
+  const due=await apiJSON<{items:Array<{template_id:number;status:string;transaction_id:number|null}>}>(page,'GET','/api/v1/recurring/due');
+  const item=due.items.find(i=>i.template_id===template.id)!;
+  if(item.status==='blocked')break;
+  expect(item.status,'only a scheduler tick before the archive may pre-empt the block').toBe('generated');
+  await apiJSON(page,'DELETE',`/api/v1/transactions/${item.transaction_id}`,await csrfTokenFor(page),undefined,[204]);
+  await archive(page,template.id);
+  expect(attempt,'scheduler ticks pre-empted every attempt').toBeLessThan(3);
+ }
  try{
- await apiJSON(page,'POST',`/api/v1/accounts/${oldAccount.id}/close`,await csrfTokenFor(page),{});
- await apiJSON(page,'POST',`/api/v1/accounts/${oldAccount.id}/archive`,await csrfTokenFor(page),{});
- const run=await apiJSON<{blocked:number}>(page,'POST',`/api/v1/recurring/templates/${template.id}/run-now`,await csrfTokenFor(page),{});
- expect(run.blocked).toBe(1);
  await page.goto('/app/recurring');
  const card=page.getByRole('article',{name,exact:true});
  await expect(card).toContainText('No draft was created');

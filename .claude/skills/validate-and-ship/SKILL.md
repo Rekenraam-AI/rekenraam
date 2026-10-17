@@ -466,7 +466,10 @@ non-trivial diff (yours or reviewed):
     `MARKET_DATA_BASE_URL`) refused outside `APP_ENV=development`. A
     `route.fetch()` handler still reading a refetch when the page closes fails
     as "Response has been disposed" (#236): unroute with `ignoreErrors` after
-    each test. Named regressions: `TestDefaultRegistryAtSendsEveryProviderToTheOverrideHost`,
+    each test. The once-a-minute recurring scheduler likewise sweeps every
+    enabled template, so a spec must not assume nothing materializes between
+    saving a template and its next API call (#282): assert the occurrence
+    the app recorded, not a `run-now` counter. Named regressions: `TestDefaultRegistryAtSendsEveryProviderToTheOverrideHost`,
     `TestLoadRefusesMarketDataBaseURLOutsideDevelopment`,
     `TestRuntimeRefusesMarketDataBaseURLOutsideDevelopment`.
 
