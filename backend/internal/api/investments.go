@@ -710,11 +710,13 @@ type investmentEventRevisionResult struct {
 }
 
 type investmentEventLinkCandidateResult struct {
-	TransactionID   int64             `json:"transaction_id"`
-	TransactionDate string            `json:"transaction_date"`
-	CashCode        string            `json:"cash_code"`
-	GrossValue      exact.Coefficient `json:"gross_value"`
-	GrossScale      int               `json:"gross_scale"`
+	TransactionID      int64             `json:"transaction_id"`
+	TransactionDate    string            `json:"transaction_date"`
+	CashCode           string            `json:"cash_code"`
+	GrossValue         exact.Coefficient `json:"gross_value"`
+	GrossScale         int               `json:"gross_scale"`
+	HoldingAccountID   *int64            `json:"holding_account_id,omitempty"`
+	HoldingAccountName string            `json:"holding_account_name,omitempty"`
 }
 
 // acceptEventSuggestionRequest is optional: a complete proposal is accepted
@@ -2418,7 +2420,8 @@ func toInvestmentEventSuggestionResponse(suggestion app.InvestmentEventSuggestio
 	candidates := make([]investmentEventLinkCandidateResult, 0, len(suggestion.LinkCandidates))
 	for _, candidate := range suggestion.LinkCandidates {
 		candidates = append(candidates, investmentEventLinkCandidateResult{TransactionID: candidate.TransactionID, TransactionDate: candidate.TransactionDate,
-			CashCode: candidate.CashCode, GrossValue: candidate.GrossValue, GrossScale: candidate.GrossScale})
+			CashCode: candidate.CashCode, GrossValue: candidate.GrossValue, GrossScale: candidate.GrossScale,
+			HoldingAccountID: candidate.HoldingAccountID, HoldingAccountName: candidate.HoldingAccountName})
 	}
 	revisions := make([]investmentEventRevisionResult, 0, len(suggestion.Revisions))
 	for _, revision := range suggestion.Revisions {

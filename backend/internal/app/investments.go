@@ -678,8 +678,9 @@ type InvestmentEventSuggestion struct {
 	FailureReason           string
 	CreatedAt               string
 	UpdatedAt               string
-	// LinkCandidates are owner-recorded dividends a pending suggestion may be
-	// linked to instead of posting again; composed only by the list read.
+	// LinkCandidates are owner-recorded dividends, or payments in lieu for a
+	// short-only suggestion (#258), a pending suggestion may be linked to
+	// instead of posting again; composed only by the list read.
 	LinkCandidates []InvestmentEventLinkCandidate
 	// Revisions are later differing provider observations of the event, in
 	// observation order (#254); composed only by the list read. They are
@@ -695,13 +696,18 @@ type InvestmentEventRevision struct {
 }
 
 // InvestmentEventLinkCandidate is an effective posted cash dividend of the
-// suggestion's instrument dated within the link window after the ex-date.
+// suggestion's instrument dated within the link window after the ex-date, or
+// for a payment-in-lieu suggestion an effective payment in lieu of the
+// instrument with the event's ex-date for one of its short holdings. Gross is
+// the dividend's gross or the amount owed.
 type InvestmentEventLinkCandidate struct {
-	TransactionID   int64
-	TransactionDate string
-	CashCode        string
-	GrossValue      exact.Coefficient
-	GrossScale      int
+	TransactionID      int64
+	TransactionDate    string
+	CashCode           string
+	GrossValue         exact.Coefficient
+	GrossScale         int
+	HoldingAccountID   *int64
+	HoldingAccountName string
 }
 
 // SuggestionCompletion is what the owner supplies for an incomplete provider
@@ -2111,7 +2117,7 @@ func (s *InvestmentService) ListEventSuggestions(ctx context.Context) ([]Investm
 		return nil, fmt.Errorf("list investment event suggestions: %w", err)
 	}
 	suggestions := toInvestmentEventSuggestions(records)
-	candidates, err := s.repository.DividendLinkCandidates(ctx, BookID)
+	candidates, err := s.repository.EventLinkCandidates(ctx, BookID)
 	if err != nil {
 		return nil, fmt.Errorf("list investment event link candidates: %w", err)
 	}
@@ -2124,7 +2130,7 @@ func (s *InvestmentService) ListEventSuggestions(ctx context.Context) ([]Investm
 		}
 		bySuggestion[candidate.SuggestionID] = append(bySuggestion[candidate.SuggestionID], InvestmentEventLinkCandidate{
 			TransactionID: candidate.TransactionID, TransactionDate: candidate.TransactionDate, CashCode: candidate.CashCode,
-			GrossValue: value, GrossScale: normalized.Scale()})
+			GrossValue: value, GrossScale: normalized.Scale(), HoldingAccountID: candidate.HoldingAccountID, HoldingAccountName: candidate.HoldingAccountName})
 	}
 	revisions, err := s.repository.ProviderEventRevisions(ctx, BookID)
 	if err != nil {
@@ -2251,7 +2257,8 @@ func (s *InvestmentService) AcceptSuggestionWithCompletion(ctx context.Context, 
 	return toInvestmentEventSuggestion(accepted), nil
 }
 
-// LinkSuggestion records that an owner-recorded cash dividend is this
+// LinkSuggestion records that an owner-recorded cash dividend, or for a
+// short-only suggestion an owner-recorded payment in lieu (#258), is this
 // provider dividend, so nothing posts and later fetches stay duplicates.
 func (s *InvestmentService) LinkSuggestion(ctx context.Context, ownerUserID int64, authSessionID int64, requestID string, suggestionID int64, transactionID int64) (InvestmentEventSuggestion, error) {
 	if ownerUserID <= 0 {
@@ -2268,7 +2275,7 @@ func (s *InvestmentService) LinkSuggestion(ctx context.Context, ownerUserID int6
 	case errors.Is(err, db.ErrEventSuggestionNotPending):
 		return InvestmentEventSuggestion{}, ErrInvestmentSuggestionNotPending
 	case errors.Is(err, db.ErrEventLinkTarget):
-		return InvestmentEventSuggestion{}, ValidationError{Message: "only an unlinked posted cash dividend of this instrument dated on or after the ex-date can be linked"}
+		return InvestmentEventSuggestion{}, ValidationError{Message: "only an unlinked posted cash dividend of this instrument dated on or after the ex-date, or for a short holder an unlinked payment in lieu of this instrument, holding and ex-date, can be linked"}
 	case err != nil:
 		return InvestmentEventSuggestion{}, fmt.Errorf("link investment event suggestion: %w", err)
 	}

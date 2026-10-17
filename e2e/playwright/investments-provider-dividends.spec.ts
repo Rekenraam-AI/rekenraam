@@ -11,7 +11,7 @@ import { expectNoAccessibilityViolations } from './support/a11y';
 test.use({ viewport: { width: 390, height: 844 } });
 test.skip(Boolean(process.env.E2E_BASE_URL), 'needs the local market-data stub for Twelve Data dividends');
 
-async function heldProviderListing(page: Page, prefix: string) {
+async function heldProviderListing(page: Page, prefix: string, side: 'long' | 'short' = 'long') {
   const { csrfToken, currencyID } = await readyForLedger(page);
   const suffix = `${Date.now()}`;
   const openedOn = daysFromTodayISO(-60);
@@ -30,7 +30,7 @@ async function heldProviderListing(page: Page, prefix: string) {
   const holding = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/holding-accounts', csrfToken, {
     instrument_id: instrument.id, name: `Provider holding ${suffix}`, opened_on: openedOn, effective_from: openedOn
   });
-  await apiJSON(page, 'POST', '/api/v1/investments/buy', csrfToken, {
+  await apiJSON(page, 'POST', side === 'long' ? '/api/v1/investments/buy' : '/api/v1/investments/short-sale', csrfToken, {
     transaction_date: daysFromTodayISO(-30), commodity_id: instrument.commodity_id, holding_account_id: holding.id,
     cash_account_id: cash.id, quantity_value: '10', quantity_scale: 0, cash_amount_value: '100000',
     cash_amount_scale: 2, cash_commodity_id: currencyID
@@ -42,7 +42,7 @@ async function heldProviderListing(page: Page, prefix: string) {
     commodity_id: instrument.commodity_id, quote_commodity_id: currencyID, source_id: twelveData.id, effective_from: openedOn
   });
 
-  return { cash, income, instrument, name };
+  return { csrfToken, currencyID, cash, income, instrument, holding, name };
 }
 
 test('[acceptance] a provider dividend is reviewed, completed and posted through the native command', async ({ page }) => {
@@ -110,4 +110,44 @@ test('a provider revision of a staged dividend is disclosed without reopening th
   const settled = page.getByRole('listitem').filter({ hasText: name }).filter({ hasText: 'Ignored' });
   await expect(settled).toBeVisible();
   await expect(settled.getByTestId('event-suggestion-revisions')).toContainText('Your decision and any recorded dividend are unchanged.');
+});
+
+test('a short-only provider dividend links the payment in lieu the owner already recorded', async ({ page }) => {
+  // #258: the book is short at the ex-date, so the suggestion is a payment in
+  // lieu; the owner recorded it by hand and links it instead of posting twice.
+  const { csrfToken, currencyID, cash, instrument, holding, name } = await heldProviderListing(page, 'E2EDIVPIL', 'short');
+  const openedOn = daysFromTodayISO(-60);
+  const expense = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: `Borrow costs ${name}`, account_class: 'expense', account_kind: 'expense',
+    default_commodity_id: currencyID, allows_postings: true, opened_on: openedOn, effective_from: openedOn
+  });
+  const payment = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/payment-in-lieu', csrfToken, {
+    holding_account_id: holding.id, commodity_id: instrument.commodity_id, ex_date: daysFromTodayISO(-10),
+    transaction_date: daysFromTodayISO(-3), cash_account_id: cash.id, cash_commodity_id: currencyID,
+    expense_account_id: expense.id, amount_value: '500', amount_scale: 2
+  });
+
+  await page.goto('/app/investments');
+  await page.getByRole('button', { name: /^Suggestions/ }).click();
+  await page.getByRole('button', { name: 'Check provider dividends', exact: true }).click();
+  const card = page.getByTestId('event-suggestion').filter({ hasText: name });
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  await expect(card.getByRole('note')).toContainText('payment in lieu');
+  const candidate = card.getByTestId('event-suggestion-link-candidate');
+  await expect(candidate).toHaveCount(1);
+  await expect(candidate).toContainText(daysFromTodayISO(-3));
+  await expect(candidate).toContainText('5');
+  await expect(candidate).toContainText(`Provider holding`);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expectNoAccessibilityViolations(page, 'Provider payment in lieu link candidate on a phone');
+
+  await candidate.getByRole('button', { name: 'Link', exact: true }).click();
+  const settled = page.getByRole('listitem').filter({ hasText: name }).filter({ hasText: 'Linked' });
+  await expect(settled).toBeVisible();
+  await expect(card).toHaveCount(0);
+  const suggestions = await apiJSON<{ suggestions: Array<{ status: string; linked_transaction_id?: number; instrument_id?: number }> }>(
+    page, 'GET', '/api/v1/investments/event-suggestions');
+  const linked = suggestions.suggestions.find((s) => s.instrument_id === instrument.id);
+  expect(linked?.status).toBe('linked');
+  expect(linked?.linked_transaction_id).toBe(payment.id);
 });

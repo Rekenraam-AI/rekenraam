@@ -130,9 +130,9 @@
       case 'linked':
       case 'auto_posted': return 'bg-positive-soft text-positive';
       case 'ignored':
-      case 'superseded': return 'bg-muted/30 text-muted';
+      case 'superseded': return 'bg-surface-strong text-foreground';
       case 'failed': return 'bg-destructive/10 text-destructive';
-      default: return 'bg-muted/30 text-muted';
+      default: return 'bg-surface-strong text-foreground';
     }
   }
 
@@ -275,17 +275,24 @@
 
                 {@render revisionNotice(s, evidence, false)}
 
-                {#if shape === 'needs_completion' && s.link_candidates.length > 0}
+                {#if (shape === 'needs_completion' || shape === 'payment_in_lieu') && s.link_candidates.length > 0}
                   <div class="rounded-(--radius-panel) border border-border p-3">
                     <p class="text-sm font-medium text-foreground">{m.investments_suggestion_link_title()}</p>
                     <ul class="mt-2 space-y-2">
                       {#each s.link_candidates as candidate (candidate.transaction_id)}
-                        <li class="flex flex-wrap items-center justify-between gap-2 text-sm">
-                          <span class="tabular-nums text-foreground">
-                            {m.investments_suggestion_link_candidate({ date: candidate.transaction_date, amount: formatQuantity(candidate.gross_value, candidate.gross_scale, getLocale()), currency: candidate.cash_code })}
+                        {@const candidateAmount = formatQuantity(candidate.gross_value, candidate.gross_scale, getLocale())}
+                        <li class="flex flex-wrap items-center justify-between gap-2 text-sm" data-testid="event-suggestion-link-candidate">
+                          <span class="min-w-0 tabular-nums text-foreground">
+                            {#if candidate.holding_account_id !== undefined}
+                              {m.investments_suggestion_link_candidate_holding({ date: candidate.transaction_date, amount: candidateAmount, currency: candidate.cash_code,
+                                holding: candidate.holding_account_name || `#${candidate.holding_account_id}` })}
+                            {:else}
+                              {m.investments_suggestion_link_candidate({ date: candidate.transaction_date, amount: candidateAmount, currency: candidate.cash_code })}
+                            {/if}
                           </span>
                           <button type="button" disabled={busy.has(s.id)}
-                            onclick={() => act(s, () => linkEventSuggestion(s.id, candidate.transaction_id, csrfToken), m.investments_suggestion_link_error(), false)}
+                            onclick={() => act(s, () => linkEventSuggestion(s.id, candidate.transaction_id, csrfToken),
+                              shape === 'payment_in_lieu' ? m.investments_suggestion_link_payment_in_lieu_error() : m.investments_suggestion_link_error(), false)}
                             class="rounded-(--radius-control) border border-border bg-control px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-control-hover disabled:opacity-40">
                             {m.investments_suggestion_link()}
                           </button>

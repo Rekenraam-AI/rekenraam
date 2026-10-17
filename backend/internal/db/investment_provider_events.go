@@ -254,62 +254,117 @@ func (r *InvestmentRepository) ProviderEventRevisions(ctx context.Context, bookI
 	return result, nil
 }
 
-// DividendLinkCandidate is an effective posted cash dividend an owner may link
-// to a pending provider dividend suggestion instead of posting it again.
-type DividendLinkCandidate struct {
-	SuggestionID    int64
-	TransactionID   int64
-	TransactionDate string
-	CashCode        string
-	Gross           *exact.ScaledInt
+// EventLinkCandidate is an owner-recorded payment a pending provider
+// suggestion may be linked to instead of posting it again: an effective posted
+// cash dividend for a dividend suggestion, or an effective payment in lieu
+// (#258) for a short-only one. Gross is the dividend's gross or the amount the
+// payment in lieu owed, always positive; HoldingAccount names the short
+// holding a payment in lieu was owed for.
+type EventLinkCandidate struct {
+	SuggestionID       int64
+	TransactionID      int64
+	TransactionDate    string
+	CashCode           string
+	Gross              *exact.ScaledInt
+	HoldingAccountID   *int64
+	HoldingAccountName string
 }
 
-const dividendLinkCandidatesSQL = `
-	SELECT s.id, tv.transaction_id, o.event_date, cash.code, c.amount_value, c.amount_scale
-	FROM investment_event_suggestions s
-	JOIN investment_provider_events e ON e.id = s.provider_event_id AND e.book_id = s.book_id
-	JOIN investment_instruments ii ON ii.id = s.instrument_id
-	JOIN investment_dividend_facts facts ON facts.commodity_id = ii.commodity_id AND facts.book_id = s.book_id AND facts.withholding_only = 0
-	JOIN effective_investment_operations o ON o.id = facts.operation_id AND o.operation_kind = 'dividend'
-	JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
-	JOIN transaction_versions linked ON linked.id = link.transaction_version_id
-	JOIN transactions t ON t.id = linked.transaction_id AND t.deleted_at IS NULL
-	JOIN current_transaction_versions tv ON tv.transaction_id = t.id AND tv.status = 'posted'
-	JOIN investment_operation_components c ON c.operation_id = o.id AND c.component_kind = 'dividend_gross'
-	JOIN commodities cash ON cash.id = c.commodity_id
-	WHERE s.book_id = ? AND s.status = 'suggested' AND e.event_family = 'dividend'
-		-- A short holder's payment in lieu (#255) is never a cash dividend.
-		AND json_extract(s.proposed_transaction_json, '$.kind') IS NOT 'payment_in_lieu'
-		AND o.event_date >= e.event_date AND o.event_date <= date(e.event_date, '+' || ? || ' days')
-		AND NOT EXISTS (SELECT 1 FROM investment_event_suggestions other
-			WHERE other.generated_transaction_id = t.id OR other.linked_transaction_id = t.id)`
+// eventLinkCandidatesSQL offers each suggestion only its own kind of payment.
+// A dividend suggestion takes a cash dividend of the instrument dated within
+// the link window; a payment-in-lieu suggestion takes a payment in lieu of the
+// instrument, for one of the proposal's short holdings, with the event's
+// ex-date. Neither is ever offered for the other, and a transaction another
+// suggestion generated or linked is never offered again (the migration 0011
+// unique index backs this once-per-payment rule).
+const eventLinkCandidatesSQL = `
+	SELECT suggestion_id, transaction_id, transaction_date, cash_code, amount_value, amount_scale, holding_account_id, holding_account_name
+	FROM (
+		SELECT s.id AS suggestion_id, tv.transaction_id AS transaction_id, o.event_date AS transaction_date, cash.code AS cash_code,
+			c.amount_value AS amount_value, c.amount_scale AS amount_scale, c.component_seq AS component_seq,
+			NULL AS holding_account_id, '' AS holding_account_name
+		FROM investment_event_suggestions s
+		JOIN investment_provider_events e ON e.id = s.provider_event_id AND e.book_id = s.book_id
+		JOIN investment_instruments ii ON ii.id = s.instrument_id
+		JOIN investment_dividend_facts facts ON facts.commodity_id = ii.commodity_id AND facts.book_id = s.book_id AND facts.withholding_only = 0
+		JOIN effective_investment_operations o ON o.id = facts.operation_id AND o.operation_kind = 'dividend'
+		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
+		JOIN transaction_versions linked ON linked.id = link.transaction_version_id
+		JOIN transactions t ON t.id = linked.transaction_id AND t.deleted_at IS NULL
+		JOIN current_transaction_versions tv ON tv.transaction_id = t.id AND tv.status = 'posted'
+		JOIN investment_operation_components c ON c.operation_id = o.id AND c.component_kind = 'dividend_gross'
+		JOIN commodities cash ON cash.id = c.commodity_id
+		WHERE s.book_id = ? AND s.status = 'suggested' AND e.event_family = 'dividend'
+			-- A short holder's payment in lieu (#255) is never a cash dividend.
+			AND json_extract(s.proposed_transaction_json, '$.kind') IS NOT 'payment_in_lieu'
+			AND o.event_date >= e.event_date AND o.event_date <= date(e.event_date, '+' || ? || ' days')
+			AND NOT EXISTS (SELECT 1 FROM investment_event_suggestions other
+				WHERE other.generated_transaction_id = t.id OR other.linked_transaction_id = t.id)
+		UNION ALL
+		SELECT s.id, tv.transaction_id, o.event_date, cash.code, c.amount_value, c.amount_scale, c.component_seq,
+			facts.holding_account_id, COALESCE(holding.name, '')
+		FROM investment_event_suggestions s
+		JOIN investment_provider_events e ON e.id = s.provider_event_id AND e.book_id = s.book_id
+		JOIN investment_instruments ii ON ii.id = s.instrument_id
+		JOIN investment_payment_in_lieu_facts facts ON facts.commodity_id = ii.commodity_id AND facts.book_id = s.book_id
+			AND facts.ex_date = e.event_date
+		LEFT JOIN current_account_versions holding ON holding.account_id = facts.holding_account_id
+		JOIN effective_investment_operations o ON o.id = facts.operation_id AND o.operation_kind = 'payment_in_lieu'
+		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
+		JOIN transaction_versions linked ON linked.id = link.transaction_version_id
+		JOIN transactions t ON t.id = linked.transaction_id AND t.deleted_at IS NULL
+		JOIN current_transaction_versions tv ON tv.transaction_id = t.id AND tv.status = 'posted'
+		JOIN investment_operation_components c ON c.operation_id = o.id AND c.component_kind = 'payment_in_lieu'
+		JOIN commodities cash ON cash.id = c.commodity_id
+		WHERE s.book_id = ? AND s.status = 'suggested' AND e.event_family = 'dividend'
+			AND json_extract(s.proposed_transaction_json, '$.kind') = 'payment_in_lieu'
+			AND json_extract(s.proposed_transaction_json, '$.commodity_id') = facts.commodity_id
+			AND facts.holding_account_id IN (SELECT value FROM json_each(s.proposed_transaction_json, '$.holding_account_ids'))
+			AND NOT EXISTS (SELECT 1 FROM investment_event_suggestions other
+				WHERE other.generated_transaction_id = t.id OR other.linked_transaction_id = t.id)
+	)`
 
-// DividendLinkCandidates composes every pending dividend suggestion's
-// candidates in one read so the review screen needs one request.
-func (r *InvestmentRepository) DividendLinkCandidates(ctx context.Context, bookID int64) ([]DividendLinkCandidate, error) {
-	rows, err := r.database.QueryContext(ctx, dividendLinkCandidatesSQL+` ORDER BY s.id, o.event_date, t.id, c.component_seq`, bookID, DividendEventLinkWindowDays)
+func eventLinkCandidatesArgs(bookID int64) []any {
+	return []any{bookID, DividendEventLinkWindowDays, bookID}
+}
+
+// EventLinkCandidates composes every pending suggestion's candidates in one
+// read so the review screen needs one request.
+func (r *InvestmentRepository) EventLinkCandidates(ctx context.Context, bookID int64) ([]EventLinkCandidate, error) {
+	rows, err := r.database.QueryContext(ctx, eventLinkCandidatesSQL+` ORDER BY suggestion_id, transaction_date, transaction_id, component_seq`, eventLinkCandidatesArgs(bookID)...)
 	if err != nil {
-		return nil, fmt.Errorf("read dividend link candidates: %w", err)
+		return nil, fmt.Errorf("read event link candidates: %w", err)
 	}
-	var result []DividendLinkCandidate
+	var result []EventLinkCandidate
 	for rows.Next() {
-		var candidate DividendLinkCandidate
+		var candidate EventLinkCandidate
 		var value exact.Coefficient
 		var scale int
-		if err := rows.Scan(&candidate.SuggestionID, &candidate.TransactionID, &candidate.TransactionDate, &candidate.CashCode, &value, &scale); err != nil {
+		var holding sql.NullInt64
+		if err := rows.Scan(&candidate.SuggestionID, &candidate.TransactionID, &candidate.TransactionDate, &candidate.CashCode, &value, &scale,
+			&holding, &candidate.HoldingAccountName); err != nil {
 			rows.Close()
-			return nil, fmt.Errorf("scan dividend link candidate: %w", err)
+			return nil, fmt.Errorf("scan event link candidate: %w", err)
 		}
 		last := len(result) - 1
 		if last < 0 || result[last].SuggestionID != candidate.SuggestionID || result[last].TransactionID != candidate.TransactionID {
 			candidate.Gross = exact.NewScaledInt()
+			if holding.Valid {
+				candidate.HoldingAccountID = &holding.Int64
+			}
 			result = append(result, candidate)
 			last++
 		}
 		result[last].Gross.AddCoefficient(value, scale)
 	}
 	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
-		return nil, fmt.Errorf("iterate dividend link candidates: %w", err)
+		return nil, fmt.Errorf("iterate event link candidates: %w", err)
+	}
+	for index := range result {
+		if result[index].HoldingAccountID != nil {
+			// The payment-in-lieu component carries the charge negative.
+			result[index].Gross = result[index].Gross.Negated()
+		}
 	}
 	return result, nil
 }
@@ -324,8 +379,8 @@ type LinkSuggestionParams struct {
 	RecordedAt    string
 }
 
-// LinkSuggestion records that an owner-recorded dividend is this provider
-// event. The candidate check, the suggestion transition and the event status
+// LinkSuggestion records that an owner-recorded dividend or payment in lieu
+// is this provider event. The candidate check, the suggestion transition and the event status
 // share one transaction, so a concurrent accept, ignore or second link cannot
 // admit the event or the payment twice.
 func (r *InvestmentRepository) LinkSuggestion(ctx context.Context, params LinkSuggestionParams) (EventSuggestionRecord, error) {
@@ -342,17 +397,18 @@ func (r *InvestmentRepository) LinkSuggestion(ctx context.Context, params LinkSu
 		return EventSuggestionRecord{}, ErrEventSuggestionNotPending
 	}
 	var found int64
-	err = tx.QueryRowContext(ctx, dividendLinkCandidatesSQL+` AND s.id = ? AND t.id = ? LIMIT 1`,
-		params.BookID, DividendEventLinkWindowDays, params.SuggestionID, params.TransactionID).Scan(&found, new(int64), new(string), new(string), new(exact.Coefficient), new(int))
+	err = tx.QueryRowContext(ctx, eventLinkCandidatesSQL+` WHERE suggestion_id = ? AND transaction_id = ? LIMIT 1`,
+		append(eventLinkCandidatesArgs(params.BookID), params.SuggestionID, params.TransactionID)...).Scan(&found, new(int64), new(string), new(string),
+		new(exact.Coefficient), new(int), new(sql.NullInt64), new(string))
 	if errors.Is(err, sql.ErrNoRows) {
 		return EventSuggestionRecord{}, ErrEventLinkTarget
 	}
 	if err != nil {
-		return EventSuggestionRecord{}, fmt.Errorf("check dividend link target: %w", err)
+		return EventSuggestionRecord{}, fmt.Errorf("check event link target: %w", err)
 	}
 	auditEventID, err := insertAuditEvent(ctx, tx, AuditEventParams{BookID: params.BookID, ActorUserID: params.ActorUserID, AuthSessionID: params.AuthSessionID,
 		OccurredAt: params.RecordedAt, RequestID: params.RequestID, OriginType: "browser_api", Operation: "investment.event_suggestion.link",
-		Reason: "linked provider event to recorded dividend"})
+		Reason: "linked provider event to recorded payment"})
 	if err != nil {
 		return EventSuggestionRecord{}, err
 	}

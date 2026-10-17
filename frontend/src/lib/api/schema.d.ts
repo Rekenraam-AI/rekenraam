@@ -25279,8 +25279,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Link a provider dividend suggestion to an owner-recorded cash dividend (posts nothing)
-         * @description The transaction must be an effective posted cash dividend of the suggestion's instrument dated from the ex-date up to 90 days after it, and not already admitted by another provider event. The link and the event status commit atomically; later fetches of the same event stay duplicates.
+         * Link a provider dividend suggestion to an owner-recorded payment (posts nothing)
+         * @description For a dividend suggestion the transaction must be an effective posted cash dividend of the suggestion's instrument dated from the ex-date up to 90 days after it. For a payment-in-lieu suggestion (#258) it must be an effective posted payment in lieu of the suggestion's instrument, for one of the proposal's holding_account_ids, with the event's ex-date; a cash dividend is never linked to it, nor a payment in lieu to a dividend suggestion. Either way it must not already be admitted by another provider event. The link and the event status commit atomically; later fetches of the same event stay duplicates.
          */
         post: {
             parameters: {
@@ -25310,7 +25310,7 @@ export interface paths {
                         "application/json": components["schemas"]["InvestmentEventSuggestionResponse"];
                     };
                 };
-                /** @description Not a linkable dividend for this event */
+                /** @description Not a linkable dividend or payment in lieu for this event */
                 400: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
@@ -32056,6 +32056,7 @@ export interface components {
             /** Format: date-time */
             observed_at: string;
         };
+        /** @description An owner-recorded payment a pending suggestion may be linked to: a cash dividend for a dividend suggestion, or a payment in lieu for a payment-in-lieu suggestion (#258). gross_value/gross_scale is the dividend's gross or the amount the payment in lieu owed, both positive. */
         InvestmentEventLinkCandidate: {
             /** Format: int64 */
             transaction_id: number;
@@ -32064,6 +32065,13 @@ export interface components {
             cash_code: string;
             gross_value: string;
             gross_scale: number;
+            /**
+             * Format: int64
+             * @description The short holding a payment-in-lieu candidate was owed for; absent for a cash dividend.
+             */
+            holding_account_id?: number;
+            /** @description The current name of holding_account_id; absent for a cash dividend. */
+            holding_account_name?: string;
         };
         AcceptEventSuggestionRequest: {
             completion?: components["schemas"]["EventSuggestionCompletion"];

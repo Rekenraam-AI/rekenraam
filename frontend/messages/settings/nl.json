@@ -1139,6 +1139,8 @@
   "investments_suggestion_link": "Koppelen",
   "investments_suggestion_link_candidate": "{date}: {amount} {currency}",
   "investments_suggestion_link_error": "Kon het dividend niet koppelen.",
+  "investments_suggestion_link_candidate_holding": "{date}: {amount} {currency} · {holding}",
+  "investments_suggestion_link_payment_in_lieu_error": "Kon de vervangende betaling niet koppelen.",
   "investments_suggestion_instrument_unknown": "Onbekend instrument",
   "investments_rules_title": "Automatiseringsregels",
   "investments_rules_empty": "Geen automatiseringsregels.",

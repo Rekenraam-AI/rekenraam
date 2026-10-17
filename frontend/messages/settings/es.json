@@ -1139,6 +1139,8 @@
   "investments_suggestion_link": "Vincular",
   "investments_suggestion_link_candidate": "{date}: {amount} {currency}",
   "investments_suggestion_link_error": "No se pudo vincular el dividendo.",
+  "investments_suggestion_link_candidate_holding": "{date}: {amount} {currency} · {holding}",
+  "investments_suggestion_link_payment_in_lieu_error": "No se pudo vincular el pago compensatorio.",
   "investments_suggestion_instrument_unknown": "Instrumento desconocido",
   "investments_rules_title": "Reglas de automatización",
   "investments_rules_empty": "No hay reglas de automatización.",

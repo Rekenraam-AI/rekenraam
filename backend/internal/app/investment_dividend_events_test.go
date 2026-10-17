@@ -572,3 +572,109 @@ func countTransactions(t *testing.T, database interface {
 	require.NoError(t, database.QueryRow(`SELECT count(*) FROM transactions`).Scan(&count))
 	return count
 }
+
+// #258: a payment-in-lieu suggestion offers only an effective payment in lieu
+// of its instrument, for one of its short holdings, with its ex-date, and
+// links it once without posting; a cash dividend is never offered for it.
+func TestProviderPaymentInLieuLinksOwnerRecordedPaymentOnce(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newDividendEventFixture(t)
+	f.goShort(t, f.holding.ID)
+	expense := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
+	recovery := seedTestAccountWithClass(t, f.database, "active", true, "income", "income")
+	pil := func(holdingAccountID, commodityID int64, exDate string, owed int64) Transaction {
+		t.Helper()
+		payment, err := f.investmentSvc.PaymentInLieu(ctx, PaymentInLieuInput{OwnerUserID: 1, HoldingAccountID: holdingAccountID, CommodityID: commodityID,
+			ExDate: exDate, TransactionDate: "2026-08-14", CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, ExpenseAccountID: expense,
+			AmountValue: owed, AmountScale: 2})
+		require.NoError(t, err)
+		return payment
+	}
+
+	// The owner recorded the July payment by hand, with a recovery that
+	// does not change what was owed.
+	recovered := int64(100)
+	manual, err := f.investmentSvc.PaymentInLieu(ctx, PaymentInLieuInput{OwnerUserID: 1, HoldingAccountID: f.holding.ID, CommodityID: f.instrument.CommodityID,
+		ExDate: "2026-07-29", TransactionDate: "2026-08-14", CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, ExpenseAccountID: expense,
+		AmountValue: 800, AmountScale: 2, RecoveryValue: &recovered, RecoveryAccountID: &recovery})
+	require.NoError(t, err)
+	wrongExDate := pil(f.holding.ID, f.instrument.CommodityID, "2026-07-30", 800)
+	reversed := pil(f.holding.ID, f.instrument.CommodityID, "2026-07-29", 900)
+	_, err = f.investmentSvc.ReversePaymentInLieu(ctx, ReverseInvestmentPaymentInLieuInput{OwnerUserID: 1, TransactionID: reversed.ID, Reason: "entered twice"})
+	require.NoError(t, err)
+	// A cash dividend of the instrument is never this short's charge.
+	dividend, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: &f.instrument.CommodityID,
+		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID, AmountValue: 800, AmountScale: 2})
+	require.NoError(t, err)
+	// Another instrument's payment in lieu on the same ex-date is not this one.
+	other, err := f.investmentSvc.CreateInstrument(ctx, InvestmentInstrumentInput{OwnerUserID: 1, OriginType: "browser_api", ChangeReason: "fixture",
+		InstrumentType: "stock", DisplayName: "Other", CommodityCode: "OTHR", Symbol: "OTHR", MIC: "XAMS", QuantityScale: 4, PriceScale: 4,
+		QuoteCommodityID: &f.eurCommodityID, EffectiveFrom: "0001-01-01"})
+	require.NoError(t, err)
+	otherHolding, err := f.investmentSvc.CreateHoldingAccount(ctx, HoldingAccountInput{OwnerUserID: 1, InstrumentID: other.ID, Name: "Other", OpenedOn: "2020-01-01", EffectiveFrom: "2020-01-01"})
+	require.NoError(t, err)
+	_, err = f.investmentSvc.ShortSale(ctx, InvestmentTradeInput{OwnerUserID: 1, TransactionDate: "2026-06-02", CommodityID: other.CommodityID, HoldingAccountID: otherHolding.ID,
+		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, QuantityValue: exact.MustParse("5"), CashAmountValue: 300000, CashAmountScale: 2})
+	require.NoError(t, err)
+	wrongInstrument := pil(otherHolding.ID, other.CommodityID, "2026-07-29", 800)
+
+	f.fetch(t)
+	suggestions := f.suggestions(t)
+	july := suggestionForExDate(t, suggestions, "2026-07-29")
+	require.Equal(t, []any{float64(f.holding.ID)}, mustProposal(t, july)["holding_account_ids"])
+	require.Len(t, july.LinkCandidates, 1)
+	candidate := july.LinkCandidates[0]
+	assert.Equal(t, manual.ID, candidate.TransactionID)
+	assert.Equal(t, "2026-08-14", candidate.TransactionDate)
+	assert.Equal(t, []any{exact.MustParse("8"), 0, "EUR"}, []any{candidate.GrossValue, candidate.GrossScale, candidate.CashCode}, "the amount owed, positive, before any recovery")
+	require.NotNil(t, candidate.HoldingAccountID)
+	assert.Equal(t, []any{f.holding.ID, "ASML"}, []any{*candidate.HoldingAccountID, candidate.HoldingAccountName})
+	for _, s := range suggestions {
+		for _, c := range s.LinkCandidates {
+			if s.ID != july.ID {
+				assert.Nil(t, c.HoldingAccountID, "a dividend suggestion is never offered a payment in lieu")
+				assert.NotEqual(t, manual.ID, c.TransactionID)
+			}
+		}
+	}
+
+	// A holding that went short after the fetch is not in the proposal.
+	secondHolding, err := f.investmentSvc.CreateHoldingAccount(ctx, HoldingAccountInput{OwnerUserID: 1, InstrumentID: f.instrument.ID, Name: "ASML 2", OpenedOn: "2020-01-01", EffectiveFrom: "2020-01-01"})
+	require.NoError(t, err)
+	_, err = f.investmentSvc.ShortSale(ctx, InvestmentTradeInput{OwnerUserID: 1, TransactionDate: "2026-06-03", CommodityID: f.instrument.CommodityID, HoldingAccountID: secondHolding.ID,
+		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, QuantityValue: exact.MustParse("2"), CashAmountValue: 120000, CashAmountScale: 2})
+	require.NoError(t, err)
+	wrongHolding := pil(secondHolding.ID, f.instrument.CommodityID, "2026-07-29", 320)
+	july = suggestionForExDate(t, f.suggestions(t), "2026-07-29")
+	require.Len(t, july.LinkCandidates, 1)
+
+	before := countTransactions(t, f.database)
+	for name, transactionID := range map[string]int64{"wrong ex-date": wrongExDate.ID, "wrong instrument": wrongInstrument.ID,
+		"wrong holding": wrongHolding.ID, "reversed": reversed.ID, "cash dividend": dividend.ID} {
+		_, err = f.investmentSvc.LinkSuggestion(ctx, 1, 0, "req", july.ID, transactionID)
+		var validation ValidationError
+		require.ErrorAs(t, err, &validation, name)
+	}
+	assert.Equal(t, "suggested", suggestionForExDate(t, f.suggestions(t), "2026-07-29").Status)
+
+	linked, err := f.investmentSvc.LinkSuggestion(ctx, 1, 0, "req", july.ID, manual.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []any{"linked", "matched"}, []any{linked.Status, linked.EventStatus})
+	assert.Equal(t, &manual.ID, linked.LinkedTransactionID)
+	assert.Equal(t, before, countTransactions(t, f.database), "linking posts nothing")
+
+	// The migration 0011 guard admits one provider event per payment.
+	april := suggestionForExDate(t, f.suggestions(t), "2026-04-28")
+	_, err = f.database.Exec(`UPDATE investment_event_suggestions SET linked_transaction_id = ?, status = 'linked' WHERE id = ?`, manual.ID, april.ID)
+	require.Error(t, err)
+	_, err = f.investmentSvc.LinkSuggestion(ctx, 1, 0, "req", july.ID, manual.ID)
+	require.ErrorIs(t, err, ErrInvestmentSuggestionNotPending)
+}
+
+func mustProposal(t *testing.T, suggestion InvestmentEventSuggestion) map[string]any {
+	t.Helper()
+	var proposal map[string]any
+	require.NoError(t, json.Unmarshal([]byte(suggestion.ProposedTransactionJSON), &proposal))
+	return proposal
+}

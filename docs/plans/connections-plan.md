@@ -410,7 +410,9 @@ design; the owner's statement completes it. A book short (and long in no
 holding) at the close proposes a payment in lieu instead (#255): the evidence
 counts the short units and estimates the amount owed, the owner supplies the
 payment date, cash account, amount owed and expense account, and acceptance
-commits through the native payment-in-lieu command. Long in one holding and
+commits through the native payment-in-lieu command; a payment in lieu the
+owner already recorded for that instrument, holding and ex-date is offered
+for linking instead ([#258](https://github.com/sergeyfarin/rekenraam/issues/258)). Long in one holding and
 short in another stays informational. There is no scheduler and no automation-rule auto-post; the
 owner triggers *Check provider dividends*.
 

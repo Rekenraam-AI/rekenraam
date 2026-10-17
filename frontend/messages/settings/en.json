@@ -1139,6 +1139,8 @@
   "investments_suggestion_link": "Link",
   "investments_suggestion_link_candidate": "{date}: {amount} {currency}",
   "investments_suggestion_link_error": "Could not link the dividend.",
+  "investments_suggestion_link_candidate_holding": "{date}: {amount} {currency} · {holding}",
+  "investments_suggestion_link_payment_in_lieu_error": "Could not link the payment in lieu.",
   "investments_suggestion_instrument_unknown": "Unknown instrument",
   "investments_rules_title": "Automation rules",
   "investments_rules_empty": "No automation rules.",

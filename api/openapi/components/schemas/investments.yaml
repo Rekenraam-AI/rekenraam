@@ -3672,6 +3672,10 @@ InvestmentEventRevision:
 
 InvestmentEventLinkCandidate:
   type: object
+  description: >-
+    An owner-recorded payment a pending suggestion may be linked to: a cash dividend for a dividend suggestion,
+    or a payment in lieu for a payment-in-lieu suggestion (#258). gross_value/gross_scale is the dividend's
+    gross or the amount the payment in lieu owed, both positive.
   required: [transaction_id, transaction_date, cash_code, gross_value, gross_scale]
   properties:
     transaction_id:
@@ -3687,6 +3691,13 @@ InvestmentEventLinkCandidate:
       pattern: '^-?(0|[1-9][0-9]{0,37})$'
     gross_scale:
       type: integer
+    holding_account_id:
+      type: integer
+      format: int64
+      description: The short holding a payment-in-lieu candidate was owed for; absent for a cash dividend.
+    holding_account_name:
+      type: string
+      description: The current name of holding_account_id; absent for a cash dividend.
 
 AcceptEventSuggestionRequest:
   type: object

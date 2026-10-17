@@ -1139,6 +1139,8 @@
   "investments_suggestion_link": "Verknüpfen",
   "investments_suggestion_link_candidate": "{date}: {amount} {currency}",
   "investments_suggestion_link_error": "Die Dividende konnte nicht verknüpft werden.",
+  "investments_suggestion_link_candidate_holding": "{date}: {amount} {currency} · {holding}",
+  "investments_suggestion_link_payment_in_lieu_error": "Die Ersatzzahlung konnte nicht verknüpft werden.",
   "investments_suggestion_instrument_unknown": "Unbekanntes Instrument",
   "investments_rules_title": "Automatisierungsregeln",
   "investments_rules_empty": "Keine Automatisierungsregeln.",

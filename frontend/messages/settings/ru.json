@@ -1139,6 +1139,8 @@
   "investments_suggestion_link": "Связать",
   "investments_suggestion_link_candidate": "{date}: {amount} {currency}",
   "investments_suggestion_link_error": "Не удалось связать дивиденд.",
+  "investments_suggestion_link_candidate_holding": "{date}: {amount} {currency} · {holding}",
+  "investments_suggestion_link_payment_in_lieu_error": "Не удалось связать компенсационный платёж.",
   "investments_suggestion_instrument_unknown": "Неизвестный инструмент",
   "investments_rules_title": "Правила автоматизации",
   "investments_rules_empty": "Правил автоматизации нет.",

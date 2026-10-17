@@ -1139,6 +1139,8 @@
   "investments_suggestion_link": "Lier",
   "investments_suggestion_link_candidate": "{date} : {amount} {currency}",
   "investments_suggestion_link_error": "Impossible de lier le dividende.",
+  "investments_suggestion_link_candidate_holding": "{date} : {amount} {currency} · {holding}",
+  "investments_suggestion_link_payment_in_lieu_error": "Impossible de lier le paiement compensatoire.",
   "investments_suggestion_instrument_unknown": "Instrument inconnu",
   "investments_rules_title": "Règles d'automatisation",
   "investments_rules_empty": "Aucune règle d'automatisation.",

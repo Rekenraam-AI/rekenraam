@@ -1,9 +1,12 @@
 post:
-  summary: Link a provider dividend suggestion to an owner-recorded cash dividend (posts nothing)
+  summary: Link a provider dividend suggestion to an owner-recorded payment (posts nothing)
   description: >-
-    The transaction must be an effective posted cash dividend of the suggestion's instrument dated from the
-    ex-date up to 90 days after it, and not already admitted by another provider event. The link and the event
-    status commit atomically; later fetches of the same event stay duplicates.
+    For a dividend suggestion the transaction must be an effective posted cash dividend of the suggestion's
+    instrument dated from the ex-date up to 90 days after it. For a payment-in-lieu suggestion (#258) it must be
+    an effective posted payment in lieu of the suggestion's instrument, for one of the proposal's
+    holding_account_ids, with the event's ex-date; a cash dividend is never linked to it, nor a payment in lieu
+    to a dividend suggestion. Either way it must not already be admitted by another provider event. The link
+    and the event status commit atomically; later fetches of the same event stay duplicates.
   requestBody:
     required: true
     content:
@@ -29,7 +32,7 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/InvestmentEventSuggestionResponse"
     "400":
-      description: Not a linkable dividend for this event
+      description: Not a linkable dividend or payment in lieu for this event
       headers:
         X-Request-ID:
           $ref: "../openapi.yaml#/components/headers/XRequestID"
