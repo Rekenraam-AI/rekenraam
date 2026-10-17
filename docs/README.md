@@ -91,8 +91,8 @@ Latest application-state reconciliation and audit proposal:
 [2026-10-17 app state and audit brief](reviews/app-state-and-audit-plan-2026-10-17.md).
 It reconciles recent closures, maps all feature/design references and all app
 areas to twelve bounded audits, and distinguishes review completed from audit
-execution pending. The roadmap retains order and R13 readiness; external audit
-issue publication awaits approval.
+execution pending. The roadmap retains order and R13 readiness;
+[#260](https://github.com/sergeyfarin/rekenraam/issues/260) tracks audit execution.
 
 Earlier strategic proposal:
 [2026-09-09 product direction, AI and privacy](reviews/product-direction-ai-privacy-2026-09-09.md).

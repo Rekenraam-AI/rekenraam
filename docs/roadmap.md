@@ -127,10 +127,10 @@ below is execution order, not a chain of hard dependencies.
    bounded audits in the [audit brief](reviews/app-state-and-audit-plan-2026-10-17.md#proposed-audit-coverage).
    Start with ledger/reconciliation, investment replay/reporting and recovery;
    then planning/import integration, frontend journeys and deployment/tooling.
-   Record fresh evidence per area and file scoped findings. The audit delivery
-   issue is prepared locally, awaiting publication approval; execution has not
-   started. Fix confirmed integrity/security defects before affected feature
-   slices. This is a bounded review, not a recurring full-suite gate.
+   Record fresh evidence per area and file scoped findings. Audit execution is
+   tracked in [#260](https://github.com/sergeyfarin/rekenraam/issues/260);
+   execution has not started. Fix confirmed integrity/security defects before
+   affected feature slices. This is a bounded review, not a recurring full-suite gate.
 2. **Address the known UI defect independently:**
    [#259](https://github.com/sergeyfarin/rekenraam/issues/259), closed-lot badge
    contrast and semantic tokens. Check the whole repeated badge pattern, and

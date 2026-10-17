@@ -3,11 +3,11 @@
 **Status:** documentation reconciliation completed; twelve application audits
 proposed, execution pending. This review is a dated evidence/disposition record,
 not a live delivery checklist or another roadmap. The
-[roadmap](../roadmap.md#current-focus) owns order. An audit issue was prepared,
-but publication was rejected by automatic approval review because the request
-did not explicitly authorize external publication. Publish only after owner
-approval; use its GitHub number for execution and findings under
-[Work Tracking](../conventions.md#work-tracking).
+[roadmap](../roadmap.md#current-focus) owns order. After the owner's explicit
+publication approval on 2026-10-17, the audit was published as
+[#260](https://github.com/sergeyfarin/rekenraam/issues/260). That issue owns
+execution checklists and findings under
+[Work Tracking](../conventions.md#work-tracking); audit execution is pending.
 
 ## Evidence and limits
 
