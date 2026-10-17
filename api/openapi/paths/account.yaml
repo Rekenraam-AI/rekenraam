@@ -95,8 +95,9 @@ patch:
     "409":
       description: >-
         Account cannot be changed: a system account, a category (managed
-        through the category API), a structural edit after postings exist, or
-        a version that would leave an existing posting outside the account's
+        through the category API), a structural edit after postings exist, a
+        structural edit dated before the account's latest version, or a
+        version that would leave an existing posting outside the account's
         open dates.
       headers:
         X-Request-ID:

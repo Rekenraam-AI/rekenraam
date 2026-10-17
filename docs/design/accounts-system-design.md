@@ -383,6 +383,29 @@ Version ordering rules:
 - For API history, derive `valid_to` by taking canonical versions only and using
   the next greater `effective_from`.
 
+Earlier-dated account versions (#293). A version whose `effective_from` is
+before the account's latest version governs only the days up to that later
+version; it can never become the account's current state. The account write
+therefore enforces this contract inside its transaction:
+
+- Lifecycle changes (close, reopen, archive, restore) and structural changes
+  (the locked fields listed under Account Kinds: class, kind, parent,
+  institution, default commodity, precision, posting behavior, opened date,
+  cost-basis method) take effect on or after the latest version's
+  `effective_from`. An earlier date is refused with `409 CONFLICT`, naming that
+  date. A same-date version is allowed; it supersedes by `version_seq`.
+- An earlier date is a historical correction of descriptive fields (name, code,
+  number hint, country, comment, metadata). Its structural fields must equal
+  those of the version in effect on its date, and it takes that version's status
+  and `closed_on` rather than today's, so correcting a name in March does not
+  write a later close into March. The write's response is the version written,
+  with its own `effective_from`; the current state is still the latest version.
+- Parent rules hold on every date a version governs, not only today: the write
+  re-checks the parent's class, system role, category status and archived
+  status, and walks the ancestry as of the version's date and every later date
+  on which any account version changes, refusing a cycle
+  (`400 VALIDATION_FAILED`, "account parent is invalid").
+
 SQLite triggers should reject `UPDATE` and `DELETE` on version tables once this
 is implemented. Corrections create a new version with a clear reason.
 

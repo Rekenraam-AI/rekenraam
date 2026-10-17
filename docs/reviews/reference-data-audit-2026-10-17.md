@@ -3,18 +3,16 @@
 **Status:** sub-audit
 [#269](https://github.com/sergeyfarin/rekenraam/issues/269) (area 2) of
 [#260](https://github.com/sergeyfarin/rekenraam/issues/260). It is complete,
-with five findings filed and left open per the evidence contract:
-[#291](https://github.com/sergeyfarin/rekenraam/issues/291) (P2, fixed after
-this audit) and
-[#292](https://github.com/sergeyfarin/rekenraam/issues/292) (P2, fixed after
-this audit), and
+with five findings filed separately rather than fixed in the audit change, per
+the evidence contract:
+[#291](https://github.com/sergeyfarin/rekenraam/issues/291) and
+[#292](https://github.com/sergeyfarin/rekenraam/issues/292) (P2), and
 [#293](https://github.com/sergeyfarin/rekenraam/issues/293),
 [#294](https://github.com/sergeyfarin/rekenraam/issues/294) and
-[#295](https://github.com/sergeyfarin/rekenraam/issues/295) (P3; #294 and #295
-fixed after this audit). None is a
-P0/P1 integrity defect: no finding changes a posted amount or a balance. This
-change adds evidence only, and one stale plan claim is corrected. No
-application code changed.
+[#295](https://github.com/sergeyfarin/rekenraam/issues/295) (P3). All five were
+fixed afterwards on 2026-10-17; each finding row names its regression. None is
+a P0/P1 integrity defect: no finding changes a posted amount or a balance. The
+audit change itself added evidence only and corrected one stale plan claim.
 
 ## Scope and method
 
@@ -50,7 +48,7 @@ as named tests:
 |---|---|---|
 | `/accounts` ignores every category rule. A protected built-in category can be renamed, closed and **hard-deleted**, and any account PATCH strips `metadata.category`, which makes a used category vanish from the category API | P2, [#291](https://github.com/sergeyfarin/rekenraam/issues/291). `PATCH`/`close`/`DELETE /accounts/{expense_other}` returned `200`/`200`/`204`, and `GET /categories/{id}` then returned `404`. A user category with postings got the same `404` after an account rename. API-only, because the accounts screen hides categories | **Confirmed defect**, filed. Fixed after this audit: `/accounts` answers `409` for any category, and refuses a category parent or `metadata.category` (`account_category_guard_test.go`) |
 | A close dated before existing postings is accepted. Those transactions can then be neither edited nor voided, and void returns `500` | P2, [#292](https://github.com/sergeyfarin/rekenraam/issues/292). Close at 2026-02-01 over a 2026-03-15 posting: `200`. Edit: `400`. Void: `500 INTERNAL_ERROR` (trigger `posting account is not eligible on entry date`). Reopening today does not repair it. In the same window, a posting dated **on** `closed_on` is refused, although the design defines `closed_on` as the day after which postings stop | **Confirmed defect**, filed. Fixed after this audit: such a version is refused with `409` naming the date, the closing day accepts postings (migration 0015), and the trigger's refusal maps to `400` (`account_close_dates_test.go`) |
-| Backdated versions. A write that a later version hides answers as if it were current; parent and cycle checks look only at today's tree | P3, [#293](https://github.com/sergeyfarin/rekenraam/issues/293). A close at 2026-02-01 after a reopen today answered `status "closed"`, but the account stayed active. A backdated re-parent of containers produced X→Y→X in `account-balances?as_of=2026-04-01` | **Confirmed defect**, filed. The parent check also sits before the write transaction (seam class): seen in code, not triggered |
+| Backdated versions. A write that a later version hides answers as if it were current; parent and cycle checks look only at today's tree | P3, [#293](https://github.com/sergeyfarin/rekenraam/issues/293). A close at 2026-02-01 after a reopen today answered `status "closed"`, but the account stayed active. A backdated re-parent of containers produced X→Y→X in `account-balances?as_of=2026-04-01` | **Confirmed defect**, filed. The parent check also sat before the write transaction (seam class): seen in code, not triggered. Fixed after this audit: lifecycle and structure versions dated before the latest version are refused, earlier-dated corrections keep their date's structure and lifecycle, and the parent rules and a per-date cycle walk run inside the write (`account_backdated_versions_test.go`) |
 | Archiving a parent account or an institution leaves active dependent accounts. Once those have postings, even a rename is refused | P3, [#294](https://github.com/sergeyfarin/rekenraam/issues/294). Close/archive of the parent and archive of the institution: `200`. The child's rename: `400 "account parent is invalid"` / `"account reference is invalid"`; dropping the link: `409` structure lock | **Confirmed defect**, filed. Fixed after this audit: both archives are refused with `409` while a dependent is not archived, and restoring a dependent under an archived parent or institution is refused (`account_dependents_test.go`) |
 | A user account can be created under a system account | P3, [#295](https://github.com/sergeyfarin/rekenraam/issues/295). `POST /accounts` with `parent_account_id` = `transfer_clearing`: `201`. The category API already refuses a system parent | **Confirmed defect**, filed. Fixed after this audit: `400 VALIDATION_FAILED` on create and re-parent (`TestSystemAccountsAreNotAcceptedAsParents`) |
 | The ledger-core plan, marked implemented, lists `GET /payees/{id}/versions` | No such route exists. Payee versions are stored but not listed | **Corrected** in [the plan](../plans/transaction-ledger-core-plan.md) |
@@ -66,7 +64,7 @@ as named tests:
 | Close/reopen/archive/restore lifecycle | Archive only from closed; restore returns to closed; close no earlier than the opened date | `TestAccountLifecycleRequiresCloseBeforeArchiveAndRestoresClosed`, `TestAccountCloseRejectsDateBeforeOpenedOn`; `archive` while active gives `409 CONFLICT` | Verified. A close dated before postings is refused since #292 |
 | Class/kind axis | Kind belongs to the class and is user-assignable; equity is reserved for system workflows | `TestCreateAccountSupportsUserFacingGroupedKinds`; user equity gives `400 VALIDATION_FAILED` | Verified |
 | Budget-treatment axis | Separate versioned table; only user asset/liability accounts qualify | `TestBudgetMonthUsesExactPostedActualsAndAccountTreatment`. Probe: `transfer_clearing` and a category gave `404 NOT_FOUND`, a user checking account `200` | Verified |
-| Cycle refusal | Self-parenting and descendant-parenting refused | `TestAccountParentRulesRejectCyclesAndClassMismatch`; in the refusal table, `400 VALIDATION_FAILED` for both | Verified for today's tree. As-of trees: #293 |
+| Cycle refusal | Self-parenting and descendant-parenting refused | `TestAccountParentRulesRejectCyclesAndClassMismatch`; in the refusal table, `400 VALIDATION_FAILED` for both | Verified, for today's tree and, since #293, every date a version governs |
 | Structural lock after postings | Kind, parent, institution, currency, precision, posting behavior and opened date are locked; descriptive fields stay editable | `TestUpdateAccountLocksStructureAfterPostingsExistButAllowsDescriptionEdits`, `TestUpdateAccountRejectsCurrencyChangeAfterPostingsExist`; `409 CONFLICT` in the refusal table | Verified |
 | Protected system roles cannot be edited, closed or deleted | `CONFLICT` | `TestSystemAccountSetupCreatesRolesAndProtectsThem`; refusal table `409 CONFLICT` for edit, close and delete of `transfer_clearing` | Verified. Misuse as a parent: fixed by #295. Category bypass: fixed by #291 |
 | Ordinary postings to system accounts | No document forbids them. Opening-balance entries use `opening_balance` | Direct postings to `transfer_clearing` and `opening_balance` gave `201` | **Not verified** as a rule. Recorded only, since no source of truth says either way |

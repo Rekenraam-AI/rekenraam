@@ -139,7 +139,7 @@ below is execution order, not a chain of hard dependencies.
    key-loss sign-in finding #290 (P3) is fixed.
    The reference-data audit #269 is complete
    ([evidence](reviews/reference-data-audit-2026-10-17.md)); its findings
-   #291/#292 (P2) and #293/#294/#295 (P3) are open.
+   #291/#292 (P2) and #293/#294/#295 (P3) are fixed.
    The other ten areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with

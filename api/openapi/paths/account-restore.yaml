@@ -54,7 +54,8 @@ post:
     "409":
       description: >-
         Lifecycle transition is invalid, the account is a system account or a
-        category (managed through the category API), or the new version would leave an
+        category (managed through the category API), the change is dated
+        before the account's latest version, or the new version would leave an
         existing posting outside the account's open dates (for example a
         closed_on before the last posting); the message names the earliest
         such date.

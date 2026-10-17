@@ -27,7 +27,24 @@ var (
 	ErrAccountHasUnarchivedChildren = errors.New("account has child accounts that are not archived")
 	ErrAccountParentArchived        = errors.New("account parent is archived")
 	ErrAccountInstitutionArchived   = errors.New("account institution is archived")
+	// ErrAccountParentNotAllowed and ErrAccountParentCycle are the parent
+	// rules re-asked inside the write: a parent of the same class that is
+	// neither a system account nor a category, and no date on which the new
+	// version makes the account its own ancestor (#293).
+	ErrAccountParentNotAllowed = errors.New("account parent is not allowed")
+	ErrAccountParentCycle      = errors.New("account parent would create a cycle")
 )
+
+// AccountVersionBackdatedError refuses a lifecycle or structural version dated
+// before the account's latest version (#293). LatestEffectiveFrom is the
+// earliest date such a change may take effect.
+type AccountVersionBackdatedError struct {
+	LatestEffectiveFrom string
+}
+
+func (e AccountVersionBackdatedError) Error() string {
+	return fmt.Sprintf("lifecycle and structure changes cannot take effect before %s, when the account's latest version takes effect; an earlier date may change descriptive fields only", e.LatestEffectiveFrom)
+}
 
 // AccountPostingsOutsideDatesError reports an account version that would
 // govern a posting the account already has and refuse it — a close dated
@@ -459,7 +476,34 @@ func (r *AccountRepository) UpdateAccount(ctx context.Context, params UpdateAcco
 	if status == "" {
 		status = current.Status
 	}
-	if err := requireArchiveConsistencyTx(ctx, tx, params.BookID, params.AccountID, status, params.Spec); err != nil {
+	next := params.Spec
+	latest, err := latestAccountVersionDateTx(ctx, tx, params.AccountID)
+	if err != nil {
+		return AccountRecord{}, err
+	}
+	if params.EffectiveFrom < latest {
+		// A version dated before the latest one governs only the days up to
+		// it, so it cannot be what the account is today (#293). Lifecycle and
+		// structure therefore take effect on or after the latest version; an
+		// earlier-dated version is a correction of descriptive fields and
+		// keeps the structure and lifecycle the account had on its date.
+		if params.Status != "" {
+			return AccountRecord{}, AccountVersionBackdatedError{LatestEffectiveFrom: latest}
+		}
+		asOf, err := accountVersionAsOfTx(ctx, tx, params.BookID, params.AccountID, params.EffectiveFrom)
+		if errors.Is(err, ErrNotFound) {
+			return AccountRecord{}, AccountVersionBackdatedError{LatestEffectiveFrom: latest}
+		}
+		if err != nil {
+			return AccountRecord{}, err
+		}
+		if accountStructureDiffers(asOf, next) {
+			return AccountRecord{}, AccountVersionBackdatedError{LatestEffectiveFrom: latest}
+		}
+		status = asOf.Status
+		next.ClosedOn = asOf.ClosedOn
+	}
+	if err := requireArchiveConsistencyTx(ctx, tx, params.BookID, params.AccountID, status, next); err != nil {
 		return AccountRecord{}, err
 	}
 
@@ -481,7 +525,7 @@ func (r *AccountRepository) UpdateAccount(ctx context.Context, params UpdateAcco
 		return AccountRecord{}, err
 	}
 
-	spec, err := r.accountSpecWithEnsuredCurrency(ctx, tx, params.Spec, CreateAccountParams{
+	spec, err := r.accountSpecWithEnsuredCurrency(ctx, tx, next, CreateAccountParams{
 		BookID:          params.BookID,
 		CreatedByUserID: params.ChangedByUserID,
 		AuthSessionID:   params.AuthSessionID,
@@ -518,6 +562,11 @@ func (r *AccountRepository) UpdateAccount(ctx context.Context, params UpdateAcco
 	if err := requirePostingsStayEligibleTx(ctx, tx, params.AccountID, record.VersionID); err != nil {
 		return AccountRecord{}, err
 	}
+	if spec.ParentAccountID.Valid {
+		if err := requireNoDatedParentCycleTx(ctx, tx, params.BookID, params.AccountID, params.EffectiveFrom); err != nil {
+			return AccountRecord{}, err
+		}
+	}
 
 	if err := tx.Commit(); err != nil {
 		return AccountRecord{}, fmt.Errorf("commit update account transaction: %w", err)
@@ -548,17 +597,30 @@ func requireArchiveConsistencyTx(ctx context.Context, tx *sql.Tx, bookID int64, 
 		return nil
 	}
 	if spec.ParentAccountID.Valid {
-		var parentStatus string
-		if err := tx.QueryRowContext(ctx, `
-			SELECT av.status
+		var parentStatus, parentClass string
+		var parentIsSystem, parentIsCategory bool
+		err := tx.QueryRowContext(ctx, `
+			SELECT av.status, av.account_class, a.system_role IS NOT NULL,
+				av.account_class IN ('income', 'expense')
+					AND av.account_kind = av.account_class
+					AND COALESCE(json_extract(av.metadata_json, '$.category.type'), '') = av.account_class
 			FROM accounts a
 			JOIN current_account_versions av ON av.account_id = a.id
 			WHERE a.book_id = ? AND a.id = ?
-		`, bookID, spec.ParentAccountID.Int64).Scan(&parentStatus); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("check account parent status: %w", err)
+		`, bookID, spec.ParentAccountID.Int64).Scan(&parentStatus, &parentClass, &parentIsSystem, &parentIsCategory)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrAccountParentNotAllowed
+		}
+		if err != nil {
+			return fmt.Errorf("check account parent: %w", err)
 		}
 		if parentStatus == "archived" {
 			return ErrAccountParentArchived
+		}
+		// The service checked these before the write; a concurrent change to
+		// the parent could still land in between.
+		if parentClass != spec.AccountClass || parentIsSystem || parentIsCategory {
+			return ErrAccountParentNotAllowed
 		}
 	}
 	if spec.InstitutionID.Valid {
@@ -573,6 +635,110 @@ func requireArchiveConsistencyTx(ctx context.Context, tx *sql.Tx, bookID int64, 
 		}
 		if institutionStatus == "archived" {
 			return ErrAccountInstitutionArchived
+		}
+	}
+	return nil
+}
+
+func latestAccountVersionDateTx(ctx context.Context, tx *sql.Tx, accountID int64) (string, error) {
+	var latest sql.NullString
+	if err := tx.QueryRowContext(ctx, `SELECT MAX(effective_from) FROM account_versions WHERE account_id = ?`, accountID).Scan(&latest); err != nil {
+		return "", fmt.Errorf("read latest account version date: %w", err)
+	}
+	return latest.String, nil
+}
+
+func accountVersionAsOfTx(ctx context.Context, tx *sql.Tx, bookID int64, accountID int64, date string) (AccountRecord, error) {
+	var record AccountRecord
+	if err := scanAccountRecord(tx.QueryRowContext(ctx, accountSelect("account_versions", `
+		WHERE a.book_id = ? AND a.id = ?
+			AND av.id = (
+				SELECT asof_av.id FROM account_versions asof_av
+				WHERE asof_av.account_id = a.id AND asof_av.effective_from <= ?
+				ORDER BY asof_av.effective_from DESC, asof_av.version_seq DESC LIMIT 1
+			)
+	`), bookID, accountID, date), &record); err != nil {
+		return AccountRecord{}, err
+	}
+	return record, nil
+}
+
+// accountStructureDiffers compares the structural fields an earlier-dated
+// correction must keep (#293) — the same fields the posting lock covers.
+func accountStructureDiffers(version AccountRecord, spec AccountSpec) bool {
+	return spec.EnsureDefaultCurrency != nil ||
+		version.AccountClass != spec.AccountClass ||
+		version.AccountKind != spec.AccountKind ||
+		version.ParentAccountID != spec.ParentAccountID ||
+		version.InstitutionID != spec.InstitutionID ||
+		version.DefaultCommodityID != spec.DefaultCommodityID ||
+		version.QuantityScaleOverride != spec.QuantityScaleOverride ||
+		version.AllowsPostings != spec.AllowsPostings ||
+		version.OpenedOn != spec.OpenedOn ||
+		version.CostBasisMethod.String != spec.CostBasisMethod
+}
+
+// requireNoDatedParentCycleTx refuses a version that makes the account its
+// own ancestor on any date it governs (#293). Parent links are versioned and
+// reports resolve the tree per date, so checking today's tree is not enough:
+// another account's history can close the loop on an earlier date. The dates
+// to check are the version's own date and every later date on which any
+// account's version changes; between them the tree is constant. The new
+// version is already inserted, so the as-of pick includes it.
+func requireNoDatedParentCycleTx(ctx context.Context, tx *sql.Tx, bookID int64, accountID int64, effectiveFrom string) error {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT ?
+		UNION
+		SELECT DISTINCT av.effective_from
+		FROM account_versions av
+		JOIN accounts a ON a.id = av.account_id
+		WHERE a.book_id = ? AND av.effective_from > ?
+	`, effectiveFrom, bookID, effectiveFrom)
+	if err != nil {
+		return fmt.Errorf("read account tree dates: %w", err)
+	}
+	var dates []string
+	for rows.Next() {
+		var date string
+		if err := rows.Scan(&date); err != nil {
+			rows.Close()
+			return fmt.Errorf("scan account tree date: %w", err)
+		}
+		dates = append(dates, date)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("close account tree dates: %w", err)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate account tree dates: %w", err)
+	}
+
+	for _, date := range dates {
+		var loops int
+		// The depth bound only stops the walk on a loop elsewhere in the
+		// tree; a loop through this account is found on its first return.
+		if err := tx.QueryRowContext(ctx, `
+			WITH RECURSIVE chain(id, depth) AS (
+				SELECT (
+					SELECT av.parent_account_id FROM account_versions av
+					WHERE av.account_id = ? AND av.effective_from <= ?
+					ORDER BY av.effective_from DESC, av.version_seq DESC LIMIT 1
+				), 1
+				UNION ALL
+				SELECT (
+					SELECT av.parent_account_id FROM account_versions av
+					WHERE av.account_id = chain.id AND av.effective_from <= ?
+					ORDER BY av.effective_from DESC, av.version_seq DESC LIMIT 1
+				), chain.depth + 1
+				FROM chain
+				WHERE chain.id IS NOT NULL AND chain.id <> ? AND chain.depth < 1000
+			)
+			SELECT COUNT(1) FROM chain WHERE id = ?
+		`, accountID, date, date, accountID, accountID).Scan(&loops); err != nil {
+			return fmt.Errorf("check account parent cycle on %s: %w", date, err)
+		}
+		if loops > 0 {
+			return ErrAccountParentCycle
 		}
 	}
 	return nil
