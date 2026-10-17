@@ -307,3 +307,98 @@ func TestImportAuditQIFReexportIdentityIgnoresFileNameAndPosition(t *testing.T) 
 	assert.Equal(t, 2, renamedCommit.SkippedCount)
 	assert.Equal(t, "-35", c.balance(checking.ID, eur, "2026-12-31"), "the renamed copy must post nothing")
 }
+
+// TestImportAuditRejectedConventionRowsAreFlaggedAndNeverCommitted is the
+// #300 regression. A row whose amount or date fails under the file's resolved
+// convention (a declared profile value, or whole-file detection) stays flagged
+// after a reload, keeps its batch warnings, and is refused at commit instead
+// of being re-read under another convention. Including the row in review
+// (dedupe_status "new") does not clear the flag.
+func TestImportAuditRejectedConventionRowsAreFlaggedAndNeverCommitted(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	cookie, csrf, eur, _, groceries := bootstrapImportAPITest(t, handler)
+	c := ledgerAuditClient{t: t, handler: handler, cookie: cookie, csrf: csrf}
+
+	var declared importProfileResponse
+	c.json(http.MethodPost, "/api/v1/import-profiles", `{"name":"Declared","adapter_kind":"csv","config":"{\"delimiter\":\"semicolon\",\"date_column\":\"Datum\",\"payee_column\":\"Naam\",\"amount_column\":\"Bedrag\",\"date_layout\":\"DMY\",\"decimal_separator\":\",\"}"}`, http.StatusCreated, &declared)
+
+	cases := []struct {
+		name, file string
+		body       []byte
+		fields     map[string]string
+		rejected   map[int]string // row_index → field whose source text was rejected
+		balance    string         // hand sum of the accepted rows only
+	}{
+		{
+			name: "CSV declared DMY and decimal comma", file: "declared.csv",
+			body:   []byte("Datum;Naam;Bedrag\n01/02/2026;A;-12,50\n02/02/2026;B;-1.234\n03/02/2026;C;-12.50\n30/02/2026;D;-1,00\n"),
+			fields: map[string]string{"profile_id": strconv.FormatInt(declared.ID, 10)},
+			// "-12.50" is not a decimal-comma number (per-value detection would
+			// read -12.50); "30/02/2026" is no date at all.
+			rejected: map[int]string{2: "amount", 3: "date"},
+			balance:  "-1246.5", // -12.50 - 1234
+		},
+		{
+			name: "QIF with the comma and DMY settled by the file", file: "detected.qif",
+			body: []byte(qifRow("15.06.2026", "-1.234,56", "A") + qifRow("16.06.2026", "-2,05", "B") +
+				qifRow("31.02.2026", "-3,00", "C") + qifRow("01.06.2026", "-12.50", "D") +
+				"!Type:Bank\nD02.06.2026\nT-10,00\nPE\nS\n$-4.00\nS\n$-6,00\n^\n"),
+			// 15.06 and 16.06 make the file DMY; three comma amounts make it a
+			// decimal-comma file. Row E's split "-4.00" fails like row D's amount.
+			rejected: map[int]string{2: "date", 3: "amount", 4: "split_amount"},
+			balance:  "-1236.61", // -1234.56 - 2.05
+		},
+	}
+	for i, tc := range cases {
+		account := createLedgerAccount(t, handler, cookie, csrf, fmt.Sprintf("Rejected %d", i), "asset", "checking", eur, 2)
+		fields := tc.fields
+		if fields == nil {
+			fields = map[string]string{}
+		}
+		started := uploadImportForAudit(t, c, tc.file, tc.body, fields)
+		require.NotEmpty(t, started.Warnings, tc.name)
+
+		// A reload sees the same flags and warnings as the upload response.
+		reloaded := getImportBatchForSession(t, handler, cookie, started.Batch.ID, "?limit=100", http.StatusOK)
+		assert.Equal(t, started.Warnings, reloaded.Warnings, tc.name)
+		for _, w := range tc.rejected {
+			found := false
+			for _, warning := range reloaded.Warnings {
+				found = found || strings.Contains(warning.Code, w)
+			}
+			assert.Truef(t, found, "%s: a stored %s warning", tc.name, w)
+		}
+		for _, row := range reloaded.Rows {
+			var normalized struct {
+				ParseErrors []struct {
+					Field string `json:"field"`
+					Value string `json:"value"`
+				} `json:"parse_errors"`
+			}
+			require.NoError(t, json.Unmarshal([]byte(row.NormalizedJSON), &normalized))
+			field, rejected := tc.rejected[row.RowIndex]
+			if !rejected {
+				assert.Equal(t, "new", row.DedupeStatus, "%s row %d", tc.name, row.RowIndex)
+				assert.Empty(t, normalized.ParseErrors, "%s row %d", tc.name, row.RowIndex)
+				continue
+			}
+			assert.Equal(t, "needs_attention", row.DedupeStatus, "%s row %d", tc.name, row.RowIndex)
+			require.Len(t, normalized.ParseErrors, 1, "%s row %d", tc.name, row.RowIndex)
+			assert.Equal(t, field, normalized.ParseErrors[0].Field, "%s row %d", tc.name, row.RowIndex)
+		}
+
+		// The owner includes every row; the rejected ones still never post.
+		patchImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, resolutionPatchBody(t, account.ID, eur, groceries.ID, rowIDsForAudit(started.Rows)...), http.StatusNoContent)
+		commit := commitImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, "", http.StatusOK)
+		assert.Equal(t, len(started.Rows)-len(tc.rejected), commit.CommittedCount, tc.name)
+		assert.Equal(t, len(tc.rejected), commit.FailedCount, tc.name)
+		assert.Equal(t, auditRat(t, tc.balance), c.balance(account.ID, eur, "2026-12-31"), tc.name)
+		for _, row := range allImportRowsForAudit(t, c, started.Batch.ID) {
+			if _, rejected := tc.rejected[row.RowIndex]; rejected {
+				assert.Equal(t, "failed", row.CommitStatus, "%s row %d", tc.name, row.RowIndex)
+				assert.Contains(t, row.CommitError, "convention", "%s row %d", tc.name, row.RowIndex)
+			}
+		}
+	}
+}

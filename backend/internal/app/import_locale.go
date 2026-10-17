@@ -463,11 +463,15 @@ func detectDecimalSeparatorAcrossValues(values []string) decimalSeparatorDetecti
 // contradicts itself. Which sentence is true depends on whether a majority
 // still settled it, and telling someone their amounts "were parsed as ”"
 // would be worse than saying nothing.
-func decimalSeparatorConflictWarning(detection decimalSeparatorDetection) string {
+func decimalSeparatorConflictWarning(detection decimalSeparatorDetection) ParseWarning {
+	warning := ParseWarning{RowIndex: FileWarningRowIndex, Code: ParseWarningCodeDecimalSeparatorConflict}
 	if !detection.Decisive {
-		return "amounts in this file disagree on their decimal separator, evenly enough that the file cannot settle it; each amount was read on its own — set a decimal separator on an import profile to be sure"
+		warning.Message = "amounts in this file disagree on their decimal separator, evenly enough that the file cannot settle it; each amount was read on its own — set a decimal separator on an import profile to be sure"
+		return warning
 	}
-	return fmt.Sprintf("amounts in this file disagree on their decimal separator; the file was read as %q — set a decimal separator on an import profile if that is wrong", string(detection.Separator))
+	warning.Value = string(detection.Separator)
+	warning.Message = fmt.Sprintf("amounts in this file disagree on their decimal separator; the file was read as %q — set a decimal separator on an import profile if that is wrong", string(detection.Separator))
+	return warning
 }
 
 // decisiveDecimalSeparator reports what one amount proves about the file's

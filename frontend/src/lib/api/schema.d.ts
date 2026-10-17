@@ -29114,9 +29114,12 @@ export interface components {
                 gross_amount: string;
                 withholding_amount: string;
             };
-            /** Format: date */
+            /** @description ISO date, or the source text when the row's parse_errors include "date". */
             date: string;
+            /** @description Canonical dot-decimal amount, or the source text when the row's parse_errors include "amount". */
             amount: string;
+            /** @description Source values that failed under the file's resolved convention (the profile's declared date_layout or decimal_separator, or whole-file detection). Such a row is staged needs_attention and commit fails it with a commit_error; it is never re-read under another convention. Absent when every value parsed. */
+            parse_errors?: components["schemas"]["ImportStagedParseError"][];
             commodity_hint: string;
             payee_hint: string;
             category_hint: string;
@@ -29200,8 +29203,21 @@ export interface components {
             }[];
             commit_error?: string;
         };
+        ImportStagedParseError: {
+            /** @enum {string} */
+            field: "date" | "amount" | "split_amount";
+            /** @description The rejected source text. */
+            value: string;
+        };
+        /** @description A non-fatal parse finding. The batch keeps it, so GET /imports/{batch_id} returns the same warnings as the upload response. */
         ParseWarning: {
+            /** @description Zero-based staged row index, or -1 for a warning about the whole file. */
             row_index: number;
+            /** @description Stable key for translation. Known codes: unrecognized_date, unrecognized_amount, unrecognized_split_amount (value is the source text), decimal_separator_conflict (value is the separator the file was read with, empty when each amount was read on its own), date_layout_conflict and date_layout_ambiguous (value is MDY, DMY or YMD). Clients fall back to message for an unknown or absent code. */
+            code?: string;
+            /** @description The code's parameter, see code. */
+            value?: string;
+            /** @description English fallback text. */
             message: string;
         };
         ImportSourceMeta: {
@@ -29252,6 +29268,8 @@ export interface components {
         GetImportBatchResponse: {
             batch: components["schemas"]["ImportBatchResponse"];
             rows: components["schemas"]["ImportStagedRowResponse"][];
+            /** @description The batch's stored parse warnings, on every page. */
+            warnings: components["schemas"]["ParseWarning"][];
             next_cursor: string | null;
         };
         ListImportBatchesResponse: {

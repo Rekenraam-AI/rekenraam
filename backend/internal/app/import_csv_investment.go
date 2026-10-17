@@ -199,7 +199,7 @@ func (s *ImportService) csvInvestmentDividend(ctx context.Context, row db.Import
 	if resolution.InvestmentKind != "" {
 		kind = resolution.InvestmentKind
 	}
-	cash, cashScale, err := parseDecimalAmount(normalized.Amount)
+	cash, cashScale, err := parseCanonicalAmount(normalized.Amount)
 	if err != nil {
 		return refuse()
 	}

@@ -563,7 +563,10 @@ func mergeTrading212BatchMeta(existing trading212BatchMeta, parseResult ParseRes
 		merged.DateTo = parseResult.Meta.DateTo
 	}
 	for _, w := range parseResult.Warnings {
-		merged.Warnings = append(merged.Warnings, ParseWarning{RowIndex: baseIndex + w.RowIndex, Message: w.Message})
+		if w.RowIndex != FileWarningRowIndex {
+			w.RowIndex += baseIndex
+		}
+		merged.Warnings = append(merged.Warnings, w)
 	}
 	return merged
 }

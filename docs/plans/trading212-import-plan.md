@@ -419,7 +419,7 @@ Movement → `StagedRow` mapping (in `Trading212Adapter.Parse`):
 | Trading 212 movement | `StagedRow` | Notes |
 |---|---|---|
 | transaction id / reference | `ExternalRef`, fingerprint seed | Strong dedupe key. |
-| timestamp | `Date` (normalized to `YYYY-MM-DD`) | Provider gives ISO; pass through, `parseQIFDate` accepts ISO. |
+| timestamp | `Date` (normalized to `YYYY-MM-DD`) | Provider gives ISO; pass through, `parseCanonicalDate` accepts only ISO. |
 | amount + currency | `Amount` (raw decimal), `CommodityHint` | Exact; no float. Sign per movement direction. |
 | type (real enum, confirmed 2026-07-03: `WITHDRAW`/`DEPOSIT`/`FEE`/`TRANSFER`) | `Memo`/`Raw["type"]`, drives default category hint | Cash movements map cleanly. Dividends/interest/card movements are **not** emitted by this endpoint at all — see the dedicated dividends endpoint in Slice 4b. |
 | order/instrument fill (`BUY`/`SELL`) | row flagged `needs_attention` via `ParseWarning` | Not auto-booked as a lot (B-T212-INVST). The **cash leg** of a settled order may still import as cash if the API exposes it separately; instrument lots do not. |

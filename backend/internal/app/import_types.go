@@ -54,21 +54,61 @@ type ImportCommitEffect struct {
 	TransactionID *int64
 }
 
-// ParseWarning is a non-fatal issue found during parsing.
+// ParseWarning is a non-fatal issue found during parsing. It is returned by
+// POST /imports and kept in the batch's source_meta "warnings", so a reloaded
+// review screen shows it too (#300). Code is a stable key the frontend
+// translates (ParseWarningCode*); Value carries the code's one parameter, such
+// as the rejected source text or the separator or date layout the file was
+// read with. Message is the English fallback. RowIndex is -1 for a warning
+// about the whole file.
 type ParseWarning struct {
-	RowIndex int
-	Message  string
+	RowIndex int    `json:"row_index"`
+	Code     string `json:"code,omitempty"`
+	Value    string `json:"value,omitempty"`
+	Message  string `json:"message"`
+}
+
+// FileWarningRowIndex is a ParseWarning's RowIndex when it concerns the file,
+// not one row.
+const FileWarningRowIndex = -1
+
+// Stable ParseWarning codes. New adapters reuse these or add their own; the
+// frontend falls back to Message for a code it does not know.
+const (
+	ParseWarningCodeUnrecognizedDate        = "unrecognized_date"
+	ParseWarningCodeUnrecognizedAmount      = "unrecognized_amount"
+	ParseWarningCodeUnrecognizedSplitAmount = "unrecognized_split_amount"
+	// Value is the separator the file was read with; empty when the file
+	// could not settle it and each amount was read on its own.
+	ParseWarningCodeDecimalSeparatorConflict = "decimal_separator_conflict"
+	// Value is the date layout the file was read with (MDY, DMY, YMD).
+	ParseWarningCodeDateLayoutConflict  = "date_layout_conflict"
+	ParseWarningCodeDateLayoutAmbiguous = "date_layout_ambiguous"
+)
+
+// StagedParseError records one source value of a staged row that failed under
+// the file's resolved convention (the declared profile value, or whole-file
+// detection). It is stored in the row's normalized JSON as "parse_errors": the
+// row needs attention, and commit refuses it rather than re-reading Value under
+// another convention (#300).
+type StagedParseError struct {
+	// Field is "date", "amount" or "split_amount".
+	Field string `json:"field"`
+	Value string `json:"value"`
 }
 
 // SourceMeta carries hints and decoding provenance extracted from the source.
 type SourceMeta struct {
-	AccountHints       []string
-	CurrencyHints      []string
-	DateFrom           string
-	DateTo             string
-	TextEncoding       string `json:"text_encoding,omitempty"`
-	EncodingSource     string `json:"encoding_source,omitempty"`
-	EncodingConfidence int    `json:"encoding_confidence,omitempty"`
+	AccountHints       []string `json:"account_hints,omitempty"`
+	CurrencyHints      []string `json:"currency_hints,omitempty"`
+	DateFrom           string   `json:"date_from,omitempty"`
+	DateTo             string   `json:"date_to,omitempty"`
+	TextEncoding       string   `json:"text_encoding,omitempty"`
+	EncodingSource     string   `json:"encoding_source,omitempty"`
+	EncodingConfidence int      `json:"encoding_confidence,omitempty"`
+	// Warnings is filled from ParseResult.Warnings when the batch is created,
+	// so source_meta keeps them for GET /imports/{id}.
+	Warnings []ParseWarning `json:"warnings,omitempty"`
 }
 
 // StagedSplit is a sub-posting within a staged row.
@@ -93,6 +133,9 @@ type StagedRow struct {
 	ExternalRef       string
 	Splits            []StagedSplit
 	Raw               map[string]string
+	// ParseErrors lists the values that failed under the file's convention;
+	// such a row keeps their source text and never commits.
+	ParseErrors []StagedParseError
 }
 
 // ParseResult is what a SourceAdapter returns.
@@ -256,8 +299,10 @@ type GetImportBatchInput struct {
 }
 
 type GetImportBatchResult struct {
-	Batch      ImportBatch
-	Rows       []ImportStagedRow
+	Batch ImportBatch
+	Rows  []ImportStagedRow
+	// Warnings are the parse warnings stored in the batch's source_meta.
+	Warnings   []ParseWarning
 	NextCursor string
 }
 

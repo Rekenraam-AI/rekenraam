@@ -55,6 +55,8 @@ type importCommitEffectResponse struct {
 
 type parseWarningResponse struct {
 	RowIndex int    `json:"row_index"`
+	Code     string `json:"code,omitempty"`
+	Value    string `json:"value,omitempty"`
 	Message  string `json:"message"`
 }
 
@@ -100,6 +102,7 @@ type startOnlineImportResponse struct {
 type getImportBatchResponse struct {
 	Batch      importBatchResponse       `json:"batch"`
 	Rows       []importStagedRowResponse `json:"rows"`
+	Warnings   []parseWarningResponse    `json:"warnings"`
 	NextCursor *string                   `json:"next_cursor"`
 }
 
@@ -618,6 +621,7 @@ func getImportBatch(logger *slog.Logger, authService *app.AuthService, importSer
 		writeJSON(w, http.StatusOK, getImportBatchResponse{
 			Batch:      toImportBatchResponse(result.Batch),
 			Rows:       toImportStagedRowResponses(result.Rows),
+			Warnings:   toParseWarningResponses(result.Warnings),
 			NextCursor: nextCursor,
 		})
 	}
@@ -1144,14 +1148,16 @@ func toImportStagedRowResponses(rows []app.ImportStagedRow) []importStagedRowRes
 	return out
 }
 
-func toStartImportResponse(result app.StartImportResult) startImportResponse {
-	warnings := make([]parseWarningResponse, 0, len(result.Warnings))
-	for _, w := range result.Warnings {
-		warnings = append(warnings, parseWarningResponse{
-			RowIndex: w.RowIndex,
-			Message:  w.Message,
-		})
+func toParseWarningResponses(in []app.ParseWarning) []parseWarningResponse {
+	warnings := make([]parseWarningResponse, 0, len(in))
+	for _, w := range in {
+		warnings = append(warnings, parseWarningResponse{RowIndex: w.RowIndex, Code: w.Code, Value: w.Value, Message: w.Message})
 	}
+	return warnings
+}
+
+func toStartImportResponse(result app.StartImportResult) startImportResponse {
+	warnings := toParseWarningResponses(result.Warnings)
 
 	accountHints := result.Meta.AccountHints
 	if accountHints == nil {

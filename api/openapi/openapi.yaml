@@ -1105,6 +1105,8 @@ components:
       $ref: "./components/schemas/imports.yaml#/ImportResolution"
     ImportStagedRowResponse:
       $ref: "./components/schemas/imports.yaml#/ImportStagedRowResponse"
+    ImportStagedParseError:
+      $ref: "./components/schemas/imports.yaml#/ImportStagedParseError"
     ParseWarning:
       $ref: "./components/schemas/imports.yaml#/ParseWarning"
     ImportSourceMeta:

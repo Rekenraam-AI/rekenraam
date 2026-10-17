@@ -144,8 +144,8 @@ below is execution order, not a chain of hard dependencies.
    ([evidence](reviews/ledger-reconciliation-audit-2026-10-17.md)); its
    finding #296 (P2) is fixed; #297/#298 (P3) are open.
    The import audit #271 is complete
-   ([evidence](reviews/import-audit-2026-10-17.md)); its findings #299 (P2)
-   and #300/#301/#302/#303 (P3) are open.
+   ([evidence](reviews/import-audit-2026-10-17.md)); its finding #299 (P2)
+   and #300 (P3) are fixed; #301/#302/#303 (P3) are open.
    The other eight areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with

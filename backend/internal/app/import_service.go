@@ -150,7 +150,11 @@ func (s *ImportService) StartImport(ctx context.Context, input StartImportInput)
 		profileID = sql.NullInt64{Int64: *input.ProfileID, Valid: true}
 	}
 
-	metaJSON, _ := json.Marshal(parseResult.Meta)
+	// The batch keeps its parse warnings, so a reloaded review screen shows
+	// them as the upload response did (#300).
+	meta := parseResult.Meta
+	meta.Warnings = parseResult.Warnings
+	metaJSON, _ := json.Marshal(meta)
 
 	batch, err := s.repository.CreateImportBatch(ctx, db.CreateImportBatchParams{
 		BookID:           BookID,
@@ -547,6 +551,9 @@ func (s *ImportService) stageParseResult(ctx context.Context, batchID int64, par
 		if row.Investment != nil {
 			normalized["investment"] = row.Investment
 		}
+		if len(row.ParseErrors) > 0 {
+			normalized["parse_errors"] = row.ParseErrors
+		}
 		normalizedJSON, _ := json.Marshal(normalized)
 
 		dedupeStatus := "new"
@@ -581,6 +588,10 @@ func (s *ImportService) stageParseResult(ctx context.Context, batchID int64, par
 		// An unsupported fill never posts, so it needs review — unless its
 		// unchanged identity was already linked to a recorded action (T-122).
 		if row.Investment == nil && unsupportedTrading212Fill(row.Raw) && dedupeStatus != "duplicate" {
+			dedupeStatus = "needs_attention"
+		}
+		// A value rejected under the file's convention never commits (#300).
+		if len(row.ParseErrors) > 0 && dedupeStatus != "duplicate" {
 			dedupeStatus = "needs_attention"
 		}
 
@@ -739,6 +750,7 @@ func (s *ImportService) GetImportBatch(ctx context.Context, input GetImportBatch
 	return GetImportBatchResult{
 		Batch:      toImportBatch(batch),
 		Rows:       toImportStagedRows(stagedRows),
+		Warnings:   storedParseWarnings(batch.SourceMetaJSON),
 		NextCursor: nextCursor,
 	}, nil
 }
@@ -1077,6 +1089,18 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 				CommitStatus: "skipped",
 			}, nil); err != nil {
 				return result, fmt.Errorf("skip row %d: %w", row.ID, err)
+			}
+			continue
+		}
+		// A value the adapter rejected under the file's convention is never
+		// re-read under another one, whatever the review set (#300).
+		if err := refuseStagedParseErrors(row.NormalizedJSON); err != nil {
+			if err2 := s.recordImportStagedRowTerminal(ctx, &result, db.CommitImportStagedRowParams{
+				RowID:        row.ID,
+				CommitStatus: "failed",
+				CommitError:  sql.NullString{String: err.Error(), Valid: true},
+			}, nil); err2 != nil {
+				return result, fmt.Errorf("fail rejected-convention row %d: %w", row.ID, err2)
 			}
 			continue
 		}
@@ -1548,6 +1572,9 @@ func resolveOffsetAccount(resolution ImportRowResolution) (int64, error) {
 // When the row has QIF splits, each split becomes its own offset posting.
 func buildTransactionSpec(row db.ImportStagedRowRecord, resolution ImportRowResolution) (TransactionInput, error) {
 	// Parse normalized JSON for date, amount, splits, etc.
+	if err := refuseStagedParseErrors(row.NormalizedJSON); err != nil {
+		return TransactionInput{}, err
+	}
 	var normalized struct {
 		Date         string `json:"date"`
 		Amount       string `json:"amount"`
@@ -1565,12 +1592,14 @@ func buildTransactionSpec(row db.ImportStagedRowRecord, resolution ImportRowReso
 		return TransactionInput{}, fmt.Errorf("parse normalized json: %w", err)
 	}
 
-	date, err := parseQIFDate(normalized.Date)
+	// Adapters stage ISO dates and canonical amounts; the file's convention
+	// was applied there, and anything else is refused, not guessed (#300).
+	date, err := parseCanonicalDate(normalized.Date)
 	if err != nil {
 		return TransactionInput{}, fmt.Errorf("parse date %q: %w", normalized.Date, err)
 	}
 
-	coeff, scale, err := parseDecimalAmount(normalized.Amount)
+	coeff, scale, err := parseCanonicalAmount(normalized.Amount)
 	if err != nil {
 		return TransactionInput{}, fmt.Errorf("parse amount %q: %w", normalized.Amount, err)
 	}
@@ -1600,7 +1629,7 @@ func buildTransactionSpec(row db.ImportStagedRowRecord, resolution ImportRowReso
 		// Splits: one offset posting per split line, each with its own amount.
 		// All splits share the same resolved offset account (category or transfer).
 		for _, split := range normalized.Splits {
-			splitCoeff, splitScale, err := parseDecimalAmount(split.Amount)
+			splitCoeff, splitScale, err := parseCanonicalAmount(split.Amount)
 			if err != nil {
 				return TransactionInput{}, fmt.Errorf("parse split amount %q: %w", split.Amount, err)
 			}
@@ -1653,28 +1682,69 @@ func buildTransactionSpec(row db.ImportStagedRowRecord, resolution ImportRowReso
 	return spec, nil
 }
 
-// parseQIFDate parses common QIF date formats into YYYY-MM-DD.
-//
-// Staged rows produced by the QIF adapter already carry an ISO date — the
-// adapter resolves the file's field order once, from the import profile or by
-// detecting it across every row (see import_locale.go). This is the
-// last-resort parse for rows staged before that, and for adapters that emit
-// dates verbatim; with no file to look at it can only fall back to QIF's
-// historic US default for genuinely ambiguous dates.
-func parseQIFDate(raw string) (string, error) {
-	return parseFlexibleDate(raw, dateOrderAuto)
+// storedParseWarnings reads the parse warnings a batch keeps in its
+// source_meta "warnings" (file batches and online batches use the same key).
+func storedParseWarnings(sourceMetaJSON string) []ParseWarning {
+	var meta struct {
+		Warnings []ParseWarning `json:"warnings"`
+	}
+	if err := json.Unmarshal([]byte(sourceMetaJSON), &meta); err != nil {
+		return nil
+	}
+	return meta.Warnings
+}
+
+// refuseStagedParseErrors returns the commit error for a staged row whose
+// date, amount or split amount failed under the file's convention (#300).
+func refuseStagedParseErrors(normalizedJSON string) error {
+	var normalized struct {
+		ParseErrors []StagedParseError `json:"parse_errors"`
+	}
+	if err := json.Unmarshal([]byte(normalizedJSON), &normalized); err != nil || len(normalized.ParseErrors) == 0 {
+		return nil
+	}
+	first := normalized.ParseErrors[0]
+	return fmt.Errorf("%s %q does not match the file's date or decimal convention; correct the import profile or the file and upload it again, or exclude the row", strings.ReplaceAll(first.Field, "_", " "), first.Value)
+}
+
+// parseCanonicalDate accepts only the ISO date an adapter stages.
+func parseCanonicalDate(raw string) (string, error) {
+	if _, err := time.Parse(time.DateOnly, raw); err != nil {
+		return "", fmt.Errorf("staged date is not YYYY-MM-DD")
+	}
+	return raw, nil
+}
+
+// parseCanonicalAmount parses an amount already in canonical form ("-1234.56"),
+// as adapters stage it after applying the file's decimal convention. It never
+// detects a separator: text in any other shape is refused (#300).
+func parseCanonicalAmount(raw string) (exact.Coefficient, int, error) {
+	if !isCanonicalDecimal(raw) {
+		return "", 0, fmt.Errorf("staged amount is not a canonical decimal")
+	}
+	return coefficientFromCanonical(raw)
+}
+
+func isCanonicalDecimal(raw string) bool {
+	intPart, fracPart, hasPoint := strings.Cut(strings.TrimPrefix(raw, "-"), ".")
+	return isDigits(intPart) && intPart != "" && (!hasPoint || (fracPart != "" && isDigits(fracPart)))
 }
 
 // parseDecimalAmount parses a decimal string (e.g. "-123.45") into a Coefficient + scale.
 // No floating-point is used; we parse digit strings directly. Decimal-comma
-// input ("1.234,56") is normalized first — see canonicalDecimal for how the
-// separator is decided.
+// input ("1.234,56") is normalized first, detecting the separator from this one
+// value — so it is only for text that has no file-level convention (provider
+// API values, crypto CSV's dot-only cells, owner-entered review amounts).
+// Staged CSV/QIF text uses parseCanonicalAmount.
 func parseDecimalAmount(raw string) (exact.Coefficient, int, error) {
 	canonical, err := canonicalDecimal(raw, 0)
 	if err != nil {
 		return "", 0, err
 	}
+	return coefficientFromCanonical(canonical)
+}
 
+func coefficientFromCanonical(canonical string) (exact.Coefficient, int, error) {
 	negative := false
 	if canonical[0] == '-' {
 		negative = true

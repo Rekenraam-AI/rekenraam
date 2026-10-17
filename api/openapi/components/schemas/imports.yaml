@@ -96,9 +96,20 @@ ImportNormalizedRow:
         withholding_amount: { type: string }
     date:
       type: string
-      format: date
+      description: ISO date, or the source text when the row's parse_errors include "date".
     amount:
       type: string
+      description: Canonical dot-decimal amount, or the source text when the row's parse_errors include "amount".
+    parse_errors:
+      type: array
+      description: >-
+        Source values that failed under the file's resolved convention (the
+        profile's declared date_layout or decimal_separator, or whole-file
+        detection). Such a row is staged needs_attention and commit fails it
+        with a commit_error; it is never re-read under another convention.
+        Absent when every value parsed.
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/ImportStagedParseError"
     commodity_hint:
       type: string
     payee_hint:
@@ -239,16 +250,43 @@ ImportStagedRowResponse:
             format: int64
     commit_error:
       type: string
+ImportStagedParseError:
+  type: object
+  required: [field, value]
+  properties:
+    field:
+      type: string
+      enum: [date, amount, split_amount]
+    value:
+      type: string
+      description: The rejected source text.
 ParseWarning:
   type: object
+  description: >-
+    A non-fatal parse finding. The batch keeps it, so GET /imports/{batch_id}
+    returns the same warnings as the upload response.
   required:
     - row_index
     - message
   properties:
     row_index:
       type: integer
+      description: Zero-based staged row index, or -1 for a warning about the whole file.
+    code:
+      type: string
+      description: >-
+        Stable key for translation. Known codes: unrecognized_date,
+        unrecognized_amount, unrecognized_split_amount (value is the source
+        text), decimal_separator_conflict (value is the separator the file was
+        read with, empty when each amount was read on its own),
+        date_layout_conflict and date_layout_ambiguous (value is MDY, DMY or
+        YMD). Clients fall back to message for an unknown or absent code.
+    value:
+      type: string
+      description: The code's parameter, see code.
     message:
       type: string
+      description: English fallback text.
 ImportSourceMeta:
   type: object
   required:
@@ -355,6 +393,7 @@ GetImportBatchResponse:
   required:
     - batch
     - rows
+    - warnings
     - next_cursor
   properties:
     batch:
@@ -363,6 +402,11 @@ GetImportBatchResponse:
       type: array
       items:
         $ref: "../../openapi.yaml#/components/schemas/ImportStagedRowResponse"
+    warnings:
+      type: array
+      description: The batch's stored parse warnings, on every page.
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/ParseWarning"
     next_cursor:
       type: string
       nullable: true

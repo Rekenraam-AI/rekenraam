@@ -61,3 +61,30 @@ test('[acceptance] a bank CSV mapping is reused with payee resolution and previe
   await expect(page.getByRole('heading', { name: 'Resolve payees' })).toBeHidden();
   await expect(page.getByRole('button', { name: 'Commit to ledger' })).toBeVisible();
 });
+
+// #300: a value the declared convention rejects is flagged with a translated
+// warning, and commit refuses the row instead of reading it another way.
+test('a CSV row rejected under the declared decimal comma is flagged and not committed', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const suffix = Date.now();
+  const account = await createCashAccount(page, csrfToken, `CSV rejected ${suffix}`, currencyID);
+
+  await page.goto('/app/import');
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'rejected.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(`Boekdatum;Tegenpartij;Bedrag\n${todayDMY()};Bakker;-12,34\n${todayDMY()};Slager;-12.50\n`)
+  });
+  await page.getByLabel('Mapping name').fill(`Rejected comma ${suffix}`);
+  await page.getByRole('button', { name: 'Upload & preview' }).click();
+  await expect(page.getByText('Row 2: Amount “-12.50” does not match the file\'s decimal separator; this row will not be imported')).toBeVisible();
+  await expect(page.getByText('Not readable under this file\'s format', { exact: false })).toBeVisible();
+
+  await page.getByLabel('Target account').selectOption(String(account.id));
+  await page.getByLabel('Currency').selectOption(String(currencyID));
+  await page.getByLabel('Default category').selectOption({ index: 1 });
+  await page.getByRole('button', { name: 'Apply to all rows' }).click();
+  await page.getByRole('button', { name: 'Commit to ledger' }).click();
+  await expect(page.getByText('1 transactions committed')).toBeVisible();
+  await expect(page.getByText('1 failed — review errors below')).toBeVisible();
+});

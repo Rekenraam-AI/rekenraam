@@ -62,7 +62,8 @@
     type StartImportResponse,
     type ImportStagedRow,
     type CommitImportBatchResponse,
-    type ImportResolution
+    type ImportResolution,
+    type ParseWarning
   } from '#lib/api/imports.ts';
   import {
     parseCSVProfileConfig,
@@ -451,7 +452,7 @@
         previewData = {
           batch: result.batch,
           rows: result.rows,
-          warnings: meta.warnings ?? [],
+          warnings: result.warnings,
           meta: {
             account_hints: meta.account_hints ?? [],
             currency_hints: meta.currency_hints ?? [],
@@ -545,6 +546,22 @@
     }
   }
 
+  // Parse warnings carry a stable code (#300); an unknown code falls back to
+  // the backend's English message.
+  function parseWarningText(w: ParseWarning): string {
+    const value = w.value ?? '';
+    switch (w.code) {
+      case 'unrecognized_date': return m.import_warning_unrecognized_date({ value });
+      case 'unrecognized_amount': return m.import_warning_unrecognized_amount({ value });
+      case 'unrecognized_split_amount': return m.import_warning_unrecognized_split_amount({ value });
+      case 'decimal_separator_conflict':
+        return value ? m.import_warning_decimal_separator_conflict({ value }) : m.import_warning_decimal_separator_undecided();
+      case 'date_layout_conflict': return m.import_warning_date_layout_conflict({ value });
+      case 'date_layout_ambiguous': return m.import_warning_date_layout_ambiguous({ value });
+    }
+    return w.message === 'unsupported fill type; review required' ? m.import_preview_unsupported_fill() : w.message;
+  }
+
   function dedupeStatusLabel(status: ImportStagedRow['dedupe_status']): string {
     switch (status) {
       case 'duplicate': return m.import_preview_dedupe_duplicate();
@@ -598,7 +615,7 @@
       await invalidateInvestmentReads(queryClient);
       try {
         const refreshed = await getFullImportBatch(batchId);
-        if (previewData) previewData = { ...previewData, batch: refreshed.batch, rows: refreshed.rows };
+        if (previewData) previewData = { ...previewData, batch: refreshed.batch, rows: refreshed.rows, warnings: refreshed.warnings };
       } catch {
         // The correction is committed; keep its success link and local row state.
       }
@@ -629,7 +646,7 @@
     if (!batchId) return;
     try {
       const refreshed = await getFullImportBatch(batchId);
-      if (previewData) previewData = { ...previewData, batch: refreshed.batch, rows: refreshed.rows };
+      if (previewData) previewData = { ...previewData, batch: refreshed.batch, rows: refreshed.rows, warnings: refreshed.warnings };
     } catch {
       // The link is committed; keep the local row state.
     }
@@ -641,7 +658,7 @@
     reviewChangedError = undefined;
     try {
       const refreshed = await getFullImportBatch(batchId);
-      previewData = { ...previewData, batch: refreshed.batch, rows: refreshed.rows };
+      previewData = { ...previewData, batch: refreshed.batch, rows: refreshed.rows, warnings: refreshed.warnings };
       step = 'preview';
     } catch (err) {
       reviewChangedError = err;
@@ -1415,10 +1432,9 @@
         </div>
         <ul class="mt-3 space-y-1">
           {#each previewData.warnings as w}
-            <li class="text-sm text-muted">{m.import_preview_warning_row({
-              row: w.row_index + 1,
-              message: w.message === 'unsupported fill type; review required' ? m.import_preview_unsupported_fill() : w.message
-            })}</li>
+            <li class="text-sm text-muted">{w.row_index < 0
+              ? parseWarningText(w)
+              : m.import_preview_warning_row({ row: w.row_index + 1, message: parseWarningText(w) })}</li>
           {/each}
         </ul>
       </Panel>
@@ -1582,7 +1598,7 @@
                 </td>
                 <td class="px-4 py-2.5">
                   <span
-                    class:text-warning={unsupportedFill || row.source_changed || row.dedupe_status === 'needs_attention'}
+                    class:text-warning={unsupportedFill || row.source_changed || row.dedupe_status === 'needs_attention' || !!norm.parse_errors?.length}
                     class:text-muted={row.dedupe_status === 'duplicate' || row.dedupe_status === 'excluded'}
                     class="text-xs font-medium"
                   >
@@ -1590,7 +1606,8 @@
                       ? (linkedFillKind(row) === 'split' ? m.import_preview_split_linked() : m.import_preview_short_linked())
                       : row.commit_status === 'committed' && row.dedupe_status === 'needs_attention'
                       ? m.import_preview_source_revision_accepted()
-                      : unsupportedFill ? m.import_preview_unsupported_fill() : row.source_changed ? m.import_preview_source_changed() : dedupeStatusLabel(row.dedupe_status)}
+                      : unsupportedFill ? m.import_preview_unsupported_fill() : row.source_changed ? m.import_preview_source_changed()
+                      : norm.parse_errors?.length ? m.import_preview_parse_error() : dedupeStatusLabel(row.dedupe_status)}
                   </span>
                   {#if row.source_changed && row.source_transaction_id}
                     <a

@@ -312,10 +312,12 @@ func normalizeQIFRecords(result *ParseResult, records []qifParsedRecord, filenam
 		switch {
 		case detection.Conflict:
 			result.Warnings = append(result.Warnings, ParseWarning{
+				RowIndex: FileWarningRowIndex, Code: ParseWarningCodeDateLayoutConflict, Value: order.String(),
 				Message: fmt.Sprintf("dates in this file disagree on their layout; parsed as %s — set a date layout on an import profile if that is wrong", order),
 			})
 		case !detection.Decisive && detection.Ambiguous > 0:
 			result.Warnings = append(result.Warnings, ParseWarning{
+				RowIndex: FileWarningRowIndex, Code: ParseWarningCodeDateLayoutAmbiguous, Value: order.String(),
 				Message: fmt.Sprintf("every date in this file is ambiguous (no day above 12); parsed as %s — set a date layout on an import profile if that is wrong", order),
 			})
 		}
@@ -333,7 +335,7 @@ func normalizeQIFRecords(result *ParseResult, records []qifParsedRecord, filenam
 		detection := detectDecimalSeparatorAcrossValues(amounts)
 		decimalSeparator = detection.Separator
 		if detection.Conflict {
-			result.Warnings = append(result.Warnings, ParseWarning{Message: decimalSeparatorConflictWarning(detection)})
+			result.Warnings = append(result.Warnings, decimalSeparatorConflictWarning(detection))
 		}
 	}
 
@@ -343,14 +345,19 @@ func normalizeQIFRecords(result *ParseResult, records []qifParsedRecord, filenam
 	occurrences := map[string]int{}
 	for i, parsed := range records {
 		rec := parsed.record
+		// A rejected value keeps its source text for review and is recorded
+		// on the row, so commit refuses it instead of reading it under
+		// another convention (#300).
+		var parseErrors []StagedParseError
 
 		if rec.date != "" {
 			iso, err := parseFlexibleDate(rec.date, order)
 			if err != nil {
 				result.Warnings = append(result.Warnings, ParseWarning{
-					RowIndex: i,
-					Message:  fmt.Sprintf("unrecognized date %q; review before committing", rec.date),
+					RowIndex: i, Code: ParseWarningCodeUnrecognizedDate, Value: rec.date,
+					Message: fmt.Sprintf("unrecognized date %q; review before committing", rec.date),
 				})
+				parseErrors = append(parseErrors, StagedParseError{Field: "date", Value: rec.date})
 			} else {
 				rec.date = iso
 			}
@@ -360,9 +367,10 @@ func normalizeQIFRecords(result *ParseResult, records []qifParsedRecord, filenam
 			canonical, err := canonicalDecimal(rec.amount, decimalSeparator)
 			if err != nil {
 				result.Warnings = append(result.Warnings, ParseWarning{
-					RowIndex: i,
-					Message:  fmt.Sprintf("unrecognized amount %q; review before committing", rec.amount),
+					RowIndex: i, Code: ParseWarningCodeUnrecognizedAmount, Value: rec.amount,
+					Message: fmt.Sprintf("unrecognized amount %q; review before committing", rec.amount),
 				})
+				parseErrors = append(parseErrors, StagedParseError{Field: "amount", Value: rec.amount})
 			} else {
 				rec.amount = canonical
 			}
@@ -375,9 +383,10 @@ func normalizeQIFRecords(result *ParseResult, records []qifParsedRecord, filenam
 			canonical, err := canonicalDecimal(split.amount, decimalSeparator)
 			if err != nil {
 				result.Warnings = append(result.Warnings, ParseWarning{
-					RowIndex: i,
-					Message:  fmt.Sprintf("unrecognized split amount %q; review before committing", split.amount),
+					RowIndex: i, Code: ParseWarningCodeUnrecognizedSplitAmount, Value: split.amount,
+					Message: fmt.Sprintf("unrecognized split amount %q; review before committing", split.amount),
 				})
+				parseErrors = append(parseErrors, StagedParseError{Field: "split_amount", Value: split.amount})
 				continue
 			}
 			rec.splits[j].amount = canonical
@@ -387,6 +396,7 @@ func normalizeQIFRecords(result *ParseResult, records []qifParsedRecord, filenam
 		occurrence := occurrences[baseFingerprint]
 		occurrences[baseFingerprint]++
 		row := qifRecordToStagedRow(rec, fmt.Sprintf("%s|occurrence:%d", baseFingerprint, occurrence), parsed.recordType, filename)
+		row.ParseErrors = parseErrors
 		result.Rows = append(result.Rows, row)
 
 		// Date range metadata: ISO dates compare correctly as strings.

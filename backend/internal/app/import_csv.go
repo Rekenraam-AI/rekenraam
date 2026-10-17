@@ -193,7 +193,7 @@ func (a *CSVAdapter) Parse(_ context.Context, input RawInput, profile *ImportPro
 		detection := detectDecimalSeparatorAcrossValues(amounts)
 		decimalSeparator = detection.Separator
 		if detection.Conflict {
-			result.Warnings = append(result.Warnings, ParseWarning{Message: decimalSeparatorConflictWarning(detection)})
+			result.Warnings = append(result.Warnings, decimalSeparatorConflictWarning(detection))
 		}
 	}
 	occurrences := map[string]int{}
@@ -215,13 +215,19 @@ func (a *CSVAdapter) Parse(_ context.Context, input RawInput, profile *ImportPro
 		if config.InvertAmount && amountErr == nil {
 			amount = invertCanonicalAmount(amount)
 		}
+		// A rejected value keeps its source text for review and is recorded
+		// on the row, so commit refuses it instead of reading it under
+		// another convention (#300).
+		var parseErrors []StagedParseError
 		if dateErr != nil {
-			result.Warnings = append(result.Warnings, ParseWarning{RowIndex: rowIndex, Message: fmt.Sprintf("row %d has an unrecognized date %q; review before committing", recordIndex+2, dateRaw)})
+			result.Warnings = append(result.Warnings, ParseWarning{RowIndex: rowIndex, Code: ParseWarningCodeUnrecognizedDate, Value: dateRaw, Message: fmt.Sprintf("row %d has an unrecognized date %q; review before committing", recordIndex+2, dateRaw)})
 			date = dateRaw
+			parseErrors = append(parseErrors, StagedParseError{Field: "date", Value: dateRaw})
 		}
 		if amountErr != nil {
-			result.Warnings = append(result.Warnings, ParseWarning{RowIndex: rowIndex, Message: fmt.Sprintf("row %d has an unrecognized amount; review before committing", recordIndex+2)})
+			result.Warnings = append(result.Warnings, ParseWarning{RowIndex: rowIndex, Code: ParseWarningCodeUnrecognizedAmount, Value: amountRaw, Message: fmt.Sprintf("row %d has an unrecognized amount; review before committing", recordIndex+2)})
 			amount = amountRaw
+			parseErrors = append(parseErrors, StagedParseError{Field: "amount", Value: amountRaw})
 		}
 		rawFields := make(map[string]string, len(headers))
 		for header, index := range headers {
@@ -234,6 +240,7 @@ func (a *CSVAdapter) Parse(_ context.Context, input RawInput, profile *ImportPro
 			CategoryHint: csvValue(record, headers, config.CategoryColumn),
 			ExternalRef:  csvValue(record, headers, config.ExternalRefColumn),
 			Raw:          rawFields,
+			ParseErrors:  parseErrors,
 		}
 		if config.Investment != nil {
 			row.Investment = parseCSVInvestmentRow(record, headers, config.Investment, decimalSeparator)

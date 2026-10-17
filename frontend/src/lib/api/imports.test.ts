@@ -42,6 +42,7 @@ function importBatchResponse(rows: { id: number }[], nextCursor: string | null):
       commit_status: 'pending',
       commit_effects: []
     })),
+    warnings: [{ row_index: -1, code: 'decimal_separator_conflict', value: ',', message: 'stored' }],
     next_cursor: nextCursor
   };
 }
@@ -203,6 +204,7 @@ describe('getFullImportBatch', () => {
 
     expect(result.rows.map((row) => row.id)).toEqual([10, 11]);
     expect(result.next_cursor).toBeNull();
+    expect(result.warnings).toEqual([{ row_index: -1, code: 'decimal_separator_conflict', value: ',', message: 'stored' }]);
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       '/api/v1/imports/1?limit=200',

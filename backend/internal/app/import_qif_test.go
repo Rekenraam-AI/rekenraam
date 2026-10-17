@@ -370,7 +370,7 @@ func TestQIFAdapterDetect(t *testing.T) {
 
 // --- Date parsing tests ---
 
-func TestParseQIFDate(t *testing.T) {
+func TestParseFlexibleDateAuto(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		input string
@@ -399,33 +399,38 @@ func TestParseQIFDate(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
-			got, err := parseQIFDate(tc.input)
+			got, err := parseFlexibleDate(tc.input, dateOrderAuto)
 			require.NoError(t, err, "input: %q", tc.input)
 			assert.Equal(t, tc.want, got)
 		})
 	}
 }
 
-func TestParseQIFDate_InvalidReturnsError(t *testing.T) {
+func TestParseFlexibleDateAuto_InvalidReturnsError(t *testing.T) {
 	t.Parallel()
-	_, err := parseQIFDate("not-a-date")
+	_, err := parseFlexibleDate("not-a-date", dateOrderAuto)
 	require.Error(t, err)
 }
 
-func TestBuildTransactionSpec_EUStagedRowKeepsItsDateAndAmount(t *testing.T) {
+func TestBuildTransactionSpec_RefusesNonCanonicalStagedText(t *testing.T) {
 	t.Parallel()
-	// The adapter normalizes before staging, so the commit path sees ISO dates
-	// and canonical amounts — but it must also survive a decimal-comma amount
-	// reaching it directly (T-36).
-	row := db.ImportStagedRowRecord{
-		NormalizedJSON: `{"date": "2026-03-02", "amount": "-1.234,56"}`,
-	}
+	// The adapter applies the file's convention before staging, so the commit
+	// path sees ISO dates and canonical amounts. Text in any other shape is
+	// refused, never re-read with per-value detection (#300; T-36 class).
 	resolution := ImportRowResolution{AccountID: 3, CommodityID: 7, CategoryID: ptrInt64(9)}
+	for _, normalized := range []string{
+		`{"date": "2026-03-02", "amount": "-1.234,56"}`,
+		`{"date": "2026-03-02", "amount": "-12.50", "splits": [{"amount": "-12,50"}]}`,
+		`{"date": "02/03/2026", "amount": "-12.50"}`,
+		`{"date": "2026-03-02", "amount": "-12.50", "parse_errors": [{"field": "amount", "value": "-12.50"}]}`,
+	} {
+		_, err := buildTransactionSpec(db.ImportStagedRowRecord{NormalizedJSON: normalized}, resolution)
+		assert.Error(t, err, normalized)
+	}
 
-	spec, err := buildTransactionSpec(row, resolution)
+	spec, err := buildTransactionSpec(db.ImportStagedRowRecord{NormalizedJSON: `{"date": "2026-03-02", "amount": "-1234.56"}`}, resolution)
 	require.NoError(t, err)
 	assert.Equal(t, "2026-03-02", spec.TransactionDate)
-
 	postings := spec.JournalEntries[0].Postings
 	require.Len(t, postings, 2)
 	assert.Equal(t, "-123456", string(postings[0].QuantityValue))

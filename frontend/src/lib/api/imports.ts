@@ -166,6 +166,8 @@ export async function getFullImportBatch(
 ): Promise<GetImportBatchResponse> {
   const rows: ImportStagedRow[] = [];
   let batch = initialPage?.batch;
+  // Every page carries the batch's stored parse warnings (#300).
+  let warnings = initialPage?.warnings ?? [];
   let cursor = initialPage?.next_cursor ?? undefined;
   let shouldFetch = initialPage === undefined;
 
@@ -180,6 +182,7 @@ export async function getFullImportBatch(
     });
 
     batch = page.batch;
+    warnings = page.warnings;
     rows.push(...page.rows);
     cursor = page.next_cursor ?? undefined;
     shouldFetch = false;
@@ -188,6 +191,7 @@ export async function getFullImportBatch(
   return {
     batch: batch!,
     rows,
+    warnings,
     next_cursor: null
   };
 }

@@ -110,6 +110,10 @@ non-trivial diff (yours or reviewed):
     than one place, grep the whole tree for the *pattern* before declaring it
     done, not just the copies the current ticket names — and count what you
     find, because the T-47 survey said two copies and there were seven.
+    The same holds across a **pipeline**: #300 had the adapter apply the
+    file's declared separator and commit re-read rejected text with per-value
+    detection. A value rejected at staging is recorded on the row and refused
+    at commit, never re-parsed (`TestImportAuditRejectedConventionRowsAreFlaggedAndNeverCommitted`).
 
 14. **Consolidation that silently widens what is accepted** — retiring a
     private helper onto a shared one is a behaviour change unless proven
