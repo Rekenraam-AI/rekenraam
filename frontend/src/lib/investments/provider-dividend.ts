@@ -77,3 +77,33 @@ export function grossPrefill(
   const padding = cashScale - estimate.scale;
   return { value: estimate.value + '0'.repeat(padding), scale: cashScale };
 }
+
+/** What the provider itself stated: an amount (null when unreadable) and the listing currency. */
+export type ProviderDividendContent = { amountPerShare: ProviderDecimal | null; listingCurrency: string };
+
+export type ProviderDividendRevision = {
+  from: ProviderDividendContent;
+  to: ProviderDividendContent;
+  observedAt: string;
+};
+
+/**
+ * Provider revisions (#254) as "old → new" steps: the first observation, then
+ * each later distinct announcement in the order it was seen. A revision is
+ * evidence only; the suggestion keeps the first observation.
+ */
+export function providerDividendRevisions(
+  first: ProviderDividendEvidence | null,
+  revisions: ReadonlyArray<{ evidence: Record<string, unknown>; observed_at: string }> | null | undefined
+): ProviderDividendRevision[] {
+  if (!first || !revisions) return [];
+  let previous: ProviderDividendContent = { amountPerShare: first.amountPerShare, listingCurrency: first.listingCurrency };
+  const steps: ProviderDividendRevision[] = [];
+  for (const revision of revisions) {
+    if (revision.evidence?.schema !== 1) continue;
+    const next = { amountPerShare: decimal(revision.evidence.amount_per_share), listingCurrency: text(revision.evidence.listing_currency) };
+    steps.push({ from: previous, to: next, observedAt: revision.observed_at });
+    previous = next;
+  }
+  return steps;
+}

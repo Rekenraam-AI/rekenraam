@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"strconv"
 	"time"
 
 	"rekenraam/backend/internal/db"
@@ -204,6 +205,17 @@ func (s *PricingService) stageDividendObservation(ctx context.Context, target db
 	if err != nil {
 		return err
 	}
+	content := providerDividendContent{Schema: 1, ListingCurrency: observation.ListingCurrency}
+	if observation.AmountKnown {
+		content.AmountPerShare = &providerDecimal{Value: fmt.Sprint(observation.AmountValue), Scale: observation.AmountScale}
+	}
+	staged, err := s.repository.StagedProviderEventByIdentity(ctx, BookID, target.SourceID, observation.ProviderObservationID)
+	if err == nil {
+		return s.recordDividendRevision(ctx, ownerID, staged, content, observation)
+	}
+	if !errors.Is(err, db.ErrNotFound) {
+		return err
+	}
 	entitlementDate := exDate.AddDate(0, 0, -1).Format(time.DateOnly)
 	holdings, err := s.repository.DividendEntitlementHoldings(ctx, BookID, target.BaseCommodityID, entitlementDate)
 	if err != nil {
@@ -258,6 +270,53 @@ func (s *PricingService) stageDividendObservation(ctx context.Context, target db
 		ProviderEventID: observation.ProviderObservationID, InstrumentID: target.InstrumentID, EventFamily: "dividend", EventDate: observation.ExDate,
 		NormalizedJSON: string(normalizedJSON), RawJSON: observation.RawJSON, ConfidenceBPS: confidence, ProposedJSON: string(proposedJSON),
 		RecordedAt: s.now().UTC().Format(time.RFC3339)})
+	return err
+}
+
+// providerDividendContent is what the provider itself states for one listing
+// and ex-date: revision evidence (#254) is a change in this, never in the
+// ledger-derived holdings or estimate, which reflect the book, not the source.
+type providerDividendContent struct {
+	Schema          int              `json:"schema"`
+	AmountPerShare  *providerDecimal `json:"amount_per_share"`
+	ListingCurrency string           `json:"listing_currency"`
+}
+
+// key identifies distinct content: the amount is compared by exact value, so
+// 1.60 and 1.6 are the same announcement.
+func (c providerDividendContent) key() string {
+	amount := "unknown"
+	if c.AmountPerShare != nil {
+		value, ok := new(big.Int).SetString(c.AmountPerShare.Value, 10)
+		if !ok {
+			return "amount_per_share=invalid:" + c.AmountPerShare.Value + ";listing_currency=" + c.ListingCurrency
+		}
+		normalized := exact.ScaledIntFromBig(value, c.AmountPerShare.Scale).Normalized()
+		amount = normalized.BigInt().String() + "e-" + strconv.Itoa(normalized.Scale())
+	}
+	return "amount_per_share=" + amount + ";listing_currency=" + c.ListingCurrency
+}
+
+// recordDividendRevision appends a re-fetched announcement that differs from
+// the staged first observation. Twelve Data has no revision identity, so a
+// revision is only a content difference for the same listing and ex-date.
+// The staged event, its suggestion and any owner decision stay as they are.
+func (s *PricingService) recordDividendRevision(ctx context.Context, ownerID int64, staged db.StagedProviderEvent, content providerDividendContent, observation marketdata.DividendObservation) error {
+	var first providerDividendEvidence
+	if err := json.Unmarshal([]byte(staged.NormalizedJSON), &first); err != nil {
+		return fmt.Errorf("read staged dividend evidence: %w", err)
+	}
+	key := content.key()
+	if key == (providerDividendContent{AmountPerShare: first.AmountPerShare, ListingCurrency: first.ListingCurrency}).key() {
+		return nil
+	}
+	normalizedJSON, err := json.Marshal(content)
+	if err != nil {
+		return err
+	}
+	_, err = s.repository.RecordProviderEventRevision(ctx, db.RecordProviderEventRevisionParams{BookID: BookID, ActorUserID: ownerID,
+		ProviderEventID: staged.ID, ContentKey: key, NormalizedJSON: string(normalizedJSON), RawJSON: observation.RawJSON,
+		ObservedAt: s.now().UTC().Format(time.RFC3339)})
 	return err
 }
 

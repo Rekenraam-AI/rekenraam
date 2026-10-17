@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, test } from './support/fixtures';
 import process from 'node:process';
 import { apiJSON } from './support/api';
@@ -10,7 +11,7 @@ import { expectNoAccessibilityViolations } from './support/a11y';
 test.use({ viewport: { width: 390, height: 844 } });
 test.skip(Boolean(process.env.E2E_BASE_URL), 'needs the local market-data stub for Twelve Data dividends');
 
-test('[acceptance] a provider dividend is reviewed, completed and posted through the native command', async ({ page }) => {
+async function heldProviderListing(page: Page, prefix: string) {
   const { csrfToken, currencyID } = await readyForLedger(page);
   const suffix = `${Date.now()}`;
   const openedOn = daysFromTodayISO(-60);
@@ -19,7 +20,7 @@ test('[acceptance] a provider dividend is reviewed, completed and posted through
     name: `Provider income ${suffix}`, account_class: 'income', account_kind: 'income',
     default_commodity_id: currencyID, allows_postings: true, opened_on: openedOn, effective_from: openedOn
   });
-  const symbol = `E2EDIV${suffix}`;
+  const symbol = `${prefix}${suffix}`;
   const name = `Provider payer ${suffix}`;
   const instrument = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
     commodity_code: symbol, instrument_type: 'stock', display_name: name, symbol, mic: 'XNYS',
@@ -41,6 +42,11 @@ test('[acceptance] a provider dividend is reviewed, completed and posted through
     commodity_id: instrument.commodity_id, quote_commodity_id: currencyID, source_id: twelveData.id, effective_from: openedOn
   });
 
+  return { cash, income, instrument, name };
+}
+
+test('[acceptance] a provider dividend is reviewed, completed and posted through the native command', async ({ page }) => {
+  const { cash, income, instrument, name } = await heldProviderListing(page, 'E2EDIV');
   await page.goto('/app/investments');
   await page.getByRole('button', { name: /^Suggestions/ }).click();
   await page.getByRole('button', { name: 'Check provider dividends', exact: true }).click();
@@ -77,4 +83,31 @@ test('[acceptance] a provider dividend is reviewed, completed and posted through
 
   await page.goto(`/app/investments/instruments/${instrument.commodity_id}`);
   await expect(page.getByText(/^Gross income: .*4\.80/)).toBeVisible();
+});
+
+test('a provider revision of a staged dividend is disclosed without reopening the decision', async ({ page }) => {
+  // #254: the stub revises E2EDIVREV listings from 0.50 to 0.55 on the second fetch.
+  const { name } = await heldProviderListing(page, 'E2EDIVREV');
+  await page.goto('/app/investments');
+  await page.getByRole('button', { name: /^Suggestions/ }).click();
+  const check = page.getByRole('button', { name: 'Check provider dividends', exact: true });
+  await check.click();
+  const card = page.getByTestId('event-suggestion').filter({ hasText: name });
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  await expect(card.getByTestId('event-suggestion-revisions')).toHaveCount(0);
+
+  await check.click();
+  const notice = card.getByTestId('event-suggestion-revisions');
+  await expect(notice).toBeVisible({ timeout: 30_000 });
+  await expect(notice).toContainText('Provider revised this announcement');
+  await expect(notice).toContainText(/0\.5 USD → 0\.55 USD/);
+  await expect(notice).toContainText('The suggestion keeps the first announcement; complete it from your statement.');
+  await expect(page.getByTestId('event-suggestion').filter({ hasText: name })).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expectNoAccessibilityViolations(page, 'Provider dividend revision on a phone');
+
+  await card.getByRole('button', { name: 'Ignore', exact: true }).click();
+  const settled = page.getByRole('listitem').filter({ hasText: name }).filter({ hasText: 'Ignored' });
+  await expect(settled).toBeVisible();
+  await expect(settled.getByTestId('event-suggestion-revisions')).toContainText('Your decision and any recorded dividend are unchanged.');
 });

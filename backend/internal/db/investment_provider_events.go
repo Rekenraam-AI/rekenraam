@@ -148,6 +148,112 @@ func (r *PricingRepository) StageProviderEvent(ctx context.Context, params Stage
 	return true, nil
 }
 
+// StagedProviderEvent is an already-staged event's identity and first
+// observation, which a later fetch compares against (#254).
+type StagedProviderEvent struct {
+	ID             int64
+	NormalizedJSON string
+}
+
+// StagedProviderEventByIdentity reads the event a source identity already
+// staged, or ErrNotFound.
+func (r *PricingRepository) StagedProviderEventByIdentity(ctx context.Context, bookID, sourceID int64, providerEventID string) (StagedProviderEvent, error) {
+	var event StagedProviderEvent
+	err := r.database.QueryRowContext(ctx, `
+		SELECT id, normalized_json FROM investment_provider_events
+		WHERE book_id = ? AND source_id = ? AND provider_event_id = ?`, bookID, sourceID, providerEventID).Scan(&event.ID, &event.NormalizedJSON)
+	if errors.Is(err, sql.ErrNoRows) {
+		return StagedProviderEvent{}, ErrNotFound
+	}
+	if err != nil {
+		return StagedProviderEvent{}, fmt.Errorf("read staged provider event: %w", err)
+	}
+	return event, nil
+}
+
+type RecordProviderEventRevisionParams struct {
+	BookID          int64
+	ActorUserID     int64
+	ProviderEventID int64
+	ContentKey      string
+	NormalizedJSON  string
+	RawJSON         string
+	ObservedAt      string
+}
+
+// RecordProviderEventRevision appends a later, differing observation of a
+// staged event as immutable evidence under its own audit event. Content
+// already recorded for the event reports recorded=false and writes nothing.
+// The caller decides that the content differs from the first observation;
+// the event, its suggestion and any posted or linked transaction are never
+// touched here.
+func (r *PricingRepository) RecordProviderEventRevision(ctx context.Context, params RecordProviderEventRevisionParams) (bool, error) {
+	tx, err := r.database.BeginTx(ctx, nil)
+	if err != nil {
+		return false, fmt.Errorf("begin record provider event revision: %w", err)
+	}
+	defer rollbackTx(ctx, tx)
+	var existing int64
+	err = tx.QueryRowContext(ctx, `SELECT id FROM investment_provider_event_revisions WHERE provider_event_id = ? AND content_key = ?`,
+		params.ProviderEventID, params.ContentKey).Scan(&existing)
+	if err == nil {
+		return false, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return false, fmt.Errorf("read provider event revision: %w", err)
+	}
+	auditEventID, err := insertAuditEvent(ctx, tx, AuditEventParams{BookID: params.BookID, ActorUserID: params.ActorUserID, OccurredAt: params.ObservedAt,
+		OriginType: "internal", Operation: "investment.provider_event.revise", Reason: "provider revised a staged event"})
+	if err != nil {
+		return false, err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO investment_provider_event_revisions (book_id, provider_event_id, content_key, normalized_json, raw_json,
+			observed_at, created_by_user_id, created_audit_event_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		params.BookID, params.ProviderEventID, params.ContentKey, params.NormalizedJSON, params.RawJSON,
+		params.ObservedAt, params.ActorUserID, auditEventID); err != nil {
+		return false, fmt.Errorf("insert provider event revision: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("commit provider event revision: %w", err)
+	}
+	return true, nil
+}
+
+// ProviderEventRevisionRecord is one appended provider revision.
+type ProviderEventRevisionRecord struct {
+	ProviderEventID int64
+	NormalizedJSON  string
+	ObservedAt      string
+}
+
+// ProviderEventRevisions reads every revision in the book in observation
+// order, so the review screen composes them without a request per event.
+func (r *InvestmentRepository) ProviderEventRevisions(ctx context.Context, bookID int64) ([]ProviderEventRevisionRecord, error) {
+	rows, err := r.database.QueryContext(ctx, `
+		SELECT provider_event_id, normalized_json, observed_at
+		FROM investment_provider_event_revisions
+		WHERE book_id = ?
+		ORDER BY provider_event_id, id`, bookID)
+	if err != nil {
+		return nil, fmt.Errorf("read provider event revisions: %w", err)
+	}
+	var result []ProviderEventRevisionRecord
+	for rows.Next() {
+		var record ProviderEventRevisionRecord
+		if err := rows.Scan(&record.ProviderEventID, &record.NormalizedJSON, &record.ObservedAt); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("scan provider event revision: %w", err)
+		}
+		result = append(result, record)
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return nil, fmt.Errorf("iterate provider event revisions: %w", err)
+	}
+	return result, nil
+}
+
 // DividendLinkCandidate is an effective posted cash dividend an owner may link
 // to a pending provider dividend suggestion instead of posting it again.
 type DividendLinkCandidate struct {

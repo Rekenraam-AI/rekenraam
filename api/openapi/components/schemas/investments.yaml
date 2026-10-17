@@ -3507,6 +3507,7 @@ InvestmentEventSuggestionResponse:
     - status
     - proposed_transaction
     - link_candidates
+    - revisions
     - created_at
     - updated_at
   properties:
@@ -3544,6 +3545,14 @@ InvestmentEventSuggestionResponse:
       type: array
       items:
         $ref: "../../openapi.yaml#/components/schemas/InvestmentEventLinkCandidate"
+    revisions:
+      type: array
+      description: >-
+        Later provider observations of this event whose stated content differs from the first
+        observation (#254), oldest first. Evidence only: a revision never changes the suggestion,
+        the event status, or any posted or linked transaction.
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/InvestmentEventRevision"
     instrument_id:
       type: integer
       format: int64
@@ -3564,6 +3573,20 @@ InvestmentEventSuggestionResponse:
       type: string
       format: date-time
     updated_at:
+      type: string
+      format: date-time
+
+InvestmentEventRevision:
+  type: object
+  required: [evidence, observed_at]
+  properties:
+    evidence:
+      type: object
+      additionalProperties: true
+      description: >-
+        Normalized provider content (schema 1 for dividends: amount_per_share as {value, scale} or
+        null, listing_currency).
+    observed_at:
       type: string
       format: date-time
 

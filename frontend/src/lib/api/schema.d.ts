@@ -31400,6 +31400,8 @@ export interface components {
             /** Format: int64 */
             linked_transaction_id?: number;
             link_candidates: components["schemas"]["InvestmentEventLinkCandidate"][];
+            /** @description Later provider observations of this event whose stated content differs from the first observation (#254), oldest first. Evidence only: a revision never changes the suggestion, the event status, or any posted or linked transaction. */
+            revisions: components["schemas"]["InvestmentEventRevision"][];
             /** Format: int64 */
             instrument_id?: number;
             confidence_bps: number;
@@ -31418,6 +31420,14 @@ export interface components {
         };
         InvestmentEventSuggestionsResponse: {
             suggestions: components["schemas"]["InvestmentEventSuggestionResponse"][];
+        };
+        InvestmentEventRevision: {
+            /** @description Normalized provider content (schema 1 for dividends: amount_per_share as {value, scale} or null, listing_currency). */
+            evidence: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            observed_at: string;
         };
         InvestmentEventLinkCandidate: {
             /** Format: int64 */

@@ -1469,6 +1469,8 @@ components:
       $ref: "./components/schemas/investments.yaml#/InvestmentEventSuggestionResponse"
     InvestmentEventSuggestionsResponse:
       $ref: "./components/schemas/investments.yaml#/InvestmentEventSuggestionsResponse"
+    InvestmentEventRevision:
+      $ref: "./components/schemas/investments.yaml#/InvestmentEventRevision"
     InvestmentEventLinkCandidate:
       $ref: "./components/schemas/investments.yaml#/InvestmentEventLinkCandidate"
     AcceptEventSuggestionRequest:

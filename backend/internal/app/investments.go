@@ -681,6 +681,17 @@ type InvestmentEventSuggestion struct {
 	// LinkCandidates are owner-recorded dividends a pending suggestion may be
 	// linked to instead of posting again; composed only by the list read.
 	LinkCandidates []InvestmentEventLinkCandidate
+	// Revisions are later differing provider observations of the event, in
+	// observation order (#254); composed only by the list read. They are
+	// evidence beside the first observation and never change the decision.
+	Revisions []InvestmentEventRevision
+}
+
+// InvestmentEventRevision is one appended provider revision: its normalized
+// provider content and when it was observed.
+type InvestmentEventRevision struct {
+	EvidenceJSON string
+	ObservedAt   string
 }
 
 // InvestmentEventLinkCandidate is an effective posted cash dividend of the
@@ -2107,8 +2118,17 @@ func (s *InvestmentService) ListEventSuggestions(ctx context.Context) ([]Investm
 			TransactionID: candidate.TransactionID, TransactionDate: candidate.TransactionDate, CashCode: candidate.CashCode,
 			GrossValue: value, GrossScale: normalized.Scale()})
 	}
+	revisions, err := s.repository.ProviderEventRevisions(ctx, BookID)
+	if err != nil {
+		return nil, fmt.Errorf("list investment provider event revisions: %w", err)
+	}
+	byEvent := map[int64][]InvestmentEventRevision{}
+	for _, revision := range revisions {
+		byEvent[revision.ProviderEventID] = append(byEvent[revision.ProviderEventID], InvestmentEventRevision{EvidenceJSON: revision.NormalizedJSON, ObservedAt: revision.ObservedAt})
+	}
 	for index := range suggestions {
 		suggestions[index].LinkCandidates = bySuggestion[suggestions[index].ID]
+		suggestions[index].Revisions = byEvent[suggestions[index].ProviderEventID]
 	}
 	return suggestions, nil
 }

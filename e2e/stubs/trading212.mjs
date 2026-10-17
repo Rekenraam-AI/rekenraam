@@ -21,6 +21,7 @@ const port = Number(process.env.TRADING212_STUB_PORT ?? '16890');
 const apiPrefix = '/api/v0';
 /** @type {Map<string, { orders: any[], dividends: any[], transactions: any[] }>} */
 const accounts = new Map();
+const dividendFetches = new Map();
 
 function send(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -67,14 +68,19 @@ const server = createServer(async (req, res) => {
     }
 
     // Twelve Data GET /dividends (#111): a symbol starting E2EDIV went ex
-    // ten days ago at 0.50 per share. Every other market-data path stays 404.
+    // ten days ago at 0.50 per share. One starting E2EDIVREV is revised to
+    // 0.55 from its second fetch on (#254). Every other market-data path
+    // stays 404.
     if (req.method === 'GET' && url.pathname === '/market-data/dividends') {
       const symbol = url.searchParams.get('symbol') ?? '';
       if (!symbol.startsWith('E2EDIV') || url.searchParams.get('adjust') !== 'false') return send(res, 404, { error: 'not found' });
+      const fetches = (dividendFetches.get(symbol) ?? 0) + 1;
+      dividendFetches.set(symbol, fetches);
       const exDate = new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10);
+      const amount = symbol.startsWith('E2EDIVREV') && fetches > 1 ? 0.55 : 0.5;
       return send(res, 200, {
         meta: { symbol, currency: 'USD', mic_code: url.searchParams.get('mic_code') ?? '', exchange_timezone: 'America/New_York' },
-        dividends: [{ ex_date: exDate, amount: 0.5 }]
+        dividends: [{ ex_date: exDate, amount }]
       });
     }
 

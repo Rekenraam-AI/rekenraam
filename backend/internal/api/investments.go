@@ -696,9 +696,15 @@ type investmentEventSuggestionResponse struct {
 	GeneratedTransactionID *int64                               `json:"generated_transaction_id,omitempty"`
 	LinkedTransactionID    *int64                               `json:"linked_transaction_id,omitempty"`
 	LinkCandidates         []investmentEventLinkCandidateResult `json:"link_candidates"`
+	Revisions              []investmentEventRevisionResult      `json:"revisions"`
 	FailureReason          string                               `json:"failure_reason,omitempty"`
 	CreatedAt              string                               `json:"created_at"`
 	UpdatedAt              string                               `json:"updated_at"`
+}
+
+type investmentEventRevisionResult struct {
+	Evidence   json.RawMessage `json:"evidence"`
+	ObservedAt string          `json:"observed_at"`
 }
 
 type investmentEventLinkCandidateResult struct {
@@ -2393,6 +2399,10 @@ func toInvestmentEventSuggestionResponse(suggestion app.InvestmentEventSuggestio
 		candidates = append(candidates, investmentEventLinkCandidateResult{TransactionID: candidate.TransactionID, TransactionDate: candidate.TransactionDate,
 			CashCode: candidate.CashCode, GrossValue: candidate.GrossValue, GrossScale: candidate.GrossScale})
 	}
+	revisions := make([]investmentEventRevisionResult, 0, len(suggestion.Revisions))
+	for _, revision := range suggestion.Revisions {
+		revisions = append(revisions, investmentEventRevisionResult{Evidence: json.RawMessage(revision.EvidenceJSON), ObservedAt: revision.ObservedAt})
+	}
 	evidence := suggestion.EventEvidenceJSON
 	if evidence == "" {
 		evidence = "{}"
@@ -2401,7 +2411,7 @@ func toInvestmentEventSuggestionResponse(suggestion app.InvestmentEventSuggestio
 		EventFamily: suggestion.EventFamily, EventDate: suggestion.EventDate, EventStatus: suggestion.EventStatus, SourceCode: suggestion.SourceCode,
 		Evidence: json.RawMessage(evidence), InstrumentID: suggestion.InstrumentID, ConfidenceBPS: suggestion.ConfidenceBPS, Status: suggestion.Status,
 		ProposedTransaction: json.RawMessage(suggestion.ProposedTransactionJSON), GeneratedTransactionID: suggestion.GeneratedTransactionID,
-		LinkedTransactionID: suggestion.LinkedTransactionID, LinkCandidates: candidates, FailureReason: suggestion.FailureReason,
+		LinkedTransactionID: suggestion.LinkedTransactionID, LinkCandidates: candidates, Revisions: revisions, FailureReason: suggestion.FailureReason,
 		CreatedAt: suggestion.CreatedAt, UpdatedAt: suggestion.UpdatedAt}
 }
 

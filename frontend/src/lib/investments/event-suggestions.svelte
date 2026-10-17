@@ -21,7 +21,10 @@
     parseProviderDividendEvidence,
     proposalCommodityID,
     proposalShape,
-    type ProviderDecimal
+    providerDividendRevisions,
+    type ProviderDecimal,
+    type ProviderDividendContent,
+    type ProviderDividendEvidence
   } from './provider-dividend.ts';
 
   interface Props {
@@ -150,6 +153,16 @@
     return decimal ? formatQuantity(decimal.value, decimal.scale, getLocale()) : m.investments_suggestion_unknown();
   }
 
+  function content(value: ProviderDividendContent): string {
+    const text = amount(value.amountPerShare);
+    return value.listingCurrency ? `${text} ${value.listingCurrency}` : text;
+  }
+
+  function observed(value: string): string {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium' }).format(date);
+  }
+
   function title(s: InvestmentEventSuggestionResponse): string {
     return (s.instrument_id !== undefined && instrumentNames.get(s.instrument_id)) || m.investments_suggestion_instrument_unknown();
   }
@@ -158,6 +171,23 @@
     return new Intl.NumberFormat(getLocale(), { style: 'percent', maximumFractionDigits: 0 }).format(bps / 10_000);
   }
 </script>
+
+{#snippet revisionNotice(s: InvestmentEventSuggestionResponse, evidence: ProviderDividendEvidence | null, settled: boolean)}
+  {@const steps = providerDividendRevisions(evidence, s.revisions)}
+  {#if steps.length > 0}
+    <div class="rounded-(--radius-panel) border border-warning bg-warning-soft p-3 text-sm" role="note" data-testid="event-suggestion-revisions">
+      <p class="font-medium text-foreground">{m.investments_suggestion_revised_title()}</p>
+      <ul class="mt-1 space-y-0.5">
+        {#each steps as step, index (index)}
+          <li class="tabular-nums text-foreground">
+            {m.investments_suggestion_revised_step({ from: content(step.from), to: content(step.to), date: observed(step.observedAt) })}
+          </li>
+        {/each}
+      </ul>
+      <p class="mt-1 text-xs text-muted">{settled ? m.investments_suggestion_revised_settled() : m.investments_suggestion_revised_pending()}</p>
+    </div>
+  {/if}
+{/snippet}
 
 <div class="space-y-6">
   <Panel>
@@ -234,6 +264,8 @@
                   <p class="text-sm text-foreground" role="note">{m.investments_suggestion_short_position()}</p>
                 {/if}
 
+                {@render revisionNotice(s, evidence, false)}
+
                 {#if shape === 'needs_completion' && s.link_candidates.length > 0}
                   <div class="rounded-(--radius-panel) border border-border p-3">
                     <p class="text-sm font-medium text-foreground">{m.investments_suggestion_link_title()}</p>
@@ -306,6 +338,11 @@
                 </div>
                 {#if s.failure_reason}
                   <p class="mt-1 text-xs text-destructive">{s.failure_reason}</p>
+                {/if}
+                {#if s.revisions.length > 0}
+                  <div class="mt-2">
+                    {@render revisionNotice(s, parseProviderDividendEvidence(s.evidence), true)}
+                  </div>
                 {/if}
               </Panel>
             </li>

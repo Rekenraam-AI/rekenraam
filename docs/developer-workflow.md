@@ -745,7 +745,9 @@ dividends** on Investments → Suggestions (#111): it queues durable
 `investment.dividend_events` work only when clicked (no schedule), needs a plan
 whose entitlement includes `/dividends`, and reports failures in pricing failed
 work. The e2e harness sets a placeholder `TWELVE_DATA_API_KEY` that only ever
-reaches the `MARKET_DATA_BASE_URL` stub.
+reaches the `MARKET_DATA_BASE_URL` stub; that stub announces 0.50 per share
+for `E2EDIV*` symbols and revises `E2EDIVREV*` ones to 0.55 from their second
+fetch, so the revision disclosure (#254) has a browser case.
 For provider evidence, failure recovery and the fixed crypto CSV columns, see the
 [quote/crypto contract](plans/quote-providers-crypto-plan.md).
 

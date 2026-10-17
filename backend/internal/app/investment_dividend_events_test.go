@@ -158,7 +158,8 @@ func TestDividendProducerRefetchKeepsOwnerDecisionsAndNeverDuplicates(t *testing
 	require.NoError(t, err)
 
 	// A revised provider amount for the same ex-date does not replace the
-	// first observation or reopen the owner's decisions.
+	// first observation or reopen the owner's decisions (#254: it is kept as
+	// revision evidence beside them).
 	f.body.Store(`{"meta":{"symbol":"ASML","currency":"EUR","mic_code":"XAMS"},"dividends":[{"ex_date":"2026-07-29","amount":1.7},{"ex_date":"2026-04-28","amount":1.84}]}`)
 	f.fetch(t)
 	f.fetch(t)
@@ -169,15 +170,107 @@ func TestDividendProducerRefetchKeepsOwnerDecisionsAndNeverDuplicates(t *testing
 	assert.Equal(t, "matched", july.EventStatus)
 	assert.Equal(t, accepted.GeneratedTransactionID, july.GeneratedTransactionID)
 	assert.Contains(t, july.EventEvidenceJSON, `"value":"16"`)
+	require.Len(t, july.Revisions, 1)
+	assert.JSONEq(t, `{"schema":1,"amount_per_share":{"value":"17","scale":1},"listing_currency":"EUR"}`, july.Revisions[0].EvidenceJSON)
 	april = suggestionForExDate(t, after, "2026-04-28")
 	assert.Equal(t, "ignored", april.Status)
 	assert.Equal(t, "ignored", april.EventStatus)
+	require.Len(t, april.Revisions, 1, "an unreadable first amount later stated is a revision")
+	assert.JSONEq(t, `{"schema":1,"amount_per_share":{"value":"184","scale":2},"listing_currency":"EUR"}`, april.Revisions[0].EvidenceJSON)
 	var events, dividends int
 	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM investment_provider_events`).Scan(&events))
 	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM investment_operations WHERE operation_kind = 'dividend'`).Scan(&dividends))
 	assert.Equal(t, 2, events)
 	assert.Equal(t, 1, dividends)
 	assert.Equal(t, int32(3), f.calls.Load())
+}
+
+func TestProviderDividendRevisionWhilePendingIsEvidenceOnly(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newDividendEventFixture(t)
+	f.fetch(t)
+	before := suggestionForExDate(t, f.suggestions(t), "2026-07-29")
+	revisionAudits := func() int {
+		var count int
+		require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM audit_events WHERE operation = 'investment.provider_event.revise'`).Scan(&count))
+		return count
+	}
+	body := func(amount string) string {
+		return `{"meta":{"symbol":"ASML","currency":"EUR","mic_code":"XAMS"},"dividends":[{"ex_date":"2026-07-29","amount":` + amount + `}]}`
+	}
+
+	// The same announcement written differently (1.60 vs 1.6) is not a revision.
+	f.body.Store(body(`"1.60"`))
+	f.fetch(t)
+	assert.Empty(t, suggestionForExDate(t, f.suggestions(t), "2026-07-29").Revisions)
+	assert.Equal(t, 0, revisionAudits())
+
+	// A differing amount is appended once per distinct content, each under
+	// its own audit event; re-fetching it changes nothing.
+	f.body.Store(body("1.7"))
+	f.fetch(t)
+	f.fetch(t)
+	f.body.Store(body("1.70"))
+	f.fetch(t)
+	assert.Equal(t, 1, revisionAudits())
+	// Returning to the first amount is the first observation, not a revision.
+	f.body.Store(body("1.6"))
+	f.fetch(t)
+	f.body.Store(body("1.8"))
+	f.fetch(t)
+	assert.Equal(t, 2, revisionAudits())
+
+	july := suggestionForExDate(t, f.suggestions(t), "2026-07-29")
+	require.Len(t, july.Revisions, 2)
+	assert.Contains(t, july.Revisions[0].EvidenceJSON, `"value":"17"`)
+	assert.Contains(t, july.Revisions[1].EvidenceJSON, `"value":"18"`)
+	assert.Equal(t, "suggested", july.Status)
+	assert.Equal(t, "new", july.EventStatus)
+	assert.Equal(t, before.EventEvidenceJSON, july.EventEvidenceJSON, "the first observation stays the event's evidence")
+	assert.Equal(t, before.ProposedTransactionJSON, july.ProposedTransactionJSON)
+	assert.Equal(t, before.UpdatedAt, july.UpdatedAt)
+	var suggestionsCount, raw int
+	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM investment_event_suggestions`).Scan(&suggestionsCount))
+	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM investment_provider_event_revisions WHERE raw_json LIKE '%1.8%'`).Scan(&raw))
+	assert.Equal(t, 2, suggestionsCount, "a revision never queues a second review")
+	assert.Equal(t, 1, raw, "the revision keeps the provider's raw row")
+
+	// Revision evidence is immutable.
+	_, err := f.database.Exec(`UPDATE investment_provider_event_revisions SET content_key = 'x'`)
+	require.Error(t, err)
+	_, err = f.database.Exec(`DELETE FROM investment_provider_event_revisions`)
+	require.Error(t, err)
+
+	// The pending suggestion is still completed from the owner's statement.
+	accepted, err := f.investmentSvc.AcceptSuggestionWithCompletion(ctx, 1, 0, "req", july.ID, f.completion("2026-08-14", 1800))
+	require.NoError(t, err)
+	assert.Equal(t, "accepted", accepted.Status)
+}
+
+func TestProviderDividendRevisionAfterLinkLeavesLinkAndPayment(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newDividendEventFixture(t)
+	f.fetch(t)
+	july := suggestionForExDate(t, f.suggestions(t), "2026-07-29")
+	recorded, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: &f.instrument.CommodityID,
+		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID, AmountValue: 1600, AmountScale: 2})
+	require.NoError(t, err)
+	linked, err := f.investmentSvc.LinkSuggestion(ctx, 1, 0, "req", july.ID, recorded.ID)
+	require.NoError(t, err)
+	versionsBefore := countTransactions(t, f.database)
+
+	f.body.Store(`{"meta":{"symbol":"ASML","currency":"EUR","mic_code":"XAMS"},"dividends":[{"ex_date":"2026-07-29","amount":1.65}]}`)
+	f.fetch(t)
+
+	july = suggestionForExDate(t, f.suggestions(t), "2026-07-29")
+	require.Len(t, july.Revisions, 1)
+	assert.Equal(t, "linked", july.Status)
+	assert.Equal(t, "matched", july.EventStatus)
+	assert.Equal(t, linked.LinkedTransactionID, july.LinkedTransactionID)
+	assert.Equal(t, linked.UpdatedAt, july.UpdatedAt)
+	assert.Equal(t, versionsBefore, countTransactions(t, f.database), "a revision never posts or corrects a dividend")
 }
 
 func TestIncompleteProviderDividendNeedsOwnerCompletionAndStaysPending(t *testing.T) {

@@ -283,6 +283,9 @@ func TestMigrateSeededBaselineMatchesFreshSchema(t *testing.T) {
 	// #234 adds empty immutable report storage; existing figures stay exact.
 	assert.Equal(t, "0", after["count:investment_gains_runs"])
 	delete(after, "count:investment_gains_runs")
+	// #254 adds empty append-only provider revision evidence.
+	assert.Equal(t, "0", after["count:investment_provider_event_revisions"])
+	delete(after, "count:investment_provider_event_revisions")
 	delete(before, "count:goose_db_version")
 	delete(after, "count:goose_db_version")
 
@@ -1263,7 +1266,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(11), version, "the head links provider events to owner-recorded dividends")
+	assert.Equal(t, int64(12), version, "the head records provider event revisions")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))
@@ -1292,15 +1295,18 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 		objectCounts[kind]++
 	}
 	assert.Equal(t, map[string]int{
-		"index":   114,
-		"table":   114,
-		"trigger": 154,
+		"index":   116,
+		"table":   115,
+		"trigger": 157,
 		"view":    15,
 	}, objectCounts, "the migrated head must retain every schema object")
 	assert.Equal(t, "table", objects["investment_gains_runs"])
 	assert.Equal(t, "index", objects["investment_event_suggestions_generated_idx"])
 	assert.Equal(t, "index", objects["investment_event_suggestions_linked_idx"])
 	assert.Equal(t, "index", objects["investment_event_suggestions_event_idx"])
+	assert.Equal(t, "table", objects["investment_provider_event_revisions"])
+	assert.Equal(t, "index", objects["investment_provider_event_revisions_content_idx"])
+	assert.Equal(t, "trigger", objects["investment_provider_event_revisions_no_update"])
 	assert.Equal(t, "trigger", objects["investment_gains_runs_no_update"])
 	assert.Equal(t, "trigger", objects["investment_gains_runs_no_delete"])
 	assert.Equal(t, "table", objects["price_observation_dependencies"])

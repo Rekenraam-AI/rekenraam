@@ -1759,6 +1759,14 @@ func TestProviderDividendSuggestionCompletionLinkAndFetch_HTTP(t *testing.T) {
 	// A payment without an instrument fact is no candidate for this event.
 	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, path(linkID, "link"), linkEventSuggestionRequest{TransactionID: *accepted.GeneratedTransactionID}, http.StatusBadRequest)
 
+	// #254: a provider revision of the accepted event is listed beside it.
+	_, err := database.ExecContext(ctx, `
+		INSERT INTO investment_provider_event_revisions (book_id, provider_event_id, content_key, normalized_json, raw_json, observed_at, created_audit_event_id)
+		SELECT 1, provider_event_id, 'k', '{"schema":1,"amount_per_share":{"value":"17","scale":1},"listing_currency":"EUR"}', '{}', '2026-06-20T00:00:00Z',
+			(SELECT max(id) FROM audit_events)
+		FROM investment_event_suggestions WHERE id = ?`, acceptID)
+	require.NoError(t, err)
+
 	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/event-suggestions", nil, http.StatusOK)
 	var listed investmentEventSuggestionsResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&listed))
@@ -1766,6 +1774,15 @@ func TestProviderDividendSuggestionCompletionLinkAndFetch_HTTP(t *testing.T) {
 	for _, suggestion := range listed.Suggestions {
 		assert.JSONEq(t, `{"schema":1,"missing":["payment_date"]}`, string(suggestion.Evidence))
 		assert.NotNil(t, suggestion.LinkCandidates, "candidates serialize as a list")
+		assert.NotNil(t, suggestion.Revisions, "revisions serialize as a list")
+		if suggestion.ID == acceptID {
+			require.Len(t, suggestion.Revisions, 1)
+			assert.Equal(t, "2026-06-20T00:00:00Z", suggestion.Revisions[0].ObservedAt)
+			assert.Contains(t, string(suggestion.Revisions[0].Evidence), `"value":"17"`)
+			assert.Equal(t, "accepted", suggestion.Status, "a revision never reopens a decision")
+		} else {
+			assert.Empty(t, suggestion.Revisions)
+		}
 	}
 
 	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/event-suggestions/fetch", struct{}{}, http.StatusAccepted)

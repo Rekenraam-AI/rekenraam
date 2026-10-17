@@ -396,8 +396,13 @@ retained row becomes one immutable event keyed by
 `twelve_data:dividend:{symbol}:{mic}:{ex_date}` (two amounts for one ex-date
 refuse the response). A later different amount for a staged ex-date is not
 re-staged: the first observation and the owner's decision stand, and the
-owner supplies the received amount anyway. Surfacing such revisions as
-evidence is [#254](https://github.com/sergeyfarin/rekenraam/issues/254). Because the payment date, cash,
+owner supplies the received amount anyway. Since there is no revision
+identity, a revision is only a content difference (exact per-share amount or
+listing currency, never the ledger-derived holdings) for the same identity;
+each distinct content is appended once as immutable revision evidence with
+its raw row and shown as "provider revised: old → new" on the suggestion
+([#254](https://github.com/sergeyfarin/rekenraam/issues/254)). A return to the first announced amount is not
+recorded again. Because the payment date, cash,
 currency and withholding are never stated, every proposal is incomplete by
 design; the owner's statement completes it. Short holdings make the event
 informational. There is no scheduler and no automation-rule auto-post; the
