@@ -44,7 +44,8 @@ What it does and does not do:
   password again, so a stolen session cannot change what protects the account.
 - Recovery codes are the only remote way back in if the authenticator is lost.
   There is no server-side bypass, by design. With both gone, the last resort is
-  the `recover-owner` command on the host, which resets the owner password and
+  the `recover-owner` command on the host, with the server stopped (it refuses
+  while the server holds the database), which resets the owner password and
   clears the enrolment in the same transaction — it already requires filesystem
   access to the database, so an enrolment must not outlast it.
 
@@ -124,7 +125,9 @@ incident-response aid, not a permanent sign-in archive.
 
 ## Login throttling and approved devices
 
-Failed logins are throttled at five attempts per fifteen minutes. Because a
+Failed logins are throttled at five attempts per fifteen minutes. Attempts
+still being verified count against that budget, so sending guesses in parallel
+does not get more of them checked (#285). Because a
 single-owner install publishes its owner's username by construction, a plain
 username-scoped throttle would be a remote lockout switch: anyone could fail
 five logins and keep the owner out of their own finances indefinitely.

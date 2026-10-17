@@ -243,15 +243,17 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (LoginResult,
 		return LoginResult{}, err
 	}
 	scopes, trustedDevice, deviceTrusted := s.loginThrottleScopesForAttempt(ctx, input, username)
-	if blockedUntil, err := s.isLoginBlocked(ctx, scopes); err != nil {
-		return LoginResult{}, fmt.Errorf("check login throttle: %w", err)
-	} else if !blockedUntil.IsZero() {
-		s.recordAuthEvent(ctx, db.AuthenticationEventParams{
-			EventType: authEventLoginBlocked, Outcome: "failure", Username: username,
-			ClientIP: input.ClientIP, FailureReason: authFailureRateLimited, RequestID: input.RequestID,
-		})
-		return LoginResult{}, RateLimitError{RetryAfter: time.Until(blockedUntil)}
+	reservation, err := s.reserveAttempt(ctx, scopes)
+	if err != nil {
+		if errors.Is(err, ErrRateLimited) {
+			s.recordAuthEvent(ctx, db.AuthenticationEventParams{
+				EventType: authEventLoginBlocked, Outcome: "failure", Username: username,
+				ClientIP: input.ClientIP, FailureReason: authFailureRateLimited, RequestID: input.RequestID,
+			})
+		}
+		return LoginResult{}, err
 	}
+	defer reservation.release(ctx)
 
 	ownerExists, err := s.repository.OwnerExists(ctx)
 	if err != nil {
@@ -267,16 +269,16 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (LoginResult,
 			// Constant-time dummy comparison prevents timing oracle distinguishing
 			// "no such user" from "wrong password".
 			_, _ = verifyPassword(input.Password, dummyPasswordHash)
-			blockedUntil, err := s.recordLoginFailure(ctx, scopes)
+			retryAfter, err := reservation.fail(ctx)
 			if err != nil {
-				return LoginResult{}, fmt.Errorf("record login throttle failure: %w", err)
+				return LoginResult{}, err
 			}
 			s.recordAuthEvent(ctx, db.AuthenticationEventParams{
 				EventType: authEventLoginFailed, Outcome: "failure", Username: username,
 				ClientIP: input.ClientIP, FailureReason: authFailureUnknownUser, RequestID: input.RequestID,
 			})
-			if !blockedUntil.IsZero() {
-				return LoginResult{}, RateLimitError{RetryAfter: time.Until(blockedUntil)}
+			if retryAfter > 0 {
+				return LoginResult{}, RateLimitError{RetryAfter: retryAfter}
 			}
 			return LoginResult{}, ErrInvalidCredentials
 		}
@@ -289,17 +291,17 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (LoginResult,
 		return LoginResult{}, fmt.Errorf("verify password: %w", err)
 	}
 	if !verified {
-		blockedUntil, err := s.recordLoginFailure(ctx, scopes)
+		retryAfter, err := reservation.fail(ctx)
 		if err != nil {
-			return LoginResult{}, fmt.Errorf("record login throttle failure: %w", err)
+			return LoginResult{}, err
 		}
 		s.recordAuthEvent(ctx, db.AuthenticationEventParams{
 			EventType: authEventLoginFailed, Outcome: "failure", Username: username,
 			UserID: credentials.ID, ClientIP: input.ClientIP,
 			FailureReason: authFailureInvalidCredentials, RequestID: input.RequestID,
 		})
-		if !blockedUntil.IsZero() {
-			return LoginResult{}, RateLimitError{RetryAfter: time.Until(blockedUntil)}
+		if retryAfter > 0 {
+			return LoginResult{}, RateLimitError{RetryAfter: retryAfter}
 		}
 		return LoginResult{}, ErrInvalidCredentials
 	}
@@ -322,7 +324,8 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (LoginResult,
 	// The password is proved; whether that is a login depends on the second
 	// factor (S-06). With MFA active this attempt gets a short-lived challenge
 	// and no session, no device approval, and no throttle reset — none of
-	// those are earned until the second factor verifies.
+	// those are earned until the second factor verifies. Its throttle place is
+	// given back: a correct password is not a failure.
 	mfaActive, err := s.mfaActive(ctx, credentials.ID)
 	if err != nil {
 		return LoginResult{}, err
@@ -345,7 +348,7 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (LoginResult,
 		Username:      credentials.Username,
 		ClientIP:      input.ClientIP,
 		RequestID:     input.RequestID,
-		Scopes:        scopes,
+		Reservation:   reservation,
 		TrustedDevice: trustedDevice,
 		DeviceTrusted: deviceTrusted,
 	})
@@ -360,7 +363,7 @@ type completeLoginInput struct {
 	Username      string
 	ClientIP      string
 	RequestID     string
-	Scopes        []loginThrottleScope
+	Reservation   *throttleReservation
 	TrustedDevice db.TrustedDeviceRecord
 	DeviceTrusted bool
 }
@@ -373,25 +376,44 @@ func (s *AuthService) completeLogin(ctx context.Context, input completeLoginInpu
 
 	now := s.now().UTC()
 	createdAt := now.Format(time.RFC3339)
-	sessionID, err := s.repository.CreateSession(ctx, db.CreateSessionParams{
-		UserID:    input.UserID,
-		TokenHash: sessionTokenHash,
-		CreatedAt: createdAt,
-		ExpiresAt: sessionExpiresAt(now, s.sessionLifetime),
-	})
+	clears, refunds := input.Reservation.successSettlement()
+	params := db.CompleteLoginParams{
+		Session: db.CreateSessionParams{
+			UserID:    input.UserID,
+			TokenHash: sessionTokenHash,
+			CreatedAt: createdAt,
+			ExpiresAt: sessionExpiresAt(now, s.sessionLifetime),
+		},
+		ClearThrottles:  clears,
+		RefundThrottles: refunds,
+	}
+	// Approve the device only now, after every factor actually verified.
+	trustedDeviceToken := ""
+	deviceExpiresAt := now.Add(TrustedDeviceLifetime).Format(time.RFC3339)
+	if input.DeviceTrusted {
+		params.TouchDeviceID = input.TrustedDevice.ID
+		params.DeviceUsedAt = createdAt
+		params.DeviceExpiresAt = deviceExpiresAt
+	} else {
+		var deviceTokenHash string
+		trustedDeviceToken, deviceTokenHash, err = newSessionToken()
+		if err != nil {
+			return LoginResult{}, fmt.Errorf("create trusted device token: %w", err)
+		}
+		params.NewDevice = &db.CreateTrustedDeviceParams{
+			UserID:          input.UserID,
+			TokenHash:       deviceTokenHash,
+			CreatedAt:       createdAt,
+			ExpiresAt:       deviceExpiresAt,
+			CreatedClientIP: input.ClientIP,
+		}
+	}
+	// One transaction (#287): a rejected attempt leaves no session behind.
+	sessionID, err := s.repository.CompleteLogin(ctx, params)
 	if err != nil {
 		return LoginResult{}, fmt.Errorf("persist auth session: %w", err)
 	}
-
-	if err := s.clearLoginFailures(ctx, input.Scopes); err != nil {
-		return LoginResult{}, fmt.Errorf("clear login throttle: %w", err)
-	}
-
-	// Approve the device only now, after every factor actually verified.
-	trustedDeviceToken, err := s.approveDevice(ctx, input.UserID, input.ClientIP, input.TrustedDevice, input.DeviceTrusted)
-	if err != nil {
-		return LoginResult{}, err
-	}
+	input.Reservation.settled = true
 
 	s.recordAuthEvent(ctx, db.AuthenticationEventParams{
 		EventType: authEventLoginSucceeded, Outcome: "success", Username: input.Username,
@@ -698,136 +720,6 @@ func (s *AuthService) passwordNeedsRehash(ctx context.Context, encodedHash strin
 		len(parsedHash.Hash) != argon2KeyLength
 }
 
-func (s *AuthService) isLoginBlocked(ctx context.Context, scopes []loginThrottleScope) (time.Time, error) {
-	for _, scope := range scopes {
-		blockedUntil, err := s.isScopeBlocked(ctx, scope)
-		if err != nil {
-			return time.Time{}, err
-		}
-		if !blockedUntil.IsZero() {
-			return blockedUntil, nil
-		}
-	}
-
-	return time.Time{}, nil
-}
-
-func (s *AuthService) recordLoginFailure(ctx context.Context, scopes []loginThrottleScope) (time.Time, error) {
-	var latestBlock time.Time
-	for _, scope := range scopes {
-		blockedUntil, err := s.recordScopeLoginFailure(ctx, scope)
-		if err != nil {
-			return time.Time{}, err
-		}
-		if blockedUntil.After(latestBlock) {
-			latestBlock = blockedUntil
-		}
-	}
-
-	return latestBlock, nil
-}
-
-func (s *AuthService) clearLoginFailures(ctx context.Context, scopes []loginThrottleScope) error {
-	for _, scope := range scopes {
-		// Only clear the username- and device-scoped throttles on success. The
-		// IP-scoped throttle is intentionally kept: clearing it on a successful
-		// login from the same IP would un-block an attacker sharing a NAT
-		// address with the legitimate user.
-		if scope.ScopeType != throttleScopeUsername && scope.ScopeType != throttleScopeTrustedDevice {
-			continue
-		}
-		if err := s.repository.DeleteLoginThrottle(ctx, scope.ScopeType, scope.ScopeKey); err != nil {
-			return fmt.Errorf("delete login throttle: %w", err)
-		}
-	}
-
-	return nil
-
-}
-
-func (s *AuthService) isScopeBlocked(ctx context.Context, scope loginThrottleScope) (time.Time, error) {
-	record, err := s.repository.ReadLoginThrottle(ctx, scope.ScopeType, scope.ScopeKey)
-	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			return time.Time{}, nil
-		}
-
-		return time.Time{}, fmt.Errorf("read login throttle: %w", err)
-	}
-
-	if !record.BlockedUntil.Valid {
-		return time.Time{}, nil
-	}
-
-	blockedUntil, err := time.Parse(time.RFC3339, record.BlockedUntil.String)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("parse login throttle blocked_until: %w", err)
-	}
-	if blockedUntil.After(s.now()) {
-		return blockedUntil, nil
-	}
-
-	// Best-effort cleanup: stale throttle record delete failure must not block login.
-	_ = s.repository.DeleteLoginThrottle(ctx, scope.ScopeType, scope.ScopeKey)
-
-	return time.Time{}, nil
-}
-
-func (s *AuthService) recordScopeLoginFailure(ctx context.Context, scope loginThrottleScope) (time.Time, error) {
-	record, err := s.repository.ReadLoginThrottle(ctx, scope.ScopeType, scope.ScopeKey)
-	if err != nil && !errors.Is(err, db.ErrNotFound) {
-		return time.Time{}, fmt.Errorf("read login throttle: %w", err)
-	}
-
-	now := s.now().UTC()
-	failedAttempts := 1
-	var blockedUntil *string
-	var blockedUntilTime time.Time
-
-	if err == nil {
-		if record.BlockedUntil.Valid {
-			existingBlockedUntil, parseErr := time.Parse(time.RFC3339, record.BlockedUntil.String)
-			if parseErr != nil {
-				return time.Time{}, fmt.Errorf("parse login throttle blocked_until: %w", parseErr)
-			}
-			if existingBlockedUntil.After(now) {
-				blocked := existingBlockedUntil.Format(time.RFC3339)
-				if upsertErr := s.repository.UpsertLoginThrottle(ctx, db.UpsertLoginThrottleParams{
-					ScopeType:      scope.ScopeType,
-					ScopeKey:       scope.ScopeKey,
-					FailedAttempts: record.FailedAttempts,
-					BlockedUntil:   &blocked,
-					UpdatedAt:      now.Format(time.RFC3339),
-				}); upsertErr != nil {
-					return time.Time{}, fmt.Errorf("refresh active login throttle: %w", upsertErr)
-				}
-				return existingBlockedUntil, nil
-			}
-		}
-
-		failedAttempts = record.FailedAttempts + 1
-	}
-
-	if failedAttempts >= loginThrottleMaxFailures {
-		blockedUntilTime = now.Add(loginThrottleWindow)
-		blocked := blockedUntilTime.Format(time.RFC3339)
-		blockedUntil = &blocked
-		failedAttempts = 0
-	}
-
-	if err := s.repository.UpsertLoginThrottle(ctx, db.UpsertLoginThrottleParams{
-		ScopeType:      scope.ScopeType,
-		ScopeKey:       scope.ScopeKey,
-		FailedAttempts: failedAttempts,
-		BlockedUntil:   blockedUntil,
-		UpdatedAt:      now.Format(time.RFC3339),
-	}); err != nil {
-		return time.Time{}, fmt.Errorf("upsert login throttle: %w", err)
-	}
-
-	return blockedUntilTime, nil
-}
-
 func loginThrottleScopes(username string, clientIP string) []loginThrottleScope {
 	scopes := []loginThrottleScope{{ScopeType: throttleScopeUsername, ScopeKey: username}}
 	clientIP = strings.TrimSpace(clientIP)
@@ -943,7 +835,7 @@ func (s *AuthService) ApproveDeviceForUser(ctx context.Context, userID int64, cl
 	if userID <= 0 {
 		return "", 0, ValidationError{Message: "user is required"}
 	}
-	token, err := s.approveDevice(ctx, userID, clientIP, db.TrustedDeviceRecord{}, false)
+	token, err := s.approveDevice(ctx, userID, clientIP)
 	if err != nil {
 		return "", 0, err
 	}
@@ -951,19 +843,11 @@ func (s *AuthService) ApproveDeviceForUser(ctx context.Context, userID int64, cl
 	return token, TrustedDeviceLifetime, nil
 }
 
-// approveDevice issues a new approved-device token, or extends the one the
-// caller already presented. Called only after a password has actually
-// verified, so approval always follows proof of the credential.
-func (s *AuthService) approveDevice(ctx context.Context, userID int64, clientIP string, device db.TrustedDeviceRecord, trusted bool) (string, error) {
+// approveDevice issues a new approved-device token. Called only after a
+// password has actually verified, so approval always follows proof of the
+// credential. Sign-in approves inside its own transaction (completeLogin).
+func (s *AuthService) approveDevice(ctx context.Context, userID int64, clientIP string) (string, error) {
 	now := s.now().UTC()
-	expiresAt := now.Add(TrustedDeviceLifetime).Format(time.RFC3339)
-	if trusted {
-		if err := s.repository.TouchTrustedDevice(ctx, device.ID, now.Format(time.RFC3339), expiresAt); err != nil {
-			return "", fmt.Errorf("touch trusted device: %w", err)
-		}
-		return "", nil
-	}
-
 	token, tokenHash, err := newSessionToken()
 	if err != nil {
 		return "", fmt.Errorf("create trusted device token: %w", err)
@@ -972,7 +856,7 @@ func (s *AuthService) approveDevice(ctx context.Context, userID int64, clientIP 
 		UserID:          userID,
 		TokenHash:       tokenHash,
 		CreatedAt:       now.Format(time.RFC3339),
-		ExpiresAt:       expiresAt,
+		ExpiresAt:       now.Add(TrustedDeviceLifetime).Format(time.RFC3339),
 		CreatedClientIP: clientIP,
 	}); err != nil {
 		return "", fmt.Errorf("create trusted device: %w", err)

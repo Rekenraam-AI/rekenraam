@@ -125,19 +125,75 @@ func (r *AuthRepository) ReadOwnerCredentialsByID(ctx context.Context, userID in
 	return record, nil
 }
 
-// CreateSession returns the new session id so an authentication event can be
-// correlated with the session it created (S-07).
-func (r *AuthRepository) CreateSession(ctx context.Context, params CreateSessionParams) (int64, error) {
-	result, err := r.database.ExecContext(ctx, `
+// ThrottleScopeKey names one login_throttles row.
+type ThrottleScopeKey struct {
+	ScopeType string
+	ScopeKey  string
+}
+
+// CompleteLoginParams is everything a verified sign-in writes. Device is the
+// approved device to extend, or NewDevice the one to create; at most one is
+// set.
+type CompleteLoginParams struct {
+	Session         CreateSessionParams
+	ClearThrottles  []ThrottleScopeKey
+	RefundThrottles []ThrottleScopeKey
+	TouchDeviceID   int64
+	DeviceUsedAt    string
+	DeviceExpiresAt string
+	NewDevice       *CreateTrustedDeviceParams
+}
+
+// CompleteLogin writes the session, settles the attempt's throttle places and
+// approves the device in one transaction (#287), and returns the session id
+// so an authentication event can be correlated with it (S-07). A failure in
+// any of them leaves no session behind.
+func (r *AuthRepository) CompleteLogin(ctx context.Context, params CompleteLoginParams) (int64, error) {
+	tx, err := r.database.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin login transaction: %w", err)
+	}
+	defer rollbackTx(ctx, tx)
+
+	result, err := tx.ExecContext(ctx, `
 		INSERT INTO auth_sessions (user_id, token_hash, created_at, expires_at, revoked_at)
 		VALUES (?, ?, ?, ?, NULL)
-	`, params.UserID, params.TokenHash, params.CreatedAt, params.ExpiresAt)
+	`, params.Session.UserID, params.Session.TokenHash, params.Session.CreatedAt, params.Session.ExpiresAt)
 	if err != nil {
 		return 0, fmt.Errorf("insert auth session: %w", err)
 	}
 	sessionID, err := result.LastInsertId()
 	if err != nil {
 		return 0, fmt.Errorf("read auth session id: %w", err)
+	}
+	for _, scope := range params.ClearThrottles {
+		if err := deleteLoginThrottleExec(ctx, tx, scope.ScopeType, scope.ScopeKey); err != nil {
+			return 0, err
+		}
+	}
+	for _, scope := range params.RefundThrottles {
+		if err := refundLoginAttemptExec(ctx, tx, scope.ScopeType, scope.ScopeKey); err != nil {
+			return 0, err
+		}
+	}
+	// Extending a used device slides its expiry forward, so a device in
+	// regular use never lapses and an abandoned one does.
+	if params.TouchDeviceID > 0 {
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE login_trusted_devices
+			SET last_used_at = ?, expires_at = ?
+			WHERE id = ? AND revoked_at IS NULL
+		`, params.DeviceUsedAt, params.DeviceExpiresAt, params.TouchDeviceID); err != nil {
+			return 0, fmt.Errorf("touch login trusted device: %w", err)
+		}
+	}
+	if params.NewDevice != nil {
+		if err := createTrustedDeviceExec(ctx, tx, *params.NewDevice); err != nil {
+			return 0, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit login transaction: %w", err)
 	}
 
 	return sessionID, nil
@@ -213,32 +269,67 @@ func (r *AuthRepository) UpdatePasswordHash(ctx context.Context, params UpdatePa
 	return nil
 }
 
-func (r *AuthRepository) ReadLoginThrottle(ctx context.Context, scopeType string, scopeKey string) (LoginThrottleRecord, error) {
+// UpdateLoginThrottle reads one throttle row and writes what decide returns,
+// in one transaction (#285). Throttle admission and settlement are each a
+// read-modify-write; done as separate statements, two overlapping attempts
+// read the same count and one of them is lost. found is false when no row
+// exists; a nil result writes nothing. decide must not touch the database.
+func (r *AuthRepository) UpdateLoginThrottle(ctx context.Context, scopeType string, scopeKey string, decide func(current LoginThrottleRecord, found bool) (*UpsertLoginThrottleParams, error)) error {
+	tx, err := r.database.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin login throttle transaction: %w", err)
+	}
+	defer rollbackTx(ctx, tx)
+
 	var record LoginThrottleRecord
-	if err := r.database.QueryRowContext(ctx, `
+	found := true
+	if err := tx.QueryRowContext(ctx, `
 		SELECT scope_type, scope_key, failed_attempts, blocked_until, updated_at
 		FROM login_throttles
 		WHERE scope_type = ? AND scope_key = ?
 	`, scopeType, scopeKey).Scan(&record.ScopeType, &record.ScopeKey, &record.FailedAttempts, &record.BlockedUntil, &record.UpdatedAt); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return LoginThrottleRecord{}, ErrNotFound
+		if !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("read login throttle: %w", err)
 		}
-		return LoginThrottleRecord{}, fmt.Errorf("read login throttle: %w", err)
+		found = false
+	}
+	next, err := decide(record, found)
+	if err != nil {
+		return err
+	}
+	if next != nil {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO login_throttles (scope_type, scope_key, failed_attempts, blocked_until, updated_at)
+			VALUES (?, ?, ?, ?, ?)
+			ON CONFLICT(scope_type, scope_key) DO UPDATE SET
+				failed_attempts = excluded.failed_attempts,
+				blocked_until = excluded.blocked_until,
+				updated_at = excluded.updated_at
+		`, scopeType, scopeKey, next.FailedAttempts, next.BlockedUntil, next.UpdatedAt); err != nil {
+			return fmt.Errorf("upsert login throttle: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit login throttle transaction: %w", err)
 	}
 
-	return record, nil
+	return nil
 }
 
-func (r *AuthRepository) UpsertLoginThrottle(ctx context.Context, params UpsertLoginThrottleParams) error {
-	if _, err := r.database.ExecContext(ctx, `
-		INSERT INTO login_throttles (scope_type, scope_key, failed_attempts, blocked_until, updated_at)
-		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT(scope_type, scope_key) DO UPDATE SET
-			failed_attempts = excluded.failed_attempts,
-			blocked_until = excluded.blocked_until,
-			updated_at = excluded.updated_at
-	`, params.ScopeType, params.ScopeKey, params.FailedAttempts, params.BlockedUntil, params.UpdatedAt); err != nil {
-		return fmt.Errorf("upsert login throttle: %w", err)
+// RefundLoginAttempt gives back one admitted attempt's place. A blocked row
+// is left alone: a block is never shortened by an attempt that settled after
+// it.
+func (r *AuthRepository) RefundLoginAttempt(ctx context.Context, scopeType string, scopeKey string) error {
+	return refundLoginAttemptExec(ctx, r.database, scopeType, scopeKey)
+}
+
+func refundLoginAttemptExec(ctx context.Context, exec execContexter, scopeType string, scopeKey string) error {
+	if _, err := exec.ExecContext(ctx, `
+		UPDATE login_throttles
+		SET failed_attempts = MAX(failed_attempts - 1, 0)
+		WHERE scope_type = ? AND scope_key = ? AND blocked_until IS NULL
+	`, scopeType, scopeKey); err != nil {
+		return fmt.Errorf("refund login attempt: %w", err)
 	}
 
 	return nil
@@ -350,7 +441,11 @@ type CreateTrustedDeviceParams struct {
 }
 
 func (r *AuthRepository) CreateTrustedDevice(ctx context.Context, params CreateTrustedDeviceParams) error {
-	if _, err := r.database.ExecContext(ctx, `
+	return createTrustedDeviceExec(ctx, r.database, params)
+}
+
+func createTrustedDeviceExec(ctx context.Context, exec execContexter, params CreateTrustedDeviceParams) error {
+	if _, err := exec.ExecContext(ctx, `
 		INSERT INTO login_trusted_devices (user_id, token_hash, created_at, last_used_at, expires_at, created_client_ip)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`, params.UserID, params.TokenHash, params.CreatedAt, params.CreatedAt, params.ExpiresAt, params.CreatedClientIP); err != nil {
@@ -376,20 +471,6 @@ func (r *AuthRepository) ReadTrustedDevice(ctx context.Context, tokenHash string
 	}
 
 	return record, nil
-}
-
-// TouchTrustedDevice records use and slides the expiry forward, so a device in
-// regular use never lapses and an abandoned one does.
-func (r *AuthRepository) TouchTrustedDevice(ctx context.Context, deviceID int64, now string, expiresAt string) error {
-	if _, err := r.database.ExecContext(ctx, `
-		UPDATE login_trusted_devices
-		SET last_used_at = ?, expires_at = ?
-		WHERE id = ? AND revoked_at IS NULL
-	`, now, expiresAt, deviceID); err != nil {
-		return fmt.Errorf("touch login trusted device: %w", err)
-	}
-
-	return nil
 }
 
 func (r *AuthRepository) ListTrustedDevices(ctx context.Context, userID int64, now string) ([]TrustedDeviceRecord, error) {
@@ -457,7 +538,11 @@ func (r *AuthRepository) DeleteExpiredOrRevokedTrustedDevices(ctx context.Contex
 }
 
 func (r *AuthRepository) DeleteLoginThrottle(ctx context.Context, scopeType string, scopeKey string) error {
-	if _, err := r.database.ExecContext(ctx, `DELETE FROM login_throttles WHERE scope_type = ? AND scope_key = ?`, scopeType, scopeKey); err != nil {
+	return deleteLoginThrottleExec(ctx, r.database, scopeType, scopeKey)
+}
+
+func deleteLoginThrottleExec(ctx context.Context, exec execContexter, scopeType string, scopeKey string) error {
+	if _, err := exec.ExecContext(ctx, `DELETE FROM login_throttles WHERE scope_type = ? AND scope_key = ?`, scopeType, scopeKey); err != nil {
 		return fmt.Errorf("delete login throttle: %w", err)
 	}
 

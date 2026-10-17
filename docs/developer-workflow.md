@@ -254,7 +254,10 @@ with a new measurement here.
 
 ### Local Owner Recovery
 
-Reset the owner password locally with a verified SQLite backup first:
+Stop the server first: the command holds the same database lock as the
+server and `restore`, and refuses while the server runs, so no in-flight
+sign-in can finish with the old password after the reset (#286). Reset the
+owner password locally with a verified SQLite backup first:
 
 ```sh
 printf '%s\n' 'new-password' | DATABASE_URL=file:var/dev.sqlite ./scripts/go-backend.sh run ./cmd/rekenraam recover-owner --password-stdin

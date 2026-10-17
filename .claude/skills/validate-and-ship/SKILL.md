@@ -526,6 +526,20 @@ non-trivial diff (yours or reviewed):
     lifetimes must match persisted session/device policy too (#263); test both
     password and completed-MFA HTTP consumers and existing-device renewal.
 
+48. **A budget checked before a verifier and recorded after it** — the sign-in
+    and reauthentication throttles read the counter, ran Argon2, then wrote
+    count+1: overlapping failures were lost and 16 parallel guesses all got
+    verified against a budget of 5 (#285). Every verifier entry point reserves
+    a place atomically first (`reserveAttempt`) and defers `release`. Count
+    verifications from the auth log in a parallel burst, not the response
+    codes (a `429` can follow a checked guess). Partial identity writes
+    belong in one transaction (#287), and a maintenance command that revokes
+    sessions must hold the server lock (#286). Named regressions:
+    `TestConcurrentPasswordGuessesNeverExceedTheBudget`,
+    `TestConcurrentReauthenticationGuessesNeverExceedTheBudget`,
+    `TestFailedDeviceApprovalLeavesNoOrphanSession`,
+    `TestRecoverOwnerCommandRefusesWhileTheServerHoldsTheDatabase`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

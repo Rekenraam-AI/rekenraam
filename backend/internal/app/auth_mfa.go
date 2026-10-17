@@ -191,9 +191,11 @@ func (s *AuthService) ActivateTOTP(ctx context.Context, input ActivateMFAInput) 
 	if err != nil {
 		return nil, err
 	}
-	if err := s.checkReauthBudget(ctx, scope, input.UserID, input.ClientIP, input.RequestID); err != nil {
+	reservation, err := s.reserveReauth(ctx, scope, input.UserID, input.ClientIP, input.RequestID)
+	if err != nil {
 		return nil, err
 	}
+	defer reservation.release(ctx)
 	record, err := s.repository.ReadMFATOTP(ctx, input.UserID)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
@@ -211,12 +213,12 @@ func (s *AuthService) ActivateTOTP(ctx context.Context, input ActivateMFAInput) 
 	}
 	step, ok := totp.Validate(secret, input.Code, s.now().UTC(), mfaClockSkewSteps)
 	if !ok {
-		return nil, s.spendReauthBudget(ctx, scope, ErrMFACodeInvalid, db.AuthenticationEventParams{
+		return nil, s.failReauth(ctx, reservation, ErrMFACodeInvalid, db.AuthenticationEventParams{
 			EventType: authEventLoginFailed, Outcome: "failure", UserID: input.UserID,
 			ClientIP: input.ClientIP, FailureReason: authFailureMFAInvalid, RequestID: input.RequestID,
 		})
 	}
-	if err := s.clearReauthBudget(ctx, scope); err != nil {
+	if err := reservation.clear(ctx); err != nil {
 		return nil, err
 	}
 
@@ -320,33 +322,35 @@ func (s *AuthService) CompleteLoginMFA(ctx context.Context, input CompleteMFALog
 		ClientIP:           input.ClientIP,
 		TrustedDeviceToken: input.TrustedDeviceToken,
 	}, credentials.Username)
-	if blockedUntil, err := s.isLoginBlocked(ctx, scopes); err != nil {
-		return LoginResult{}, fmt.Errorf("check login throttle: %w", err)
-	} else if !blockedUntil.IsZero() {
-		s.recordAuthEvent(ctx, db.AuthenticationEventParams{
-			EventType: authEventLoginBlocked, Outcome: "failure", Username: credentials.Username,
-			UserID: credentials.ID, ClientIP: input.ClientIP,
-			FailureReason: authFailureRateLimited, RequestID: input.RequestID,
-		})
-		return LoginResult{}, RateLimitError{RetryAfter: time.Until(blockedUntil)}
+	reservation, err := s.reserveAttempt(ctx, scopes)
+	if err != nil {
+		if errors.Is(err, ErrRateLimited) {
+			s.recordAuthEvent(ctx, db.AuthenticationEventParams{
+				EventType: authEventLoginBlocked, Outcome: "failure", Username: credentials.Username,
+				UserID: credentials.ID, ClientIP: input.ClientIP,
+				FailureReason: authFailureRateLimited, RequestID: input.RequestID,
+			})
+		}
+		return LoginResult{}, err
 	}
+	defer reservation.release(ctx)
 
 	accepted, err := s.verifySecondFactor(ctx, credentials.ID, code, now, input.ClientIP)
 	if err != nil {
 		return LoginResult{}, err
 	}
 	if !accepted {
-		blockedUntil, throttleErr := s.recordLoginFailure(ctx, scopes)
+		retryAfter, throttleErr := reservation.fail(ctx)
 		if throttleErr != nil {
-			return LoginResult{}, fmt.Errorf("record login throttle failure: %w", throttleErr)
+			return LoginResult{}, throttleErr
 		}
 		s.recordAuthEvent(ctx, db.AuthenticationEventParams{
 			EventType: authEventLoginFailed, Outcome: "failure", Username: credentials.Username,
 			UserID: credentials.ID, ClientIP: input.ClientIP,
 			FailureReason: authFailureMFAInvalid, RequestID: input.RequestID,
 		})
-		if !blockedUntil.IsZero() {
-			return LoginResult{}, RateLimitError{RetryAfter: time.Until(blockedUntil)}
+		if retryAfter > 0 {
+			return LoginResult{}, RateLimitError{RetryAfter: retryAfter}
 		}
 		return LoginResult{}, ErrMFACodeInvalid
 	}
@@ -367,7 +371,7 @@ func (s *AuthService) CompleteLoginMFA(ctx context.Context, input CompleteMFALog
 		Username:      credentials.Username,
 		ClientIP:      input.ClientIP,
 		RequestID:     input.RequestID,
-		Scopes:        scopes,
+		Reservation:   reservation,
 		TrustedDevice: trustedDevice,
 		DeviceTrusted: deviceTrusted,
 	})
@@ -487,17 +491,20 @@ func newRecoveryCodeSet() (codes []string, hashes []string, err error) {
 // recorded like any other failed authentication, so an attacker probing from a
 // stolen session is visible in the log.
 //
-// Every confirmation checks the session's reauthentication budget before the
-// hash is computed, and a wrong one spends it (#262). Enrollment, disable, regeneration, and activation
-// share that one budget, so switching operation buys no extra guesses.
+// Every confirmation takes a place in the session's reauthentication budget
+// before the hash is computed, and a wrong one keeps it (#262, #285).
+// Enrollment, disable, regeneration, and activation share that one budget, so
+// switching operation buys no extra guesses.
 func (s *AuthService) verifyOwnerPassword(ctx context.Context, input MFAPasswordInput) (db.OwnerCredentialsRecord, error) {
 	scope, err := reauthThrottleScope(input.SessionID)
 	if err != nil {
 		return db.OwnerCredentialsRecord{}, err
 	}
-	if err := s.checkReauthBudget(ctx, scope, input.UserID, input.ClientIP, input.RequestID); err != nil {
+	reservation, err := s.reserveReauth(ctx, scope, input.UserID, input.ClientIP, input.RequestID)
+	if err != nil {
 		return db.OwnerCredentialsRecord{}, err
 	}
+	defer reservation.release(ctx)
 	if err := validateLoginPassword(input.Password); err != nil {
 		return db.OwnerCredentialsRecord{}, err
 	}
@@ -513,13 +520,13 @@ func (s *AuthService) verifyOwnerPassword(ctx context.Context, input MFAPassword
 		return db.OwnerCredentialsRecord{}, fmt.Errorf("verify password: %w", err)
 	}
 	if !verified {
-		return db.OwnerCredentialsRecord{}, s.spendReauthBudget(ctx, scope, ErrInvalidCredentials, db.AuthenticationEventParams{
+		return db.OwnerCredentialsRecord{}, s.failReauth(ctx, reservation, ErrInvalidCredentials, db.AuthenticationEventParams{
 			EventType: authEventLoginFailed, Outcome: "failure", Username: credentials.Username,
 			UserID: credentials.ID, ClientIP: input.ClientIP,
 			FailureReason: authFailureInvalidCredentials, RequestID: input.RequestID,
 		})
 	}
-	if err := s.clearReauthBudget(ctx, scope); err != nil {
+	if err := reservation.clear(ctx); err != nil {
 		return db.OwnerCredentialsRecord{}, err
 	}
 
@@ -542,47 +549,39 @@ func reauthThrottleScope(sessionID int64) (loginThrottleScope, error) {
 	return loginThrottleScope{ScopeType: throttleScopeReauthSession, ScopeKey: strconv.FormatInt(sessionID, 10)}, nil
 }
 
-// checkReauthBudget refuses a blocked session before any verifier runs, even
-// for correct input: a correct guess must not be distinguishable from a wrong
-// one while blocked.
-func (s *AuthService) checkReauthBudget(ctx context.Context, scope loginThrottleScope, userID int64, clientIP string, requestID string) error {
-	blockedUntil, err := s.isScopeBlocked(ctx, scope)
-	if err != nil {
-		return fmt.Errorf("check reauthentication throttle: %w", err)
+// reserveReauth admits one confirmation against the session's budget before
+// any verifier runs, and refuses a blocked session even for correct input: a
+// correct guess must not be distinguishable from a wrong one while blocked.
+func (s *AuthService) reserveReauth(ctx context.Context, scope loginThrottleScope, userID int64, clientIP string, requestID string) (*throttleReservation, error) {
+	reservation, err := s.reserveAttempt(ctx, []loginThrottleScope{scope})
+	if err == nil {
+		return reservation, nil
 	}
-	if blockedUntil.IsZero() {
-		return nil
+	if !errors.Is(err, ErrRateLimited) {
+		return nil, fmt.Errorf("check reauthentication throttle: %w", err)
 	}
 	s.recordAuthEvent(ctx, db.AuthenticationEventParams{
 		EventType: authEventLoginBlocked, Outcome: "failure", UserID: userID,
 		ClientIP: clientIP, FailureReason: authFailureRateLimited, RequestID: requestID,
 	})
 
-	return RateLimitError{RetryAfter: blockedUntil.Sub(s.now())}
+	return nil, err
 }
 
-// spendReauthBudget records a failed confirmation and returns the error the
-// caller should surface: the rate limit if this failure exhausted the budget,
+// failReauth records a failed confirmation and returns the error the caller
+// should surface: the rate limit if this failure exhausted the budget,
 // otherwise the verifier's own rejection.
-func (s *AuthService) spendReauthBudget(ctx context.Context, scope loginThrottleScope, rejection error, event db.AuthenticationEventParams) error {
-	blockedUntil, err := s.recordScopeLoginFailure(ctx, scope)
+func (s *AuthService) failReauth(ctx context.Context, reservation *throttleReservation, rejection error, event db.AuthenticationEventParams) error {
+	retryAfter, err := reservation.fail(ctx)
 	if err != nil {
 		return fmt.Errorf("record reauthentication throttle failure: %w", err)
 	}
 	s.recordAuthEvent(ctx, event)
-	if !blockedUntil.IsZero() {
-		return RateLimitError{RetryAfter: blockedUntil.Sub(s.now())}
+	if retryAfter > 0 {
+		return RateLimitError{RetryAfter: retryAfter}
 	}
 
 	return rejection
-}
-
-func (s *AuthService) clearReauthBudget(ctx context.Context, scope loginThrottleScope) error {
-	if err := s.repository.DeleteLoginThrottle(ctx, scope.ScopeType, scope.ScopeKey); err != nil {
-		return fmt.Errorf("clear reauthentication throttle: %w", err)
-	}
-
-	return nil
 }
 
 func (s *AuthService) requireMFASecretKey() error {

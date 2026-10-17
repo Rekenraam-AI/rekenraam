@@ -125,6 +125,10 @@ budgets are untouched.
    disposable deployment. Remote repository scanning settings and a human
    household dry run remain separate evidence.
 
+Item 1 was audited as #267: see the
+[identity concurrency audit](identity-concurrency-audit-2026-10-17.md)
+(#285/#286/#287 fixed, #288 open).
+
 These scopes are logged as further audits, not asserted vulnerabilities or a
 new provider prerequisite. They do not reopen a successful normal-flow test.
 The first checklist area can be evaluated with #262 open, provided the

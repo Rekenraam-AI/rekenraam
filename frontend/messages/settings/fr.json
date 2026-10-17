@@ -530,7 +530,7 @@
   "install_gate_preparing_title": "Préparation de votre espace de travail",
   "install_gate_progress_label": "Avancement de la configuration",
   "install_gate_quick_currencies_label": "Devises courantes",
-  "install_gate_recovery_backup_note": "La récupération crée d'abord une sauvegarde vérifiée, sauf si vous utilisez explicitement le contournement d'urgence.",
+  "install_gate_recovery_backup_note": "Arrêtez d'abord le serveur ; la commande refuse de s'exécuter tant qu'il tourne. La récupération crée d'abord une sauvegarde vérifiée, sauf si vous utilisez explicitement le contournement d'urgence.",
   "install_gate_recovery_command_label": "Commande de récupération",
   "install_gate_recovery_copy": "Le compte propriétaire et l'étape de configuration persistante ne concordent pas. Utilisez la procédure locale de récupération avant de continuer.",
   "install_gate_recovery_title": "Une récupération du propriétaire est nécessaire",

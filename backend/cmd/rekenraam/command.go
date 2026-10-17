@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	"rekenraam/backend/internal/appruntime"
 	"rekenraam/backend/internal/config"
 	"rekenraam/backend/internal/db"
+	"rekenraam/backend/internal/lockfile"
 )
 
 func run(ctx context.Context, args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) int {
@@ -103,7 +105,7 @@ func newHTTPServer(addr string, handler http.Handler) *http.Server {
 	}
 }
 
-func runRecoverOwner(ctx context.Context, cfg config.Config, args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) int {
+func runRecoverOwner(ctx context.Context, cfg config.Config, args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (exitCode int) {
 	flagSet := flag.NewFlagSet("recover-owner", flag.ContinueOnError)
 	flagSet.SetOutput(stderr)
 
@@ -132,6 +134,31 @@ func runRecoverOwner(ctx context.Context, cfg config.Config, args []string, stdi
 		fmt.Fprintf(stderr, "read password from stdin: %v\n", err)
 		return 2
 	}
+
+	// Own the server's lock for the whole recovery (#286). Revoking every
+	// session is only a cutoff if no running server can still finish a login
+	// that verified the old password and insert its session afterwards.
+	databasePath, err := db.ResolveSQLiteFilePath(cfg.DatabaseURL)
+	if err != nil {
+		fmt.Fprintf(stderr, "resolve database path: %v\n", err)
+		return 2
+	}
+	held, err := lockfile.Acquire(databasePath)
+	if err != nil {
+		var locked lockfile.ErrLocked
+		if errors.As(err, &locked) {
+			fmt.Fprintf(stderr, "the database is in use (%v). Stop the server before recovering the owner.\n", locked)
+			return 1
+		}
+		fmt.Fprintf(stderr, "cannot confirm the server is stopped: %v\n", err)
+		return 1
+	}
+	defer func() {
+		if err := held.Close(); err != nil {
+			fmt.Fprintf(stderr, "release database recovery lock: %v\n", err)
+			exitCode = 1
+		}
+	}()
 
 	database, err := db.Open(ctx, cfg.DatabaseURL)
 	if err != nil {

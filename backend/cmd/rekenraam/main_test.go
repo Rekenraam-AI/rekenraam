@@ -18,6 +18,7 @@ import (
 
 	"rekenraam/backend/internal/app"
 	"rekenraam/backend/internal/db"
+	"rekenraam/backend/internal/lockfile"
 )
 
 func TestNewHTTPServerSetsDefensiveTimeouts(t *testing.T) {
@@ -153,6 +154,35 @@ func TestRecoverOwnerCommandAllowsNoBackupOverride(t *testing.T) {
 	err = database.QueryRowContext(context.Background(), `SELECT COUNT(1) FROM auth_sessions WHERE revoked_at IS NOT NULL`).Scan(&revokedSessionCount)
 	require.NoError(t, err)
 	assert.Equal(t, 1, revokedSessionCount)
+}
+
+// Recovery revokes every session and clears MFA in one transaction, but a
+// running server could still finish a login that verified the old password
+// before that transaction and mint a session after it (#267). Recovery
+// therefore refuses while the server holds the database, as restore does.
+func TestRecoverOwnerCommandRefusesWhileTheServerHoldsTheDatabase(t *testing.T) {
+	databaseURL := setupRecoveryCommandDatabase(t, "old-password")
+	databasePath, err := db.ResolveSQLiteFilePath(databaseURL)
+	require.NoError(t, err)
+	t.Setenv("DATABASE_URL", databaseURL)
+	t.Setenv("APP_ENV", "development")
+
+	held, err := lockfile.Acquire(databasePath)
+	require.NoError(t, err)
+	defer held.Close()
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(context.Background(), []string{"recover-owner", "--password-stdin", "--allow-no-backup"}, bytes.NewBufferString("new-password\n"), stdout, stderr)
+
+	assert.Equal(t, 1, exitCode)
+	assert.Contains(t, stderr.String(), "the database is in use")
+
+	database := openRecoveryCommandDatabase(t, databaseURL)
+	defer database.Close()
+	authService := app.NewAuthService(db.NewAuthRepository(database), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, err = authService.Login(context.Background(), app.LoginInput{Username: "owner", Password: "old-password"})
+	assert.NoError(t, err, "the refused recovery changed nothing")
 }
 
 func setupRecoveryCommandDatabase(t *testing.T, password string) string {

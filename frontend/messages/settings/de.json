@@ -530,7 +530,7 @@
   "install_gate_preparing_title": "Ihr Arbeitsbereich wird vorbereitet",
   "install_gate_progress_label": "Einrichtungsfortschritt",
   "install_gate_quick_currencies_label": "Gängige Währungen",
-  "install_gate_recovery_backup_note": "Bei der Wiederherstellung wird zuerst eine geprüfte Sicherung erstellt, sofern Sie nicht ausdrücklich die Notfall-Umgehung verwenden.",
+  "install_gate_recovery_backup_note": "Beenden Sie zuerst den Server; der Befehl verweigert die Ausführung, solange er läuft. Bei der Wiederherstellung wird zuerst eine geprüfte Sicherung erstellt, sofern Sie nicht ausdrücklich die Notfall-Umgehung verwenden.",
   "install_gate_recovery_command_label": "Wiederherstellungsbefehl",
   "install_gate_recovery_copy": "Eigentümerkonto und dauerhaft gespeicherter Einrichtungsschritt widersprechen sich. Nutzen Sie den lokalen Wartungs- und Wiederherstellungsablauf, bevor Sie fortfahren.",
   "install_gate_recovery_title": "Wiederherstellung des Eigentümers erforderlich",

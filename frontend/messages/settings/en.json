@@ -530,7 +530,7 @@
   "install_gate_preparing_title": "Preparing your workspace",
   "install_gate_progress_label": "Setup progress",
   "install_gate_quick_currencies_label": "Common currencies",
-  "install_gate_recovery_backup_note": "Recovery creates a verified backup first unless you explicitly use the emergency override.",
+  "install_gate_recovery_backup_note": "Stop the server first; the command refuses while it is running. Recovery creates a verified backup first unless you explicitly use the emergency override.",
   "install_gate_recovery_command_label": "Recovery command",
   "install_gate_recovery_copy": "The owner account and durable setup step disagree. Use the local maintenance recovery flow before continuing.",
   "install_gate_recovery_title": "Owner recovery is required",

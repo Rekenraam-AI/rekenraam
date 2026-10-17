@@ -530,7 +530,7 @@
   "install_gate_preparing_title": "Preparando su espacio de trabajo",
   "install_gate_progress_label": "Progreso de la configuración",
   "install_gate_quick_currencies_label": "Monedas habituales",
-  "install_gate_recovery_backup_note": "La recuperación crea primero una copia de seguridad verificada, salvo que use explícitamente la anulación de emergencia.",
+  "install_gate_recovery_backup_note": "Detenga primero el servidor; el comando se niega a ejecutarse mientras esté en marcha. La recuperación crea primero una copia de seguridad verificada, salvo que use explícitamente la anulación de emergencia.",
   "install_gate_recovery_command_label": "Comando de recuperación",
   "install_gate_recovery_copy": "La cuenta de propietario y el paso de configuración persistente no coinciden. Use el flujo de recuperación de mantenimiento local antes de continuar.",
   "install_gate_recovery_title": "Es necesaria la recuperación del propietario",

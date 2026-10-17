@@ -530,7 +530,7 @@
   "install_gate_preparing_title": "Uw werkomgeving wordt voorbereid",
   "install_gate_progress_label": "Voortgang van de installatie",
   "install_gate_quick_currencies_label": "Veelgebruikte valuta's",
-  "install_gate_recovery_backup_note": "Bij herstel wordt eerst een geverifieerde back-up gemaakt, tenzij u uitdrukkelijk de noodoverride gebruikt.",
+  "install_gate_recovery_backup_note": "Stop eerst de server; de opdracht weigert zolang die draait. Bij herstel wordt eerst een geverifieerde back-up gemaakt, tenzij u uitdrukkelijk de noodoverride gebruikt.",
   "install_gate_recovery_command_label": "Herstelopdracht",
   "install_gate_recovery_copy": "Het eigenaarsaccount en de vastgelegde installatiestap komen niet overeen. Gebruik de lokale herstelprocedure voordat u verdergaat.",
   "install_gate_recovery_title": "Herstel van de eigenaar is vereist",
