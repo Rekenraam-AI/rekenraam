@@ -169,6 +169,7 @@ AuthenticationEventResponse:
         - rate_limited
         - mfa_invalid
         - mfa_challenge_expired
+        - mfa_authenticator_unavailable
     request_id:
       type: string
     second_factor:

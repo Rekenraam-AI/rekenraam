@@ -129,7 +129,7 @@ Item 1 was audited as #267: see the
 [identity concurrency audit](identity-concurrency-audit-2026-10-17.md)
 (#285/#286/#287 fixed, #288 open). Item 2 was audited as #268: see the
 [proxy and shared-browser privacy audit](proxy-browser-privacy-audit-2026-10-17.md)
-(#290 open).
+(#290 fixed).
 
 These scopes are logged as further audits, not asserted vulnerabilities or a
 new provider prerequisite. They do not reopen a successful normal-flow test.

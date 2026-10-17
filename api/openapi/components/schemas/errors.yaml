@@ -15,6 +15,7 @@ ErrorBody:
         - CONFLICT
         - CSRF_INVALID
         - RATE_LIMITED
+        - MFA_AUTHENTICATOR_UNAVAILABLE
         - RESOURCE_BUSY
         - LEDGER_OVERFLOW
         - FORECAST_TOO_LARGE

@@ -12,6 +12,7 @@ const apiErrorMessageByCode: Record<APIErrorCode, () => string> = {
   CSRF_INVALID: () => m.api_error_csrf_invalid(),
   EXPORT_SCOPE_UNSUPPORTED: () => m.api_error_export_scope_unsupported(),
   RATE_LIMITED: () => m.api_error_rate_limited(),
+  MFA_AUTHENTICATOR_UNAVAILABLE: () => m.api_error_mfa_authenticator_unavailable(),
   RESOURCE_BUSY: () => m.api_error_resource_busy(),
   LEDGER_OVERFLOW: () => m.api_error_ledger_overflow(),
   FORECAST_TOO_LARGE: () => m.api_error_forecast_too_large(),

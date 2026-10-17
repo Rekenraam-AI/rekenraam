@@ -4,7 +4,7 @@
 [#268](https://github.com/sergeyfarin/rekenraam/issues/268) of
 [#260](https://github.com/sergeyfarin/rekenraam/issues/260). It is complete,
 with one finding filed:
-[#290](https://github.com/sergeyfarin/rekenraam/issues/290) (P3, open). The
+[#290](https://github.com/sergeyfarin/rekenraam/issues/290) (P3, fixed after this audit). The
 deployment guidance is corrected in this change. The
 [setup/auth/privacy audit](setup-auth-privacy-audit-2026-10-17.md) left two
 things unproved. One was whether its in-process cookie, proxy-trust and header

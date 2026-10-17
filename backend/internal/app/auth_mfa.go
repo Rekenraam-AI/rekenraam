@@ -25,6 +25,12 @@ var (
 	ErrMFAChallengeInvalid = errors.New("multi-factor challenge is invalid or expired")
 	// ErrMFACodeInvalid is a wrong, reused, or malformed second factor.
 	ErrMFACodeInvalid = errors.New("multi-factor code is invalid")
+	// ErrMFAAuthenticatorUnavailable answers an authenticator code that the
+	// server cannot check because the stored secret no longer opens (the
+	// secret key was lost, rotated, or never configured on this host). Only
+	// the password-verified challenge holder can see it, so naming the cause
+	// reveals nothing, and it points them at their recovery codes (#290).
+	ErrMFAAuthenticatorUnavailable = errors.New("authenticator codes cannot be checked; use a recovery code")
 	// ErrMFANotEnrolled is returned when activating or regenerating codes
 	// without an enrollment to act on.
 	ErrMFANotEnrolled = errors.New("multi-factor authentication is not enrolled")
@@ -59,6 +65,10 @@ const (
 
 	authFailureMFAInvalid = "mfa_invalid"
 	authFailureMFAExpired = "mfa_challenge_expired"
+	// authFailureMFAUnavailable records an authenticator code submitted while
+	// the secret cannot be opened. It is visible to the operator but never
+	// charged to the sign-in budget.
+	authFailureMFAUnavailable = "mfa_authenticator_unavailable"
 )
 
 // MFAStatus is what the owner's security screen shows.
@@ -358,6 +368,17 @@ func (s *AuthService) CompleteLoginMFA(ctx context.Context, input CompleteMFALog
 	defer reservation.release(ctx)
 
 	secondFactor, err := s.verifySecondFactor(ctx, credentials.ID, code, now, input.ClientIP)
+	if errors.Is(err, ErrMFAAuthenticatorUnavailable) {
+		// Not a guess: no authenticator code could have verified, so charging
+		// it would only burn the budget the owner needs for a recovery code.
+		// The deferred release hands the place back.
+		s.recordAuthEvent(ctx, db.AuthenticationEventParams{
+			EventType: authEventLoginFailed, Outcome: "failure", Username: credentials.Username,
+			UserID: credentials.ID, ClientIP: input.ClientIP,
+			FailureReason: authFailureMFAUnavailable, RequestID: input.RequestID,
+		})
+		return LoginResult{}, err
+	}
 	if err != nil {
 		return LoginResult{}, err
 	}
@@ -404,6 +425,12 @@ func (s *AuthService) CompleteLoginMFA(ctx context.Context, input CompleteMFALog
 // names the one that verified, or returns "" when neither did. Both paths are
 // tried for every attempt so the response time does not reveal which kind of
 // code was submitted.
+//
+// When the secret cannot be opened and the code has the TOTP shape, it returns
+// ErrMFAAuthenticatorUnavailable instead of "": a six-digit code can never be
+// a recovery code, so no verifier could have accepted it, and the caller must
+// not treat it as a wrong guess (#290). The recovery lookup still runs first,
+// so the timing matches every other attempt.
 func (s *AuthService) verifySecondFactor(ctx context.Context, userID int64, code string, now time.Time, clientIP string) (string, error) {
 	record, err := s.repository.ReadMFATOTP(ctx, userID)
 	if err != nil {
@@ -420,7 +447,9 @@ func (s *AuthService) verifySecondFactor(ctx context.Context, userID int64, code
 	// configured on this host — must not block the recovery codes. Those are
 	// exactly the situation recovery codes exist for, so this falls through
 	// rather than failing the attempt.
+	authenticatorUnavailable := false
 	if secret, err := s.openMFASecret(record.SecretCiphertext); err != nil {
+		authenticatorUnavailable = true
 		if s.logger != nil {
 			s.logger.WarnContext(ctx, "mfa secret could not be opened; only recovery codes can be used", slog.Any("err", err))
 		}
@@ -442,6 +471,9 @@ func (s *AuthService) verifySecondFactor(ctx context.Context, userID int64, code
 	case err == nil:
 		return secondFactorRecoveryCode, nil
 	case errors.Is(err, db.ErrNotFound), errors.Is(err, db.ErrMFARecoveryCodeUsed):
+		if authenticatorUnavailable && totp.IsCodeShaped(code) {
+			return "", ErrMFAAuthenticatorUnavailable
+		}
 		return "", nil
 	default:
 		return "", fmt.Errorf("consume mfa recovery code: %w", err)

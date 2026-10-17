@@ -95,6 +95,36 @@ func TestLoginMFARejectsAWrongCodeAndAMissingChallenge(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, missing.Code)
 }
 
+// #290: a secret the server can no longer open answers an authenticator code
+// with its own code, so the sign-in screen can point at recovery codes, and
+// the attempt does not spend the throttle budget.
+func TestLoginMFANamesAnUnverifiableAuthenticator(t *testing.T) {
+	t.Parallel()
+
+	handler, database := newSetupTestHandler(t)
+	sessionCookie, csrfToken := createOwnerSession(t, handler)
+	secret := enrollMFAForSession(t, handler, sessionCookie, csrfToken)
+	_, err := database.Exec(`UPDATE user_mfa_totp SET secret_ciphertext = 'sealed-under-a-lost-key'`)
+	require.NoError(t, err)
+
+	loginRes := postLogin(t, handler, `{"username":"owner","password":"test-password"}`)
+	require.Equal(t, http.StatusOK, loginRes.Code)
+	challengeCookie := findCookie(loginRes.Result().Cookies(), mfaChallengeCookieName)
+	require.NotNil(t, challengeCookie)
+
+	code, err := totp.Code(secret, totp.Step(time.Now().UTC()))
+	require.NoError(t, err)
+	res := postLoginMFA(t, handler, challengeCookie, `{"code":"`+code+`"}`)
+	require.Equal(t, http.StatusUnauthorized, res.Code)
+	var body errorResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
+	assert.Equal(t, "MFA_AUTHENTICATOR_UNAVAILABLE", body.Error.Code)
+
+	var failed int
+	require.NoError(t, database.QueryRow(`SELECT COALESCE(SUM(failed_attempts), 0) FROM login_throttles`).Scan(&failed))
+	assert.Zero(t, failed)
+}
+
 func TestMFAStatusAndDisableOverHTTP(t *testing.T) {
 	t.Parallel()
 

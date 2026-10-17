@@ -5,7 +5,10 @@ post:
     mfa_required. The challenge travels as an HttpOnly cookie set by that
     response, so no token is handled by page scripts. Accepts a TOTP code or a
     single-use recovery code. Failed codes spend the same throttle budget as
-    failed passwords.
+    failed passwords. When the server cannot open the stored authenticator
+    secret (its REKENRAAM_SECRET_KEY was lost or rotated), an authenticator
+    code is answered with MFA_AUTHENTICATOR_UNAVAILABLE and does not spend
+    the budget; recovery codes still work, and wrong ones still count.
   requestBody:
     required: true
     content:
@@ -36,7 +39,10 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "401":
-      description: Invalid code, or an expired or already-used challenge
+      description: >-
+        Invalid code, an expired or already-used challenge, or
+        MFA_AUTHENTICATOR_UNAVAILABLE when authenticator codes cannot be
+        checked and a recovery code is needed
       headers:
         X-Request-ID:
           $ref: "../openapi.yaml#/components/headers/XRequestID"

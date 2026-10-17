@@ -136,7 +136,7 @@ below is execution order, not a chain of hard dependencies.
    its findings #285/#286/#287 are fixed and attribution gap #288 is closed.
    The proxy/shared-browser follow-up #268 is complete
    ([evidence](reviews/proxy-browser-privacy-audit-2026-10-17.md)); its
-   key-loss sign-in finding #290 (P3) is open.
+   key-loss sign-in finding #290 (P3) is fixed.
    The other eleven areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with

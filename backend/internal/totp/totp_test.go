@@ -137,3 +137,15 @@ func TestStepClampsPreEpochTimes(t *testing.T) {
 
 	assert.Equal(t, uint64(0), Step(time.Unix(-100, 0)))
 }
+
+// A recovery code is ten characters, so a six-digit code is never one — the
+// shape alone tells the login which verifier a code was meant for.
+func TestIsCodeShaped(t *testing.T) {
+	t.Parallel()
+	for _, code := range []string{"123456", " 123 456 ", "123-456"} {
+		assert.True(t, IsCodeShaped(code), code)
+	}
+	for _, code := range []string{"", "12345", "1234567", "12345a", "ABCDE-FGHJK", "１２３４５６"} {
+		assert.False(t, IsCodeShaped(code), code)
+	}
+}

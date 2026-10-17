@@ -187,9 +187,11 @@ recovery code, or with the `recover-owner` command from the host; see the
 backup-first recovery procedure.
 
 With a changed or missing key, the authenticator app's codes stop working.
-Today the sign-in screen reports them as invalid, and each one spends a
-sign-in attempt ([#290](https://github.com/sergeyfarin/rekenraam/issues/290)).
-Enter a recovery code instead. Then, at Settings → Security, turn two-factor
+The sign-in screen says so and asks for a recovery code instead
+(`MFA_AUTHENTICATOR_UNAVAILABLE`). These attempts do not spend the sign-in
+budget, because no authenticator code could have been checked. They appear
+in the security log as `mfa_authenticator_unavailable`. A wrong recovery code
+still counts as a failed attempt. Enter a recovery code. Then, at Settings → Security, turn two-factor
 off with your password and set it up again. Setup needs a configured key:
 without one it refuses with `CONFIG_REQUIRED`. The status still reads "On"
 until you do this. Do not change it casually: no in-place key

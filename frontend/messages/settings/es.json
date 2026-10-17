@@ -172,6 +172,7 @@
   "api_error_provider_error": "El proveedor externo ha rechazado la solicitud. Compruebe la conexión y vuelva a intentarlo.",
   "api_error_qif_account_unsupported": "QIF no puede representar algunas de las cuentas seleccionadas. Expórtelas en formato de archivo comprimido o confirme para continuar sin ellas.",
   "api_error_rate_limited": "Se han hecho demasiados intentos. Espere un momento y vuelva a intentarlo.",
+  "api_error_mfa_authenticator_unavailable": "Los códigos de la aplicación de autenticación no se pueden comprobar en este servidor ahora mismo. Inicie sesión con uno de sus códigos de recuperación.",
   "api_error_resource_busy": "Ese recurso está ocupado en este momento. Vuelva a intentarlo en unos instantes.",
   "api_error_setup_already_complete": "La configuración ya está completa. Inicie sesión con la cuenta del propietario.",
   "api_error_setup_required": "Complete la configuración antes de continuar.",

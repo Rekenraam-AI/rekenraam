@@ -326,6 +326,8 @@ func writeAuthServiceError(w http.ResponseWriter, r *http.Request, logger *slog.
 		writeAPIError(w, http.StatusServiceUnavailable, "CONFIG_REQUIRED", "REKENRAAM_SECRET_KEY is not configured on the server")
 	case errors.Is(err, app.ErrMFAChallengeInvalid):
 		writeAPIError(w, http.StatusUnauthorized, "UNAUTHENTICATED", "the sign-in attempt expired, start again")
+	case errors.Is(err, app.ErrMFAAuthenticatorUnavailable):
+		writeAPIError(w, http.StatusUnauthorized, "MFA_AUTHENTICATOR_UNAVAILABLE", "authenticator codes cannot be checked on this server, use a recovery code")
 	case errors.Is(err, app.ErrMFACodeInvalid):
 		writeAPIError(w, http.StatusUnauthorized, "UNAUTHENTICATED", "invalid authentication code")
 	case errors.Is(err, app.ErrMFANotEnrolled):

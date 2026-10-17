@@ -444,6 +444,66 @@ func TestRecoveryCodesStillWorkWhenTheSecretCannotBeOpened(t *testing.T) {
 	assert.NotEmpty(t, completed.SessionToken)
 }
 
+// #290: after the key is lost or rotated, the owner's *correct* authenticator
+// code must neither read as a wrong guess nor spend the sign-in budget they
+// need for the recovery code. Wrong recovery codes must still count.
+func TestUnverifiableAuthenticatorCodeIsNamedAndNotCharged(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	now := time.Date(2026, 8, 7, 9, 0, 0, 0, time.UTC)
+	database, service := newMFATestService(t, now)
+
+	enrollment, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery"})
+	require.NoError(t, err)
+	activationCode, err := totp.Code(enrollment.Secret, totp.Step(now)-1)
+	require.NoError(t, err)
+	recoveryCodes, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, SessionID: 1, Code: activationCode})
+	require.NoError(t, err)
+
+	service.SetSecretKey([]byte("ffffffffffffffffffffffffffffffff"))
+
+	failedAttempts := func() int {
+		t.Helper()
+		var total int
+		require.NoError(t, database.QueryRow(`SELECT COALESCE(SUM(failed_attempts), 0) FROM login_throttles`).Scan(&total))
+		return total
+	}
+
+	challenge, err := service.Login(ctx, LoginInput{Username: "owner", Password: "correct-horse-battery", ClientIP: "198.51.100.4"})
+	require.NoError(t, err)
+	correctCode, err := totp.Code(enrollment.Secret, totp.Step(now))
+	require.NoError(t, err)
+	// More attempts than the budget holds: none of them may count.
+	for attempt := range loginThrottleMaxFailures + 1 {
+		_, err = service.CompleteLoginMFA(ctx, CompleteMFALoginInput{
+			ChallengeToken: challenge.MFAChallengeToken, Code: correctCode, ClientIP: "198.51.100.4",
+			RequestID: "req-unavailable",
+		})
+		require.ErrorIs(t, err, ErrMFAAuthenticatorUnavailable, "attempt %d", attempt)
+	}
+	assert.Zero(t, failedAttempts(), "an uncheckable authenticator code is not a guess")
+
+	var reason string
+	require.NoError(t, database.QueryRow(`
+		SELECT failure_reason FROM authentication_events
+		WHERE request_id = 'req-unavailable' ORDER BY id DESC LIMIT 1
+	`).Scan(&reason))
+	assert.Equal(t, authFailureMFAUnavailable, reason, "the operator still sees the attempt")
+
+	_, err = service.CompleteLoginMFA(ctx, CompleteMFALoginInput{
+		ChallengeToken: challenge.MFAChallengeToken, Code: "ABCDE-FGHJK", ClientIP: "198.51.100.4",
+	})
+	require.ErrorIs(t, err, ErrMFACodeInvalid, "a wrong recovery code is still a wrong code")
+	assert.Positive(t, failedAttempts(), "a wrong recovery code still spends the budget")
+
+	// The same challenge still completes with a real recovery code.
+	completed, err := service.CompleteLoginMFA(ctx, CompleteMFALoginInput{
+		ChallengeToken: challenge.MFAChallengeToken, Code: recoveryCodes[0], ClientIP: "198.51.100.4",
+	})
+	require.NoError(t, err)
+	assert.NotEmpty(t, completed.SessionToken)
+}
+
 // The recover-owner command is the last resort for an owner who has lost both
 // the authenticator and the recovery codes. It already requires filesystem
 // access to the database, so an enrollment must not outlive it — otherwise the

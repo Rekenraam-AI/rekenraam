@@ -166,6 +166,23 @@ func URI(issuer string, accountName string, secret string) string {
 
 // normalizeCode accepts what people actually type: spaces from a copy-paste,
 // and nothing else.
+// IsCodeShaped reports whether code, normalized the way Validate normalizes
+// it, has the shape of a TOTP code: exactly Digits ASCII digits. It says
+// nothing about whether the code is right.
+func IsCodeShaped(code string) bool {
+	code = normalizeCode(code)
+	if len(code) != Digits {
+		return false
+	}
+	for _, r := range code {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+
+	return true
+}
+
 func normalizeCode(code string) string {
 	return strings.Map(func(r rune) rune {
 		if r == ' ' || r == '-' {
