@@ -1,8 +1,12 @@
 # Connections Plan — banks, brokers, analytics providers
 
-Status: **planned, not implemented**. Written 2026-07-19; sequencing adopted
-and amended 2026-08-05, current status checked 2026-08-31. Feature plan for expanding online
-connections beyond Trading 212 (R7, shipped). Governed by
+Status: **partly delivered** (reconciled 2026-10-17). The Twelve Data reviewed
+dividend producer (#111), provider revision evidence (#254), short payment in
+lieu (#255) and existing-payment linking (#258) ship. IBKR Flex, GoCardless
+and other bank/broker adapters remain proposals; Twelve Data split mapping is
+evidence-blocked in #256. The July provider availability/price assessment is
+historical and must be rechecked at each adapter start. Feature plan for
+expanding online connections beyond Trading 212 (R7, shipped). Governed by
 `docs/product-requirements.md`; sequencing is decided in `docs/roadmap.md`
 (see the pointer added under "Deliberately later"). Detailed designs below
 for the two priority adapters — **IBKR Flex Query** and **EU/UK banks via
@@ -338,32 +342,14 @@ quote provider that covers German certificate venues.
 
 ## Sequencing (adopted 2026-08-05 in roadmap.md, amended)
 
-The proposed order was adopted; its **contents were amended** because the
-same-day R17 decision (crypto instrument type) also needs prices. The quote
-provider is no longer an R15 slice:
+The 2026-08-05 decision moved quote-provider registration into R17 so crypto
+and securities share it. That registry and its initial adapters now ship.
 
-0. **`PriceProvider` registry + quote adapters — moved to R17**, ahead of
-   all of R15. Crypto needs prices regardless, so the registry is built once
-   there (Yahoo keyless + CoinGecko + one BYO-key equity provider) rather
-   than claimed by two slices. This also closes the unrealized-gains
-   staleness gap earlier than planned.
-
-R15 itself is then:
-
-1. **IBKR Flex** (investor persona, roadmap already points here, no consent
-   treadmill — the gentlest second adapter). Lands after R16, so its
-   corporate-action rows can reuse the delivered native commands through a
-   per-kind reviewed mapping. An unverified or incomplete row stays in review
-   with manual guidance; adapter evidence does not gate those domain commands.
-2. **GoCardless BAD** (EU+UK banks — biggest manual-entry win, hardest UX
-   due to consent renewals; benefits from landing after R5's rules/profile
-   work).
-3. **T-34 producer** — delivered ahead of this order on 2026-10-17 at the
-   owner's request (#111), on Twelve Data rather than FMP because it reuses
-   the R17 registry's BYO-key and explicit listing identity.
-4. Raisin / Trade Republic / DeGiro / UK brokers ship as **R5 CSV mapping
-   profile presets** — a documentation-plus-fixtures task per broker, not
-   adapters.
+Current order belongs only to [the roadmap](../roadmap.md#deliberately-later).
+IBKR Flex and GoCardless remain proposed adapters with the verification gates
+below. CSV broker presets are profile/fixture work, not online adapters. The
+#111 dividend producer shipped independently and consumes existing native
+commands; it does not imply mappings for other corporate-action families.
 
 ## Provider dividend producer (#111, delivered 2026-10-17)
 

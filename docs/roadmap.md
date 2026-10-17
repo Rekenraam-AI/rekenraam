@@ -14,10 +14,14 @@ Other questions have exactly one home each:
 Do not restate shipped detail here; when a focus item ships, delete it and
 record the capability in `implemented.md`.
 
-Last reviewed: 2026-10-17 (#111 dividend producer delivered out of order at the owner's request). R16’s agreed gates, R11 price management and R17
-quotes/crypto are delivered. R18’s six gains-projection slices are delivered; R13 returns analytics is next.
-Owner-local date correctness is delivered; native catalog review remains
-parallel work. Prior roadmap detail is retained in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md).
+Last reviewed: 2026-10-17 against local `f35cc723` and live GitHub issue
+searches. The documentation and competitor review is recorded in the
+[app-state review and audit brief](reviews/app-state-and-audit-plan-2026-10-17.md).
+R16, R11, R17 and R18 have met their bounded delivery bars. **R13 remains the
+next feature initiative; its calculation contract is not yet implementation-ready.**
+The cross-app audit below is planned, not completed. Earlier milestone detail
+lives in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md)
+and the [capability ledger](implemented.md).
 
 ## Slice index
 
@@ -30,7 +34,7 @@ Statuses: ✅ shipped · ◐ partly shipped ahead of its slice · ▶ current ·
 | R1 | Reconcile workflow screen (trust loop) | ✅ | `docs/implemented.md` (Reconciliation) |
 | R2 | Reports users can act on | ✅ | `docs/plans/reports-plan.md` |
 | R3 | Portable **and protected** core data (CSV/QIF export, backups, restore, self-check) | ✅ | `docs/plans/data-portability-plan.md` |
-| R3a | Accessibility regression coverage | ✅ | this file |
+| R3a | Accessibility regression coverage | ✅ | `docs/implemented.md` (Accessibility) |
 | R4 | QIF import | ✅ | `docs/implemented.md` (Import Pipeline) |
 | R5 | Ordinary-bank CSV import + profiles | ✅ | `docs/plans/import-plan.md` |
 | R6 | Import depth (XLSX/OFX, matching, rollback) | ⏸ | `docs/plans/import-plan.md` |
@@ -44,7 +48,7 @@ Statuses: ✅ shipped · ◐ partly shipped ahead of its slice · ▶ current ·
 | R12a | Investment journal/subledger integrity correction | ✅ | `docs/plans/investment-integrity-plan.md`, ADR 0012 |
 | R13 | Investment return analytics (TWR/MWR) | ⏭ | this file |
 | R14 | Receipts & attachments (capture, OCR, inbox) | ⏸ | `docs/plans/receipts-plan.md` |
-| R14a | Attachment storage + manual attach (after R5) | ⏭ | `docs/plans/receipts-plan.md` |
+| R14a | Attachment storage + manual attach (scope decision still required) | ⏸ | `docs/plans/receipts-plan.md` |
 | R15 | Connections expansion (IBKR Flex → GoCardless; the #111 dividend producer shipped early, 2026-10-17) | ⏸ | `docs/plans/connections-plan.md` |
 | R16 | Investment lifecycle completeness (correction, transfers, basis actions, splits, short sales) | ✅ agreed gates; related work open | `docs/plans/investment-operation-refactor-plan.md`; ADR 0013 |
 | R17 | Crypto instrument type + `PriceProvider` registry and quote adapters | ✅ | `docs/plans/quote-providers-crypto-plan.md` |
@@ -77,6 +81,7 @@ The three remaining `plans/` questions were decided the same day:
 | Receipts R14a pull-forward | **No** — but R3 designs the backup/self-check with a documented attachments hook, and R14a ships after R5 |
 | GoCardless / IBKR "verify" items | Not a decision — reclassified as blocking slice-start preconditions on GC-1 and IBKR-1 in `connections-plan.md` |
 
+These are historical sequencing decisions, not the current delivery queue.
 The R14/R15 plans (2026-07-19) remain deliberately later. Their sequencing
 was decided on 2026-08-05: quotes belong to R17; R15 is IBKR → GoCardless →
 #111 producer. R14a stays after R5 and was not pulled forward alongside R3. The Yahoo Finance
@@ -118,206 +123,81 @@ below is execution order, not a chain of hard dependencies.
 
 ### Current focus
 
-**Now**
-
-1. R13 investment returns and allocation planning
-   [#119](https://github.com/sergeyfarin/rekenraam/issues/119)
-   can proceed from the delivered R18 contracts
-   [#230–#235](plans/investment-reporting-plan.md#delivery-slices) (2026-10-15).
-2. Daily-use parallel work. The shared transaction workspace
-   [#185](https://github.com/sergeyfarin/rekenraam/issues/185) is delivered
-   (2026-10-14): contextual entry, same-day reorder and row actions on the
-   journal, account and category screens. Posting dates that differ from the
-   transaction date (delayed card postings, two-day transfers) are delivered
-   in [#187](https://github.com/sergeyfarin/rekenraam/issues/187) (2026-10-15). Investment entry from holding
-   accounts and instruments [#186](https://github.com/sergeyfarin/rekenraam/issues/186)
-   is delivered (2026-10-14) with a per-instrument activity view. Cash
-   dividends and their withholding now retain the paying instrument through
-   corrections and appear in that activity
-   ([#229](https://github.com/sergeyfarin/rekenraam/issues/229), 2026-10-15). CSV
-   dividend/tax mapping and phone review are delivered in
-   [#241](https://github.com/sergeyfarin/rekenraam/issues/241) (2026-10-15).
-   Trading 212 account/economics review and historical same-payment fallback
-   repair are delivered in [#242](https://github.com/sergeyfarin/rekenraam/issues/242)
-   (2026-10-15), completing #229's imported-payer scope. App-owned partial-data
-   work proceeds independently of provider automation: visible attribution
-   coverage [#244](https://github.com/sergeyfarin/rekenraam/issues/244) and
-   manual short-operation import links [#245](https://github.com/sergeyfarin/rekenraam/issues/245)
-   are both delivered (2026-10-15).
-   These follow-ups do not gate R13 or other features. Reconciliation recovery after
-   checkpoint invalidation or void is delivered (#240, 2026-10-15). Approval preserves the journal
-   (#219); guarded void/unvoid/delete/restore preview their own impact (#220,
-   2026-10-14; trash restore too, #225), register rows are per posting line
-   (#221), the register status filter is explicit Posted/Voided (#223) and
-   category amounts are per category (#222).
-
-**Delivered native SQLite and test-feedback improvement (2026-10-12):**
-[#195](https://github.com/sergeyfarin/rekenraam/issues/195) installs the bundled
-native driver under ADR 0014 with schema/seed and durability policies retained.
-[#164](https://github.com/sergeyfarin/rekenraam/issues/164) restores race-gate
-headroom: matched median full race wall time 27.67 → 3.76 minutes (86.4% less),
-application race execution 962.65 → 85.71 seconds, same named regression cohort.
-Cold compilation needs a C toolchain and takes longer. See the
-[delivery review](reviews/native-sqlite-driver-2026-10-12.md) for all runs,
-validation and the native C-engine race-coverage boundary.
-
-**Delivered two-process SQLite validation (2026-10-14):**
-[#105](https://github.com/sergeyfarin/rekenraam/issues/105) exercises independent
-process work claims, scheduled backup identity and server/restore refusal.
-This retains one server per database. [#227](https://github.com/sergeyfarin/rekenraam/issues/227)
-also closes the restore/startup and lock-file handoff gaps: restore retains its
-lock throughout replacement, and lock files persist between owners. See the
-[#105 validation review](reviews/two-process-sqlite-guards-2026-10-14.md) and
-[#227 review](reviews/restore-process-lock-2026-10-14.md).
-
-**Delivered zero-delta split gate (2026-10-13):**
-[#146](https://github.com/sergeyfarin/rekenraam/issues/146) records sourced splits
-without eligible lots journal-free, with entitled backdated acquisition replay,
-guarded quantity adjustments, export/restore and self-check. Operation-addressed
-inspection, correction, settlement and import linking also ship in
-[#196](https://github.com/sergeyfarin/rekenraam/issues/196) (2026-10-13), with the
-mobile Splits history surface and both journal shapes covered.
-
-**Delivered historical-entry and recovery gates:** dated holdings/lot selection
-[#166](https://github.com/sergeyfarin/rekenraam/issues/166) (2026-10-09),
-backdated internal transfer admission
-[#167](https://github.com/sergeyfarin/rekenraam/issues/167) (2026-10-10),
-whose internal-transfer picker adopts #166, and sourced resolution correction
-with journal-free known-zero resolution
-[#168](https://github.com/sergeyfarin/rekenraam/issues/168) (2026-10-10).
-
-**Delivered from [#103](https://github.com/sergeyfarin/rekenraam/issues/103):** named short sale and cover —
-core commands [#173](https://github.com/sergeyfarin/rekenraam/issues/173), reads and mobile entry
-[#174](https://github.com/sergeyfarin/rekenraam/issues/174), correction and backdating
-[#175](https://github.com/sergeyfarin/rekenraam/issues/175), all 2026-10-09. Verified provider import
-[#176](https://github.com/sergeyfarin/rekenraam/issues/176) stays evidence-blocked outside the R16 bar.
-
-**Delivered from [#114](https://github.com/sergeyfarin/rekenraam/issues/114):**
-- Outbound transfers with entry, bridge adjustments, backdating and correction (#157–#159, 2026-10-05).
-- Return of capital, completed 2026-10-07 (#161, [#163](https://github.com/sergeyfarin/rekenraam/issues/163)).
-- Cash in lieu, completed 2026-10-07 (#162, [#165](https://github.com/sergeyfarin/rekenraam/issues/165)).
-- Unknown basis [#160](https://github.com/sergeyfarin/rekenraam/issues/160), completed 2026-10-09. It covers immutable knowledge, unresolved sales and average pools, unknown transfers in, out and between holdings, splits, and sourced resolution with mobile entry; see the [#160 implementation contract](plans/investment-unknown-basis-plan.md).
-
-Every bounded #114 child is delivered; #114 is closed following the
-[2026-10-09 audit](reviews/in-kind-basis-actions-audit-2026-10-09.md).
-The audit found historical-entry and resolution-recovery gaps; these are
-separate R16 completion gates above, rather than reopening delivered children.
-
-**Delivered parallel trust follow-up (2026-10-13):** recorded return-of-capital
-excess visibility [#171](https://github.com/sergeyfarin/rekenraam/issues/171),
-with effective allocations and immutable history in transaction detail and
-the investment summary. Period disclosure and its limited-scope reporting
-policy also ship in [#238](https://github.com/sergeyfarin/rekenraam/issues/238)
-(2026-10-15). Write-off mobile entry [#172](https://github.com/sergeyfarin/rekenraam/issues/172)
-is delivered (2026-10-13), with dated lot selection, exact/unresolved loss
-preview and shared gain/checkpoint review. Mixed-cost-currency write-off selection
-[#199](https://github.com/sergeyfarin/rekenraam/issues/199) is delivered (2026-10-13),
-including historical entry and native replacement.
-Neither follow-up reopens #114/#160 or expands R16’s bounded bar.
-Unresolved non-sale results [#169](https://github.com/sergeyfarin/rekenraam/issues/169)
-are delivered (2026-10-13); see the [non-sale contract](plans/investment-unresolved-non-sale-plan.md).
-Basis-resolution provenance declarations [#170](https://github.com/sergeyfarin/rekenraam/issues/170)
-are delivered (2026-10-13), with typed source entry and history. Provenance-only
-correction [#197](https://github.com/sergeyfarin/rekenraam/issues/197) is also
-delivered: immutable evidence revisions at unchanged exact basis, without
-financial writes, with transfer history, export and stale-correction guards.
-
-**Automation only, awaiting provider evidence:** [#145](https://github.com/sergeyfarin/rekenraam/issues/145), [#136](https://github.com/sergeyfarin/rekenraam/issues/136).
-The [2026-10-13 split evidence recheck](reviews/trading212-split-evidence-2026-10-13.md)
-records the current official schema, missing live payloads and collection guide
-for #145; the provider-mapping gate remains. Neither it nor execution-cancellation
-mapping #136 or short mapping #176 blocks native manual entry/correction or
-unrelated app features. Manual split linking and manual short/cover linking
-(#245, 2026-10-15) ship.
+1. **Assess the combined app after the recent deliveries.** Execute the twelve
+   bounded audits in the [audit brief](reviews/app-state-and-audit-plan-2026-10-17.md#proposed-audit-coverage).
+   Start with ledger/reconciliation, investment replay/reporting and recovery;
+   then planning/import integration, frontend journeys and deployment/tooling.
+   Record fresh evidence per area and file scoped findings. The audit delivery
+   issue is prepared locally, awaiting publication approval; execution has not
+   started. Fix confirmed integrity/security defects before affected feature
+   slices. This is a bounded review, not a recurring full-suite gate.
+2. **Address the known UI defect independently:**
+   [#259](https://github.com/sergeyfarin/rekenraam/issues/259), closed-lot badge
+   contrast and semantic tokens. Check the whole repeated badge pattern, and
+   verify the rendered closed-lot state. Audit planning does not mark it fixed.
+3. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
+   Use the delivered R18 valuation contracts; resolve portfolio scope,
+   external-flow classification, return equations, numerical failure states,
+   coverage and reproducibility before implementation. The reporting/investment
+   audit informs this contract; unrelated provider evidence is not a prerequisite.
+4. **Continue independent readiness work.**
+   [#102](https://github.com/sergeyfarin/rekenraam/issues/102) needs native
+   terminology review, not another catalog-parity implementation. Recheck
+   [#112](https://github.com/sergeyfarin/rekenraam/issues/112)'s upstream
+   TypeScript/OpenAPI-generator compatibility when considering the upgrade;
+   its old blocker text is not fresh compatibility evidence.
 
 ### Completed initiatives through R10
 
-R2 reports, R3 portability and backups, R3a accessibility, the reporting
-currency selector, and the R9 → R10 → R8 planning loop are shipped. See the
-[capability ledger](implemented.md) for current behavior and the
-[dated completed-roadmap record](reviews/completed-roadmap-2026-09-27.md)
-for the original scope and acceptance notes.
+R2/R3/R3a, R4/R5 and the R9 → R10 → R8 planning loop are accepted.
+[Implemented features](implemented.md) records capabilities and retained limits;
+the [completed record](reviews/completed-roadmap-2026-09-27.md) preserves earlier
+scope decisions. Audit their present interactions rather than restarting them.
 
 ### R16 — investment lifecycle completeness
 
-Complete the long-position lifecycle on ADR 0013's named operation/side
-foundation: corrections for every operation family, in-kind transfers and
-basis actions, splits, named short positions and compound corporate actions.
-Every new command integrates the shared gain-impact acknowledgement, the
-reconciliation preview and export/self-check in its own acceptance; each stays
-independently runnable and audited. Negative holdings without named short
-events remain unclassified warnings. The
-[operation plan](plans/investment-operation-refactor-plan.md) and
-[slice 5 contract](plans/investment-operation-slice-5-contract.md) govern
-design; [implemented](implemented.md) records the shipped boundary.
+The agreed gates are delivered. The [operation contract](plans/investment-operation-refactor-plan.md),
+[slice 5 contract](plans/investment-operation-slice-5-contract.md) and ADR 0013
+record named operations, corrections, dated replay and explicit refusals.
+Provider automation remains separate from native/manual acceptance (ADR 0017).
 
-R16's agreed completion gates are delivered (2026-10-13). The bounded issues
-are historical-entry selection
-[#166](https://github.com/sergeyfarin/rekenraam/issues/166), backdated
-internal transfer admission [#167](https://github.com/sergeyfarin/rekenraam/issues/167),
-sourced resolution recovery [#168](https://github.com/sergeyfarin/rekenraam/issues/168),
-short sale/cover [#103](https://github.com/sergeyfarin/rekenraam/issues/103) (delivered via #173–#175),
-compound actions [#115](https://github.com/sergeyfarin/rekenraam/issues/115),
-zero-delta splits [#146](https://github.com/sergeyfarin/rekenraam/issues/146)
-and Refresh reach for revised fills
-[#152](https://github.com/sergeyfarin/rekenraam/issues/152).
+| Adapter-only follow-up | Evidence needed before automatic admission |
+|---|---|
+| [#136](https://github.com/sergeyfarin/rekenraam/issues/136), Trading 212 execution cancellations | Verified execution identity, cancellation/revision relationship and financial effects |
+| [#145](https://github.com/sergeyfarin/rekenraam/issues/145), Trading 212 splits | Verified ratio, effective date and entitlement payloads |
+| [#176](https://github.com/sergeyfarin/rekenraam/issues/176), provider short/cover rows | Explicit provider side semantics and representative payloads |
+| [#256](https://github.com/sergeyfarin/rekenraam/issues/256), Twelve Data splits | Unambiguous forward/reverse ratio and effective-date semantics |
 
-**Remaining R16-related work.** Delivery of the agreed gates does not mean
-that every investment-lifecycle issue is closed. These retained issues keep
-their stated scope and placement. R11’s bounded operator surface is delivered;
-R17 and R18 are also delivered; the next initiative is R13.
-
-| Issue | Remaining gap | Disposition |
-|---|---|---|
-| [#145](https://github.com/sergeyfarin/rekenraam/issues/145) | Trading 212 split mapping | Blocked on verified provider semantics and representative payloads |
-| [#136](https://github.com/sergeyfarin/rekenraam/issues/136) | Provider execution cancellations | Blocked on provider evidence |
-| [#176](https://github.com/sergeyfarin/rekenraam/issues/176) | Provider short/cover import | Blocked on provider evidence |
-
-Provider return-of-capital/cash-in-lieu suggestions also remain follow-ups.
-
-Operation-addressed correction/settlement of initially
-journal-free splits is delivered (#196). #114's delivered transfer/basis-action
-family is closed under the audit above; the other agreed R16 gates were
-delivered separately.
+None blocks manual operations, file workflows, R13, another adapter or the
+existing reviewed dividend producer. Other event-family mappings are deferred
+extensions, not implied by the completion of #111.
 
 ### R11 — price and FX management UI, delivered
 
-The bounded operator surface (#116, #200–#202) is delivered. Its durable
-contract is [price management](plans/pricing-management-plan.md); shipped
-scope is in [the capability ledger](implemented.md). R18's bounded
-[#203](https://github.com/sergeyfarin/rekenraam/issues/203) slice now shares
-compatible observation selection across readers and records their intentional
-age differences in the [reporting policy](plans/investment-reporting-plan.md).
-That policy refinement does not reopen the R11 operator surface.
+The [price-management contract](plans/pricing-management-plan.md) records the
+bounded operator surface. Consumer-specific observation selection and age rules
+live in the [R18 policy](plans/investment-reporting-plan.md).
 
 ### Parallel trust work for cross-border entry
 
-[#101](https://github.com/sergeyfarin/rekenraam/issues/101) owner-local default
-dates are delivered (2026-10-13): shared authenticated server date, preserved
-explicit dates and opposite-midnight browser coverage. Before presenting the
-five drafted non-English catalogs as complete or using them in a migration
-demo, close [#102](https://github.com/sergeyfarin/rekenraam/issues/102)
-(native review; catalog parity and its regression gate are delivered). That
-communication work remains independently shippable and does not require waiting for R16 or R11.
+Locale-aware amounts and owner-local financial dates ship. Native terminology
+sign-off remains [#102](https://github.com/sergeyfarin/rekenraam/issues/102);
+use the [review packet](reviews/localization-native-review-2026-10-13.md) before
+claiming the five drafted non-English catalogs are complete.
 
 ### R17 — delivered reference
 
-[#117](https://github.com/sergeyfarin/rekenraam/issues/117) delivers quote-provider
-registration/adapters and manual/CSV crypto holdings with lots. Durable behavior,
-provider evidence, operator limits and the rejected exchange/DeFi/staking/NFT
-scope are recorded in the [quote/crypto contract](plans/quote-providers-crypto-plan.md);
-shipped capabilities live in [implemented.md](implemented.md).
+The [quote/crypto contract](plans/quote-providers-crypto-plan.md) records priced
+manual/CSV crypto holdings, quote adapters and entitlements. Exchange APIs,
+DeFi, staking and NFT scope remains rejected.
 
 ### R18 — reproducible investment basis and gains projections
 
-The six delivery slices [#230–#235](plans/investment-reporting-plan.md#delivery-slices)
-are delivered (2026-10-15). Their contracts and retained limits live in the
-[reporting policy](plans/investment-reporting-plan.md); shipped capabilities and
-validation live in [the feature ledger](implemented.md). Formal postings remain
-outside this bounded initiative until a need is evidenced. The
-[completion audit](reviews/r18-completion-audit-2026-10-15.md) records the
-independent live-read consistency (#237, delivered 2026-10-15) and capital-return
-period disclosure (#238) follow-ups. R13 follows; its planning does not close #238.
+All six bounded slices and the live-consistency/capital-return disclosure
+follow-ups are delivered. The [reporting policy](plans/investment-reporting-plan.md)
+records supported projections, frozen operational documents and exclusions.
+TWR/IRR, saved alternative/FX runs, broker comparisons, tax policy and automatic
+accounting postings are not implied by R18 acceptance.
 
 ### R13 — investment returns and allocation analytics
 
@@ -343,8 +223,8 @@ These are valuable, but they are not allowed to displace the current plan:
   data, lifecycle, and acceptance design.
 - Import rules **beyond the R5 v1 fence**: regex and amount predicates,
   retroactive re-run over committed transactions, and a rule audit trail.
-  Also duplicate payee merge, bulk recategorization, and the imported
-  `needs_review` queue. (The minimal contains-match rules are in R5 as of
+  Also duplicate payee merge, bulk recategorization and a dedicated import
+  review inbox beyond the delivered `needs_review` filter/approval flow. (The minimal contains-match rules are in R5 as of
   2026-08-05.)
 - R15 connections expansion, in this order (adopted 2026-08-05):
   **IBKR Flex Query → GoCardless EU/UK banks**, then SimpleFIN Bridge (US)
@@ -371,8 +251,8 @@ These are valuable, but they are not allowed to displace the current plan:
   conflicts and platform differences must be visible, commands must remain
   discoverable and have mouse/touch equivalents, and no shortcut may bypass
   reconciliation guards, confirmations, or audit history.
-- R14 receipts & attachments: durable attachment storage (resolves the open
-  attachment product decision), receipt capture with in-browser OCR, and a
+- R14 receipts & attachments: proposed durable attachment storage (requires
+  accepting the open attachment product decision), receipt capture with in-browser OCR, and a
   match-or-draft inbox using the reserved draft-producer workflow —
   `docs/plans/receipts-plan.md`. **R14a ships after R5**, not alongside R3
   (decided 2026-08-05): it is not an announcement gate, so it does not go
@@ -388,53 +268,32 @@ Keep `docs/competitor-comparison.md` as the maintained parity matrix and
 each roadmap initiative complete, update the comparison's implication section
 and record either the parity gained or the deliberate gap retained.
 
-The 2026-09-27 primary-source recheck in
-`docs/competitor-comparison.md` supports the following order: complete R16's
-correction, transfer, basis and split workflows; provide the R11 price/FX
-operator surface; add the R17 quote registry and crypto entry; then build
-R18 reproducible gains and R13 returns. #101 owner-local date defaults are
-delivered parallel correctness work. This ordering is a product
-inference from verified competitor workflows and the present code boundary,
-not a claim of feature uniqueness.
+The [2026-10-17 source recheck](competitor-comparison.md) supports keeping
+R13 returns/allocation as the next feature gap against Portfolio Performance
+and Ghostfolio. R16 lifecycle, R11 pricing, R17 crypto and R18 gains inspection
+are delivered gains; they are not claims of full product or tax parity.
+Actual's import/rules and PocketSmith's planning workflows also justify auditing
+everyday migration and planning usability now. R6 depth and R7a convenience
+remain deliberate gaps, not automatically promoted features. Verify the core
+journeys before expanding integrations; provider signup/coverage claims need
+fresh adapter-specific evidence. These are product inferences from documented
+workflows, not market-wide uniqueness claims.
 
 ## Public-release gates
 
-**Fourth-pass review (2026-09-19):**
-`docs/reviews/ledger-investments-fourth-pass-2026-09-19.md` verifies that the
-previous six regression tests pass, and found an earlier investment-role
-validation window (reopened T-100, P1), precision-dependent realized gains
-(T-101, P2), and non-cash legs counted in cashflow transfers (T-102, P2).
-**All three are fixed as of 2026-09-19**, each with named regression tests that
-fail without their fix and with the reviewer's own probes passing, so the
-previous reproductions are closed. Subsequent test hardening found **T-103
-(P2): partial-disposal basis depends on purchase text precision**, **fixed
-2026-09-20** by fixing the allocation precision to the cost commodity's own
-maximum scale, one scale per position, with explicit range backoff — so the
-original code-side reproduction is closed. Follow-up verification found T-104
-(later acquisitions could exceed already widened projection range), fixed by
-atomic range admission checks with active sequence regressions. Gains-summary
-display now uses standard currency precision; see
-`docs/reviews/allocation-and-gains-verification-2026-09-20.md`. See
-`docs/reviews/financial-test-hardening-2026-09-19.md`. T-94's draft-promotion
-correction remains verified. The household dry run and investment feature
-limits still remain required; the candidate baseline must be validated after
-ADR 0013's pre-release redesign.
+Historical financial reviews and their fixed reproductions remain in
+[the September release triage](reviews/v0.1-release-triage-2026-09-11.md),
+[the fourth pass](reviews/ledger-investments-fourth-pass-2026-09-19.md) and
+[subsequent verification](reviews/allocation-and-gains-verification-2026-09-20.md).
+They do not certify the October operation, driver and reporting changes.
+The [new audit brief](reviews/app-state-and-audit-plan-2026-10-17.md) covers the
+present combined baseline, failure/recovery paths and release evidence.
+A candidate still needs the documented release preflight, an owner household
+dry run, tested restore/export and an explicit list of investment limits.
+Synthetic automated acceptance does not substitute for that dry run.
 
-T-106's dated negative-position detection and net-worth warning shipped
-2026-09-26. Out-of-order imports remain accepted; a genuine short sale needs
-an explicit named workflow (#103, commands delivered in #173). T-107's investment money JSON precision
-boundary also closed on 2026-09-26.
-
-These are a parallel release-readiness track, not a reason to delay local
-daily-driver work.
-
-The earlier v0.1 migration freeze and reliability dispositions are recorded in
-`docs/reviews/v0.1-release-triage-2026-09-11.md`. ADR 0013 supersedes the
-unused candidate's freeze before installation. The first-pass fixes close
-their original seven reproductions and the second-pass fixes close its four, so
-the latest review above now governs the code release gate; the non-code gates
-also still stand.
-Public-announcement work below is a separate, later gate.
+Release readiness is a parallel track; announcement and marketplace listing
+remain separate from local daily-driver delivery.
 
 ### Public repository hygiene
 
@@ -469,8 +328,8 @@ scanning paths before an announcement.
    as complete; see the [review packet](reviews/localization-native-review-2026-10-13.md).
 4. **Personal-access tokens — open** (added 2026-08-05, review §3f). The
    typed OpenAPI surface is the foundation for an ecosystem, but session
-   cookie + CSRF header auth means no script, tool, or community client can
-   call it. Announcement is the moment of maximum developer attention.
+   cookie + CSRF header auth supplies no dedicated scoped credential for
+   scripts, tools or community clients. Announcement is the moment of maximum developer attention.
    Required shape: hashed at rest, scoped, expiring by default, revocable,
    and emitting authentication events.
 5. ◐ Produce signed release binaries with reproducibility notes.
@@ -481,31 +340,29 @@ scanning paths before an announcement.
    `docs/developer-workflow.md` § Reproducibility. **Signing is still open** and needs an owner decision:
    a signing identity (Sigstore keyless via GitHub OIDC, or a held key) and a
    release workflow, neither of which exists yet — there is no release job in
-   `.github/workflows/`, only `ci.yml` and `govulncheck.yml`.
+   `.github/workflows/`. The existing `ci.yml`, `govulncheck.yml` and scheduled
+   `large-book.yml` are validation workflows.
 6. Prepare adoption assets: seeded demo, README screenshots, and a short
    migration walkthrough — courting the plain-text-accounting audience
    explicitly by leading with the correctness architecture (append-only
    versions, exact decimals, trial balance).
 
-**Every public-deployment security gate is closed, and parked pending an
-internet-exposed deployment.** MFA (S-06) shipped 2026-08-07 as TOTP plus
-single-use recovery codes, with a Settings → Security screen and the second
-step in the login flow; lockout-safe login throttling (S-04) and
-authentication-event visibility (S-07) closed 2026-08-06. **Parked 2026-08-19
-(owner decision):** the app is self-hosted locally for now, so none of S-04,
-S-06, or S-07 is scheduled work; the trigger to unpark is the first time an
-internet-exposed deployment is planned, R3 at the earliest. What is left
-before that point is an operator action rather than product work: the owner
-account must be **enrolled** before real financial data goes on the internet,
-and `REKENRAAM_SECRET_KEY` must be configured for enrolment to be possible.
-See `docs/deployment-security.md`.
+**Authentication mechanisms ship; deployment acceptance is still required.**
+TOTP/recovery codes, lockout-safe throttling and authentication-event recording
+are delivered; trusted-device management and authentication-event APIs lack
+management screens. Local deployment does not require reimplementing these
+mechanisms. An internet-exposed installation requires HTTPS, retained secret-key
+configuration and actual owner MFA enrollment, plus current operator/security
+checks in [deployment guidance](deployment-security.md). An older closed
+security issue alone does not prove a deployment safe.
 
 ## Open product decisions
 
 Resolve these only when their related slice becomes current work:
 
-- Export scope beyond core ledger CSV/QIF, including a full structured JSON
-  backup of settings and metadata.
+- Portable settings/metadata interchange beyond the delivered ledger bundle.
+  Full SQLite backup/restore already protects database state; a standalone JSON
+  settings export/import contract is still undecided.
 - The highest-priority mobile workflow. (First non-English UI languages were
   decided 2026-08-19: Spanish, French, Dutch, German, Russian — recorded in
   `product-requirements.md`. Native review of the drafted translations still

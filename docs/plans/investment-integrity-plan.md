@@ -1,8 +1,9 @@
 # R12a Investment Integrity Correction Plan
 
-Status: R12a complete 2026-08-30; T-76 complete 2026-09-10. As of 2026-10-02,
-T-75b #99 is complete for long-buy/sale correction. Remaining families have
-separate issues in the [active R16 contract](investment-operation-refactor-plan.md).
+Status: R12a complete 2026-08-30; T-76 complete 2026-09-10. Reconciled
+2026-10-17: T-75b #99 long-buy/sale correction and the remaining agreed R16
+correction families/gain safeguards are delivered under the
+[operation contract](investment-operation-refactor-plan.md).
 The follow-up requirements below preserve the original design context.
 
 This plan records the immediate correctness gate and its scheduled investment
@@ -160,9 +161,9 @@ Build on the fence rather than removing it.
 **Original exit (now split into bounded issues):** named tests correct and
 reverse a buy, partial sale, full sale, and write-off with later dependent
 activity. Long-buy/sale commands are delivered in #99; write-off correction is
-[T-118 #133](https://github.com/sergeyfarin/rekenraam/issues/133). Other outstanding
-families and gain-impact safeguards are indexed in the active R16 contract. Success leaves journal, lots, gains,
-prices, audit, import identity, and reconciliation coherent; injected failures at
+[T-118 #133](https://github.com/sergeyfarin/rekenraam/issues/133). The other agreed
+families and gain-impact safeguards subsequently shipped under the R16 contract.
+Success leaves journal, lots, gains, prices, audit, import identity, and reconciliation coherent; injected failures at
 each post-write boundary roll everything back.
 
 ## Acceptance matrix

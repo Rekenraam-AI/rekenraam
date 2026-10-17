@@ -1,8 +1,11 @@
 # Investment operation and subledger refactor plan
 
-Status: active design contract, reviewed 2026-10-09.
-ADR 0012 and ADR 0013 govern. R16 owns long-position lifecycle work; #103
-owns shorts. Planned behavior is not shipped behavior.
+Status: **shipped R16 design contract**, reconciled 2026-10-17. The agreed
+lifecycle gates, including named shorts and compound actions, are delivered;
+#255 adds payment in lieu. ADRs 0012, 0013 and 0017 govern. Provider mappings
+#136/#145/#176/#256 remain separately evidence-gated. This contract records
+both admitted behavior and retained limits; the capability ledger distinguishes
+actual delivery from proposed extensions.
 
 This plan is the **design contract only**. Sequence and current focus live in
 the [roadmap](../roadmap.md); shipped behavior in

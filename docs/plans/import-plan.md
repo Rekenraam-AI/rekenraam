@@ -90,8 +90,9 @@ persists `draft` rows for review. **This plan locks the `posted` + `needs_review
 path** for these reasons:
 
 - The review-queue machinery for it already exists end-to-end (B-22:
-  `needs_review` flag, list filter, `/approve`) — `draft` has no producer or UI
-  today and would need a parallel review surface built first.
+  `needs_review` flag, list filter, `/approve`). R9 now supplies recurring
+  drafts and their own review UI, but file imports retain this posted/review
+  contract; recurring delivery does not change import commit semantics.
 - `posted` rows are immediately visible in registers/reports/reconciliation, which
   is the migration experience a Money/Quicken user expects: "my data is here,"
   with `needs_review` as a *soft* "please confirm" overlay rather than a *hard*

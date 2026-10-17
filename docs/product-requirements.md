@@ -115,10 +115,10 @@ Already locked before domain work:
 
 These can wait until the related feature slice:
 
-- First non-English UI languages (target set decided 2026-08-19: Spanish, French, Dutch, German, Russian; sequencing still open).
+- First non-English UI languages (target set decided 2026-08-19: Spanish, French, Dutch, German, Russian; drafts ship, native terminology review remains #102).
 - Full structured JSON export scope.
 - Attachment storage.
-- Report snapshots.
+- General report snapshots beyond the delivered R18 operational gains/statement documents.
 - Import formats beyond CSV.
 - Multi-user or household model.
 
@@ -368,8 +368,8 @@ Goal: support forward-looking personal finance.
 - Projected balances are read-only projections from current posted facts and
   separately identified recurring assumptions; viewing them never creates
   transactions, occurrences, rate-download work or investment effects. The R10
-  implementation contract is `docs/plans/projected-balances-plan.md` (in
-  progress; its read-only screen and core projection now ship). It uses
+  implementation contract is `docs/plans/projected-balances-plan.md` (accepted;
+  core projection and optional learned spending shipped 2026-09-09). It uses
   owner-local today, exact per-account/per-currency
   balances, and acted-on occurrence identity to avoid counting both a template
   and its generated/posted transaction. Overdue unposted assumptions are visibly
@@ -390,7 +390,7 @@ Goal: support forward-looking personal finance.
   Confirmed history, chronological testing, honest fallback/coverage disclosures
   and measured resource limits are required. Insufficient seasonal history never
   becomes a confident annual prediction. See `docs/plans/forecast-learning-plan.md`
-  (planned, not shipped); historical variation is not a probability interval.
+  (accepted and shipped 2026-09-09); historical variation is not a probability interval.
 - Simple loan/liability helpers if they fit the existing ledger model.
 
 ### Phase 6: Advanced Finance
@@ -580,6 +580,6 @@ Beyond multilingual support and themes, these areas should be deliberately defin
 
 These are important and should be resolved before the related feature slices begin.
 
-- Which export scope should be available from the first export milestone beyond core ledger CSV and QIF, such as full structured JSON export of settings and metadata?
+- Which portable settings/metadata interchange should extend the shipped ledger CSV/QIF/bundle exports? Full SQLite backup/restore already protects database state; a standalone structured JSON interchange is not shipped.
 - When attachments eventually enter scope, should they live in SQLite, the filesystem, or pluggable object storage?
 - Which mobile-heavy workflows deserve dedicated optimization first after the baseline responsive experience ships?

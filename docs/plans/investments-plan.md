@@ -34,7 +34,8 @@ Current-status notes reconciled 2026-08-31; original delivery was 2026-07-03.
 > average-cost pool conservation (T-74) is fixed, and unsafe generic investment
 > lifecycle mutations are fenced off (T-75a). Long-buy/sale native correction
 > and reversal are delivered in T-75b #99; remaining operation families and
-> gain-impact safety have separate issues in the active R16 operation plan.
+> gain-impact safety subsequently shipped under the R16 operation contract;
+> the original 2026-10-02 status is historical.
 > Durable disposal-policy provenance (T-76) shipped 2026-09-10.
 > ADR 0012 and R18 govern reproducible reporting. See
 > `docs/plans/investment-integrity-plan.md` for the acceptance evidence.
@@ -44,7 +45,8 @@ Current-status notes reconciled 2026-08-31; original delivery was 2026-07-03.
 > operational FX and immutable operational runs. The
 > [reporting policy](investment-reporting-plan.md) supersedes the older
 > reporting-status claims below; the [completion audit](../reviews/r18-completion-audit-2026-10-15.md)
-> records retained limits and independent follow-ups #237/#238. Formal postings
+> records retained limits and independent follow-ups #237/#238, both delivered
+> 2026-10-15. Formal postings
 > remain outside R18, and TWR/MWR belongs to R13.
 
 ---

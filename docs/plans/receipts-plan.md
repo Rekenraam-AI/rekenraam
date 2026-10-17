@@ -1,14 +1,14 @@
 # Receipts & Attachments Plan (proposed R14)
 
 Status: **design proposed; no attachment feature implemented**. Written
-2026-07-19; roadmap placement decided 2026-08-05, current status checked
-2026-08-31. Feature plan for receipt capture,
-automatic recognition, and attachment storage. Resolves the open product
-decision "attachment storage, retention, access-control, backup, and
+2026-07-19; status reconciled 2026-10-17. Feature proposal for receipt capture,
+automatic recognition, and attachment storage. Proposes a resolution of the
+open product decision "attachment storage, retention, access-control, backup, and
 encryption model" (`docs/product-requirements.md`), which currently lists
 attachments as deliberately out of scope. Sequencing is decided in
 `docs/roadmap.md`; this plan does not authorize starting attachments ahead
-of the current R9 initiative.
+of the roadmap's current initiative or accepting attachment scope without a
+product decision.
 
 ## Goal
 
@@ -20,9 +20,10 @@ inbox.
 
 ## Constraints (non-negotiable, from existing decisions)
 
-- **Single binary stays single.** No cgo OCR dependency (Tesseract via
-  gosseract would break "download one file, run it"). Recognition must be
-  browser-side or user-provided.
+- **Single binary stays single.** Recognition is proposed as browser-side or
+  user-provided, with no additional server OCR installation. ADR 0014 already
+  uses CGO for bundled SQLite; CGO itself is not prohibited. Any OCR dependency
+  still needs an explicit build, packaging and maintenance decision.
 - **Privacy-first by default.** No receipt image leaves the user's machines
   unless the user explicitly configures an external endpoint (BYO, same
   spirit as provider keys).
@@ -108,35 +109,23 @@ confidence and is user-editable before anything touches the ledger.
 - Draft creation goes through the existing producer-owned draft semantics:
   system-created, excluded from ledger, promoted via the normal post flow
   (which, per the 2026-07-13 fixes, runs the full reconciliation guard).
-- Import-rules synergy: once rules exist (R5 proposal), merchant → category
-  rules apply to receipt drafts too — one rules engine, three producers
-  (file import, bank feeds, receipts).
+- Import-rules synergy is proposed only. R5 literal contains-match rules ship
+  at file staging; applying them to receipt drafts needs its own explicit
+  contract and tests. Existing rules do not authorize another producer.
 
-## Roadmap placement (decided 2026-08-05)
+## Scope and prerequisite disposition
 
-The pull-forward question was decided: **R14a ships after R5, not alongside
-R3.** R3 and R5 are announcement gates; R14a is not, and a non-gate slice
-does not go between two gates for a narrative benefit.
-
-What R3 does carry instead is an **attachments hook**: because files live
-outside SQLite where `VACUUM INTO` cannot reach them, R3's backup procedure
-names "the database *and* the attachments directory" from day one, and its
-trial-balance self-check reserves a slot for the file-integrity pass
-described above. The directory is empty until R14a. The point is that
-"backed up nightly" is never a claim that has to be walked back — which is
-the rework the pull-forward was trying to avoid, at a fraction of the cost.
-
-- **R14a (storage + manual attach)** after R5, before or alongside R16. Still
-  independent and small; still resolves the open attachment product decision
-  cheaply. Its backup-story work is now an extension of an existing hook
-  rather than a rewrite.
-- **R14b (capture + inbox)** after R5 — it reuses the review-queue UX
-  muscle the import preview builds.
-- **R14c (recognition + match/draft)** after or alongside R9, because
-  R9 builds the draft-producer plumbing both features share; whichever
-  ships first builds it.
-- Must not displace R2/R3/R5 (the trust loop and announcement gates come
-  first).
+[The roadmap](../roadmap.md#deliberately-later) owns placement. The 2026-08-05
+decision kept R14a after R5 and excluded it from announcement gates; it did
+not accept attachment scope or require it before the now-delivered R16.
+R5, backups/self-check and R9 draft lifecycle already ship. Their availability
+removes foundation prerequisites, not the need to decide storage, retention,
+authenticated access, crash consistency, encryption and combined restore.
+R14a storage/manual attach, R14b capture/inbox and R14c recognition/matching
+remain proposed boundaries. No files, attachment endpoint or integrity pass
+are implemented. The existing backup documentation's future attachment hook
+is not a backup of receipt files. Recheck OCR/browser capabilities and any
+external endpoint terms when this proposal is considered for implementation.
 
 ## Non-goals (v1)
 

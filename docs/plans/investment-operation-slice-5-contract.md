@@ -10,8 +10,9 @@ external outbound API shipped 2026-10-05 (*Outbound transfer, first command*
 below). Return of capital, linked cash in lieu and unknown-basis transfer/
 resolution subsequently shipped; the bounded #114 family is complete under
 the [2026-10-09 audit](../reviews/in-kind-basis-actions-audit-2026-10-09.md).
-Historical-entry and resolution-recovery gaps have separate issues; the roadmap
-owns sequence.
+Historical-entry and resolution-recovery follow-ups #166–#168 are also
+delivered. The roadmap owns sequence; provider admission remains separate
+from this native/manual contract (ADR 0017).
 
 ## Common rules
 

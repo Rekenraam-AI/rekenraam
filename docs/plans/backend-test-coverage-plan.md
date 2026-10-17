@@ -500,8 +500,8 @@ abstraction beyond what those tests already need.
   `backend/internal/app/recurring_generation_test.go` and
   `backend/internal/api/recurring_generation_test.go` drive real generation,
   safe discard, rollback, and reconciliation-guarded promotion. Existing API
-  draft lifecycle/filter tests now use the producer. Production generation
-  and browser acceptance remain gated on the slice-5 review UI.
+  draft lifecycle/filter tests now use the producer. Production generation,
+  the slice-5 review UI and browser acceptance subsequently shipped at R9 acceptance (2026-08-31).
 
 ---
 

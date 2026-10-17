@@ -1,5 +1,9 @@
 # Price and FX management (#116)
 
+Status: **shipped** through #200–#202 (2026-10-13). Retained as the bounded
+operator contract; current consumer selection policy lives in
+[investment reporting](investment-reporting-plan.md).
+
 ADR 0008 governs immutable source observations; ADR 0010 governs existing FX
 fetching. Delivery acceptance lives in #116 and #200–#202. Execution order
 remains in [the roadmap](../roadmap.md).

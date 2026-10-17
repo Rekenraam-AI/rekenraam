@@ -34,8 +34,9 @@ or sequencing change.
 ## Durable references (root)
 
 - [competitor-comparison.md](competitor-comparison.md) — maintained parity
-  comparison, rechecked against primary product sources on 2026-09-27. Dated
-  deep dives live in `reviews/`.
+  comparison, rechecked against primary product sources on 2026-10-17
+  (direct Firefly III retrieval unavailable; indexed official evidence retained).
+  Dated deep dives live in `reviews/`.
 - [developer-workflow.md](developer-workflow.md) — commands, environments,
   commit conventions.
 - [deployment-security.md](deployment-security.md) — operator-facing
@@ -86,7 +87,14 @@ records the open-ID triage used for the migration to GitHub Issues.
 The [pre-migration backlog snapshot](reviews/open-backlog-before-github-2026-09-27.md)
 preserves their acceptance context.
 
-Latest strategic review:
+Latest application-state reconciliation and audit proposal:
+[2026-10-17 app state and audit brief](reviews/app-state-and-audit-plan-2026-10-17.md).
+It reconciles recent closures, maps all feature/design references and all app
+areas to twelve bounded audits, and distinguishes review completed from audit
+execution pending. The roadmap retains order and R13 readiness; external audit
+issue publication awaits approval.
+
+Earlier strategic proposal:
 [2026-09-09 product direction, AI and privacy](reviews/product-direction-ai-privacy-2026-09-09.md).
 It challenges the positioning and evaluates optional AI/MCP, data ownership,
 release readiness and adoption experiments. Its recommendations are proposals,

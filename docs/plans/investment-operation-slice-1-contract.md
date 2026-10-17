@@ -1,9 +1,11 @@
 # Investment operation slice 1: economics and compatibility contract
 
-Status: accepted design contract, 2026-09-26. This slice specifies the next
-schema/writer work; it does not enable new transaction types or change the
-current journal. ADR 0012 and ADR 0013 govern. The delivery order and later
-operation families remain in [the refactor plan](investment-operation-refactor-plan.md).
+Status: **accepted and implemented foundation contract** (original design
+2026-09-26; status reconciled 2026-10-17). Later operation families, typed
+dates and provider boundaries are recorded in the
+[operation contract](investment-operation-refactor-plan.md) and ADRs 0012,
+0013 and 0017. Historical future posting matrices below are not a delivery
+queue; the [roadmap](../roadmap.md) alone owns order.
 
 ## Scope and signs
 
