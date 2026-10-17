@@ -76,6 +76,7 @@ func enrollMFATOTP(logger *slog.Logger, authService *app.AuthService, options Ha
 		}
 		enrollment, err := authService.BeginTOTPEnrollment(r.Context(), app.MFAPasswordInput{
 			UserID:    owner.ID,
+			SessionID: authenticatedSessionID(r),
 			Password:  request.Password,
 			ClientIP:  loginClientIP(r, options),
 			RequestID: RequestIDFromContext(r.Context()),
@@ -104,6 +105,7 @@ func activateMFATOTP(logger *slog.Logger, authService *app.AuthService, options 
 		}
 		codes, err := authService.ActivateTOTP(r.Context(), app.ActivateMFAInput{
 			UserID:    owner.ID,
+			SessionID: authenticatedSessionID(r),
 			Code:      request.Code,
 			ClientIP:  loginClientIP(r, options),
 			RequestID: RequestIDFromContext(r.Context()),
@@ -129,6 +131,7 @@ func disableMFA(logger *slog.Logger, authService *app.AuthService, options Handl
 		}
 		if err := authService.DisableMFA(r.Context(), app.MFAPasswordInput{
 			UserID:    owner.ID,
+			SessionID: authenticatedSessionID(r),
 			Password:  request.Password,
 			ClientIP:  loginClientIP(r, options),
 			RequestID: RequestIDFromContext(r.Context()),
@@ -153,6 +156,7 @@ func regenerateMFARecoveryCodes(logger *slog.Logger, authService *app.AuthServic
 		}
 		codes, err := authService.RegenerateRecoveryCodes(r.Context(), app.MFAPasswordInput{
 			UserID:    owner.ID,
+			SessionID: authenticatedSessionID(r),
 			Password:  request.Password,
 			ClientIP:  loginClientIP(r, options),
 			RequestID: RequestIDFromContext(r.Context()),

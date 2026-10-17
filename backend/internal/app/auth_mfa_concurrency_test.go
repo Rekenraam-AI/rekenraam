@@ -15,7 +15,7 @@ func TestMFAEnrollmentCannotOverwriteAnActivation(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC)
 	_, service := newMFATestService(t, now)
-	input := MFAPasswordInput{UserID: 1, Password: "correct-horse-battery", ClientIP: "198.51.100.4"}
+	input := MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery", ClientIP: "198.51.100.4"}
 	initial, err := service.BeginTOTPEnrollment(ctx, input)
 	require.NoError(t, err)
 	code, err := totp.Code(initial.Secret, totp.Step(now)-1)
@@ -24,7 +24,7 @@ func TestMFAEnrollmentCannotOverwriteAnActivation(t *testing.T) {
 	// A second request activates after the first request read pending state.
 	service.now = func() time.Time {
 		service.now = func() time.Time { return now }
-		_, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, Code: code})
+		_, err := service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, SessionID: 1, Code: code})
 		require.NoError(t, err)
 		return now
 	}
@@ -44,7 +44,7 @@ func TestMFAActivationMustProveCurrentPendingSecret(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC)
 	_, service := newMFATestService(t, now)
-	input := MFAPasswordInput{UserID: 1, Password: "correct-horse-battery", ClientIP: "198.51.100.4"}
+	input := MFAPasswordInput{UserID: 1, SessionID: 1, Password: "correct-horse-battery", ClientIP: "198.51.100.4"}
 	initial, err := service.BeginTOTPEnrollment(ctx, input)
 	require.NoError(t, err)
 	code, err := totp.Code(initial.Secret, totp.Step(now)-1)
@@ -57,7 +57,7 @@ func TestMFAActivationMustProveCurrentPendingSecret(t *testing.T) {
 		require.NotEqual(t, initial.Secret, replacement.Secret)
 		return now
 	}
-	_, err = service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, Code: code})
+	_, err = service.ActivateTOTP(ctx, ActivateMFAInput{UserID: 1, SessionID: 1, Code: code})
 	assert.Error(t, err, "a code for a replaced secret must not activate its successor")
 	status, err := service.MFAStatusFor(ctx, 1)
 	require.NoError(t, err)

@@ -63,6 +63,25 @@ post:
         application/json:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "429":
+      description: >-
+        This session spent its MFA-settings reauthentication budget (five
+        wrong passwords or activation codes, shared across enrollment,
+        activation, disable, and recovery-code regeneration). Refused before
+        verification, even for correct input, until Retry-After elapses;
+        signing in again starts a new session with its own budget.
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+        Retry-After:
+          description: Seconds until this session may confirm again.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "503":
       description: REKENRAAM_SECRET_KEY is not configured on the server
       headers:

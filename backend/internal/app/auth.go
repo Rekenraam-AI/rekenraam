@@ -52,6 +52,9 @@ const (
 	throttleScopeUsername      = "username"
 	throttleScopeClientIP      = "client_ip"
 	throttleScopeTrustedDevice = "trusted_device"
+	// throttleScopeReauthSession budgets password and activation-code
+	// confirmations on the MFA settings, per session (#262).
+	throttleScopeReauthSession = "reauth_session"
 
 	// TrustedDeviceLifetime is how long an approved device stays approved
 	// without being used. Every successful login on the device slides it

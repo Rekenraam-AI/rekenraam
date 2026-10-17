@@ -131,8 +131,7 @@ below is execution order, not a chain of hard dependencies.
    tracked in [#260](https://github.com/sergeyfarin/rekenraam/issues/260);
    the first identity/setup/privacy audit is complete with findings in the
    [2026-10-17 evidence](reviews/setup-auth-privacy-audit-2026-10-17.md).
-   #261/#263/#264 are corrected; [#262](https://github.com/sergeyfarin/rekenraam/issues/262)
-   retains the MFA-settings reauthentication policy gap. The other eleven areas
+   #261/#262/#263/#264 are corrected. The other eleven areas
    and the targeted identity-concurrency/proxy-browser follow-ups remain pending.
    Fix confirmed integrity/security defects before affected feature slices.
    This is a bounded review, not a recurring full-suite gate.

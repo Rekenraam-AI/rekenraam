@@ -230,10 +230,10 @@ existing bank CSV journey.
 Identity audit (2026-10-17): [review and evidence](reviews/setup-auth-privacy-audit-2026-10-17.md).
 MFA enrollment and activation pin current state (#261). Password and completed-MFA
 session cookies match the configured persisted lifetime, and successful device
-reuse renews the existing approval cookie (#263). Sensitive MFA-settings password
-confirmation remains unthrottled; [#262](https://github.com/sergeyfarin/rekenraam/issues/262)
-tracks the bounded reauthentication/activation policy. This finding remains open;
-it is not a claim that sign-in's existing throttle is absent.
+reuse renews the existing approval cookie (#263). MFA-settings password
+confirmations and pending activation codes share a per-session five-in-fifteen
+reauthentication budget that answers `429 RATE_LIMITED` with `Retry-After`
+([#262](https://github.com/sergeyfarin/rekenraam/issues/262)).
 
 ## Books, Commodities, Accounts (Phase 1) — ✅ Complete
 

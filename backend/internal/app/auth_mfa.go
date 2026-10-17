@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"strconv"
 	"strings"
 	"time"
 
@@ -80,14 +81,20 @@ type MFAEnrollment struct {
 }
 
 type MFAPasswordInput struct {
-	UserID    int64
+	UserID int64
+	// SessionID is the session making the change. It selects the
+	// reauthentication budget (#262) and is required.
+	SessionID int64
 	Password  string
 	ClientIP  string
 	RequestID string
 }
 
 type ActivateMFAInput struct {
-	UserID    int64
+	UserID int64
+	// SessionID selects the same reauthentication budget the password
+	// confirmations spend.
+	SessionID int64
 	Code      string
 	ClientIP  string
 	RequestID string
@@ -133,7 +140,7 @@ func (s *AuthService) BeginTOTPEnrollment(ctx context.Context, input MFAPassword
 	if err := s.requireMFASecretKey(); err != nil {
 		return MFAEnrollment{}, err
 	}
-	credentials, err := s.verifyOwnerPassword(ctx, input.UserID, input.Password, input.ClientIP, input.RequestID)
+	credentials, err := s.verifyOwnerPassword(ctx, input)
 	if err != nil {
 		return MFAEnrollment{}, err
 	}
@@ -173,8 +180,18 @@ func (s *AuthService) BeginTOTPEnrollment(ctx context.Context, input MFAPassword
 // ActivateTOTP turns a pending enrollment on, but only once a code from it has
 // verified — proof the authenticator really holds the secret. Returns the
 // recovery codes, which are shown once and never again.
+//
+// Wrong codes spend the session's reauthentication budget (#262): a pending
+// enrollment is otherwise an unbounded six-digit verifier.
 func (s *AuthService) ActivateTOTP(ctx context.Context, input ActivateMFAInput) ([]string, error) {
 	if err := s.requireMFASecretKey(); err != nil {
+		return nil, err
+	}
+	scope, err := reauthThrottleScope(input.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.checkReauthBudget(ctx, scope, input.UserID, input.ClientIP, input.RequestID); err != nil {
 		return nil, err
 	}
 	record, err := s.repository.ReadMFATOTP(ctx, input.UserID)
@@ -194,7 +211,13 @@ func (s *AuthService) ActivateTOTP(ctx context.Context, input ActivateMFAInput) 
 	}
 	step, ok := totp.Validate(secret, input.Code, s.now().UTC(), mfaClockSkewSteps)
 	if !ok {
-		return nil, ErrMFACodeInvalid
+		return nil, s.spendReauthBudget(ctx, scope, ErrMFACodeInvalid, db.AuthenticationEventParams{
+			EventType: authEventLoginFailed, Outcome: "failure", UserID: input.UserID,
+			ClientIP: input.ClientIP, FailureReason: authFailureMFAInvalid, RequestID: input.RequestID,
+		})
+	}
+	if err := s.clearReauthBudget(ctx, scope); err != nil {
+		return nil, err
 	}
 
 	// The codes are minted before anything is written, and stored in the same
@@ -221,7 +244,7 @@ func (s *AuthService) ActivateTOTP(ctx context.Context, input ActivateMFAInput) 
 // DisableMFA removes the second factor. Password-confirmed, because switching
 // protection off is exactly the act an attacker on a stolen session wants.
 func (s *AuthService) DisableMFA(ctx context.Context, input MFAPasswordInput) error {
-	if _, err := s.verifyOwnerPassword(ctx, input.UserID, input.Password, input.ClientIP, input.RequestID); err != nil {
+	if _, err := s.verifyOwnerPassword(ctx, input); err != nil {
 		return err
 	}
 	if err := s.repository.DeleteMFATOTP(ctx, input.UserID); err != nil {
@@ -235,7 +258,7 @@ func (s *AuthService) DisableMFA(ctx context.Context, input MFAPasswordInput) er
 // code — including ones already written down. Password-confirmed for the same
 // reason as disabling.
 func (s *AuthService) RegenerateRecoveryCodes(ctx context.Context, input MFAPasswordInput) ([]string, error) {
-	if _, err := s.verifyOwnerPassword(ctx, input.UserID, input.Password, input.ClientIP, input.RequestID); err != nil {
+	if _, err := s.verifyOwnerPassword(ctx, input); err != nil {
 		return nil, err
 	}
 	record, err := s.repository.ReadMFATOTP(ctx, input.UserID)
@@ -463,31 +486,103 @@ func newRecoveryCodeSet() (codes []string, hashes []string, err error) {
 // operations that change what protects the account. A wrong password here is
 // recorded like any other failed authentication, so an attacker probing from a
 // stolen session is visible in the log.
-func (s *AuthService) verifyOwnerPassword(ctx context.Context, userID int64, password string, clientIP string, requestID string) (db.OwnerCredentialsRecord, error) {
-	if err := validateLoginPassword(password); err != nil {
+//
+// Every confirmation checks the session's reauthentication budget before the
+// hash is computed, and a wrong one spends it (#262). Enrollment, disable, regeneration, and activation
+// share that one budget, so switching operation buys no extra guesses.
+func (s *AuthService) verifyOwnerPassword(ctx context.Context, input MFAPasswordInput) (db.OwnerCredentialsRecord, error) {
+	scope, err := reauthThrottleScope(input.SessionID)
+	if err != nil {
 		return db.OwnerCredentialsRecord{}, err
 	}
-	credentials, err := s.repository.ReadOwnerCredentialsByID(ctx, userID)
+	if err := s.checkReauthBudget(ctx, scope, input.UserID, input.ClientIP, input.RequestID); err != nil {
+		return db.OwnerCredentialsRecord{}, err
+	}
+	if err := validateLoginPassword(input.Password); err != nil {
+		return db.OwnerCredentialsRecord{}, err
+	}
+	credentials, err := s.repository.ReadOwnerCredentialsByID(ctx, input.UserID)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return db.OwnerCredentialsRecord{}, ErrInvalidCredentials
 		}
 		return db.OwnerCredentialsRecord{}, fmt.Errorf("read owner credentials: %w", err)
 	}
-	verified, err := verifyPassword(password, credentials.PasswordHash)
+	verified, err := verifyPassword(input.Password, credentials.PasswordHash)
 	if err != nil {
 		return db.OwnerCredentialsRecord{}, fmt.Errorf("verify password: %w", err)
 	}
 	if !verified {
-		s.recordAuthEvent(ctx, db.AuthenticationEventParams{
+		return db.OwnerCredentialsRecord{}, s.spendReauthBudget(ctx, scope, ErrInvalidCredentials, db.AuthenticationEventParams{
 			EventType: authEventLoginFailed, Outcome: "failure", Username: credentials.Username,
-			UserID: credentials.ID, ClientIP: clientIP,
-			FailureReason: authFailureInvalidCredentials, RequestID: requestID,
+			UserID: credentials.ID, ClientIP: input.ClientIP,
+			FailureReason: authFailureInvalidCredentials, RequestID: input.RequestID,
 		})
-		return db.OwnerCredentialsRecord{}, ErrInvalidCredentials
+	}
+	if err := s.clearReauthBudget(ctx, scope); err != nil {
+		return db.OwnerCredentialsRecord{}, err
 	}
 
 	return credentials, nil
+}
+
+// reauthThrottleScope keys the reauthentication budget to the session, not the
+// owner or the address. An owner-wide budget would let a stolen session lock
+// the real owner out of their own security settings; a session-scoped one
+// confines the damage to the stolen session, whose holder cannot mint another
+// without the password the budget protects. The owner recovers by signing in
+// again, which issues a new session with a fresh budget. The budget is the
+// login's own 5-in-15, so a stolen session guesses no faster than the public
+// sign-in form already allows.
+func reauthThrottleScope(sessionID int64) (loginThrottleScope, error) {
+	if sessionID <= 0 {
+		return loginThrottleScope{}, errors.New("reauthentication requires an authenticated session")
+	}
+
+	return loginThrottleScope{ScopeType: throttleScopeReauthSession, ScopeKey: strconv.FormatInt(sessionID, 10)}, nil
+}
+
+// checkReauthBudget refuses a blocked session before any verifier runs, even
+// for correct input: a correct guess must not be distinguishable from a wrong
+// one while blocked.
+func (s *AuthService) checkReauthBudget(ctx context.Context, scope loginThrottleScope, userID int64, clientIP string, requestID string) error {
+	blockedUntil, err := s.isScopeBlocked(ctx, scope)
+	if err != nil {
+		return fmt.Errorf("check reauthentication throttle: %w", err)
+	}
+	if blockedUntil.IsZero() {
+		return nil
+	}
+	s.recordAuthEvent(ctx, db.AuthenticationEventParams{
+		EventType: authEventLoginBlocked, Outcome: "failure", UserID: userID,
+		ClientIP: clientIP, FailureReason: authFailureRateLimited, RequestID: requestID,
+	})
+
+	return RateLimitError{RetryAfter: blockedUntil.Sub(s.now())}
+}
+
+// spendReauthBudget records a failed confirmation and returns the error the
+// caller should surface: the rate limit if this failure exhausted the budget,
+// otherwise the verifier's own rejection.
+func (s *AuthService) spendReauthBudget(ctx context.Context, scope loginThrottleScope, rejection error, event db.AuthenticationEventParams) error {
+	blockedUntil, err := s.recordScopeLoginFailure(ctx, scope)
+	if err != nil {
+		return fmt.Errorf("record reauthentication throttle failure: %w", err)
+	}
+	s.recordAuthEvent(ctx, event)
+	if !blockedUntil.IsZero() {
+		return RateLimitError{RetryAfter: blockedUntil.Sub(s.now())}
+	}
+
+	return rejection
+}
+
+func (s *AuthService) clearReauthBudget(ctx context.Context, scope loginThrottleScope) error {
+	if err := s.repository.DeleteLoginThrottle(ctx, scope.ScopeType, scope.ScopeKey); err != nil {
+		return fmt.Errorf("clear reauthentication throttle: %w", err)
+	}
+
+	return nil
 }
 
 func (s *AuthService) requireMFASecretKey() error {
