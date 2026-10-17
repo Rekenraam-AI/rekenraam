@@ -1,0 +1,332 @@
+{
+  "_comment": [
+    "Provider-free reference book and expected-figure register (#266), the shared oracle for the #260 sub-audits.",
+    "Steps are public /api/v1 requests, replayed in order by backend/internal/api/reference_book_test.go (seedReferenceBook) and e2e/playwright/support/reference-book.ts (seedReferenceBook).",
+    "A string '@key' anywhere in a body, or a path segment '@key', is the id captured under that key. 'capture' maps a key to a dotted path in the response. Readers pre-bind '@EUR', '@USD' and '@system.<role>' for each system account. '{suffix}' in a string is replaced by the reader's run suffix (empty in Go; the browser database is shared within a run).",
+    "A 'reconcile' step starts a statement session, selects every candidate dated on or before the statement date, and finishes it.",
+    "Every register figure is derived by hand from the steps and the documented contracts (docs/implemented.md, docs/plans/budgets-plan.md, the ledger-invariants skill). Its 'why' is that derivation. No figure was produced by application code.",
+    "A register mismatch is a finding: recheck the derivation, then file a defect. Never edit an expected value to match the app.",
+    "Amounts are exact decimals compared by value, so '300' equals '300.0000'. Realized figures are signed as the API reports them: gain = proceeds + disposed basis, so a long's disposed basis is negative and a short's cover proceeds are negative. Dates are absolute and in the past so that dated reads are reproducible.",
+    "A figure marked 'known_defect' names the open issue that makes the app disagree with it. Readers require it to still disagree, so the fix fails the reader until the marker is removed; the expected value itself is never changed."
+  ],
+  "steps": [
+    { "why": "parent account: a container with no postings of its own", "method": "POST", "path": "/api/v1/accounts", "status": 201, "capture": { "bank": "id" },
+      "body": { "name": "Ref bank{suffix}", "account_class": "asset", "account_kind": "other_money_account", "default_commodity_id": "@EUR", "allows_postings": false, "opened_on": "2026-01-01", "effective_from": "2026-01-01" } },
+    { "why": "child: euro checking", "method": "POST", "path": "/api/v1/accounts", "status": 201, "capture": { "checking": "id" },
+      "body": { "name": "Ref checking{suffix}", "account_class": "asset", "account_kind": "checking", "parent_account_id": "@bank", "default_commodity_id": "@EUR", "quantity_scale_override": 2, "allows_postings": true, "opened_on": "2026-01-01", "effective_from": "2026-01-01" } },
+    { "why": "child: euro savings", "method": "POST", "path": "/api/v1/accounts", "status": 201, "capture": { "savings": "id" },
+      "body": { "name": "Ref savings{suffix}", "account_class": "asset", "account_kind": "savings", "parent_account_id": "@bank", "default_commodity_id": "@EUR", "quantity_scale_override": 2, "allows_postings": true, "opened_on": "2026-01-01", "effective_from": "2026-01-01" } },
+    { "why": "child in a second currency: dollar checking, also the brokerage settlement account", "method": "POST", "path": "/api/v1/accounts", "status": 201, "capture": { "usd_checking": "id" },
+      "body": { "name": "Ref dollar checking{suffix}", "account_class": "asset", "account_kind": "checking", "parent_account_id": "@bank", "default_commodity_id": "@USD", "quantity_scale_override": 2, "allows_postings": true, "opened_on": "2026-01-01", "effective_from": "2026-01-01" } },
+    { "why": "liability", "method": "POST", "path": "/api/v1/accounts", "status": 201, "capture": { "card": "id" },
+      "body": { "name": "Ref card{suffix}", "account_class": "liability", "account_kind": "credit_card", "default_commodity_id": "@EUR", "quantity_scale_override": 2, "allows_postings": true, "opened_on": "2026-01-01", "effective_from": "2026-01-01" } },
+    { "why": "an account emptied, closed and archived in January", "method": "POST", "path": "/api/v1/accounts", "status": 201, "capture": { "old_cash": "id" },
+      "body": { "name": "Ref old cash{suffix}", "account_class": "asset", "account_kind": "cash", "default_commodity_id": "@EUR", "quantity_scale_override": 2, "allows_postings": true, "opened_on": "2026-01-01", "effective_from": "2026-01-01" } },
+    { "why": "an off-budget savings account", "method": "POST", "path": "/api/v1/accounts", "status": 201, "capture": { "emergency": "id" },
+      "body": { "name": "Ref emergency fund{suffix}", "account_class": "asset", "account_kind": "savings", "default_commodity_id": "@EUR", "quantity_scale_override": 2, "allows_postings": true, "opened_on": "2026-01-01", "effective_from": "2026-01-01" } },
+    { "why": "the emergency fund is off budget for the whole book", "method": "PUT", "path": "/api/v1/budgets/accounts/@emergency", "status": 200,
+      "body": { "effective_from": "2026-01-01", "treatment": "off_budget", "change_reason": "reference book" } },
+
+    { "why": "expense category", "method": "POST", "path": "/api/v1/categories", "status": 201, "capture": { "groceries": "id" }, "body": { "name": "Ref groceries{suffix}", "category_type": "expense" } },
+    { "why": "expense category", "method": "POST", "path": "/api/v1/categories", "status": 201, "capture": { "dining": "id" }, "body": { "name": "Ref dining{suffix}", "category_type": "expense" } },
+    { "why": "expense category", "method": "POST", "path": "/api/v1/categories", "status": 201, "capture": { "travel": "id" }, "body": { "name": "Ref travel{suffix}", "category_type": "expense" } },
+    { "why": "expense category for a short holder's payment in lieu", "method": "POST", "path": "/api/v1/categories", "status": 201, "capture": { "borrow_costs": "id" }, "body": { "name": "Ref borrow costs{suffix}", "category_type": "expense" } },
+    { "why": "income category", "method": "POST", "path": "/api/v1/categories", "status": 201, "capture": { "salary": "id" }, "body": { "name": "Ref salary{suffix}", "category_type": "income" } },
+    { "why": "income category", "method": "POST", "path": "/api/v1/categories", "status": 201, "capture": { "dividends": "id" }, "body": { "name": "Ref dividends{suffix}", "category_type": "income" } },
+    { "why": "a monthly groceries target of 200.00 EUR from January", "method": "PUT", "path": "/api/v1/budgets/targets/@groceries/@EUR", "status": 200,
+      "body": { "period_start": "2026-01-01", "quantity_value": "20000", "quantity_scale": 2, "change_reason": "reference book" } },
+
+    { "why": "the same target for February: targets are per month, never rolled over (budgets plan rule 6)", "method": "PUT", "path": "/api/v1/budgets/targets/@groceries/@EUR", "status": 200,
+      "body": { "period_start": "2026-02-01", "quantity_value": "20000", "quantity_scale": 2, "change_reason": "reference book" } },
+
+    { "why": "T1 opening balance of checking", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-01-02", "description": "Opening balance", "journal_entries": [{ "entry_date": "2026-01-02", "postings": [
+        { "account_id": "@checking", "commodity_id": "@EUR", "quantity_value": "300000", "quantity_scale": 2 },
+        { "account_id": "@system.opening_balance", "commodity_id": "@EUR", "quantity_value": "-300000", "quantity_scale": 2 } ] }] } },
+    { "why": "T2 opening balance of old cash", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-01-02", "description": "Opening balance", "journal_entries": [{ "entry_date": "2026-01-02", "postings": [
+        { "account_id": "@old_cash", "commodity_id": "@EUR", "quantity_value": "5000", "quantity_scale": 2 },
+        { "account_id": "@system.opening_balance", "commodity_id": "@EUR", "quantity_value": "-5000", "quantity_scale": 2 } ] }] } },
+    { "why": "T3 January salary", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-01-05", "description": "January salary", "journal_entries": [{ "entry_date": "2026-01-05", "postings": [
+        { "account_id": "@checking", "commodity_id": "@EUR", "quantity_value": "250000", "quantity_scale": 2 },
+        { "account_id": "@salary", "commodity_id": "@EUR", "quantity_value": "-250000", "quantity_scale": 2 } ] }] } },
+    { "why": "T4 groceries", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-01-08", "description": "Groceries", "journal_entries": [{ "entry_date": "2026-01-08", "postings": [
+        { "account_id": "@checking", "commodity_id": "@EUR", "quantity_value": "-8240", "quantity_scale": 2 },
+        { "account_id": "@groceries", "commodity_id": "@EUR", "quantity_value": "8240", "quantity_scale": 2 } ] }] } },
+    { "why": "T5 grocery refund: nets against the category and the outflow, never income", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-01-10", "description": "Grocery refund", "journal_entries": [{ "entry_date": "2026-01-10", "postings": [
+        { "account_id": "@checking", "commodity_id": "@EUR", "quantity_value": "1240", "quantity_scale": 2 },
+        { "account_id": "@groceries", "commodity_id": "@EUR", "quantity_value": "-1240", "quantity_scale": 2 } ] }] } },
+    { "why": "T6 split on the card: groceries 45.00, dining 30.00, travel 45.00", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-01-12", "description": "Card split", "journal_entries": [{ "entry_date": "2026-01-12", "postings": [
+        { "account_id": "@card", "commodity_id": "@EUR", "quantity_value": "-12000", "quantity_scale": 2 },
+        { "account_id": "@groceries", "commodity_id": "@EUR", "quantity_value": "4500", "quantity_scale": 2 },
+        { "account_id": "@dining", "commodity_id": "@EUR", "quantity_value": "3000", "quantity_scale": 2 },
+        { "account_id": "@travel", "commodity_id": "@EUR", "quantity_value": "4500", "quantity_scale": 2 } ] }] } },
+    { "why": "T7 groceries paid from old cash", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-01-14", "description": "Market", "journal_entries": [{ "entry_date": "2026-01-14", "postings": [
+        { "account_id": "@old_cash", "commodity_id": "@EUR", "quantity_value": "-2000", "quantity_scale": 2 },
+        { "account_id": "@groceries", "commodity_id": "@EUR", "quantity_value": "2000", "quantity_scale": 2 } ] }] } },
+    { "why": "T8 old cash emptied into checking", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-01-15", "description": "Deposit old cash", "journal_entries": [{ "entry_date": "2026-01-15", "postings": [
+        { "account_id": "@old_cash", "commodity_id": "@EUR", "quantity_value": "-3000", "quantity_scale": 2 },
+        { "account_id": "@checking", "commodity_id": "@EUR", "quantity_value": "3000", "quantity_scale": 2 } ] }] } },
+    { "why": "old cash is closed once empty", "method": "POST", "path": "/api/v1/accounts/@old_cash/close", "status": 200,
+      "body": { "closed_on": "2026-01-16", "effective_from": "2026-01-16", "change_reason": "reference book" } },
+    { "why": "and archived", "method": "POST", "path": "/api/v1/accounts/@old_cash/archive", "status": 200,
+      "body": { "effective_from": "2026-01-16", "change_reason": "reference book" } },
+    { "why": "checking is reconciled at 15 January: T1, T3, T4, T5 and T8 make 5460.00", "reconcile": {
+      "account": "@checking", "commodity": "@EUR", "statement_date": "2026-01-15", "statement_balance_value": "546000", "statement_balance_scale": 2 } },
+    { "why": "T9 same-currency transfer that leaves checking on the 20th and reaches savings on the 22nd (#187)", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-01-20", "description": "To savings", "journal_entries": [{ "entry_date": "2026-01-20", "postings": [
+        { "account_id": "@checking", "commodity_id": "@EUR", "quantity_value": "-50000", "quantity_scale": 2, "posted_on": "2026-01-20" },
+        { "account_id": "@savings", "commodity_id": "@EUR", "quantity_value": "50000", "quantity_scale": 2, "posted_on": "2026-01-22" } ] }] } },
+    { "why": "T10 card payment", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-01-25", "description": "Card payment", "journal_entries": [{ "entry_date": "2026-01-25", "postings": [
+        { "account_id": "@checking", "commodity_id": "@EUR", "quantity_value": "-12000", "quantity_scale": 2 },
+        { "account_id": "@card", "commodity_id": "@EUR", "quantity_value": "12000", "quantity_scale": 2 } ] }] } },
+    { "why": "T11 cross-currency transfer: 2500.00 EUR leaves on the 26th, 2750.00 USD arrives on the 28th; the commodity_trading legs stay on the transaction date, so the server bridges the dollars through transfer_clearing", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-01-26", "description": "Exchange to dollars", "journal_entries": [{ "entry_date": "2026-01-26", "postings": [
+        { "account_id": "@checking", "commodity_id": "@EUR", "quantity_value": "-250000", "quantity_scale": 2, "posted_on": "2026-01-26" },
+        { "account_id": "@system.commodity_trading", "commodity_id": "@EUR", "quantity_value": "250000", "quantity_scale": 2 },
+        { "account_id": "@usd_checking", "commodity_id": "@USD", "quantity_value": "275000", "quantity_scale": 2, "posted_on": "2026-01-28" },
+        { "account_id": "@system.commodity_trading", "commodity_id": "@USD", "quantity_value": "-275000", "quantity_scale": 2 } ] }] } },
+    { "why": "T12 checking to the off-budget emergency fund", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-01-27", "description": "To emergency fund", "journal_entries": [{ "entry_date": "2026-01-27", "postings": [
+        { "account_id": "@checking", "commodity_id": "@EUR", "quantity_value": "-20000", "quantity_scale": 2 },
+        { "account_id": "@emergency", "commodity_id": "@EUR", "quantity_value": "20000", "quantity_scale": 2 } ] }] } },
+    { "why": "T13 a duplicate expense, voided below", "method": "POST", "path": "/api/v1/transactions", "status": 201, "capture": { "t13": "id" },
+      "body": { "transaction_date": "2026-01-29", "description": "Duplicate groceries", "journal_entries": [{ "entry_date": "2026-01-29", "postings": [
+        { "account_id": "@checking", "commodity_id": "@EUR", "quantity_value": "-9900", "quantity_scale": 2 },
+        { "account_id": "@groceries", "commodity_id": "@EUR", "quantity_value": "9900", "quantity_scale": 2 } ] }] } },
+    { "why": "T13 is voided: never financial truth", "method": "POST", "path": "/api/v1/transactions/@t13/void", "status": 200, "body": { "change_reason": "entered twice" } },
+    { "why": "a daily recurring template; templates never backfill (recurring plan D2), so its first occurrence is the owner's today", "method": "POST", "path": "/api/v1/recurring/templates", "status": 201, "capture": { "lunch_template": "id" },
+      "body": { "name": "Ref lunch{suffix}", "frequency": "daily", "starts_on": "2026-02-03", "lead_days": 0, "description": "Lunch plan", "postings": [
+        { "account_id": "@checking", "commodity_id": "@EUR", "quantity_value": "-1500", "quantity_scale": 2 },
+        { "account_id": "@dining", "commodity_id": "@EUR", "quantity_value": "1500", "quantity_scale": 2 } ] } },
+    { "why": "T14 generated today as a system draft of 15.00 dining: excluded from every ledger figure", "method": "POST", "path": "/api/v1/recurring/templates/@lunch_template/run-now", "status": 200, "body": {} },
+    { "why": "archived, so no later day generates another draft", "method": "POST", "path": "/api/v1/recurring/templates/@lunch_template/archive", "status": 200, "body": {} },
+    { "why": "T15 February salary", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-02-05", "description": "February salary", "journal_entries": [{ "entry_date": "2026-02-05", "postings": [
+        { "account_id": "@checking", "commodity_id": "@EUR", "quantity_value": "250000", "quantity_scale": 2 },
+        { "account_id": "@salary", "commodity_id": "@EUR", "quantity_value": "-250000", "quantity_scale": 2 } ] }] } },
+    { "why": "T16 groceries from the off-budget fund", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-02-10", "description": "Groceries from fund", "journal_entries": [{ "entry_date": "2026-02-10", "postings": [
+        { "account_id": "@emergency", "commodity_id": "@EUR", "quantity_value": "-4000", "quantity_scale": 2 },
+        { "account_id": "@groceries", "commodity_id": "@EUR", "quantity_value": "4000", "quantity_scale": 2 } ] }] } },
+    { "why": "T17 dining on the card", "method": "POST", "path": "/api/v1/transactions", "status": 201,
+      "body": { "transaction_date": "2026-02-12", "description": "Dinner", "journal_entries": [{ "entry_date": "2026-02-12", "postings": [
+        { "account_id": "@card", "commodity_id": "@EUR", "quantity_value": "-2500", "quantity_scale": 2 },
+        { "account_id": "@dining", "commodity_id": "@EUR", "quantity_value": "2500", "quantity_scale": 2 } ] }] } },
+
+    { "why": "FX: 1 USD = 0.90 EUR on 31 January", "method": "POST", "path": "/api/v1/pricing/manual", "status": 201,
+      "body": { "base_commodity_id": "@USD", "quote_commodity_id": "@EUR", "valuation_date": "2026-01-31", "price_value": "90", "price_scale": 2, "base_quantity_value": "1", "base_quantity_scale": 0, "reason": "reference book" } },
+    { "why": "FX: 1 USD = 0.85 EUR on 31 March", "method": "POST", "path": "/api/v1/pricing/manual", "status": 201,
+      "body": { "base_commodity_id": "@USD", "quote_commodity_id": "@EUR", "valuation_date": "2026-03-31", "price_value": "85", "price_scale": 2, "base_quantity_value": "1", "base_quantity_scale": 0, "reason": "reference book" } },
+
+    { "why": "instrument REF: a dollar stock held to four decimal places", "method": "POST", "path": "/api/v1/investments/instruments", "status": 201, "capture": { "ref_instrument": "id", "REF": "commodity_id" },
+      "body": { "commodity_code": "REF{suffix}", "instrument_type": "stock", "display_name": "Reference Corp{suffix}", "symbol": "REF{suffix}", "quote_commodity_id": "@USD", "quantity_scale": 4, "price_scale": 4, "effective_from": "2026-01-01", "identifiers": {}, "metadata": {} } },
+    { "why": "instrument SHRT: a dollar stock, shorted", "method": "POST", "path": "/api/v1/investments/instruments", "status": 201, "capture": { "shrt_instrument": "id", "SHRT": "commodity_id" },
+      "body": { "commodity_code": "SHRT{suffix}", "instrument_type": "stock", "display_name": "Short Corp{suffix}", "symbol": "SHRT{suffix}", "quote_commodity_id": "@USD", "quantity_scale": 4, "price_scale": 4, "effective_from": "2026-01-01", "identifiers": {}, "metadata": {} } },
+    { "why": "holding under FIFO", "method": "POST", "path": "/api/v1/investments/holding-accounts", "status": 201, "capture": { "hold_fifo": "id" },
+      "body": { "instrument_id": "@ref_instrument", "name": "Ref FIFO holding{suffix}", "opened_on": "2026-01-01", "effective_from": "2026-01-01", "cost_basis_method": "fifo" } },
+    { "why": "holding under average cost", "method": "POST", "path": "/api/v1/investments/holding-accounts", "status": 201, "capture": { "hold_avg": "id" },
+      "body": { "instrument_id": "@ref_instrument", "name": "Ref average holding{suffix}", "opened_on": "2026-01-01", "effective_from": "2026-01-01", "cost_basis_method": "average_cost" } },
+    { "why": "holding that receives units of unknown basis", "method": "POST", "path": "/api/v1/investments/holding-accounts", "status": 201, "capture": { "hold_gift": "id" },
+      "body": { "instrument_id": "@ref_instrument", "name": "Ref gifted holding{suffix}", "opened_on": "2026-01-01", "effective_from": "2026-01-01", "cost_basis_method": "fifo" } },
+    { "why": "holding that is short SHRT", "method": "POST", "path": "/api/v1/investments/holding-accounts", "status": 201, "capture": { "hold_short": "id" },
+      "body": { "instrument_id": "@shrt_instrument", "name": "Ref short holding{suffix}", "opened_on": "2026-01-01", "effective_from": "2026-01-01", "cost_basis_method": "fifo" } },
+
+    { "why": "B1 FIFO buy: 10 REF for 900.00 (90.00 each)", "method": "POST", "path": "/api/v1/investments/buy", "status": 201, "capture": { "lot_b1": "lot_id" },
+      "body": { "transaction_date": "2026-02-02", "commodity_id": "@REF", "holding_account_id": "@hold_fifo", "cash_account_id": "@usd_checking", "quantity_value": "100000", "quantity_scale": 4, "cash_amount_value": "90000", "cash_amount_scale": 2, "cash_commodity_id": "@USD" } },
+    { "why": "B2 FIFO buy: 5 REF for 600.00 (120.00 each)", "method": "POST", "path": "/api/v1/investments/buy", "status": 201, "capture": { "lot_b2": "lot_id" },
+      "body": { "transaction_date": "2026-02-09", "commodity_id": "@REF", "holding_account_id": "@hold_fifo", "cash_account_id": "@usd_checking", "quantity_value": "50000", "quantity_scale": 4, "cash_amount_value": "60000", "cash_amount_scale": 2, "cash_commodity_id": "@USD" } },
+    { "why": "2-for-1 split of the FIFO holding: B1 becomes 20 at 900.00, B2 10 at 600.00", "method": "POST", "path": "/api/v1/investments/splits", "status": 201,
+      "body": { "effective_on": "2026-02-16", "holding_account_id": "@hold_fifo", "commodity_id": "@REF", "ratio_numerator": 2, "ratio_denominator": 1, "change_reason": "reference book" } },
+    { "why": "B3 average buy after the split: 4 REF for 200.00 (50.00 each)", "method": "POST", "path": "/api/v1/investments/buy", "status": 201, "capture": { "lot_b3": "lot_id" },
+      "body": { "transaction_date": "2026-02-17", "commodity_id": "@REF", "holding_account_id": "@hold_avg", "cash_account_id": "@usd_checking", "quantity_value": "40000", "quantity_scale": 4, "cash_amount_value": "20000", "cash_amount_scale": 2, "cash_commodity_id": "@USD" } },
+    { "why": "B4 average buy: 6 REF for 375.00 (62.50 each); the pool is 10 at 575.00, 57.50 each", "method": "POST", "path": "/api/v1/investments/buy", "status": 201, "capture": { "lot_b4": "lot_id" },
+      "body": { "transaction_date": "2026-02-18", "commodity_id": "@REF", "holding_account_id": "@hold_avg", "cash_account_id": "@usd_checking", "quantity_value": "60000", "quantity_scale": 4, "cash_amount_value": "37500", "cash_amount_scale": 2, "cash_commodity_id": "@USD" } },
+    { "why": "G1 2.5 REF transferred in with unknown basis", "method": "POST", "path": "/api/v1/investments/transfers/external/in", "status": 201, "capture": { "lot_g1": "lot_id" },
+      "body": { "effective_on": "2026-02-19", "holding_account_id": "@hold_gift", "commodity_id": "@REF", "quantity_value": "25000", "quantity_scale": 4, "basis_knowledge": "unknown", "cost_commodity_id": "@USD", "original_acquired_on": "2020-06-01", "memo": "Gift", "change_reason": "reference book" } },
+    { "why": "cash dividend of 15.00 USD on REF", "method": "POST", "path": "/api/v1/investments/dividend", "status": 201,
+      "body": { "transaction_date": "2026-02-20", "commodity_id": "@REF", "cash_account_id": "@usd_checking", "cash_commodity_id": "@USD", "income_account_id": "@dividends", "amount_value": "1500", "amount_scale": 2 } },
+    { "why": "S1 FIFO sale: 25 REF for 1500.00 (60.00 each), taking all of B1 and 5 of B2", "method": "POST", "path": "/api/v1/investments/sell", "status": 201,
+      "body": { "transaction_date": "2026-02-23", "commodity_id": "@REF", "holding_account_id": "@hold_fifo", "cash_account_id": "@usd_checking", "quantity_value": "250000", "quantity_scale": 4, "cash_amount_value": "150000", "cash_amount_scale": 2, "cash_commodity_id": "@USD" } },
+    { "why": "S2 average sale: 4 REF for 260.00 (65.00 each)", "method": "POST", "path": "/api/v1/investments/sell", "status": 201,
+      "body": { "transaction_date": "2026-02-24", "commodity_id": "@REF", "holding_account_id": "@hold_avg", "cash_account_id": "@usd_checking", "quantity_value": "40000", "quantity_scale": 4, "cash_amount_value": "26000", "cash_amount_scale": 2, "cash_commodity_id": "@USD" } },
+    { "why": "short sale: 10 SHRT for 500.00 (50.00 each)", "method": "POST", "path": "/api/v1/investments/short-sale", "status": 201, "capture": { "lot_short": "lot_id" },
+      "body": { "transaction_date": "2026-03-02", "commodity_id": "@SHRT", "holding_account_id": "@hold_short", "cash_account_id": "@usd_checking", "quantity_value": "100000", "quantity_scale": 4, "cash_amount_value": "50000", "cash_amount_scale": 2, "cash_commodity_id": "@USD" } },
+    { "why": "return of capital: 30.00 USD on the 6 REF the average holding has (5.00 each), paid on the 5th", "method": "POST", "path": "/api/v1/investments/return-of-capital", "status": 201,
+      "body": { "holding_account_id": "@hold_avg", "commodity_id": "@REF", "cash_account_id": "@usd_checking", "currency_id": "@USD", "effective_on": "2026-03-02", "payment_on": "2026-03-05", "amount_value": "3000", "amount_scale": 2, "change_reason": "reference book" } },
+    { "why": "payment in lieu: 8.00 USD owed on the short position, ex-date the 9th, paid the 12th", "method": "POST", "path": "/api/v1/investments/payment-in-lieu", "status": 201,
+      "body": { "holding_account_id": "@hold_short", "commodity_id": "@SHRT", "ex_date": "2026-03-09", "transaction_date": "2026-03-12", "cash_account_id": "@usd_checking", "cash_commodity_id": "@USD", "expense_account_id": "@borrow_costs", "amount_value": "800", "amount_scale": 2 } },
+    { "why": "partial cover: 4 SHRT for 180.00 (45.00 each)", "method": "POST", "path": "/api/v1/investments/short-cover", "status": 201,
+      "body": { "transaction_date": "2026-03-16", "commodity_id": "@SHRT", "holding_account_id": "@hold_short", "cash_account_id": "@usd_checking", "quantity_value": "40000", "quantity_scale": 4, "cash_amount_value": "18000", "cash_amount_scale": 2, "cash_commodity_id": "@USD" } },
+    { "why": "REF closes March at 70.0000 USD", "method": "POST", "path": "/api/v1/pricing/manual", "status": 201,
+      "body": { "base_commodity_id": "@REF", "quote_commodity_id": "@USD", "valuation_date": "2026-03-31", "price_value": "700000", "price_scale": 4, "base_quantity_value": "1", "base_quantity_scale": 0, "reason": "reference book" } },
+    { "why": "SHRT closes March at 40.0000 USD", "method": "POST", "path": "/api/v1/pricing/manual", "status": 201,
+      "body": { "base_commodity_id": "@SHRT", "quote_commodity_id": "@USD", "valuation_date": "2026-03-31", "price_value": "400000", "price_scale": 4, "base_quantity_value": "1", "base_quantity_scale": 0, "reason": "reference book" } }
+  ],
+
+  "register": {
+    "balances": [
+      { "as_of": "2026-01-15", "account": "checking", "commodity": "EUR", "value": "5460.00", "why": "3000 + 2500 - 82.40 + 12.40 + 30 (T1, T3, T4, T5, T8); the reconciled statement balance" },
+      { "as_of": "2026-01-21", "account": "checking", "commodity": "EUR", "value": "4960.00", "why": "5460 - 500: T9 has left checking on the 20th" },
+      { "as_of": "2026-01-21", "account": "savings", "commodity": "EUR", "value": "0.00", "why": "T9 reaches savings on the 22nd" },
+      { "as_of": "2026-01-21", "account": "system.transfer_clearing", "commodity": "EUR", "value": "500.00", "why": "T9's 500.00 is in transit between its two posting dates" },
+      { "as_of": "2026-01-22", "account": "savings", "commodity": "EUR", "value": "500.00", "why": "T9 arrives" },
+      { "as_of": "2026-01-22", "account": "system.transfer_clearing", "commodity": "EUR", "value": "0.00", "why": "T9 is no longer in transit" },
+      { "as_of": "2026-01-27", "account": "checking", "commodity": "EUR", "value": "2140.00", "why": "4960 - 120 (T10) - 2500 (T11, posted the 26th) - 200 (T12)" },
+      { "as_of": "2026-01-27", "account": "usd_checking", "commodity": "USD", "value": "0.00", "why": "T11's dollars are posted on the 28th" },
+      { "as_of": "2026-01-27", "account": "system.transfer_clearing", "commodity": "USD", "value": "2750.00", "why": "T11's dollars are in transit between the 26th and the 28th" },
+      { "as_of": "2026-01-28", "account": "usd_checking", "commodity": "USD", "value": "2750.00", "why": "T11 arrives" },
+      { "as_of": "2026-01-28", "account": "system.transfer_clearing", "commodity": "USD", "value": "0.00", "why": "T11 is no longer in transit" },
+      { "as_of": "2026-01-31", "account": "checking", "commodity": "EUR", "value": "2140.00", "why": "T13 is voided, so nothing changes after the 27th" },
+      { "as_of": "2026-01-31", "account": "old_cash", "commodity": "EUR", "value": "0.00", "why": "50 - 20 - 30 (T2, T7, T8)" },
+      { "as_of": "2026-01-31", "account": "card", "commodity": "EUR", "value": "0.00", "why": "-120 (T6) + 120 (T10)" },
+      { "as_of": "2026-03-31", "account": "checking", "commodity": "EUR", "value": "4640.00", "why": "2140 + 2500 (T15)" },
+      { "as_of": "", "account": "checking", "commodity": "EUR", "value": "4640.00", "why": "today: the T14 draft dated today is excluded" },
+      { "as_of": "2026-03-31", "account": "savings", "commodity": "EUR", "value": "500.00", "why": "T9 only" },
+      { "as_of": "2026-03-31", "account": "emergency", "commodity": "EUR", "value": "160.00", "why": "200 (T12) - 40 (T16)" },
+      { "as_of": "2026-03-31", "account": "card", "commodity": "EUR", "value": "-25.00", "why": "0 - 25 (T17)" },
+      { "as_of": "2026-03-31", "account": "usd_checking", "commodity": "USD", "value": "2792.00", "why": "2750 - 900 - 600 - 200 - 375 + 15 + 1500 + 260 + 500 + 30 - 8 - 180 (T11, B1, B2, B3, B4, dividend, S1, S2, short sale, return of capital, payment in lieu, cover)" },
+      { "as_of": "2026-03-31", "account": "hold_fifo", "commodity": "REF", "value": "5", "why": "10 + 5, doubled to 30 by the split, less 25 sold" },
+      { "as_of": "2026-03-31", "account": "hold_avg", "commodity": "REF", "value": "6", "why": "4 + 6 - 4" },
+      { "as_of": "2026-03-31", "account": "hold_gift", "commodity": "REF", "value": "2.5", "why": "G1" },
+      { "as_of": "2026-03-31", "account": "hold_short", "commodity": "SHRT", "value": "-6", "why": "10 owed, 4 covered" }
+    ],
+    "subtree_balances": [
+      { "as_of": "2026-03-31", "account": "bank", "commodity": "EUR", "value": "5140.00", "why": "checking 4640 + savings 500" },
+      { "as_of": "2026-03-31", "account": "bank", "commodity": "USD", "value": "2792.00", "why": "dollar checking alone" }
+    ],
+    "account_status": [
+      { "account": "old_cash", "status": "archived", "why": "closed then archived on 16 January" }
+    ],
+    "reconciliation": [
+      { "account": "checking", "commodity": "EUR", "statement_date": "2026-01-15", "statement_balance": "5460.00", "status": "active", "why": "the one reconciliation; nothing later touches the reconciled period" }
+    ],
+    "drafts": [
+      { "description": "Lunch plan", "why": "the archived template's only occurrence, dated the owner's today" }
+    ],
+    "period": { "start_date": "2026-01-01", "end_date": "2026-03-31" },
+    "spending": {
+      "accounts": ["checking", "savings", "usd_checking", "card", "old_cash", "emergency"],
+      "expense": [
+        { "category": "groceries", "commodity": "EUR", "amount": "175.00", "why": "82.40 - 12.40 + 45 + 20 + 40 (T4, T5, T6, T7, T16); voided T13 excluded" },
+        { "category": "dining", "commodity": "EUR", "amount": "55.00", "why": "30 + 25 (T6, T17); the T14 draft excluded" },
+        { "category": "travel", "commodity": "EUR", "amount": "45.00", "why": "T6" },
+        { "category": "borrow_costs", "commodity": "USD", "amount": "8.00", "why": "the payment in lieu" }
+      ],
+      "income": [
+        { "category": "salary", "commodity": "EUR", "amount": "5000.00", "why": "T3 + T15" },
+        { "category": "dividends", "commodity": "USD", "amount": "15.00", "why": "the cash dividend" }
+      ]
+    },
+    "cashflow": {
+      "accounts": ["checking", "savings", "usd_checking", "old_cash", "emergency"],
+      "rows": [
+        { "commodity": "EUR",
+          "inflow": "5000.00", "outflow": "130.00", "operating_net": "4870.00",
+          "transfer_in": "3550.00", "transfer_out": "3120.00", "transfer_net": "430.00", "net_movement": "5300.00",
+          "why": "inflow: salaries T3 + T15. outflow: 82.40 - 12.40 + 20 + 40 (T4, T5, T7, T16; T6 is on the card). transfer_in: openings 3000 + 50, and T9's arrival from transfer_clearing 500. transfer_out: T9's departure 500, card payment 120, exchange 2500. T8 and T12 stay inside the scope. net 5300 = checking 4640 + savings 500 + emergency 160 + old cash 0" },
+        { "commodity": "USD",
+          "inflow": "15.00", "outflow": "8.00", "operating_net": "7.00",
+          "transfer_in": "5040.00", "transfer_out": "2255.00", "transfer_net": "2785.00", "net_movement": "2792.00",
+          "why": "inflow: dividend. outflow: payment in lieu. transfer_in: exchange 2750 + S1 1500 + S2 260 + short sale 500 + return of capital 30. transfer_out: buys 900 + 600 + 200 + 375 and cover 180. The security legs never cross the cash boundary (T-102). net = dollar checking 2792" }
+      ]
+    },
+    "budget": [
+      { "period_start": "2026-01-01", "category": "groceries", "commodity": "EUR", "target": "200.00", "actual": "135.00", "remaining": "65.00", "why": "82.40 - 12.40 + 45 + 20: checking, card and old cash are on budget by kind" },
+      { "period_start": "2026-02-01", "category": "groceries", "commodity": "EUR", "target": "200.00", "actual": "0.00", "remaining": "200.00", "why": "T16 touches only the off-budget fund" }
+    ],
+    "net_worth": [
+      { "as_of": "2026-01-31",
+        "totals": [{ "commodity": "EUR", "value": "2840.00" }, { "commodity": "USD", "value": "2750.00" }],
+        "converted_eur": "5315.00",
+        "why": "EUR: checking 2140 + savings 500 + emergency 200 + old cash 0 + card 0. USD: 2750 at 0.90 = 2475.00. 2840 + 2475 = 5315.00. System accounts are excluded" },
+      { "as_of": "2026-02-28",
+        "totals": [{ "commodity": "EUR", "value": "5275.00" }, { "commodity": "USD", "value": "2450.00" }, { "commodity": "REF", "value": "13.5" }],
+        "converted_eur": null,
+        "why": "EUR: checking 4640 + savings 500 + emergency 160 + card -25. USD: 2750 - 900 - 600 - 200 - 375 + 15 + 1500 + 260. REF 5 + 6 + 2.5. No conversion: the only dollar rate is 28 days old against a 7-day window and REF has no February price, so the total is omitted, never shown short" },
+      { "as_of": "2026-03-31",
+        "totals": [{ "commodity": "EUR", "value": "5275.00" }, { "commodity": "USD", "value": "2792.00" }, { "commodity": "REF", "value": "13.5" }, { "commodity": "SHRT", "value": "-6" }],
+        "converted_eur": "8247.45",
+        "known_defect": "#281",
+        "why": "EUR 5275.00. USD 2792 at 0.85 = 2373.20. REF 13.5 at 70 USD = 945 USD at 0.85 = 803.25. SHRT -6 at 40 USD = -240 USD at 0.85 = -204.00. 5275 + 2373.20 + 803.25 - 204 = 8247.45" }
+    ],
+    "positions": [
+      { "account": "hold_fifo", "commodity": "REF", "side": "long", "quantity": "5", "basis_knowledge": "known", "remaining_basis": "300.00", "why": "B2's 10 post-split units at 60.00, 5 sold" },
+      { "account": "hold_avg", "commodity": "REF", "side": "long", "quantity": "6", "basis_knowledge": "known", "remaining_basis": "315.00", "why": "6 at the 57.50 pool rate = 345, less the 30 return of capital" },
+      { "account": "hold_gift", "commodity": "REF", "side": "long", "quantity": "2.5", "basis_knowledge": "unknown", "remaining_basis": null, "why": "unknown basis stays unknown, never zero" },
+      { "account": "hold_short", "commodity": "SHRT", "side": "short", "quantity": "6", "basis_knowledge": "known", "remaining_basis": "300.00", "why": "6 of 10 owed; 6/10 of the 500.00 opening proceeds" }
+    ],
+    "lots": [
+      { "lot": "lot_b1", "status": "closed", "remaining_quantity": "0", "remaining_basis": "0.00", "basis_knowledge": "known", "why": "all 20 post-split units sold in S1" },
+      { "lot": "lot_b2", "status": "open", "remaining_quantity": "5", "remaining_basis": "300.00", "basis_knowledge": "known", "why": "10 post-split units at 60.00; 5 sold in S1" },
+      { "lot": "lot_b3", "status": "closed", "remaining_quantity": "0", "remaining_basis": "0.00", "basis_knowledge": "known", "why": "the average pool's depletion takes lineage FIFO, so S2's 4 units close B3" },
+      { "lot": "lot_b4", "status": "open", "remaining_quantity": "6", "remaining_basis": "315.00", "basis_knowledge": "known", "why": "survivors carry the pool's remaining 345.00, less the 30.00 return of capital" },
+      { "lot": "lot_g1", "status": "open", "remaining_quantity": "2.5", "remaining_basis": null, "basis_knowledge": "unknown", "why": "G1 unchanged" },
+      { "lot": "lot_short", "status": "open", "remaining_quantity": "6", "remaining_basis": "300.00", "basis_knowledge": "known", "why": "10 owed at 500.00 opening proceeds, 4 covered" }
+    ],
+    "gains": {
+      "valuation_as_of": "2026-03-31",
+      "methods": [
+        { "method": "operational",
+          "realized": [
+            { "account": "hold_fifo", "disposal_date": "2026-02-23", "basis": "-1200.00", "proceeds": "1500.00", "gain": "300.00", "why": "FIFO: B1 20 at 900 + 5 of B2 at 60 = 1200, leaving the long as a credit" },
+            { "account": "hold_avg", "disposal_date": "2026-02-24", "basis": "-230.00", "proceeds": "260.00", "gain": "30.00", "why": "average: 4 at 57.50, leaving the long as a credit" },
+            { "account": "hold_short", "disposal_date": "2026-03-16", "basis": "200.00", "proceeds": "-180.00", "gain": "20.00", "why": "4/10 of 500 opening proceeds return as a debit; the 180 paid to cover is negative proceeds" }
+          ],
+          "realized_total": "350.00",
+          "unrealized": [
+            { "account": "hold_fifo", "gain": "50.00", "why": "5 at 70 = 350, basis 300" },
+            { "account": "hold_avg", "gain": "105.00", "why": "6 at 70 = 420, basis 315" },
+            { "account": "hold_gift", "gain": null, "why": "unknown basis: no gain" },
+            { "account": "hold_short", "gain": "60.00", "why": "300 proceeds retained against 6 at 40 = 240 owed" }
+          ] },
+        { "method": "fifo",
+          "realized": [
+            { "account": "hold_fifo", "disposal_date": "2026-02-23", "gain": "300.00", "why": "as operational" },
+            { "account": "hold_avg", "disposal_date": "2026-02-24", "gain": "60.00", "why": "B3: 4 at 50 = 200 against 260" },
+            { "account": "hold_short", "disposal_date": "2026-03-16", "gain": "20.00", "why": "one short lot" }
+          ],
+          "realized_total": "380.00",
+          "unrealized": [
+            { "account": "hold_fifo", "gain": "50.00", "why": "as operational" },
+            { "account": "hold_avg", "gain": "75.00", "why": "B4 6 at 62.50 = 375, less 30 = 345, against 420" },
+            { "account": "hold_gift", "gain": null, "why": "unknown basis" },
+            { "account": "hold_short", "gain": "60.00", "why": "one short lot" }
+          ] },
+        { "method": "lifo",
+          "realized": [
+            { "account": "hold_fifo", "disposal_date": "2026-02-23", "gain": "225.00", "why": "B2 10 at 600 + 15 of B1 at 45 = 675; 1500 - 1275" },
+            { "account": "hold_avg", "disposal_date": "2026-02-24", "gain": "10.00", "why": "4 of B4 at 62.50 = 250 against 260" },
+            { "account": "hold_short", "disposal_date": "2026-03-16", "gain": "20.00", "why": "one short lot" }
+          ],
+          "realized_total": "255.00",
+          "unrealized": [
+            { "account": "hold_fifo", "gain": "125.00", "why": "5 of B1 at 45 = 225 against 350" },
+            { "account": "hold_avg", "gain": "125.00", "why": "B3 4 at 50 + B4 2 at 62.50 = 325, less 30 (5.00 on each of 6 units) = 295, against 420" },
+            { "account": "hold_gift", "gain": null, "why": "unknown basis" },
+            { "account": "hold_short", "gain": "60.00", "why": "one short lot" }
+          ] },
+        { "method": "average_cost",
+          "realized": [
+            { "account": "hold_fifo", "disposal_date": "2026-02-23", "gain": "250.00", "why": "30 units at 1500 = 50.00 each; 25 at 50 = 1250 against 1500" },
+            { "account": "hold_avg", "disposal_date": "2026-02-24", "gain": "30.00", "why": "as operational" },
+            { "account": "hold_short", "disposal_date": "2026-03-16", "gain": "20.00", "why": "one short lot" }
+          ],
+          "realized_total": "300.00",
+          "unrealized": [
+            { "account": "hold_fifo", "gain": "100.00", "why": "5 at 50 = 250 against 350" },
+            { "account": "hold_avg", "gain": "105.00", "why": "as operational" },
+            { "account": "hold_gift", "gain": null, "why": "unknown basis" },
+            { "account": "hold_short", "gain": "60.00", "why": "one short lot" }
+          ] }
+      ]
+    }
+  }
+}

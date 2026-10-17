@@ -133,8 +133,10 @@ below is execution order, not a chain of hard dependencies.
    [2026-10-17 evidence](reviews/setup-auth-privacy-audit-2026-10-17.md).
    #261/#262/#263/#264 are corrected. The other eleven areas
    and the targeted identity-concurrency/proxy-browser follow-ups remain pending
-   as sub-issues of #260, in this order: the shared reference book and
-   expected-figure register #266; ledger/reconciliation #270, investment
+   as sub-issues of #260, in this order (the shared reference book and
+   expected-figure register #266 is delivered, with
+   [evidence](reviews/reference-book-audit-2026-10-17.md) and finding #281):
+   ledger/reconciliation #270, investment
    operations #272/#273, reports and R13 readiness #275, and recovery #277;
    then planning #276, imports #271, reference data #269, prices and durable
    work #274 and identity concurrency #267; then frontend #278, deployment

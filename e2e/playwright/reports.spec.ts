@@ -3,6 +3,7 @@ import { expect, type Page, test } from './support/fixtures';
 import { apiJSON, csrfTokenFor } from './support/api';
 import { daysFromTodayISO, todayISO } from './support/dates';
 import { createCashAccount, createLiabilityAccount, ensureCurrency, readyForLedger } from './support/ledger';
+import { seedReferenceBook } from './support/reference-book';
 
 test('spending report ranks categories, nets refunds, and ignores transfers', async ({ page }) => {
   const { csrfToken, currencyID } = await readyForLedger(page);
@@ -620,6 +621,31 @@ test('[acceptance] the shared report scenario downloads exactly its declared fig
       ...Object.fromEntries(cashflowMeasures.map((measure, index) => [measure, figures[index]]))
     }));
   expect(cashflow).toEqual(scenario.reports.cashflow.rows);
+});
+
+// #266: the reference book seeds through the browser's own session and its
+// cashflow CSV carries the register's hand-derived figures exactly, gross
+// measures included. The Go reader asserts the rest of the register.
+test('[acceptance] the reference book downloads its register cashflow', async ({ page }) => {
+  test.setTimeout(120_000);
+  const { book, ids } = await seedReferenceBook(page);
+  const { period, cashflow } = book.register;
+  const scope = cashflow.accounts.map((key) => `&account_id=${ids.get(key)}`).join('');
+  await page.goto(
+    `/app/reports?view=cashflow&start_date=${period.start_date}&end_date=${period.end_date}&bucket=quarter&include_descendants=false${scope}`
+  );
+  await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(cashflow.rows.length);
+  const commodities = new Set(cashflow.rows.map((row) => row.commodity));
+  const rows = (await downloadReportCSV(page))
+    .filter((fields) => commodities.has(fields[2]))
+    .map(([, , commodity, ...figures]) => ({
+      commodity,
+      ...Object.fromEntries(cashflowMeasures.map((measure, index) => [measure, figures[index]]))
+    }));
+  // Row order follows the book's default currency, which differs between the
+  // Go and browser books; the figures per commodity must not.
+  const byCommodity = (a: { commodity: string }, b: { commodity: string }) => a.commodity.localeCompare(b.commodity);
+  expect(rows.sort(byCommodity)).toEqual(cashflow.rows.map(({ why: _why, ...row }) => row).sort(byCommodity));
 });
 
 /** Downloads the current report's CSV and returns its rows as fields. */
