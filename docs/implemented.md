@@ -628,7 +628,8 @@ converting coefficients to `Number`.
 - Mobile-responsive core workflows including transaction entry.
 - Loading / empty / error / success states on shipped screens.
 - Accessibility tests establish the states they render, not universal coverage.
-  The closed-lot badge contrast/token defect remains [#259](https://github.com/sergeyfarin/rekenraam/issues/259).
+  Lot status badges use semantic token pairs; a phone light/dark axe check
+  covers a lot list with open and closed lots ([#259](https://github.com/sergeyfarin/rekenraam/issues/259)).
 - Post-merge structural audit (#109), shared API/browser report scenario (#110)
   and opt-in 250k-posting export/self-check measurement (#108) ship. The
   latter runs in the weekly `large-book.yml` workflow, separately from push CI.

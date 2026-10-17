@@ -136,16 +136,12 @@ below is execution order, not a chain of hard dependencies.
    and the targeted identity-concurrency/proxy-browser follow-ups remain pending.
    Fix confirmed integrity/security defects before affected feature slices.
    This is a bounded review, not a recurring full-suite gate.
-2. **Address the known UI defect independently:**
-   [#259](https://github.com/sergeyfarin/rekenraam/issues/259), closed-lot badge
-   contrast and semantic tokens. Check the whole repeated badge pattern, and
-   verify the rendered closed-lot state. Audit planning does not mark it fixed.
-3. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
+2. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
    Use the delivered R18 valuation contracts; resolve portfolio scope,
    external-flow classification, return equations, numerical failure states,
    coverage and reproducibility before implementation. The reporting/investment
    audit informs this contract; unrelated provider evidence is not a prerequisite.
-4. **Continue independent readiness work.**
+3. **Continue independent readiness work.**
    [#102](https://github.com/sergeyfarin/rekenraam/issues/102) needs native
    terminology review, not another catalog-parity implementation. Recheck
    [#112](https://github.com/sergeyfarin/rekenraam/issues/112)'s upstream

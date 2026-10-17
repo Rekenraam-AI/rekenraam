@@ -299,7 +299,7 @@
                         <div class="flex items-center justify-between gap-2">
                           <span class="font-medium text-foreground">{formatDate(lot.opened_on)}</span>
                           <span
-                            class="rounded-full px-2 py-0.5 text-xs font-medium {lot.status === 'open' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted/30 text-muted'}"
+                            class="rounded-full px-2 py-0.5 text-xs font-medium {lot.status === 'open' ? 'bg-positive-soft text-positive' : 'bg-surface-strong text-foreground'}"
                           >
                             {lotStatusLabel(lot.status)}
                           </span>
