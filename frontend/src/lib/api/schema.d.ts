@@ -2938,8 +2938,8 @@ export interface paths {
         };
         /**
          * Recent authentication events (operator visibility)
-         * @description The durable log of successful and failed authentication attempts, newest first, so an operator can detect a brute-force run and reconstruct an incident (S-07). Each event carries the proxy-aware client IP.
-         *     Owner-only: the log names client IPs and attempted usernames. It never contains password material or session tokens — `auth_session_id` is the only session reference. Rows are pruned to a 90-day retention window by the daily session-cleanup pass.
+         * @description The durable log of successful and failed authentication attempts and of account-security changes, newest first, so an operator can detect a brute-force run and reconstruct an incident (S-07, #288). Each event carries the proxy-aware client IP; a change also names the session and request that made it, and a sign-in names the second factor it used.
+         *     Owner-only: the log names client IPs and attempted usernames. It never contains password material, session tokens, MFA secrets or recovery codes — `auth_session_id` is the only session reference. Sign-in attempts and logouts are pruned to a 90-day retention window by the daily session-cleanup pass; account-security changes are kept.
          */
         get: {
             parameters: {
@@ -29642,33 +29642,66 @@ export interface components {
             /** @description Session-bound CSRF token for authenticated mutating requests. */
             csrf_token?: string;
         };
-        /** @description One recorded authentication attempt or session end. Never contains password material or session tokens. */
+        /** @description One recorded sign-in attempt, session end, or account-security change (#288). Never contains password material, session tokens, MFA secrets or recovery codes. */
         AuthenticationEventResponse: {
             /** Format: int64 */
             id: number;
             /** Format: date-time */
             occurred_at: string;
-            /** @enum {string} */
-            event_type: "login_succeeded" | "login_failed" | "login_blocked" | "logout";
+            /**
+             * @description Sign-in attempts and logout are pruned after 90 days. The account-security changes (MFA enrollment, activation, disable, recovery-code regeneration, approved-device revocation and owner recovery) are kept, and each is written in the same transaction as the change it records.
+             * @enum {string}
+             */
+            event_type: "login_succeeded" | "login_failed" | "login_blocked" | "logout" | "mfa_enrollment_started" | "mfa_activated" | "mfa_disabled" | "mfa_recovery_codes_regenerated" | "trusted_device_revoked" | "owner_access_recovered";
             /** @enum {string} */
             outcome: "success" | "failure";
-            /** @description The username that was attempted. */
+            /**
+             * @description Where the event came from. `cli_recovery` is the `recover-owner` command, which has no session, client address or request id.
+             * @enum {string}
+             */
+            origin: "browser_api" | "cli_recovery";
+            /** @description The username that was attempted or changed. */
             username?: string;
             /**
              * Format: int64
-             * @description Set when the attempt named an existing user.
+             * @description Set when the event names an existing user.
              */
             user_id?: number;
             /**
              * Format: int64
-             * @description The session created or ended by this event. Becomes absent once the session row is cleaned up.
+             * @description The session created or ended by this event, or the session that made the account-security change. Becomes absent once the session row is cleaned up.
              */
             auth_session_id?: number;
             /** @description Proxy-aware client address as resolved by the API layer. */
             client_ip?: string;
             /** @enum {string} */
-            failure_reason?: "unknown_user" | "invalid_credentials" | "rate_limited";
+            failure_reason?: "unknown_user" | "invalid_credentials" | "rate_limited" | "mfa_invalid" | "mfa_challenge_expired";
             request_id?: string;
+            /**
+             * @description On `login_succeeded`, the second factor that completed the sign-in. Absent for a password-only sign-in and for sign-ins recorded before the factor was tracked.
+             * @enum {string}
+             */
+            second_factor?: "totp" | "recovery_code";
+            /** @description Non-secret context for an account-security change. */
+            metadata?: {
+                /**
+                 * Format: int64
+                 * @description The approved device a `trusted_device_revoked` event revoked.
+                 */
+                trusted_device_id?: number;
+                /**
+                 * @description The MFA enrollment state that `mfa_disabled` or `owner_access_recovered` removed.
+                 * @enum {string}
+                 */
+                previous_mfa_status?: "pending" | "active";
+                /**
+                 * Format: int64
+                 * @description Sessions `owner_access_recovered` revoked.
+                 */
+                sessions_revoked?: number;
+                /** @description Whether `owner_access_recovered` was preceded by a verified backup. */
+                backup_written?: boolean;
+            };
         };
         AuthenticationEventsResponse: {
             events: components["schemas"]["AuthenticationEventResponse"][];

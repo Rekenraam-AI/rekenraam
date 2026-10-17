@@ -153,6 +153,22 @@ const (
 	authEventLoginBlocked   = "login_blocked"
 	authEventLogout         = "logout"
 
+	// Account-security changes (#288). Each is written in the same transaction
+	// as the change it records, so the change cannot happen unrecorded. A
+	// sign-in event stays best-effort (recordAuthEvent): its failure must not
+	// become a lockout, while a security change that cannot be recorded is
+	// simply retried.
+	authEventMFAEnrollmentStarted        = "mfa_enrollment_started"
+	authEventMFAActivated                = "mfa_activated"
+	authEventMFADisabled                 = "mfa_disabled"
+	authEventMFARecoveryCodesRegenerated = "mfa_recovery_codes_regenerated"
+	authEventTrustedDeviceRevoked        = "trusted_device_revoked"
+
+	// Second factors recorded on login_succeeded, so a recovery-code sign-in
+	// is never mistaken for a TOTP one.
+	secondFactorTOTP         = "totp"
+	secondFactorRecoveryCode = "recovery_code"
+
 	authFailureUnknownUser        = "unknown_user"
 	authFailureInvalidCredentials = "invalid_credentials"
 	authFailureRateLimited        = "rate_limited"
@@ -175,6 +191,10 @@ type AuthenticationEvent struct {
 	ClientIP      string
 	FailureReason string
 	RequestID     string
+	Origin        string
+	SecondFactor  string
+	// MetadataJSON is a JSON object of non-secret context, "{}" when empty.
+	MetadataJSON string
 }
 
 type AuthenticationEvents struct {
@@ -366,6 +386,9 @@ type completeLoginInput struct {
 	Reservation   *throttleReservation
 	TrustedDevice db.TrustedDeviceRecord
 	DeviceTrusted bool
+	// SecondFactor is the factor that completed an MFA sign-in, empty for a
+	// password-only one.
+	SecondFactor string
 }
 
 func (s *AuthService) completeLogin(ctx context.Context, input completeLoginInput) (LoginResult, error) {
@@ -418,7 +441,7 @@ func (s *AuthService) completeLogin(ctx context.Context, input completeLoginInpu
 	s.recordAuthEvent(ctx, db.AuthenticationEventParams{
 		EventType: authEventLoginSucceeded, Outcome: "success", Username: input.Username,
 		UserID: input.UserID, AuthSessionID: sessionID, ClientIP: input.ClientIP,
-		RequestID: input.RequestID,
+		RequestID: input.RequestID, SecondFactor: input.SecondFactor,
 	})
 
 	return LoginResult{
@@ -497,6 +520,9 @@ func (s *AuthService) AuthenticationEvents(ctx context.Context, limit int) (Auth
 			ClientIP:      record.ClientIP,
 			FailureReason: record.FailureReason,
 			RequestID:     record.RequestID,
+			Origin:        record.Origin,
+			SecondFactor:  record.SecondFactor,
+			MetadataJSON:  record.MetadataJSON,
 		})
 	}
 
@@ -518,6 +544,20 @@ func (s *AuthService) recordAuthEvent(ctx context.Context, params db.Authenticat
 		s.logger.ErrorContext(ctx, "failed to record authentication event",
 			slog.String("event_type", params.EventType), slog.Any("err", err))
 	}
+	s.logAuthEvent(ctx, params)
+}
+
+// securityEvent builds the attributed event an account-security change writes
+// inside its own transaction (#288).
+func (s *AuthService) securityEvent(eventType string, userID int64, sessionID int64, clientIP string, requestID string) db.AuthenticationEventParams {
+	return db.AuthenticationEventParams{
+		OccurredAt: s.now().UTC().Format(time.RFC3339), EventType: eventType, Outcome: "success",
+		UserID: userID, AuthSessionID: sessionID, ClientIP: clientIP, RequestID: requestID,
+	}
+}
+
+// logAuthEvent mirrors an event to the structured log.
+func (s *AuthService) logAuthEvent(ctx context.Context, params db.AuthenticationEventParams) {
 	if s.logger == nil {
 		return
 	}
@@ -531,6 +571,9 @@ func (s *AuthService) recordAuthEvent(ctx context.Context, params db.Authenticat
 	}
 	if params.FailureReason != "" {
 		attrs = append(attrs, slog.String("failure_reason", params.FailureReason))
+	}
+	if params.SecondFactor != "" {
+		attrs = append(attrs, slog.String("second_factor", params.SecondFactor))
 	}
 	if params.Outcome == "failure" {
 		s.logger.WarnContext(ctx, "authentication event", attrs...)
@@ -811,18 +854,30 @@ func (s *AuthService) ListTrustedDevices(ctx context.Context, userID int64, curr
 	return devices, nil
 }
 
+type RevokeTrustedDeviceInput struct {
+	UserID    int64
+	SessionID int64
+	DeviceID  int64
+	ClientIP  string
+	RequestID string
+}
+
 // RevokeTrustedDevice removes a device's throttle bypass. It does not end that
-// device's session: the cookie was never a credential.
-func (s *AuthService) RevokeTrustedDevice(ctx context.Context, userID int64, deviceID int64) error {
-	if deviceID <= 0 {
+// device's session: the cookie was never a credential. The revocation and its
+// attributed event commit together (#288).
+func (s *AuthService) RevokeTrustedDevice(ctx context.Context, input RevokeTrustedDeviceInput) error {
+	if input.DeviceID <= 0 {
 		return ValidationError{Message: "trusted device id is required"}
 	}
-	if err := s.repository.RevokeTrustedDevice(ctx, userID, deviceID, s.now().UTC().Format(time.RFC3339)); err != nil {
+	event := s.securityEvent(authEventTrustedDeviceRevoked, input.UserID, input.SessionID, input.ClientIP, input.RequestID)
+	event.MetadataJSON = fmt.Sprintf(`{"trusted_device_id":%d}`, input.DeviceID)
+	if err := s.repository.RevokeTrustedDevice(ctx, input.UserID, input.DeviceID, event.OccurredAt, event); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return ErrTrustedDeviceNotFound
 		}
 		return fmt.Errorf("revoke trusted device: %w", err)
 	}
+	s.logAuthEvent(ctx, event)
 
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"math"
@@ -150,6 +151,10 @@ type authenticationEventResponse struct {
 	ClientIP      string `json:"client_ip,omitempty"`
 	FailureReason string `json:"failure_reason,omitempty"`
 	RequestID     string `json:"request_id,omitempty"`
+	Origin        string `json:"origin"`
+	SecondFactor  string `json:"second_factor,omitempty"`
+	// Metadata is non-secret context for account-security events (#288).
+	Metadata json.RawMessage `json:"metadata,omitempty"`
 }
 
 type authenticationEventsResponse struct {
@@ -188,12 +193,24 @@ func authenticationEvents(logger *slog.Logger, authService *app.AuthService) htt
 				Outcome: event.Outcome, Username: event.Username, UserID: event.UserID,
 				AuthSessionID: event.AuthSessionID, ClientIP: event.ClientIP,
 				FailureReason: event.FailureReason, RequestID: event.RequestID,
+				Origin: event.Origin, SecondFactor: event.SecondFactor,
+				Metadata: authenticationEventMetadata(event.MetadataJSON),
 			})
 		}
 		writeJSON(w, http.StatusOK, authenticationEventsResponse{
 			Events: responses, HasMore: events.HasMore, FailedLast24h: events.FailedLast24h,
 		})
 	}
+}
+
+// authenticationEventMetadata omits the empty object so sign-in rows stay as
+// they were.
+func authenticationEventMetadata(metadataJSON string) json.RawMessage {
+	if metadataJSON == "" || metadataJSON == "{}" {
+		return nil
+	}
+
+	return json.RawMessage(metadataJSON)
 }
 
 // --- Approved devices (S-04) ---
@@ -281,7 +298,13 @@ func revokeTrustedDevice(logger *slog.Logger, authService *app.AuthService, opti
 		if !ok {
 			return
 		}
-		if err := authService.RevokeTrustedDevice(r.Context(), owner.ID, deviceID); err != nil {
+		if err := authService.RevokeTrustedDevice(r.Context(), app.RevokeTrustedDeviceInput{
+			UserID:    owner.ID,
+			SessionID: authenticatedSessionID(r),
+			DeviceID:  deviceID,
+			ClientIP:  loginClientIP(r, options),
+			RequestID: RequestIDFromContext(r.Context()),
+		}); err != nil {
 			writeAuthServiceError(w, r, logger, "revoke trusted device", err)
 			return
 		}

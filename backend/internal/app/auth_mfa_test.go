@@ -456,7 +456,7 @@ func TestOwnerRecoveryClearsTheMFAEnrollment(t *testing.T) {
 	enrollAndActivate(t, service, now)
 
 	recovery := NewRecoveryService(database, "file:test.sqlite", db.NewRecoveryRepository(database))
-	require.NoError(t, recovery.ResetOwnerAccess(ctx, "a-brand-new-password"))
+	require.NoError(t, recovery.ResetOwnerAccess(ctx, ResetOwnerAccessInput{Password: "a-brand-new-password"}))
 
 	status, err := service.MFAStatusFor(ctx, 1)
 	require.NoError(t, err)

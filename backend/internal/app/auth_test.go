@@ -460,9 +460,9 @@ func TestTrustedDevices_ListRevokeAndRevokedDeviceLosesItsBypass(t *testing.T) {
 	assert.True(t, devices[0].Current, "the device making the request must be marked, so it is not revoked by accident")
 	assert.Equal(t, "198.51.100.4", devices[0].CreatedClientIP)
 
-	require.ErrorIs(t, service.RevokeTrustedDevice(ctx, 1, 999999), ErrTrustedDeviceNotFound)
-	require.NoError(t, service.RevokeTrustedDevice(ctx, 1, devices[0].ID))
-	require.ErrorIs(t, service.RevokeTrustedDevice(ctx, 1, devices[0].ID), ErrTrustedDeviceNotFound,
+	require.ErrorIs(t, service.RevokeTrustedDevice(ctx, RevokeTrustedDeviceInput{UserID: 1, DeviceID: 999999}), ErrTrustedDeviceNotFound)
+	require.NoError(t, service.RevokeTrustedDevice(ctx, RevokeTrustedDeviceInput{UserID: 1, DeviceID: devices[0].ID}))
+	require.ErrorIs(t, service.RevokeTrustedDevice(ctx, RevokeTrustedDeviceInput{UserID: 1, DeviceID: devices[0].ID}), ErrTrustedDeviceNotFound,
 		"revoking twice must not silently succeed")
 
 	remaining, err := service.ListTrustedDevices(ctx, 1, owner.TrustedDeviceToken)

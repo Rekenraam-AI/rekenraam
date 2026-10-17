@@ -57,7 +57,18 @@ func (s *RecoveryService) PrepareBackup(ctx context.Context, input RecoverOwnerI
 	return backupPath, nil
 }
 
-func (s *RecoveryService) ResetOwnerAccess(ctx context.Context, password string) error {
+type ResetOwnerAccessInput struct {
+	Password string
+	// BackupPath is the verified backup PrepareBackup wrote, empty when the
+	// operator skipped it. Only whether one exists is recorded.
+	BackupPath string
+}
+
+// ResetOwnerAccess replaces the owner password, revokes every session and
+// clears MFA, recording all three as one owner_access_recovered event in the
+// same transaction (#288).
+func (s *RecoveryService) ResetOwnerAccess(ctx context.Context, input ResetOwnerAccessInput) error {
+	password := input.Password
 	if err := validateNewOwnerPassword(password); err != nil {
 		return err
 	}
@@ -69,9 +80,10 @@ func (s *RecoveryService) ResetOwnerAccess(ctx context.Context, password string)
 
 	now := s.now().UTC().Format(time.RFC3339)
 	if err := s.repository.ResetOwnerPasswordAndRevokeSessions(ctx, db.ResetOwnerAccessParams{
-		PasswordHash: passwordHash,
-		UpdatedAt:    now,
-		RevokedAt:    now,
+		PasswordHash:  passwordHash,
+		UpdatedAt:     now,
+		RevokedAt:     now,
+		BackupWritten: strings.TrimSpace(input.BackupPath) != "",
 	}); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return ErrRecoveryOwnerNotFound

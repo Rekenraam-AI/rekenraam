@@ -133,7 +133,7 @@ below is execution order, not a chain of hard dependencies.
    [2026-10-17 evidence](reviews/setup-auth-privacy-audit-2026-10-17.md).
    #261/#262/#263/#264 are corrected. The identity-concurrency follow-up #267
    is complete ([evidence](reviews/identity-concurrency-audit-2026-10-17.md));
-   its findings #285/#286/#287 are fixed and attribution gap #288 is open.
+   its findings #285/#286/#287 are fixed and attribution gap #288 is closed.
    The other eleven areas and the proxy-browser follow-up remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with

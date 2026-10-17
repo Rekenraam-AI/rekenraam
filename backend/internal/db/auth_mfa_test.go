@@ -31,7 +31,14 @@ func enrollPendingMFA(t *testing.T, repository *AuthRepository) {
 		SecretCiphertext: "sealed-secret",
 		Status:           "pending",
 		CreatedAt:        "2026-08-01T00:00:00Z",
+		Event:            securityTestEvent("mfa_enrollment_started"),
 	}))
+}
+
+func securityTestEvent(eventType string) AuthenticationEventParams {
+	return AuthenticationEventParams{
+		OccurredAt: "2026-08-01T00:00:00Z", EventType: eventType, Outcome: "success", UserID: 1,
+	}
 }
 
 func readMFAStatus(t *testing.T, database *sql.DB) string {
@@ -61,7 +68,7 @@ func TestActivateMFATOTPWithRecoveryCodesTurnsMFAOnAndStoresTheCodes(t *testing.
 
 	require.NoError(t, repository.ActivateMFATOTPWithRecoveryCodes(
 		context.Background(), 1, "sealed-secret", "2026-08-01T00:05:00Z", 42,
-		[]string{"hash-a", "hash-b", "hash-c"},
+		[]string{"hash-a", "hash-b", "hash-c"}, securityTestEvent("mfa_activated"),
 	))
 
 	assert.Equal(t, "active", readMFAStatus(t, database))
@@ -79,7 +86,7 @@ func TestActivateMFATOTPWithRecoveryCodesLeavesTheEnrollmentPendingWhenCodesFail
 
 	err := repository.ActivateMFATOTPWithRecoveryCodes(
 		context.Background(), 1, "sealed-secret", "2026-08-01T00:05:00Z", 42,
-		[]string{"hash-a", "hash-a"},
+		[]string{"hash-a", "hash-a"}, securityTestEvent("mfa_activated"),
 	)
 
 	require.Error(t, err)
@@ -96,11 +103,11 @@ func TestActivateMFATOTPWithRecoveryCodesCanBeRetriedAfterAFailure(t *testing.T)
 
 	require.Error(t, repository.ActivateMFATOTPWithRecoveryCodes(
 		context.Background(), 1, "sealed-secret", "2026-08-01T00:05:00Z", 42,
-		[]string{"hash-a", "hash-a"},
+		[]string{"hash-a", "hash-a"}, securityTestEvent("mfa_activated"),
 	))
 	require.NoError(t, repository.ActivateMFATOTPWithRecoveryCodes(
 		context.Background(), 1, "sealed-secret", "2026-08-01T00:06:00Z", 43,
-		[]string{"hash-a", "hash-b"},
+		[]string{"hash-a", "hash-b"}, securityTestEvent("mfa_activated"),
 	))
 
 	assert.Equal(t, "active", readMFAStatus(t, database))
@@ -115,11 +122,11 @@ func TestActivateMFATOTPWithRecoveryCodesRejectsAnAlreadyActiveEnrollment(t *tes
 	enrollPendingMFA(t, repository)
 
 	require.NoError(t, repository.ActivateMFATOTPWithRecoveryCodes(
-		context.Background(), 1, "sealed-secret", "2026-08-01T00:05:00Z", 42, []string{"hash-a"},
+		context.Background(), 1, "sealed-secret", "2026-08-01T00:05:00Z", 42, []string{"hash-a"}, securityTestEvent("mfa_activated"),
 	))
 
 	err := repository.ActivateMFATOTPWithRecoveryCodes(
-		context.Background(), 1, "sealed-secret", "2026-08-01T00:06:00Z", 43, []string{"hash-b"},
+		context.Background(), 1, "sealed-secret", "2026-08-01T00:06:00Z", 43, []string{"hash-b"}, securityTestEvent("mfa_activated"),
 	)
 
 	require.ErrorIs(t, err, ErrNotFound)

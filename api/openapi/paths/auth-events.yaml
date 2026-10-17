@@ -1,14 +1,17 @@
 get:
   summary: Recent authentication events (operator visibility)
   description: >-
-    The durable log of successful and failed authentication attempts, newest
-    first, so an operator can detect a brute-force run and reconstruct an
-    incident (S-07). Each event carries the proxy-aware client IP.
+    The durable log of successful and failed authentication attempts and of
+    account-security changes, newest first, so an operator can detect a
+    brute-force run and reconstruct an incident (S-07, #288). Each event
+    carries the proxy-aware client IP; a change also names the session and
+    request that made it, and a sign-in names the second factor it used.
 
     Owner-only: the log names client IPs and attempted usernames. It never
-    contains password material or session tokens — `auth_session_id` is the
-    only session reference. Rows are pruned to a 90-day retention window by
-    the daily session-cleanup pass.
+    contains password material, session tokens, MFA secrets or recovery codes
+    — `auth_session_id` is the only session reference. Sign-in attempts and
+    logouts are pruned to a 90-day retention window by the daily
+    session-cleanup pass; account-security changes are kept.
   parameters:
     - in: query
       name: limit

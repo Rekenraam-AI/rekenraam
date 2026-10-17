@@ -245,7 +245,7 @@ func TestMFAManagementFailuresLeaveThePreviousStateIntact(t *testing.T) {
 	require.NoError(t, err)
 	injectDeleteFailure(t, database, "user_mfa_totp")
 	recovery := NewRecoveryService(database, "", db.NewRecoveryRepository(database))
-	require.Error(t, recovery.ResetOwnerAccess(ctx, "a-brand-new-password"))
+	require.Error(t, recovery.ResetOwnerAccess(ctx, ResetOwnerAccessInput{Password: "a-brand-new-password"}))
 	removeInjectedFailure(t, database)
 	assert.Equal(t, 1, countRows(t, database, `SELECT COUNT(1) FROM auth_sessions WHERE revoked_at IS NULL`))
 	assert.Equal(t, challengesBefore, countRows(t, database, `SELECT COUNT(1) FROM login_mfa_challenges`))

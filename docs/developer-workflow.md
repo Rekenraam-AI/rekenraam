@@ -508,6 +508,13 @@ journals; historical payers remain unassigned. A populated fact table refuses
 downgrade so payer/tax evidence is not lost. Bundle schema 13 adds
 `investment-dividend-facts.csv`; use verified backup/restore for rollback.
 
+Forward migration `0014_authentication_security_events.sql` (#288, 2026-10-17)
+rebuilds `authentication_events` to accept account-security event types and
+adds `origin`, `second_factor` and `metadata_json`. Startup copies every
+existing sign-in row unchanged, with the new columns at their defaults. A
+downgrade is refused once any account-security event or recorded second
+factor exists. Bundle schema is unchanged.
+
 Forward migration `0013_payment_in_lieu_facts.sql` (#255, 2026-10-17) adds
 immutable short-holding, instrument and ex-date facts for payments in lieu of
 dividends. It creates an empty table; a populated one refuses downgrade.

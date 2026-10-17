@@ -40,6 +40,12 @@ type AuthenticationEventParams struct {
 	ClientIP      string
 	FailureReason string
 	RequestID     string
+	// Origin defaults to browser_api; only owner recovery writes cli_recovery.
+	Origin string
+	// SecondFactor is totp or recovery_code on an MFA sign-in (#288).
+	SecondFactor string
+	// MetadataJSON is a JSON object of non-secret context; empty means {}.
+	MetadataJSON string
 }
 
 type AuthenticationEventRecord struct {
@@ -53,6 +59,9 @@ type AuthenticationEventRecord struct {
 	ClientIP      string
 	FailureReason string
 	RequestID     string
+	Origin        string
+	SecondFactor  string
+	MetadataJSON  string
 }
 
 type UpdatePasswordHashParams struct {
@@ -338,15 +347,36 @@ func refundLoginAttemptExec(ctx context.Context, exec execContexter, scopeType s
 // RecordAuthenticationEvent appends one row to the operational authentication
 // log (S-07). It never stores password material or session tokens.
 func (r *AuthRepository) RecordAuthenticationEvent(ctx context.Context, params AuthenticationEventParams) error {
-	if _, err := r.database.ExecContext(ctx, `
+	return insertAuthenticationEvent(ctx, r.database, params)
+}
+
+// insertAuthenticationEvent is the one writer of authentication_events, so a
+// security change can append its event inside its own transaction (#288).
+// An empty username is filled from the user row, so every attributed event
+// names the account even when the caller only knew its id. A session that
+// cleanup deleted after the request authenticated is recorded as absent, the
+// same outcome as the column's ON DELETE SET NULL, rather than failing the
+// change it describes.
+func insertAuthenticationEvent(ctx context.Context, exec execContexter, params AuthenticationEventParams) error {
+	origin := params.Origin
+	if origin == "" {
+		origin = "browser_api"
+	}
+	metadata := params.MetadataJSON
+	if metadata == "" {
+		metadata = "{}"
+	}
+	if _, err := exec.ExecContext(ctx, `
 		INSERT INTO authentication_events (
 			occurred_at, event_type, outcome, username, user_id, auth_session_id,
-			client_ip, failure_reason, request_id
+			client_ip, failure_reason, request_id, origin, second_factor, metadata_json
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, params.OccurredAt, params.EventType, params.Outcome, params.Username,
+		VALUES (?, ?, ?, COALESCE(NULLIF(?, ''), (SELECT username FROM users WHERE id = ?), ''),
+			?, (SELECT id FROM auth_sessions WHERE id = ?), ?, ?, ?, ?, ?, ?)
+	`, params.OccurredAt, params.EventType, params.Outcome, params.Username, params.UserID,
 		nullablePositiveInt64(params.UserID), nullablePositiveInt64(params.AuthSessionID),
-		params.ClientIP, params.FailureReason, params.RequestID); err != nil {
+		params.ClientIP, params.FailureReason, params.RequestID, origin, params.SecondFactor,
+		metadata); err != nil {
 		return fmt.Errorf("insert authentication event: %w", err)
 	}
 
@@ -358,7 +388,7 @@ func (r *AuthRepository) RecordAuthenticationEvent(ctx context.Context, params A
 func (r *AuthRepository) ListAuthenticationEvents(ctx context.Context, limit int) ([]AuthenticationEventRecord, error) {
 	rows, err := r.database.QueryContext(ctx, `
 		SELECT id, occurred_at, event_type, outcome, username, user_id, auth_session_id,
-			client_ip, failure_reason, request_id
+			client_ip, failure_reason, request_id, origin, second_factor, metadata_json
 		FROM authentication_events
 		ORDER BY occurred_at DESC, id DESC
 		LIMIT ?
@@ -373,7 +403,8 @@ func (r *AuthRepository) ListAuthenticationEvents(ctx context.Context, limit int
 		var record AuthenticationEventRecord
 		if err := rows.Scan(&record.ID, &record.OccurredAt, &record.EventType, &record.Outcome,
 			&record.Username, &record.UserID, &record.AuthSessionID, &record.ClientIP,
-			&record.FailureReason, &record.RequestID); err != nil {
+			&record.FailureReason, &record.RequestID, &record.Origin, &record.SecondFactor,
+			&record.MetadataJSON); err != nil {
 			return nil, fmt.Errorf("scan authentication event: %w", err)
 		}
 		records = append(records, record)
@@ -385,9 +416,15 @@ func (r *AuthRepository) ListAuthenticationEvents(ctx context.Context, limit int
 	return records, nil
 }
 
-// DeleteAuthenticationEventsBefore prunes the log to its retention window.
+// DeleteAuthenticationEventsBefore prunes sign-in attempts and logouts to
+// their retention window. Account-security changes (#288) are few and are
+// the record of who weakened or reset protection, so they are kept.
 func (r *AuthRepository) DeleteAuthenticationEventsBefore(ctx context.Context, cutoff string) (int64, error) {
-	result, err := r.database.ExecContext(ctx, `DELETE FROM authentication_events WHERE occurred_at < ?`, cutoff)
+	result, err := r.database.ExecContext(ctx, `
+		DELETE FROM authentication_events
+		WHERE occurred_at < ?
+		  AND event_type IN ('login_succeeded', 'login_failed', 'login_blocked', 'logout')
+	`, cutoff)
 	if err != nil {
 		return 0, fmt.Errorf("delete authentication events: %w", err)
 	}
@@ -501,8 +538,16 @@ func (r *AuthRepository) ListTrustedDevices(ctx context.Context, userID int64, n
 	return records, nil
 }
 
-func (r *AuthRepository) RevokeTrustedDevice(ctx context.Context, userID int64, deviceID int64, revokedAt string) error {
-	result, err := r.database.ExecContext(ctx, `
+// RevokeTrustedDevice revokes one device and appends its event in the same
+// transaction (#288).
+func (r *AuthRepository) RevokeTrustedDevice(ctx context.Context, userID int64, deviceID int64, revokedAt string, event AuthenticationEventParams) error {
+	tx, err := r.database.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin trusted device revocation transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	result, err := tx.ExecContext(ctx, `
 		UPDATE login_trusted_devices
 		SET revoked_at = ?
 		WHERE id = ? AND user_id = ? AND revoked_at IS NULL
@@ -516,6 +561,12 @@ func (r *AuthRepository) RevokeTrustedDevice(ctx context.Context, userID int64, 
 	}
 	if rowsAffected == 0 {
 		return ErrNotFound
+	}
+	if err := insertAuthenticationEvent(ctx, tx, event); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit trusted device revocation transaction: %w", err)
 	}
 
 	return nil

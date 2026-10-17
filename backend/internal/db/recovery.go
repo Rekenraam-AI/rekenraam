@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 )
 
@@ -14,6 +15,8 @@ type ResetOwnerAccessParams struct {
 	PasswordHash string
 	UpdatedAt    string
 	RevokedAt    string
+	// BackupWritten records whether a verified backup preceded the reset.
+	BackupWritten bool
 }
 
 func NewRecoveryRepository(database *sql.DB) *RecoveryRepository {
@@ -50,12 +53,30 @@ func (r *RecoveryRepository) ResetOwnerPasswordAndRevokeSessions(ctx context.Con
 		return ErrNotFound
 	}
 
-	if _, err := tx.ExecContext(ctx, `
+	var ownerID int64
+	var ownerUsername string
+	if err := tx.QueryRowContext(ctx, `SELECT id, username FROM users WHERE is_owner = 1`).Scan(&ownerID, &ownerUsername); err != nil {
+		return fmt.Errorf("read recovered owner: %w", err)
+	}
+
+	revoked, err := tx.ExecContext(ctx, `
 		UPDATE auth_sessions
 		SET revoked_at = ?
 		WHERE revoked_at IS NULL
-	`, params.RevokedAt); err != nil {
+	`, params.RevokedAt)
+	if err != nil {
 		return fmt.Errorf("revoke owner sessions: %w", err)
+	}
+	sessionsRevoked, err := revoked.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("read revoked owner session rows: %w", err)
+	}
+
+	var mfaStatus string
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COALESCE((SELECT status FROM user_mfa_totp WHERE user_id = ?), '')
+	`, ownerID).Scan(&mfaStatus); err != nil {
+		return fmt.Errorf("read owner mfa enrollment: %w", err)
 	}
 
 	// Clear any MFA enrollment in the same transaction (S-06). This command is
@@ -72,6 +93,30 @@ func (r *RecoveryRepository) ResetOwnerPasswordAndRevokeSessions(ctx context.Con
 		if _, err := tx.ExecContext(ctx, statement); err != nil {
 			return fmt.Errorf("clear owner mfa enrollment: %w", err)
 		}
+	}
+
+	// The command's stdout is not a record (#288): the reset, the sessions it
+	// ended and the MFA it cleared are one attributed event, written in this
+	// transaction. It shares the reset's failure domain — the same database,
+	// the same commit — so it cannot turn a working recovery into a lockout.
+	metadata, err := json.Marshal(struct {
+		SessionsRevoked   int64  `json:"sessions_revoked"`
+		PreviousMFAStatus string `json:"previous_mfa_status,omitempty"`
+		BackupWritten     bool   `json:"backup_written"`
+	}{sessionsRevoked, mfaStatus, params.BackupWritten})
+	if err != nil {
+		return fmt.Errorf("encode owner recovery event metadata: %w", err)
+	}
+	if err := insertAuthenticationEvent(ctx, tx, AuthenticationEventParams{
+		OccurredAt:   params.UpdatedAt,
+		EventType:    "owner_access_recovered",
+		Outcome:      "success",
+		Username:     ownerUsername,
+		UserID:       ownerID,
+		Origin:       "cli_recovery",
+		MetadataJSON: string(metadata),
+	}); err != nil {
+		return err
 	}
 
 	if err := tx.Commit(); err != nil {

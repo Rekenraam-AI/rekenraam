@@ -96,13 +96,15 @@ CreateOwnerResponse:
 AuthenticationEventResponse:
   type: object
   description: >-
-    One recorded authentication attempt or session end. Never contains
-    password material or session tokens.
+    One recorded sign-in attempt, session end, or account-security change
+    (#288). Never contains password material, session tokens, MFA secrets or
+    recovery codes.
   required:
     - id
     - occurred_at
     - event_type
     - outcome
+    - origin
   properties:
     id:
       type: integer
@@ -112,29 +114,50 @@ AuthenticationEventResponse:
       format: date-time
     event_type:
       type: string
+      description: >-
+        Sign-in attempts and logout are pruned after 90 days. The
+        account-security changes (MFA enrollment, activation, disable,
+        recovery-code regeneration, approved-device revocation and owner
+        recovery) are kept, and each is written in the same transaction as the
+        change it records.
       enum:
         - login_succeeded
         - login_failed
         - login_blocked
         - logout
+        - mfa_enrollment_started
+        - mfa_activated
+        - mfa_disabled
+        - mfa_recovery_codes_regenerated
+        - trusted_device_revoked
+        - owner_access_recovered
     outcome:
       type: string
       enum:
         - success
         - failure
+    origin:
+      type: string
+      description: >-
+        Where the event came from. `cli_recovery` is the `recover-owner`
+        command, which has no session, client address or request id.
+      enum:
+        - browser_api
+        - cli_recovery
     username:
       type: string
-      description: The username that was attempted.
+      description: The username that was attempted or changed.
     user_id:
       type: integer
       format: int64
-      description: Set when the attempt named an existing user.
+      description: Set when the event names an existing user.
     auth_session_id:
       type: integer
       format: int64
       description: >-
-        The session created or ended by this event. Becomes absent once the
-        session row is cleaned up.
+        The session created or ended by this event, or the session that made
+        the account-security change. Becomes absent once the session row is
+        cleaned up.
     client_ip:
       type: string
       description: Proxy-aware client address as resolved by the API layer.
@@ -144,8 +167,41 @@ AuthenticationEventResponse:
         - unknown_user
         - invalid_credentials
         - rate_limited
+        - mfa_invalid
+        - mfa_challenge_expired
     request_id:
       type: string
+    second_factor:
+      type: string
+      description: >-
+        On `login_succeeded`, the second factor that completed the sign-in.
+        Absent for a password-only sign-in and for sign-ins recorded before
+        the factor was tracked.
+      enum:
+        - totp
+        - recovery_code
+    metadata:
+      type: object
+      description: Non-secret context for an account-security change.
+      additionalProperties: false
+      properties:
+        trusted_device_id:
+          type: integer
+          format: int64
+          description: The approved device a `trusted_device_revoked` event revoked.
+        previous_mfa_status:
+          type: string
+          description: The MFA enrollment state that `mfa_disabled` or `owner_access_recovered` removed.
+          enum:
+            - pending
+            - active
+        sessions_revoked:
+          type: integer
+          format: int64
+          description: Sessions `owner_access_recovered` revoked.
+        backup_written:
+          type: boolean
+          description: Whether `owner_access_recovered` was preceded by a verified backup.
 AuthenticationEventsResponse:
   type: object
   required:

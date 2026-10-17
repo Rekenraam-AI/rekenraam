@@ -186,7 +186,7 @@ func runRecoverOwner(ctx context.Context, cfg config.Config, args []string, stdi
 		return 1
 	}
 
-	if err := recoveryService.ResetOwnerAccess(ctx, password); err != nil {
+	if err := recoveryService.ResetOwnerAccess(ctx, app.ResetOwnerAccessInput{Password: password, BackupPath: resolvedBackupPath}); err != nil {
 		fmt.Fprintf(stderr, "recover owner: %v\n", err)
 		return 1
 	}

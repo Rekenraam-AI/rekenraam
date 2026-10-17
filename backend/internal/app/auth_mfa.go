@@ -159,17 +159,20 @@ func (s *AuthService) BeginTOTPEnrollment(ctx context.Context, input MFAPassword
 	if err != nil {
 		return MFAEnrollment{}, err
 	}
+	event := s.securityEvent(authEventMFAEnrollmentStarted, input.UserID, input.SessionID, input.ClientIP, input.RequestID)
 	if err := s.repository.UpsertMFATOTP(ctx, db.UpsertMFATOTPParams{
 		UserID:           input.UserID,
 		SecretCiphertext: ciphertext,
 		Status:           "pending",
-		CreatedAt:        s.now().UTC().Format(time.RFC3339),
+		CreatedAt:        event.OccurredAt,
+		Event:            event,
 	}); err != nil {
 		if errors.Is(err, db.ErrMFAAlreadyActive) {
 			return MFAEnrollment{}, ErrMFAAlreadyActive
 		}
 		return MFAEnrollment{}, fmt.Errorf("persist mfa enrollment: %w", err)
 	}
+	s.logAuthEvent(ctx, event)
 
 	return MFAEnrollment{
 		Secret:     secret,
@@ -231,14 +234,16 @@ func (s *AuthService) ActivateTOTP(ctx context.Context, input ActivateMFAInput) 
 	if err != nil {
 		return nil, err
 	}
+	event := s.securityEvent(authEventMFAActivated, input.UserID, input.SessionID, input.ClientIP, input.RequestID)
 	if err := s.repository.ActivateMFATOTPWithRecoveryCodes(
-		ctx, input.UserID, record.SecretCiphertext, s.now().UTC().Format(time.RFC3339), int64(step), hashes,
+		ctx, input.UserID, record.SecretCiphertext, event.OccurredAt, int64(step), hashes, event,
 	); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, ErrMFANotEnrolled
 		}
 		return nil, fmt.Errorf("activate mfa enrollment: %w", err)
 	}
+	s.logAuthEvent(ctx, event)
 
 	return codes, nil
 }
@@ -249,8 +254,15 @@ func (s *AuthService) DisableMFA(ctx context.Context, input MFAPasswordInput) er
 	if _, err := s.verifyOwnerPassword(ctx, input); err != nil {
 		return err
 	}
-	if err := s.repository.DeleteMFATOTP(ctx, input.UserID); err != nil {
+	// The event commits with the deletion (#288): turning protection off is
+	// the change an attacker most wants to go unseen.
+	event := s.securityEvent(authEventMFADisabled, input.UserID, input.SessionID, input.ClientIP, input.RequestID)
+	disabled, err := s.repository.DeleteMFATOTP(ctx, input.UserID, event)
+	if err != nil {
 		return fmt.Errorf("disable mfa: %w", err)
+	}
+	if disabled {
+		s.logAuthEvent(ctx, event)
 	}
 
 	return nil
@@ -274,7 +286,17 @@ func (s *AuthService) RegenerateRecoveryCodes(ctx context.Context, input MFAPass
 		return nil, ErrMFANotEnrolled
 	}
 
-	return s.issueRecoveryCodes(ctx, input.UserID)
+	codes, hashes, err := newRecoveryCodeSet()
+	if err != nil {
+		return nil, err
+	}
+	event := s.securityEvent(authEventMFARecoveryCodesRegenerated, input.UserID, input.SessionID, input.ClientIP, input.RequestID)
+	if err := s.repository.ReplaceMFARecoveryCodes(ctx, input.UserID, hashes, event.OccurredAt, event); err != nil {
+		return nil, fmt.Errorf("persist mfa recovery codes: %w", err)
+	}
+	s.logAuthEvent(ctx, event)
+
+	return codes, nil
 }
 
 // CompleteLoginMFA finishes a login whose password already verified. It is the
@@ -335,11 +357,11 @@ func (s *AuthService) CompleteLoginMFA(ctx context.Context, input CompleteMFALog
 	}
 	defer reservation.release(ctx)
 
-	accepted, err := s.verifySecondFactor(ctx, credentials.ID, code, now, input.ClientIP)
+	secondFactor, err := s.verifySecondFactor(ctx, credentials.ID, code, now, input.ClientIP)
 	if err != nil {
 		return LoginResult{}, err
 	}
-	if !accepted {
+	if secondFactor == "" {
 		retryAfter, throttleErr := reservation.fail(ctx)
 		if throttleErr != nil {
 			return LoginResult{}, throttleErr
@@ -374,22 +396,24 @@ func (s *AuthService) CompleteLoginMFA(ctx context.Context, input CompleteMFALog
 		Reservation:   reservation,
 		TrustedDevice: trustedDevice,
 		DeviceTrusted: deviceTrusted,
+		SecondFactor:  secondFactor,
 	})
 }
 
-// verifySecondFactor accepts either a TOTP code or an unused recovery code.
-// Both paths are tried for every attempt so the response time does not reveal
-// which kind of code was submitted.
-func (s *AuthService) verifySecondFactor(ctx context.Context, userID int64, code string, now time.Time, clientIP string) (bool, error) {
+// verifySecondFactor accepts either a TOTP code or an unused recovery code and
+// names the one that verified, or returns "" when neither did. Both paths are
+// tried for every attempt so the response time does not reveal which kind of
+// code was submitted.
+func (s *AuthService) verifySecondFactor(ctx context.Context, userID int64, code string, now time.Time, clientIP string) (string, error) {
 	record, err := s.repository.ReadMFATOTP(ctx, userID)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			return false, ErrMFANotEnrolled
+			return "", ErrMFANotEnrolled
 		}
-		return false, fmt.Errorf("read mfa enrollment: %w", err)
+		return "", fmt.Errorf("read mfa enrollment: %w", err)
 	}
 	if record.Status != "active" {
-		return false, ErrMFANotEnrolled
+		return "", ErrMFANotEnrolled
 	}
 
 	// A secret that cannot be opened — the key was lost, rotated, or never
@@ -405,19 +429,22 @@ func (s *AuthService) verifySecondFactor(ctx context.Context, userID int64, code
 		// or the same code works again until it expires.
 		fresh, err := s.repository.RecordMFATOTPUse(ctx, userID, int64(step))
 		if err != nil {
-			return false, fmt.Errorf("record mfa code use: %w", err)
+			return "", fmt.Errorf("record mfa code use: %w", err)
 		}
-		return fresh, nil
+		if !fresh {
+			return "", nil
+		}
+		return secondFactorTOTP, nil
 	}
 
 	err = s.repository.ConsumeMFARecoveryCode(ctx, userID, hashRecoveryCode(code), now.Format(time.RFC3339), clientIP)
 	switch {
 	case err == nil:
-		return true, nil
+		return secondFactorRecoveryCode, nil
 	case errors.Is(err, db.ErrNotFound), errors.Is(err, db.ErrMFARecoveryCodeUsed):
-		return false, nil
+		return "", nil
 	default:
-		return false, fmt.Errorf("consume mfa recovery code: %w", err)
+		return "", fmt.Errorf("consume mfa recovery code: %w", err)
 	}
 }
 
@@ -455,18 +482,6 @@ func (s *AuthService) mfaActive(ctx context.Context, userID int64) (bool, error)
 	}
 
 	return record.Status == "active", nil
-}
-
-func (s *AuthService) issueRecoveryCodes(ctx context.Context, userID int64) ([]string, error) {
-	codes, hashes, err := newRecoveryCodeSet()
-	if err != nil {
-		return nil, err
-	}
-	if err := s.repository.ReplaceMFARecoveryCodes(ctx, userID, hashes, s.now().UTC().Format(time.RFC3339)); err != nil {
-		return nil, fmt.Errorf("persist mfa recovery codes: %w", err)
-	}
-
-	return codes, nil
 }
 
 // newRecoveryCodeSet mints a full set and its hashes without touching the

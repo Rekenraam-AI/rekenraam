@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 )
@@ -29,6 +30,8 @@ type UpsertMFATOTPParams struct {
 	SecretCiphertext string
 	Status           string
 	CreatedAt        string
+	// Event is appended in the same transaction (#288).
+	Event AuthenticationEventParams
 }
 
 type CreateMFAChallengeParams struct {
@@ -67,7 +70,13 @@ func (r *AuthRepository) ReadMFATOTP(ctx context.Context, userID int64) (MFATOTP
 // Starting a new enrollment discards its old secret and replay counter together;
 // a half-finished re-enrollment must not leave the old secret partially active.
 func (r *AuthRepository) UpsertMFATOTP(ctx context.Context, params UpsertMFATOTPParams) error {
-	result, err := r.database.ExecContext(ctx, `
+	tx, err := r.database.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin mfa enrollment transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	result, err := tx.ExecContext(ctx, `
 		INSERT INTO user_mfa_totp (user_id, secret_ciphertext, status, created_at, activated_at, last_used_step)
 		VALUES (?, ?, ?, ?, NULL, NULL)
 		ON CONFLICT(user_id) DO UPDATE SET
@@ -88,6 +97,13 @@ func (r *AuthRepository) UpsertMFATOTP(ctx context.Context, params UpsertMFATOTP
 	if rowsAffected != 1 {
 		return ErrMFAAlreadyActive
 	}
+	if err := insertAuthenticationEvent(ctx, tx, params.Event); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit mfa enrollment transaction: %w", err)
+	}
+
 	return nil
 }
 
@@ -95,8 +111,9 @@ func (r *AuthRepository) UpsertMFATOTP(ctx context.Context, params UpsertMFATOTP
 // verified and installs its recovery codes in one transaction. An activation
 // that succeeded while its codes failed to persist would leave the
 // owner locked to a single authenticator with no way back in, and a retry
-// would be refused as already active.
-func (r *AuthRepository) ActivateMFATOTPWithRecoveryCodes(ctx context.Context, userID int64, secretCiphertext string, activatedAt string, usedStep int64, codeHashes []string) error {
+// would be refused as already active. The activation event is appended in the
+// same transaction (#288).
+func (r *AuthRepository) ActivateMFATOTPWithRecoveryCodes(ctx context.Context, userID int64, secretCiphertext string, activatedAt string, usedStep int64, codeHashes []string, event AuthenticationEventParams) error {
 	tx, err := r.database.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin mfa activation transaction: %w", err)
@@ -107,6 +124,9 @@ func (r *AuthRepository) ActivateMFATOTPWithRecoveryCodes(ctx context.Context, u
 		return err
 	}
 	if err := replaceMFARecoveryCodesTx(ctx, tx, userID, codeHashes, activatedAt); err != nil {
+		return err
+	}
+	if err := insertAuthenticationEvent(ctx, tx, event); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -161,32 +181,54 @@ func (r *AuthRepository) RecordMFATOTPUse(ctx context.Context, userID int64, use
 // DeleteMFATOTP removes the enrollment and every recovery code with it, in one
 // transaction: an enrollment without codes, or codes without an enrollment,
 // are both states the login path should never have to reason about.
-func (r *AuthRepository) DeleteMFATOTP(ctx context.Context, userID int64) error {
+//
+// When an enrollment existed, the event is appended in the same transaction
+// with the status it had (#288); disabling nothing records nothing.
+func (r *AuthRepository) DeleteMFATOTP(ctx context.Context, userID int64, event AuthenticationEventParams) (bool, error) {
 	tx, err := r.database.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin mfa disable transaction: %w", err)
+		return false, fmt.Errorf("begin mfa disable transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if _, err := tx.ExecContext(ctx, `DELETE FROM user_mfa_recovery_codes WHERE user_id = ?`, userID); err != nil {
-		return fmt.Errorf("delete mfa recovery codes: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM user_mfa_totp WHERE user_id = ?`, userID); err != nil {
-		return fmt.Errorf("delete mfa totp enrollment: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM login_mfa_challenges WHERE user_id = ?`, userID); err != nil {
-		return fmt.Errorf("delete mfa challenges: %w", err)
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit mfa disable transaction: %w", err)
+	var previousStatus string
+	if err := tx.QueryRowContext(ctx, `SELECT status FROM user_mfa_totp WHERE user_id = ?`, userID).Scan(&previousStatus); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return false, fmt.Errorf("read mfa enrollment before disable: %w", err)
+		}
+		previousStatus = ""
 	}
 
-	return nil
+	if _, err := tx.ExecContext(ctx, `DELETE FROM user_mfa_recovery_codes WHERE user_id = ?`, userID); err != nil {
+		return false, fmt.Errorf("delete mfa recovery codes: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM user_mfa_totp WHERE user_id = ?`, userID); err != nil {
+		return false, fmt.Errorf("delete mfa totp enrollment: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM login_mfa_challenges WHERE user_id = ?`, userID); err != nil {
+		return false, fmt.Errorf("delete mfa challenges: %w", err)
+	}
+	if previousStatus != "" {
+		metadata, err := json.Marshal(map[string]string{"previous_mfa_status": previousStatus})
+		if err != nil {
+			return false, fmt.Errorf("encode mfa disable event metadata: %w", err)
+		}
+		event.MetadataJSON = string(metadata)
+		if err := insertAuthenticationEvent(ctx, tx, event); err != nil {
+			return false, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("commit mfa disable transaction: %w", err)
+	}
+
+	return previousStatus != "", nil
 }
 
 // ReplaceMFARecoveryCodes swaps the whole set atomically. Codes are issued and
-// replaced as a set so the count the owner is shown is always the truth.
-func (r *AuthRepository) ReplaceMFARecoveryCodes(ctx context.Context, userID int64, codeHashes []string, createdAt string) error {
+// replaced as a set so the count the owner is shown is always the truth. The
+// regeneration event is appended in the same transaction (#288).
+func (r *AuthRepository) ReplaceMFARecoveryCodes(ctx context.Context, userID int64, codeHashes []string, createdAt string, event AuthenticationEventParams) error {
 	tx, err := r.database.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin mfa recovery code transaction: %w", err)
@@ -194,6 +236,9 @@ func (r *AuthRepository) ReplaceMFARecoveryCodes(ctx context.Context, userID int
 	defer func() { _ = tx.Rollback() }()
 
 	if err := replaceMFARecoveryCodesTx(ctx, tx, userID, codeHashes, createdAt); err != nil {
+		return err
+	}
+	if err := insertAuthenticationEvent(ctx, tx, event); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {

@@ -499,6 +499,57 @@ func TestTrustedDevices_ListAndRevoke_HTTP(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, missingRes.Code)
 }
 
+// #288: an account-security change made over HTTP is listed by the events
+// endpoint with the session, client address and request id that made it.
+func TestAuthenticationEvents_ListAttributedTrustedDeviceRevocation(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newSetupTestHandler(t)
+	cookie := bootstrapOwner(t, handler)
+	csrfToken := authSessionCSRFToken(t, handler, cookie)
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/trusted-devices", nil)
+	listReq.AddCookie(cookie)
+	listRes := httptest.NewRecorder()
+	handler.ServeHTTP(listRes, listReq)
+	require.Equal(t, http.StatusOK, listRes.Code, listRes.Body.String())
+	var devices trustedDevicesResponse
+	require.NoError(t, json.NewDecoder(listRes.Body).Decode(&devices))
+	require.Len(t, devices.Devices, 1)
+
+	revokeReq := httptest.NewRequest(http.MethodDelete, "/api/v1/auth/trusted-devices/"+itoa(devices.Devices[0].ID), nil)
+	revokeReq.AddCookie(cookie)
+	setSameOrigin(revokeReq)
+	revokeReq.Header.Set(csrfTokenHeader, csrfToken)
+	revokeRes := httptest.NewRecorder()
+	handler.ServeHTTP(revokeRes, revokeReq)
+	require.Equal(t, http.StatusNoContent, revokeRes.Code)
+	requestID := revokeRes.Header().Get(requestIDHeader)
+	require.NotEmpty(t, requestID)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/events", nil)
+	req.AddCookie(cookie)
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	require.Equal(t, http.StatusOK, res.Code, res.Body.String())
+	var body authenticationEventsResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
+	require.NotEmpty(t, body.Events)
+
+	event := body.Events[0]
+	assert.Equal(t, "trusted_device_revoked", event.EventType)
+	assert.Equal(t, "success", event.Outcome)
+	assert.Equal(t, "browser_api", event.Origin)
+	assert.Equal(t, "owner", event.Username)
+	require.NotNil(t, event.AuthSessionID, "the revoking session must be named")
+	assert.NotEmpty(t, event.ClientIP)
+	assert.Equal(t, requestID, event.RequestID)
+	assert.JSONEq(t, `{"trusted_device_id":`+itoa(devices.Devices[0].ID)+`}`, string(event.Metadata))
+	for _, other := range body.Events[1:] {
+		assert.Nil(t, other.Metadata, "events without context omit metadata")
+	}
+}
+
 func TestTrustedDevices_RequireAuthentication(t *testing.T) {
 	t.Parallel()
 
