@@ -450,7 +450,9 @@ API:
 - `PATCH /api/v1/payees/{payee_id}`
 - `POST /api/v1/payees/{payee_id}/archive`
 - `POST /api/v1/payees/{payee_id}/restore`
-- `GET /api/v1/payees/{payee_id}/versions`
+- `GET /api/v1/payees/{payee_id}/versions` — not implemented: payee version
+  rows are stored and audited, but no endpoint lists them (#269 audit,
+  2026-10-17)
 
 `transaction_versions` should store both `payee_id` nullable and a
 `payee_name` snapshot, so imports/manual entries remain understandable if a

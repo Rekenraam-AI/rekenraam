@@ -137,14 +137,16 @@ below is execution order, not a chain of hard dependencies.
    The proxy/shared-browser follow-up #268 is complete
    ([evidence](reviews/proxy-browser-privacy-audit-2026-10-17.md)); its
    key-loss sign-in finding #290 (P3) is fixed.
-   The other eleven areas remain pending
+   The reference-data audit #269 is complete
+   ([evidence](reviews/reference-data-audit-2026-10-17.md)); its findings
+   #291/#292 (P2) and #293/#294/#295 (P3) are open.
+   The other ten areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):
    ledger/reconciliation #270, investment
    operations #272/#273, reports and R13 readiness #275, and recovery #277;
-   then planning #276, imports #271, reference data #269, prices and durable
-   work #274; then frontend #278, deployment
+   then planning #276, imports #271, prices and durable work #274; then frontend #278, deployment
    #279. Architecture/quality #280
    runs last, with the shared gates once at the candidate SHA.
    Fix confirmed integrity/security defects before affected feature slices.
