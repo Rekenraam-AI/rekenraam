@@ -321,7 +321,7 @@ func writeAuthServiceError(w http.ResponseWriter, r *http.Request, logger *slog.
 	case errors.As(err, &rateLimitError):
 		retryAfterSecs := max(int(math.Ceil(rateLimitError.RetryAfter.Seconds())), 1)
 		w.Header().Set("Retry-After", strconv.Itoa(retryAfterSecs))
-		writeAPIError(w, http.StatusTooManyRequests, "RATE_LIMITED", "too many login attempts, try again later")
+		writeAPIError(w, http.StatusTooManyRequests, "RATE_LIMITED", "too many attempts, try again later")
 	case errors.Is(err, app.ErrSecretKeyMissing):
 		writeAPIError(w, http.StatusServiceUnavailable, "CONFIG_REQUIRED", "REKENRAAM_SECRET_KEY is not configured on the server")
 	case errors.Is(err, app.ErrMFAChallengeInvalid):

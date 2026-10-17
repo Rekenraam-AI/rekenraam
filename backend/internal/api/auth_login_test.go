@@ -88,7 +88,7 @@ func TestLoginRateLimitsRepeatedFailures(t *testing.T) {
 	var body errorResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
 	assert.Equal(t, "RATE_LIMITED", body.Error.Code)
-	assert.Equal(t, "too many login attempts, try again later", body.Error.Message)
+	assert.Equal(t, "too many attempts, try again later", body.Error.Message)
 }
 
 func TestLoginThrottlePersistsAcrossHandlerRebuild(t *testing.T) {

@@ -16,7 +16,7 @@ describe('MFA settings client', () => {
     ['regenerate', () => regenerateMFARecoveryCodes('password', 'test-csrf')]
   ])('surfaces a rate-limited %s as RATE_LIMITED', async (_name, call) => {
     vi.spyOn(apiClient, 'POST').mockResolvedValue({
-      error: { error: { code: 'RATE_LIMITED', message: 'too many login attempts, try again later' } },
+      error: { error: { code: 'RATE_LIMITED', message: 'too many attempts, try again later' } },
       response: new Response(null, { status: 429, headers: { 'Retry-After': '900' } })
     });
     const failure = await call().then(() => null, (error: unknown) => error);
