@@ -25,8 +25,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_one_owner_idx
   ON users (is_owner)
   WHERE is_owner = 1;
 
+-- AUTOINCREMENT, deliberately: the session cleanup deletes revoked and
+-- expired rows, and audit_events and authentication_events keep naming the
+-- session afterwards (#289). Plain INTEGER PRIMARY KEY would hand a deleted
+-- top id to the next login, so a kept event could point at the wrong session.
 CREATE TABLE IF NOT EXISTS auth_sessions (
-  id INTEGER PRIMARY KEY,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL UNIQUE,
   created_at TEXT NOT NULL,
@@ -44,7 +48,10 @@ CREATE TABLE IF NOT EXISTS audit_events (
   id INTEGER PRIMARY KEY,
   book_id INTEGER REFERENCES books(id) ON DELETE RESTRICT,
   actor_user_id INTEGER REFERENCES users(id) ON DELETE RESTRICT,
-  auth_session_id INTEGER REFERENCES auth_sessions(id) ON DELETE SET NULL,
+  -- A plain, never-reused auth_sessions.id, not a foreign key: the session
+  -- row is cleaned up long before the audit trail is, and the event must
+  -- still name the session it came from (#289).
+  auth_session_id INTEGER,
   occurred_at TEXT NOT NULL CHECK (
     length(occurred_at) = 20
     AND occurred_at GLOB '????-??-??T??:??:??Z'
@@ -3711,7 +3718,8 @@ END;
 --
 -- Privacy posture, deliberate:
 --   * No password material, no session token, not even the token hash — the
---     session id is enough to correlate with auth_sessions.
+--     session id is enough to correlate with auth_sessions, and it outlives
+--     the session row because auth_sessions ids are never reused (#289).
 --   * The attempted username is stored because "which account is being
 --     guessed" is the whole point; it has already passed username-shape
 --     validation before an event is written.
@@ -3729,7 +3737,8 @@ CREATE TABLE IF NOT EXISTS authentication_events (
   outcome TEXT NOT NULL CHECK (outcome IN ('success', 'failure')),
   username TEXT NOT NULL DEFAULT '',
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  auth_session_id INTEGER REFERENCES auth_sessions(id) ON DELETE SET NULL,
+  -- Plain never-reused auth_sessions.id; see audit_events (#289).
+  auth_session_id INTEGER,
   client_ip TEXT NOT NULL DEFAULT '',
   failure_reason TEXT NOT NULL DEFAULT '',
   request_id TEXT NOT NULL DEFAULT ''

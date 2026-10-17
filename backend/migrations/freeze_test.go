@@ -14,7 +14,7 @@ import (
 // installed-release migrations are immutable.
 var frozenMigrationChecksums = map[string]string{
 	"0002_basis_resolution_provenance.sql": "d62b11ab12b52a9f232cf7b988f38da24ee4a688267cf2ca8939719b06a57543",
-	"0001_initial_schema.sql":              "e5b2ed61b4ec8d6ffb221f5538a2f9439b464490d7c8672d44a4e8fbf57b78f4",
+	"0001_initial_schema.sql":              "72e5a8c0024c277e610a3fd99ef251f55c2e835766c4265248ab64a743aa7e8d",
 }
 
 func TestPinnedMigrationChecksums(t *testing.T) {

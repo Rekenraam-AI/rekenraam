@@ -35,7 +35,7 @@ CREATE TABLE authentication_events_v2 (
   outcome TEXT NOT NULL CHECK (outcome IN ('success', 'failure')),
   username TEXT NOT NULL DEFAULT '',
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  auth_session_id INTEGER REFERENCES auth_sessions(id) ON DELETE SET NULL,
+  auth_session_id INTEGER,
   client_ip TEXT NOT NULL DEFAULT '',
   failure_reason TEXT NOT NULL DEFAULT '',
   request_id TEXT NOT NULL DEFAULT '',
@@ -88,7 +88,7 @@ CREATE TABLE authentication_events_v1 (
   outcome TEXT NOT NULL CHECK (outcome IN ('success', 'failure')),
   username TEXT NOT NULL DEFAULT '',
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  auth_session_id INTEGER REFERENCES auth_sessions(id) ON DELETE SET NULL,
+  auth_session_id INTEGER,
   client_ip TEXT NOT NULL DEFAULT '',
   failure_reason TEXT NOT NULL DEFAULT '',
   request_id TEXT NOT NULL DEFAULT ''

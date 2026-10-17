@@ -212,3 +212,18 @@ to 1. Databases and backups made before that consolidation are incompatible in
 both directions: export anything worth keeping before updating, then recreate
 the development database from the consolidated baseline. Do not use restore to
 cross that boundary.
+
+**BREAKING DEV DATABASE, #289 (2026-10-17):** `0001` now gives `auth_sessions`
+`AUTOINCREMENT` and stores `audit_events.auth_session_id` and
+`authentication_events.auth_session_id` as plain integers instead of
+`ON DELETE SET NULL` foreign keys; `0014` rebuilds `authentication_events` the
+same way. Events keep naming their session after the daily cleanup deletes it,
+and the id is never reused. A forward migration was not possible: SQLite
+cannot drop a foreign key in place, and rebuilding `audit_events` (referenced
+under `ON DELETE RESTRICT` by every ledger table) or `auth_sessions` (whose
+drop would null every event reference) requires foreign keys off, which a
+transactional migration cannot do. The checksum changed; the frozen seed loads
+unchanged. Stop the app, export anything worth keeping, remove the disposable
+database named by `DATABASE_URL` and its `-wal`/`-shm` sidecars as above,
+restart and redo owner setup. Do not use restore across this rewrite. No
+installed v0.1 release exists.

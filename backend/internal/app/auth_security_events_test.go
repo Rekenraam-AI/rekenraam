@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"testing"
 	"time"
@@ -196,4 +197,56 @@ func TestOwnerRecoveryIsRecordedAsOneCLIEvent(t *testing.T) {
 	assert.Equal(t, now.Format(time.RFC3339), event.OccurredAt)
 	assert.JSONEq(t, `{"sessions_revoked":1,"previous_mfa_status":"active","backup_written":true}`, event.MetadataJSON)
 	assert.NotContains(t, event.MetadataJSON, "/backups", "the record says a backup exists, not where")
+}
+
+// #289: the daily cleanup deletes revoked and expired sessions, but the events
+// made from a session must keep naming it afterwards, and the next login must
+// never be handed the deleted session's id, or a kept event would point at
+// the wrong session.
+func TestSecurityEventsKeepTheirSessionAfterSessionCleanup(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	now := time.Date(2026, 8, 7, 9, 0, 0, 0, time.UTC)
+	database, service := newMFATestService(t, now)
+	const clientIP = "198.51.100.4"
+
+	sessionID, login := signedInSession(t, service, clientIP)
+	_, err := service.BeginTOTPEnrollment(ctx, MFAPasswordInput{
+		UserID: 1, SessionID: sessionID, Password: "correct-horse-battery", ClientIP: clientIP, RequestID: "req-enroll",
+	})
+	require.NoError(t, err)
+	_, err = database.ExecContext(ctx, `
+		INSERT INTO audit_events (book_id, actor_user_id, auth_session_id, occurred_at, origin_type, operation)
+		VALUES (NULL, 1, ?, '2026-08-07T09:00:00Z', 'browser_api', 'settings.update')
+	`, sessionID)
+	require.NoError(t, err)
+
+	// The signed-in session is the newest row, so a reusing rowid allocator
+	// would hand its id straight to the next login once it is deleted.
+	require.NoError(t, service.Logout(ctx, LogoutInput{Token: login.SessionToken, ClientIP: clientIP}))
+	deleted, err := service.CleanupExpiredAndRevokedSessions(ctx)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), deleted)
+
+	nextSessionID, _ := signedInSession(t, service, clientIP)
+	assert.NotEqual(t, sessionID, nextSessionID, "a cleaned-up session id must never be reused")
+
+	requireOneAttributedEvent(t, service, authEventMFAEnrollmentStarted, sessionID, clientIP, "req-enroll")
+	logouts := eventsOfType(t, service, authEventLogout)
+	require.Len(t, logouts, 1)
+	require.NotNil(t, logouts[0].AuthSessionID)
+	assert.Equal(t, sessionID, *logouts[0].AuthSessionID)
+	var logins []int64
+	for _, event := range eventsOfType(t, service, authEventLoginSucceeded) {
+		require.NotNil(t, event.AuthSessionID)
+		logins = append(logins, *event.AuthSessionID)
+	}
+	assert.ElementsMatch(t, []int64{sessionID, nextSessionID}, logins,
+		"the enrollment still joins to the sign-in that created its session")
+
+	var auditSessionID sql.NullInt64
+	require.NoError(t, database.QueryRowContext(ctx,
+		`SELECT auth_session_id FROM audit_events WHERE operation = 'settings.update'`).Scan(&auditSessionID))
+	require.True(t, auditSessionID.Valid, "the audit trail must keep naming the session")
+	assert.Equal(t, sessionID, auditSessionID.Int64)
 }
