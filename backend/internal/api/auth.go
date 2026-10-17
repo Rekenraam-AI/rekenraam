@@ -103,13 +103,23 @@ func login(logger *slog.Logger, authService *app.AuthService, options HandlerOpt
 			return
 		}
 
-		writeSessionCookie(w, r, options, result.SessionToken)
-		if result.TrustedDeviceToken != "" {
-			writeTrustedDeviceCookie(w, r, options, result.TrustedDeviceToken, result.TrustedDeviceLifetime)
-		}
+		writeLoginCookies(w, r, options, result)
 		writeJSON(w, http.StatusOK, loginResponse{
 			User: &OwnerResponse{ID: result.User.ID, Username: result.User.Username},
 		})
+	}
+}
+
+// writeLoginCookies keeps password-only and completed-MFA logins on the same
+// persisted session lifetime and renews the browser half of sliding device approval.
+func writeLoginCookies(w http.ResponseWriter, r *http.Request, options HandlerOptions, result app.LoginResult) {
+	writeSessionCookie(w, r, options, result.SessionToken, result.SessionLifetime)
+	deviceToken := result.TrustedDeviceToken
+	if deviceToken == "" {
+		deviceToken = readTrustedDeviceToken(r)
+	}
+	if deviceToken != "" {
+		writeTrustedDeviceCookie(w, r, options, deviceToken, result.TrustedDeviceLifetime)
 	}
 }
 

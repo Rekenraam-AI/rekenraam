@@ -221,11 +221,19 @@ existing bank CSV journey.
 | Lockout-safe login throttle (approved devices) | 🟡 | `login_trusted_devices` + `GET`/`DELETE /api/v1/auth/trusted-devices`, S-04 — backend only, no UI. A device that completes a successful login (or first-run setup) gets an HttpOnly approval cookie; its attempts then spend a device-scoped throttle budget instead of the shared username/IP budgets, so an attacker cannot lock the publicly-known owner username out. The cookie is a throttle-scope selector, **never a credential** — it authenticates nothing, and the device keeps the same 5-in-15 budget so a stolen cookie buys no extra guesses. Hash-at-rest, 180-day sliding expiry, revocable. |
 | Two-factor authentication (TOTP + recovery codes) | ✅ | `app/auth_mfa.go`, `api/auth_mfa.go`, `internal/totp/` (dependency-free RFC 6238), S-06 — backend **and** UI (`settings/security`, plus the code step in the install gate). Once active, a verified password yields a five-minute single-use challenge cookie instead of a session; `POST /api/v1/auth/login/mfa` completes it with an authenticator code or one of ten single-use recovery codes. The shared secret is sealed with `REKENRAAM_SECRET_KEY` (absent ⇒ enrolment refused, never plaintext); recovery codes are SHA-256 hashed and stay usable even if the key is lost. Replay guard on the accepted time step; wrong codes spend the same 5-in-15 throttle budget as wrong passwords; enrol/disable/regenerate each re-confirm the password. A pending enrolment never gates a login. |
 | Authentication-event visibility | 🟡 | `authentication_events` + `GET /api/v1/auth/events`, S-07 — backend only, no UI. Records login success/failure/blocked and logout with the proxy-aware client IP, attempted username, failure reason and request id; mirrored to structured `slog` (failures at WARN) so a log shipper works without querying SQLite. Never stores password material or session tokens. `failed_last_24h` is the brute-force signal. Pruned to a 90-day retention window by the existing daily session-cleanup pass. |
-| Operator owner-recovery (backup-first, override) | ✅ | `recover-owner` command. |
+| Operator owner-recovery (backup-first, override) | ✅ | `recover-owner` command. The recovery-required panel shows the installed `rekenraam recover-owner --password-stdin` command with no sample password or development database assumption (#264). |
 | `/api/v1` envelope, error codes, request IDs | ✅ | Error envelope and server-generated per-attempt UUIDs ship. Caller-supplied `X-Request-ID` values never replace audit/log identity (T-79). |
 | i18n boundary (Paraglide/Inlang) | ✅ | All UI copy and built-in labels keyed. |
 | Light/dark semantic theme tokens | ✅ | `settings/appearance`. |
 | OpenAPI-first contract + generated TS client | ✅ | `api/openapi/`, `frontend/src/lib/api/schema.d.ts`. |
+
+Identity audit (2026-10-17): [review and evidence](reviews/setup-auth-privacy-audit-2026-10-17.md).
+MFA enrollment and activation pin current state (#261). Password and completed-MFA
+session cookies match the configured persisted lifetime, and successful device
+reuse renews the existing approval cookie (#263). Sensitive MFA-settings password
+confirmation remains unthrottled; [#262](https://github.com/sergeyfarin/rekenraam/issues/262)
+tracks the bounded reauthentication/activation policy. This finding remains open;
+it is not a claim that sign-in's existing throttle is absent.
 
 ## Books, Commodities, Accounts (Phase 1) — ✅ Complete
 

@@ -2166,7 +2166,7 @@ export interface paths {
                 200: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
-                        /** @description Browser session cookie for the authenticated owner. */
+                        /** @description Browser session cookie for the authenticated owner. Max-Age matches SESSION_LIFETIME_HOURS; successful device reuse also renews the approved-device cookie. */
                         "Set-Cookie"?: string;
                         [name: string]: unknown;
                     };
@@ -2272,7 +2272,7 @@ export interface paths {
                 200: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
-                        /** @description Browser session cookie for the authenticated owner. */
+                        /** @description Browser session cookie for the authenticated owner. Max-Age matches SESSION_LIFETIME_HOURS; successful device reuse also renews the approved-device cookie. */
                         "Set-Cookie"?: string;
                         [name: string]: unknown;
                     };
@@ -2661,7 +2661,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description No pending enrollment, or MFA is already active */
+                /** @description No matching pending enrollment (including a concurrently replaced secret), or MFA is already active */
                 409: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];

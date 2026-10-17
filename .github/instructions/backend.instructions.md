@@ -11,7 +11,7 @@ description: "Use when editing Go backend code, migrations, repositories, servic
 - Keep request and response DTOs near API handlers.
 - Real endpoints belong under `/api/v1`.
 - New schema changes require explicit migrations in `backend/migrations/`.
-- SQLite connections must install PRAGMAs per physical connection: `busy_timeout(5000)`, `foreign_keys(1)`, `journal_mode(WAL)`, `synchronous(NORMAL)`, and `wal_autocheckpoint(1000)`.
+- SQLite connections must install PRAGMAs per physical connection: `busy_timeout(5000)`, `foreign_keys(1)`, `journal_mode(WAL)`, `synchronous(FULL)` (ADR 0015), and `wal_autocheckpoint(1000)`.
 - Startup runs embedded goose migrations before the HTTP server listens; migration failure fails startup.
 - Backend tests should prefer temporary SQLite databases.
 - Preserve exact financial arithmetic and reconciliation-safe behavior.
@@ -20,7 +20,7 @@ description: "Use when editing Go backend code, migrations, repositories, servic
 - Password hashing uses Argon2id via `golang.org/x/crypto/argon2`; store self-describing hashes with parameters and never store plaintext or reversibly encrypted passwords.
 - Avoid introducing assumptions that depend on cloud services or external identity providers.
 - Browser sessions use opaque `HttpOnly` cookie tokens, hashed session storage, `SameSite=Strict`, and CSRF validation for mutating API requests.
-- Public deployments require HTTPS. Localhost development may use HTTP. LAN/private HTTPS can be provided by a reverse proxy or app-configured certificate and key.
+- Public deployments require HTTPS. Localhost development may use HTTP. LAN/private HTTPS is provided by a reverse proxy; the app does not terminate TLS or accept certificate/key configuration.
 - Docker production runtime uses the official Debian 13 slim base, `debian:trixie-slim`, and runs the app as a non-root numeric user.
 - If a backend change adds a durable domain rule, update `docs/product-requirements.md`, `docs/conventions.md`, or `docs/early-architecture-decisions.md` as appropriate.
 
@@ -44,7 +44,7 @@ description: "Use when editing Go backend code, migrations, repositories, servic
 - Inject a request-scoped UUID as a request ID on every inbound request. Include it in log entries and echo it as `X-Request-ID` in the response.
 - Use `testify/assert` (non-fatal) and `testify/require` (fatal) in all Go tests. Do not write verbose manual assertion blocks.
 - Database access in `backend/internal/db/` is handwritten repository-style code over `database/sql`. There is no `sqlc` code generation in this repo; introduce it only per `docs/conventions.md` (large query surface, documented generation command). Never assume generated files exist.
-- Backend tests use a temporary SQLite database opened with `db.Open(ctx, "file:"+filepath.Join(t.TempDir(), "test.sqlite"))`. Never use the development database file in tests.
+- Ordinary backend integration tests use `internal/testdb.Open(t)` for isolated migrated-template copies. Fresh migration/recovery tests use `db.Open` and `db.Migrate` directly. Build SQLite file URIs with `db.SQLiteFileURL`; never concatenate raw paths or use the development database in tests.
 - Live SQLite backup code must use the online backup API or `VACUUM INTO`; do not implement raw live file copy as the normal backup path.
 - The server must handle `SIGTERM` and `SIGINT` with `http.Server.Shutdown(ctx)` and a short grace period.
 

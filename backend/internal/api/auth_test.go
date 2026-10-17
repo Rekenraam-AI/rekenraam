@@ -459,8 +459,10 @@ func TestSetupAndLoginIssueTrustedDeviceCookie_HTTP(t *testing.T) {
 	loginRes := httptest.NewRecorder()
 	handler.ServeHTTP(loginRes, loginReq)
 	require.Equal(t, http.StatusOK, loginRes.Code)
-	assert.Nil(t, trustedDeviceCookieFrom(loginRes.Result().Cookies()),
-		"an already-approved device must not be handed a fresh cookie on every login")
+	renewed := trustedDeviceCookieFrom(loginRes.Result().Cookies())
+	require.NotNil(t, renewed, "successful use must renew the browser approval lifetime")
+	assert.Equal(t, deviceCookie.Value, renewed.Value, "renew the same approved-device identity")
+	assert.Equal(t, int(app.TrustedDeviceLifetime.Seconds()), renewed.MaxAge)
 }
 
 func TestTrustedDevices_ListAndRevoke_HTTP(t *testing.T) {

@@ -21,7 +21,7 @@ post:
         Set-Cookie:
           schema:
             type: string
-          description: Browser session cookie for the authenticated owner.
+          description: Browser session cookie for the authenticated owner. Max-Age matches SESSION_LIFETIME_HOURS; successful device reuse also renews the approved-device cookie.
       content:
         application/json:
           schema:

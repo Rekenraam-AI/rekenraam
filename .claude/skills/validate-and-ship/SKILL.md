@@ -515,6 +515,14 @@ non-trivial diff (yours or reviewed):
     `TestImportedDividendRepairKeepsTransactionCashSourceAndNativeCorrections`,
     `TestImportedDividendRepairWriterPinsVersionAndSourceEligibility`.
 
+47. **Security state checked before a later independent write** — enrollment
+    used to overwrite an activation and activation could accept a code for a
+    replaced secret (#261). Pin the verified pending secret at the write and
+    refuse demoting an active enrollment. Exercise deterministic interleavings
+    through real services, not just a happy-path TOTP vector. Browser cookie
+    lifetimes must match persisted session/device policy too (#263); test both
+    password and completed-MFA HTTP consumers and existing-device renewal.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

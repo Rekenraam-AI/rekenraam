@@ -93,6 +93,9 @@ It reconciles recent closures, maps all feature/design references and all app
 areas to twelve bounded audits, and distinguishes review completed from audit
 execution pending. The roadmap retains order and R13 readiness;
 [#260](https://github.com/sergeyfarin/rekenraam/issues/260) tracks audit execution.
+The [first identity/setup/privacy audit](reviews/setup-auth-privacy-audit-2026-10-17.md)
+is complete with fixes and the retained #262 reauthentication finding; the other
+eleven areas and targeted follow-ups remain pending.
 
 Earlier strategic proposal:
 [2026-09-09 product direction, AI and privacy](reviews/product-direction-ai-privacy-2026-09-09.md).

@@ -10,6 +10,7 @@ import (
 	"mime"
 	"net/http"
 	"strings"
+	"time"
 
 	"rekenraam/backend/internal/app"
 )
@@ -85,7 +86,7 @@ func createOwner(logger *slog.Logger, setupService *app.SetupService, authServic
 			return
 		}
 
-		writeSessionCookie(w, r, options, result.SessionToken)
+		writeSessionCookie(w, r, options, result.SessionToken, app.SessionLifetime)
 		// Approve the setup device immediately, so a fresh install is never
 		// briefly lockout-vulnerable before the owner's first real login
 		// (S-04). Failure here is not fatal: setup succeeded, and the device
@@ -147,7 +148,7 @@ func toSetupStatusResponse(status app.SetupStatus) setupStatusResponse {
 	}
 }
 
-func writeSessionCookie(w http.ResponseWriter, r *http.Request, options HandlerOptions, token string) {
+func writeSessionCookie(w http.ResponseWriter, r *http.Request, options HandlerOptions, token string, lifetime time.Duration) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     requestSessionCookieName(r, options),
 		Value:    token,
@@ -155,7 +156,7 @@ func writeSessionCookie(w http.ResponseWriter, r *http.Request, options HandlerO
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		Secure:   true,
-		MaxAge:   int(app.SessionLifetime.Seconds()),
+		MaxAge:   int(lifetime.Seconds()),
 	})
 }
 

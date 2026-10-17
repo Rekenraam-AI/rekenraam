@@ -158,6 +158,9 @@ func (s *AuthService) BeginTOTPEnrollment(ctx context.Context, input MFAPassword
 		Status:           "pending",
 		CreatedAt:        s.now().UTC().Format(time.RFC3339),
 	}); err != nil {
+		if errors.Is(err, db.ErrMFAAlreadyActive) {
+			return MFAEnrollment{}, ErrMFAAlreadyActive
+		}
 		return MFAEnrollment{}, fmt.Errorf("persist mfa enrollment: %w", err)
 	}
 
@@ -204,7 +207,7 @@ func (s *AuthService) ActivateTOTP(ctx context.Context, input ActivateMFAInput) 
 		return nil, err
 	}
 	if err := s.repository.ActivateMFATOTPWithRecoveryCodes(
-		ctx, input.UserID, s.now().UTC().Format(time.RFC3339), int64(step), hashes,
+		ctx, input.UserID, record.SecretCiphertext, s.now().UTC().Format(time.RFC3339), int64(step), hashes,
 	); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, ErrMFANotEnrolled

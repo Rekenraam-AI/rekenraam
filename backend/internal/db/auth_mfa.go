@@ -12,6 +12,9 @@ import (
 // without leaking the difference to the caller.
 var ErrMFARecoveryCodeUsed = errors.New("mfa recovery code already used")
 
+// ErrMFAAlreadyActive refuses an enrollment write that raced activation.
+var ErrMFAAlreadyActive = errors.New("mfa enrollment already active")
+
 type MFATOTPRecord struct {
 	UserID           int64
 	SecretCiphertext string
@@ -60,11 +63,11 @@ func (r *AuthRepository) ReadMFATOTP(ctx context.Context, userID int64) (MFATOTP
 	return record, nil
 }
 
-// UpsertMFATOTP replaces any existing enrollment. Starting a new enrollment
-// discards the old secret and its replay counter together — a half-finished
-// re-enrollment must never leave the previous secret partially in force.
+// UpsertMFATOTP replaces only a pending enrollment, never an active one.
+// Starting a new enrollment discards its old secret and replay counter together;
+// a half-finished re-enrollment must not leave the old secret partially active.
 func (r *AuthRepository) UpsertMFATOTP(ctx context.Context, params UpsertMFATOTPParams) error {
-	if _, err := r.database.ExecContext(ctx, `
+	result, err := r.database.ExecContext(ctx, `
 		INSERT INTO user_mfa_totp (user_id, secret_ciphertext, status, created_at, activated_at, last_used_step)
 		VALUES (?, ?, ?, ?, NULL, NULL)
 		ON CONFLICT(user_id) DO UPDATE SET
@@ -73,29 +76,34 @@ func (r *AuthRepository) UpsertMFATOTP(ctx context.Context, params UpsertMFATOTP
 			created_at = excluded.created_at,
 			activated_at = NULL,
 			last_used_step = NULL
-	`, params.UserID, params.SecretCiphertext, params.Status, params.CreatedAt); err != nil {
+		WHERE user_mfa_totp.status = 'pending'
+	`, params.UserID, params.SecretCiphertext, params.Status, params.CreatedAt)
+	if err != nil {
 		return fmt.Errorf("upsert mfa totp enrollment: %w", err)
 	}
-
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("read mfa enrollment rows: %w", err)
+	}
+	if rowsAffected != 1 {
+		return ErrMFAAlreadyActive
+	}
 	return nil
 }
 
-// ActivateMFATOTP promotes a pending enrollment once a code has proved the
-// user really stored the secret, recording the step that code came from so it
-// cannot be replayed.
-// ActivateMFATOTPWithRecoveryCodes promotes a pending enrollment and installs
-// its recovery codes in one transaction. The two must not be separable: an
-// activation that succeeded while its codes failed to persist would leave the
+// ActivateMFATOTPWithRecoveryCodes promotes the exact pending secret that was
+// verified and installs its recovery codes in one transaction. An activation
+// that succeeded while its codes failed to persist would leave the
 // owner locked to a single authenticator with no way back in, and a retry
 // would be refused as already active.
-func (r *AuthRepository) ActivateMFATOTPWithRecoveryCodes(ctx context.Context, userID int64, activatedAt string, usedStep int64, codeHashes []string) error {
+func (r *AuthRepository) ActivateMFATOTPWithRecoveryCodes(ctx context.Context, userID int64, secretCiphertext string, activatedAt string, usedStep int64, codeHashes []string) error {
 	tx, err := r.database.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin mfa activation transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := activateMFATOTPTx(ctx, tx, userID, activatedAt, usedStep); err != nil {
+	if err := activateMFATOTPTx(ctx, tx, userID, secretCiphertext, activatedAt, usedStep); err != nil {
 		return err
 	}
 	if err := replaceMFARecoveryCodesTx(ctx, tx, userID, codeHashes, activatedAt); err != nil {
@@ -108,12 +116,12 @@ func (r *AuthRepository) ActivateMFATOTPWithRecoveryCodes(ctx context.Context, u
 	return nil
 }
 
-func activateMFATOTPTx(ctx context.Context, tx *sql.Tx, userID int64, activatedAt string, usedStep int64) error {
+func activateMFATOTPTx(ctx context.Context, tx *sql.Tx, userID int64, secretCiphertext string, activatedAt string, usedStep int64) error {
 	result, err := tx.ExecContext(ctx, `
 		UPDATE user_mfa_totp
 		SET status = 'active', activated_at = ?, last_used_step = ?
-		WHERE user_id = ? AND status = 'pending'
-	`, activatedAt, usedStep, userID)
+		WHERE user_id = ? AND status = 'pending' AND secret_ciphertext = ?
+	`, activatedAt, usedStep, userID, secretCiphertext)
 	if err != nil {
 		return fmt.Errorf("activate mfa totp enrollment: %w", err)
 	}

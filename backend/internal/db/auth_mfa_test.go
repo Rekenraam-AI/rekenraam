@@ -60,7 +60,7 @@ func TestActivateMFATOTPWithRecoveryCodesTurnsMFAOnAndStoresTheCodes(t *testing.
 	enrollPendingMFA(t, repository)
 
 	require.NoError(t, repository.ActivateMFATOTPWithRecoveryCodes(
-		context.Background(), 1, "2026-08-01T00:05:00Z", 42,
+		context.Background(), 1, "sealed-secret", "2026-08-01T00:05:00Z", 42,
 		[]string{"hash-a", "hash-b", "hash-c"},
 	))
 
@@ -78,7 +78,7 @@ func TestActivateMFATOTPWithRecoveryCodesLeavesTheEnrollmentPendingWhenCodesFail
 	enrollPendingMFA(t, repository)
 
 	err := repository.ActivateMFATOTPWithRecoveryCodes(
-		context.Background(), 1, "2026-08-01T00:05:00Z", 42,
+		context.Background(), 1, "sealed-secret", "2026-08-01T00:05:00Z", 42,
 		[]string{"hash-a", "hash-a"},
 	)
 
@@ -95,11 +95,11 @@ func TestActivateMFATOTPWithRecoveryCodesCanBeRetriedAfterAFailure(t *testing.T)
 	enrollPendingMFA(t, repository)
 
 	require.Error(t, repository.ActivateMFATOTPWithRecoveryCodes(
-		context.Background(), 1, "2026-08-01T00:05:00Z", 42,
+		context.Background(), 1, "sealed-secret", "2026-08-01T00:05:00Z", 42,
 		[]string{"hash-a", "hash-a"},
 	))
 	require.NoError(t, repository.ActivateMFATOTPWithRecoveryCodes(
-		context.Background(), 1, "2026-08-01T00:06:00Z", 43,
+		context.Background(), 1, "sealed-secret", "2026-08-01T00:06:00Z", 43,
 		[]string{"hash-a", "hash-b"},
 	))
 
@@ -115,11 +115,11 @@ func TestActivateMFATOTPWithRecoveryCodesRejectsAnAlreadyActiveEnrollment(t *tes
 	enrollPendingMFA(t, repository)
 
 	require.NoError(t, repository.ActivateMFATOTPWithRecoveryCodes(
-		context.Background(), 1, "2026-08-01T00:05:00Z", 42, []string{"hash-a"},
+		context.Background(), 1, "sealed-secret", "2026-08-01T00:05:00Z", 42, []string{"hash-a"},
 	))
 
 	err := repository.ActivateMFATOTPWithRecoveryCodes(
-		context.Background(), 1, "2026-08-01T00:06:00Z", 43, []string{"hash-b"},
+		context.Background(), 1, "sealed-secret", "2026-08-01T00:06:00Z", 43, []string{"hash-b"},
 	)
 
 	require.ErrorIs(t, err, ErrNotFound)

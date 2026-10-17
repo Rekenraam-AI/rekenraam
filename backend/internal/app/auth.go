@@ -104,11 +104,12 @@ type LoginInput struct {
 }
 
 type LoginResult struct {
-	User         Owner
-	SessionToken string
+	User            Owner
+	SessionToken    string
+	SessionLifetime time.Duration
 	// TrustedDeviceToken is set when the caller should store a new
 	// approved-device cookie. Empty means the device it presented is still
-	// valid and needs no change.
+	// valid; the HTTP layer renews its cookie using the presented token.
 	TrustedDeviceToken string
 	// TrustedDeviceLifetime is how long the caller should keep the cookie.
 	TrustedDeviceLifetime time.Duration
@@ -401,6 +402,7 @@ func (s *AuthService) completeLogin(ctx context.Context, input completeLoginInpu
 			Username: input.Username,
 		},
 		SessionToken:          sessionToken,
+		SessionLifetime:       s.sessionLifetime,
 		TrustedDeviceToken:    trustedDeviceToken,
 		TrustedDeviceLifetime: TrustedDeviceLifetime,
 	}, nil

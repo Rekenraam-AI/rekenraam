@@ -129,8 +129,13 @@ below is execution order, not a chain of hard dependencies.
    then planning/import integration, frontend journeys and deployment/tooling.
    Record fresh evidence per area and file scoped findings. Audit execution is
    tracked in [#260](https://github.com/sergeyfarin/rekenraam/issues/260);
-   execution has not started. Fix confirmed integrity/security defects before
-   affected feature slices. This is a bounded review, not a recurring full-suite gate.
+   the first identity/setup/privacy audit is complete with findings in the
+   [2026-10-17 evidence](reviews/setup-auth-privacy-audit-2026-10-17.md).
+   #261/#263/#264 are corrected; [#262](https://github.com/sergeyfarin/rekenraam/issues/262)
+   retains the MFA-settings reauthentication policy gap. The other eleven areas
+   and the targeted identity-concurrency/proxy-browser follow-ups remain pending.
+   Fix confirmed integrity/security defects before affected feature slices.
+   This is a bounded review, not a recurring full-suite gate.
 2. **Address the known UI defect independently:**
    [#259](https://github.com/sergeyfarin/rekenraam/issues/259), closed-lot badge
    contrast and semantic tokens. Check the whole repeated badge pattern, and

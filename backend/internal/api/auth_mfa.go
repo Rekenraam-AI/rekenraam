@@ -194,10 +194,7 @@ func completeLoginMFA(logger *slog.Logger, authService *app.AuthService, options
 		}
 
 		clearMFAChallengeCookie(w, r, options)
-		writeSessionCookie(w, r, options, result.SessionToken)
-		if result.TrustedDeviceToken != "" {
-			writeTrustedDeviceCookie(w, r, options, result.TrustedDeviceToken, result.TrustedDeviceLifetime)
-		}
+		writeLoginCookies(w, r, options, result)
 		writeJSON(w, http.StatusOK, loginResponse{
 			User: &OwnerResponse{ID: result.User.ID, Username: result.User.Username},
 		})

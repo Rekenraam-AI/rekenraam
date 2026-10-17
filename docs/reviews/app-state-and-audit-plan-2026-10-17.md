@@ -1,13 +1,16 @@
 # Application state, documentation reconciliation and audit brief — 2026-10-17
 
-**Status:** documentation reconciliation completed; twelve application audits
-proposed, execution pending. This review is a dated evidence/disposition record,
+**Status:** documentation reconciliation and the first identity audit completed;
+eleven application areas and targeted follow-up audits remain pending. This review is a dated evidence/disposition record,
 not a live delivery checklist or another roadmap. The
 [roadmap](../roadmap.md#current-focus) owns order. After the owner's explicit
 publication approval on 2026-10-17, the audit was published as
 [#260](https://github.com/sergeyfarin/rekenraam/issues/260). That issue owns
 execution checklists and findings under
-[Work Tracking](../conventions.md#work-tracking); audit execution is pending.
+[Work Tracking](../conventions.md#work-tracking). The
+[first identity/setup/privacy audit](setup-auth-privacy-audit-2026-10-17.md) is
+complete with findings; the other eleven areas and targeted follow-ups remain
+pending. The original proposed scopes below remain the dated baseline.
 
 ## Evidence and limits
 

@@ -6,7 +6,8 @@ TLS itself. Put it behind a reverse proxy for HTTPS.
 
 Run exactly one Rekenraam process or container against a SQLite database file.
 Multiple replicas sharing one database volume are not a supported v0.1
-deployment; the cross-process queue/locking behavior remains tracked as T-72.
+deployment. Cross-process queue/restore guards are verified in #105/#227;
+they do not authorize multiple server replicas sharing one database.
 
 ## Public-deployment gate: turn MFA on
 
@@ -25,9 +26,13 @@ What it does and does not do:
 
 - A verified password alone no longer produces a session once MFA is active.
   It produces a five-minute, single-use challenge cookie that grants nothing.
-- Wrong codes spend the same five-in-fifteen throttle budget as wrong
-  passwords, so a six-digit code is not a free guessing target.
-- A code cannot be replayed inside its own 30-second step.
+- Wrong **sign-in** codes spend the same five-in-fifteen throttle budget as
+  wrong sign-in passwords. MFA-settings password confirmation and pending
+  activation attempts need a separate bounded policy; see
+  [#262](https://github.com/sergeyfarin/rekenraam/issues/262).
+- A code cannot be replayed inside its own 30-second step. Enrollment writes
+  cannot overwrite an already active secret; activation pins the exact pending
+  secret whose code was verified (#261).
 - Enrolling, disabling, and regenerating recovery codes each require the
   password again, so a stolen session cannot change what protects the account.
 - Recovery codes are the only remote way back in if the authenticator is lost.
@@ -36,8 +41,9 @@ What it does and does not do:
   clears the enrolment in the same transaction — it already requires filesystem
   access to the database, so an enrolment must not outlast it.
 
-Localhost development may use HTTP. For LAN use, HTTPS through a reverse proxy
-is strongly preferred. A browser-warning-free private deployment needs a
+Localhost development may use HTTP. Browser authentication uses Secure cookies;
+on a non-loopback LAN hostname or address it needs HTTPS through a reverse
+proxy for the browser to retain those cookies. A browser-warning-free private deployment needs a
 certificate trusted by every client (for example, for a real domain or from a
 local CA installed on those clients).
 
@@ -128,6 +134,8 @@ Read this carefully when reasoning about the security posture:
   still requires the password, and presenting the cookie alone authenticates
   nothing. Its only effect is which throttle budget an attempt spends.
 - It is HttpOnly, SameSite=Strict, and only its SHA-256 hash is stored.
+- Successful password or completed-MFA login renews both the approved-device
+  database expiry and its browser cookie, retaining one device identity (#263).
 - The approved device keeps the same five-in-fifteen budget, so a stolen
   cookie buys no extra password guesses.
 - Approval lapses after 180 days unused and slides forward on each successful
