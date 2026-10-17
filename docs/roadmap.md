@@ -132,7 +132,14 @@ below is execution order, not a chain of hard dependencies.
    the first identity/setup/privacy audit is complete with findings in the
    [2026-10-17 evidence](reviews/setup-auth-privacy-audit-2026-10-17.md).
    #261/#262/#263/#264 are corrected. The other eleven areas
-   and the targeted identity-concurrency/proxy-browser follow-ups remain pending.
+   and the targeted identity-concurrency/proxy-browser follow-ups remain pending
+   as sub-issues of #260, in this order: the shared reference book and
+   expected-figure register #266; ledger/reconciliation #270, investment
+   operations #272/#273, reports and R13 readiness #275, and recovery #277;
+   then planning #276, imports #271, reference data #269, prices and durable
+   work #274 and identity concurrency #267; then frontend #278, deployment
+   #279 and proxy/shared-browser privacy #268. Architecture/quality #280
+   runs last, with the shared gates once at the candidate SHA.
    Fix confirmed integrity/security defects before affected feature slices.
    This is a bounded review, not a recurring full-suite gate.
 2. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
