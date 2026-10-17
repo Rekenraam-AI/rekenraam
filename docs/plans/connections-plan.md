@@ -320,10 +320,12 @@ market-data registry's `PriceProvider` alongside FX. `DividendProvider` and
    *Provider dividend producer* below. Events land as
    `investment_provider_events` → suggestions and commit only through the
    native dividend command after owner completion, or link to an
-   owner-recorded dividend. Other corporate-action families still need their
-   own verified source mapping and reviewed admission to their named command
-   (#145 splits, #136 cancellations, #176 short dividends); incomplete or
-   unsupported events remain informational. Lack of an automated source never
+   owner-recorded dividend. Other event families still need their own
+   verified source mapping and reviewed admission to their named command
+   (Trading 212 split fills #145, execution cancellation #136, provider
+   short/cover rows #176); a dividend owed on a short position also needs its
+   payment-in-lieu operation first (#255). Incomplete or unsupported events
+   remain informational. Lack of an automated source never
    disables those native commands or their corrections.
 3. **Benchmarks for R13** (TWR/MWR comparison): an index series via
    Stooq/the chosen quote provider; no new architecture.

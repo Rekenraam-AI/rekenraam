@@ -251,8 +251,9 @@ func (s *PricingService) stageDividendObservation(ctx context.Context, target db
 	if !observation.AmountKnown {
 		confidence = 3000
 	}
-	// A short holder owes a dividend payment and the gross is not income;
-	// that mapping is not verified (#176). Keep the evidence informational.
+	// A short holder owes a payment in lieu of the dividend, which is not
+	// income and has no native command yet (#255). Keep the evidence
+	// informational.
 	if len(holdings.Short) > 0 {
 		evidence.Unsupported = dividendUnsupportedShort
 		proposal = map[string]any{"kind": proposedTransactionKindInfoRow, "reason": dividendUnsupportedShort}

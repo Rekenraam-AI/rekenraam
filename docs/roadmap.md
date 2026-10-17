@@ -349,8 +349,10 @@ These are valuable, but they are not allowed to displace the current plan:
 - R15 connections expansion, in this order (adopted 2026-08-05):
   **IBKR Flex Query → GoCardless EU/UK banks**, then SimpleFIN Bridge (US)
   later. The #111 dividend event producer (Twelve Data, dividends only) was
-  delivered ahead of this order on 2026-10-17 at the owner's request; other
-  corporate-action provider mappings remain separate issues (#145, #136, #176).
+  delivered ahead of this order on 2026-10-17 at the owner's request. The
+  evidence-blocked Trading 212 mappings stay separate (split fills #145,
+  execution cancellation #136, short/cover rows #176), as does the
+  payment-in-lieu operation short dividends need (#255).
   Security quotes moved out of R15 into R17. CSV mapping-profile presets for
   API-less brokers (Trade Republic, DeGiro, Raisin, HL/AJ Bell/ii) are R5
   documentation-plus-fixtures tasks, not adapters. All bring-your-own-key;
