@@ -410,7 +410,7 @@ design; the owner's statement completes it. Short holdings make the event
 informational. There is no scheduler and no automation-rule auto-post; the
 owner triggers *Check provider dividends*.
 
-### Twelve Data splits — contract reviewed, not mapped (2026-10-17)
+### Twelve Data splits — contract reviewed, not mapped ([#256](https://github.com/sergeyfarin/rekenraam/issues/256), 2026-10-17)
 
 A second bounded mapping, Twelve Data `GET /splits` → `split` provider events
 admitted through the native split command, was evaluated against the same
