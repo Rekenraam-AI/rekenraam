@@ -210,7 +210,6 @@
                       role="button"
                       tabindex="0"
                       onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && selectPosition(pos)}
-                      aria-label={m.investments_row_aria({ name: instrumentName(pos.commodity_id) })}
                     >
                       <td class="py-3 pl-5 pr-3">
                         <div class="flex items-center gap-2">
@@ -218,6 +217,9 @@
                           <span class="font-medium text-foreground">{instrumentName(pos.commodity_id)}</span>
                           <ObservationStatus status={pos.price_status} />
                           <PositionSideBadge side={pos.position_side} />
+                          <span class="sr-only">
+                            {m.investments_row_aria({ name: instrumentName(pos.commodity_id) })}
+                          </span>
                         </div>
                       </td>
                       <td class="px-3 py-3 text-right font-mono text-foreground">
