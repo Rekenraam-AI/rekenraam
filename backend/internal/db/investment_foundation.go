@@ -29,8 +29,19 @@ func recordInvestmentFoundationTx(ctx context.Context, tx *sql.Tx, params Create
 			return fmt.Errorf("record dividend paying instrument: %w", err)
 		}
 	}
+	if fact := params.PaymentInLieu; fact != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO investment_payment_in_lieu_facts
+			(book_id, operation_id, holding_account_id, commodity_id, ex_date, created_audit_event_id) VALUES (?, ?, ?, ?, ?, ?)`,
+			params.BookID, operationID, fact.HoldingAccountID, fact.CommodityID, fact.ExDate, auditEventID); err != nil {
+			return fmt.Errorf("record payment in lieu entitlement: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO investment_operation_dates (operation_id, date_role, event_date)
+			VALUES (?, 'ex', ?)`, operationID, fact.ExDate); err != nil {
+			return fmt.Errorf("record payment in lieu ex-date: %w", err)
+		}
+	}
 	dateRole := "trade"
-	if params.Spec.InvestmentOperationKind == "dividend" || params.Spec.InvestmentOperationKind == "reinvested_dividend" ||
+	if params.Spec.InvestmentOperationKind == "dividend" || params.Spec.InvestmentOperationKind == "payment_in_lieu" || params.Spec.InvestmentOperationKind == "reinvested_dividend" ||
 		params.Spec.InvestmentOperationKind == "return_of_capital" {
 		dateRole = "payment"
 	} else if params.Spec.InvestmentOperationKind == "external_transfer_in" ||

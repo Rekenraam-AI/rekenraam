@@ -336,6 +336,16 @@ their original periods and descriptors remain attached, and ledger filters do
 not re-scope or recalculate them. Existing CSV files and columns remain unchanged.
 ADR 0012 and the reporting plan own the saved-run policy and schema lifecycle.
 
+### Payment-in-lieu facts (2026-10-17, #255)
+
+Manifest schema version 14 adds `investment-payment-in-lieu-facts.csv` with
+`operation_id`, `holding_account_id` (the short holding), `commodity_id`,
+`ex_date` and `audit_event_id`, one row per payment in lieu and per reversal
+of one (a reversal repeats its predecessor's facts). The charge, expense
+account and any recovery are journal postings; their exact source amounts are
+`investment-operation-components.csv` rows of kind `payment_in_lieu`
+(negative, the owner's cash flow) and `payment_in_lieu_recovery` (positive).
+
 ### Cash dividend instrument facts (2026-10-15, #229)
 
 Manifest schema version 13 adds `investment-dividend-facts.csv` with

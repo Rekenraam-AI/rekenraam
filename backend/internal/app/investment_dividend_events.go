@@ -25,12 +25,19 @@ const dividendEventLookbackDays = 365
 
 // Provider dividend reasons are stable codes the frontend localizes.
 const (
-	dividendMissingPaymentDate     = "payment_date"
-	dividendMissingCashAccount     = "cash_account"
-	dividendMissingReceivedAmount  = "received_amount"
-	dividendMissingCurrency        = "dividend_currency"
-	dividendMissingAmountPerShare  = "amount_per_share"
-	dividendUnsupportedShort       = "short_position"
+	dividendMissingPaymentDate    = "payment_date"
+	dividendMissingCashAccount    = "cash_account"
+	dividendMissingReceivedAmount = "received_amount"
+	dividendMissingCurrency       = "dividend_currency"
+	dividendMissingAmountPerShare = "amount_per_share"
+	dividendUnsupportedShort      = "short_position"
+	// dividendUnsupportedLongAndShort: the book was long in one holding and
+	// short in another at the close, so neither command is the event (#255).
+	dividendUnsupportedLongAndShort = "long_and_short_position"
+	// dividendMissingAmountOwed replaces received_amount for a short
+	// holder's payment in lieu (#255).
+	dividendMissingAmountOwed      = "amount_owed"
+	dividendMissingExpenseAccount  = "expense_account"
 	proposedTransactionKindInfoRow = "informational"
 )
 
@@ -224,12 +231,20 @@ func (s *PricingService) stageDividendObservation(ctx context.Context, target db
 	if len(holdings.Long) == 0 && len(holdings.Short) == 0 {
 		return nil
 	}
+	// A short-only entitlement owes a payment in lieu (#255); a book long in
+	// one holding and short in another stays informational.
+	short := len(holdings.Long) == 0
+	entitled := holdings.Long
+	missing := []string{dividendMissingPaymentDate, dividendMissingCashAccount, dividendMissingReceivedAmount, dividendMissingCurrency}
+	if short {
+		entitled = holdings.Short
+		missing = []string{dividendMissingPaymentDate, dividendMissingCashAccount, dividendMissingAmountOwed, dividendMissingCurrency, dividendMissingExpenseAccount}
+	}
 	evidence := providerDividendEvidence{Schema: 1, Provider: target.ProviderKey, Symbol: observation.ProviderInstrumentID, MIC: observation.MIC,
 		ExDate: observation.ExDate, EntitlementDate: entitlementDate, ListingCurrency: observation.ListingCurrency,
-		Holdings: providerHoldings(holdings.Long), ShortHoldings: providerHoldings(holdings.Short),
-		Missing: []string{dividendMissingPaymentDate, dividendMissingCashAccount, dividendMissingReceivedAmount, dividendMissingCurrency}}
+		Holdings: providerHoldings(holdings.Long), ShortHoldings: providerHoldings(holdings.Short), Missing: missing}
 	units := exact.NewScaledInt()
-	for _, holding := range holdings.Long {
+	for _, holding := range entitled {
 		units.AddCoefficient(holding.QuantityValue, holding.QuantityScale)
 	}
 	if units.Sign() > 0 {
@@ -247,16 +262,22 @@ func (s *PricingService) stageDividendObservation(ctx context.Context, target db
 	}
 	proposal := map[string]any{"kind": proposedTransactionKindDividendIncome, "complete": false, "commodity_id": target.BaseCommodityID,
 		"external_ref_hint": observation.ProviderObservationID, "missing": evidence.Missing}
+	if short {
+		accounts := make([]int64, 0, len(holdings.Short))
+		for _, holding := range holdings.Short {
+			accounts = append(accounts, holding.AccountID)
+		}
+		proposal = map[string]any{"kind": proposedTransactionKindPaymentInLieu, "complete": false, "commodity_id": target.BaseCommodityID,
+			"ex_date": observation.ExDate, "holding_account_ids": accounts,
+			"external_ref_hint": observation.ProviderObservationID, "missing": evidence.Missing}
+	}
 	confidence := 7000
 	if !observation.AmountKnown {
 		confidence = 3000
 	}
-	// A short holder owes a payment in lieu of the dividend, which is not
-	// income and has no native command yet (#255). Keep the evidence
-	// informational.
-	if len(holdings.Short) > 0 {
-		evidence.Unsupported = dividendUnsupportedShort
-		proposal = map[string]any{"kind": proposedTransactionKindInfoRow, "reason": dividendUnsupportedShort}
+	if len(holdings.Long) > 0 && len(holdings.Short) > 0 {
+		evidence.Unsupported = dividendUnsupportedLongAndShort
+		proposal = map[string]any{"kind": proposedTransactionKindInfoRow, "reason": dividendUnsupportedLongAndShort}
 		confidence = 0
 	}
 	normalizedJSON, err := json.Marshal(evidence)

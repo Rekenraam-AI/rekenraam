@@ -39,10 +39,15 @@ type InvestmentCorrectionChain struct {
 	// and replacement (T-115); the Effective* terms pre-fill the replacement.
 	CanCorrectDividend bool
 	// CanReverseCapitalReturn allows reversing a return of capital (T-148).
-	CanReverseCapitalReturn      bool
-	CanReplaceCapitalReturn      bool
-	EffectiveCapitalReturn       *CapitalReturnInput
-	EffectiveDividend            *InvestmentCorrectionDividendTerms
+	CanReverseCapitalReturn bool
+	CanReplaceCapitalReturn bool
+	EffectiveCapitalReturn  *CapitalReturnInput
+	EffectiveDividend       *InvestmentCorrectionDividendTerms
+	// CanCorrectPaymentInLieu allows native reversal and replacement of a
+	// short holder's payment in lieu (#255); EffectivePaymentInLieu
+	// pre-fills the replacement.
+	CanCorrectPaymentInLieu      bool
+	EffectivePaymentInLieu       *InvestmentCorrectionPaymentInLieuTerms
 	CanCorrectReinvestedDividend bool
 	EffectiveReinvestment        *InvestmentCorrectionReinvestmentTerms
 	// CanCorrectWriteOff allows native write-off reversal and replacement
@@ -302,6 +307,17 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 			if chain.EffectiveDividend != nil {
 				chain.EffectiveDividend.CommodityID = nullableSQLInt64Ptr(operation.CommodityID)
 			}
+		}
+		if correctable && record.OperationKind == "payment_in_lieu" {
+			transaction, err := s.transactionService.Transaction(ctx, record.TransactionID.Int64)
+			if err != nil {
+				return InvestmentCorrectionChain{}, err
+			}
+			operation, err := s.repository.PaymentInLieuOperationByTransactionID(ctx, BookID, transaction.ID)
+			if err != nil {
+				return InvestmentCorrectionChain{}, mapPaymentInLieuError(err)
+			}
+			chain.EffectivePaymentInLieu, chain.CanCorrectPaymentInLieu = paymentInLieuCorrectionTerms(transaction, operation.Fact)
 		}
 		if correctable && record.OperationKind == "reinvested_dividend" && !importedLineage {
 			transaction, err := s.transactionService.Transaction(ctx, record.TransactionID.Int64)

@@ -505,6 +505,11 @@ journals; historical payers remain unassigned. A populated fact table refuses
 downgrade so payer/tax evidence is not lost. Bundle schema 13 adds
 `investment-dividend-facts.csv`; use verified backup/restore for rollback.
 
+Forward migration `0013_payment_in_lieu_facts.sql` (#255, 2026-10-17) adds
+immutable short-holding, instrument and ex-date facts for payments in lieu of
+dividends. It creates an empty table; a populated one refuses downgrade.
+Bundle schema 14 adds `investment-payment-in-lieu-facts.csv`.
+
 Forward migration `0010_unclassified_dividend_statement_documents.sql` (#246,
 2026-10-16) widens the saved gains-run document version to allow schema-3
 statements. Startup copies every saved run, its exact JSON and hashes unchanged.

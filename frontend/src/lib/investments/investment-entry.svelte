@@ -16,6 +16,7 @@
   import SpinOffForm from '#lib/investments/spin-off-form.svelte';
   import CashAndStockMergerForm from '#lib/investments/cash-and-stock-merger-form.svelte';
   import ShortTradeForm from '#lib/investments/short-trade-form.svelte';
+  import PaymentInLieuForm from '#lib/investments/payment-in-lieu-form.svelte';
   import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
   import { m } from '#lib/paraglide/messages.js';
 
@@ -35,7 +36,7 @@
   const sessionQuery = createQuery(() => authSessionQueryOptions());
   const csrfToken = $derived(sessionQuery.data?.csrf_token ?? '');
 
-  type Activity = 'write-off' | 'buy' | 'sell' | 'short-open' | 'short-cover' | 'dividend' | 'withholding' | 'reinvested' |
+  type Activity = 'write-off' | 'buy' | 'sell' | 'short-open' | 'short-cover' | 'payment-in-lieu' | 'dividend' | 'withholding' | 'reinvested' |
     'external-transfer-in' | 'external-transfer-out' | 'internal-transfer' | 'split' | 'share-exchange' |
     'cash-and-stock-merger' | 'spin-off' | 'capital-return';
 
@@ -45,6 +46,7 @@
     { id: 'write-off', label: m.investments_record_write_off },
     { id: 'short-open', label: m.investments_record_short_sale, titleID: 'short-open-title' },
     { id: 'short-cover', label: m.investments_record_short_cover, titleID: 'short-cover-title' },
+    { id: 'payment-in-lieu', label: m.investments_record_payment_in_lieu, titleID: 'payment-in-lieu-title' },
     { id: 'dividend', label: m.investments_record_dividend },
     { id: 'withholding', label: m.investments_record_withholding, titleID: 'withholding-title' },
     { id: 'reinvested', label: m.investments_record_reinvested },
@@ -136,6 +138,8 @@
         <ShortTradeForm mode="open" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
       {:else if active === 'short-cover'}
         <ShortTradeForm mode="cover" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+      {:else if active === 'payment-in-lieu'}
+        <PaymentInLieuForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
       {:else if active === 'dividend'}
         <DividendForm mode="cash" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
       {:else if active === 'withholding'}

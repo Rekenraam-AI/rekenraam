@@ -507,6 +507,14 @@ paths:
     $ref: "./paths/investments-replace-dividend.yaml"
   /api/v1/investments/transactions/{transaction_id}/replace-dividend/reconciliation-impact:
     $ref: "./paths/investments-replace-dividend-reconciliation-impact.yaml"
+  /api/v1/investments/transactions/{transaction_id}/reverse-payment-in-lieu:
+    $ref: "./paths/investments-reverse-payment-in-lieu.yaml"
+  /api/v1/investments/transactions/{transaction_id}/reverse-payment-in-lieu/reconciliation-impact:
+    $ref: "./paths/investments-reverse-payment-in-lieu-reconciliation-impact.yaml"
+  /api/v1/investments/transactions/{transaction_id}/replace-payment-in-lieu:
+    $ref: "./paths/investments-replace-payment-in-lieu.yaml"
+  /api/v1/investments/transactions/{transaction_id}/replace-payment-in-lieu/reconciliation-impact:
+    $ref: "./paths/investments-replace-payment-in-lieu-reconciliation-impact.yaml"
   /api/v1/investments/transactions/{transaction_id}/reverse-reinvested-dividend:
     $ref: "./paths/investments-reverse-reinvested-dividend.yaml"
   /api/v1/investments/transactions/{transaction_id}/reverse-reinvested-dividend/reconciliation-impact:
@@ -531,6 +539,10 @@ paths:
     $ref: "./paths/investments-sell-reconciliation-impact.yaml"
   /api/v1/investments/write-off/reconciliation-impact:
     $ref: "./paths/investments-write-off-reconciliation-impact.yaml"
+  /api/v1/investments/payment-in-lieu:
+    $ref: "./paths/investments-payment-in-lieu.yaml"
+  /api/v1/investments/payment-in-lieu/reconciliation-impact:
+    $ref: "./paths/investments-payment-in-lieu-reconciliation-impact.yaml"
   /api/v1/investments/dividend/reconciliation-impact:
     $ref: "./paths/investments-dividend-reconciliation-impact.yaml"
   /api/v1/investments/reinvested-dividend/reconciliation-impact:
@@ -1387,6 +1399,8 @@ components:
       $ref: "./components/schemas/investments.yaml#/InvestmentCorrectionSplitTerms"
     InvestmentCorrectionDividendTerms:
       $ref: "./components/schemas/investments.yaml#/InvestmentCorrectionDividendTerms"
+    InvestmentCorrectionPaymentInLieuTerms:
+      $ref: "./components/schemas/investments.yaml#/InvestmentCorrectionPaymentInLieuTerms"
     InvestmentCorrectionReinvestmentTerms:
       $ref: "./components/schemas/investments.yaml#/InvestmentCorrectionReinvestmentTerms"
     InvestmentSaleReversalRequest:
@@ -1451,6 +1465,10 @@ components:
       $ref: "./components/schemas/investments.yaml#/SellPreviewResponse"
     DividendRequest:
       $ref: "./components/schemas/investments.yaml#/DividendRequest"
+    PaymentInLieuRequest:
+      $ref: "./components/schemas/investments.yaml#/PaymentInLieuRequest"
+    InvestmentPaymentInLieuReplacementRequest:
+      $ref: "./components/schemas/investments.yaml#/InvestmentPaymentInLieuReplacementRequest"
     ReinvestedDividendRequest:
       $ref: "./components/schemas/investments.yaml#/ReinvestedDividendRequest"
     InvestmentLotResponse:

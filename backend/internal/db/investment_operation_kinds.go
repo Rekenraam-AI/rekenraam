@@ -20,6 +20,7 @@ var InvestmentOperationKinds = []string{
 	"write_off",
 	"cash_in_lieu",
 	"dividend",
+	"payment_in_lieu",
 	"reinvested_dividend",
 	"return_of_capital",
 	"split",

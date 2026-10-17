@@ -2429,6 +2429,29 @@ InvestmentCorrectionDividendTerms:
     memo: { type: string }
     payee_id: { type: integer, format: int64 }
 
+InvestmentCorrectionPaymentInLieuTerms:
+  type: object
+  description: >-
+    The effective payment in lieu's posted facts, for pre-filling a
+    replacement. The short holding, instrument, ex-date, payment date, cash
+    account and currency are fixed for a replacement.
+  required: [holding_account_id, commodity_id, ex_date, event_date, cash_account_id, cash_commodity_id, expense_account_id, amount_value, amount_scale]
+  properties:
+    holding_account_id: { type: integer, format: int64 }
+    commodity_id: { type: integer, format: int64 }
+    ex_date: { type: string, format: date }
+    event_date: { type: string, format: date }
+    cash_account_id: { type: integer, format: int64 }
+    cash_commodity_id: { type: integer, format: int64 }
+    expense_account_id: { type: integer, format: int64 }
+    amount_value: { type: string, description: Amount owed coefficient. }
+    amount_scale: { type: integer }
+    recovery_account_id: { type: integer, format: int64 }
+    recovery_value: { type: string, description: Recovered amount coefficient. }
+    recovery_scale: { type: integer }
+    memo: { type: string }
+    payee_id: { type: integer, format: int64 }
+
 InvestmentCorrectionReinvestmentTerms:
   type: object
   description: >-
@@ -2699,7 +2722,7 @@ InvestmentReinvestmentReplacementRequest:
 
 InvestmentCorrectionChainResponse:
   type: object
-  required: [root_operation_id, effective_transaction_id, can_reverse_manual_sale, can_reverse_manual_buy, can_reverse_sale, can_reverse_buy, can_correct_split, can_correct_dividend, can_correct_reinvested_dividend, can_reverse_return_of_capital, can_replace_return_of_capital, can_correct_write_off, can_correct_short_sale, can_correct_short_cover, can_correct_share_exchange, can_correct_spin_off, can_correct_cash_and_stock_merger, can_correct_cash_in_lieu, can_reverse_transfer, can_replace_transfer, can_resolve_basis, can_correct_basis_resolution, basis_resolutions, capital_returns, operations]
+  required: [root_operation_id, effective_transaction_id, can_reverse_manual_sale, can_reverse_manual_buy, can_reverse_sale, can_reverse_buy, can_correct_split, can_correct_dividend, can_correct_payment_in_lieu, can_correct_reinvested_dividend, can_reverse_return_of_capital, can_replace_return_of_capital, can_correct_write_off, can_correct_short_sale, can_correct_short_cover, can_correct_share_exchange, can_correct_spin_off, can_correct_cash_and_stock_merger, can_correct_cash_in_lieu, can_reverse_transfer, can_replace_transfer, can_resolve_basis, can_correct_basis_resolution, basis_resolutions, capital_returns, operations]
   properties:
     capital_returns:
       type: array
@@ -2785,6 +2808,11 @@ InvestmentCorrectionChainResponse:
       description: Whether the effective posted cash dividend or separate withholding payment can be reversed or replaced. Imported lineage requires a committed source identity.
     effective_dividend:
       $ref: '#/InvestmentCorrectionDividendTerms'
+    can_correct_payment_in_lieu:
+      type: boolean
+      description: Whether the effective posted payment in lieu of a dividend can be reversed or replaced (#255).
+    effective_payment_in_lieu:
+      $ref: '#/InvestmentCorrectionPaymentInLieuTerms'
     can_correct_reinvested_dividend:
       type: boolean
       description: Whether the effective posted reinvested dividend can be reversed or replaced (T-115). Dependent replay may still refuse the command.
@@ -3138,6 +3166,58 @@ DividendRequest:
         Allows a backdated trade to proceed into a reconciled period,
         invalidating the affected checkpoints. Without it such a trade is
         refused with a 409 CONFLICT.
+
+PaymentInLieuRequest:
+  type: object
+  description: >-
+    A payment in lieu of a dividend owed by a short holder (#255). Posts cash
+    −amount against the expense account, and optionally cash +recovery against
+    the recovery account. It never touches the short lot or its opening
+    proceeds. The holding must hold open short units of the instrument at the
+    close before ex_date, checked inside the write.
+  required: [holding_account_id, commodity_id, ex_date, transaction_date, cash_account_id, cash_commodity_id, expense_account_id, amount_value, amount_scale]
+  properties:
+    holding_account_id: { type: integer, format: int64 }
+    commodity_id: { type: integer, format: int64 }
+    ex_date: { type: string, format: date }
+    transaction_date:
+      type: string
+      format: date
+      description: Payment date, on or after ex_date.
+    cash_account_id: { type: integer, format: int64 }
+    cash_commodity_id: { type: integer, format: int64 }
+    expense_account_id: { type: integer, format: int64 }
+    amount_value:
+      type: string
+      pattern: '^(0|[1-9][0-9]{0,18})$'
+      description: Amount owed coefficient (positive).
+    amount_scale: { type: integer }
+    recovery_value:
+      type: string
+      pattern: '^(0|[1-9][0-9]{0,18})$'
+      description: Amount credited back, less than the amount owed.
+    recovery_scale: { type: integer }
+    recovery_account_id: { type: integer, format: int64 }
+    memo: { type: string }
+    payee_id: { type: integer, format: int64 }
+    change_reason: { type: string }
+    reconciliation_override:
+      type: boolean
+      description: Allows a backdated payment to invalidate the checkpoints it lands behind.
+
+InvestmentPaymentInLieuReplacementRequest:
+  type: object
+  additionalProperties: false
+  required: [reason, replacement]
+  properties:
+    reason:
+      type: string
+      minLength: 1
+      description: Why the posted payment in lieu is being corrected.
+    reconciliation_override:
+      type: boolean
+    replacement:
+      $ref: "#/PaymentInLieuRequest"
 
 ReinvestedDividendRequest:
   type: object
@@ -3645,6 +3725,26 @@ EventSuggestionCompletion:
     withholding_scale:
       type: integer
     withholding_account_id:
+      type: integer
+      format: int64
+    holding_account_id:
+      type: integer
+      format: int64
+      description: >-
+        Payment in lieu only (#255): the short holding that owes the payment,
+        one of the proposal's holding_account_ids. Required when several
+        holdings were short.
+    expense_account_id:
+      type: integer
+      format: int64
+      description: Payment in lieu only — the expense account charged with the amount owed (amount_value).
+    recovery_value:
+      type: string
+      pattern: '^(0|[1-9][0-9]{0,18})$'
+      description: Payment in lieu only — an amount credited back against the charge.
+    recovery_scale:
+      type: integer
+    recovery_account_id:
       type: integer
       format: int64
     memo:

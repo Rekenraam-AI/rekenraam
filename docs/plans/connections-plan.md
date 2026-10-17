@@ -162,7 +162,7 @@ period — document this.
 | `<Trade assetCategory="STK/FUND">` buy/sell | Resolve instrument ISIN → symbol → create and holding account via mapping table. R15 follows R16's exact-trade slice: preserve `tradeMoney`, `ibCommission`, other charges, and net settlement as distinct facts; route only through the shared investment operation writer. Until that slice ships, keep a row requiring unsupported fee semantics in review rather than flattening charges into basis/proceeds |
 | `<Trade assetCategory="CASH">` (forex) | v1: stage as generic rows for user-mapped exchange entries (`transfer_clearing`); v2: auto-shape the 4-posting FX transfer |
 | `<CashTransaction type="Dividends">` | `InvestmentService.Dividend`; pair same-symbol, same-date `type="Withholding Tax"` rows into the withholding legs |
-| `type="Payment In Lieu Of Dividends"` | Stage as a distinct investment cash activity for review; do not book it as an ordinary dividend merely by changing the memo. Its named operation and posting treatment follow the investment operation plan |
+| `type="Payment In Lieu Of Dividends"` | Stage as a distinct investment cash activity for review; do not book it as an ordinary dividend merely by changing the memo. A charge on a short position admits to the native `payment_in_lieu` operation (#255: expense, optional recovery, short entitlement checked at the close before the ex-date); a payment *received* in lieu by a lender of long shares stays in review until its own treatment is decided |
 | `type="Broker Interest Received/Paid"`, `"Other Fees"` | Generic staged cash rows → user-resolved income/expense categories (import rules will help here) |
 | `type="Deposits/Withdrawals"`, `<Transfer>` | Generic staged rows with transfer hints (QIF `[Account]` precedent) |
 | `<CorporateAction>` (splits FS/RS, ticker changes TC, spin-offs SO, mergers TO/TC, delistings) | **Stage, never auto-post.** Write-offs landed 2026-08-06 (T-38), but each other action still needs its own posting, basis, date, and replay specification under the investment operation plan. Until its command ships, show `needs_attention` with the source description and manual guidance; do not silently drop or misbook it |
@@ -323,9 +323,9 @@ market-data registry's `PriceProvider` alongside FX. `DividendProvider` and
    owner-recorded dividend. Other event families still need their own
    verified source mapping and reviewed admission to their named command
    (Trading 212 split fills #145, execution cancellation #136, provider
-   short/cover rows #176); a dividend owed on a short position also needs its
-   payment-in-lieu operation first (#255). Incomplete or unsupported events
-   remain informational. Lack of an automated source never
+   short/cover rows #176). A dividend owed on a short position proposes the
+   native payment-in-lieu operation (#255, 2026-10-17), completed by the
+   owner. Incomplete or unsupported events remain informational. Lack of an automated source never
    disables those native commands or their corrections.
 3. **Benchmarks for R13** (TWR/MWR comparison): an index series via
    Stooq/the chosen quote provider; no new architecture.
@@ -406,8 +406,12 @@ its raw row and shown as "provider revised: old → new" on the suggestion
 ([#254](https://github.com/sergeyfarin/rekenraam/issues/254)). A return to the first announced amount is not
 recorded again. Because the payment date, cash,
 currency and withholding are never stated, every proposal is incomplete by
-design; the owner's statement completes it. Short holdings make the event
-informational. There is no scheduler and no automation-rule auto-post; the
+design; the owner's statement completes it. A book short (and long in no
+holding) at the close proposes a payment in lieu instead (#255): the evidence
+counts the short units and estimates the amount owed, the owner supplies the
+payment date, cash account, amount owed and expense account, and acceptance
+commits through the native payment-in-lieu command. Long in one holding and
+short in another stays informational. There is no scheduler and no automation-rule auto-post; the
 owner triggers *Check provider dividends*.
 
 ### Twelve Data splits — contract reviewed, not mapped ([#256](https://github.com/sergeyfarin/rekenraam/issues/256), 2026-10-17)

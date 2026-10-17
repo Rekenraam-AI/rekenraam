@@ -685,8 +685,15 @@ correction, reversal and backdating; #176 provider import.
   other side.
 - **Other families.** Splits, transfers, return of capital, cash in lieu and
   write-off select long lots only, so a short-only holding has no eligible
-  units and refuses. Borrow fees, margin interest, collateral and payments in
-  lieu are separate named cash operations outside this family.
+  units and refuses. Borrow fees, margin interest and collateral are separate
+  named cash operations outside this family.
+- **Payment in lieu (#255).** A dividend owed on borrowed units is the
+  lot-free `payment_in_lieu` operation: cash −owed to an expense account, an
+  optional recovery credited back, and immutable facts naming the short
+  holding, instrument and ex-date. The holding must be short at the close
+  before the ex-date, checked inside the write. It never changes the short
+  lot or a cover's result. ADR 0013's *Payment-In-Lieu Refinement* records
+  why it is expensed rather than folded into opening proceeds.
 - **Classification.** Net worth and self-check classify a negative countable
   balance as a named short only up to the quantity of short lots open on that
   date in that account; any further negative quantity remains an

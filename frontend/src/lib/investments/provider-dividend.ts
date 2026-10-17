@@ -48,13 +48,30 @@ export function parseProviderDividendEvidence(raw: Record<string, unknown> | nul
   };
 }
 
-export type ProposalShape = 'complete' | 'needs_completion' | 'informational';
+export type ProposalShape = 'complete' | 'needs_completion' | 'payment_in_lieu' | 'informational';
 
 /** How a suggestion can be acted on, from its proposed_transaction. */
 export function proposalShape(proposal: Record<string, unknown> | null | undefined): ProposalShape {
   if (proposal?.kind === 'informational') return 'informational';
+  if (proposal?.kind === 'payment_in_lieu') return 'payment_in_lieu';
   if (proposal?.kind === 'dividend_income' && proposal.complete === false) return 'needs_completion';
   return 'complete';
+}
+
+/**
+ * A dividend whose ex-date found the book short only (#255): the owner
+ * completes it into a payment in lieu for one of these short holdings.
+ */
+export type PaymentInLieuProposal = { commodityID: number; exDate: string; holdingAccountIDs: number[] };
+
+export function paymentInLieuProposal(proposal: Record<string, unknown> | null | undefined): PaymentInLieuProposal | null {
+  if (proposal?.kind !== 'payment_in_lieu') return null;
+  const commodityID = proposalCommodityID(proposal);
+  const exDate = typeof proposal.ex_date === 'string' ? proposal.ex_date : '';
+  const holdingAccountIDs = Array.isArray(proposal.holding_account_ids)
+    ? proposal.holding_account_ids.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0) : [];
+  if (!commodityID || !exDate || holdingAccountIDs.length === 0) return null;
+  return { commodityID, exDate, holdingAccountIDs };
 }
 
 export function proposalCommodityID(proposal: Record<string, unknown> | null | undefined): number | undefined {

@@ -708,15 +708,23 @@ type InvestmentEventLinkCandidate struct {
 // proposal: the facts a per-share announcement cannot state. Income and
 // withholding accounts may still come from the instrument's dividend default.
 type SuggestionCompletion struct {
-	TransactionDate        string
-	CashAccountID          int64
-	CashCommodityID        int64
-	AmountValue            int64
-	AmountScale            int
-	IncomeAccountID        *int64
-	WithholdingValue       *int64
-	WithholdingScale       *int
-	WithholdingAccountID   *int64
+	TransactionDate      string
+	CashAccountID        int64
+	CashCommodityID      int64
+	AmountValue          int64
+	AmountScale          int
+	IncomeAccountID      *int64
+	WithholdingValue     *int64
+	WithholdingScale     *int
+	WithholdingAccountID *int64
+	// A payment in lieu completion (#255) names the expense account, the
+	// short holding when the evidence lists several, and any recovery;
+	// AmountValue is then the amount owed.
+	HoldingAccountID       *int64
+	ExpenseAccountID       *int64
+	RecoveryValue          *int64
+	RecoveryScale          *int
+	RecoveryAccountID      *int64
 	Memo                   string
 	ReconciliationOverride bool
 }
@@ -2174,6 +2182,10 @@ func (s *InvestmentService) AcceptSuggestionWithCompletion(ctx context.Context, 
 	now := s.now().UTC().Format(time.RFC3339)
 	if record.EventFamily == "return_of_capital" || record.EventFamily == "cash_in_lieu" {
 		return s.failSuggestion(ctx, suggestionID, "return of capital or cash in lieu requires an investment basis workflow", now, ownerUserID, authSessionID, requestID)
+	}
+
+	if pil, ok := parseProposedPaymentInLieu(record.ProposedTransactionJSON); ok {
+		return s.acceptPaymentInLieuSuggestion(ctx, record, pil, completion, now, ownerUserID, authSessionID, requestID)
 	}
 
 	proposal, ownerCompleted, err := resolveProposedDividendTransaction(record.ProposedTransactionJSON, completion)

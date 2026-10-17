@@ -419,21 +419,119 @@ func TestProviderDividendLinksOwnerRecordedDividendOnce(t *testing.T) {
 	assert.Equal(t, "linked", july.Status, "a later fetch does not reopen a linked event")
 }
 
-func TestShortPositionProviderDividendIsInformationalOnly(t *testing.T) {
-	t.Parallel()
+// goShort closes the fixture's long position and sells 5 short before the
+// July ex-date.
+func (f *dividendEventFixture) goShort(t *testing.T, holdingAccountID int64) {
+	t.Helper()
 	ctx := context.Background()
-	f := newDividendEventFixture(t)
-	// Close the long and sell short before the July ex-date.
 	_, err := f.investmentSvc.Sell(ctx, InvestmentTradeInput{OwnerUserID: 1, TransactionDate: "2026-06-01", CommodityID: f.instrument.CommodityID, HoldingAccountID: f.holding.ID,
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, QuantityValue: exact.MustParse("10"), CashAmountValue: 600000, CashAmountScale: 2})
 	require.NoError(t, err)
-	_, err = f.investmentSvc.ShortSale(ctx, InvestmentTradeInput{OwnerUserID: 1, TransactionDate: "2026-06-02", CommodityID: f.instrument.CommodityID, HoldingAccountID: f.holding.ID,
+	_, err = f.investmentSvc.ShortSale(ctx, InvestmentTradeInput{OwnerUserID: 1, TransactionDate: "2026-06-02", CommodityID: f.instrument.CommodityID, HoldingAccountID: holdingAccountID,
+		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, QuantityValue: exact.MustParse("5"), CashAmountValue: 300000, CashAmountScale: 2})
+	require.NoError(t, err)
+}
+
+// #255: a dividend whose ex-date found the book short only proposes a
+// payment in lieu the owner completes; it commits through the native
+// payment-in-lieu command and is never offered as or linked to income.
+func TestShortProviderDividendCompletesIntoPaymentInLieu(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newDividendEventFixture(t)
+	f.goShort(t, f.holding.ID)
+	// A cash dividend the owner recorded for the instrument is not this event.
+	_, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: &f.instrument.CommodityID,
+		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID, AmountValue: 800, AmountScale: 2})
+	require.NoError(t, err)
+	f.fetch(t)
+	july := suggestionForExDate(t, f.suggestions(t), "2026-07-29")
+	var proposal map[string]any
+	require.NoError(t, json.Unmarshal([]byte(july.ProposedTransactionJSON), &proposal))
+	assert.Equal(t, "payment_in_lieu", proposal["kind"])
+	assert.Equal(t, "2026-07-29", proposal["ex_date"])
+	assert.Equal(t, []any{float64(f.holding.ID)}, proposal["holding_account_ids"])
+	assert.Contains(t, july.EventEvidenceJSON, `"estimated_gross":{"value":"8","scale":0}`, "5 short units × 1.6")
+	assert.Contains(t, july.EventEvidenceJSON, `"amount_owed"`)
+	assert.NotContains(t, july.EventEvidenceJSON, `"unsupported"`)
+	assert.Empty(t, july.LinkCandidates, "a cash dividend is never linked to a short's payment in lieu")
+
+	before := countTransactions(t, f.database)
+	var validation ValidationError
+	_, err = f.investmentSvc.AcceptSuggestionWithCompletion(ctx, 1, 0, "req", july.ID, nil)
+	require.ErrorAs(t, err, &validation)
+	_, err = f.investmentSvc.AcceptSuggestionWithCompletion(ctx, 1, 0, "req", july.ID, f.completion("2026-08-14", 800))
+	require.ErrorAs(t, err, &validation, "income is not what a short holder posts")
+	expense := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
+	completion := &SuggestionCompletion{TransactionDate: "2026-08-14", CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
+		AmountValue: 800, AmountScale: 2, ExpenseAccountID: &expense}
+	other := int64(999)
+	completion.HoldingAccountID = &other
+	_, err = f.investmentSvc.AcceptSuggestionWithCompletion(ctx, 1, 0, "req", july.ID, completion)
+	require.ErrorAs(t, err, &validation, "only a holding the evidence shows short")
+	assert.Equal(t, before, countTransactions(t, f.database))
+	assert.Equal(t, "suggested", suggestionForExDate(t, f.suggestions(t), "2026-07-29").Status)
+
+	completion.HoldingAccountID = nil
+	accepted, err := f.investmentSvc.AcceptSuggestionWithCompletion(ctx, 1, 0, "req", july.ID, completion)
+	require.NoError(t, err)
+	assert.Equal(t, "accepted", accepted.Status)
+	require.NotNil(t, accepted.GeneratedTransactionID)
+	var kind, exDate string
+	var holding int64
+	require.NoError(t, f.database.QueryRow(`SELECT o.operation_kind, f.ex_date, f.holding_account_id FROM investment_operations o
+		JOIN investment_operation_journal_links l ON l.operation_id = o.id AND l.role = 'primary'
+		JOIN transaction_versions v ON v.id = l.transaction_version_id
+		JOIN investment_payment_in_lieu_facts f ON f.operation_id = o.id
+		WHERE v.transaction_id = ?`, *accepted.GeneratedTransactionID).Scan(&kind, &exDate, &holding))
+	assert.Equal(t, []any{"payment_in_lieu", "2026-07-29", f.holding.ID}, []any{kind, exDate, holding})
+}
+
+func TestProviderPaymentInLieuAcceptLateFailureRollsBackPosting(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newDividendEventFixture(t)
+	f.goShort(t, f.holding.ID)
+	f.fetch(t)
+	july := suggestionForExDate(t, f.suggestions(t), "2026-07-29")
+	expense := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
+	completion := &SuggestionCompletion{TransactionDate: "2026-08-14", CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
+		AmountValue: 800, AmountScale: 2, ExpenseAccountID: &expense}
+	before := countTransactions(t, f.database)
+	_, err := f.database.ExecContext(ctx, `CREATE TEMP TRIGGER refuse_event_match BEFORE UPDATE ON investment_provider_events
+		BEGIN SELECT RAISE(ABORT, 'late failure'); END`)
+	require.NoError(t, err)
+	_, err = f.investmentSvc.AcceptSuggestionWithCompletion(ctx, 1, 0, "req", july.ID, completion)
+	require.Error(t, err)
+	_, err = f.database.ExecContext(ctx, `DROP TRIGGER temp.refuse_event_match`)
+	require.NoError(t, err)
+	assert.Equal(t, before, countTransactions(t, f.database))
+	var facts int
+	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM investment_payment_in_lieu_facts`).Scan(&facts))
+	assert.Zero(t, facts)
+	july = suggestionForExDate(t, f.suggestions(t), "2026-07-29")
+	assert.Equal(t, "suggested", july.Status)
+	accepted, err := f.investmentSvc.AcceptSuggestionWithCompletion(ctx, 1, 0, "req", july.ID, completion)
+	require.NoError(t, err, "the rolled-back accept leaves the suggestion reviewable")
+	assert.Equal(t, "accepted", accepted.Status)
+}
+
+// A book long in one holding and short in another at the close owes neither
+// a single dividend nor a single payment in lieu: the event stays
+// informational and can only be ignored or recorded by hand.
+func TestLongAndShortProviderDividendIsInformationalOnly(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newDividendEventFixture(t)
+	second, err := f.investmentSvc.CreateHoldingAccount(ctx, HoldingAccountInput{OwnerUserID: 1, InstrumentID: f.instrument.ID, Name: "ASML short", OpenedOn: "2020-01-01", EffectiveFrom: "2020-01-01"})
+	require.NoError(t, err)
+	_, err = f.investmentSvc.ShortSale(ctx, InvestmentTradeInput{OwnerUserID: 1, TransactionDate: "2026-06-02", CommodityID: f.instrument.CommodityID, HoldingAccountID: second.ID,
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, QuantityValue: exact.MustParse("5"), CashAmountValue: 300000, CashAmountScale: 2})
 	require.NoError(t, err)
 	f.fetch(t)
 	july := suggestionForExDate(t, f.suggestions(t), "2026-07-29")
-	assert.JSONEq(t, `{"kind":"informational","reason":"short_position"}`, july.ProposedTransactionJSON)
-	assert.Contains(t, july.EventEvidenceJSON, `"unsupported":"short_position"`)
+	assert.JSONEq(t, `{"kind":"informational","reason":"long_and_short_position"}`, july.ProposedTransactionJSON)
+	assert.Contains(t, july.EventEvidenceJSON, `"unsupported":"long_and_short_position"`)
 	_, err = f.investmentSvc.AcceptSuggestionWithCompletion(ctx, 1, 0, "req", july.ID, f.completion("2026-08-14", 800))
 	var validation ValidationError
 	require.ErrorAs(t, err, &validation)

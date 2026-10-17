@@ -22,7 +22,7 @@ import (
 // BundleSchemaVersion is the archive's own version, carried in manifest.json.
 // Columns are appended within a version; a change that cannot be made by
 // appending increments this and needs an ADR (ADR 0011).
-const BundleSchemaVersion = 13
+const BundleSchemaVersion = 14
 
 // bundleFile is one entry of the archive, recorded in the manifest with the
 // checksum computed while it was written.
@@ -184,6 +184,9 @@ func (s *ExportService) WriteBundle(ctx context.Context, out io.Writer, filter E
 		{"lots.csv", func(w io.Writer) (int64, error) { return s.writeLotsCSV(ctx, w, snapshot, paths) }},
 		{"investment-dividend-facts.csv", func(w io.Writer) (int64, error) {
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "dividend-facts", []string{"operation_id", "commodity_id", "audit_event_id", "withholding_only"})
+		}},
+		{"investment-payment-in-lieu-facts.csv", func(w io.Writer) (int64, error) {
+			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "payment-in-lieu-facts", []string{"operation_id", "holding_account_id", "commodity_id", "ex_date", "audit_event_id"})
 		}},
 		{"investment-operations.csv", func(w io.Writer) (int64, error) { return s.writeInvestmentOperationsCSV(ctx, w, snapshot) }},
 		{"investment-operation-journal-links.csv", func(w io.Writer) (int64, error) {
@@ -920,6 +923,7 @@ value in this archive was ever a floating-point number.`,
   tags.csv           tag names behind the tag columns in ledger.csv
   lots.csv           investment lots as they currently stand
   investment-dividend-facts.csv  paying instrument of cash dividends and reversals
+  investment-payment-in-lieu-facts.csv  short holding and ex-date of payments in lieu and reversals
   investment-operations.csv  named investment command parents
   investment-operation-journal-links.csv  posted versions made by each operation
   investment-operation-dates.csv  typed trade, settlement, and payment dates
@@ -1008,6 +1012,11 @@ Both lots.csv and investment-lot-state.csv carry basis_knowledge for remaining
 projected basis. Unknown basis has empty amount/scale fields, never numeric
 zero; known zero remains explicit. Quantity and immutable opening facts remain
 separate from that current knowledge state.
+Bundle schema 14 adds investment-payment-in-lieu-facts.csv: the short holding,
+instrument and ex-date each payment in lieu of a dividend was owed for, repeated
+by its reversal. The charge, its expense account and any recovery are in the
+journal and in investment-operation-components.csv (payment_in_lieu negative,
+payment_in_lieu_recovery positive).
 Bundle schema 13 adds investment-dividend-facts.csv, linking gross dividends
 and withholding to their paying instruments. withholding_only distinguishes a
 separate tax payment with no gross income. Journal links retain correction and

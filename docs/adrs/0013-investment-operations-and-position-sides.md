@@ -722,3 +722,40 @@ Sourced resolution appends revisions through dated replay even after quantity
 closes. Original evidence, native correction lineage, gain acknowledgement and
 checkpoint guards retain their existing contracts. Forward migration 3
 preserves known effect history; bundle schema 11 exports effect knowledge.
+
+## Payment-In-Lieu Refinement (2026-10-17, #255)
+
+Decision 3's payment in lieu of a dividend is the named operation
+`payment_in_lieu`. It is a cash charge, not an adjustment of the short's
+opening proceeds: cash −owed against an owner-chosen expense account (+owed),
+and an optional recovery credited back (cash +r against a recovery account
+−r, with r below the amount owed). The short lot, its opening proceeds and
+every later cover result are untouched. Folding the charge into opening
+proceeds would make the app pick a jurisdiction's rule (some regimes expense
+it, others capitalize it into the short's basis only when the short is held
+briefly), and would turn a journal-only payment into a replayed lot effect;
+an owner who needs the capitalized view books it through a later explicit
+adjustment rather than having the ledger guess it.
+
+The short holding, instrument and ex-date are immutable operation facts
+(`investment_payment_in_lieu_facts`, forward migration 13; the ex-date is
+also an `ex` operation date). The holding must hold open short units of the
+instrument at the close before the ex-date. That entitlement is re-checked
+inside the write transaction for entry and replacement, never trusted from a
+read before it. The operation is lot-free and replays nothing. It is
+corrected by its own reversal (exact inverse, repeating the facts) and
+replacement (amount, expense account and recovery; the entitlement, payment
+date, cash account and currency are fixed), under the shared writer's
+reconciliation guard. Reversing or replacing the short itself does not
+retire a payment already owed for it; the foundation self-check names an
+effective payment in lieu whose holding has no effective short lot opened
+before its ex-date, so the owner reverses it explicitly (a named refusal at the short's correction
+is [#257](https://github.com/sergeyfarin/rekenraam/issues/257)).
+
+A provider dividend whose ex-date found the book short in one or more
+holdings and long in none proposes a payment in lieu the owner completes
+(payment date, cash account, amount owed, currency, expense account, and the
+holding when several were short). A book long in one holding and short in
+another stays informational. Payment-in-lieu proposals are never offered as,
+or linked to, a cash dividend.
+

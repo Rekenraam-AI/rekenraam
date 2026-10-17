@@ -470,6 +470,25 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 			AND (a.system_role IS NULL OR pl.line_key LIKE 'investment-charge-%')
 			AND NOT EXISTS (SELECT 1 FROM investment_operation_components c
 				WHERE c.operation_id = o.id AND c.posting_version_id = pv.id)`},
+		{"payment in lieu missing its short holding, instrument and ex-date", `
+			SELECT o.id FROM investment_operations o WHERE o.book_id = ?
+			AND (o.operation_kind = 'payment_in_lieu' OR (o.operation_kind = 'reversal' AND EXISTS (
+				SELECT 1 FROM investment_payment_in_lieu_facts predecessor WHERE predecessor.operation_id = o.correction_of_operation_id)))
+			AND NOT EXISTS (SELECT 1 FROM investment_payment_in_lieu_facts f
+				JOIN investment_operation_dates d ON d.operation_id = f.operation_id AND d.date_role = 'ex' AND d.event_date = f.ex_date
+				WHERE f.operation_id = o.id AND f.book_id = o.book_id)`},
+		// #255: an effective payment in lieu is owed only by a holding that had
+		// a short lot open by its entitlement close. Reversing or replacing
+		// that short later does not retire the payment, so this names it.
+		{"effective payment in lieu without a short lot opened by its ex-date", `
+			SELECT o.id FROM effective_investment_operations o
+			JOIN investment_payment_in_lieu_facts f ON f.operation_id = o.id AND f.book_id = o.book_id
+			WHERE o.book_id = ? AND o.operation_kind = 'payment_in_lieu'
+			AND NOT EXISTS (SELECT 1 FROM investment_lots l
+				JOIN effective_investment_operations opening ON opening.id = l.operation_id
+				WHERE l.book_id = f.book_id AND l.account_id = f.holding_account_id
+				AND l.commodity_id = f.commodity_id AND l.position_side = 'short'
+				AND l.opened_on < f.ex_date)`},
 		{"operation journal link is not posted in its book", `
 			SELECT l.id FROM investment_operation_journal_links l
 			JOIN transaction_versions v ON v.id = l.transaction_version_id

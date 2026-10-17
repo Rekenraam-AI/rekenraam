@@ -310,30 +310,32 @@ type investmentCorrectionNodeResponse struct {
 }
 
 type investmentCorrectionChainResponse struct {
-	CapitalReturns          []capitalReturnReadResponse        `json:"capital_returns"`
-	RootOperationID         int64                              `json:"root_operation_id"`
-	EffectiveTransactionID  *int64                             `json:"effective_transaction_id"`
-	CanReverseManualSale    bool                               `json:"can_reverse_manual_sale"`
-	CanReverseManualBuy     bool                               `json:"can_reverse_manual_buy"`
-	CanReverseSale          bool                               `json:"can_reverse_sale"`
-	CanReverseBuy           bool                               `json:"can_reverse_buy"`
-	CanCorrectSplit         bool                               `json:"can_correct_split"`
-	EffectiveSplit          *investmentCorrectionSplitTerms    `json:"effective_split,omitempty"`
-	CanCorrectDividend      bool                               `json:"can_correct_dividend"`
-	CanReplaceCapitalReturn bool                               `json:"can_replace_return_of_capital"`
-	EffectiveCapitalReturn  *capitalReturnRequest              `json:"effective_return_of_capital,omitempty"`
-	CanReverseCapitalReturn bool                               `json:"can_reverse_return_of_capital"`
-	EffectiveDividend       *investmentCorrectionDividendTerms `json:"effective_dividend,omitempty"`
-	CanCorrectReinvested    bool                               `json:"can_correct_reinvested_dividend"`
-	CanCorrectCashInLieu    bool                               `json:"can_correct_cash_in_lieu"`
-	CanCorrectWriteOff      bool                               `json:"can_correct_write_off"`
-	CanCorrectShortSale     bool                               `json:"can_correct_short_sale"`
-	CanCorrectShortCover    bool                               `json:"can_correct_short_cover"`
-	CanCorrectShareExchange bool                               `json:"can_correct_share_exchange"`
-	CanCorrectSpinOff       bool                               `json:"can_correct_spin_off"`
-	CanReverseTransfer      bool                               `json:"can_reverse_transfer"`
-	CanReplaceTransfer      bool                               `json:"can_replace_transfer"`
-	CanResolveBasis         bool                               `json:"can_resolve_basis"`
+	CapitalReturns          []capitalReturnReadResponse             `json:"capital_returns"`
+	RootOperationID         int64                                   `json:"root_operation_id"`
+	EffectiveTransactionID  *int64                                  `json:"effective_transaction_id"`
+	CanReverseManualSale    bool                                    `json:"can_reverse_manual_sale"`
+	CanReverseManualBuy     bool                                    `json:"can_reverse_manual_buy"`
+	CanReverseSale          bool                                    `json:"can_reverse_sale"`
+	CanReverseBuy           bool                                    `json:"can_reverse_buy"`
+	CanCorrectSplit         bool                                    `json:"can_correct_split"`
+	EffectiveSplit          *investmentCorrectionSplitTerms         `json:"effective_split,omitempty"`
+	CanCorrectDividend      bool                                    `json:"can_correct_dividend"`
+	CanReplaceCapitalReturn bool                                    `json:"can_replace_return_of_capital"`
+	EffectiveCapitalReturn  *capitalReturnRequest                   `json:"effective_return_of_capital,omitempty"`
+	CanReverseCapitalReturn bool                                    `json:"can_reverse_return_of_capital"`
+	EffectiveDividend       *investmentCorrectionDividendTerms      `json:"effective_dividend,omitempty"`
+	CanCorrectPaymentInLieu bool                                    `json:"can_correct_payment_in_lieu"`
+	EffectivePaymentInLieu  *investmentCorrectionPaymentInLieuTerms `json:"effective_payment_in_lieu,omitempty"`
+	CanCorrectReinvested    bool                                    `json:"can_correct_reinvested_dividend"`
+	CanCorrectCashInLieu    bool                                    `json:"can_correct_cash_in_lieu"`
+	CanCorrectWriteOff      bool                                    `json:"can_correct_write_off"`
+	CanCorrectShortSale     bool                                    `json:"can_correct_short_sale"`
+	CanCorrectShortCover    bool                                    `json:"can_correct_short_cover"`
+	CanCorrectShareExchange bool                                    `json:"can_correct_share_exchange"`
+	CanCorrectSpinOff       bool                                    `json:"can_correct_spin_off"`
+	CanReverseTransfer      bool                                    `json:"can_reverse_transfer"`
+	CanReplaceTransfer      bool                                    `json:"can_replace_transfer"`
+	CanResolveBasis         bool                                    `json:"can_resolve_basis"`
 	// CanCorrectBasisResolution offers replace/reverse of a resolved
 	// transfer's effective resolution through the transfer (#168).
 	CanCorrectBasisResolution bool                                      `json:"can_correct_basis_resolution"`
@@ -731,6 +733,11 @@ type eventSuggestionCompletionRequest struct {
 	WithholdingValue       *moneyCoefficient `json:"withholding_value"`
 	WithholdingScale       *int              `json:"withholding_scale"`
 	WithholdingAccountID   *int64            `json:"withholding_account_id"`
+	HoldingAccountID       *int64            `json:"holding_account_id"`
+	ExpenseAccountID       *int64            `json:"expense_account_id"`
+	RecoveryValue          *moneyCoefficient `json:"recovery_value"`
+	RecoveryScale          *int              `json:"recovery_scale"`
+	RecoveryAccountID      *int64            `json:"recovery_account_id"`
 	Memo                   string            `json:"memo"`
 	ReconciliationOverride bool              `json:"reconciliation_override"`
 }
@@ -1252,6 +1259,7 @@ func investmentCorrectionChain(logger *slog.Logger, authService *app.AuthService
 			CanReverseSale: chain.CanReverseSale, CanReverseBuy: chain.CanReverseBuy,
 			CanCorrectSplit: chain.CanCorrectSplit, EffectiveSplit: toInvestmentCorrectionSplitTerms(chain.EffectiveSplit),
 			CanCorrectDividend: chain.CanCorrectDividend, CanReverseCapitalReturn: chain.CanReverseCapitalReturn, CanReplaceCapitalReturn: chain.CanReplaceCapitalReturn, EffectiveCapitalReturn: toCapitalReturnTerms(chain.EffectiveCapitalReturn), EffectiveDividend: toInvestmentCorrectionDividendTerms(chain.EffectiveDividend),
+			CanCorrectPaymentInLieu: chain.CanCorrectPaymentInLieu, EffectivePaymentInLieu: toInvestmentCorrectionPaymentInLieuTerms(chain.EffectivePaymentInLieu),
 			CanCorrectReinvested: chain.CanCorrectReinvestedDividend, EffectiveReinvestment: toInvestmentCorrectionReinvestTerms(chain.EffectiveReinvestment),
 			CanCorrectWriteOff: chain.CanCorrectWriteOff, CanCorrectCashInLieu: chain.CanCorrectCashInLieu,
 			CanCorrectShortSale: chain.CanCorrectShortSale, CanCorrectShortCover: chain.CanCorrectShortCover,
@@ -1862,7 +1870,10 @@ func (request *eventSuggestionCompletionRequest) toApp() *app.SuggestionCompleti
 	return &app.SuggestionCompletion{TransactionDate: request.TransactionDate, CashAccountID: request.CashAccountID, CashCommodityID: request.CashCommodityID,
 		AmountValue: int64(request.AmountValue), AmountScale: request.AmountScale, IncomeAccountID: request.IncomeAccountID,
 		WithholdingValue: moneyInt64Pointer(request.WithholdingValue), WithholdingScale: request.WithholdingScale,
-		WithholdingAccountID: request.WithholdingAccountID, Memo: request.Memo, ReconciliationOverride: request.ReconciliationOverride}
+		WithholdingAccountID: request.WithholdingAccountID, HoldingAccountID: request.HoldingAccountID,
+		ExpenseAccountID: request.ExpenseAccountID, RecoveryValue: moneyInt64Pointer(request.RecoveryValue),
+		RecoveryScale: request.RecoveryScale, RecoveryAccountID: request.RecoveryAccountID,
+		Memo: request.Memo, ReconciliationOverride: request.ReconciliationOverride}
 }
 
 // queueDividendEventFetch accepts durable work; it never calls a provider
@@ -2050,6 +2061,14 @@ func writeInvestmentServiceError(w http.ResponseWriter, r *http.Request, logger 
 		writeAPIError(w, http.StatusConflict, "INVESTMENT_IMPORTED_DIVIDEND", err.Error())
 	case errors.Is(err, app.ErrInvestmentDividendChanged):
 		writeAPIError(w, http.StatusConflict, "INVESTMENT_DIVIDEND_CHANGED", err.Error())
+	case errors.Is(err, app.ErrInvestmentPaymentInLieuNotFound):
+		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "payment in lieu operation not found")
+	case errors.Is(err, app.ErrInvestmentPaymentInLieuAlreadyCorrected):
+		writeAPIError(w, http.StatusConflict, "INVESTMENT_PAYMENT_IN_LIEU_ALREADY_CORRECTED", err.Error())
+	case errors.Is(err, app.ErrInvestmentPaymentInLieuChanged):
+		writeAPIError(w, http.StatusConflict, "INVESTMENT_PAYMENT_IN_LIEU_CHANGED", err.Error())
+	case errors.Is(err, app.ErrInvestmentPaymentInLieuNotShort):
+		writeAPIError(w, http.StatusUnprocessableEntity, "INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT", err.Error())
 	case errors.Is(err, app.ErrInvestmentReinvestmentNotFound):
 		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "reinvested dividend operation not found")
 	case errors.Is(err, app.ErrInvestmentReinvestmentAlreadyCorrected):
@@ -3138,6 +3157,34 @@ func toInvestmentCorrectionDividendTerms(terms *app.InvestmentCorrectionDividend
 		AmountValue: terms.AmountValue, AmountScale: terms.AmountScale,
 		WithholdingAccountID: terms.WithholdingAccountID, WithholdingValue: terms.WithholdingValue,
 		WithholdingScale: terms.WithholdingScale, Memo: terms.Memo, PayeeID: terms.PayeeID}
+}
+
+type investmentCorrectionPaymentInLieuTerms struct {
+	HoldingAccountID  int64              `json:"holding_account_id"`
+	CommodityID       int64              `json:"commodity_id"`
+	ExDate            string             `json:"ex_date"`
+	EventDate         string             `json:"event_date"`
+	CashAccountID     int64              `json:"cash_account_id"`
+	CashCommodityID   int64              `json:"cash_commodity_id"`
+	ExpenseAccountID  int64              `json:"expense_account_id"`
+	AmountValue       exact.Coefficient  `json:"amount_value"`
+	AmountScale       int                `json:"amount_scale"`
+	RecoveryAccountID *int64             `json:"recovery_account_id,omitempty"`
+	RecoveryValue     *exact.Coefficient `json:"recovery_value,omitempty"`
+	RecoveryScale     *int               `json:"recovery_scale,omitempty"`
+	Memo              string             `json:"memo,omitempty"`
+	PayeeID           *int64             `json:"payee_id,omitempty"`
+}
+
+func toInvestmentCorrectionPaymentInLieuTerms(terms *app.InvestmentCorrectionPaymentInLieuTerms) *investmentCorrectionPaymentInLieuTerms {
+	if terms == nil {
+		return nil
+	}
+	return &investmentCorrectionPaymentInLieuTerms{HoldingAccountID: terms.HoldingAccountID, CommodityID: terms.CommodityID,
+		ExDate: terms.ExDate, EventDate: terms.EventDate, CashAccountID: terms.CashAccountID, CashCommodityID: terms.CashCommodityID,
+		ExpenseAccountID: terms.ExpenseAccountID, AmountValue: terms.AmountValue, AmountScale: terms.AmountScale,
+		RecoveryAccountID: terms.RecoveryAccountID, RecoveryValue: terms.RecoveryValue, RecoveryScale: terms.RecoveryScale,
+		Memo: terms.Memo, PayeeID: terms.PayeeID}
 }
 
 type investmentCorrectionReinvestTerms struct {

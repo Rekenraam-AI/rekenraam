@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   grossPrefill,
   parseProviderDividendEvidence,
+  paymentInLieuProposal,
   proposalCommodityID,
   proposalShape,
   providerDividendRevisions
@@ -40,6 +41,15 @@ describe('provider dividend evidence', () => {
     expect(proposalShape({ kind: 'informational', reason: 'short_position' })).toBe('informational');
     expect(proposalCommodityID({ commodity_id: 4 })).toBe(4);
     expect(proposalCommodityID({ commodity_id: '4' })).toBeUndefined();
+  });
+
+  it('reads a short entitlement as a payment in lieu the owner completes (#255)', () => {
+    const raw = { kind: 'payment_in_lieu', complete: false, commodity_id: 4, ex_date: '2026-07-29', holding_account_ids: [9, 'x', 11] };
+    expect(proposalShape(raw)).toBe('payment_in_lieu');
+    expect(paymentInLieuProposal(raw)).toEqual({ commodityID: 4, exDate: '2026-07-29', holdingAccountIDs: [9, 11] });
+    expect(paymentInLieuProposal({ ...raw, holding_account_ids: [] })).toBeNull();
+    expect(paymentInLieuProposal({ kind: 'dividend_income', complete: false, commodity_id: 4 })).toBeNull();
+    expect(proposalShape({ kind: 'informational', reason: 'long_and_short_position' })).toBe('informational');
   });
 
   it('pre-fills the received gross only in the same currency without rounding', () => {

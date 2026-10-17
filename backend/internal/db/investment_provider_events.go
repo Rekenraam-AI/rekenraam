@@ -278,6 +278,8 @@ const dividendLinkCandidatesSQL = `
 	JOIN investment_operation_components c ON c.operation_id = o.id AND c.component_kind = 'dividend_gross'
 	JOIN commodities cash ON cash.id = c.commodity_id
 	WHERE s.book_id = ? AND s.status = 'suggested' AND e.event_family = 'dividend'
+		-- A short holder's payment in lieu (#255) is never a cash dividend.
+		AND json_extract(s.proposed_transaction_json, '$.kind') IS NOT 'payment_in_lieu'
 		AND o.event_date >= e.event_date AND o.event_date <= date(e.event_date, '+' || ? || ' days')
 		AND NOT EXISTS (SELECT 1 FROM investment_event_suggestions other
 			WHERE other.generated_transaction_id = t.id OR other.linked_transaction_id = t.id)`

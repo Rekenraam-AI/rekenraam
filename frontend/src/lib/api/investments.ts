@@ -113,6 +113,9 @@ export type InvestmentCorrectionTransferTerms = components['schemas']['Investmen
 export type InvestmentSaleReplacementResponse = components['schemas']['InvestmentSaleReplacementResponse'];
 export type InvestmentDividendReplacementRequest = components['schemas']['InvestmentDividendReplacementRequest'];
 export type InvestmentDividendReplacementResponse = components['schemas']['InvestmentDividendReplacementResponse'];
+export type PaymentInLieuRequest = components['schemas']['PaymentInLieuRequest'];
+export type InvestmentPaymentInLieuReplacementRequest = components['schemas']['InvestmentPaymentInLieuReplacementRequest'];
+export type InvestmentCorrectionPaymentInLieuTerms = components['schemas']['InvestmentCorrectionPaymentInLieuTerms'];
 export type InvestmentReinvestmentReplacementRequest = components['schemas']['InvestmentReinvestmentReplacementRequest'];
 export type InvestmentCorrectionDividendTerms = components['schemas']['InvestmentCorrectionDividendTerms'];
 export type InvestmentCorrectionReinvestmentTerms = components['schemas']['InvestmentCorrectionReinvestmentTerms'];
@@ -2385,4 +2388,86 @@ export function instrumentIncomeCoverageQueryOptions(commodityID: number) {
     queryFn: () => getIncomeCoverage({ commodityID, limit: 0 }),
     staleTime: 30_000
   };
+}
+
+// A short holder's payment in lieu of a dividend and its corrections (#255).
+
+export async function recordPaymentInLieu(input: PaymentInLieuRequest, csrfToken: string): Promise<TransactionResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST('/api/v1/investments/payment-in-lieu', {
+      params: { header: { 'X-CSRF-Token': csrfToken } }, body: input
+    });
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function paymentInLieuReconciliationImpact(input: PaymentInLieuRequest): Promise<ReconciliationImpactResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST('/api/v1/investments/payment-in-lieu/reconciliation-impact', { body: input });
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function previewPaymentInLieuReversalReconciliation(transactionID: number, input: InvestmentBuyReversalRequest): Promise<ReconciliationImpactResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/transactions/{transaction_id}/reverse-payment-in-lieu/reconciliation-impact',
+      { params: { path: { transaction_id: transactionID } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function reversePaymentInLieu(transactionID: number, input: InvestmentBuyReversalRequest, csrfToken: string): Promise<InvestmentBuyReversalResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/transactions/{transaction_id}/reverse-payment-in-lieu',
+      { params: { path: { transaction_id: transactionID }, header: { 'X-CSRF-Token': csrfToken } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function previewPaymentInLieuReplacementReconciliation(transactionID: number, input: InvestmentPaymentInLieuReplacementRequest): Promise<ReconciliationImpactResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/transactions/{transaction_id}/replace-payment-in-lieu/reconciliation-impact',
+      { params: { path: { transaction_id: transactionID } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function replacePaymentInLieu(transactionID: number, input: InvestmentPaymentInLieuReplacementRequest, csrfToken: string): Promise<InvestmentDividendReplacementResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST(
+      '/api/v1/investments/transactions/{transaction_id}/replace-payment-in-lieu',
+      { params: { path: { transaction_id: transactionID }, header: { 'X-CSRF-Token': csrfToken } }, body: input }
+    );
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
 }

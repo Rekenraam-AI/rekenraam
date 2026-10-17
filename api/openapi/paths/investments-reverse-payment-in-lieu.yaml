@@ -1,0 +1,60 @@
+post:
+  summary: Reverse a posted payment in lieu of a dividend
+  description: >-
+    Posts the exact inverse of a payment in lieu, recovery included, as a
+    reversal operation that repeats the original's short holding, instrument
+    and ex-date (#255). The original remains posted history. A reconciled
+    cash, expense or recovery balance requires reconciliation_override.
+    gain_impact_acknowledgement is ignored: nothing replays.
+  parameters:
+    - in: path
+      name: transaction_id
+      required: true
+      schema: { type: integer, format: int64 }
+    - in: header
+      name: X-CSRF-Token
+      required: true
+      schema: { type: string }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../openapi.yaml#/components/schemas/InvestmentBuyReversalRequest"
+  responses:
+    "201":
+      description: Payment in lieu reversed
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/InvestmentBuyReversalResponse"
+    "400":
+      description: Invalid request or missing reason
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "401":
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "403":
+      description: Origin or CSRF validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "404":
+      description: Posted payment in lieu not found
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "409":
+      description: Already corrected (INVESTMENT_PAYMENT_IN_LIEU_ALREADY_CORRECTED), changed (INVESTMENT_PAYMENT_IN_LIEU_CHANGED), or reconciliation override required
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"

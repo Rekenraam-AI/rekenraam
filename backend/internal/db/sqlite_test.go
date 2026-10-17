@@ -286,6 +286,9 @@ func TestMigrateSeededBaselineMatchesFreshSchema(t *testing.T) {
 	// #254 adds empty append-only provider revision evidence.
 	assert.Equal(t, "0", after["count:investment_provider_event_revisions"])
 	delete(after, "count:investment_provider_event_revisions")
+	// #255 adds empty payment-in-lieu entitlement facts.
+	assert.Equal(t, "0", after["count:investment_payment_in_lieu_facts"])
+	delete(after, "count:investment_payment_in_lieu_facts")
 	delete(before, "count:goose_db_version")
 	delete(after, "count:goose_db_version")
 
@@ -1266,7 +1269,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(12), version, "the head records provider event revisions")
+	assert.Equal(t, int64(13), version, "the head records payment-in-lieu facts")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))
@@ -1295,9 +1298,9 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 		objectCounts[kind]++
 	}
 	assert.Equal(t, map[string]int{
-		"index":   116,
-		"table":   115,
-		"trigger": 157,
+		"index":   117,
+		"table":   116,
+		"trigger": 160,
 		"view":    15,
 	}, objectCounts, "the migrated head must retain every schema object")
 	assert.Equal(t, "table", objects["investment_gains_runs"])
@@ -1307,6 +1310,8 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 	assert.Equal(t, "table", objects["investment_provider_event_revisions"])
 	assert.Equal(t, "index", objects["investment_provider_event_revisions_content_idx"])
 	assert.Equal(t, "trigger", objects["investment_provider_event_revisions_no_update"])
+	assert.Equal(t, "table", objects["investment_payment_in_lieu_facts"])
+	assert.Equal(t, "trigger", objects["investment_payment_in_lieu_facts_insert_guard"])
 	assert.Equal(t, "trigger", objects["investment_gains_runs_no_update"])
 	assert.Equal(t, "trigger", objects["investment_gains_runs_no_delete"])
 	assert.Equal(t, "table", objects["price_observation_dependencies"])

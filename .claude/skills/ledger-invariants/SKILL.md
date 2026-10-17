@@ -210,6 +210,11 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   (#175) thread the side through `simulateInvestmentReplaySideTx`; shorts
   have only openings and covers. See the operation plan's *Short positions
   (#103)* section.
+- A short holder's payment in lieu of a dividend (#255) is the lot-free
+  `payment_in_lieu` operation: cash to an expense account (optional
+  recovery back), never folded into the short lot's opening proceeds. Its
+  short holding/instrument/ex-date facts are immutable, and the short
+  entitlement at the close before the ex-date is re-checked inside the write.
 - Effective reads use the views `effective_investment_operations`,
   `latest_investment_disposal_revisions`, `latest_investment_split_revisions`,
   `effective_investment_lot_events` and `effective_investment_transfer_links`;

@@ -17,8 +17,10 @@
   import { m } from '#lib/paraglide/messages.js';
   import { invalidateInvestmentReads } from './invalidate';
   import ProviderDividendCompletion from './provider-dividend-completion.svelte';
+  import ProviderPaymentInLieuCompletion from './provider-payment-in-lieu-completion.svelte';
   import {
     parseProviderDividendEvidence,
+    paymentInLieuProposal,
     proposalCommodityID,
     proposalShape,
     providerDividendRevisions,
@@ -141,6 +143,8 @@
       case 'received_amount': return m.investments_suggestion_missing_received_amount();
       case 'dividend_currency': return m.investments_suggestion_missing_dividend_currency();
       case 'amount_per_share': return m.investments_suggestion_missing_amount_per_share();
+      case 'amount_owed': return m.investments_suggestion_missing_amount_owed();
+      case 'expense_account': return m.investments_suggestion_missing_expense_account();
       default: return code;
     }
   }
@@ -217,6 +221,7 @@
         {#each pending as s (s.id)}
           {@const evidence = parseProviderDividendEvidence(s.evidence)}
           {@const shape = proposalShape(s.proposed_transaction)}
+          {@const inLieu = paymentInLieuProposal(s.proposed_transaction)}
           <li>
             <Panel>
               <div class="space-y-2" data-testid="event-suggestion">
@@ -244,11 +249,11 @@
                       <dd class="tabular-nums text-foreground">{amount(evidence.entitledUnits)}</dd>
                     </div>
                     <div>
-                      <dt class="text-xs text-muted">{m.investments_suggestion_estimated_gross()}</dt>
+                      <dt class="text-xs text-muted">{shape === 'payment_in_lieu' ? m.investments_suggestion_estimated_owed() : m.investments_suggestion_estimated_gross()}</dt>
                       <dd class="tabular-nums text-foreground">{amount(evidence.estimatedGross)}</dd>
                     </div>
                   </dl>
-                  {#if shape === 'needs_completion' && evidence.missing.length > 0}
+                  {#if (shape === 'needs_completion' || shape === 'payment_in_lieu') && evidence.missing.length > 0}
                     <p class="text-xs text-muted">
                       {m.investments_suggestion_needs()}: {evidence.missing.map(missingLabel).join(', ')}
                     </p>
@@ -261,7 +266,11 @@
                 {/if}
 
                 {#if shape === 'informational'}
-                  <p class="text-sm text-foreground" role="note">{m.investments_suggestion_short_position()}</p>
+                  <p class="text-sm text-foreground" role="note">
+                    {evidence?.unsupported === 'long_and_short_position' ? m.investments_suggestion_long_and_short_position() : m.investments_suggestion_short_position()}
+                  </p>
+                {:else if shape === 'payment_in_lieu'}
+                  <p class="text-sm text-foreground" role="note">{m.investments_suggestion_payment_in_lieu_note()}</p>
                 {/if}
 
                 {@render revisionNotice(s, evidence, false)}
@@ -297,7 +306,7 @@
                       class="rounded-(--radius-control) bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition hover:opacity-90 disabled:opacity-40">
                       {m.investments_suggestion_accept()}
                     </button>
-                  {:else if shape === 'needs_completion' && completing !== s.id}
+                  {:else if (shape === 'needs_completion' || (shape === 'payment_in_lieu' && inLieu)) && completing !== s.id}
                     <button type="button" disabled={busy.has(s.id)} onclick={() => (completing = s.id)}
                       class="rounded-(--radius-control) bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition hover:opacity-90 disabled:opacity-40">
                       {m.investments_suggestion_complete()}
@@ -310,7 +319,11 @@
                   </button>
                 </div>
 
-                {#if completing === s.id}
+                {#if completing === s.id && shape === 'payment_in_lieu' && inLieu}
+                  <ProviderPaymentInLieuCompletion suggestionID={s.id} proposal={inLieu} {evidence} {csrfToken}
+                    onPosted={async () => { completing = null; await refreshAfterPosting(); }}
+                    onCancel={() => (completing = null)} />
+                {:else if completing === s.id}
                   <ProviderDividendCompletion suggestionID={s.id} commodityID={proposalCommodityID(s.proposed_transaction)} {evidence} {csrfToken}
                     onPosted={async () => { completing = null; await refreshAfterPosting(); }}
                     onCancel={() => (completing = null)} />

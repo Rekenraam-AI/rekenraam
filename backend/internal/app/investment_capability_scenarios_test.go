@@ -117,8 +117,12 @@ var capabilityScenarios = []struct {
 		opening := shortSaleOn(t, f, "2026-03-02", 10, 10000)
 		cover, err := f.investmentService.ShortCover(context.Background(), coverInput(f, "2026-05-01", 4, 3000, "fifo"))
 		require.NoError(t, err)
+		expense := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
+		payment, err := f.investmentService.PaymentInLieu(context.Background(), paymentInLieuInput(f, expense, 5000))
+		require.NoError(t, err)
 		return []recordedOperation{
 			{"short_sale", opening.Transaction.ID, "2026-03-02", 0},
+			{"payment_in_lieu", payment.ID, "2026-04-03", 0},
 			{"short_cover", cover.Transaction.ID, "2026-05-01", 0},
 		}
 	}},
