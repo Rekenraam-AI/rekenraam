@@ -1673,5 +1673,6 @@
   "investments_suggestion_long_and_short_position": "Long in one holding and short in another before the ex-date: neither a dividend nor a single payment in lieu fits. Record each by hand or ignore this event.",
   "api_error_investment_payment_in_lieu_already_corrected": "This payment in lieu was already corrected. Refresh to see the current entry.",
   "api_error_investment_payment_in_lieu_changed": "This payment in lieu changed since it was loaded. Refresh and try again.",
-  "api_error_investment_payment_in_lieu_not_short": "That holding was not short this instrument at the close before the ex-date, so no payment in lieu is owed."
+  "api_error_investment_payment_in_lieu_not_short": "That holding was not short this instrument at the close before the ex-date, so no payment in lieu is owed.",
+  "api_error_investment_payment_in_lieu_dependency": "A payment in lieu depends on this short position. Reverse that payment in lieu first, then correct the short."
 }

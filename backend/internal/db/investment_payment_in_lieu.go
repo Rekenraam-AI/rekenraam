@@ -67,6 +67,94 @@ func checkPaymentInLieuEntitlementTx(ctx context.Context, tx *sql.Tx, bookID int
 	return ErrPaymentInLieuNotShort
 }
 
+// ErrPaymentInLieuDependency refuses a command that would leave an
+// effective payment in lieu without the short it was owed on (#257): a short
+// sale reversed or replaced away, or a cover dated before the ex-date. The
+// owner reverses the payment first.
+var ErrPaymentInLieuDependency = errors.New("an effective payment in lieu depends on this short position")
+
+type PaymentInLieuDependencyError struct {
+	OperationID   int64
+	TransactionID int64
+}
+
+func (e PaymentInLieuDependencyError) Error() string {
+	return fmt.Sprintf("%s: payment in lieu operation %d transaction %d", ErrPaymentInLieuDependency, e.OperationID, e.TransactionID)
+}
+
+func (e PaymentInLieuDependencyError) Unwrap() error { return ErrPaymentInLieuDependency }
+
+type paymentInLieuEntitlement struct {
+	OperationID   int64
+	TransactionID int64
+	Fact          PaymentInLieuFact
+}
+
+// entitledPaymentsInLieuTx lists the effective payments in lieu whose short
+// entitlement holds in tx. A payment already without one (a self-check
+// finding) is left out, so it never blocks an unrelated command.
+func entitledPaymentsInLieuTx(ctx context.Context, tx *sql.Tx, bookID int64) ([]paymentInLieuEntitlement, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT o.id, v.transaction_id, f.holding_account_id, f.commodity_id, f.ex_date
+		FROM effective_investment_operations o
+		JOIN investment_payment_in_lieu_facts f ON f.operation_id = o.id AND f.book_id = o.book_id
+		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
+		JOIN transaction_versions v ON v.id = link.transaction_version_id
+		WHERE o.book_id = ? AND o.operation_kind = 'payment_in_lieu'
+		ORDER BY o.id`, bookID)
+	if err != nil {
+		return nil, fmt.Errorf("read effective payments in lieu: %w", err)
+	}
+	var payments []paymentInLieuEntitlement
+	for rows.Next() {
+		var payment paymentInLieuEntitlement
+		if err := rows.Scan(&payment.OperationID, &payment.TransactionID, &payment.Fact.HoldingAccountID,
+			&payment.Fact.CommodityID, &payment.Fact.ExDate); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("scan effective payment in lieu: %w", err)
+		}
+		payments = append(payments, payment)
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return nil, fmt.Errorf("iterate effective payments in lieu: %w", err)
+	}
+	entitled := payments[:0]
+	for _, payment := range payments {
+		err := checkPaymentInLieuEntitlementTx(ctx, tx, bookID, payment.Fact)
+		if errors.Is(err, ErrPaymentInLieuNotShort) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		entitled = append(entitled, payment)
+	}
+	return entitled, nil
+}
+
+// requirePaymentsInLieuStillEntitledTx re-checks, after a command's effects,
+// every payment entitled before it that is still effective; the first that
+// lost its short is named and the command rolls back.
+func requirePaymentsInLieuStillEntitledTx(ctx context.Context, tx *sql.Tx, bookID int64, before []paymentInLieuEntitlement) error {
+	for _, payment := range before {
+		var effective bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM effective_investment_operations
+			WHERE book_id = ? AND id = ?)`, bookID, payment.OperationID).Scan(&effective); err != nil {
+			return fmt.Errorf("read payment in lieu effectiveness: %w", err)
+		}
+		if !effective {
+			continue
+		}
+		err := checkPaymentInLieuEntitlementTx(ctx, tx, bookID, payment.Fact)
+		if errors.Is(err, ErrPaymentInLieuNotShort) {
+			return PaymentInLieuDependencyError{OperationID: payment.OperationID, TransactionID: payment.TransactionID}
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func validPaymentInLieuParams(params CreateTransactionParams) bool {
 	return params.BookID > 0 && params.ActorUserID > 0 && params.PaymentInLieu != nil &&
 		params.PaymentInLieu.HoldingAccountID > 0 && params.PaymentInLieu.CommodityID > 0 &&

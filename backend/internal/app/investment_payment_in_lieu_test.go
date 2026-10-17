@@ -271,18 +271,28 @@ func TestPaymentInLieuReplacementRollsBackLateFailure(t *testing.T) {
 
 // A short later reversed away leaves an orphaned charge; the foundation
 // self-check names it rather than letting it pass silently.
-func TestSelfCheckNamesPaymentInLieuWhoseShortWasReversed(t *testing.T) {
+// damagePaymentInLieuHolding points every payment in lieu at the cash
+// account, which was never short, bypassing the immutability trigger.
+func damagePaymentInLieuHolding(t *testing.T, f *investmentsTestFixture) {
+	t.Helper()
+	_, err := f.database.Exec(`DROP TRIGGER investment_payment_in_lieu_facts_no_update`)
+	require.NoError(t, err)
+	_, err = f.database.Exec(`UPDATE investment_payment_in_lieu_facts SET holding_account_id = ?`, f.cashAccountID)
+	require.NoError(t, err)
+}
+
+func TestSelfCheckNamesPaymentInLieuWithoutAShortLot(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	f := newInvestmentsTestFixture(t)
 	expense := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
-	opening := shortSaleOn(t, f, "2026-03-02", 10, 100000)
+	shortSaleOn(t, f, "2026-03-02", 10, 100000)
 	_, err := f.investmentService.PaymentInLieu(ctx, paymentInLieuInput(f, expense, 5000))
 	require.NoError(t, err)
 	requireInvestmentSelfCheckPasses(t, f)
-	_, err = f.investmentService.ReverseShortSale(ctx, ReverseInvestmentBuyInput{OwnerUserID: f.ownerUserID,
-		TransactionID: opening.Transaction.ID, Reason: "never shorted"})
-	require.NoError(t, err)
+	// Short corrections refuse to strand the payment (#257), so the backstop
+	// is exercised on damaged facts.
+	damagePaymentInLieuHolding(t, f)
 	result := resultFor(t, mustRunInvestmentSelfCheck(t, f), CheckInvestmentFoundation)
 	require.Equal(t, SelfCheckFailed, result.Status)
 	require.Contains(t, result.Summary, "payment in lieu without a short lot")

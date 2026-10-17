@@ -32,7 +32,9 @@ func TestPaymentInLieuEntryAndCorrectionAPI(t *testing.T) {
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&refusal))
 	assert.Equal(t, "INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT", refusal.Error.Code)
 
-	post("/api/v1/investments/short-sale", tradeRequestBody(f, holding.ID, instrument.CommodityID, "10", 10000), http.StatusCreated)
+	res = post("/api/v1/investments/short-sale", tradeRequestBody(f, holding.ID, instrument.CommodityID, "10", 10000), http.StatusCreated)
+	var shortSale investmentTradeResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&shortSale))
 	post("/api/v1/investments/payment-in-lieu/reconciliation-impact", request(500), http.StatusOK)
 	res = post("/api/v1/investments/payment-in-lieu", request(500), http.StatusCreated)
 	var created transactionResponse
@@ -57,8 +59,14 @@ func TestPaymentInLieuEntryAndCorrectionAPI(t *testing.T) {
 
 	replacementBase := "/api/v1/investments/transactions/" + strconv.FormatInt(replaced.ReplacementTransaction.ID, 10)
 	reverse := investmentSaleReversalRequest{Reason: "charged in error"}
+	// #257: the short sale cannot be reversed from under an effective payment.
+	shortBase := "/api/v1/investments/transactions/" + strconv.FormatInt(shortSale.Transaction.ID, 10)
+	reverseShort := investmentSaleReversalRequest{Reason: "never shorted"}
+	expectInvestmentConflict(t, handler, f, shortBase+"/reverse-short-sale/reconciliation-impact", reverseShort, "INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY")
+	expectInvestmentConflict(t, handler, f, shortBase+"/reverse-short-sale", reverseShort, "INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY")
 	post(replacementBase+"/reverse-payment-in-lieu/reconciliation-impact", reverse, http.StatusOK)
 	post(replacementBase+"/reverse-payment-in-lieu", reverse, http.StatusCreated)
+	post(shortBase+"/reverse-short-sale", reverseShort, http.StatusCreated)
 
 	bundle := downloadBundle(t, handler, f.sessionCookie, "")
 	facts := bundle.table(t, "investment-payment-in-lieu-facts.csv")

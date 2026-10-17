@@ -49,7 +49,7 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
-      description: Already corrected, unlinked import, changed, dependent operation impossible, or reconciliation override required; or committed-disposal gain changes not acknowledged (INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED / _STALE)
+      description: Already corrected, unlinked import, changed, dependent operation impossible, or reconciliation override required; or committed-disposal gain changes not acknowledged (INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED / _STALE); or the change would leave an effective payment in lieu without the short it was owed on, which is named (INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY)
       content:
         application/json:
           schema:

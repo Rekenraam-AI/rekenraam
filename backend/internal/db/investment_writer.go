@@ -161,6 +161,13 @@ func runInvestmentJournalsWithGuardTx[T any](ctx context.Context, database *sql.
 			return nil, zero, err
 		}
 	}
+	// Like the gain snapshot, read before any guard or journal: the payments
+	// in lieu whose short entitlement holds now must still hold after the
+	// command's effects (#257).
+	entitledPayments, err := entitledPaymentsInLieuTx(ctx, tx, params[0].BookID)
+	if err != nil {
+		return nil, zero, err
+	}
 	if guard != nil {
 		if err := guard(tx); err != nil {
 			return nil, zero, err
@@ -198,6 +205,9 @@ func runInvestmentJournalsWithGuardTx[T any](ctx context.Context, database *sql.
 	}
 	result, err := effect(tx, journals, auditEventID)
 	if err != nil {
+		return nil, zero, err
+	}
+	if err := requirePaymentsInLieuStillEntitledTx(ctx, tx, params[0].BookID, entitledPayments); err != nil {
 		return nil, zero, err
 	}
 	// One combined guard for the whole command (T-120 #135): every journal it

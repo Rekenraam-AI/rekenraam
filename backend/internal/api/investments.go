@@ -2151,6 +2151,8 @@ func writeInvestmentServiceError(w http.ResponseWriter, r *http.Request, logger 
 		writeAPIError(w, http.StatusConflict, "INVESTMENT_BASIS_RESOLUTION_CHANGED", err.Error())
 	case errors.Is(err, app.ErrInvestmentEventOutOfOrder):
 		writeAPIError(w, http.StatusConflict, "INVESTMENT_EVENT_OUT_OF_ORDER", err.Error())
+	case errors.Is(err, app.ErrInvestmentPaymentInLieuDependency):
+		writeAPIError(w, http.StatusConflict, "INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY", err.Error())
 	case errors.Is(err, app.ErrInvestmentShortDependency):
 		writeAPIError(w, http.StatusConflict, "INVESTMENT_SHORT_DEPENDENCY", err.Error())
 	case errors.Is(err, app.ErrInvestmentShortNotFound):

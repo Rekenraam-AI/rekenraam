@@ -215,6 +215,10 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   recovery back), never folded into the short lot's opening proceeds. Its
   short holding/instrument/ex-date facts are immutable, and the short
   entitlement at the close before the ex-date is re-checked inside the write.
+  The shared investment writer also re-checks, after every command's
+  effects, each payment entitled before it (#257): a short correction or
+  backdated cover that strands one is refused naming it
+  (`INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY`).
 - Effective reads use the views `effective_investment_operations`,
   `latest_investment_disposal_revisions`, `latest_investment_split_revisions`,
   `effective_investment_lot_events` and `effective_investment_transfer_links`;

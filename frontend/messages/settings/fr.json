@@ -1673,5 +1673,6 @@
   "investments_suggestion_long_and_short_position": "Long dans une position et court dans une autre avant la date ex : ni un dividende ni un seul paiement compensatoire ne convient. Saisissez chacun à la main ou ignorez cet événement.",
   "api_error_investment_payment_in_lieu_already_corrected": "Ce paiement compensatoire a déjà été corrigé. Actualisez pour voir l'écriture actuelle.",
   "api_error_investment_payment_in_lieu_changed": "Ce paiement compensatoire a changé depuis son chargement. Actualisez et réessayez.",
-  "api_error_investment_payment_in_lieu_not_short": "Cette position n'était pas courte sur cet instrument à la clôture précédant la date ex : aucun paiement compensatoire n'est dû."
+  "api_error_investment_payment_in_lieu_not_short": "Cette position n'était pas courte sur cet instrument à la clôture précédant la date ex : aucun paiement compensatoire n'est dû.",
+  "api_error_investment_payment_in_lieu_dependency": "Un paiement compensatoire dépend de cette position courte. Annulez d'abord ce paiement compensatoire, puis corrigez la position courte."
 }

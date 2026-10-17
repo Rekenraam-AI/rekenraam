@@ -692,7 +692,9 @@ correction, reversal and backdating; #176 provider import.
   optional recovery credited back, and immutable facts naming the short
   holding, instrument and ex-date. The holding must be short at the close
   before the ex-date, checked inside the write. It never changes the short
-  lot or a cover's result. ADR 0013's *Payment-In-Lieu Refinement* records
+  lot or a cover's result. A later short correction or cover that would
+  strand it is refused with the payment named
+  (`INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY`, #257). ADR 0013's *Payment-In-Lieu Refinement* records
   why it is expensed rather than folded into opening proceeds.
 - **Classification.** Net worth and self-check classify a negative countable
   balance as a named short only up to the quantity of short lots open on that

@@ -746,11 +746,18 @@ read before it. The operation is lot-free and replays nothing. It is
 corrected by its own reversal (exact inverse, repeating the facts) and
 replacement (amount, expense account and recovery; the entitlement, payment
 date, cash account and currency are fixed), under the shared writer's
-reconciliation guard. Reversing or replacing the short itself does not
-retire a payment already owed for it; the foundation self-check names an
-effective payment in lieu whose holding has no effective short lot opened
-before its ex-date, so the owner reverses it explicitly (a named refusal at the short's correction
-is [#257](https://github.com/sergeyfarin/rekenraam/issues/257)).
+reconciliation guard. Reversing or replacing the short itself never
+retires a payment already owed for it. Instead, every investment command
+reads the effective payments in lieu whose entitlement holds before its
+guard and re-checks them after its effects, in the same write transaction;
+a short-sale reversal or replacement, a cover dated before the ex-date or a
+cover replacement that would leave one without its short is refused with
+the payment named (409 `INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY`,
+[#257](https://github.com/sergeyfarin/rekenraam/issues/257)), and the owner
+reverses the payment first. A payment already without its short is left
+out of that check, so damage never blocks unrelated commands; the
+foundation self-check stays the backstop and names an effective payment in
+lieu whose holding has no effective short lot opened before its ex-date.
 
 A provider dividend whose ex-date found the book short in one or more
 holdings and long in none proposes a payment in lieu the owner completes

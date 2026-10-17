@@ -32,7 +32,13 @@ var (
 	// ErrInvestmentPaymentInLieuNotShort is the repository's refusal under
 	// this package's name.
 	ErrInvestmentPaymentInLieuNotShort = db.ErrPaymentInLieuNotShort
+	// ErrInvestmentPaymentInLieuDependency refuses any investment command
+	// that would leave an effective payment in lieu without its short (#257);
+	// InvestmentPaymentInLieuDependencyError names the payment.
+	ErrInvestmentPaymentInLieuDependency = db.ErrPaymentInLieuDependency
 )
+
+type InvestmentPaymentInLieuDependencyError = db.PaymentInLieuDependencyError
 
 var (
 	paymentInLieuExpenseRole = accountRoleForInvestment{

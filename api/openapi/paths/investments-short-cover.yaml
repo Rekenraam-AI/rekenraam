@@ -56,7 +56,7 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
-      description: Insufficient short lots, out-of-order entry, or reconciliation override required
+      description: Insufficient short lots, out-of-order entry, or reconciliation override required; or the change would leave an effective payment in lieu without the short it was owed on, which is named (INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY)
       headers:
         X-Request-ID:
           $ref: "../openapi.yaml#/components/headers/XRequestID"

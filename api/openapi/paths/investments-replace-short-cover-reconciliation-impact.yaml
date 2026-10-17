@@ -39,7 +39,7 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
-      description: Sale corrected, imported, changed, or followed by another position operation
+      description: Sale corrected, imported, changed, or followed by another position operation; or the change would leave an effective payment in lieu without the short it was owed on, which is named (INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY)
       content:
         application/json:
           schema:
