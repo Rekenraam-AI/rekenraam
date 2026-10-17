@@ -93,7 +93,11 @@ patch:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
-      description: Account cannot be changed
+      description: >-
+        Account cannot be changed: a system account, a category (managed
+        through the category API), a structural edit after postings exist, or
+        a version that would leave an existing posting outside the account's
+        open dates.
       headers:
         X-Request-ID:
           $ref: "../openapi.yaml#/components/headers/XRequestID"
@@ -155,7 +159,9 @@ delete:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
-      description: Account has postings or other references
+      description: >-
+        Account has postings or other references, or is a system account or a
+        category (managed through the category API).
       headers:
         X-Request-ID:
           $ref: "../openapi.yaml#/components/headers/XRequestID"

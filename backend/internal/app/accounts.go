@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -33,6 +34,11 @@ var (
 	ErrAccountCurrencyLocked   = errors.New("account currency cannot be changed after postings exist")
 	ErrAccountStructureLocked  = errors.New("account structure cannot be changed after postings exist")
 	ErrAccountDeleteNotAllowed = errors.New("account cannot be deleted")
+	// ErrCategoryAccountProtected refuses account management of a category.
+	// Categories are accounts, but the category API owns their rules
+	// (protected built-ins, sibling names, immutable type, metadata), and the
+	// account API writing them would bypass every one of those (#291).
+	ErrCategoryAccountProtected = errors.New("category accounts are managed through the category API")
 	// ErrAccountPostingsOutsideDates refuses a version — usually a close dated
 	// before the account's last posting — that would leave an existing posting
 	// on a day the account no longer accepts it (#292). The wrapped message
@@ -343,6 +349,9 @@ func (s *AccountService) UpdateAccount(ctx context.Context, input UpdateAccountI
 	if current.IsSystem {
 		return Account{}, ErrSystemAccountProtected
 	}
+	if isCategoryAccount(current) {
+		return Account{}, ErrCategoryAccountProtected
+	}
 
 	spec, err := s.accountSpec(ctx, accountSpecInput{
 		AccountID:             input.AccountID,
@@ -475,6 +484,9 @@ func (s *AccountService) DeleteUnusedAccount(ctx context.Context, input DeleteAc
 	if current.IsSystem {
 		return ErrSystemAccountProtected
 	}
+	if isCategoryAccount(current) {
+		return ErrCategoryAccountProtected
+	}
 
 	if err := s.repository.DeleteUnusedAccount(ctx, db.DeleteAccountParams{
 		BookID:    BookID,
@@ -554,6 +566,9 @@ func (s *AccountService) changeAccountStatus(ctx context.Context, input AccountL
 	if current.IsSystem {
 		return Account{}, ErrSystemAccountProtected
 	}
+	if isCategoryAccount(current) {
+		return Account{}, ErrCategoryAccountProtected
+	}
 	if !slices.Contains(allowedCurrentStatuses, current.Status) {
 		return Account{}, ErrAccountInvalidLifecycle
 	}
@@ -615,6 +630,25 @@ func (s *AccountService) changeAccountStatus(ctx context.Context, input AccountL
 	}
 
 	return toAccount(record), nil
+}
+
+// isCategoryAccount mirrors db.categoryAccountPredicate, the rule every
+// category read uses: an income or expense account of the matching kind whose
+// metadata names it a category of that type.
+func isCategoryAccount(account Account) bool {
+	if account.AccountClass != "income" && account.AccountClass != "expense" {
+		return false
+	}
+	return account.AccountKind == account.AccountClass && parseCategoryMetadata(account.MetadataJSON).Type == account.AccountClass
+}
+
+func hasCategoryMetadata(metadataJSON string) bool {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(metadataJSON), &fields); err != nil {
+		return false
+	}
+	_, ok := fields["category"]
+	return ok
 }
 
 func accountPostingsOutsideDates(err error) (error, bool) {
@@ -705,6 +739,11 @@ func (s *AccountService) accountSpec(ctx context.Context, input accountSpecInput
 			return db.AccountSpec{}, ErrAccountParentInvalid
 		}
 		if parent.Status == "archived" {
+			return db.AccountSpec{}, ErrAccountParentInvalid
+		}
+		// A child under a category is part of the category tree, which only
+		// the category API may build (#291).
+		if isCategoryAccount(parent) {
 			return db.AccountSpec{}, ErrAccountParentInvalid
 		}
 		if parent.AccountClass != accountClass {
@@ -817,6 +856,9 @@ func (s *AccountService) accountSpec(ctx context.Context, input accountSpecInput
 	metadataJSON, err := cleanSizedJSONObject(input.MetadataJSON, "account metadata", accountJSONMaxBytes)
 	if err != nil {
 		return db.AccountSpec{}, err
+	}
+	if hasCategoryMetadata(metadataJSON) {
+		return db.AccountSpec{}, ValidationError{Message: "account metadata must not contain category metadata; use the category API"}
 	}
 
 	costBasisMethod := strings.TrimSpace(input.CostBasisMethod)

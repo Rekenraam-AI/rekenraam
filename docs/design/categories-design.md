@@ -63,6 +63,16 @@ The wrapper rejects account-only fields such as institution, account number,
 country, default commodity, and **opened date**. Parents must be categories of
 the same type. Category type is immutable after creation.
 
+The category API is the only way to manage a category (#291). The generic
+`/api/v1/accounts` endpoints answer `409 CONFLICT` to any edit, lifecycle
+change or delete of an account that is a category (an income/expense account
+whose `metadata.category.type` matches its class, the same rule every category
+read uses). They also refuse to create one: a category is not accepted as a
+parent, and `metadata.category` is not accepted in account metadata (`400
+VALIDATION_FAILED`). Plain income and expense accounts without category
+metadata, such as dividend income or withholding-tax accounts used by
+investment workflows, remain ordinary accounts managed through `/accounts`.
+
 Every category — seeded or user-created — is stamped `opened_on` and a first
 version `effective_from` of the genesis date `0001-01-01`
 (`app.categoryGenesisDate`). A category is a classification bucket, not
