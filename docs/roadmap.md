@@ -140,11 +140,14 @@ below is execution order, not a chain of hard dependencies.
    The reference-data audit #269 is complete
    ([evidence](reviews/reference-data-audit-2026-10-17.md)); its findings
    #291/#292 (P2) and #293/#294/#295 (P3) are fixed.
-   The other ten areas remain pending
+   The ledger/reconciliation audit #270 is complete
+   ([evidence](reviews/ledger-reconciliation-audit-2026-10-17.md)); its
+   findings #296 (P2) and #297/#298 (P3) are open.
+   The other nine areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):
-   ledger/reconciliation #270, investment
+   investment
    operations #272/#273, reports and R13 readiness #275, and recovery #277;
    then planning #276, imports #271, prices and durable work #274; then frontend #278, deployment
    #279. Architecture/quality #280
