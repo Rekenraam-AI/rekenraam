@@ -22,6 +22,10 @@ var (
 	// decided against an account version that is no longer the account's
 	// latest. See requireAccountRuleDependenciesTx (T-100).
 	ErrPostingAccountVersionStale = errors.New("posting account changed after this write was prepared")
+	// ErrPostingAccountIneligible is the posting_versions_account_version_valid
+	// trigger's refusal: the account version in effect on the entry date does
+	// not accept this posting (#292).
+	ErrPostingAccountIneligible = errors.New("posting account is not open for postings on the entry date")
 )
 
 type TransactionRepository struct {
@@ -434,6 +438,25 @@ type PostingAccountRule struct {
 	// rather than enumerating codes, so a kind added to the table later is
 	// covered without a second edit somewhere else.
 	BaseKind string
+}
+
+// AcceptsPostingsOn reports whether the version accepts a posting dated
+// entryDate on its status. closed_on is the last day an account is open
+// (accounts-system-design.md), and the closed version takes effect on that day,
+// so a closed version still accepts its closing day (#292). The
+// posting_versions_account_version_valid trigger applies the same rule.
+func (rule PostingAccountRule) AcceptsPostingsOn(entryDate string) bool {
+	if !rule.AllowsPostings {
+		return false
+	}
+	switch rule.Status {
+	case "active":
+		return true
+	case "closed":
+		return rule.ClosedOn.Valid && entryDate <= rule.ClosedOn.String
+	default:
+		return false
+	}
 }
 
 type PostingCommodityRule struct {

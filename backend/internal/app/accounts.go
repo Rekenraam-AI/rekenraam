@@ -33,6 +33,11 @@ var (
 	ErrAccountCurrencyLocked   = errors.New("account currency cannot be changed after postings exist")
 	ErrAccountStructureLocked  = errors.New("account structure cannot be changed after postings exist")
 	ErrAccountDeleteNotAllowed = errors.New("account cannot be deleted")
+	// ErrAccountPostingsOutsideDates refuses a version — usually a close dated
+	// before the account's last posting — that would leave an existing posting
+	// on a day the account no longer accepts it (#292). The wrapped message
+	// names the earliest such day.
+	ErrAccountPostingsOutsideDates = errors.New("account change would leave existing postings outside the account's open dates")
 )
 
 var accountClasses = map[string]bool{
@@ -430,6 +435,9 @@ func (s *AccountService) UpdateAccount(ctx context.Context, input UpdateAccountI
 		case errors.Is(err, db.ErrAccountStructureLocked):
 			return Account{}, ErrAccountStructureLocked
 		}
+		if outside, ok := accountPostingsOutsideDates(err); ok {
+			return Account{}, outside
+		}
 		return Account{}, fmt.Errorf("persist account update: %w", err)
 	}
 
@@ -600,10 +608,21 @@ func (s *AccountService) changeAccountStatus(ctx context.Context, input AccountL
 		if errors.Is(err, db.ErrNotFound) {
 			return Account{}, ErrAccountNotFound
 		}
+		if outside, ok := accountPostingsOutsideDates(err); ok {
+			return Account{}, outside
+		}
 		return Account{}, fmt.Errorf("persist account status: %w", err)
 	}
 
 	return toAccount(record), nil
+}
+
+func accountPostingsOutsideDates(err error) (error, bool) {
+	var outside db.AccountPostingsOutsideDatesError
+	if !errors.As(err, &outside) {
+		return nil, false
+	}
+	return fmt.Errorf("%w: the earliest is on %s", ErrAccountPostingsOutsideDates, outside.EntryDate), true
 }
 
 type accountSpecInput struct {

@@ -440,7 +440,7 @@ func (s *TransactionService) cleanPosting(ctx context.Context, input PostingInpu
 	// on it starts here — before the first decision is made, and whether or not
 	// that decision is a rejection (T-100).
 	options.AccountRuleDependencies.observe(accountRule)
-	if accountRule.Status != "active" || !accountRule.AllowsPostings {
+	if !accountRule.AcceptsPostingsOn(entryDate) {
 		return db.PostingSpec{}, ValidationError{Message: "posting account is not active for postings"}
 	}
 	// T-96. A holding account's quantity is not just a number in the register:

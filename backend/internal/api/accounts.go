@@ -417,6 +417,8 @@ func writeAccountServiceError(w http.ResponseWriter, r *http.Request, logger *sl
 		writeAPIError(w, http.StatusConflict, "CONFLICT", "account currency cannot be changed after postings exist")
 	case errors.Is(err, app.ErrAccountStructureLocked):
 		writeAPIError(w, http.StatusConflict, "CONFLICT", "account structure cannot be changed after postings exist")
+	case errors.Is(err, app.ErrAccountPostingsOutsideDates):
+		writeAPIError(w, http.StatusConflict, "CONFLICT", err.Error())
 	case errors.Is(err, app.ErrAccountInvalidLifecycle):
 		writeAPIError(w, http.StatusConflict, "CONFLICT", "account lifecycle transition is invalid")
 	case errors.Is(err, app.ErrAccountDeleteNotAllowed):

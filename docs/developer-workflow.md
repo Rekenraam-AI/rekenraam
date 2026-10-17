@@ -509,6 +509,11 @@ journals; historical payers remain unassigned. A populated fact table refuses
 downgrade so payer/tax evidence is not lost. Bundle schema 13 adds
 `investment-dividend-facts.csv`; use verified backup/restore for rollback.
 
+Forward migration `0015_closing_day_postings.sql` (#292, 2026-10-17)
+recreates the `posting_versions_account_version_valid` trigger so a closed
+account version accepts postings dated on its `closed_on`. No data changes;
+the head schema version is 15.
+
 Forward migration `0014_authentication_security_events.sql` (#288, 2026-10-17)
 rebuilds `authentication_events` to accept account-security event types and
 adds `origin`, `second_factor` and `metadata_json`. Startup copies every

@@ -715,7 +715,18 @@ Lifecycle is represented by new versions, not row mutation.
 `closed`:
 
 - Historical account that should not receive new ordinary postings after
-  `closed_on`.
+  `closed_on`. The closing day itself still accepts postings: the closed
+  version takes effect on `closed_on` and accepts entries dated on or before it
+  (`db.PostingAccountRule.AcceptsPostingsOn` and the
+  `posting_versions_account_version_valid` trigger, #292).
+- A close, or any other account version, is refused (`409 CONFLICT`, naming the
+  earliest blocked date) when it would govern a posting the account already
+  has without accepting it, for example a `closed_on` before the last posting.
+  The check runs inside the account write and skips voided and soft-deleted
+  transactions. A posting already stranded by an older version stays
+  correctable through a repair, such as a reopen effective from the closing
+  date. Correcting that posting before the repair answers `400`
+  `VALIDATION_FAILED`, not an internal error.
 - Still appears in history, reports, exports, and reconciliation history.
 - May be shown in account lists behind a "show closed" control.
 

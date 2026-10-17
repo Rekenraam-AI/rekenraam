@@ -21,6 +21,18 @@ var (
 	ErrAccountCurrencyLocked  = errors.New("account currency cannot be changed after postings exist")
 )
 
+// AccountPostingsOutsideDatesError reports an account version that would
+// govern a posting the account already has and refuse it — a close dated
+// before the posting, or a backdated archive (#292). EntryDate is the earliest
+// such posting's entry date.
+type AccountPostingsOutsideDatesError struct {
+	EntryDate string
+}
+
+func (e AccountPostingsOutsideDatesError) Error() string {
+	return fmt.Sprintf("account change would leave a posting on %s outside the account's open dates", e.EntryDate)
+}
+
 type AccountRepository struct {
 	database *sql.DB
 }
@@ -489,6 +501,12 @@ func (r *AccountRepository) UpdateAccount(ctx context.Context, params UpdateAcco
 	if err != nil {
 		return AccountRecord{}, err
 	}
+	// Asked inside the write, after the version exists, so the answer covers
+	// postings committed concurrently and uses the same as-of pick the
+	// posting trigger will (#292).
+	if err := requirePostingsStayEligibleTx(ctx, tx, params.AccountID, record.VersionID); err != nil {
+		return AccountRecord{}, err
+	}
 
 	if err := tx.Commit(); err != nil {
 		return AccountRecord{}, fmt.Errorf("commit update account transaction: %w", err)
@@ -496,6 +514,50 @@ func (r *AccountRepository) UpdateAccount(ctx context.Context, params UpdateAcco
 	committed = true
 
 	return record, nil
+}
+
+// requirePostingsStayEligibleTx refuses a new account version that would
+// govern an existing posting and not accept it. Only postings the new version
+// governs are examined: a posting already outside an older version's dates is
+// not this write's doing, which keeps a repair (such as a reopen from the
+// closing date) possible. Voided and soft-deleted transactions are skipped;
+// nothing rewrites their postings. The eligibility test mirrors the
+// posting_versions_account_version_valid trigger.
+func requirePostingsStayEligibleTx(ctx context.Context, tx *sql.Tx, accountID int64, versionID int64) error {
+	var earliest sql.NullString
+	if err := tx.QueryRowContext(ctx, `
+		SELECT MIN(je.entry_date)
+		FROM current_transaction_versions tv
+		JOIN transactions t ON t.id = tv.transaction_id
+		JOIN journal_entries je ON je.transaction_version_id = tv.id
+		JOIN posting_versions pv ON pv.journal_entry_id = je.id
+		JOIN account_versions av ON av.id = ?
+		WHERE pv.account_id = ?
+			AND tv.status <> 'voided'
+			AND t.deleted_at IS NULL
+			AND (
+				SELECT asof_av.id FROM account_versions asof_av
+				WHERE asof_av.account_id = pv.account_id AND asof_av.effective_from <= je.entry_date
+				ORDER BY asof_av.effective_from DESC, asof_av.version_seq DESC LIMIT 1
+			) = av.id
+			AND NOT (
+				(
+					av.status = 'active'
+					OR (av.status = 'closed' AND av.closed_on IS NOT NULL AND je.entry_date <= av.closed_on)
+				)
+				AND av.allows_postings = 1
+				AND (av.opened_on IS NULL OR je.entry_date >= av.opened_on)
+				AND (av.closed_on IS NULL OR je.entry_date <= av.closed_on)
+				AND (av.default_commodity_id IS NULL OR av.default_commodity_id = pv.commodity_id)
+				AND (av.quantity_scale_override IS NULL OR pv.quantity_scale <= av.quantity_scale_override)
+			)
+	`, versionID, accountID).Scan(&earliest); err != nil {
+		return fmt.Errorf("check account postings stay eligible: %w", err)
+	}
+	if earliest.Valid {
+		return AccountPostingsOutsideDatesError{EntryDate: earliest.String}
+	}
+	return nil
 }
 
 func (r *AccountRepository) DeleteUnusedAccount(ctx context.Context, params DeleteAccountParams) error {

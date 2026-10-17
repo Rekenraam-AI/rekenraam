@@ -416,6 +416,11 @@ func mapTransactionDBError(err error) error {
 		return ErrTransactionProtected
 	case errors.Is(err, db.ErrArchivedTag):
 		return ErrTransactionTag
+	case errors.Is(err, db.ErrPostingAccountIneligible):
+		// Ordinary writes are refused earlier by cleanPosting; this is the
+		// trigger's answer for a write that copies existing postings, such as
+		// a void, onto an account version that no longer accepts them.
+		return ValidationError{Message: "posting account is not open for postings on the entry date; reopen the account from that date or correct its dates"}
 	case errors.Is(err, db.ErrReconciliationNotFound):
 		return ErrReconciliationNotFound
 	case errors.Is(err, db.ErrReconciliationClosed):

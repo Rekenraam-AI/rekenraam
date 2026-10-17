@@ -832,7 +832,11 @@ func TestTransactionPostingAccountDateAndCommodityValidation(t *testing.T) {
 		"closed_on":"2026-06-06",
 		"change_reason":"closed for test"
 	}`, http.StatusOK)
-	mutateAccount(t, handler, sessionCookie, csrfToken, http.MethodPost, "/api/v1/accounts/"+strconvFormatInt(archivedAccount.ID)+"/archive", http.StatusOK)
+	// Archived on the closing day, so the archived version — not the closed
+	// one, which still accepts its closing day (#292) — governs 2026-06-06.
+	mutateAccountWithBody(t, handler, sessionCookie, csrfToken, http.MethodPost, "/api/v1/accounts/"+strconvFormatInt(archivedAccount.ID)+"/archive", `{
+		"effective_from":"2026-06-06"
+	}`, http.StatusOK)
 	createTransactionForSession(t, handler, sessionCookie, csrfToken, `{
 		"transaction_date":"2026-06-06",
 		"journal_entries":[{

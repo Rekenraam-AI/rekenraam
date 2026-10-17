@@ -104,7 +104,7 @@ func (s *InvestmentService) accountInRole(ctx context.Context, accountID int64, 
 	// Recorded before the first rule is applied, so a rejection and an
 	// acceptance bind to the same version.
 	dependencies.observe(rule)
-	if rule.Status != "active" || !rule.AllowsPostings {
+	if !rule.AcceptsPostingsOn(date) {
 		return db.PostingAccountRule{}, ValidationError{Message: role.label + " is not active for postings"}
 	}
 	if rule.IsSystem {

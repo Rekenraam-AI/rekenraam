@@ -699,6 +699,8 @@ func mapTransactionConstraintError(err error) error {
 		return ErrTransactionReconciled
 	case strings.Contains(message, "active tag"):
 		return ErrArchivedTag
+	case strings.Contains(message, "posting account is not eligible on entry date"):
+		return fmt.Errorf("%w: %w", ErrPostingAccountIneligible, err)
 	default:
 		return err
 	}
