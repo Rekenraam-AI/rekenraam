@@ -167,12 +167,18 @@ below is execution order, not a chain of hard dependencies.
    book cannot honestly produce — and resolved controls pass outright. #308
    verified exact knowledge transitions, all six deliberate-damage controls
    and 24 native restore comparisons; #313 re-ran them under the new contract.
-   The other seven areas remain pending
+   The prices/FX/durable-work audit #274 is complete
+   ([evidence](reviews/pricing-durable-work-audit-2026-10-18.md)); #314's FX
+   continuation loss and #316's FX transport-error key disclosure are fixed.
+   #315 (P2) remains open: non-publication gaps can consume every execution
+   chunk and starve later history. Manual prices and partial-coverage disclosure
+   remain usable; historical backfill completeness is not certified.
+   The other six areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):
    reports and R13 readiness #275, and recovery #277 (using #308's evidence);
-   then planning #276, prices and durable work #274; then frontend #278, deployment
+   then planning #276; then frontend #278, deployment
    #279. Architecture/quality #280
    runs last, with the shared gates once at the candidate SHA.
    Fix confirmed integrity/security defects before affected feature slices.

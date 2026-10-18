@@ -575,6 +575,21 @@ non-trivial diff (yours or reviewed):
     than amount/kind alone (`income-coverage.spec.ts`); repeated specs may
     retain earlier equal-valued payments in the same worker's book.
 
+50. **Continuation deduplicated against itself** — an FX continuation enqueued
+    its identical successor before completing, so active deduplication returned
+    the running item and completion lost the remaining horizon (#314). Complete
+    and enqueue atomically, with lease fencing and rollback; exercise more than
+    two chunks (`TestFXCoverageWorkerFinishesEveryContinuationChunk`). A skipped
+    publication date can still starve the horizon (#315); it needs distinct
+    progress evidence rather than a fabricated observation.
+
+51. **Transport errors copying operator secrets into history** — Go HTTP
+    errors render the full request URL, including Open Exchange Rates' app_id
+    (#316). Redact at the HTTP boundary before persisting/logging; preserve
+    classification through unwrapping rather than interpolating the cause.
+    Exercise the actual FX refresh history consumer
+    (`TestFXRefreshTransportFailureDoesNotPersistOperatorSecret`).
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

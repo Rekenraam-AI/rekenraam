@@ -47,6 +47,14 @@ a provider/trade quote produces explicitly manual evidence.
 
 ## Commands and review
 
+The [2026-10-18 audit](../reviews/pricing-durable-work-audit-2026-10-18.md)
+verified these management/selection workflows. Historical FX fetching retains
+an actionable limit in [#315](https://github.com/sergeyfarin/rekenraam/issues/315):
+non-publication gaps can exhaust each execution chunk and starve later dates.
+Latest-pair diagnostic coverage does not certify a fully fetched historical
+horizon. ADR 0010's publication-date requirement remains in force; no absent
+rate is manufactured or treated as zero.
+
 Manual entry requires an exact positive price and base quantity, a valuation
 date, and a reason. It always uses the seeded manual source, manual quote type,
 raw adjustment basis, and optional plain-text reference/observation timestamp.

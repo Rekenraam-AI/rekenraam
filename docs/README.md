@@ -94,8 +94,11 @@ areas to twelve bounded audits, and distinguishes review completed from audit
 execution pending. The roadmap retains order and R13 readiness;
 [#260](https://github.com/sergeyfarin/rekenraam/issues/260) tracks audit execution.
 The [first identity/setup/privacy audit](reviews/setup-auth-privacy-audit-2026-10-17.md)
-is complete with fixes, including the #262 reauthentication budget; the other
-eleven areas and targeted follow-ups remain pending.
+is complete with fixes, including the #262 reauthentication budget. Subsequent
+area dispositions and remaining work live in the roadmap and #260. The
+[prices/FX/durable-work audit](reviews/pricing-durable-work-audit-2026-10-18.md)
+records #274's real-worker recovery and browser evidence, corrected findings
+#314/#316, and the open publication-gap defect #315.
 
 Earlier strategic proposal:
 [2026-09-09 product direction, AI and privacy](reviews/product-direction-ai-privacy-2026-09-09.md).

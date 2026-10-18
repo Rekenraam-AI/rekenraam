@@ -82,6 +82,16 @@ func TestQuoteWorkerDurableDedupeRevisionHealthAndNoLedgerWrites(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, health, 1)
 	assert.Equal(t, "ok", health[0].Status)
+	// An identical provider refetch cannot undo the owner's withdrawal.
+	_, err = service.VoidPrice(ctx, VoidPriceInput{OwnerUserID: 1, ObservationID: stored[0].ID, VoidReason: "owner rejected this provider quote"})
+	require.NoError(t, err)
+	_, err = service.QueueQuoteRefresh(ctx, 1)
+	require.NoError(t, err)
+	resumed.runDueQuoteRefresh(ctx, logger, "worker")
+	stored, err = service.repository.ListPriceObservations(ctx, BookID, instrument.CommodityID, f.eurCommodityID, 100, true)
+	require.NoError(t, err)
+	require.Len(t, stored, 2, "no replacement is fabricated for an identical withdrawn quote")
+	assert.True(t, stored[0].VoidedAt.Valid)
 	var transactions, lots int
 	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM transactions`).Scan(&transactions))
 	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM investment_lots`).Scan(&lots))
