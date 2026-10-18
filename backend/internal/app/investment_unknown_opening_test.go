@@ -59,8 +59,12 @@ func TestUnknownImmutableOpeningRetainsQuantityAndNullEvidence(t *testing.T) {
 	require.Equal(t, SelfCheckPassed, resultFor(t, check, CheckInvestmentFoundation).Status)
 	require.Equal(t, SelfCheckPassed, resultFor(t, check, CheckInvestmentReplay).Status)
 	quantities := resultFor(t, check, CheckLotReconciliation)
-	require.Equal(t, int64(1), quantities.FindingCount, "only unresolved basis, not a quantity or numeric-zero mismatch")
+	require.Equal(t, SelfCheckIncomplete, quantities.Status)
+	require.Zero(t, quantities.FindingCount, "no quantity or numeric-zero mismatch")
+	require.Equal(t, int64(1), quantities.UnavailableCount, "only unresolved basis is unavailable")
+	require.Equal(t, []int64{lotID}, quantities.UnavailableSample)
 	require.Contains(t, quantities.Summary, "unknown projected basis")
+	require.Equal(t, SelfCheckIncomplete, check.Status)
 }
 
 func TestImmutableOpeningAndEventKnowledgeRequiresNullPairs(t *testing.T) {

@@ -150,18 +150,22 @@ below is execution order, not a chain of hard dependencies.
    Investment part 1 #272 has been executed
    ([evidence](reviews/investment-operations-1-audit-2026-10-18.md)); the
    operation matrix and exact-figure checks pass with no new financial defect.
-   Its final acceptance remains open: #308's diagnostic audit is complete
-   ([evidence](reviews/unresolved-basis-diagnostics-audit-2026-10-18.md)); #313
-   owns the required incomplete-status implementation. #277 also assesses
-   independent bundle reconstruction; native restore with unchanged CSV
-   re-export is verified.
+   #308's diagnostic audit is complete
+   ([evidence](reviews/unresolved-basis-diagnostics-audit-2026-10-18.md)) and
+   #313 shipped its incomplete self-check outcome, so supported unknown basis
+   is now disclosed as incomplete coverage rather than a failure. Its
+   remaining acceptance is #277's independent bundle reconstruction; native
+   restore with unchanged CSV re-export is verified.
    Investment part 2 #273 has been executed
    ([evidence](reviews/investment-operations-2-audit-2026-10-18.md)); its
    independent transfer/corporate-action/correction register and replay pass.
-   #307/#309/#310/#311/#312 are fixed. Its clean-self-check acceptance remains
-   blocked by #313, as for #272. #308 verified exact knowledge transitions,
-   all six deliberate-damage controls and 24 native restore comparisons;
-   unknown projected basis still reports failed under the shipped contract.
+   #307/#309/#310/#311/#312 are fixed. Acceptance disposition for #272/#273's
+   "self-check clean" item under #313's contract: clean means **no failed
+   check**. A book whose only gap is supported unknown basis reports
+   `incomplete` with that scope named — not an all-passed run, which such a
+   book cannot honestly produce — and resolved controls pass outright. #308
+   verified exact knowledge transitions, all six deliberate-damage controls
+   and 24 native restore comparisons; #313 re-ran them under the new contract.
    The other seven areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with

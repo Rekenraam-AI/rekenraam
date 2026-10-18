@@ -150,6 +150,8 @@
         return m.settings_data_status_passed();
       case 'failed':
         return m.settings_data_status_failed();
+      case 'incomplete':
+        return m.settings_data_status_incomplete();
       case 'errored':
         return m.settings_data_status_errored();
       case 'not_applicable':
@@ -165,9 +167,11 @@
     }
   }
 
-  function statusTone(status: string): 'positive' | 'danger' | 'neutral' {
+  function statusTone(status: string): 'positive' | 'danger' | 'warning' | 'neutral' {
     if (status === 'passed' || status === 'completed') return 'positive';
     if (status === 'failed' || status === 'errored') return 'danger';
+    // Incomplete is neither a pass nor damage: some information is unknown.
+    if (status === 'incomplete') return 'warning';
     return 'neutral';
   }
 
@@ -568,11 +572,20 @@
           </p>
         {:else}
           <p class="mt-4 text-sm text-foreground" data-testid="selfcheck-summary">
-            {latestSelfCheck.status === 'passed'
-              ? m.settings_data_selfcheck_passed()
-              : latestSelfCheck.status === 'errored'
-                ? m.settings_data_selfcheck_errored({ reason: latestSelfCheck.error_summary })
-                : m.settings_data_selfcheck_failed({ count: latestSelfCheck.failed_check_count })}
+            {#if latestSelfCheck.status === 'passed'}
+              {m.settings_data_selfcheck_passed()}
+            {:else if latestSelfCheck.status === 'errored'}
+              {m.settings_data_selfcheck_errored({ reason: latestSelfCheck.error_summary })}
+            {:else if latestSelfCheck.status === 'incomplete'}
+              {m.settings_data_selfcheck_incomplete({ count: latestSelfCheck.incomplete_check_count })}
+            {:else}
+              {m.settings_data_selfcheck_failed({ count: latestSelfCheck.failed_check_count })}
+              {#if latestSelfCheck.incomplete_check_count > 0}
+                {m.settings_data_selfcheck_failed_unavailable({
+                  count: latestSelfCheck.incomplete_check_count
+                })}
+              {/if}
+            {/if}
           </p>
           {#if latestSelfCheck.results.length > 0}
             <table class="mt-3 w-full text-left text-sm">
@@ -588,8 +601,15 @@
                     <td class="py-2 pr-3">
                       <span class="block font-medium text-foreground">{result.summary}</span>
                       <span class="mt-0.5 block text-xs leading-5 text-muted">{result.explanation}</span>
+                      {#if result.unavailable_count > 0}
+                        <span class="mt-1 block text-xs leading-5 text-warning" data-testid="selfcheck-unavailable">
+                          {m.settings_data_selfcheck_unavailable({ count: result.unavailable_count })}
+                        </span>
+                      {/if}
                       {#if result.status === 'failed'}
                         <span class="mt-1 block text-xs leading-5 text-danger">{result.next_step}</span>
+                      {:else if result.status === 'incomplete'}
+                        <span class="mt-1 block text-xs leading-5 text-muted">{result.next_step}</span>
                       {/if}
                     </td>
                     <td class="py-2 pr-3">

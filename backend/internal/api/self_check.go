@@ -12,20 +12,24 @@ type selfCheckResultResponse struct {
 	Status       string  `json:"status"`
 	FindingCount int64   `json:"finding_count"`
 	Sample       []int64 `json:"sample"`
-	Summary      string  `json:"summary"`
-	Explanation  string  `json:"explanation"`
-	NextStep     string  `json:"next_step"`
+	// Unavailable coverage, separate from integrity findings (#313).
+	UnavailableCount  int64   `json:"unavailable_count"`
+	UnavailableSample []int64 `json:"unavailable_sample"`
+	Summary           string  `json:"summary"`
+	Explanation       string  `json:"explanation"`
+	NextStep          string  `json:"next_step"`
 }
 
 type selfCheckRunResponse struct {
-	ID               int64                     `json:"id"`
-	Trigger          string                    `json:"trigger"`
-	Status           string                    `json:"status"`
-	FailedCheckCount int64                     `json:"failed_check_count"`
-	ErrorSummary     string                    `json:"error_summary"`
-	StartedAt        string                    `json:"started_at"`
-	FinishedAt       string                    `json:"finished_at,omitempty"`
-	Results          []selfCheckResultResponse `json:"results"`
+	ID                   int64                     `json:"id"`
+	Trigger              string                    `json:"trigger"`
+	Status               string                    `json:"status"`
+	FailedCheckCount     int64                     `json:"failed_check_count"`
+	IncompleteCheckCount int64                     `json:"incomplete_check_count"`
+	ErrorSummary         string                    `json:"error_summary"`
+	StartedAt            string                    `json:"started_at"`
+	FinishedAt           string                    `json:"finished_at,omitempty"`
+	Results              []selfCheckResultResponse `json:"results"`
 }
 
 type selfCheckStatusResponse struct {
@@ -44,26 +48,33 @@ func toSelfCheckRunResponse(run app.SelfCheckRun) selfCheckRunResponse {
 		if sample == nil {
 			sample = []int64{}
 		}
+		unavailableSample := result.UnavailableSample
+		if unavailableSample == nil {
+			unavailableSample = []int64{}
+		}
 		results = append(results, selfCheckResultResponse{
-			CheckID:      result.CheckID,
-			Status:       result.Status,
-			FindingCount: result.FindingCount,
-			Sample:       sample,
-			Summary:      result.Summary,
-			Explanation:  result.Explanation,
-			NextStep:     result.NextStep,
+			CheckID:           result.CheckID,
+			Status:            result.Status,
+			FindingCount:      result.FindingCount,
+			Sample:            sample,
+			UnavailableCount:  result.UnavailableCount,
+			UnavailableSample: unavailableSample,
+			Summary:           result.Summary,
+			Explanation:       result.Explanation,
+			NextStep:          result.NextStep,
 		})
 	}
 
 	return selfCheckRunResponse{
-		ID:               run.ID,
-		Trigger:          run.Trigger,
-		Status:           run.Status,
-		FailedCheckCount: run.FailedCheckCount,
-		ErrorSummary:     run.ErrorSummary,
-		StartedAt:        run.StartedAt,
-		FinishedAt:       run.FinishedAt,
-		Results:          results,
+		ID:                   run.ID,
+		Trigger:              run.Trigger,
+		Status:               run.Status,
+		FailedCheckCount:     run.FailedCheckCount,
+		IncompleteCheckCount: run.IncompleteCheckCount,
+		ErrorSummary:         run.ErrorSummary,
+		StartedAt:            run.StartedAt,
+		FinishedAt:           run.FinishedAt,
+		Results:              results,
 	}
 }
 

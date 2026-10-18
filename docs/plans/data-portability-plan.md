@@ -755,8 +755,9 @@ mode is a *set* of files, and every step below treats it as one.
 
 ## Trial-balance self-check
 
-Read-only. Persists only its own run record. Each check returns
-pass/fail/skipped, counts, a capped sample of offending ids, and a
+Read-only. Persists only its own run record. Each check returns a status
+(see [Self-check outcomes](#self-check-outcomes-313)), separate integrity and
+unavailable counts, capped samples of the ids behind each, and a
 plain-language explanation with what to do next — never an automatic repair.
 
 | id | Check |
@@ -805,7 +806,77 @@ blocks a write. Synchronous execution is fine at personal-finance scale (one
 ordered scan of `posting_versions`); if a book ever exceeds a documented
 ceiling, it moves onto the work queue as a follow-up, not a redesign.
 
+### Self-check outcomes (#313)
+
+A completed check measures two things and keeps them apart:
+
+- **Integrity findings** (`finding_count`, `sample`): something is wrong — a
+  quantity, allocation, basis, link, bridge, provenance, replay, structural or
+  file violation.
+- **Unavailable coverage** (`unavailable_count`, `unavailable_sample`):
+  something could not be verified because the book supportedly does not know
+  it. Today exactly one source exists: `lot_reconciliation` counts every lot,
+  open or closed, whose projected basis is supported unknown (not missing,
+  not inconsistent knowledge/amounts — those are findings). Its summary names
+  the scope: `N lots have unknown projected basis; basis reconciliation is
+  unavailable`.
+
+**Result status**, derived from the counts so a check cannot contradict them:
+
+| Status | Meaning |
+|---|---|
+| `passed` | Every applicable invariant was verified; no finding, nothing unavailable. |
+| `incomplete` | No finding, but `unavailable_count > 0`. Neither passed nor corrupted. |
+| `failed` | At least one finding. Unavailable coverage is still reported beside it and never downgrades it. |
+| `not_applicable` | Reserved slot that cannot run yet (attachments, until R14a). Unchanged. |
+
+**Run status and counts.** `failed_check_count` counts failed results.
+`incomplete_check_count` counts results with unavailable coverage, *including*
+failed ones, so a failed run still discloses what it could not verify.
+Precedence over completed results: **failed** if any result failed, else
+**incomplete** if any result has unavailable coverage, else **passed**.
+`errored` keeps its meaning — execution did not complete, with no verdict —
+and `running` is internal. Schema CHECKs enforce the combinations
+(`incomplete` ⇒ no finding/failed check and some unavailable coverage;
+`passed` ⇒ neither), so storage, API and screen cannot disagree.
+
+| Example | Lot result | Run | Failed / incomplete counts |
+|---|---|---|---|
+| Unknown inbound, nothing else wrong | incomplete, 0 findings, 1 unavailable | incomplete | 0 / 1 |
+| Same, after positive or sourced-zero resolution | passed | passed | 0 / 0 |
+| Unknown lot plus a holding/quantity mismatch | failed, 2 findings, 1 unavailable | failed | ≥1 / 1 |
+| Unknown lot plus a known peer's damaged basis | incomplete (aggregate basis unavailable) | failed (replay fails the known lot) | 1 / 1 |
+| Self-check could not finish | — | errored | — |
+
+What it must never do: exempt a lot or position from any quantity, allocation,
+link, bridge, superseded-evidence or replay check; substitute zero for
+unknown; skip a closed unknown lot; or restate a recorded run. Every check
+stays active beside unknown basis — the incomplete outcome only changes how
+the *absence* of a finding is labelled.
+
+**History.** Migration `0017` widens the enums by rebuilding both tables and
+copying every row. A run recorded before #313 keeps its verdict: an old
+unknown-basis run stays `failed` with `finding_count = 1` and zero unavailable
+counts, because that run did not measure them separately. Downgrading past
+`0017` is refused while any incomplete verdict exists, rather than rewriting
+it. Native backup/restore carries runs and results as they are.
+
+**Owner surface.** `Settings → Data` says *No problems found, but N checks
+could not be fully verified because some information is unknown*, never
+*Everything checks out*, for an incomplete run; a failed run adds the same
+disclosure after its failure count. Each result with unavailable coverage
+shows its unavailable count, an **Incomplete** (warning) badge when it has no
+finding, and its next step. The nightly run chained onto a backup records the
+same verdicts, and the screen reads the latest one the same way.
+
 ### Unresolved investment basis diagnostic acceptance (#308)
+
+**Delivered by #313 (2026-10-18).** The contract above replaces the retained
+limitation described in the rest of this section, which records the #308
+evidence as it stood. Supported unresolved/withdrawn unknown basis now yields
+an `incomplete` check and run; positive and known-zero resolutions pass; all
+six damage controls still fail the same checks, with unavailable scope
+reported apart from their findings.
 
 The [2026-10-18 audit](../reviews/unresolved-basis-diagnostics-audit-2026-10-18.md)
 verifies the current behavior through six financial lifecycles, deliberate

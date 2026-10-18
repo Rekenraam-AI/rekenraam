@@ -27985,14 +27985,24 @@ export interface components {
             /** @enum {string} */
             check_id: "entry_balance" | "transaction_balance" | "book_balance" | "version_integrity" | "lot_reconciliation" | "commodity_position_sign" | "checkpoint_integrity" | "account_version_coverage" | "investment_foundation" | "investment_replay_equivalence" | "price_dependency_integrity" | "sqlite_integrity" | "attachments";
             /**
-             * @description not_applicable is reserved for a check that cannot run yet — attachments until R14a. It never passes by default: passing a check nobody ran is how a coverage claim gets made by accident.
+             * @description failed means at least one integrity finding. incomplete means no finding, but some coverage could not be verified because the information is unknown (unavailable_count > 0) — neither passed nor corrupted. A failed check may also carry unavailable coverage; it is never downgraded by it. not_applicable is reserved for a check that cannot run yet — attachments until R14a. It never passes by default: passing a check nobody ran is how a coverage claim gets made by accident.
              * @enum {string}
              */
-            status: "passed" | "failed" | "not_applicable";
-            /** Format: int64 */
+            status: "passed" | "incomplete" | "failed" | "not_applicable";
+            /**
+             * Format: int64
+             * @description Integrity findings only. Unavailable coverage is counted separately.
+             */
             finding_count: number;
             /** @description A capped sample of offending identifiers, for a human to go and look at. Diagnostic display only. */
             sample: number[];
+            /**
+             * Format: int64
+             * @description Items the check could not verify because their information is unknown — for lot_reconciliation, lots (open or closed) with unknown projected basis. Zero on runs recorded before this was measured separately.
+             */
+            unavailable_count: number;
+            /** @description A capped sample of the identifiers behind unavailable_count. Diagnostic display only. */
+            unavailable_sample: number[];
             summary: string;
             /** @description What this check verifies and why it matters. */
             explanation: string;
@@ -28008,12 +28018,17 @@ export interface components {
              */
             trigger: "manual" | "scheduled";
             /**
-             * @description errored means the check could not complete; it is not a ledger-failure verdict.
+             * @description Precedence over completed results: failed if any result failed, else incomplete if any result has unavailable coverage, else passed. errored means the check could not complete; it is not a ledger-failure verdict. Recorded verdicts are history and are never restated.
              * @enum {string}
              */
-            status: "passed" | "failed" | "errored";
+            status: "passed" | "incomplete" | "failed" | "errored";
             /** Format: int64 */
             failed_check_count: number;
+            /**
+             * Format: int64
+             * @description Results with unavailable coverage, including failed results that also have some. Lets a failed run disclose what it could not verify.
+             */
+            incomplete_check_count: number;
             /** @description Diagnostic reason when status is errored; otherwise empty. */
             error_summary: string;
             /** Format: date-time */

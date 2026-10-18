@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"path/filepath"
 	"strconv"
@@ -110,23 +111,29 @@ func TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore(t *testing.T) {
 						if result.CheckID == CheckAttachments {
 							expected = SelfCheckNotApplicable
 						} else if result.CheckID == CheckLotReconciliation && index < 0 {
-							expected, count = SelfCheckFailed, 1
+							// #313: supported unknown basis is incomplete
+							// coverage, not an integrity finding.
+							expected, count = SelfCheckIncomplete, 1
 							require.Equal(t, "1 lots have unknown projected basis; basis reconciliation is unavailable", result.Summary)
-							require.Equal(t, []int64{lotID}, result.Sample)
+							require.Empty(t, result.Sample)
+							require.Equal(t, []int64{lotID}, result.UnavailableSample)
 						}
 						require.Equal(t, expected, result.Status, "%s/%s: %s", phase, result.CheckID, result.Summary)
-						require.Equal(t, count, result.FindingCount, phase+"/"+result.CheckID)
+						require.Zero(t, result.FindingCount, phase+"/"+result.CheckID)
+						require.Equal(t, count, result.UnavailableCount, phase+"/"+result.CheckID)
 					}
+					require.Zero(t, run.FailedCheckCount)
 					if index < 0 {
-						require.Equal(t, SelfCheckFailed, run.Status)
-						require.EqualValues(t, 1, run.FailedCheckCount)
+						require.Equal(t, SelfCheckIncomplete, run.Status)
+						require.EqualValues(t, 1, run.IncompleteCheckCount)
 					} else {
 						require.Equal(t, SelfCheckPassed, run.Status)
-						require.Zero(t, run.FailedCheckCount)
+						require.Zero(t, run.IncompleteCheckCount)
 					}
 					requireConservationOracle(t, current)
-					t.Logf("%s: overall=%s lot=%s findings=%d", phase, run.Status,
-						resultFor(t, run, CheckLotReconciliation).Status, resultFor(t, run, CheckLotReconciliation).FindingCount)
+					t.Logf("%s: overall=%s lot=%s findings=%d unavailable=%d", phase, run.Status,
+						resultFor(t, run, CheckLotReconciliation).Status, resultFor(t, run, CheckLotReconciliation).FindingCount,
+						resultFor(t, run, CheckLotReconciliation).UnavailableCount)
 					return run
 				}
 				run := inspect(f)
@@ -148,6 +155,18 @@ func TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore(t *testing.T) {
 					restored.transactionService = NewTransactionService(db.NewTransactionRepository(database), db.NewPayeeRepository(database), accounts, db.NewCommodityRepository(database))
 					restored.investmentService = NewInvestmentService(db.NewInvestmentRepository(database), restored.accountService, restored.transactionService, NewPricingService(db.NewPricingRepository(database)))
 					require.Equal(t, before, exportedBundle(t, &restored))
+					// #313: the recorded run is history: restore carries its
+					// verdict, counts and unavailable scope unchanged.
+					recorded, hasRun, err := selfCheckOver(t, f.database).LatestSelfCheck(ctx)
+					require.NoError(t, err)
+					require.True(t, hasRun)
+					restoredRecord, hasRun, err := selfCheckOver(t, database).LatestSelfCheck(ctx)
+					require.NoError(t, err)
+					require.True(t, hasRun)
+					require.Equal(t, recorded, restoredRecord, "restore preserves the recorded run")
+					require.Equal(t, run.ID, restoredRecord.ID)
+					require.Equal(t, run.Status, restoredRecord.Status)
+					require.Equal(t, run.IncompleteCheckCount, restoredRecord.IncompleteCheckCount)
 					require.Equal(t, run.Results, inspect(&restored).Results, "restore preserves every diagnostic result")
 				}
 			}
@@ -201,8 +220,11 @@ func TestInvestmentDiagnosticAuditDamageBesideUnknownBasis(t *testing.T) {
 			inbound, err := f.investmentService.ExternalTransferIn(ctx, unknownTransferInInput(f, "2026-05-01", "2020-03-01"))
 			require.NoError(t, err)
 			before := mustRunInvestmentSelfCheck(t, f)
-			require.EqualValues(t, 1, before.FailedCheckCount)
-			require.EqualValues(t, 1, resultFor(t, before, CheckLotReconciliation).FindingCount)
+			require.Equal(t, SelfCheckIncomplete, before.Status)
+			require.Zero(t, before.FailedCheckCount)
+			require.EqualValues(t, 1, before.IncompleteCheckCount)
+			require.Zero(t, resultFor(t, before, CheckLotReconciliation).FindingCount)
+			require.EqualValues(t, 1, resultFor(t, before, CheckLotReconciliation).UnavailableCount)
 			checkID, fragment := CheckLotReconciliation, "holdings disagree"
 			switch damage {
 			case "quantity":
@@ -255,14 +277,21 @@ func TestInvestmentDiagnosticAuditDamageBesideUnknownBasis(t *testing.T) {
 			require.Equal(t, SelfCheckFailed, result.Status)
 			require.Positive(t, result.FindingCount)
 			require.Contains(t, result.Summary, fragment)
-			expectedFailures := map[string]int64{CheckLotReconciliation: 1}
+			// #313: integrity findings and unavailable lots are counted apart.
+			// Unknown basis never downgrades damage, and damage never hides the
+			// unavailable scope beside it.
+			expectedFailures := map[string]int64{}
+			unavailableLots := int64(1)
 			switch damage {
 			case "quantity":
-				expectedFailures[CheckLotReconciliation], expectedFailures[CheckInvestmentReplay] = 3, 1
-			case "allocation_proceeds", "known_basis_projection":
+				expectedFailures[CheckLotReconciliation], expectedFailures[CheckInvestmentReplay] = 2, 1
+			case "allocation_proceeds":
+				expectedFailures[CheckLotReconciliation], expectedFailures[CheckInvestmentReplay] = 1, 1
+			case "known_basis_projection":
 				expectedFailures[CheckInvestmentReplay] = 1
 			case "transfer_link":
-				expectedFailures[CheckLotReconciliation], expectedFailures[CheckInvestmentFoundation], expectedFailures[CheckInvestmentReplay] = 2, 1, 2
+				expectedFailures[CheckInvestmentFoundation], expectedFailures[CheckInvestmentReplay] = 1, 2
+				unavailableLots = 2
 			case "resolution_bridge":
 				expectedFailures[CheckInvestmentFoundation], expectedFailures[CheckInvestmentReplay] = 1, 1
 			case "superseded_capital_return":
@@ -270,20 +299,34 @@ func TestInvestmentDiagnosticAuditDamageBesideUnknownBasis(t *testing.T) {
 			}
 			require.Len(t, run.Results, 13)
 			require.EqualValues(t, len(expectedFailures), run.FailedCheckCount)
+			require.EqualValues(t, 1, run.IncompleteCheckCount)
 			for _, check := range run.Results {
 				status := SelfCheckPassed
+				unavailable := int64(0)
+				if check.CheckID == CheckLotReconciliation {
+					unavailable = unavailableLots
+					status = SelfCheckIncomplete
+				}
 				if expectedFailures[check.CheckID] > 0 {
 					status = SelfCheckFailed
 				} else if check.CheckID == CheckAttachments {
 					status = SelfCheckNotApplicable
 				}
-				require.Equal(t, status, check.Status, damage+"/"+check.CheckID)
+				require.Equal(t, status, check.Status, damage+"/"+check.CheckID+": "+check.Summary)
 				require.Equal(t, expectedFailures[check.CheckID], check.FindingCount, damage+"/"+check.CheckID)
+				require.Equal(t, unavailable, check.UnavailableCount, damage+"/"+check.CheckID)
+				require.Len(t, check.UnavailableSample, int(unavailable), damage+"/"+check.CheckID)
 			}
+			lots := resultFor(t, run, CheckLotReconciliation)
+			if damage == "resolution_bridge" || damage == "superseded_capital_return" {
+				require.NotContains(t, lots.UnavailableSample, *inbound.LotID, "a resolved lot is known, so only the later inbound is unavailable")
+			} else {
+				require.Contains(t, lots.UnavailableSample, *inbound.LotID, "closed or open, the unknown lot stays disclosed")
+			}
+			require.Contains(t, lots.Summary, fmt.Sprintf("%d lots have unknown projected basis; basis reconciliation is unavailable", unavailableLots))
 			if damage == "known_basis_projection" {
-				lots := resultFor(t, run, CheckLotReconciliation)
-				require.EqualValues(t, 1, lots.FindingCount, "unknown position suppresses aggregate basis comparison, so replay must catch the known-lot damage")
-				require.Equal(t, "1 lots have unknown projected basis; basis reconciliation is unavailable", lots.Summary)
+				require.Equal(t, "1 lots have unknown projected basis; basis reconciliation is unavailable", lots.Summary,
+					"unknown position suppresses aggregate basis comparison, so replay must catch the known-lot damage")
 			}
 			for _, result := range run.Results {
 				if result.Status == SelfCheckFailed {

@@ -9,6 +9,8 @@ SelfCheckResult:
     - status
     - finding_count
     - sample
+    - unavailable_count
+    - unavailable_sample
     - summary
     - explanation
     - next_step
@@ -32,16 +34,34 @@ SelfCheckResult:
     status:
       type: string
       description: >
-        not_applicable is reserved for a check that cannot run yet — attachments
-        until R14a. It never passes by default: passing a check nobody ran is how
-        a coverage claim gets made by accident.
-      enum: [passed, failed, not_applicable]
+        failed means at least one integrity finding. incomplete means no
+        finding, but some coverage could not be verified because the
+        information is unknown (unavailable_count > 0) — neither passed nor
+        corrupted. A failed check may also carry unavailable coverage; it is
+        never downgraded by it. not_applicable is reserved for a check that
+        cannot run yet — attachments until R14a. It never passes by default:
+        passing a check nobody ran is how a coverage claim gets made by accident.
+      enum: [passed, incomplete, failed, not_applicable]
     finding_count:
       type: integer
       format: int64
+      description: Integrity findings only. Unavailable coverage is counted separately.
     sample:
       type: array
       description: A capped sample of offending identifiers, for a human to go and look at. Diagnostic display only.
+      items:
+        type: integer
+        format: int64
+    unavailable_count:
+      type: integer
+      format: int64
+      description: >
+        Items the check could not verify because their information is unknown —
+        for lot_reconciliation, lots (open or closed) with unknown projected
+        basis. Zero on runs recorded before this was measured separately.
+    unavailable_sample:
+      type: array
+      description: A capped sample of the identifiers behind unavailable_count. Diagnostic display only.
       items:
         type: integer
         format: int64
@@ -60,6 +80,7 @@ SelfCheckRun:
     - trigger
     - status
     - failed_check_count
+    - incomplete_check_count
     - error_summary
     - started_at
     - results
@@ -73,11 +94,21 @@ SelfCheckRun:
       description: scheduled runs are chained onto a successful nightly backup.
     status:
       type: string
-      description: errored means the check could not complete; it is not a ledger-failure verdict.
-      enum: [passed, failed, errored]
+      description: >
+        Precedence over completed results: failed if any result failed, else
+        incomplete if any result has unavailable coverage, else passed. errored
+        means the check could not complete; it is not a ledger-failure verdict.
+        Recorded verdicts are history and are never restated.
+      enum: [passed, incomplete, failed, errored]
     failed_check_count:
       type: integer
       format: int64
+    incomplete_check_count:
+      type: integer
+      format: int64
+      description: >
+        Results with unavailable coverage, including failed results that also
+        have some. Lets a failed run disclose what it could not verify.
     error_summary:
       type: string
       description: Diagnostic reason when status is errored; otherwise empty.

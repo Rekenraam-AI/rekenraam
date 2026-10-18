@@ -43,9 +43,15 @@ const (
 	CheckAttachments            = "attachments"
 )
 
-// Result statuses.
+// Result and run statuses (#313; data-portability-plan.md, "Self-check
+// outcomes"). A result is failed when it has any integrity finding, incomplete
+// when it has none but some coverage is unavailable, and passed otherwise. A
+// run takes the worst completed result — failed over incomplete over passed —
+// and errored only when execution itself did not finish. Unavailable coverage
+// never downgrades a failure; a failed result still reports it separately.
 const (
 	SelfCheckPassed        = "passed"
+	SelfCheckIncomplete    = "incomplete"
 	SelfCheckFailed        = "failed"
 	SelfCheckErrored       = "errored"
 	SelfCheckNotApplicable = "not_applicable"
@@ -58,7 +64,11 @@ type SelfCheckResult struct {
 	Status       string
 	FindingCount int64
 	Sample       []int64
-	Summary      string
+	// UnavailableCount and UnavailableSample name what the check could not
+	// verify because the information is unknown — never counted as findings.
+	UnavailableCount  int64
+	UnavailableSample []int64
+	Summary           string
 	// Explanation and NextStep are not stored: they belong to the check, not to
 	// a particular run, and freezing them into old rows would let history
 	// contradict the current wording.
@@ -72,10 +82,13 @@ type SelfCheckRun struct {
 	Trigger          string
 	Status           string
 	FailedCheckCount int64
-	ErrorSummary     string
-	StartedAt        string
-	FinishedAt       string
-	Results          []SelfCheckResult
+	// IncompleteCheckCount counts results with unavailable coverage, including
+	// failed ones, so a failed run still discloses what it could not verify.
+	IncompleteCheckCount int64
+	ErrorSummary         string
+	StartedAt            string
+	FinishedAt           string
+	Results              []SelfCheckResult
 }
 
 type SelfCheckService struct {
@@ -115,8 +128,8 @@ var checkNarratives = map[string]checkNarrative{
 		nextStep:    "The named rows are structurally orphaned. They cannot be fixed from the app; keep a backup before anyone tries anything else.",
 	},
 	CheckLotReconciliation: {
-		explanation: "Open investment lots must account for exactly what the holding account holds. Every original disposal and replay revision must allocate its full quantity, basis and signed proceeds, with positive allocated quantities and nonnegative basis. Unknown projected basis leaves basis reconciliation unavailable; quantities are still checked.",
-		nextStep:    "Inspect the named disposal snapshot when allocation totals disagree; self-check does not repair its evidence. For a position mismatch, compare the named account's holdings with its lots. For unknown or inconsistent projected basis, preserve the named lot's source evidence before investigating its projection.",
+		explanation: "Open investment lots must account for exactly what the holding account holds. Every original disposal and replay revision must allocate its full quantity, basis and signed proceeds, with positive allocated quantities and nonnegative basis. Unknown projected basis is missing information, not damage: basis reconciliation for those lots is unavailable, so the check is incomplete rather than passed, while quantities and every other comparison are still checked.",
+		nextStep:    "Inspect the named disposal snapshot when allocation totals disagree; self-check does not repair its evidence. For a position mismatch, compare the named account's holdings with its lots. For inconsistent projected basis, preserve the named lot's source evidence before investigating its projection. Unknown basis needs no repair: record the basis from your broker's statement through a basis resolution when you have it, and verification becomes complete.",
 	},
 	CheckCommodityPositionSign: {
 		explanation: "A negative number of countable units needs an explicit explanation: it may be an out-of-order entry, an error, or a short position. Open named short lots explain a holding's negative quantity up to the units they owe on each date; any further negative coin or share quantity is unclassified and needs review. Negative money is normal. The commodity-trading clearing account is excluded because it carries the other half of each movement.",
@@ -170,44 +183,85 @@ func (s *SelfCheckService) RunSelfCheck(ctx context.Context, trigger string) (Se
 		return SelfCheckRun{}, s.recordRunError(ctx, runRecord.ID, err)
 	}
 
-	var failed int64
 	stored := make([]db.SelfCheckResultRecord, 0, len(results))
-	for _, result := range results {
-		if result.Status == SelfCheckFailed {
-			failed++
-		}
+	for index := range results {
+		result := &results[index]
+		result.Status = resultStatus(*result)
 		sample, marshalErr := json.Marshal(emptyIfNilIDs(result.Sample))
 		if marshalErr != nil {
 			return SelfCheckRun{}, s.recordRunError(ctx, runRecord.ID, fmt.Errorf("encode self-check sample: %w", marshalErr))
 		}
+		unavailableSample, marshalErr := json.Marshal(emptyIfNilIDs(result.UnavailableSample))
+		if marshalErr != nil {
+			return SelfCheckRun{}, s.recordRunError(ctx, runRecord.ID, fmt.Errorf("encode self-check unavailable sample: %w", marshalErr))
+		}
 		stored = append(stored, db.SelfCheckResultRecord{
-			RunID:        runRecord.ID,
-			CheckID:      result.CheckID,
-			Status:       result.Status,
-			FindingCount: result.FindingCount,
-			SampleJSON:   string(sample),
-			Summary:      result.Summary,
+			RunID:                 runRecord.ID,
+			CheckID:               result.CheckID,
+			Status:                result.Status,
+			FindingCount:          result.FindingCount,
+			SampleJSON:            string(sample),
+			UnavailableCount:      result.UnavailableCount,
+			UnavailableSampleJSON: string(unavailableSample),
+			Summary:               result.Summary,
 		})
 	}
 
-	status := SelfCheckPassed
-	if failed > 0 {
-		status = SelfCheckFailed
-	}
+	status, failed, incomplete := aggregateSelfCheck(results)
 	finishedAt := s.now().UTC().Format(time.RFC3339)
-	if err := s.repository.SaveSelfCheckResults(ctx, runRecord.ID, status, failed, finishedAt, stored); err != nil {
+	if err := s.repository.SaveSelfCheckResults(ctx, runRecord.ID, status, failed, incomplete, finishedAt, stored); err != nil {
 		return SelfCheckRun{}, s.recordRunError(ctx, runRecord.ID, err)
 	}
 
 	return SelfCheckRun{
-		ID:               runRecord.ID,
-		Trigger:          trigger,
-		Status:           status,
-		FailedCheckCount: failed,
-		StartedAt:        startedAt,
-		FinishedAt:       finishedAt,
-		Results:          results,
+		ID:                   runRecord.ID,
+		Trigger:              trigger,
+		Status:               status,
+		FailedCheckCount:     failed,
+		IncompleteCheckCount: incomplete,
+		StartedAt:            startedAt,
+		FinishedAt:           finishedAt,
+		Results:              results,
 	}, nil
+}
+
+// resultStatus derives a completed check's status from its counts, so a check
+// cannot report unavailable coverage as passed, or call a finding incomplete.
+// not_applicable is kept: it is a reserved slot, not a measurement.
+func resultStatus(result SelfCheckResult) string {
+	switch {
+	case result.Status == SelfCheckNotApplicable:
+		return SelfCheckNotApplicable
+	case result.Status == SelfCheckFailed || result.FindingCount > 0:
+		return SelfCheckFailed
+	case result.UnavailableCount > 0:
+		return SelfCheckIncomplete
+	default:
+		return SelfCheckPassed
+	}
+}
+
+// aggregateSelfCheck applies the run precedence: any failed result fails the
+// run, otherwise any incomplete result makes it incomplete. The incomplete
+// count includes failed results that also have unavailable coverage.
+func aggregateSelfCheck(results []SelfCheckResult) (string, int64, int64) {
+	var failed, incomplete int64
+	for _, result := range results {
+		if result.Status == SelfCheckFailed {
+			failed++
+		}
+		if result.UnavailableCount > 0 {
+			incomplete++
+		}
+	}
+	switch {
+	case failed > 0:
+		return SelfCheckFailed, failed, incomplete
+	case incomplete > 0:
+		return SelfCheckIncomplete, failed, incomplete
+	default:
+		return SelfCheckPassed, failed, incomplete
+	}
 }
 
 func (s *SelfCheckService) recordRunError(ctx context.Context, runID int64, runErr error) error {
@@ -250,26 +304,30 @@ func (s *SelfCheckService) LatestSelfCheck(ctx context.Context) (SelfCheckRun, b
 	}
 
 	run := SelfCheckRun{
-		ID:               runRecord.ID,
-		Trigger:          runRecord.Trigger,
-		Status:           runRecord.Status,
-		FailedCheckCount: runRecord.FailedCheckCount,
-		ErrorSummary:     runRecord.ErrorSummary,
-		StartedAt:        runRecord.StartedAt,
-		FinishedAt:       runRecord.FinishedAt.String,
+		ID:                   runRecord.ID,
+		Trigger:              runRecord.Trigger,
+		Status:               runRecord.Status,
+		FailedCheckCount:     runRecord.FailedCheckCount,
+		IncompleteCheckCount: runRecord.IncompleteCheckCount,
+		ErrorSummary:         runRecord.ErrorSummary,
+		StartedAt:            runRecord.StartedAt,
+		FinishedAt:           runRecord.FinishedAt.String,
 	}
 	for _, record := range resultRecords {
-		var sample []int64
+		var sample, unavailableSample []int64
 		_ = json.Unmarshal([]byte(record.SampleJSON), &sample)
+		_ = json.Unmarshal([]byte(record.UnavailableSampleJSON), &unavailableSample)
 		narrative := checkNarratives[record.CheckID]
 		run.Results = append(run.Results, SelfCheckResult{
-			CheckID:      record.CheckID,
-			Status:       record.Status,
-			FindingCount: record.FindingCount,
-			Sample:       sample,
-			Summary:      record.Summary,
-			Explanation:  narrative.explanation,
-			NextStep:     narrative.nextStep,
+			CheckID:           record.CheckID,
+			Status:            record.Status,
+			FindingCount:      record.FindingCount,
+			Sample:            sample,
+			UnavailableCount:  record.UnavailableCount,
+			UnavailableSample: unavailableSample,
+			Summary:           record.Summary,
+			Explanation:       narrative.explanation,
+			NextStep:          narrative.nextStep,
 		})
 	}
 
@@ -1513,13 +1571,16 @@ func (s *SelfCheckService) lotReconciliationCheck(ctx context.Context, snapshot 
 		}
 	}
 	if missing.FindingCount > 0 {
-		return missing, nil
+		return withUnavailableBasis(missing, lots), nil
 	}
 	// Do not derive a projection from damaged allocation evidence. Report the
 	// source snapshot and leave the immutable history untouched for inspection.
 	allocationCheck, err := s.disposalAllocationCheck(ctx, snapshot)
-	if err != nil || allocationCheck.Status == SelfCheckFailed {
-		return allocationCheck, err
+	if err != nil {
+		return SelfCheckResult{}, err
+	}
+	if allocationCheck.Status == SelfCheckFailed {
+		return withUnavailableBasis(allocationCheck, lots), nil
 	}
 
 	events, err := s.repository.SelfCheckLotEvents(ctx, snapshot, BookID)
@@ -1548,7 +1609,7 @@ func (s *SelfCheckService) lotReconciliationCheck(ctx context.Context, snapshot 
 	eventQuantity := map[int64]*exact.ScaledInt{}
 	eventBasis := map[basisPosition]*exact.ScaledInt{}
 	var summaries []string
-	var negative, overConsumed, negativeBasis, unknown, invalidBasis int64
+	var negative, overConsumed, negativeBasis, invalidBasis int64
 
 	// A forward split legitimately leaves a lot holding more units than it
 	// opened with; the ceiling is the opening plus every effective increase.
@@ -1600,9 +1661,10 @@ func (s *SelfCheckService) lotReconciliationCheck(ctx context.Context, snapshot 
 			continue
 		}
 		if lot.BasisKnowledge == db.InvestmentBasisUnknown {
-			unknown++
+			// Supported missing information, not a finding (#313): counted as
+			// unavailable coverage below, while every quantity comparison for
+			// this lot and its position stays active.
 			unknownBasis[basisKey] = true
-			result.Sample = appendCapped(result.Sample, lot.LotID)
 			continue
 		}
 		if remainingBasis[basisKey] == nil {
@@ -1704,9 +1766,6 @@ func (s *SelfCheckService) lotReconciliationCheck(ctx context.Context, snapshot 
 	if negative > 0 {
 		summaries = append(summaries, fmt.Sprintf("%d lots have negative remaining quantity", negative))
 	}
-	if unknown > 0 {
-		summaries = append(summaries, fmt.Sprintf("%d lots have unknown projected basis; basis reconciliation is unavailable", unknown))
-	}
 	if invalidBasis > 0 {
 		summaries = append(summaries, fmt.Sprintf("%d lots have inconsistent projected basis knowledge and amounts", invalidBasis))
 	}
@@ -1727,7 +1786,7 @@ func (s *SelfCheckService) lotReconciliationCheck(ctx context.Context, snapshot 
 	}
 	if len(summaries) > 0 {
 		result.Status = SelfCheckFailed
-		result.FindingCount = negative + overConsumed + negativeBasis + mismatched + eventQuantityMismatch + basisMismatch + unknown + invalidBasis
+		result.FindingCount = negative + overConsumed + negativeBasis + mismatched + eventQuantityMismatch + basisMismatch + invalidBasis
 		result.Summary = joinSummaries(summaries)
 		sort.Slice(result.Sample, func(i, j int) bool { return result.Sample[i] < result.Sample[j] })
 	}
@@ -1735,7 +1794,34 @@ func (s *SelfCheckService) lotReconciliationCheck(ctx context.Context, snapshot 
 		result.Summary = "no investment lots or posted holding positions in this book"
 	}
 
-	return result, nil
+	return withUnavailableBasis(result, lots), nil
+}
+
+// withUnavailableBasis discloses every lot — open or closed — whose projected
+// basis is supported unknown information. It never removes or downgrades a
+// finding: on a failed result the unavailable scope is reported beside it,
+// and on an otherwise clean result it makes the check incomplete, not passed.
+// A lot with inconsistent knowledge and amounts is damage, counted elsewhere.
+func withUnavailableBasis(result SelfCheckResult, lots []db.SelfCheckLotRecord) SelfCheckResult {
+	for _, lot := range lots {
+		if lot.MissingProjection || lot.InvalidBasisProjection || lot.BasisKnowledge != db.InvestmentBasisUnknown {
+			continue
+		}
+		result.UnavailableCount++
+		result.UnavailableSample = appendCapped(result.UnavailableSample, lot.LotID)
+	}
+	if result.UnavailableCount == 0 {
+		return result
+	}
+	sort.Slice(result.UnavailableSample, func(i, j int) bool { return result.UnavailableSample[i] < result.UnavailableSample[j] })
+	unavailable := fmt.Sprintf("%d lots have unknown projected basis; basis reconciliation is unavailable", result.UnavailableCount)
+	if result.Status == SelfCheckFailed {
+		result.Summary = joinSummaries([]string{result.Summary, unavailable})
+	} else {
+		result.Status = SelfCheckIncomplete
+		result.Summary = unavailable
+	}
+	return result
 }
 
 // disposalAllocationCheck checks the original snapshot and every replay

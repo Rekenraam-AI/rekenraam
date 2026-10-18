@@ -102,18 +102,27 @@ func TestUnknownProjectionRetainsQuantitySelfCheck(t *testing.T) {
 				_, err = f.database.Exec(`UPDATE investment_lot_state SET remaining_quantity_value = '1', remaining_quantity_scale = 0`)
 				require.NoError(t, err)
 			}
-			check := resultFor(t, mustRunInvestmentSelfCheck(t, f), CheckLotReconciliation)
-			require.Equal(t, SelfCheckFailed, check.Status)
-			require.Contains(t, check.Sample, *bought.LotID)
+			run := mustRunInvestmentSelfCheck(t, f)
+			// A known lot relabelled unknown is damage, not unavailable
+			// information: replay still fails it, so the run cannot be merely
+			// incomplete (#313).
+			require.Equal(t, SelfCheckFailed, run.Status)
+			require.Equal(t, SelfCheckFailed, resultFor(t, run, CheckInvestmentReplay).Status)
+			require.EqualValues(t, 1, run.IncompleteCheckCount)
+			check := resultFor(t, run, CheckLotReconciliation)
+			require.Equal(t, []int64{*bought.LotID}, check.UnavailableSample)
+			require.EqualValues(t, 1, check.UnavailableCount)
 			require.Contains(t, check.Summary, "unknown projected basis")
 			require.NotContains(t, check.Summary, "disagree with their basis events", "unknown must not be compared as zero")
-			want := int64(1)
 			if damageQuantity {
-				want = 3
+				require.Equal(t, SelfCheckFailed, check.Status)
 				require.Contains(t, check.Summary, "holdings disagree")
 				require.Contains(t, check.Summary, "disagree with their quantity events")
+				require.EqualValues(t, 2, check.FindingCount, "unknown basis is counted apart from the two quantity findings")
+			} else {
+				require.Equal(t, SelfCheckIncomplete, check.Status)
+				require.Zero(t, check.FindingCount)
 			}
-			require.Equal(t, want, check.FindingCount)
 			var basis sql.NullString
 			require.NoError(t, f.database.QueryRow(`SELECT remaining_cost_basis_value FROM investment_lot_state`).Scan(&basis))
 			require.False(t, basis.Valid, "self-check leaves the unresolved projection unchanged")

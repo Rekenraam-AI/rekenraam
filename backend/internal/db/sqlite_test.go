@@ -1269,7 +1269,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(16), version, "the head scopes CSV and QIF import identities to their account")
+	assert.Equal(t, int64(17), version, "the head records incomplete self-check coverage separately from failures")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))

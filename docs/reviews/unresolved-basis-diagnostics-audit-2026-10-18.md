@@ -7,6 +7,13 @@ scoped in [#313](https://github.com/sergeyfarin/rekenraam/issues/313).
 is handed to #313; #272 also retains #277's bundle-reconstruction requirement.
 No runtime verdict, financial record or historical run was relabelled here.
 
+**Update 2026-10-18:** #313 shipped the incomplete outcome
+([contract](../plans/data-portability-plan.md#self-check-outcomes-313)). The
+consumers below now assert it: unresolved/withdrawn rows are `incomplete`
+with zero findings and one unavailable lot, and damage-control finding counts
+exclude the unavailable lots they previously included. The tables below
+record the behaviour as audited at the baseline.
+
 ## Baseline, scope and disposition
 
 Audited `cdfcc7c3b2cb6d26b80f435fd6b4bcd7f53c4573`, with an initially clean
