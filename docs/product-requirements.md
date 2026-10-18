@@ -116,7 +116,6 @@ Already locked before domain work:
 These can wait until the related feature slice:
 
 - First non-English UI languages (target set decided 2026-08-19: Spanish, French, Dutch, German, Russian; drafts ship, native terminology review remains #102).
-- Full structured JSON export scope.
 - Attachment storage.
 - General report snapshots beyond the delivered R18 operational gains/statement documents.
 - Import formats beyond CSV.
@@ -544,7 +543,7 @@ Beyond multilingual support and themes, these areas should be deliberately defin
 - Audit model: mutation attribution fields, change reasons, and audit visibility.
 - Data lifecycle rules: void, unvoid, soft-delete, restore, archive, correct, and retention semantics. Void (visible reference) and soft-delete (hidden but recoverable) are distinct workflows.
 - Import priorities: which file formats arrive first after CSV.
-- Export guarantees: minimum export formats and whether exports should include settings, reports, and metadata.
+- Export guarantees: minimum export formats and whether exports should include settings, reports, and metadata (decided 2026-10-18; see Locked Scope Decisions).
 - API contract workflow: exact OpenAPI type generation command, frontend generated-client path, and CI check behavior.
 - Money representation limits: maximum scale and commodity code validation.
 - Backup policy: backup location, restore expectations, and Docker volume guidance.
@@ -560,6 +559,7 @@ Beyond multilingual support and themes, these areas should be deliberately defin
 
 - Export must support CSV export of core ledger data and QIF export.
 - SQLite backup remains an operational safeguard, but it does not replace user-facing export formats.
+- Export and backup have different jobs (decided 2026-10-18, after the #277 recovery audit). The native SQLite backup and `rekenraam restore` are the **only full-installation round trip**: the whole book, including budgets, recurring templates, reconciliation checkpoints, effective-dated history, settings and audit history, restored exactly. The CSV/QIF/bundle exports are **portable, readable ledger exports**: every ledger and investment figure can be rebuilt from the bundle, and the manifest names everything it omits. The product does not ship a bundle importer or a structured JSON settings/metadata interchange, and the bundle is not made installation-complete. Moving between Rekenraam instances means backup and restore. Reconsidering this needs its own product decision and a bounded export contract. Adding new bundle files stays possible after release, because new files are additive.
 - Attachments are out of scope until core ledger, reconciliation, import, and reporting workflows are stable.
 - Mobile support must cover full core workflows responsively, including transaction entry rather than read-only access.
 - User and permission language may stay explicitly single-user for now; future household support, if ever adopted, should be introduced as a deliberate product change rather than implied prematurely.
@@ -580,6 +580,5 @@ Beyond multilingual support and themes, these areas should be deliberately defin
 
 These are important and should be resolved before the related feature slices begin.
 
-- Which portable settings/metadata interchange should extend the shipped ledger CSV/QIF/bundle exports? Full SQLite backup/restore already protects database state; a standalone structured JSON interchange is not shipped.
 - When attachments eventually enter scope, should they live in SQLite, the filesystem, or pluggable object storage?
 - Which mobile-heavy workflows deserve dedicated optimization first after the baseline responsive experience ships?

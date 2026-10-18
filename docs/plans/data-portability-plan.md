@@ -180,8 +180,8 @@ an empty-but-designed attachments hook.
 **Not in R3, and each has a home:** the reporting-currency selector (approved
 2026-08-19, sequenced *after* R3); accessibility regression coverage (R3a);
 CSV **import** (R5); attachment storage and files-in-backup (R14a); a full
-structured JSON export of settings, connections and profiles (open PRD
-question — R3 deliberately does not answer it); a native beancount/ledger
+structured JSON export of settings, connections and profiles (decided
+2026-10-18: not shipped; see decision 14 below); a native beancount/ledger
 writer (derivability only, see below); off-machine backup targets (S3, rsync)
 and notification on backup failure (no notification channel exists yet).
 
@@ -1048,6 +1048,21 @@ Full-suite discipline per `validate-and-ship`: `scripts/test-backend.sh`,
     is (rev 4).
 13. QIF layout mismatch is stated out of band, never claimed as detectable
     (rev 3).
+14. **Export and backup have separate jobs** (decided 2026-10-18, after the
+    [#277 audit](../reviews/recovery-audit-2026-10-18.md); recorded in
+    `product-requirements.md`). The native backup and `restore` are the only
+    full-installation round trip, and the #277 drill proves it exact. The
+    bundle is a portable ledger export: every ledger and investment figure
+    rebuilds from it, every id resolves inside it (bundle schema 15, #322),
+    and the manifest names what it omits (#321). No bundle importer, no
+    structured settings/metadata interchange, and no installation-complete
+    bundle. Moving between Rekenraam instances is backup and restore.
+    Considered and rejected: adding budget, recurring, checkpoint, history and
+    settings files before v0.1 so that a future importer could rebuild an
+    installation. That would duplicate the backup's job and add a large,
+    lasting format to keep compatible, with no user need beyond what restore
+    already serves. Adding bundle files later remains possible, since new
+    files are additive.
 
 ## R3 acceptance review — closed 2026-08-24
 
@@ -1073,7 +1088,7 @@ what shipped.
 | Accessibility regression coverage | **No** | R3a owns it. Slice 7's screen uses semantic tables, labelled controls, and `sr-only` headers, but automated a11y checks are a separate initiative and pretending otherwise would let R3 claim coverage it never measured |
 | CSV **import** | **No** | R5. Export and import share no code path here by design: the export writes a shape, the import reads bank files. R5's CSV adapter must reuse `canonicalDecimal` and `parseFlexibleDate`, which is recorded there, not here |
 | Attachment storage, files in the backup | **No** | R14a, after R5. The hook above is what keeps this honest in the meantime |
-| Full structured JSON export (settings, connections, profiles) | **No** | Still an open product question in `product-requirements.md`, and R3 deliberately did not answer it. What R3 does instead is name every excluded category in the manifest, so "what is not in this file" is answered even though "should there be a second file" is not |
+| Full structured JSON export (settings, connections, profiles) | **No** | Decided 2026-10-18 (decision 14): the native backup is the only full-installation round trip, and no structured interchange or bundle importer ships. When R3 closed this was still an open product question. What R3 does instead is name every excluded category in the manifest, so "what is not in this file" is answered even though "should there be a second file" is not |
 | Native beancount/ledger writer | **No** | Derivability was the requirement and it is met. A writer is a format to maintain, and the audience it courts can write a 40-line transform against a contract that is now in an ADR |
 | Off-machine backup targets (S3, rsync) | **No** | The app writes one verified file to a directory; putting that directory on another device is an operator decision the deployment docs now make explicit. Building sync targets would mean owning credentials, retries, and partial-upload semantics for every provider |
 | Notification on backup failure | **No** | There is no notification channel in the product yet. Failures are visible on the Data screen with their reason and a retry, which is the honest maximum until one exists |

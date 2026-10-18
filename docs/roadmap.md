@@ -432,9 +432,10 @@ security issue alone does not prove a deployment safe.
 
 Resolve these only when their related slice becomes current work:
 
-- Portable settings/metadata interchange beyond the delivered ledger bundle.
-  Full SQLite backup/restore already protects database state; a standalone JSON
-  settings export/import contract is still undecided.
+- (Decided 2026-10-18: no settings/metadata interchange or bundle importer. The
+  native backup is the only full-installation round trip, and the bundle stays a
+  portable ledger export. Recorded in `product-requirements.md` and decision 14
+  of the [data portability plan](plans/data-portability-plan.md).)
 - The highest-priority mobile workflow. (First non-English UI languages were
   decided 2026-08-19: Spanish, French, Dutch, German, Russian — recorded in
   `product-requirements.md`. Native review of the drafted translations still
