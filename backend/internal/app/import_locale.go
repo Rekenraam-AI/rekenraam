@@ -187,6 +187,27 @@ func detectDateOrder(dates []string) dateOrderDetection {
 	return result
 }
 
+// dateOrderWarning is what the adapters tell a user whose file could not
+// settle its own date layout: either its rows disagree, or every date reads
+// either way. Both name the layout the file was parsed with. A decisive file,
+// or one with no numeric dates at all, gets no warning.
+func dateOrderWarning(detection dateOrderDetection) (ParseWarning, bool) {
+	order := detection.Order
+	switch {
+	case detection.Conflict:
+		return ParseWarning{
+			RowIndex: FileWarningRowIndex, Code: ParseWarningCodeDateLayoutConflict, Value: order.String(),
+			Message: fmt.Sprintf("dates in this file disagree on their layout; parsed as %s — set a date layout on an import profile if that is wrong", order),
+		}, true
+	case !detection.Decisive && detection.Ambiguous > 0:
+		return ParseWarning{
+			RowIndex: FileWarningRowIndex, Code: ParseWarningCodeDateLayoutAmbiguous, Value: order.String(),
+			Message: fmt.Sprintf("every date in this file is ambiguous (no day above 12); parsed as %s — set a date layout on an import profile if that is wrong", order),
+		}, true
+	}
+	return ParseWarning{}, false
+}
+
 // parseFlexibleDate normalizes one date to YYYY-MM-DD using the given field
 // order. dateOrderAuto resolves per-date (day > 12 wins) and otherwise falls
 // back to MDY.

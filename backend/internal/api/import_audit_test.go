@@ -616,3 +616,27 @@ func TestImportAuditIdenticalRowsInTwoAccountsStatementsCommitToEach(t *testing.
 	}
 	balances("-6.35", "-3.35", "QIF repeats post nothing")
 }
+
+// TestImportAuditCSVWithoutDateLayoutStoresTheDateLayoutWarning is the #303
+// API check. A profile created through the API without date_layout falls back
+// to whole-file detection; an all-ambiguous file's warning must be stored
+// with the batch so a reload still tells the owner which layout was chosen.
+func TestImportAuditCSVWithoutDateLayoutStoresTheDateLayoutWarning(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	cookie, csrf, _, _, _ := bootstrapImportAPITest(t, handler)
+	c := ledgerAuditClient{t: t, handler: handler, cookie: cookie, csrf: csrf}
+
+	var profile importProfileResponse
+	c.json(http.MethodPost, "/api/v1/import-profiles", `{"name":"No layout","adapter_kind":"csv","config":"{\"delimiter\":\"comma\",\"date_column\":\"Date\",\"payee_column\":\"Description\",\"amount_column\":\"Amount\",\"decimal_separator\":\".\"}"}`, http.StatusCreated, &profile)
+
+	started := uploadImportForAudit(t, c, "ambiguous.csv",
+		[]byte("Date,Description,Amount\n05/01/2026,Rent,-10.00\n06/02/2026,Coffee,-2.00\n"),
+		map[string]string{"profile_id": strconv.FormatInt(profile.ID, 10)})
+	require.Len(t, started.Warnings, 1)
+	assert.Equal(t, "date_layout_ambiguous", started.Warnings[0].Code)
+	assert.Equal(t, "MDY", started.Warnings[0].Value)
+
+	reloaded := getImportBatchForSession(t, handler, cookie, started.Batch.ID, "?limit=100", http.StatusOK)
+	assert.Equal(t, started.Warnings, reloaded.Warnings)
+}

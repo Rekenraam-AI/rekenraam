@@ -157,19 +157,23 @@ func (a *CSVAdapter) Parse(_ context.Context, input RawInput, profile *ImportPro
 		}
 	}
 
+	result := ParseResult{Meta: SourceMeta{
+		TextEncoding:       decoded.Encoding,
+		EncodingSource:     decoded.Source,
+		EncodingConfidence: decoded.Confidence,
+	}}
 	order, _ := parseDateOrder(config.DateLayout)
 	if order == dateOrderAuto {
 		var dates []string
 		for _, record := range records[1:] {
 			dates = append(dates, csvCell(record, headers[config.DateColumn]))
 		}
-		order = detectDateOrder(dates).Order
+		detection := detectDateOrder(dates)
+		order = detection.Order
+		if warning, ok := dateOrderWarning(detection); ok {
+			result.Warnings = append(result.Warnings, warning)
+		}
 	}
-	result := ParseResult{Meta: SourceMeta{
-		TextEncoding:       decoded.Encoding,
-		EncodingSource:     decoded.Source,
-		EncodingConfidence: decoded.Confidence,
-	}}
 
 	var decimalSeparator rune
 	if config.DecimalSeparator != "" {

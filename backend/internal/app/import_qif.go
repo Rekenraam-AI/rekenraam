@@ -309,17 +309,8 @@ func normalizeQIFRecords(result *ParseResult, records []qifParsedRecord, filenam
 		}
 		detection := detectDateOrder(dates)
 		order = detection.Order
-		switch {
-		case detection.Conflict:
-			result.Warnings = append(result.Warnings, ParseWarning{
-				RowIndex: FileWarningRowIndex, Code: ParseWarningCodeDateLayoutConflict, Value: order.String(),
-				Message: fmt.Sprintf("dates in this file disagree on their layout; parsed as %s — set a date layout on an import profile if that is wrong", order),
-			})
-		case !detection.Decisive && detection.Ambiguous > 0:
-			result.Warnings = append(result.Warnings, ParseWarning{
-				RowIndex: FileWarningRowIndex, Code: ParseWarningCodeDateLayoutAmbiguous, Value: order.String(),
-				Message: fmt.Sprintf("every date in this file is ambiguous (no day above 12); parsed as %s — set a date layout on an import profile if that is wrong", order),
-			})
+		if warning, ok := dateOrderWarning(detection); ok {
+			result.Warnings = append(result.Warnings, warning)
 		}
 	}
 

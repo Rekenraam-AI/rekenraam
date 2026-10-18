@@ -178,3 +178,49 @@ func TestCSVAdapterDetect(t *testing.T) {
 	assert.Equal(t, ConfidenceMedium, adapter.Detect(RawInput{ContentType: "text/csv"}))
 	assert.Equal(t, ConfidenceNone, adapter.Detect(RawInput{Filename: "statement.qif"}))
 }
+
+// TestCSVAdapterWarnsWhenAProfileWithoutDateLayoutCannotSettleTheDates is the
+// #303 regression. A profile with no date_layout falls back to whole-file
+// detection; when every date reads either way, or rows disagree, the CSV
+// adapter must say which layout it chose, exactly as QIF does.
+func TestCSVAdapterWarnsWhenAProfileWithoutDateLayoutCannotSettleTheDates(t *testing.T) {
+	t.Parallel()
+	config := `{"delimiter":"comma","date_column":"Date","payee_column":"Description","amount_column":"Amount","decimal_separator":"."}`
+	tests := []struct {
+		name, contents, wantDate, wantCode string
+	}{
+		{
+			name:     "all ambiguous keeps MDY and warns",
+			contents: "Date,Description,Amount\n05/01/2026,Rent,-10.00\n06/02/2026,Coffee,-2.00\n",
+			wantDate: "2026-05-01", wantCode: ParseWarningCodeDateLayoutAmbiguous,
+		},
+		{
+			name:     "conflicting rows take the majority and warn",
+			contents: "Date,Description,Amount\n13/01/2026,A,-1.00\n14/01/2026,B,-1.00\n01/15/2026,C,-1.00\n",
+			wantDate: "2026-01-13", wantCode: ParseWarningCodeDateLayoutConflict,
+		},
+		{
+			name:     "a decisive file does not warn",
+			contents: "Date,Description,Amount\n05/01/2026,Rent,-10.00\n28/01/2026,Coffee,-2.00\n",
+			wantDate: "2026-01-05",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			result, err := (&CSVAdapter{}).Parse(context.Background(),
+				RawInput{Filename: "statement.csv", Bytes: []byte(test.contents)},
+				&ImportProfile{ID: 11, AdapterKind: "csv", ConfigJSON: config})
+			require.NoError(t, err)
+			require.NotEmpty(t, result.Rows)
+			assert.Equal(t, test.wantDate, result.Rows[0].Date)
+			if test.wantCode == "" {
+				assert.Empty(t, result.Warnings)
+				return
+			}
+			require.Len(t, result.Warnings, 1)
+			assert.Equal(t, test.wantCode, result.Warnings[0].Code)
+			assert.Equal(t, FileWarningRowIndex, result.Warnings[0].RowIndex)
+		})
+	}
+}
