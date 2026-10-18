@@ -732,7 +732,13 @@ Targets are audited book-wide facts keyed by calendar month, posting category,
 and currency. Actuals include only posted, current, non-deleted category
 postings whose journal entry touches an account treated as `on_budget` on that
 entry date; drafts, voids, recurring assumptions, forecasts and learned
-estimates never enter the calculation. Income credits are presented as positive
+estimates never enter the calculation. A posting-dated split whose funding legs
+post on other days is bridged through `transfer_clearing`; its sibling dated
+entries fund the category entry, each classified on its own date
+([#319](https://github.com/sergeyfarin/rekenraam/issues/319)). An archived
+category stays in, and counts toward, any month where it has a target or actual,
+labelled archived with a read-only target
+([#320](https://github.com/sergeyfarin/rekenraam/issues/320)). Income credits are presented as positive
 magnitudes, expenses preserve their debit-positive sign, refunds may make a net
 actual negative, and all target/actual/remaining arithmetic uses exact
 coefficient strings in Go.
@@ -745,7 +751,9 @@ account-treatment editor in one request. Target and treatment `PUT` operations
 write their audit event atomically. Unlike currencies are never summed or
 converted, and R8 deliberately has no rollover or envelope allocator. The
 responsive screen has loading, empty, error and success states and copy in all
-six locales. `docs/plans/budgets-plan.md` is the shipped contract.
+six locales. `docs/plans/budgets-plan.md` is the shipped contract; the
+[2026-10-18 planning audit](reviews/planning-audit-2026-10-18.md) records
+hand-derived budget, recurring, forecast and learned-spending evidence.
 
 ## Not started (see roadmap)
 

@@ -20,10 +20,10 @@ type BudgetAmount struct {
 	QuantityScale int
 }
 type BudgetCategoryRow struct {
-	ID                       int64
-	Code, Name, CategoryType string
-	AllowsPostings           bool
-	Amounts                  []BudgetCategoryAmount
+	ID                               int64
+	Code, Name, CategoryType, Status string
+	AllowsPostings                   bool
+	Amounts                          []BudgetCategoryAmount
 }
 type BudgetCategoryAmount struct {
 	CommodityID               int64
@@ -121,9 +121,6 @@ func (s *BudgetService) Month(ctx context.Context, periodStart string) (BudgetMo
 	if err != nil {
 		return BudgetMonth{}, fmt.Errorf("read budget month: %w", err)
 	}
-	if len(rec.Categories) > 5000 || len(rec.Accounts) > 5000 {
-		return BudgetMonth{}, ValidationError{Message: "budget is too large"}
-	}
 	type key struct{ c, m int64 }
 	targets := map[key]*exact.ScaledInt{}
 	actuals := map[key]*exact.ScaledInt{}
@@ -152,6 +149,24 @@ func (s *BudgetService) Month(ctx context.Context, periodStart string) (BudgetMo
 		}
 		actuals[k].AddCoefficient(c, v.QuantityScale)
 	}
+	// An archived category stays in a month it has a target or actual in, so
+	// archiving later never rewrites that month's rows or totals (#320).
+	active := map[int64]bool{}
+	for k := range targets {
+		active[k.c] = true
+	}
+	for k := range actuals {
+		active[k.c] = true
+	}
+	categories := rec.Categories[:0:0]
+	for _, v := range rec.Categories {
+		if v.Status == "active" || active[v.ID] {
+			categories = append(categories, v)
+		}
+	}
+	if len(categories) > 5000 || len(rec.Accounts) > 5000 {
+		return BudgetMonth{}, ValidationError{Message: "budget is too large"}
+	}
 	amountFor := func(k key) (BudgetCategoryAmount, error) {
 		t := targets[k]
 		if t == nil {
@@ -178,8 +193,8 @@ func (s *BudgetService) Month(ctx context.Context, periodStart string) (BudgetMo
 		return BudgetCategoryAmount{CommodityID: k.m, Target: BudgetAmount{k.m, tc, t.Scale()}, Actual: BudgetAmount{k.m, ac, a.Scale()}, Remaining: BudgetAmount{k.m, rc, rem.Scale()}}, nil
 	}
 	result := BudgetMonth{PeriodStart: start, PeriodEnd: end, RolloverPolicy: "none"}
-	for _, v := range rec.Categories {
-		row := BudgetCategoryRow{ID: v.ID, Code: v.Code, Name: v.Name, CategoryType: v.CategoryType, AllowsPostings: v.AllowsPostings}
+	for _, v := range categories {
+		row := BudgetCategoryRow{ID: v.ID, Code: v.Code, Name: v.Name, CategoryType: v.CategoryType, Status: v.Status, AllowsPostings: v.AllowsPostings}
 		seen := map[int64]bool{}
 		for k := range targets {
 			if k.c == v.ID {

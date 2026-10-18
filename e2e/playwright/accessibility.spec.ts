@@ -1,5 +1,5 @@
 import { expect, test } from './support/fixtures';
-import { apiJSON } from './support/api';
+import { apiJSON, csrfTokenFor } from './support/api';
 import { todayISO } from './support/dates';
 import { createCashAccount, readyForLedger } from './support/ledger';
 import { ensureBrowserSession } from './support/session';
@@ -114,6 +114,37 @@ test('[acceptance] the budget screen is accessible and usable on mobile', async 
   await expect(page.getByRole('heading', { name: 'Budgets' }).first()).toBeVisible();
   await expectNoAccessibilityViolations(page, 'budgets');
   await expectKeyboardReachable(page, 'budgets', ['input:', 'select:', 'button:']);
+});
+
+// #320: archiving a category later keeps its month's actual visible and read-only.
+test('an archived budget category keeps its actual and a read-only target', async ({ page }) => {
+  const { currencyID } = await readyForLedger(page);
+  let csrfToken = await csrfTokenFor(page);
+  const suffix = Date.now().toString(36);
+  const account = await createCashAccount(page, csrfToken, `Archive budget ${suffix}`, currencyID);
+  csrfToken = await csrfTokenFor(page);
+  const name = `Retired ${suffix}`;
+  const category = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/categories', csrfToken, { name, category_type: 'expense' });
+  const today = todayISO();
+  csrfToken = await csrfTokenFor(page);
+  await apiJSON(page, 'POST', '/api/v1/transactions', csrfToken, {
+    transaction_date: today,
+    journal_entries: [{ entry_date: today, postings: [
+      { account_id: account.id, commodity_id: currencyID, quantity_value: '-1234', quantity_scale: 2 },
+      { account_id: category.id, commodity_id: currencyID, quantity_value: '1234', quantity_scale: 2 }
+    ] }]
+  });
+  csrfToken = await csrfTokenFor(page);
+  await apiJSON(page, 'POST', `/api/v1/categories/${category.id}/disable`, csrfToken, {});
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/app/budgets');
+  const row = page.locator('form').filter({ hasText: name });
+  await expect(row).toContainText('Archived');
+  await expect(row).toContainText('12.34');
+  await expect(page.getByLabel(`Target for ${name}`)).toHaveCount(0);
+  await expect(row.getByRole('button')).toHaveCount(0);
+  await expectNoAccessibilityViolations(page, 'budgets with an archived category');
 });
 
 test('[acceptance] every report view is accessible', async ({ page }) => {

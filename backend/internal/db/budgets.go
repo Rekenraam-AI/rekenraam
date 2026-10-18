@@ -13,9 +13,9 @@ func NewBudgetRepository(database *sql.DB) *BudgetRepository {
 }
 
 type BudgetCategoryRecord struct {
-	ID                       int64
-	Code, Name, CategoryType string
-	AllowsPostings           bool
+	ID                               int64
+	Code, Name, CategoryType, Status string
+	AllowsPostings                   bool
 }
 
 type BudgetAccountRecord struct {
@@ -48,9 +48,9 @@ type BudgetSnapshotRecord struct {
 func (r *BudgetRepository) Snapshot(ctx context.Context, bookID int64, start, end string) (BudgetSnapshotRecord, error) {
 	var out BudgetSnapshotRecord
 	rows, err := r.database.QueryContext(ctx, `
-		SELECT a.id, COALESCE(av.code,''), COALESCE(av.name,''), av.account_class, av.allows_postings
+		SELECT a.id, COALESCE(av.code,''), COALESCE(av.name,''), av.account_class, av.status, av.allows_postings
 		FROM accounts a JOIN current_account_versions av ON av.account_id=a.id
-		WHERE a.book_id=? AND a.system_role IS NULL AND av.status='active'
+		WHERE a.book_id=? AND a.system_role IS NULL
 		  AND av.account_class IN ('income','expense')
 		ORDER BY av.account_class, COALESCE(av.name,av.code), a.id`, bookID)
 	if err != nil {
@@ -58,7 +58,7 @@ func (r *BudgetRepository) Snapshot(ctx context.Context, bookID int64, start, en
 	}
 	for rows.Next() {
 		var v BudgetCategoryRecord
-		if err := rows.Scan(&v.ID, &v.Code, &v.Name, &v.CategoryType, &v.AllowsPostings); err != nil {
+		if err := rows.Scan(&v.ID, &v.Code, &v.Name, &v.CategoryType, &v.Status, &v.AllowsPostings); err != nil {
 			rows.Close()
 			return out, err
 		}
@@ -128,7 +128,36 @@ func (r *BudgetRepository) Snapshot(ctx context.Context, bookID int64, start, en
 		return out, err
 	}
 
+	// A category posting is funded by an on-budget asset/liability leg in its
+	// own journal entry. Posting-dated splits (#187) move the funding legs to
+	// sibling entries bridged through transfer_clearing; those siblings fund
+	// the bridged category entry, each classified on its own entry date (#319).
 	rows, err = r.database.QueryContext(ctx, `
+		WITH month_versions AS (
+		  SELECT DISTINCT tv.id FROM current_transaction_versions tv
+		  JOIN transactions t ON t.id=tv.transaction_id
+		  JOIN journal_entries je ON je.transaction_version_id=tv.id
+		  WHERE tv.book_id=? AND tv.status='posted' AND t.deleted_at IS NULL AND je.entry_date>=? AND je.entry_date<=?
+		),
+		entries AS (
+		  SELECT je.id, je.transaction_version_id, je.entry_date FROM journal_entries je
+		  WHERE je.transaction_version_id IN (SELECT id FROM month_versions)
+		),
+		on_budget AS (
+		  SELECT DISTINCT e.id FROM entries e
+		  JOIN posting_versions cpv ON cpv.journal_entry_id=e.id
+		  JOIN accounts ba ON ba.id=cpv.account_id
+		  JOIN account_versions bav ON bav.id=(SELECT y.id FROM account_versions y WHERE y.account_id=ba.id AND y.effective_from<=e.entry_date ORDER BY y.effective_from DESC,y.version_seq DESC LIMIT 1)
+		  WHERE ba.system_role IS NULL AND bav.account_class IN ('asset','liability')
+		    AND COALESCE((SELECT btv.treatment FROM account_budget_treatment_versions btv WHERE btv.account_id=ba.id AND btv.effective_from<=e.entry_date ORDER BY btv.effective_from DESC,btv.version_seq DESC LIMIT 1),
+		      CASE WHEN bav.account_kind IN ('cash','checking','savings','credit_card','line_of_credit') THEN 'on_budget' ELSE 'off_budget' END)='on_budget'
+		),
+		bridged AS (
+		  SELECT DISTINCT e.id, e.transaction_version_id FROM entries e
+		  JOIN posting_versions xp ON xp.journal_entry_id=e.id
+		  JOIN accounts xa ON xa.id=xp.account_id
+		  WHERE xa.system_role='transfer_clearing'
+		)
 		SELECT pv.account_id,pv.commodity_id,pv.quantity_value,pv.quantity_scale
 		FROM current_transaction_versions tv
 		JOIN transactions t ON t.id=tv.transaction_id
@@ -139,15 +168,11 @@ func (r *BudgetRepository) Snapshot(ctx context.Context, bookID int64, start, en
 		WHERE tv.book_id=? AND tv.status='posted' AND t.deleted_at IS NULL
 		  AND je.entry_date>=? AND je.entry_date<=? AND ca.system_role IS NULL
 		  AND cav.account_class IN ('income','expense') AND cav.account_kind=cav.account_class
-		  AND EXISTS (
-		    SELECT 1 FROM posting_versions cpv
-		    JOIN accounts ba ON ba.id=cpv.account_id
-		    JOIN account_versions bav ON bav.id=(SELECT y.id FROM account_versions y WHERE y.account_id=ba.id AND y.effective_from<=je.entry_date ORDER BY y.effective_from DESC,y.version_seq DESC LIMIT 1)
-		    WHERE cpv.journal_entry_id=je.id AND ba.system_role IS NULL AND bav.account_class IN ('asset','liability')
-		      AND COALESCE((SELECT btv.treatment FROM account_budget_treatment_versions btv WHERE btv.account_id=ba.id AND btv.effective_from<=je.entry_date ORDER BY btv.effective_from DESC,btv.version_seq DESC LIMIT 1),
-		        CASE WHEN bav.account_kind IN ('cash','checking','savings','credit_card','line_of_credit') THEN 'on_budget' ELSE 'off_budget' END)='on_budget'
-		  )
-		ORDER BY pv.account_id,pv.commodity_id,pv.id`, bookID, start, end)
+		  AND (je.id IN (SELECT id FROM on_budget)
+		    OR (je.id IN (SELECT id FROM bridged) AND EXISTS (
+		      SELECT 1 FROM bridged b JOIN on_budget o ON o.id=b.id
+		      WHERE b.transaction_version_id=je.transaction_version_id AND b.id<>je.id)))
+		ORDER BY pv.account_id,pv.commodity_id,pv.id`, bookID, start, end, bookID, start, end)
 	if err != nil {
 		return out, fmt.Errorf("read budget actuals: %w", err)
 	}

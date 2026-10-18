@@ -26558,6 +26558,11 @@ export interface components {
             name?: string;
             /** @enum {string} */
             category_type: "income" | "expense";
+            /**
+             * @description Archived categories appear only in months where they have a target or actual.
+             * @enum {string}
+             */
+            status: "active" | "archived";
             allows_postings: boolean;
             amounts: components["schemas"]["BudgetCategoryAmount"][];
         };

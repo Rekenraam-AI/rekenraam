@@ -30,6 +30,7 @@ type budgetCategoryResponse struct {
 	Code           string                         `json:"code,omitempty"`
 	Name           string                         `json:"name,omitempty"`
 	CategoryType   string                         `json:"category_type"`
+	Status         string                         `json:"status"`
 	AllowsPostings bool                           `json:"allows_postings"`
 	Amounts        []budgetCategoryAmountResponse `json:"amounts"`
 }
@@ -66,7 +67,7 @@ func toBudgetCategoryAmount(v app.BudgetCategoryAmount) budgetCategoryAmountResp
 func toBudgetMonth(v app.BudgetMonth) budgetMonthResponse {
 	r := budgetMonthResponse{PeriodStart: v.PeriodStart, PeriodEnd: v.PeriodEnd, RolloverPolicy: v.RolloverPolicy, Categories: []budgetCategoryResponse{}, Totals: []budgetTypeTotalResponse{}, Accounts: []budgetAccountResponse{}, Commodities: []budgetCommodityResponse{}}
 	for _, x := range v.Categories {
-		c := budgetCategoryResponse{ID: x.ID, Code: x.Code, Name: x.Name, CategoryType: x.CategoryType, AllowsPostings: x.AllowsPostings, Amounts: []budgetCategoryAmountResponse{}}
+		c := budgetCategoryResponse{ID: x.ID, Code: x.Code, Name: x.Name, CategoryType: x.CategoryType, Status: x.Status, AllowsPostings: x.AllowsPostings, Amounts: []budgetCategoryAmountResponse{}}
 		for _, a := range x.Amounts {
 			c.Amounts = append(c.Amounts, toBudgetCategoryAmount(a))
 		}

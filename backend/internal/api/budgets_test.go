@@ -121,3 +121,77 @@ func budgetCategoryByID(t *testing.T, month budgetMonthResponse, id int64) budge
 	t.Fatalf("category %d not found", id)
 	return budgetCategoryResponse{}
 }
+
+// #319: posting-dated splits bridge their funding legs through
+// transfer_clearing; the bridged category entry is still on-budget spending.
+func TestBudgetCountsPostingDatedSplitsFundedThroughClearing(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	cookie, csrf, usd := setupAccountAPITest(t, handler)
+	mutateAccount(t, handler, cookie, csrf, http.MethodPost, "/api/v1/setup/system-accounts", http.StatusCreated)
+	checking := createLedgerAccount(t, handler, cookie, csrf, "Dated checking", "asset", "checking", usd, 2)
+	card := createLedgerAccount(t, handler, cookie, csrf, "Dated card", "liability", "credit_card", usd, 2)
+	brokerage := createLedgerAccount(t, handler, cookie, csrf, "Dated brokerage", "asset", "brokerage_cash", usd, 2)
+	other := createLedgerAccount(t, handler, cookie, csrf, "Dated other", "asset", "other_asset", usd, 2)
+	groceries := createCategoryForSession(t, handler, cookie, csrf, `{"name":"Dated groceries","category_type":"expense"}`)
+	leg := func(account int64, value, postedOn string) string {
+		dated := ""
+		if postedOn != "" {
+			dated = `,"posted_on":"` + postedOn + `"`
+		}
+		return `{"account_id":` + strconvFormatInt(account) + `,"commodity_id":` + strconvFormatInt(usd) + `,"quantity_value":"` + value + `","quantity_scale":2` + dated + `}`
+	}
+	split := func(date string, legs ...string) {
+		createTransactionForSession(t, handler, cookie, csrf, `{"transaction_date":"`+date+`","journal_entries":[{"postings":[`+strings.Join(legs, ",")+`]}]}`, http.StatusCreated)
+	}
+	// 50.00 split dated May 10; checking posts May 11, card May 12.
+	split("2026-05-10", leg(checking.ID, "-15000", "2026-05-11"), leg(card.ID, "10000", "2026-05-12"), leg(groceries.ID, "5000", ""))
+	// 7.00 dated May 31 whose funding posts June 1 belongs to May.
+	split("2026-05-31", leg(checking.ID, "-1400", "2026-06-01"), leg(card.ID, "700", "2026-06-02"), leg(groceries.ID, "700", ""))
+	// Off-budget-only funding stays outside the budget: 9.00.
+	split("2026-05-20", leg(brokerage.ID, "-1800", "2026-05-21"), leg(other.ID, "900", "2026-05-22"), leg(groceries.ID, "900", ""))
+
+	may := budgetCategoryByID(t, readBudget(t, handler, cookie, "2026-05-01"), groceries.ID)
+	require.Len(t, may.Amounts, 1)
+	assert.Equal(t, "5700", may.Amounts[0].Actual.QuantityValue.String(), "50.00 + 7.00; the off-budget 9.00 is excluded")
+	june := budgetCategoryByID(t, readBudget(t, handler, cookie, "2026-06-01"), groceries.ID)
+	assert.Empty(t, june.Amounts, "the bridged funding day does not move the category month")
+}
+
+// #320: archiving a category later must not rewrite a month it was active in.
+func TestBudgetKeepsArchivedCategoryHistoryInItsMonths(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	cookie, csrf, usd := setupAccountAPITest(t, handler)
+	checking := createLedgerAccount(t, handler, cookie, csrf, "Archive checking", "asset", "checking", usd, 2)
+	kept := createCategoryForSession(t, handler, cookie, csrf, `{"name":"Archive kept","category_type":"expense"}`)
+	retired := createCategoryForSession(t, handler, cookie, csrf, `{"name":"Archive retired","category_type":"expense"}`)
+	bonus := createCategoryForSession(t, handler, cookie, csrf, `{"name":"Archive bonus","category_type":"income"}`)
+	unused := createCategoryForSession(t, handler, cookie, csrf, `{"name":"Archive unused","category_type":"expense"}`)
+	createTransactionForSession(t, handler, cookie, csrf, balancedBody("2026-02-10", posting(checking.ID, -1000, 2, usd), posting(kept.ID, 1000, 2, usd)), http.StatusCreated)
+	createTransactionForSession(t, handler, cookie, csrf, balancedBody("2026-02-11", posting(checking.ID, -999, 2, usd), posting(retired.ID, 999, 2, usd)), http.StatusCreated)
+	createTransactionForSession(t, handler, cookie, csrf, balancedBody("2026-02-12", posting(checking.ID, 30000, 2, usd), posting(bonus.ID, -30000, 2, usd)), http.StatusCreated)
+	mutateBudget(t, handler, cookie, csrf, http.MethodPut, "/api/v1/budgets/targets/"+strconvFormatInt(retired.ID)+"/"+strconvFormatInt(usd),
+		`{"period_start":"2026-02-01","quantity_value":"1500","quantity_scale":2,"change_reason":"plan"}`)
+	for _, id := range []int64{retired.ID, bonus.ID, unused.ID} {
+		mutateCategory(t, handler, cookie, csrf, http.MethodPost, "/api/v1/categories/"+strconvFormatInt(id)+"/disable", `{}`, http.StatusOK)
+	}
+
+	month := readBudget(t, handler, cookie, "2026-02-01")
+	expense := budgetTotalFor(t, month, "expense", usd)
+	assert.Equal(t, "1999", expense.Actual.QuantityValue.String(), "10.00 + 9.99")
+	assert.Equal(t, "1500", expense.Target.QuantityValue.String())
+	assert.Equal(t, "30000", budgetTotalFor(t, month, "income", usd).Actual.QuantityValue.String(), "archived income keeps its positive sign")
+	row := budgetCategoryByID(t, month, retired.ID)
+	assert.Equal(t, "archived", row.Status)
+	require.Len(t, row.Amounts, 1)
+	assert.Equal(t, "999", row.Amounts[0].Actual.QuantityValue.String())
+	assert.Equal(t, "501", row.Amounts[0].Remaining.QuantityValue.String())
+	assert.Equal(t, "active", budgetCategoryByID(t, month, kept.ID).Status)
+	for _, c := range month.Categories {
+		assert.NotEqual(t, unused.ID, c.ID, "an archived category with no activity stays hidden")
+	}
+	for _, c := range readBudget(t, handler, cookie, "2026-03-01").Categories {
+		assert.NotEqual(t, retired.ID, c.ID, "an archived category is hidden from months without activity")
+	}
+}

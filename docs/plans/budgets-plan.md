@@ -29,7 +29,11 @@ forecast or learned estimate as a target or an actual.
    asset or liability account whose treatment on that date is `on_budget`.
    Drafts, recurring assumptions, forecast events, learned estimates,
    transfers without a category posting, equity, investment lots and price/FX
-   observations never count.
+   observations never count. A posting-dated split (#187) keeps its category
+   postings in the transaction-date entry and bridges its funding legs through
+   `transfer_clearing`; the bridged siblings of the same transaction version
+   then fund that entry, each classified by treatment on its own entry date
+   (#319). The category entry's date still selects the month.
 5. **Account treatment.** Treatment is an effective-dated, versioned account
    axis with `on_budget`, `off_budget`, and `excluded`. It is valid only for
    non-system asset/liability accounts. Until explicitly set, liquid cash,
@@ -45,7 +49,12 @@ forecast or learned estimate as a target or an actual.
 8. **History and deletion.** Setting a target is an audited upsert. Setting it
    to zero removes the target fact with an audit event; posted ledger data is
    untouched. Account-treatment changes append versions and never rewrite old
-   classifications, so a historical month is reproducible.
+   classifications, so a historical month is reproducible. Archiving a
+   category later does not rewrite a month either: an archived category is
+   returned with `status: archived` in every month where it has a target or
+   actual, counts toward that month's totals, and shows its target read-only
+   (targets can only be set on active categories). Without activity in the
+   month it stays hidden (#320).
 
 ## API and read model
 
@@ -64,7 +73,7 @@ accident.
 Zero deletes the target. `PUT /api/v1/budgets/accounts/{account_id}` accepts an
 effective date, treatment, and change reason. Browser mutations use the normal
 session-bound CSRF boundary and emit `budget.target.set`,
-`budget.target.remove`, or `budget.account-treatment.set` audit operations.
+`budget.target.remove`, or `budget.account_treatment.set` audit operations.
 
 Validation failures use the existing `VALIDATION_FAILED`; absent category,
 commodity, or account uses `NOT_FOUND`; a category/commodity/account of the

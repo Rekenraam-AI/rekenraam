@@ -15,12 +15,16 @@ BudgetCategoryAmount:
     remaining: { $ref: "../../openapi.yaml#/components/schemas/BudgetAmount" }
 BudgetCategory:
   type: object
-  required: [id, category_type, allows_postings, amounts]
+  required: [id, category_type, status, allows_postings, amounts]
   properties:
     id: { type: integer, format: int64 }
     code: { type: string }
     name: { type: string }
     category_type: { type: string, enum: [income, expense] }
+    status:
+      type: string
+      enum: [active, archived]
+      description: Archived categories appear only in months where they have a target or actual.
     allows_postings: { type: boolean }
     amounts: { type: array, items: { $ref: "../../openapi.yaml#/components/schemas/BudgetCategoryAmount" } }
 BudgetTypeTotal:

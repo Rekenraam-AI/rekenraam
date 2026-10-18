@@ -97,12 +97,17 @@
       <div class="mt-4 divide-y divide-border">
         {#each rows as category (category.id)}
           {@const amount = amountFor(category)}
-          <form class="grid gap-3 py-4 md:grid-cols-[minmax(10rem,1fr)_repeat(3,minmax(8rem,0.7fr))_auto] md:items-end" onsubmit={(event) => { event.preventDefault(); void saveTarget(category.id); }}>
-            <div><p class="font-semibold">{category.name || category.code}</p><p class="text-xs text-muted">{category.category_type === 'income' ? m.budgets_income() : m.budgets_expense()}</p></div>
-            <label class="text-sm">{m.budgets_target()}<input aria-label={m.budgets_target_for({ name: categoryLabel(category) })} class="mt-1 w-full rounded-(--radius-control) border border-border bg-surface px-3 py-2" inputmode="decimal" value={targetInput(category)} oninput={(event) => { drafts = { ...drafts, [category.id]: event.currentTarget.value }; }} /></label>
+          {@const archived = category.status === 'archived'}
+          <form class="grid gap-3 py-4 md:grid-cols-[minmax(10rem,1fr)_repeat(3,minmax(8rem,0.7fr))_auto] md:items-end" onsubmit={(event) => { event.preventDefault(); if (!archived) void saveTarget(category.id); }}>
+            <div><p class="font-semibold">{category.name || category.code}</p><p class="text-xs text-muted">{category.category_type === 'income' ? m.budgets_income() : m.budgets_expense()}{#if archived} · {m.budgets_archived()}{/if}</p>{#if archived}<p class="mt-1 text-xs text-muted">{m.budgets_archived_help()}</p>{/if}</div>
+            {#if archived}
+              <div><p class="text-xs text-muted">{m.budgets_target()}</p><p class="mt-2 font-semibold">{display(amount?.target)}</p></div>
+            {:else}
+              <label class="text-sm">{m.budgets_target()}<input aria-label={m.budgets_target_for({ name: categoryLabel(category) })} class="mt-1 w-full rounded-(--radius-control) border border-border bg-surface px-3 py-2" inputmode="decimal" value={targetInput(category)} oninput={(event) => { drafts = { ...drafts, [category.id]: event.currentTarget.value }; }} /></label>
+            {/if}
             <div><p class="text-xs text-muted">{m.budgets_actual()}</p><p class="mt-2 font-semibold">{display(amount?.actual)}</p></div>
             <div><p class="text-xs text-muted">{m.budgets_remaining()}</p><p class="mt-2 font-semibold">{display(amount?.remaining)}</p></div>
-            <button class="rounded-(--radius-control) bg-foreground px-4 py-2 text-sm font-semibold text-background disabled:opacity-50" disabled={savingID===category.id}>{savingID===category.id ? m.budgets_saving() : m.budgets_save()}</button>
+            {#if !archived}<button class="rounded-(--radius-control) bg-foreground px-4 py-2 text-sm font-semibold text-background disabled:opacity-50" disabled={savingID===category.id}>{savingID===category.id ? m.budgets_saving() : m.budgets_save()}</button>{/if}
           </form>
         {/each}
       </div>
