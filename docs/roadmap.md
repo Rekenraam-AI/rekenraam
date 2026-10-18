@@ -384,7 +384,7 @@ scanning paths before an announcement.
    a signing identity (Sigstore keyless via GitHub OIDC, or a held key) and a
    release workflow, neither of which exists yet — there is no release job in
    `.github/workflows/`. The existing `ci.yml`, `govulncheck.yml` and scheduled
-   `large-book.yml` are validation workflows.
+   `large-book.yml` and `release-preflight.yml` are validation workflows.
 6. Prepare adoption assets: seeded demo, README screenshots, and a short
    migration walkthrough — courting the plain-text-accounting audience
    explicitly by leading with the correctness architecture (append-only

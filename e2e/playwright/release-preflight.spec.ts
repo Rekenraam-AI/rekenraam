@@ -105,7 +105,11 @@ test.describe.serial('release preflight journeys', () => {
     await page.getByLabel('Cash account').selectOption(String(cash.id));
     await page.getByLabel('Total cost').fill('20.00');
     await page.getByRole('button', { name: 'Record buy' }).last().click();
-    await expect(page.getByText(`Preflight Equity ${suffix}`)).toBeVisible();
+    // The row also carries an sr-only "View lots for {name}" label, so a bare
+    // getByText on the name matches twice; address the row by its role (#306).
+    const holdingRow = page.getByRole('button', { name: `View lots for Preflight Equity ${suffix}` });
+    await expect(holdingRow).toBeVisible();
+    await expect(holdingRow).toContainText('2.000');
 
     await page.getByRole('button', { name: 'Record sell' }).click();
     await page.getByLabel('Instrument').fill(`Preflight Equity ${suffix}`);
@@ -116,7 +120,7 @@ test.describe.serial('release preflight journeys', () => {
     await page.getByLabel('Proceeds').fill('12.00');
     await expect(page.getByText('Sell preview')).toBeVisible();
     await page.getByRole('button', { name: 'Confirm sell' }).click();
-    await expect(page.getByText(`Preflight Equity ${suffix}`)).toBeVisible();
+    await expect(holdingRow).toContainText('1.000');
   });
 
   test('supports transaction entry at a mobile viewport', async ({ page }) => {

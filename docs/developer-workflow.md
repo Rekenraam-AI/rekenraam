@@ -430,7 +430,7 @@ pnpm test:release-preflight
 - Production generates a one-time setup token when `SETUP_TOKEN` is absent; operators should set a durable random token of at least 32 characters and enter it only for the first owner-creation request. See `docs/deployment-security.md`.
 - Forwarded proxy headers are ignored by default. Set `TRUST_PROXY_HEADERS=1` only when the app is behind a trusted reverse proxy that rewrites those headers, and set `TRUSTED_PROXY_CIDRS` to the proxy source ranges that are allowed to supply them.
 - Browser e2e tests live in `e2e/` and use Playwright. Keep them focused on user journeys that need a browser.
-- `e2e/playwright/release-preflight.spec.ts` is the local release preflight for critical financial workflows. It is intentionally serial against one fresh SQLite database and is not part of fast CI yet. Because it is `describe.serial`, a failure in the first test skips the rest of the file — check "did not run" counts before concluding a journey passed.
+- `e2e/playwright/release-preflight.spec.ts` is the local release preflight for critical financial workflows. It is intentionally serial against one fresh SQLite database and is not part of push CI; `.github/workflows/release-preflight.yml` runs it weekly and via `workflow_dispatch` so it cannot drift unseen (#306). Because it is `describe.serial`, a failure in the first test skips the rest of the file — check "did not run" counts before concluding a journey passed.
 - **Never hard-code a calendar date for a transaction, statement, or imported row in an e2e spec.** Everything a spec seeds is versioned as effective from *today*, and posting validation resolves account and commodity rules as of the entry date, so a date in the past relative to that seeded data matches no version and the posting is rejected. Use `todayISO()` / `todayQIF()` from `e2e/playwright/support/dates.ts`. A hard-coded `2026-07-08` silently broke every browser transaction-entry journey once the wall clock passed it (fixed 2026-08-06).
 - **Give each locale of a six-locale journey its own test.** Loop `for (const locale of [...]) test(...)` around the body rather than walking every locale inside one test: six passes in one body exceed the default 30 s budget under full-suite load (#250), and a fresh browser context per test means a stored `PARAGLIDE_LOCALE` needs no `finally` reset — which itself fails once a timeout has closed the page. When the locale passes check state an earlier journey built (a saved report, a currency's cumulative totals), put the journey and the per-locale tests in one `test.describe.serial`, seeding in the journey test or a `beforeAll`; keep the `[acceptance]` tag on split-off tests whose journey carried it, since `--grep` selects tests by title (#251).
 - **Assert a saved transaction with `expectSavedTransaction()`, not a bare `getByText(description)`.** Saving opens a detail panel, so the description can be on screen three times at once and a loose text locator fails Playwright strict mode — a failure that reads as "not saved" when the opposite is true. Note also that the list row shows the *payee* instead of the description when there is one, so asserting against the row alone is not portable either.
@@ -730,7 +730,9 @@ Workflow conventions:
   a throwaway instance per worker (3 workers), and runs every spec except
   `release-preflight.spec.ts`. The Playwright report and each worker's
   `app.log` upload as an artifact on failure. The preflight suite
-  stays out of CI and is run deliberately before a release.
+  stays out of push CI and is run deliberately before a release; it also runs
+  weekly and via `workflow_dispatch` in `.github/workflows/release-preflight.yml`,
+  because unrun it drifted for months behind a stale selector (#306).
 - Use `pnpm install --frozen-lockfile` in CI.
 - Keep CI commands aligned with the local wrapper scripts in `scripts/`.
 - Use Node 24.
