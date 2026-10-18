@@ -156,6 +156,20 @@ func commitImportBatchForSession(t *testing.T, handler http.Handler, sessionCook
 	return response
 }
 
+// reviewedImportOverrideBody previews the batch and returns a commit body
+// whose override names the checkpoints that preview listed (#305).
+func reviewedImportOverrideBody(t *testing.T, handler http.Handler, sessionCookie *http.Cookie, batchID int64) string {
+	t.Helper()
+	preview := previewCommitImportBatchForSession(t, handler, sessionCookie, batchID, http.StatusOK)
+	ids := make([]int64, 0, len(preview.ReconciliationCheckpoints))
+	for _, checkpoint := range preview.ReconciliationCheckpoints {
+		ids = append(ids, checkpoint.CheckpointID)
+	}
+	body, err := json.Marshal(map[string]any{"reconciliation_override": true, "reconciliation_override_checkpoint_ids": ids})
+	require.NoError(t, err)
+	return string(body)
+}
+
 func discardImportBatchForSession(t *testing.T, handler http.Handler, sessionCookie *http.Cookie, csrfToken string, batchID int64, wantStatus int) *httptest.ResponseRecorder {
 	t.Helper()
 

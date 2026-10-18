@@ -954,13 +954,7 @@ func (s *ImportService) PreviewCommit(ctx context.Context, input PreviewCommitIn
 			if err != nil {
 				return PreviewCommitResult{}, err
 			}
-			if len(impact.AffectedCheckpoints) > 0 {
-				ids := []int64{}
-				for _, cp := range impact.AffectedCheckpoints {
-					ids = append(ids, cp.CheckpointID)
-				}
-				result.ReconciliationIssues = append(result.ReconciliationIssues, ReconciliationIssuePreview{RowIndex: row.RowIndex, CheckpointIDs: ids})
-			}
+			result.addReconciliationIssue(row.RowIndex, impact.AffectedCheckpoints)
 			result.IncludableCount++
 			continue
 		}
@@ -985,13 +979,7 @@ func (s *ImportService) PreviewCommit(ctx context.Context, input PreviewCommitIn
 			if err != nil {
 				return PreviewCommitResult{}, err
 			}
-			if len(impact.AffectedCheckpoints) > 0 {
-				ids := []int64{}
-				for _, cp := range impact.AffectedCheckpoints {
-					ids = append(ids, cp.CheckpointID)
-				}
-				result.ReconciliationIssues = append(result.ReconciliationIssues, ReconciliationIssuePreview{RowIndex: row.RowIndex, CheckpointIDs: ids})
-			}
+			result.addReconciliationIssue(row.RowIndex, impact.AffectedCheckpoints)
 			result.IncludableCount++
 			continue
 		}
@@ -1009,13 +997,7 @@ func (s *ImportService) PreviewCommit(ctx context.Context, input PreviewCommitIn
 				if impact.GainImpact != nil && len(impact.GainImpact.Changes) > 0 {
 					result.GainImpacts = append(result.GainImpacts, RowGainImpactPreview{RowID: row.ID, RowIndex: row.RowIndex, GainImpact: *impact.GainImpact})
 				}
-				if len(impact.AffectedCheckpoints) > 0 {
-					ids := make([]int64, 0, len(impact.AffectedCheckpoints))
-					for _, cp := range impact.AffectedCheckpoints {
-						ids = append(ids, cp.CheckpointID)
-					}
-					result.ReconciliationIssues = append(result.ReconciliationIssues, ReconciliationIssuePreview{RowIndex: row.RowIndex, CheckpointIDs: ids})
-				}
+				result.addReconciliationIssue(row.RowIndex, impact.AffectedCheckpoints)
 			}
 			// Earlier rows in the same batch may supply the lots. Commit uses
 			// the real guarded writer and holds newly changed gains for review.
@@ -1030,6 +1012,17 @@ func (s *ImportService) PreviewCommit(ctx context.Context, input PreviewCommitIn
 		if gainImpact != nil && len(gainImpact.Changes) > 0 {
 			result.GainImpacts = append(result.GainImpacts, RowGainImpactPreview{
 				RowID: row.ID, RowIndex: row.RowIndex, GainImpact: *gainImpact})
+		}
+		// An order fill commits through the investment writer, not the
+		// resolution below, so its checkpoints come from the fill (#305).
+		fillCheckpoints, isFill, err := s.previewTrading212OrderFillCheckpoints(ctx, row, batch, input.OwnerUserID)
+		if err != nil {
+			return PreviewCommitResult{}, fmt.Errorf("preview imported order fill checkpoints row %d: %w", row.ID, err)
+		}
+		if isFill {
+			result.addReconciliationIssue(row.RowIndex, fillCheckpoints)
+			result.IncludableCount++
+			continue
 		}
 
 		resolution, err := parseResolutionJSON(row.ResolutionJSON)
@@ -1054,18 +1047,39 @@ func (s *ImportService) PreviewCommit(ctx context.Context, input PreviewCommitIn
 			continue
 		}
 
-		checkpointIDs := make([]int64, 0, len(impact.AffectedCheckpoints))
-		for _, cp := range impact.AffectedCheckpoints {
-			checkpointIDs = append(checkpointIDs, cp.CheckpointID)
-		}
-		result.ReconciliationIssues = append(result.ReconciliationIssues, ReconciliationIssuePreview{
-			RowIndex:      row.RowIndex,
-			CheckpointIDs: checkpointIDs,
-		})
+		result.addReconciliationIssue(row.RowIndex, impact.AffectedCheckpoints)
 		result.IncludableCount++
 	}
 
+	// The union is what the owner reviews beside the override; label its
+	// accounts the way the single-write previews do.
+	if err := s.transactionService.enrichCheckpointRefs(ctx, result.ReconciliationCheckpoints); err != nil {
+		return PreviewCommitResult{}, err
+	}
 	return result, nil
+}
+
+// addReconciliationIssue records one row's checkpoints and merges them into
+// the batch's reviewed union (#305).
+func (r *PreviewCommitResult) addReconciliationIssue(rowIndex int, refs []db.CheckpointInvalidationRef) {
+	ids := make([]int64, 0, len(refs))
+	for _, ref := range refs {
+		if ref.CheckpointID <= 0 || slices.Contains(ids, ref.CheckpointID) {
+			continue
+		}
+		ids = append(ids, ref.CheckpointID)
+		at, found := slices.BinarySearchFunc(r.ReconciliationCheckpoints, ref.CheckpointID, func(existing db.CheckpointInvalidationRef, id int64) int {
+			return cmp.Compare(existing.CheckpointID, id)
+		})
+		if !found {
+			r.ReconciliationCheckpoints = slices.Insert(r.ReconciliationCheckpoints, at, ref)
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+	slices.Sort(ids)
+	r.ReconciliationIssues = append(r.ReconciliationIssues, ReconciliationIssuePreview{RowIndex: rowIndex, CheckpointIDs: ids})
 }
 
 // CommitImportBatch commits all pending staged rows via the transaction service.
@@ -1104,6 +1118,13 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 
 	now := s.now().UTC()
 	nowStr := now.Format(time.RFC3339)
+
+	// A bound override names the preview's union of checkpoints. Each row
+	// writes in its own transaction, so each row's set must be contained in
+	// it, not equal to it (#305).
+	if input.ReconciliationOverride.Allowed && input.ReconciliationOverride.Reviewed != nil {
+		ctx = db.WithBatchReviewedCheckpoints(ctx)
+	}
 
 	result := CommitImportBatchResult{BatchID: input.BatchID}
 	result.TotalRows = len(rows)
@@ -1210,6 +1231,12 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 		// remain pending; only order fills retain expected-gap cash fallback.
 		// Unexpected errors fail the affected row, preserving per-row commits.
 		if handled, _, _, err := s.commitInvestmentRow(ctx, row, batch, input, nowStr); err != nil {
+			if isReconciliationImpactStale(err) {
+				if err2 := s.holdImportStagedRowForStaleReview(ctx, &result, row.ID); err2 != nil {
+					return result, fmt.Errorf("hold stale investment reconciliation row %d: %w", row.ID, err2)
+				}
+				continue
+			}
 			var dividendValidation ValidationError
 			if isTrading212DividendRow(batch, row) && (errors.Is(err, ErrImportDividendReviewRequired) || errors.As(err, &dividendValidation) || errors.Is(err, ErrReconciliationOverrideRequired)) {
 				result.DividendReviewRowIDs = append(result.DividendReviewRowIDs, row.ID)
@@ -1288,6 +1315,12 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 			ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 		})
 		if err != nil {
+			if isReconciliationImpactStale(err) {
+				if err2 := s.holdImportStagedRowForStaleReview(ctx, &result, row.ID); err2 != nil {
+					return result, fmt.Errorf("hold stale reconciliation row %d: %w", row.ID, err2)
+				}
+				continue
+			}
 			if errors.Is(err, ErrReconciliationOverrideRequired) {
 				// Row crosses a reconciled period and override not set → hold it
 				// pending for a commit with the override (#301).
@@ -1341,6 +1374,22 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 				result.CommittedCount++
 				continue
 			}
+			// The write transaction's own guard decides against the
+			// checkpoints that exist at commit (T-94): a statement finished
+			// since the early check, or since the owner's review, holds this
+			// row with nothing written rather than failing the batch (#305).
+			if isReconciliationImpactStale(err) {
+				if err2 := s.holdImportStagedRowForStaleReview(ctx, &result, row.ID); err2 != nil {
+					return result, fmt.Errorf("hold stale reconciliation row %d: %w", row.ID, err2)
+				}
+				continue
+			}
+			if errors.Is(err, ErrReconciliationOverrideRequired) || errors.Is(err, db.ErrReconciliationOverrideRequired) {
+				if err2 := s.holdImportStagedRowForReconciliation(ctx, &result, row.ID); err2 != nil {
+					return result, fmt.Errorf("hold reconciliation row %d: %w", row.ID, err2)
+				}
+				continue
+			}
 			return result, fmt.Errorf("record commit row %d: %w", row.ID, err)
 		}
 		result.CommittedCount++
@@ -1351,7 +1400,7 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 	// dividend or reconciliation review are still pending, so the batch stays
 	// open even if nothing committed; a batch whose remaining rows all failed
 	// is failed. Both stay open for repair and another commit (#301).
-	held := len(result.GainReviewRowIDs) + len(result.DividendReviewRowIDs) + len(result.ReconciliationHoldRowIDs)
+	held := len(result.GainReviewRowIDs) + len(result.DividendReviewRowIDs) + len(result.ReconciliationHoldRowIDs) + len(result.ReconciliationStaleRowIDs)
 	finalStatus := "committed"
 	switch {
 	case held > 0:
@@ -1369,6 +1418,7 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 		"gain_review":     len(result.GainReviewRowIDs),
 		"dividend_review": len(result.DividendReviewRowIDs),
 		"reconciliation":  len(result.ReconciliationHoldRowIDs),
+		"stale_review":    len(result.ReconciliationStaleRowIDs),
 	})
 
 	eventKind := finalStatus
@@ -1412,6 +1462,31 @@ func (s *ImportService) holdImportStagedRowForReconciliation(ctx context.Context
 		CommitStatus: "pending",
 		CommitError:  sql.NullString{String: "reconciliation override required", Valid: true},
 	}, nil)
+}
+
+// holdImportStagedRowForStaleReview keeps a row whose write would invalidate
+// a checkpoint outside the set the owner reviewed pending, with nothing
+// invalidated, so another preview can show the current set (#305).
+func (s *ImportService) holdImportStagedRowForStaleReview(ctx context.Context, result *CommitImportBatchResult, rowID int64) error {
+	if err := s.repository.CommitImportStagedRow(ctx, db.CommitImportStagedRowParams{
+		RowID:        rowID,
+		CommitStatus: "pending",
+		CommitError:  sql.NullString{String: importReconciliationStaleReason, Valid: true},
+	}); err != nil {
+		if errors.Is(err, db.ErrImportStagedRowAlreadyCommitted) {
+			// A concurrent commit posted the row; adopt it as the other holds do.
+			return s.recordImportStagedRowTerminal(ctx, result, db.CommitImportStagedRowParams{RowID: rowID, CommitStatus: "pending"}, nil)
+		}
+		return err
+	}
+	result.ReconciliationStaleRowIDs = append(result.ReconciliationStaleRowIDs, rowID)
+	return nil
+}
+
+const importReconciliationStaleReason = "reconciliation impact changed after review"
+
+func isReconciliationImpactStale(err error) bool {
+	return errors.Is(err, ErrReconciliationImpactStale) || errors.Is(err, db.ErrReconciliationImpactStale)
 }
 
 // recordImportStagedRowTerminal applies a failed or skipped terminal update,

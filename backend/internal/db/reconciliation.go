@@ -918,7 +918,7 @@ func enforceCheckpointBoundaryTx(ctx context.Context, tx *sql.Tx, params checkpo
 	if err != nil {
 		return nil, err
 	}
-	if err := bindCheckpointOverride(refs, params.ReconciliationOverride, params.ReviewedCheckpointIDs); err != nil {
+	if err := bindCheckpointOverride(ctx, refs, params.ReconciliationOverride, params.ReviewedCheckpointIDs); err != nil {
 		return nil, err
 	}
 	if len(refs) == 0 {
@@ -953,9 +953,11 @@ var ErrReconciliationImpactStale = errors.New("the checkpoints this write would 
 
 // bindCheckpointOverride applies the guard to the resolved set: without an
 // override any checkpoint refuses the write; with one, a reviewed set that is
-// not exactly the resolved set refuses it too. A nil reviewed set is an
-// internal caller's unbound override. Both refusals name the current set.
-func bindCheckpointOverride(refs []CheckpointInvalidationRef, override bool, reviewed []int64) error {
+// not exactly the resolved set refuses it too — or, under
+// WithBatchReviewedCheckpoints, one that does not contain it. A nil reviewed
+// set is an internal caller's unbound override. Both refusals name the current
+// set.
+func bindCheckpointOverride(ctx context.Context, refs []CheckpointInvalidationRef, override bool, reviewed []int64) error {
 	ids := uniqueCheckpointIDs(refs)
 	if !override {
 		if len(ids) == 0 {
@@ -963,10 +965,43 @@ func bindCheckpointOverride(refs []CheckpointInvalidationRef, override bool, rev
 		}
 		return CheckpointImpactError{Err: ErrReconciliationOverrideRequired, CheckpointIDs: ids}
 	}
-	if reviewed != nil && !sameCheckpointIDSet(ids, reviewed) {
+	if reviewed == nil {
+		return nil
+	}
+	matches := sameCheckpointIDSet(ids, reviewed)
+	if batchReviewedCheckpoints(ctx) {
+		matches = checkpointIDSubset(ids, reviewed)
+	}
+	if !matches {
 		return CheckpointImpactError{Err: ErrReconciliationImpactStale, CheckpointIDs: ids}
 	}
 	return nil
+}
+
+type batchReviewedCheckpointsKey struct{}
+
+// WithBatchReviewedCheckpoints marks the writes made under ctx as rows of one
+// reviewed batch (#305): an import batch commit's owner reviewed the union of
+// the checkpoints its pending rows would invalidate, and each row commits in
+// its own transaction. A row's override is then bound to a set contained in
+// the reviewed one rather than equal to it; a checkpoint outside it still
+// refuses that row with ErrReconciliationImpactStale.
+func WithBatchReviewedCheckpoints(ctx context.Context) context.Context {
+	return context.WithValue(ctx, batchReviewedCheckpointsKey{}, true)
+}
+
+func batchReviewedCheckpoints(ctx context.Context) bool {
+	batch, _ := ctx.Value(batchReviewedCheckpointsKey{}).(bool)
+	return batch
+}
+
+func checkpointIDSubset(sortedUnique []int64, reviewed []int64) bool {
+	for _, id := range sortedUnique {
+		if !slices.Contains(reviewed, id) {
+			return false
+		}
+	}
+	return true
 }
 
 func uniqueCheckpointIDs(refs []CheckpointInvalidationRef) []int64 {

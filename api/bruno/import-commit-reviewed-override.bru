@@ -1,0 +1,35 @@
+meta {
+  name: Commit Import Batch - Reviewed Override
+  type: http
+  seq: 38
+}
+
+docs {
+  POST /imports/{id}/preview-commit returns reconciliation_checkpoints: the
+  union of the active checkpoints the batch's pending rows would invalidate.
+  A commit that overrides the reconciliation guard names those ids in
+  reconciliation_override_checkpoint_ids (required with the override, #305).
+  Each row commits in its own transaction and only if the checkpoints it would
+  invalidate are contained in the reviewed set. A row reaching any other
+  checkpoint (a statement finished after the preview) is held pending with
+  nothing invalidated and listed in reconciliation_stale_row_ids; preview and
+  commit again to review it. An override without the set answers 400
+  VALIDATION_FAILED.
+}
+
+post {
+  url: {{baseUrl}}/api/v1/imports/{{importBatchId}}/commit
+  body: json
+  auth: none
+}
+
+headers {
+  X-CSRF-Token: {{csrfToken}}
+}
+
+body:json {
+  {
+    "reconciliation_override": true,
+    "reconciliation_override_checkpoint_ids": [{{reviewedCheckpointId}}]
+  }
+}

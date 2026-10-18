@@ -142,8 +142,8 @@ below is execution order, not a chain of hard dependencies.
    #291/#292 (P2) and #293/#294/#295 (P3) are fixed.
    The ledger/reconciliation audit #270 is complete
    ([evidence](reviews/ledger-reconciliation-audit-2026-10-17.md)); its
-   finding #296 (P2) and its follow-up #304 (P2) are fixed; #297/#298 and
-   #305 (P3) are open.
+   finding #296 (P2) and its follow-ups #304 (P2) and #305 (P3) are fixed;
+   #297/#298 (P3) are open.
    The import audit #271 is complete
    ([evidence](reviews/import-audit-2026-10-17.md)); all its findings,
    #299 (P2) and #300–#303 (P3), are fixed.

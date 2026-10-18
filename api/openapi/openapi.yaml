@@ -1079,6 +1079,8 @@ components:
       $ref: "./components/schemas/transactions.yaml#/PlaceTransactionRequest"
     ReconciliationImpactResponse:
       $ref: "./components/schemas/transactions.yaml#/ReconciliationImpactResponse"
+    ReconciliationCheckpointImpact:
+      $ref: "./components/schemas/transactions.yaml#/ReconciliationCheckpointImpact"
     DeletedTransactionResponse:
       $ref: "./components/schemas/transactions.yaml#/DeletedTransactionResponse"
     DeletedTransactionsResponse:

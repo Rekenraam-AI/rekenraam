@@ -122,7 +122,9 @@ type patchImportBatchRequest struct {
 }
 
 type commitImportBatchRequest struct {
-	ReconciliationOverride bool `json:"reconciliation_override"`
+	// The override names the preview's reconciliation_checkpoints; each row
+	// commits only if its own set is contained in them (#305).
+	reconciliationOverrideFields
 	// GainImpactAcknowledgements echo preview-commit gain tokens per row (T-126).
 	GainImpactAcknowledgements []rowGainImpactAcknowledgementRequest `json:"gain_impact_acknowledgements,omitempty"`
 }
@@ -152,13 +154,19 @@ type commitImportBatchResponse struct {
 	// ReconciliationHoldRowIDs would cross a reconciliation checkpoint and
 	// stay pending until a commit with reconciliation_override (#301).
 	ReconciliationHoldRowIDs []int64 `json:"reconciliation_hold_row_ids"`
+	// ReconciliationStaleRowIDs would invalidate a checkpoint the override
+	// did not name; they stay pending, with nothing invalidated, until
+	// another preview and commit (#305).
+	ReconciliationStaleRowIDs []int64 `json:"reconciliation_stale_row_ids"`
 }
 
 type previewCommitResponse struct {
 	IncludableCount      int                           `json:"includable_count"`
 	DuplicateCount       int                           `json:"duplicate_count"`
 	ReconciliationIssues []reconciliationIssueResponse `json:"reconciliation_issues"`
-	GainImpacts          []rowGainImpactResponse       `json:"gain_impacts"`
+	// ReconciliationCheckpoints is the union a commit's override names (#305).
+	ReconciliationCheckpoints []checkpointImpactResponse `json:"reconciliation_checkpoints"`
+	GainImpacts               []rowGainImpactResponse    `json:"gain_impacts"`
 }
 
 type rowGainImpactResponse struct {
@@ -717,7 +725,10 @@ func previewCommitImportBatch(logger *slog.Logger, authService *app.AuthService,
 			IncludableCount:      result.IncludableCount,
 			DuplicateCount:       result.DuplicateCount,
 			ReconciliationIssues: issues,
-			GainImpacts:          gainImpacts,
+			ReconciliationCheckpoints: toReconciliationImpactResponse(app.ReconciliationImpact{
+				AffectedCheckpoints: result.ReconciliationCheckpoints,
+			}).AffectedCheckpoints,
+			GainImpacts: gainImpacts,
 		})
 	}
 }
@@ -745,12 +756,11 @@ func commitImportBatch(logger *slog.Logger, authService *app.AuthService, import
 			gainAcknowledgements[acknowledgement.RowID] = acknowledgement.Acknowledgement
 		}
 		result, err := importService.CommitImportBatch(r.Context(), app.CommitImportBatchInput{
-			OwnerUserID:   owner.ID,
-			AuthSessionID: authenticatedSessionID(r),
-			RequestID:     RequestIDFromContext(r.Context()),
-			BatchID:       batchID,
-			// The batch has no checkpoint preview to bind to yet (#305).
-			ReconciliationOverride:     app.CheckpointOverride{Allowed: request.ReconciliationOverride},
+			OwnerUserID:                owner.ID,
+			AuthSessionID:              authenticatedSessionID(r),
+			RequestID:                  RequestIDFromContext(r.Context()),
+			BatchID:                    batchID,
+			ReconciliationOverride:     request.checkpointOverride(),
 			GainImpactAcknowledgements: gainAcknowledgements,
 		})
 		if err != nil {
@@ -770,6 +780,10 @@ func commitImportBatch(logger *slog.Logger, authService *app.AuthService, import
 		if reconciliationHoldRowIDs == nil {
 			reconciliationHoldRowIDs = []int64{}
 		}
+		reconciliationStaleRowIDs := result.ReconciliationStaleRowIDs
+		if reconciliationStaleRowIDs == nil {
+			reconciliationStaleRowIDs = []int64{}
+		}
 		writeJSON(w, http.StatusOK, commitImportBatchResponse{
 			BatchID:              result.BatchID,
 			Status:               result.Status,
@@ -780,7 +794,8 @@ func commitImportBatch(logger *slog.Logger, authService *app.AuthService, import
 			GainReviewRowIDs:     gainReviewRowIDs,
 			DividendReviewRowIDs: dividendReviewRowIDs,
 
-			ReconciliationHoldRowIDs: reconciliationHoldRowIDs,
+			ReconciliationHoldRowIDs:  reconciliationHoldRowIDs,
+			ReconciliationStaleRowIDs: reconciliationStaleRowIDs,
 		})
 	}))
 }

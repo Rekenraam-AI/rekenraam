@@ -105,6 +105,7 @@ func TestCSVInvestmentImportAPIReconciliationConflictLeavesBatchReviewable(t *te
 	var status string
 	require.NoError(t, database.QueryRow("SELECT status FROM import_batches WHERE id = ?", staged.Batch.ID).Scan(&status))
 	require.Equal(t, "previewing", status)
-	committed := commitImportBatchForSession(t, handler, f.sessionCookie, f.csrfToken, staged.Batch.ID, `{"reconciliation_override":true}`, http.StatusOK)
+	require.Len(t, preview.ReconciliationCheckpoints, 1)
+	committed := commitImportBatchForSession(t, handler, f.sessionCookie, f.csrfToken, staged.Batch.ID, reviewedImportOverrideBody(t, handler, f.sessionCookie, staged.Batch.ID), http.StatusOK)
 	require.Equal(t, 1, committed.CommittedCount)
 }

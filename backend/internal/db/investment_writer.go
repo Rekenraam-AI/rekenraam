@@ -231,7 +231,7 @@ func runInvestmentJournalsWithGuardTx[T any](ctx context.Context, database *sql.
 	}
 	// The override is bound to the set the owner reviewed (#304), as a
 	// generic ledger write's is (#296); both refusals name the current set.
-	if err := bindCheckpointOverride(refs, params[0].ReconciliationOverride, params[0].ReviewedCheckpointIDs); err != nil {
+	if err := bindCheckpointOverride(ctx, refs, params[0].ReconciliationOverride, params[0].ReviewedCheckpointIDs); err != nil {
 		return nil, zero, err
 	}
 	if len(refs) > 0 {

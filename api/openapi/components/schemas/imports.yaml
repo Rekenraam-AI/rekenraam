@@ -462,6 +462,19 @@ CommitImportBatchRequest:
   properties:
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      description: >-
+        Required with reconciliation_override=true (#305): the ids of the
+        preview-commit reconciliation_checkpoints the owner reviewed. Each
+        row commits in its own transaction and only if the checkpoints it
+        would invalidate are contained in this set; a row reaching any other
+        checkpoint is held pending, invalidating nothing, and listed in
+        reconciliation_stale_row_ids. An override without it is refused with
+        400 VALIDATION_FAILED.
+      type: array
+      items:
+        type: integer
+        format: int64
     gain_impact_acknowledgements:
       type: array
       description: >-
@@ -512,6 +525,7 @@ CommitImportBatchResponse:
     - gain_review_row_ids
     - dividend_review_row_ids
     - reconciliation_hold_row_ids
+    - reconciliation_stale_row_ids
   properties:
     batch_id:
       type: integer
@@ -546,6 +560,16 @@ CommitImportBatchResponse:
         checkpoint and reconciliation_override was not set. The batch stays
         partially_committed; commit again with the override to post them
         (#301).
+      items:
+        type: integer
+        format: int64
+    reconciliation_stale_row_ids:
+      type: array
+      description: >-
+        Rows held pending because they would invalidate a checkpoint that
+        reconciliation_override_checkpoint_ids did not name, such as a
+        statement finished after the preview (#305). Nothing was invalidated;
+        preview and commit again to review the current set.
       items:
         type: integer
         format: int64
@@ -626,6 +650,7 @@ PreviewCommitResponse:
     - includable_count
     - duplicate_count
     - reconciliation_issues
+    - reconciliation_checkpoints
     - gain_impacts
   properties:
     gain_impacts:
@@ -645,6 +670,15 @@ PreviewCommitResponse:
       type: array
       items:
         $ref: "../../openapi.yaml#/components/schemas/ImportReconciliationIssue"
+    reconciliation_checkpoints:
+      description: >-
+        The union of the active checkpoints the pending rows would
+        invalidate, once per checkpoint in id order (#305). A commit's
+        reconciliation_override_checkpoint_ids names these ids. entry_date is
+        one triggering row's date.
+      type: array
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/ReconciliationCheckpointImpact"
 ImportRowGainImpact:
   type: object
   required: [row_id, row_index, gain_impact]

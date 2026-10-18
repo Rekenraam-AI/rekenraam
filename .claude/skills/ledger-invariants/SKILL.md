@@ -107,7 +107,10 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   binding the service's own read (T-94) does not bind what the owner saw.
   Investment and import writes carry it as `app.CheckpointOverride` (#304); a
   new browser request type embeds `reconciliationOverrideFields`, and a preview
-  uses `unboundOverride`, never the request's set.
+  uses `unboundOverride`, never the request's set. A command that writes many
+  rows in separate transactions (the import batch commit, #305) reviews the
+  union and runs under `db.WithBatchReviewedCheckpoints`, so each row's set
+  must be *contained* in it; a row outside it is held, never failed or posted.
 - Every new mutation path over postings must be wired through the guard — see
   how `app/transactions_write.go` and `app/reconciliation.go` do it. Forgetting
   the guard on a new path is a severity-1 bug.

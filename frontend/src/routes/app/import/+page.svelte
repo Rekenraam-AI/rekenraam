@@ -50,6 +50,7 @@
     previewTrading212SaleCorrectionReconciliation,
     previewTrading212BuyCorrectionReconciliation,
     type ReconciliationImpactResponse,
+    type PreviewCommitResponse,
     discardImportBatch,
     parseNormalized,
     parseResolution,
@@ -153,6 +154,14 @@
   let commitError = $state<unknown>(undefined);
   let commitResult = $state<CommitImportBatchResponse | null>(null);
   let reconciliationOverride = $state(false);
+  // The batch override names the checkpoints shown beside it: the preview's
+  // union over the pending rows. A row reaching any other checkpoint is held
+  // at commit, not posted (#305).
+  type BatchCheckpoint = PreviewCommitResponse['reconciliation_checkpoints'][number];
+  let reviewedCheckpoints = $state<BatchCheckpoint[] | null>(null);
+  let reviewedCheckpointsChanged = $state(false);
+  let reviewedCheckpointsPending = $state(false);
+  let reviewedCheckpointsError = $state<unknown>(undefined);
   let sourceCorrectionRowID = $state<number | null>(null);
   let splitLinkRowID = $state<number | null>(null);
   let shortLinkRowID = $state<number | null>(null);
@@ -692,21 +701,16 @@
     commitError = undefined;
 
     try {
-      // First patch resolutions to the server. A resumed batch patches only
-      // the rows the owner changed, so rows reviewed elsewhere (dividends)
-      // keep their stored review.
-      const resumed = previewData.batch.status !== 'previewing';
-      const patches = previewData.rows
-        .filter((row) => rowReviewable(row) && (!resumed || rowPatchChanged(row)))
-        .map((row) => ({
-          row_id: row.id,
-          dedupe_status: getResolution(row.id).exclude ? 'excluded' : row.dedupe_status,
-          resolution: getResolution(row.id)
-        }));
-
-      if (patches.length > 0) await patchImportBatch(batchId, patches, csrfToken);
-
-      if (await reviewImportGains(false)) return;
+      await savePendingResolutions();
+      const preview = await previewCommitImportBatch(batchId);
+      if (reconciliationOverride && !sameCheckpoints(reviewedCheckpoints, preview.reconciliation_checkpoints)) {
+        // The owner has not seen this set yet: show it and wait for another
+        // click rather than invalidate checkpoints nobody reviewed.
+        reviewedCheckpointsChanged = reviewedCheckpoints !== null;
+        reviewedCheckpoints = preview.reconciliation_checkpoints;
+        return;
+      }
+      if (await reviewImportGains(false, preview)) return;
       await finishCommit([]);
     } catch (err) {
       commitError = err;
@@ -715,11 +719,52 @@
     }
   }
 
+  // Patch resolutions to the server before anything is previewed or
+  // committed. A resumed batch patches only the rows the owner changed, so
+  // rows reviewed elsewhere (dividends) keep their stored review.
+  async function savePendingResolutions() {
+    if (!batchId || !previewData) return;
+    const resumed = previewData.batch.status !== 'previewing';
+    const patches = previewData.rows
+      .filter((row) => rowReviewable(row) && (!resumed || rowPatchChanged(row)))
+      .map((row) => ({
+        row_id: row.id,
+        dedupe_status: getResolution(row.id).exclude ? 'excluded' : row.dedupe_status,
+        resolution: getResolution(row.id)
+      }));
+    if (patches.length > 0) await patchImportBatch(batchId, patches, csrfToken);
+  }
+
+  function sameCheckpoints(reviewed: readonly BatchCheckpoint[] | null, current: readonly BatchCheckpoint[]): boolean {
+    if (!reviewed || reviewed.length !== current.length) return false;
+    const ids = new Set(reviewed.map((checkpoint) => checkpoint.checkpoint_id));
+    return current.every((checkpoint) => ids.has(checkpoint.checkpoint_id));
+  }
+
+  // Checking the override saves the resolutions and lists the checkpoints they
+  // reach. Commit saves and compares again, so an edit made since is shown
+  // before anything is invalidated.
+  async function handleReconciliationOverrideChange() {
+    reviewedCheckpoints = null;
+    reviewedCheckpointsChanged = false;
+    reviewedCheckpointsError = undefined;
+    if (!reconciliationOverride || !batchId) return;
+    reviewedCheckpointsPending = true;
+    try {
+      await savePendingResolutions();
+      reviewedCheckpoints = (await previewCommitImportBatch(batchId)).reconciliation_checkpoints;
+    } catch (err) {
+      reviewedCheckpointsError = err;
+    } finally {
+      reviewedCheckpointsPending = false;
+    }
+  }
+
   // Preview gain changes from imported acquisitions against the current
   // ledger; any change goes to the user before the batch commits.
-  async function reviewImportGains(refreshed: boolean): Promise<boolean> {
+  async function reviewImportGains(refreshed: boolean, current?: PreviewCommitResponse): Promise<boolean> {
     if (!batchId) return false;
-    const preview = await previewCommitImportBatch(batchId);
+    const preview = current ?? await previewCommitImportBatch(batchId);
     if (preview.gain_impacts.length === 0) return false;
     gainReview = {
       rows: preview.gain_impacts.flatMap((row) => gainImpactRows(row.gain_impact.changes, gainCurrency, getLocale())
@@ -751,10 +796,19 @@
     if (!batchId) return;
     const result = await commitImportBatch(
       batchId,
-      { reconciliation_override: reconciliationOverride, gain_impact_acknowledgements: acknowledgements },
+      {
+        ...(reconciliationOverride && reviewedCheckpoints
+          ? { reconciliation_override: true, reconciliation_override_checkpoint_ids: reviewedCheckpoints.map((checkpoint) => checkpoint.checkpoint_id) }
+          : {}),
+        gain_impact_acknowledgements: acknowledgements
+      },
       csrfToken
     );
     commitResult = result;
+    // An override covers one reviewed commit; held rows are reviewed afresh.
+    reconciliationOverride = false;
+    reviewedCheckpoints = null;
+    reviewedCheckpointsChanged = false;
     await invalidateInvestmentReads(queryClient);
     step = 'result';
   }
@@ -1874,11 +1928,41 @@
           <input
             type="checkbox"
             bind:checked={reconciliationOverride}
+            onchange={() => void handleReconciliationOverrideChange()}
+            aria-describedby="commit-reconciliation-checkpoints"
             class="h-4 w-4 rounded border-border focus:ring-foreground"
           />
           <span class="font-medium text-foreground">{m.import_commit_reconciliation_override()}</span>
         </label>
         <p class="text-sm text-muted">{m.import_commit_reconciliation_override_hint()}</p>
+        <div id="commit-reconciliation-checkpoints" aria-live="polite" class="space-y-2 text-sm">
+          {#if reconciliationOverride}
+            {#if reviewedCheckpointsPending}
+              <p class="text-muted">{m.import_commit_checkpoints_loading()}</p>
+            {:else if reviewedCheckpoints}
+              {#if reviewedCheckpointsChanged}
+                <p class="text-warning">{m.import_commit_checkpoints_changed()}</p>
+              {/if}
+              {#if reviewedCheckpoints.length === 0}
+                <p class="text-muted">{m.import_commit_checkpoints_none()}</p>
+              {:else}
+                <p class="font-medium text-foreground">{m.import_commit_checkpoints_title()}</p>
+                <ul class="divide-y divide-border rounded-(--radius-control) border border-border">
+                  {#each reviewedCheckpoints as checkpoint (checkpoint.checkpoint_id)}
+                    <li class="px-3 py-2 text-foreground">
+                      {m.transactions_reconciliation_checkpoint_label({
+                        account: checkpoint.account_label,
+                        commodity: checkpoint.commodity_code,
+                        date: checkpoint.statement_date
+                      })}
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            {/if}
+            <APIFormError error={reviewedCheckpointsError} id="commit-checkpoints-error" />
+          {/if}
+        </div>
 
         <APIFormError error={commitError} id="commit-error" />
 
@@ -1887,7 +1971,7 @@
             type="button"
             class="inline-flex items-center gap-2 rounded-(--radius-control) bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             onclick={handleCommit}
-            disabled={committing || sourceCorrectionPending}
+            disabled={committing || sourceCorrectionPending || reviewedCheckpointsPending}
           >
             {committing ? m.import_commit_pending() : m.import_commit_button()}
           </button>
@@ -1958,7 +2042,10 @@
         {#if commitResult.reconciliation_hold_row_ids.length > 0}
           <p class="text-warning">{m.import_result_reconciliation_held({ count: commitResult.reconciliation_hold_row_ids.length })}</p>
         {/if}
-        {#if commitResult.failed_count > 0 || commitResult.reconciliation_hold_row_ids.length > 0}
+        {#if commitResult.reconciliation_stale_row_ids.length > 0}
+          <p class="text-warning">{m.import_result_reconciliation_stale({ count: commitResult.reconciliation_stale_row_ids.length })}</p>
+        {/if}
+        {#if commitResult.failed_count > 0 || commitResult.reconciliation_hold_row_ids.length > 0 || commitResult.reconciliation_stale_row_ids.length > 0}
           <button type="button" disabled={reviewChangedPending} class="inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-2 disabled:opacity-60" onclick={() => void handleReviewRemainingRows()}>
             {m.import_result_review_remaining()}
           </button>

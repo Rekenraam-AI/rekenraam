@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 
@@ -349,6 +350,80 @@ func parsePositiveDecimalAmount(raw string) (int64, int, error) {
 		return 0, 0, fmt.Errorf("amount out of int64 range: %s", coeff)
 	}
 	return value.Int64(), scale, nil
+}
+
+// previewTrading212OrderFillCheckpoints lists the checkpoints a pending order
+// fill would invalidate, for the batch's reviewed set (#305). A fill whose
+// instrument and holding exist runs the same trade preview a manual buy or
+// sell does. Otherwise (a new instrument, or a sell whose lots an earlier row
+// of the batch supplies) it names every active checkpoint after the fill on
+// the cash account and the holding, which contains what the commit can reach:
+// a row the preview understated is held for another review, never posted.
+// handled is false for a row that is not a postable order fill.
+func (s *ImportService) previewTrading212OrderFillCheckpoints(ctx context.Context, row db.ImportStagedRowRecord, batch db.ImportBatchRecord, ownerUserID int64) (refs []db.CheckpointInvalidationRef, handled bool, err error) {
+	if s.investmentService == nil || s.connectionService == nil || !batch.ConnectionID.Valid {
+		return nil, false, nil
+	}
+	var raw map[string]string
+	if json.Unmarshal([]byte(row.RawJSON), &raw) != nil || raw[rawKeyKind] != trading212RawKindOrderFill {
+		return nil, false, nil
+	}
+	side := strings.ToUpper(strings.TrimSpace(raw[rawKeySide]))
+	if side != "BUY" && side != "SELL" {
+		return nil, false, nil
+	}
+	conn, err := s.connectionService.GetImportConnection(ctx, batch.ConnectionID.Int64)
+	if err != nil || conn.CashAccountID == nil {
+		return nil, false, nil
+	}
+	var normalized struct {
+		Date          string `json:"date"`
+		CommodityHint string `json:"commodity_hint"`
+		ExternalRef   string `json:"external_ref"`
+	}
+	if json.Unmarshal([]byte(row.NormalizedJSON), &normalized) != nil || normalized.Date == "" || normalized.CommodityHint == "" {
+		return nil, false, nil
+	}
+	cashCurrency, err := s.accountRepository.CurrentCurrencyByCode(ctx, BookID, normalized.CommodityHint)
+	if err != nil {
+		return nil, false, nil
+	}
+	legs := []db.CheckpointDelta{{
+		AccountID: *conn.CashAccountID, CommodityID: cashCurrency.ID, EntryDate: normalized.Date,
+		AccountDaySequence: math.MaxInt64, QuantityValue: exact.New(1),
+	}}
+	_, commodityID, found, err := s.investmentService.FindInstrumentForImport(ctx, raw[rawKeyISIN], raw[rawKeyTicker])
+	if err != nil {
+		return nil, false, err
+	}
+	if found {
+		holdingAccountID, found, err := s.connectionService.HoldingAccountForCommodity(ctx, batch.ConnectionID.Int64, commodityID)
+		if err != nil {
+			return nil, false, err
+		}
+		if found {
+			metadataJSON := trading212ImportMetadata(batch.ConnectionID.Int64, "order_fill", normalized.ExternalRef)
+			if _, tradeInput, ok := trading212OrderFillTradeInput(raw, normalized.Date, normalized.ExternalRef, metadataJSON,
+				commodityID, holdingAccountID, *conn.CashAccountID, cashCurrency.ID, CommitImportBatchInput{OwnerUserID: ownerUserID}); ok {
+				kind := InvestmentImpactBuy
+				if side == "SELL" {
+					kind = InvestmentImpactSell
+				}
+				if impact, err := s.investmentService.TradeReconciliationImpact(ctx, kind, tradeInput); err == nil {
+					return impact.AffectedCheckpoints, true, nil
+				}
+			}
+			legs = append(legs, db.CheckpointDelta{
+				AccountID: holdingAccountID, CommodityID: commodityID, EntryDate: normalized.Date,
+				AccountDaySequence: math.MaxInt64, QuantityValue: exact.New(1),
+			})
+		}
+	}
+	refs, err = s.transactionService.repository.NetCheckpointInvalidationRefs(ctx, BookID, legs)
+	if err != nil {
+		return nil, false, err
+	}
+	return refs, true, nil
 }
 
 // previewTrading212BuyGainImpact runs a pending imported acquisition through

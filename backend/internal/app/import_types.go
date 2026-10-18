@@ -324,10 +324,13 @@ type RowResolutionPatch struct {
 }
 
 type CommitImportBatchInput struct {
-	OwnerUserID            int64
-	AuthSessionID          int64
-	RequestID              string
-	BatchID                int64
+	OwnerUserID   int64
+	AuthSessionID int64
+	RequestID     string
+	BatchID       int64
+	// ReconciliationOverride, when bound, carries the preview's
+	// ReconciliationCheckpoints: each row commits only if the set it would
+	// invalidate is contained in that reviewed set (#305).
 	ReconciliationOverride CheckpointOverride
 	// GainImpactAcknowledgements maps a staged row ID to the preview token for
 	// the committed-disposal gain changes its imported acquisition makes (T-126).
@@ -350,6 +353,11 @@ type CommitImportBatchResult struct {
 	// stay pending with commit_error "reconciliation override required" until
 	// a commit with ReconciliationOverride (#301).
 	ReconciliationHoldRowIDs []int64
+	// ReconciliationStaleRowIDs would invalidate a checkpoint outside the
+	// reviewed set the override names (#305). Nothing was invalidated; they
+	// stay pending with commit_error "reconciliation impact changed after
+	// review" until another preview and commit.
+	ReconciliationStaleRowIDs []int64
 }
 
 type PreviewCommitInput struct {
@@ -361,6 +369,10 @@ type PreviewCommitResult struct {
 	IncludableCount      int
 	DuplicateCount       int
 	ReconciliationIssues []ReconciliationIssuePreview
+	// ReconciliationCheckpoints is the union of the checkpoints the pending
+	// rows would invalidate, one entry per checkpoint in ID order. A commit's
+	// override names these IDs (#305).
+	ReconciliationCheckpoints []db.CheckpointInvalidationRef
 	// GainImpacts lists each pending imported acquisition whose rolled-back
 	// writer replay changes committed disposal gains against the current
 	// ledger. Rows commit chronologically, so an earlier row in the same run

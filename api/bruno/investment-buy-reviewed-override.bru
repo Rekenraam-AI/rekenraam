@@ -11,8 +11,9 @@ docs {
   (reconciliation_override_checkpoint_ids, required with the override, #304).
   A different set answers 409 RECONCILIATION_IMPACT_STALE with the current set
   in error.checkpoint_ids, and nothing is invalidated; an override without the
-  set answers 400 VALIDATION_FAILED. The import batch commit is the one
-  exception until it has a preview (#305).
+  set answers 400 VALIDATION_FAILED. The import batch commit names the
+  preview-commit reconciliation_checkpoints instead (import-commit-reviewed-
+  override.bru, #305).
 }
 
 post {

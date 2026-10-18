@@ -404,7 +404,7 @@ func TestImportAuditRejectedConventionRowsAreFlaggedAndNeverCommitted(t *testing
 		// The batch stays open for its failed rows (#301), but a recommit,
 		// even after the owner re-includes them, refuses them again.
 		patchImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, resolutionPatchBody(t, account.ID, eur, groceries.ID, rejectedRowIDs(started.Rows, tc.rejected)...), http.StatusNoContent)
-		again := commitImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, `{"reconciliation_override":true}`, http.StatusOK)
+		again := commitImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, reviewedImportOverrideBody(t, handler, cookie, started.Batch.ID), http.StatusOK)
 		assert.Equal(t, "partially_committed", again.Status, tc.name)
 		assert.Equal(t, len(tc.rejected), again.FailedCount, tc.name)
 		assert.Equal(t, auditRat(t, tc.balance), c.balance(account.ID, eur, "2026-12-31"), tc.name)
@@ -448,7 +448,6 @@ func TestImportAuditHeldAndFailedRowsResumeInTheirBatch(t *testing.T) {
 		t.Helper()
 		patchImportBatchForSession(t, handler, cookie, csrf, batchID, resolutionPatchBody(t, checking.ID, eur, groceries.ID, rowIDs...), want)
 	}
-	const override = `{"reconciliation_override":true}`
 
 	// 1. Row 0 (06-01, -10.00) crosses the checkpoint; row 1 (06-20, -20.00)
 	// does not. Without the override row 0 is held, not skipped.
@@ -477,15 +476,15 @@ func TestImportAuditHeldAndFailedRowsResumeInTheirBatch(t *testing.T) {
 	assert.Equal(t, []int64{onlyRows[0].ID}, none.ReconciliationHoldRowIDs)
 	assert.Equal(t, auditRat(t, "-24.50"), c.balance(checking.ID, eur, "2026-12-31"))
 
-	retry := commitImportBatchForSession(t, handler, cookie, csrf, batchID, override, http.StatusOK)
+	retry := commitImportBatchForSession(t, handler, cookie, csrf, batchID, reviewedImportOverrideBody(t, handler, cookie, batchID), http.StatusOK)
 	assert.Equal(t, "committed", retry.Status)
 	assert.Equal(t, 2, retry.CommittedCount)
 	assert.Empty(t, retry.ReconciliationHoldRowIDs)
 	assert.Equal(t, auditRat(t, "-34.50"), c.balance(checking.ID, eur, "2026-12-31"), "-24.50 - 10.00, once")
-	commitImportBatchForSession(t, handler, cookie, csrf, batchID, override, http.StatusConflict)
+	commitImportBatchForSession(t, handler, cookie, csrf, batchID, `{"reconciliation_override":true,"reconciliation_override_checkpoint_ids":[]}`, http.StatusConflict)
 	assert.Equal(t, auditRat(t, "-34.50"), c.balance(checking.ID, eur, "2026-12-31"))
 
-	resumed := commitImportBatchForSession(t, handler, cookie, csrf, onlyBatchID, override, http.StatusOK)
+	resumed := commitImportBatchForSession(t, handler, cookie, csrf, onlyBatchID, reviewedImportOverrideBody(t, handler, cookie, onlyBatchID), http.StatusOK)
 	assert.Equal(t, "committed", resumed.Status)
 	assert.Equal(t, 1, resumed.CommittedCount)
 	assert.Equal(t, auditRat(t, "-41.50"), c.balance(checking.ID, eur, "2026-12-31"), "-34.50 - 7.00")
@@ -639,4 +638,91 @@ func TestImportAuditCSVWithoutDateLayoutStoresTheDateLayoutWarning(t *testing.T)
 
 	reloaded := getImportBatchForSession(t, handler, cookie, started.Batch.ID, "?limit=100", http.StatusOK)
 	assert.Equal(t, started.Warnings, reloaded.Warnings)
+}
+
+// TestImportBatchOverrideIsBoundToTheReviewedCheckpointUnion is the #305
+// regression. The owner reviews the batch preview's union of checkpoints and
+// commits with an override naming it. A statement finished after the review
+// grows one row's set from [A] to [A, B]: that row is held with nothing
+// invalidated and B stays active, while a row whose set ([C]) is a proper
+// subset of the reviewed union, and a row reaching no checkpoint, commit.
+func TestImportBatchOverrideIsBoundToTheReviewedCheckpointUnion(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	cookie, csrf, eur, checking, groceries := bootstrapImportAPITest(t, handler)
+	c := ledgerAuditClient{t: t, handler: handler, cookie: cookie, csrf: csrf}
+	savings := createLedgerAccount(t, handler, cookie, csrf, "Savings", "asset", "savings", eur, 2)
+	wallet := createLedgerAccount(t, handler, cookie, csrf, "Wallet", "asset", "cash", eur, 2)
+
+	reconcile := func(accountID int64, date string) int64 {
+		t.Helper()
+		seed := createTransactionForSession(t, handler, cookie, csrf,
+			balancedBody(date, posting(accountID, -100, 2, eur), posting(groceries.ID, 100, 2, eur)), http.StatusCreated)
+		reconcilePostingForSession(t, handler, cookie, csrf, accountID, eur, seed.JournalEntries[0].Postings[0], date)
+		require.Len(t, c.checkpoints(accountID), 1)
+		for id := range c.checkpoints(accountID) {
+			return id
+		}
+		return 0
+	}
+	checkpointA := reconcile(checking.ID, "2026-06-07")
+	checkpointC := reconcile(wallet.ID, "2026-06-07")
+
+	started := uploadImportForAudit(t, c, "bound.qif", []byte(
+		qifRow("2026-06-01", "-10.00", "Transfer")+ // checking → savings: [A], then [A, B]
+			qifRow("2026-06-02", "-20.00", "Wallet")+ // wallet: [C]
+			qifRow("2026-07-20", "-30.00", "Later")), nil) // checking, after A: none
+	rows := allImportRowsForAudit(t, c, started.Batch.ID)
+	require.Len(t, rows, 3)
+	patchImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, resolutionPatchBody(t, checking.ID, eur, savings.ID, rows[0].ID), http.StatusNoContent)
+	patchImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, resolutionPatchBody(t, wallet.ID, eur, groceries.ID, rows[1].ID), http.StatusNoContent)
+	patchImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, resolutionPatchBody(t, checking.ID, eur, groceries.ID, rows[2].ID), http.StatusNoContent)
+
+	// The preview lists the union, labelled for the owner.
+	preview := previewCommitImportBatchForSession(t, handler, cookie, started.Batch.ID, http.StatusOK)
+	var union []int64
+	for _, checkpoint := range preview.ReconciliationCheckpoints {
+		union = append(union, checkpoint.CheckpointID)
+		assert.Equal(t, "2026-06-07", checkpoint.StatementDate)
+		assert.NotEmpty(t, checkpoint.AccountLabel)
+	}
+	assert.ElementsMatch(t, []int64{checkpointA, checkpointC}, union)
+	reviewed := reviewedImportOverrideBody(t, handler, cookie, started.Batch.ID)
+
+	// An unbound override is refused before any row is touched.
+	commitImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, `{"reconciliation_override":true}`, http.StatusBadRequest)
+
+	// Savings finishes a statement after the review: row 0 would now also
+	// invalidate B.
+	checkpointB := reconcile(savings.ID, "2026-06-07")
+
+	committed := commitImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, reviewed, http.StatusOK)
+	assert.Equal(t, "partially_committed", committed.Status)
+	assert.Equal(t, 2, committed.CommittedCount)
+	assert.Equal(t, []int64{rows[0].ID}, committed.ReconciliationStaleRowIDs)
+	assert.Empty(t, committed.ReconciliationHoldRowIDs)
+
+	after := allImportRowsForAudit(t, c, started.Batch.ID)
+	assert.Equal(t, "pending", after[0].CommitStatus)
+	assert.Equal(t, "reconciliation impact changed after review", after[0].CommitError)
+	assert.Equal(t, "active", c.checkpoints(savings.ID)[checkpointB].Status, "B was never reviewed")
+	assert.Equal(t, "active", c.checkpoints(checking.ID)[checkpointA].Status, "the held row invalidated nothing")
+	assert.Equal(t, "invalidated", c.checkpoints(wallet.ID)[checkpointC].Status, "a subset of the union commits")
+	// Gross: each account moved by exactly the rows that committed.
+	assert.Equal(t, auditRat(t, "-31.00"), c.balance(checking.ID, eur, "2026-12-31"), "-1.00 - 30.00; row 0 not posted")
+	assert.Equal(t, auditRat(t, "-1.00"), c.balance(savings.ID, eur, "2026-12-31"))
+	assert.Equal(t, auditRat(t, "-21.00"), c.balance(wallet.ID, eur, "2026-12-31"), "-1.00 - 20.00")
+
+	// A fresh preview shows the current set; reviewing it commits the row once.
+	again := previewCommitImportBatchForSession(t, handler, cookie, started.Batch.ID, http.StatusOK)
+	var current []int64
+	for _, checkpoint := range again.ReconciliationCheckpoints {
+		current = append(current, checkpoint.CheckpointID)
+	}
+	assert.ElementsMatch(t, []int64{checkpointA, checkpointB}, current)
+	resumed := commitImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, reviewedImportOverrideBody(t, handler, cookie, started.Batch.ID), http.StatusOK)
+	assert.Equal(t, "committed", resumed.Status)
+	assert.Empty(t, resumed.ReconciliationStaleRowIDs)
+	assert.Equal(t, auditRat(t, "-41.00"), c.balance(checking.ID, eur, "2026-12-31"))
+	assert.Equal(t, auditRat(t, "9.00"), c.balance(savings.ID, eur, "2026-12-31"))
 }

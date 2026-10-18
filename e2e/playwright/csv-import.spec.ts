@@ -1,5 +1,6 @@
 import { expect, test } from './support/fixtures';
 import { todayISO } from './support/dates';
+import { apiJSON } from './support/api';
 import { createCashAccount, readyForLedger } from './support/ledger';
 
 function todayDMY(): string {
@@ -123,4 +124,75 @@ test('a failed import row is fixed and committed from review remaining rows', as
   await page.getByRole('button', { name: 'Commit to ledger' }).click();
   await expect(page.getByText('2 transactions committed')).toBeVisible();
   await expect(page.getByText(/\d+ failed/)).toBeHidden();
+});
+
+// #305: the batch override names the checkpoints shown beside it. Checking it
+// lists the reconciliation the pending rows reach; the commit sends exactly
+// that set, and the row lands with the checkpoint invalidated.
+test('the import override lists the checkpoints it will invalidate and commits against them', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const suffix = Date.now();
+  const account = await apiJSON<{ id: number; name: string }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: `CSV reconciled ${suffix}`,
+    account_class: 'asset',
+    account_kind: 'checking',
+    default_commodity_id: currencyID,
+    allows_postings: true,
+    opened_on: '2021-01-01'
+  });
+  const categories = await apiJSON<{ categories: Array<{ id: number; code?: string; allows_postings: boolean }> }>(
+    page, 'GET', '/api/v1/categories');
+  const groceries = categories.categories.find((item) => item.code === 'expense_food_groceries' && item.allows_postings);
+  if (!groceries) throw new Error('seeded groceries category not found');
+  // Past-dated: the reports specs assert on today's totals in this shared book.
+  await apiJSON(page, 'POST', '/api/v1/transactions', csrfToken, {
+    transaction_date: '2021-05-06',
+    journal_entries: [{
+      entry_date: '2021-05-06',
+      postings: [
+        { account_id: account.id, quantity_value: '-1500', quantity_scale: 2, commodity_id: currencyID },
+        { account_id: groceries.id, quantity_value: '1500', quantity_scale: 2, commodity_id: currencyID }
+      ]
+    }]
+  });
+  await page.goto('/app/reconcile');
+  await page.getByLabel('Account').selectOption({ label: account.name });
+  await page.getByLabel('Statement closing date').fill('2021-05-31');
+  await page.getByLabel('Statement ending balance').fill('-15.00');
+  await page.getByRole('button', { name: 'Start reconciling' }).click();
+  await page.getByRole('checkbox').first().check();
+  await expect(page.getByText('Balanced')).toBeVisible();
+  await page.getByLabel('Reason').fill(`Import recon ${suffix}`);
+  await page.getByRole('button', { name: 'Finish reconciliation' }).click();
+  await expect(page.getByText('Reconciliation complete')).toBeVisible();
+  const checkpointsPath = `/api/v1/accounts/${account.id}/reconciliation-checkpoints`;
+  const before = await apiJSON<{ checkpoints: Array<{ id: number; status: string }> }>(page, 'GET', checkpointsPath);
+  const checkpointID = before.checkpoints.find((checkpoint) => checkpoint.status === 'active')!.id;
+
+  await page.goto('/app/import');
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'reconciled.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Transactiedatum;Notitie;Mutatie\n20/05/2021;Late receipt;-2,00\n')
+  });
+  await page.getByLabel('Mapping name').fill(`Reconciled ${suffix}`);
+  await page.getByRole('button', { name: 'Upload & preview' }).click();
+  await page.getByLabel('Target account').selectOption(String(account.id));
+  await page.getByLabel('Currency').selectOption(String(currencyID));
+  await page.getByLabel('Default category').selectOption({ index: 1 });
+  await page.getByRole('button', { name: 'Apply to all rows' }).click();
+
+  // Checking the override saves the resolutions and lists the set they reach.
+  await page.getByLabel('Override reconciliation guards').check();
+  const list = page.locator('#commit-reconciliation-checkpoints');
+  await expect(list).toContainText('This commit will invalidate these reconciliation checkpoints');
+  await expect(list).toContainText(account.name);
+  await expect(list).toContainText('2021-05-31');
+
+  const commitRequest = page.waitForRequest((request) => request.url().endsWith('/commit') && request.method() === 'POST');
+  await page.getByRole('button', { name: 'Commit to ledger' }).click();
+  expect((await commitRequest).postDataJSON().reconciliation_override_checkpoint_ids).toEqual([checkpointID]);
+  await expect(page.getByText('1 transactions committed')).toBeVisible();
+  const after = await apiJSON<{ checkpoints: Array<{ id: number; status: string }> }>(page, 'GET', checkpointsPath);
+  expect(after.checkpoints.find((checkpoint) => checkpoint.id === checkpointID)?.status).toBe('invalidated');
 });

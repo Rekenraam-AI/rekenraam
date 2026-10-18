@@ -29000,34 +29000,35 @@ export interface components {
         };
         ReconciliationImpactResponse: {
             /** @description Complete active checkpoint set the proposed operation would invalidate, including later checkpoints, once per checkpoint. Statement fields belong to each named checkpoint; entry_date names a triggering posting date. Empty when no reconciliation guard applies. Commit rechecks the set against current state; a preview is not an override. */
-            affected_checkpoints: {
-                /** Format: int64 */
-                checkpoint_id: number;
-                /** Format: int64 */
-                account_id: number;
-                /** @description Display label for the account (system_role, builtin_key, name, or code — first non-empty in that order). Localise system_role and builtin_key values client-side via Paraglide. */
-                account_label: string;
-                /** Format: int64 */
-                commodity_id: number;
-                /** @description ISO commodity code (e.g. "USD", "EUR", "AAPL"). */
-                commodity_code: string;
-                /**
-                 * Format: date
-                 * @description The reconciled-through date of this checkpoint.
-                 */
-                statement_date: string;
-                /**
-                 * Format: int64
-                 * @description Inclusive account-register lock boundary on statement_date. A posting on statement_date is inside the reconciled period when its account_day_sequence <= this value.
-                 */
-                statement_account_sequence: number;
-                /**
-                 * Format: date
-                 * @description The affected posting's entry date that falls within this checkpoint's reconciled period.
-                 */
-                entry_date: string;
-            }[];
+            affected_checkpoints: components["schemas"]["ReconciliationCheckpointImpact"][];
             gain_impact?: components["schemas"]["GainImpact"];
+        };
+        ReconciliationCheckpointImpact: {
+            /** Format: int64 */
+            checkpoint_id: number;
+            /** Format: int64 */
+            account_id: number;
+            /** @description Display label for the account (system_role, builtin_key, name, or code — first non-empty in that order). Localise system_role and builtin_key values client-side via Paraglide. */
+            account_label: string;
+            /** Format: int64 */
+            commodity_id: number;
+            /** @description ISO commodity code (e.g. "USD", "EUR", "AAPL"). */
+            commodity_code: string;
+            /**
+             * Format: date
+             * @description The reconciled-through date of this checkpoint.
+             */
+            statement_date: string;
+            /**
+             * Format: int64
+             * @description Inclusive account-register lock boundary on statement_date. A posting on statement_date is inside the reconciled period when its account_day_sequence <= this value.
+             */
+            statement_account_sequence: number;
+            /**
+             * Format: date
+             * @description The affected posting's entry date that falls within this checkpoint's reconciled period.
+             */
+            entry_date: string;
         };
         DeletedTransactionResponse: components["schemas"]["TransactionResponse"] & {
             /** @description Reason recorded at soft-delete time. */
@@ -29296,6 +29297,8 @@ export interface components {
         };
         CommitImportBatchRequest: {
             reconciliation_override?: boolean;
+            /** @description Required with reconciliation_override=true (#305): the ids of the preview-commit reconciliation_checkpoints the owner reviewed. Each row commits in its own transaction and only if the checkpoints it would invalidate are contained in this set; a row reaching any other checkpoint is held pending, invalidating nothing, and listed in reconciliation_stale_row_ids. An override without it is refused with 400 VALIDATION_FAILED. */
+            reconciliation_override_checkpoint_ids?: number[];
             /** @description One preview-commit gain_impacts acknowledgement per imported acquisition the user accepted (T-126). A row whose current change set is missing or differs is held pending and listed in gain_review_row_ids; it is never skipped. */
             gain_impact_acknowledgements?: components["schemas"]["ImportRowGainImpactAcknowledgement"][];
         };
@@ -29414,6 +29417,8 @@ export interface components {
             gain_review_row_ids: number[];
             /** @description Rows held pending because they would cross a reconciliation checkpoint and reconciliation_override was not set. The batch stays partially_committed; commit again with the override to post them (#301). */
             reconciliation_hold_row_ids: number[];
+            /** @description Rows held pending because they would invalidate a checkpoint that reconciliation_override_checkpoint_ids did not name, such as a statement finished after the preview (#305). Nothing was invalidated; preview and commit again to review the current set. */
+            reconciliation_stale_row_ids: number[];
         };
         ImportReconciliationIssue: {
             row_index: number;
@@ -29425,6 +29430,8 @@ export interface components {
             includable_count: number;
             duplicate_count: number;
             reconciliation_issues: components["schemas"]["ImportReconciliationIssue"][];
+            /** @description The union of the active checkpoints the pending rows would invalidate, once per checkpoint in id order (#305). A commit's reconciliation_override_checkpoint_ids names these ids. entry_date is one triggering row's date. */
+            reconciliation_checkpoints: components["schemas"]["ReconciliationCheckpointImpact"][];
         };
         ImportProfileResponse: {
             /** Format: int64 */

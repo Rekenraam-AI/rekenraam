@@ -220,7 +220,7 @@ func (r *TransactionRepository) PlaceTransaction(ctx context.Context, params Pla
 		if !crossesCheckpoint {
 			reached = nil
 		}
-		if err := bindCheckpointOverride(reached, params.ReconciliationOverride, params.ReviewedCheckpointIDs); err != nil {
+		if err := bindCheckpointOverride(ctx, reached, params.ReconciliationOverride, params.ReviewedCheckpointIDs); err != nil {
 			return TransactionRecord{}, err
 		}
 
