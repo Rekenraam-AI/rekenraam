@@ -95,15 +95,30 @@ func lotStateByID(t *testing.T, f *investmentsTestFixture, lotID int64) (quantit
 
 // requireHealthyUnresolvedBook checks that an unresolved book still replays
 // exactly and conserves quantity and proceeds: unknown is information, not damage.
+// requireHealthyUnresolvedBook asserts the whole run under #313's contract,
+// not selected checks: no check fails, replay equivalence passes, and the only
+// permitted gap is lot_reconciliation's unavailable basis coverage, with zero
+// findings. Unknown basis can never mask damage here because any finding in
+// any check fails the assertion.
 func requireHealthyUnresolvedBook(t *testing.T, f *investmentsTestFixture) {
 	t.Helper()
 	check := mustRunInvestmentSelfCheck(t, f)
-	require.Equal(t, SelfCheckPassed, resultFor(t, check, CheckInvestmentReplay).Status, resultFor(t, check, CheckInvestmentReplay).Summary)
-	require.Equal(t, SelfCheckPassed, resultFor(t, check, CheckInvestmentFoundation).Status, resultFor(t, check, CheckInvestmentFoundation).Summary)
-	lots := resultFor(t, check, CheckLotReconciliation)
-	require.NotContains(t, lots.Summary, "disposal allocation sets disagree")
-	require.NotContains(t, lots.Summary, "holdings disagree")
-	require.NotContains(t, lots.Summary, "disagree with their quantity events")
+	require.Len(t, check.Results, 13)
+	for _, result := range check.Results {
+		require.Zero(t, result.FindingCount, "%s: %s", result.CheckID, result.Summary)
+		switch result.CheckID {
+		case CheckAttachments:
+			require.Equal(t, SelfCheckNotApplicable, result.Status)
+		case CheckLotReconciliation:
+			require.Contains(t, []string{SelfCheckPassed, SelfCheckIncomplete}, result.Status, result.Summary)
+			require.Equal(t, result.Status == SelfCheckIncomplete, result.UnavailableCount > 0)
+		default:
+			require.Equal(t, SelfCheckPassed, result.Status, "%s: %s", result.CheckID, result.Summary)
+			require.Zero(t, result.UnavailableCount, result.CheckID)
+		}
+	}
+	require.Zero(t, check.FailedCheckCount)
+	require.Contains(t, []string{SelfCheckPassed, SelfCheckIncomplete}, check.Status)
 }
 
 func TestSaleOfMixedKnownAndUnknownLotsLeavesGainUnresolvedInEitherOrder(t *testing.T) {

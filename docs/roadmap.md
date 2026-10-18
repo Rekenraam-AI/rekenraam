@@ -156,9 +156,10 @@ below is execution order, not a chain of hard dependencies.
    is now disclosed as incomplete coverage rather than a failure. Its
    remaining acceptance is #277's independent bundle reconstruction; native
    restore with unchanged CSV re-export is verified.
-   Investment part 2 #273 has been executed
+   Investment part 2 #273 is complete
    ([evidence](reviews/investment-operations-2-audit-2026-10-18.md)); its
-   independent transfer/corporate-action/correction register and replay pass.
+   independent transfer/corporate-action/correction register and replay pass,
+   and every sequence ends in a whole-run self-check assertion.
    #307/#309/#310/#311/#312 are fixed. Acceptance disposition for #272/#273's
    "self-check clean" item under #313's contract: clean means **no failed
    check**. A book whose only gap is supported unknown basis reports

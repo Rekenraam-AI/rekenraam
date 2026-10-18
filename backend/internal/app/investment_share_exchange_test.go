@@ -200,9 +200,7 @@ func TestShareExchangeCarriesUnknownBasisAsUnknown(t *testing.T) {
 	assert.Equal(t, db.InvestmentBasisUnknown, knowledge)
 	assert.False(t, basis.Valid, "unknown basis is never a zero")
 	assert.Equal(t, "4", quantity)
-	run, err := selfCheckOver(t, f.database).RunSelfCheck(ctx, "manual")
-	require.NoError(t, err)
-	assert.Equal(t, SelfCheckPassed, resultFor(t, run, CheckInvestmentFoundation).Status)
+	requireHealthyUnresolvedBook(t, f)
 }
 
 func TestShareExchangeRefusalsWriteNothing(t *testing.T) {

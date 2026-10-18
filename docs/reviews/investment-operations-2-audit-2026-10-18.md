@@ -1,16 +1,18 @@
 # Investment operations, part 2 audit — 2026-10-18
 
-**Status:** [#273](https://github.com/sergeyfarin/rekenraam/issues/273) executed;
-closure remains blocked by [#308](https://github.com/sergeyfarin/rekenraam/issues/308).
-The operation/correction/backdating matrix and atomic refusal evidence are
-recorded below. Known-basis sequences pass replay equivalence and self-check;
-supported unresolved basis still makes `lot_reconciliation` fail, so the
-original clean-self-check acceptance remains unmet. Do not mark it complete
-by substituting a selected-check assertion for an overall passing run.
+**Status:** [#273](https://github.com/sergeyfarin/rekenraam/issues/273)
+**complete** (closure addendum below). The operation/correction/backdating
+matrix and atomic refusal evidence are recorded below. Every sequence now ends
+in a whole-run self-check assertion: known-basis books pass outright, and
+books holding supported unknown basis report no failed check, passing replay,
+and only `lot_reconciliation`'s unavailable coverage under
+[#313](https://github.com/sergeyfarin/rekenraam/issues/313)'s incomplete
+outcome. The body below records the audit as executed, when that acceptance
+was still blocked.
 
-Three small findings are fixed: #307 documentation, #309 exact source-number
-comparison, and #310 share-exchange evidence handling. #311 remains an open
-P2 browser source-metadata defect. This is part of #260, not a release or
+All findings are fixed: #307 documentation, #309 exact source-number
+comparison, #310 share-exchange evidence handling, #311 browser source
+metadata (with sibling #312). This is part of #260, not a release or
 tax-policy certification.
 
 ## Baseline and evidence boundaries
@@ -147,7 +149,7 @@ every possible malformed JSON/field combination has been enumerated.
 | Spin-off/merger comparator decoded metadata numbers as floats | P3 #309; `TestCorporateActionCorrectionDistinguishesExactSourceNumbers` failed on both real previews: `9007199254740992`→`9007199254740993` incorrectly called unchanged | Fixed `f9be0019`: reuse exact-number provenance comparison. Both corrected declarations survive exactly; quantities/basis/cash and replay remain correct |
 | Share-exchange correction accepted unchanged supplied evidence and lost omitted evidence | P3 #310; new real-service regression first accepted reordered identical JSON, then (after no-op guard) returned `{}` instead of the original declaration on a genuine ratio correction | Fixed `f9be0019`: pin source in the operation read, inherit when omitted, compare effective exact evidence. Preview/commit no-op writes nothing; genuine ratio correction retains digits and passes self-check |
 | Browser correction silently rounds unedited source metadata | P2 #311; real phone spin-off probe seeded raw `9007199254740993`, changed only 10%→20%, then read raw successor response with `9007199254740992`. Desired-behavior assertion failed after a successful commit | **Open confirmed defect.** Original history remains; no incorrect quantity/basis/cash total confirmed. Merger uses the same parsed-object spread and requires the same sweep; share-exchange source reconstruction also needs assessment. Not fixed by the server comparator |
-| Overall self-check is not clean for supported unknown basis | Existing documented diagnostic, no newly asserted corruption severity; #266 HTTP consumer reports exactly one failed `lot_reconciliation` finding, every other applicable check passes, register unchanged | **Acceptance blocker #308**, coordinated with #277. Known-basis register is all green; unknown transfer/non-sale tests verify foundation/replay/conservation while retaining the explicit unknown diagnostic |
+| Overall self-check is not clean for supported unknown basis | Existing documented diagnostic, no newly asserted corruption severity; #266 HTTP consumer reports exactly one failed `lot_reconciliation` finding, every other applicable check passes, register unchanged | **Resolved by #313** (after the #308 audit): unknown basis is `incomplete` coverage, not a failure. Whole-run assertions now cover every sequence — see the closure addendum |
 
 The [browser probe](fixtures/investment-source-metadata-browser-probe.ts.txt)
 is retained as an executable reproduction appended to the existing spin-off
@@ -193,11 +195,17 @@ reconstruction/restore and #280 retains the shared final gates/performance.
   CSVs as a second observation surface. Neither helper is an automatic proof
   that every newly added durable table is covered; #280/#284 should account
   for that maintenance burden, without a snapshot-harness refactor here.
-- **Unknown information and corruption share a failed check status.**
-  `lotReconciliationCheck` in `self_check.go` counts unknown projected basis
-  alongside mismatches; `requireHealthyUnresolvedBook` therefore asserts
-  selected checks/diagnostics. This is the concrete acceptance/test obstacle
-  recorded by #272 and made explicit in #308, not a new speculative invariant.
+- **Unknown information and corruption shared a failed check status.**
+  `lotReconciliationCheck` in `self_check.go` counted unknown projected basis
+  alongside mismatches, so `requireHealthyUnresolvedBook` could only assert
+  selected checks/diagnostics. #313 separated them and the closure addendum
+  made that helper whole-run; recorded here for #284 as resolved.
+- **Three self-check acceptance helpers.** `requireHealthyUnresolvedBook`
+  (`investment_unknown_disposal_replay_test.go`),
+  `requireInvestmentSelfCheckPasses` (`investment_transfer_propagation_test.go`)
+  and `requireSpinOffSelfCheckPasses` (`investment_spin_off_test.go`) encode the
+  same whole-run contract in three places; a future status change must update
+  all three. Several older tests still assert individual checks directly.
 
 ## Validation
 
@@ -232,3 +240,37 @@ reconstruction/restore and #280 retains the shared final gates/performance.
   once at its candidate SHA. No live provider, C-engine race instrumentation,
   native-language sign-off, tax correctness, exhaustive interleaving or
   large-book performance claim follows from this audit.
+
+## Closure addendum — 2026-10-18
+
+The remaining acceptance item, *replay equivalence holds after every sequence
+(self-check clean)*, is met under the
+[self-check outcomes contract](../plans/data-portability-plan.md#self-check-outcomes-313):
+**clean means no failed check**. A book whose only gap is supported unknown
+basis is `incomplete`, never all-passed. A book with known basis must pass
+outright.
+
+At `2e052100` the helpers above still asserted selected checks only. They now
+assert the whole run:
+
+| Helper | Calls | Whole-run assertion |
+|---|---|---|
+| `requireHealthyUnresolvedBook` | 72 | All 13 results present; zero findings anywhere; replay, foundation and every other check `passed`; only `lot_reconciliation` may be `incomplete`, and exactly when it has unavailable lots; `failed_check_count = 0` |
+| `requireInvestmentSelfCheckPasses` | 149 | Every applicable result `passed` and the run `passed` (previously foundation/lot/replay only), plus the effective-movement and conservation oracles |
+| `requireSpinOffSelfCheckPasses` | 15 | Same as above, for spin-off sequences |
+
+The unknown-basis phases of spin-off, share exchange and cash-and-stock merger
+previously checked only foundation and/or replay. They now use the whole-run
+helper. All other unknown transfer, non-sale, resolution and provenance
+sequences already called it. Damage beside unknown basis remains detected:
+the #308/#313 damage controls fail their checks with unavailable scope
+reported separately, and a known lot relabelled unknown still fails replay.
+
+**Validation:**
+`./scripts/go-backend.sh test -race -timeout=20m ./internal/app -run 'Transfer|Split|ShareExchange|SpinOff|CashStockMerger|CashAndStockMerger|Resolution|ReplaceBuy|ReplaceSale|ReplaceDividend|ReverseDividend|Replay|Backdat|Conservation|Unknown|Provenance|KnownZero|MixedKnown|InvestmentAudit|CapitalReturn|WriteOff|CashInLieu|Correction'`
+passed **522 top-level tests** (app **91.3 s**). The API and db packages
+passed with the same selectors plus `ReferenceBook|OperationKind|ReplayIntent`
+(**27.0 s** / **38.1 s**). The #266 reference book's HTTP self-check is
+`incomplete` with zero failed checks. The full browser suite passed at
+`2e052100` (**330 tests**); this addendum changes only Go tests and docs.
+#280 still owns the final shared gates.

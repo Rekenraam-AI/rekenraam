@@ -58,10 +58,14 @@ func requireInvestmentSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
 	t.Helper()
 	run, err := selfCheckOver(t, f.database).RunSelfCheck(context.Background(), "manual")
 	require.NoError(t, err)
-	for _, check := range []string{CheckInvestmentFoundation, CheckLotReconciliation, CheckInvestmentReplay} {
-		result := resultFor(t, run, check)
-		assert.Equalf(t, SelfCheckPassed, result.Status, "%s: %s %v", check, result.Summary, result.Sample)
+	// Known-basis books must pass outright: every check, not a selection,
+	// and no unavailable coverage (#273/#313).
+	for _, result := range run.Results {
+		if result.Status != SelfCheckNotApplicable {
+			assert.Equalf(t, SelfCheckPassed, result.Status, "%s: %s %v", result.CheckID, result.Summary, result.Sample)
+		}
 	}
+	assert.Equal(t, SelfCheckPassed, run.Status)
 	requireEffectiveMovementsConsistent(t, f)
 	requireConservationOracle(t, f)
 }

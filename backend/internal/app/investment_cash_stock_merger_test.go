@@ -205,6 +205,7 @@ func TestCashStockMergerUnknownBasisLeavesResultUnresolved(t *testing.T) {
 	requireScaled(t, 1000, 2, proceeds, "the cash is still the proceeds")
 	assert.Nil(t, basis)
 	assert.Equal(t, db.InvestmentBasisUnknown, knowledge)
+	requireHealthyUnresolvedBook(t, f)
 
 	// A sourced resolution of 80.00 replays through the merger: half is
 	// realized against the cash and half carried.

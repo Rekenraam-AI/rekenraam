@@ -50,9 +50,12 @@ func requireSpinOffSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
 	t.Helper()
 	run, err := selfCheckOver(t, f.database).RunSelfCheck(context.Background(), "manual")
 	require.NoError(t, err)
-	for _, check := range []string{CheckInvestmentFoundation, CheckInvestmentReplay, CheckLotReconciliation} {
-		assert.Equal(t, SelfCheckPassed, resultFor(t, run, check).Status, "%s: %s", check, resultFor(t, run, check).Summary)
+	for _, result := range run.Results {
+		if result.Status != SelfCheckNotApplicable {
+			assert.Equal(t, SelfCheckPassed, result.Status, "%s: %s", result.CheckID, result.Summary)
+		}
 	}
+	assert.Equal(t, SelfCheckPassed, run.Status)
 	requireEffectiveMovementsConsistent(t, f)
 	requireConservationOracle(t, f)
 }
@@ -204,13 +207,9 @@ func TestSpinOffCarriesUnknownBasisAndResolvesThroughReplay(t *testing.T) {
 	_, basis, knowledge, _ = lotBasis(t, f, link.SourceLotID)
 	assert.Equal(t, db.InvestmentBasisUnknown, knowledge)
 	assert.Nil(t, basis)
-	// Lot reconciliation is unavailable while basis is unknown; the
-	// foundation and replay checks still hold.
-	run, err := selfCheckOver(t, f.database).RunSelfCheck(ctx, "manual")
-	require.NoError(t, err)
-	for _, check := range []string{CheckInvestmentFoundation, CheckInvestmentReplay} {
-		assert.Equal(t, SelfCheckPassed, resultFor(t, run, check).Status, "%s: %s", check, resultFor(t, run, check).Summary)
-	}
+	// Lot reconciliation is unavailable while basis is unknown; every other
+	// check, including foundation and replay, still holds (#313).
+	requireHealthyUnresolvedBook(t, f)
 
 	// A sourced resolution of the parent's 80.00 replays through the spin-off:
 	// 20.00 moves to the new lot and the link revision becomes known.

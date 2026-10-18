@@ -464,11 +464,12 @@ Cash in lieu, write-off and return of capital now admit unresolved results
 under the separate #169 contract linked above.
 
 The #308 diagnostic audit verifies knowledge transitions and native restore
-without treating missing basis as corruption. The
-[portability diagnostic disposition](data-portability-plan.md#unresolved-investment-basis-diagnostic-acceptance-308)
-records the current failed/unavailable result, #272/#273's remaining acceptance
-and the separately scoped #313 status/coverage implementation. Quantity,
-historical allocation, bridge, provenance and replay checks remain active.
+without treating missing basis as corruption. Since #313, supported unknown
+projected basis is reported as `incomplete` self-check coverage, never as
+failed and never as passed
+([contract](data-portability-plan.md#self-check-outcomes-313)). Quantity,
+historical allocation, bridge, provenance and replay checks remain active,
+and the transfer/corporate-action sequences assert the whole run (#273).
 
 Named #197 regressions: `TestSameBasisChangedEvidenceCorrectionPostsNoJournals`,
 `TestProvenanceCorrectionAdmitsExactScaledEqualityKnownZeroAndLegacy`,
