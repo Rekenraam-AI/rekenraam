@@ -25,6 +25,7 @@
   import ReconciliationConfirm from './reconciliation-confirm.svelte';
   import CashAndStockMergerSummary from './cash-and-stock-merger-summary.svelte';
   import { parseMoneyMagnitude } from './form-amounts';
+  import { evidenceText, newSourceEvidence, sourceEvidenceEdits } from './source-evidence';
   import { basisFractionPercent, parseElectionPercent, parseExchangeRatio } from './split-ratio';
   import { TranslatedFormError } from '#lib/form-errors.ts';
   import { coefficientSign, formatEditableAmount } from '#lib/money/amount.ts';
@@ -51,6 +52,9 @@
     prefill?: InvestmentPrefill;
     correction?: { transactionID: number; terms: InvestmentCorrectionCashStockMergerTerms };
   } = $props();
+
+  // A correction carries its evidence edits beside the creation terms.
+  type MergerPayload = CashStockMergerRequest & Pick<CashStockMergerReplacementRequest, 'source_evidence_edits'>;
 
   // Pre-select the holding the screen names (#186); a correction keeps its own.
   usePrefilledPosition(untrack(() => correction ? undefined : prefill),
@@ -81,10 +85,10 @@
   let chosenCurrencyID = $state<string | null>(initialTerms ? String(initialTerms.currency_id) : null);
   let cashAmount = $state(initialTerms ? formatEditableAmount(initialTerms.cash_value, initialTerms.cash_scale) : '');
   let electionPercent = $state(initialPercent ? formatEditableAmount(initialPercent.value, initialPercent.scale) : '');
-  // The recorded evidence pre-fills the reference it was entered with;
-  // sending it back unchanged is not a correction.
-  const initialEvidence = (initialTerms?.source_evidence ?? {}) as Record<string, unknown>;
-  let sourceReference = $state(typeof initialEvidence.reference === 'string' ? initialEvidence.reference : '');
+  // The recorded evidence pre-fills the reference it was entered with; a
+  // correction sends only a changed reference (#311).
+  const initialEvidence = initialTerms?.source_evidence as Record<string, unknown> | undefined;
+  let sourceReference = $state(evidenceText(initialEvidence, 'reference'));
   let reason = $state('');
   let memo = $state('');
   let pending = $state(false);
@@ -97,7 +101,7 @@
     plan: CashStockMergerPlan;
     impacts: ReconciliationImpactResponse['affected_checkpoints'];
     gainImpact: GainImpact | null;
-    payload: CashStockMergerRequest;
+    payload: MergerPayload;
   } | null>(null);
   let reviewModal = $state<{ gainRefreshed: boolean } | null>(null);
   const locale = getLocale();
@@ -210,12 +214,10 @@
       formError = new TranslatedFormError(m.investments_merger_percent_error());
       return;
     }
-    // Evidence keys the form does not edit carry over from the corrected
-    // merger.
-    const { reference: _reference, ...kept } = initialEvidence;
-    const evidence: Record<string, unknown> = { ...kept };
-    if (sourceReference.trim()) evidence.reference = sourceReference.trim();
-    const payload: CashStockMergerRequest = {
+    // A correction never sends back evidence it parsed: the server applies
+    // the changed reference to the recorded tokens.
+    const evidenceFields = { reference: sourceReference };
+    const payload: MergerPayload = {
       effective_on: effectiveOn,
       payable_on: payableOn,
       holding_account_id: selectedHolding.accountID,
@@ -230,7 +232,9 @@
       cash_scale: cash.field.scale,
       cash_basis_fraction_value: election.value,
       cash_basis_fraction_scale: election.scale,
-      source_evidence: Object.keys(evidence).length > 0 ? evidence : undefined,
+      ...(correction
+        ? { source_evidence_edits: sourceEvidenceEdits(initialEvidence, evidenceFields) }
+        : { source_evidence: newSourceEvidence(evidenceFields) }),
       memo: memo.trim() || undefined
     };
     pending = true;
@@ -245,7 +249,7 @@
     }
   }
 
-  function replacementRequest(payload: CashStockMergerRequest): CashStockMergerReplacementRequest {
+  function replacementRequest(payload: MergerPayload): CashStockMergerReplacementRequest {
     return {
       reason: reason.trim(), effective_on: payload.effective_on, payable_on: payload.payable_on,
       destination_holding_account_id: payload.destination_holding_account_id,
@@ -255,11 +259,11 @@
       cash_value: payload.cash_value, cash_scale: payload.cash_scale,
       cash_basis_fraction_value: payload.cash_basis_fraction_value,
       cash_basis_fraction_scale: payload.cash_basis_fraction_scale,
-      source_evidence: payload.source_evidence, memo: payload.memo
+      source_evidence_edits: payload.source_evidence_edits, memo: payload.memo
     };
   }
 
-  async function runPreview(payload: CashStockMergerRequest): Promise<void> {
+  async function runPreview(payload: MergerPayload): Promise<void> {
     const result = correction
       ? await previewCashStockMergerReplacement(correction.transactionID, replacementRequest(payload))
       : await previewCashStockMerger(payload);

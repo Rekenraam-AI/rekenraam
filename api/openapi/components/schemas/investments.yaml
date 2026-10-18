@@ -2081,6 +2081,16 @@ SpinOffReplacementRequest:
     source_evidence:
       type: object
       additionalProperties: true
+    source_evidence_edits:
+      type: object
+      additionalProperties: true
+      description: >
+        Top-level edits applied on the server to the recorded source evidence
+        (#311): a key set to null is removed, any other value replaces that key
+        exactly, and every key not named keeps its recorded JSON token (large
+        integers, decimals and nested data included). Mutually exclusive with
+        source_evidence, which replaces the evidence whole; omitting both keeps
+        the recorded evidence.
     memo:
       type: string
     reconciliation_override:
@@ -2209,6 +2219,16 @@ CashStockMergerReplacementRequest:
     source_evidence:
       type: object
       additionalProperties: true
+    source_evidence_edits:
+      type: object
+      additionalProperties: true
+      description: >
+        Top-level edits applied on the server to the recorded source evidence
+        (#311): a key set to null is removed, any other value replaces that key
+        exactly, and every key not named keeps its recorded JSON token (large
+        integers, decimals and nested data included). Mutually exclusive with
+        source_evidence, which replaces the evidence whole; omitting both keeps
+        the recorded evidence.
     memo:
       type: string
     reconciliation_override:
@@ -2266,6 +2286,16 @@ ShareExchangeReplacementRequest:
     source_evidence:
       type: object
       additionalProperties: true
+    source_evidence_edits:
+      type: object
+      additionalProperties: true
+      description: >
+        Top-level edits applied on the server to the recorded source evidence
+        (#311): a key set to null is removed, any other value replaces that key
+        exactly, and every key not named keeps its recorded JSON token (large
+        integers, decimals and nested data included). Mutually exclusive with
+        source_evidence, which replaces the evidence whole; omitting both keeps
+        the recorded evidence.
     memo:
       type: string
     reconciliation_override:

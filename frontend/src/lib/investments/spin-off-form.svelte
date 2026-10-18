@@ -24,6 +24,7 @@
   } from './gain-impact';
   import ReconciliationConfirm from './reconciliation-confirm.svelte';
   import SpinOffSummary from './spin-off-summary.svelte';
+  import { evidenceText, newSourceEvidence, sourceEvidenceEdits } from './source-evidence';
   import { basisFractionPercent, parseBasisPercent, parseExchangeRatio } from './split-ratio';
   import { TranslatedFormError } from '#lib/form-errors.ts';
   import { coefficientSign, formatEditableAmount } from '#lib/money/amount.ts';
@@ -49,6 +50,9 @@
     prefill?: InvestmentPrefill;
     correction?: { transactionID: number; terms: InvestmentCorrectionSpinOffTerms };
   } = $props();
+
+  // A correction carries its evidence edits beside the creation terms.
+  type SpinOffPayload = SpinOffRequest & Pick<SpinOffReplacementRequest, 'source_evidence_edits'>;
 
   // Pre-select the holding the screen names (#186); a correction keeps its own.
   usePrefilledPosition(untrack(() => correction ? undefined : prefill),
@@ -76,12 +80,11 @@
   let parentUnits = $state(initialTerms ? String(initialTerms.plan.ratio_denominator) : '');
   let basisPercent = $state(initialPercent ? formatEditableAmount(initialPercent.value, initialPercent.scale) : '');
   // The recorded evidence pre-fills the ex date and reference it was entered
-  // with; sending it back unchanged is not a correction.
-  const initialEvidence = (initialTerms?.source_evidence ?? {}) as Record<string, unknown>;
-  const evidenceText = (key: string) => typeof initialEvidence[key] === 'string' ? initialEvidence[key] : '';
-  let exDate = $state(evidenceText('ex_date'));
+  // with; a correction sends only the fields changed here (#311).
+  const initialEvidence = initialTerms?.source_evidence as Record<string, unknown> | undefined;
+  let exDate = $state(evidenceText(initialEvidence, 'ex_date'));
   let reason = $state('');
-  let sourceReference = $state(evidenceText('reference'));
+  let sourceReference = $state(evidenceText(initialEvidence, 'reference'));
   let memo = $state('');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
@@ -93,7 +96,7 @@
     plan: SpinOffPlan;
     impacts: ReconciliationImpactResponse['affected_checkpoints'];
     gainImpact: GainImpact | null;
-    payload: SpinOffRequest;
+    payload: SpinOffPayload;
   } | null>(null);
   let reviewModal = $state<{ gainRefreshed: boolean } | null>(null);
   const locale = getLocale();
@@ -182,13 +185,10 @@
       formError = new TranslatedFormError(m.investments_spin_off_percent_error());
       return;
     }
-    // Evidence keys the form does not edit carry over from the corrected
-    // spin-off.
-    const { reference: _reference, ex_date: _exDate, ...kept } = initialEvidence;
-    const evidence: Record<string, unknown> = { ...kept };
-    if (sourceReference.trim()) evidence.reference = sourceReference.trim();
-    if (exDate) evidence.ex_date = exDate;
-    const payload: SpinOffRequest = {
+    // A correction never sends back evidence it parsed: the server applies
+    // the changed fields to the recorded tokens.
+    const evidenceFields = { reference: sourceReference, ex_date: exDate };
+    const payload: SpinOffPayload = {
       effective_on: effectiveOn,
       holding_account_id: selectedHolding.accountID,
       ...(destination !== 'same' ? { destination_holding_account_id: Number(destination) } : {}),
@@ -198,7 +198,9 @@
       ratio_denominator: ratio.denominator,
       basis_fraction_value: fraction.value,
       basis_fraction_scale: fraction.scale,
-      source_evidence: Object.keys(evidence).length > 0 ? evidence : undefined,
+      ...(correction
+        ? { source_evidence_edits: sourceEvidenceEdits(initialEvidence, evidenceFields) }
+        : { source_evidence: newSourceEvidence(evidenceFields) }),
       memo: memo.trim() || undefined
     };
     pending = true;
@@ -213,18 +215,18 @@
     }
   }
 
-  function replacementRequest(payload: SpinOffRequest): SpinOffReplacementRequest {
+  function replacementRequest(payload: SpinOffPayload): SpinOffReplacementRequest {
     return {
       reason: reason.trim(), effective_on: payload.effective_on,
       destination_holding_account_id: payload.destination_holding_account_id,
       destination_commodity_id: payload.destination_commodity_id,
       ratio_numerator: payload.ratio_numerator, ratio_denominator: payload.ratio_denominator,
       basis_fraction_value: payload.basis_fraction_value, basis_fraction_scale: payload.basis_fraction_scale,
-      source_evidence: payload.source_evidence, memo: payload.memo
+      source_evidence_edits: payload.source_evidence_edits, memo: payload.memo
     };
   }
 
-  async function runPreview(payload: SpinOffRequest): Promise<void> {
+  async function runPreview(payload: SpinOffPayload): Promise<void> {
     const result = correction
       ? await previewSpinOffReplacement(correction.transactionID, replacementRequest(payload))
       : await previewSpinOff(payload);

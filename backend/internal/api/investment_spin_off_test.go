@@ -200,3 +200,53 @@ func TestSpinOffCorrectionAPI(t *testing.T) {
 	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost,
 		path(999999, "reverse-spin-off"), reversal, http.StatusNotFound)
 }
+
+// #311: a correction that sends source_evidence_edits keeps every recorded
+// token it does not name, read back from the raw correction-chain response.
+func TestSpinOffCorrectionAPIPreservesExactUneditedSourceEvidence(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	f := bootstrapInvestmentAPITest(t, handler)
+	parent := createInstrumentForSession(t, handler, f, "PARENT")
+	spun := createInstrumentForSession(t, handler, f, "SPINCO")
+	holding := createHoldingAccountForSession(t, handler, f, parent.ID)
+	spunHolding := createHoldingAccountForSession(t, handler, f, spun.ID)
+	buy := tradeRequestBody(f, holding.ID, parent.CommodityID, "10", 10000)
+	buy.TransactionDate = "2026-01-01"
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost,
+		"/api/v1/investments/buy", buy, http.StatusCreated)
+	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost,
+		"/api/v1/investments/spin-offs", spinOffRequest{EffectiveOn: "2026-02-01", HoldingAccountID: holding.ID,
+			DestinationHoldingID: spunHolding.ID, CommodityID: parent.CommodityID, DestinationCommodityID: spun.CommodityID,
+			RatioNumerator: 1, RatioDenominator: 1, BasisFractionValue: "1", BasisFractionScale: 1,
+			SourceEvidence: json.RawMessage(`{"reference":"issuer notice","revision":9007199254740993,"nested":{"rate":0.1000000000000000055511151231257827}}`)},
+		http.StatusCreated)
+	var first spinOffResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&first))
+	path := func(id int64, action string) string {
+		return fmt.Sprintf("/api/v1/investments/transactions/%d/%s", id, action)
+	}
+	replacement := spinOffReplacementRequest{Reason: "issuer corrected the allocation", EffectiveOn: "2026-02-01",
+		DestinationHoldingID: spunHolding.ID, DestinationCommodityID: spun.CommodityID,
+		RatioNumerator: 1, RatioDenominator: 1, BasisFractionValue: "2", BasisFractionScale: 1,
+		SourceEvidenceEdits: json.RawMessage(`{"reference":"amended notice"}`)}
+	both := replacement
+	both.SourceEvidence = json.RawMessage(`{"reference":"amended notice"}`)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost,
+		path(first.Transaction.ID, "replace-spin-off/preview"), both, http.StatusBadRequest)
+	assert.Contains(t, res.Body.String(), "VALIDATION_FAILED", "a whole replacement and edits at once")
+	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost,
+		path(first.Transaction.ID, "replace-spin-off/preview"), replacement, http.StatusOK)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost,
+		path(first.Transaction.ID, "replace-spin-off"), replacement, http.StatusCreated)
+	var replaced spinOffReplacementResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&replaced))
+
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet,
+		path(replaced.Replacement.ID, "correction-chain"), nil, http.StatusOK)
+	chain := res.Body.String()
+	assert.Contains(t, chain, `"revision":9007199254740993`)
+	assert.NotContains(t, chain, `"revision":9007199254740992`)
+	assert.Contains(t, chain, `"rate":0.1000000000000000055511151231257827`)
+	assert.Contains(t, chain, `"reference":"amended notice"`)
+}

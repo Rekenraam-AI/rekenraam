@@ -156,8 +156,8 @@ below is execution order, not a chain of hard dependencies.
    Investment part 2 #273 has been executed
    ([evidence](reviews/investment-operations-2-audit-2026-10-18.md)); its
    independent transfer/corporate-action/correction register and replay pass.
-   #307/#309/#310 are fixed; #311 (P2), browser correction of unedited source
-   metadata, is open. Its clean-self-check acceptance remains blocked by #308's
+   #307/#309/#310/#311 are fixed; #312 (P2), the same unedited-evidence loss
+   in transfer, capital-return and split corrections, is open. Its clean-self-check acceptance remains blocked by #308's
    diagnostic disposition, as for #272.
    The other seven areas remain pending
    as sub-issues of #260, in this order (the shared reference book and

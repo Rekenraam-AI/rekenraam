@@ -58,6 +58,7 @@ type ReplaceCashStockMergerInput struct {
 	CashBasisFractionValue      exact.Coefficient
 	CashBasisFractionScale      int
 	SourceEvidenceJSON          string
+	SourceEvidenceEditsJSON     string
 	Memo                        string
 	ReconciliationOverride      CheckpointOverride
 	GainImpactAcknowledgement   string
@@ -228,10 +229,11 @@ func (s *InvestmentService) prepareCashStockMergerReplacementWrite(ctx context.C
 	}
 	// The compound command's first journal carries the disclosure policy.
 	inverse.GainImpact = gainImpactPolicy(input.GainImpactAcknowledgement)
-	// Omitted evidence keeps the recorded evidence.
-	evidence := input.SourceEvidenceJSON
-	if strings.TrimSpace(evidence) == "" {
-		evidence = operation.SourceEvidenceJSON
+	// Omitted evidence keeps the recorded evidence; edits apply to its exact
+	// recorded tokens (#311).
+	evidence, err := correctedSourceEvidence(operation.SourceEvidenceJSON, input.SourceEvidenceJSON, input.SourceEvidenceEditsJSON)
+	if err != nil {
+		return fail(err)
 	}
 	replacement, merger, err := s.prepareCashStockMergerWriteWith(ctx, CashStockMergerInput{
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID, RequestID: input.RequestID,

@@ -417,9 +417,15 @@ non-trivial diff (yours or reviewed):
     `TestCorporateActionCorrectionDistinguishesExactSourceNumbers`.
     Share-exchange replacement must compare that effective evidence too and
     retain it when omitted (#310):
-    `TestShareExchangeCorrectionRejectsUnchangedSourceEvidence`. Parsed browser
-    metadata can still round before reaching this comparator; #311 tracks
-    that separately and is not fixed by the server comparison.
+    `TestShareExchangeCorrectionRejectsUnchangedSourceEvidence`. A server
+    comparator cannot repair metadata the browser already parsed: a form that
+    spreads parsed evidence back into its payload rounds unedited numbers
+    (#311). Correction forms send only the fields the owner changed as
+    `source_evidence_edits` and the server merges them into the raw recorded
+    tokens. Named cases:
+    `TestSpinOffReplacementPreservesExactUneditedSourceEvidence`,
+    `TestSpinOffCorrectionAPIPreservesExactUneditedSourceEvidence`. Remaining
+    consumers (transfer, transfer-in, capital return, split) are #312.
 
 38. **Treating source corrections as amount corrections** — comparing only an
     exact basis amount refused a genuinely changed declaration (#197). Evidence

@@ -31053,6 +31053,10 @@ export interface components {
             source_evidence?: {
                 [key: string]: unknown;
             };
+            /** @description Top-level edits applied on the server to the recorded source evidence (#311): a key set to null is removed, any other value replaces that key exactly, and every key not named keeps its recorded JSON token (large integers, decimals and nested data included). Mutually exclusive with source_evidence, which replaces the evidence whole; omitting both keeps the recorded evidence. */
+            source_evidence_edits?: {
+                [key: string]: unknown;
+            };
             memo?: string;
             reconciliation_override?: boolean;
             reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
@@ -31268,6 +31272,10 @@ export interface components {
             source_evidence?: {
                 [key: string]: unknown;
             };
+            /** @description Top-level edits applied on the server to the recorded source evidence (#311): a key set to null is removed, any other value replaces that key exactly, and every key not named keeps its recorded JSON token (large integers, decimals and nested data included). Mutually exclusive with source_evidence, which replaces the evidence whole; omitting both keeps the recorded evidence. */
+            source_evidence_edits?: {
+                [key: string]: unknown;
+            };
             memo?: string;
             reconciliation_override?: boolean;
             reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
@@ -31301,6 +31309,10 @@ export interface components {
             /** Format: int64 */
             ratio_denominator: number;
             source_evidence?: {
+                [key: string]: unknown;
+            };
+            /** @description Top-level edits applied on the server to the recorded source evidence (#311): a key set to null is removed, any other value replaces that key exactly, and every key not named keeps its recorded JSON token (large integers, decimals and nested data included). Mutually exclusive with source_evidence, which replaces the evidence whole; omitting both keeps the recorded evidence. */
+            source_evidence_edits?: {
                 [key: string]: unknown;
             };
             memo?: string;

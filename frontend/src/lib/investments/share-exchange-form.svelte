@@ -24,6 +24,7 @@
   } from './gain-impact';
   import ReconciliationConfirm from './reconciliation-confirm.svelte';
   import ShareExchangeSummary from './share-exchange-summary.svelte';
+  import { evidenceText, newSourceEvidence, sourceEvidenceEdits } from './source-evidence';
   import { parseExchangeRatio } from './split-ratio';
   import { TranslatedFormError } from '#lib/form-errors.ts';
   import { coefficientSign } from '#lib/money/amount.ts';
@@ -48,6 +49,9 @@
     correction?: { transactionID: number; terms: InvestmentCorrectionShareExchangeTerms };
   } = $props();
 
+  // A correction carries its evidence edits beside the creation terms.
+  type ExchangePayload = ShareExchangeRequest & Pick<ShareExchangeReplacementRequest, 'source_evidence_edits'>;
+
   // Pre-select the holding the screen names (#186); a correction keeps its own.
   usePrefilledPosition(untrack(() => correction ? undefined : prefill),
     () => holdings.map((holding) => ({ account_id: holding.accountID, commodity_id: holding.commodityID, key: holding.key })),
@@ -71,7 +75,11 @@
   let newUnits = $state(initialTerms ? String(initialTerms.plan.ratio_numerator) : '');
   let oldUnits = $state(initialTerms ? String(initialTerms.plan.ratio_denominator) : '');
   let reason = $state('');
-  let sourceReference = $state('');
+  // The recorded evidence pre-fills the reference it was entered with; a
+  // correction sends only a changed reference, so a new reference no longer
+  // replaces the rest of the recorded evidence (#311).
+  const initialEvidence = initialTerms?.source_evidence as Record<string, unknown> | undefined;
+  let sourceReference = $state(evidenceText(initialEvidence, 'reference'));
   let memo = $state('');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
@@ -83,7 +91,7 @@
     plan: ShareExchangePlan;
     impacts: ReconciliationImpactResponse['affected_checkpoints'];
     gainImpact: GainImpact | null;
-    payload: ShareExchangeRequest;
+    payload: ExchangePayload;
   } | null>(null);
   let reviewModal = $state<{ gainRefreshed: boolean } | null>(null);
   // Holdings as they stood on the exchange date (#166); before a date is
@@ -158,17 +166,17 @@
     discardPreview();
   }
 
-  function replacementRequest(payload: ShareExchangeRequest): ShareExchangeReplacementRequest {
+  function replacementRequest(payload: ExchangePayload): ShareExchangeReplacementRequest {
     return {
       reason: reason.trim(), effective_on: payload.effective_on,
       destination_holding_account_id: payload.destination_holding_account_id,
       destination_commodity_id: payload.destination_commodity_id,
       ratio_numerator: payload.ratio_numerator, ratio_denominator: payload.ratio_denominator,
-      source_evidence: payload.source_evidence, memo: payload.memo
+      source_evidence_edits: payload.source_evidence_edits, memo: payload.memo
     };
   }
 
-  async function runPreview(payload: ShareExchangeRequest): Promise<void> {
+  async function runPreview(payload: ExchangePayload): Promise<void> {
     const result = correction
       ? await previewShareExchangeReplacement(correction.transactionID, replacementRequest(payload))
       : await previewShareExchange(payload);
@@ -199,7 +207,9 @@
         destination_commodity_id: newID,
         ratio_numerator: ratio.numerator,
         ratio_denominator: ratio.denominator,
-        source_evidence: sourceReference.trim() ? { reference: sourceReference.trim() } : undefined,
+        ...(correction
+          ? { source_evidence_edits: sourceEvidenceEdits(initialEvidence, { reference: sourceReference }) }
+          : { source_evidence: newSourceEvidence({ reference: sourceReference }) }),
         memo: memo.trim() || undefined
       });
     } catch (error) {

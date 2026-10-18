@@ -249,6 +249,7 @@ type spinOffReplacementRequest struct {
 	BasisFractionValue     exact.Coefficient `json:"basis_fraction_value"`
 	BasisFractionScale     int               `json:"basis_fraction_scale"`
 	SourceEvidence         json.RawMessage   `json:"source_evidence,omitempty"`
+	SourceEvidenceEdits    json.RawMessage   `json:"source_evidence_edits,omitempty"`
 	Memo                   string            `json:"memo"`
 	reconciliationOverrideFields
 	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
@@ -266,13 +267,17 @@ func spinOffReplacementInput(owner app.Owner, r *http.Request, transactionID int
 	if evidence == "null" {
 		evidence = ""
 	}
+	edits := rawJSONText(request.SourceEvidenceEdits)
+	if edits == "null" {
+		edits = ""
+	}
 	return app.ReplaceSpinOffInput{
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: transactionID, Reason: request.Reason, EffectiveOn: request.EffectiveOn,
 		DestinationHoldingAccountID: request.DestinationHoldingID, DestinationCommodityID: request.DestinationCommodityID,
 		RatioNumerator: request.RatioNumerator, RatioDenominator: request.RatioDenominator,
 		BasisFractionValue: request.BasisFractionValue, BasisFractionScale: request.BasisFractionScale,
-		SourceEvidenceJSON: evidence, Memo: request.Memo,
+		SourceEvidenceJSON: evidence, SourceEvidenceEditsJSON: edits, Memo: request.Memo,
 		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}

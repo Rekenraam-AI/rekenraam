@@ -1,5 +1,5 @@
 import { expect, test, type Page } from './support/fixtures';
-import { apiJSON } from './support/api';
+import { apiExactText, apiJSON, csrfTokenFor, exactJSON } from './support/api';
 import { readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
 
@@ -61,7 +61,7 @@ async function setup(page: Page) {
       cash_account_id: cash.id, currency_id: currencyID, cash_value: '3000', cash_scale: 2,
       cash_basis_fraction_value: '25', cash_basis_fraction_scale: 2, source_evidence: { reference: 'offer document' }
     });
-  return { target, acquirer, cashName, buy, sellNew, merger };
+  return { target, acquirer, cashName, cashAccountID: cash.id, currencyID, buy, sellNew, merger };
 }
 
 async function openForm(page: Page, s: Awaited<ReturnType<typeof setup>>, percent: string) {
@@ -187,4 +187,33 @@ test('reversing an unsold merger returns the old lot and removes the cash result
       page, 'GET', `/api/v1/investments/lots?account_id=${s.acquirer.holdingID}&commodity_id=${s.acquirer.commodity_id}`);
     return lots.lots.filter((lot) => lot.status === 'open').length;
   }).toBe(0);
+});
+
+// #311: editing only the reference sends only the reference; the recorded
+// evidence's other tokens survive exactly.
+test('a merger correction of the reference preserves exact unedited source evidence', async ({ page }) => {
+  const s = await setup(page);
+  await s.buy(40, '10', '10000');
+  const created = await apiExactText(page, 'POST', '/api/v1/investments/cash-and-stock-mergers', await csrfTokenFor(page), exactJSON({
+    effective_on: daysFromTodayISO(-10), payable_on: daysFromTodayISO(-8), holding_account_id: s.target.holdingID,
+    destination_holding_account_id: s.acquirer.holdingID, commodity_id: s.target.commodity_id,
+    destination_commodity_id: s.acquirer.commodity_id, ratio_numerator: 1, ratio_denominator: 2,
+    cash_account_id: s.cashAccountID, currency_id: s.currencyID, cash_value: '3000', cash_scale: 2,
+    cash_basis_fraction_value: '25', cash_basis_fraction_scale: 2,
+    source_evidence: { reference: 'offer document', revision: 'EXACT:9007199254740993' }
+  }));
+  const merger = JSON.parse(created) as { transaction: { id: number } };
+  await page.goto(`/app/transactions?transaction_id=${merger.transaction.id}`);
+  await page.getByRole('group', { name: 'Cash-and-stock merger' }).getByRole('button', { name: 'Correct merger…' }).click();
+  const form = page.getByRole('dialog', { name: 'Correct this merger' });
+  await expect(form.getByLabel('Broker or statement reference')).toHaveValue('offer document');
+  await form.getByLabel('Reason for correction').fill('the offer document was amended');
+  await form.getByLabel('Broker or statement reference').fill('amended offer document');
+  await form.getByRole('button', { name: 'Preview merger' }).click();
+  await expect(form.getByRole('region', { name: 'Merger preview' })).toBeVisible();
+  await form.getByRole('button', { name: 'Correct merger' }).click();
+  await expect(form).toBeHidden();
+  const chain = await apiExactText(page, 'GET', `/api/v1/investments/transactions/${merger.transaction.id}/correction-chain`);
+  expect(chain).toContain('"reference":"amended offer document"');
+  expect(chain).toContain('"revision":9007199254740993');
 });

@@ -246,6 +246,7 @@ type cashStockMergerReplacementRequest struct {
 	CashBasisFractionValue exact.Coefficient `json:"cash_basis_fraction_value"`
 	CashBasisFractionScale int               `json:"cash_basis_fraction_scale"`
 	SourceEvidence         json.RawMessage   `json:"source_evidence,omitempty"`
+	SourceEvidenceEdits    json.RawMessage   `json:"source_evidence_edits,omitempty"`
 	Memo                   string            `json:"memo"`
 	reconciliationOverrideFields
 	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
@@ -264,6 +265,10 @@ func cashStockMergerReplacementInput(owner app.Owner, r *http.Request, transacti
 	if evidence == "null" {
 		evidence = ""
 	}
+	edits := rawJSONText(request.SourceEvidenceEdits)
+	if edits == "null" {
+		edits = ""
+	}
 	return app.ReplaceCashStockMergerInput{
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: transactionID, Reason: request.Reason, EffectiveOn: request.EffectiveOn, PayableOn: request.PayableOn,
@@ -272,7 +277,7 @@ func cashStockMergerReplacementInput(owner app.Owner, r *http.Request, transacti
 		CashAccountID: request.CashAccountID, CurrencyID: request.CurrencyID,
 		CashValue: int64(request.CashValue), CashScale: request.CashScale,
 		CashBasisFractionValue: request.CashBasisFractionValue, CashBasisFractionScale: request.CashBasisFractionScale,
-		SourceEvidenceJSON: evidence, Memo: request.Memo,
+		SourceEvidenceJSON: evidence, SourceEvidenceEditsJSON: edits, Memo: request.Memo,
 		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}

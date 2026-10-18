@@ -50,6 +50,7 @@ type ReplaceSpinOffInput struct {
 	BasisFractionValue          exact.Coefficient
 	BasisFractionScale          int
 	SourceEvidenceJSON          string
+	SourceEvidenceEditsJSON     string
 	Memo                        string
 	ReconciliationOverride      CheckpointOverride
 	GainImpactAcknowledgement   string
@@ -220,10 +221,11 @@ func (s *InvestmentService) prepareSpinOffReplacementWrite(ctx context.Context, 
 	}
 	// The compound command's first journal carries the disclosure policy.
 	inverse.GainImpact = gainImpactPolicy(input.GainImpactAcknowledgement)
-	// Omitted evidence keeps the recorded evidence.
-	evidence := input.SourceEvidenceJSON
-	if strings.TrimSpace(evidence) == "" {
-		evidence = operation.SourceEvidenceJSON
+	// Omitted evidence keeps the recorded evidence; edits apply to its exact
+	// recorded tokens (#311).
+	evidence, err := correctedSourceEvidence(operation.SourceEvidenceJSON, input.SourceEvidenceJSON, input.SourceEvidenceEditsJSON)
+	if err != nil {
+		return fail(err)
 	}
 	replacement, spinOff, err := s.prepareSpinOffWriteWith(ctx, SpinOffInput{
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID, RequestID: input.RequestID,

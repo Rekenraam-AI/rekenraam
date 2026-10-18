@@ -51,3 +51,36 @@ export async function csrfTokenFor(page: Page): Promise<string> {
   if (!session.authenticated || !session.csrf_token) throw new Error('expected authenticated session with CSRF token');
   return session.csrf_token;
 }
+
+/**
+ * Sends a raw JSON body and returns the response text, both unparsed.
+ *
+ * Exact-evidence tests (#311) need number tokens such as 9007199254740993
+ * that `JSON.stringify`/`JSON.parse` would round, so neither side of this
+ * call goes through a JavaScript number.
+ */
+export async function apiExactText(
+  page: Page,
+  method: 'GET' | 'POST',
+  path: string,
+  csrfToken?: string,
+  rawBody?: string
+): Promise<string> {
+  const response = await page.evaluate(
+    async ({ method, path, csrfToken, rawBody }) => {
+      const headers: Record<string, string> = {};
+      if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+      if (rawBody !== undefined) headers['Content-Type'] = 'application/json';
+      const res = await fetch(path, { method, headers, body: rawBody });
+      return { status: res.status, text: await res.text() };
+    },
+    { method, path, csrfToken, rawBody }
+  );
+  if (response.status < 200 || response.status > 299) throw new Error(`${method} ${path} failed with ${response.status}: ${response.text}`);
+  return response.text;
+}
+
+/** JSON text of `body` with each `"EXACT:<token>"` string replaced by its bare number token. */
+export function exactJSON(body: unknown): string {
+  return JSON.stringify(body).replace(/"EXACT:(-?[0-9.eE+-]+)"/g, '$1');
+}

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from './support/fixtures';
-import { apiJSON } from './support/api';
+import { apiExactText, apiJSON, csrfTokenFor, exactJSON } from './support/api';
 import { readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
 
@@ -210,4 +210,35 @@ test('reversing an unsold spin-off gives the parent its basis back', async ({ pa
       page, 'GET', `/api/v1/investments/lots?account_id=${s.spun.holdingID}&commodity_id=${s.spun.commodity_id}`);
     return lots.lots.filter((lot) => lot.status === 'open').length;
   }).toBe(0);
+});
+
+// #311: the correction form sends only the fields the owner changed, so
+// evidence the browser cannot represent exactly survives untouched.
+test('a spin-off correction preserves exact unedited source evidence', async ({ page }) => {
+  const s = await setup(page);
+  await s.buy(40, '10', '10000');
+  const created = await apiExactText(page, 'POST', '/api/v1/investments/spin-offs', await csrfTokenFor(page), exactJSON({
+    effective_on: daysFromTodayISO(-10), holding_account_id: s.parent.holdingID,
+    destination_holding_account_id: s.spun.holdingID, commodity_id: s.parent.commodity_id,
+    destination_commodity_id: s.spun.commodity_id, ratio_numerator: 1, ratio_denominator: 1,
+    basis_fraction_value: '1', basis_fraction_scale: 1,
+    source_evidence: { reference: 'issuer notice', revision: 'EXACT:9007199254740993', nested: { rate: 'EXACT:0.1000000000000000055511151231257827' } }
+  }));
+  const transactionID = (JSON.parse(created) as { transaction: { id: number } }).transaction.id;
+  await page.goto(`/app/transactions?transaction_id=${transactionID}`);
+  await page.getByRole('group', { name: 'Spin-off' }).getByRole('button', { name: 'Correct spin-off…' }).click();
+  const form = page.getByRole('dialog', { name: 'Correct this spin-off' });
+  await expect(form.getByLabel('Broker or statement reference')).toHaveValue('issuer notice');
+  await form.getByLabel('Reason for correction').fill('issuer corrected the allocation to 20 percent');
+  await form.getByLabel('Cost basis moved to the new instrument').fill('20');
+  await form.getByRole('button', { name: 'Preview spin-off' }).click();
+  await expect(form.getByRole('region', { name: 'Spin-off preview' })).toBeVisible();
+  await form.getByRole('button', { name: 'Correct spin-off' }).click();
+  await expect(form).toBeHidden();
+  // Read the response text, never a rounded JavaScript number.
+  const chain = await apiExactText(page, 'GET', `/api/v1/investments/transactions/${transactionID}/correction-chain`);
+  expect(chain).toContain('"basis_fraction_value":"2"');
+  expect(chain).toContain('"revision":9007199254740993');
+  expect(chain).toContain('"rate":0.1000000000000000055511151231257827');
+  expect(chain).toContain('"reference":"issuer notice"');
 });

@@ -48,6 +48,7 @@ type ReplaceShareExchangeInput struct {
 	RatioNumerator              int64
 	RatioDenominator            int64
 	SourceEvidenceJSON          string
+	SourceEvidenceEditsJSON     string
 	Memo                        string
 	ReconciliationOverride      CheckpointOverride
 	GainImpactAcknowledgement   string
@@ -216,9 +217,11 @@ func (s *InvestmentService) prepareShareExchangeReplacementWrite(ctx context.Con
 	}
 	// The compound command's first journal carries the disclosure policy.
 	inverse.GainImpact = gainImpactPolicy(input.GainImpactAcknowledgement)
-	evidence := input.SourceEvidenceJSON
-	if strings.TrimSpace(evidence) == "" {
-		evidence = operation.SourceEvidenceJSON
+	// Omitted evidence keeps the recorded evidence; edits apply to its exact
+	// recorded tokens (#311).
+	evidence, err := correctedSourceEvidence(operation.SourceEvidenceJSON, input.SourceEvidenceJSON, input.SourceEvidenceEditsJSON)
+	if err != nil {
+		return fail(err)
 	}
 	replacement, exchange, err := s.prepareShareExchangeWriteWith(ctx, ShareExchangeInput{
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID, RequestID: input.RequestID,

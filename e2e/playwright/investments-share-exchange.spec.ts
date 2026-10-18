@@ -1,5 +1,5 @@
 import { expect, test, type Page } from './support/fixtures';
-import { apiJSON } from './support/api';
+import { apiExactText, apiJSON, csrfTokenFor, exactJSON } from './support/api';
 import { readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
 
@@ -167,4 +167,31 @@ test('reversing an unsold exchange restores the old holding', async ({ page }) =
       page, 'GET', `/api/v1/investments/lots?account_id=${s.old.holdingID}&commodity_id=${s.old.commodity_id}`);
     return lots.lots.filter((lot) => lot.status === 'open').map((lot) => lot.remaining_quantity_value);
   }).toEqual(['10']);
+});
+
+// #311: the correction form pre-fills the recorded reference, and a changed
+// reference no longer replaces the rest of the recorded evidence.
+test('a share exchange correction of the reference preserves exact unedited source evidence', async ({ page }) => {
+  const s = await setup(page);
+  await s.buy(40, '10', '10000');
+  const created = await apiExactText(page, 'POST', '/api/v1/investments/share-exchanges', await csrfTokenFor(page), exactJSON({
+    effective_on: daysFromTodayISO(-10), holding_account_id: s.old.holdingID,
+    destination_holding_account_id: s.successor.holdingID, commodity_id: s.old.commodity_id,
+    destination_commodity_id: s.successor.commodity_id, ratio_numerator: 1, ratio_denominator: 1,
+    source_evidence: { reference: 'scheme document', revision: 'EXACT:9007199254740993' }
+  }));
+  const transactionID = (JSON.parse(created) as { transaction: { id: number } }).transaction.id;
+  await page.goto(`/app/transactions?transaction_id=${transactionID}`);
+  await page.getByRole('button', { name: 'Correct exchange…' }).click();
+  const form = page.getByRole('dialog', { name: 'Correct this share exchange' });
+  await expect(form.getByLabel('Broker or statement reference')).toHaveValue('scheme document');
+  await form.getByLabel('Reason for correction').fill('the scheme document was amended');
+  await form.getByLabel('Broker or statement reference').fill('amended scheme document');
+  await form.getByRole('button', { name: 'Preview exchange' }).click();
+  await expect(form.getByRole('region', { name: 'Exchange preview' })).toBeVisible();
+  await form.getByRole('button', { name: 'Correct exchange' }).click();
+  await expect(form).toBeHidden();
+  const chain = await apiExactText(page, 'GET', `/api/v1/investments/transactions/${transactionID}/correction-chain`);
+  expect(chain).toContain('"reference":"amended scheme document"');
+  expect(chain).toContain('"revision":9007199254740993');
 });

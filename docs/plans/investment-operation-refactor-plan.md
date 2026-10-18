@@ -814,8 +814,14 @@ an exchange. It is an instrument version change with no position effect.
     and refuses unchanged terms. Omitted evidence retains the recorded
     declaration; resubmitting that object with different key order is not a
     change (#310). Source comparisons preserve exact numeric tokens (#309),
-    as for basis provenance. The browser's preservation of arbitrary unedited
-    metadata still needs the separate #311 wire/form correction.
+    as for basis provenance. Correction forms never send back evidence they
+    parsed (#311): the exchange, merger and spin-off replacements accept
+    `source_evidence_edits`, top-level edits the server applies to the
+    recorded raw tokens (a null removes that key; every key not named keeps
+    its exact token, nested data included). A whole `source_evidence` still
+    replaces the evidence; sending both is refused. The forms pre-fill the
+    recorded reference (and ex date) and send only the fields the owner
+    changed, so an unchanged form remains a refused no-op.
     It takes the replaced exchange's
     correction-root slot and converts the whole holding open there, computed
     by the subject replay without the replaced exchange. Every holding either
