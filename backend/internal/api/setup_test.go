@@ -313,6 +313,20 @@ func newSetupTestHandlerWithInvestment(t *testing.T, options HandlerOptions) (ht
 	t.Helper()
 
 	database, databaseURL := testdb.Open(t)
+	instance := newTestInstanceOnDatabase(t, database, databaseURL, options)
+	return instance.handler, database, instance.investment
+}
+
+// testInstance is one app wired over one database file, as `serve` would wire
+// it. The restore drill (#277) builds a second instance over the restored file.
+type testInstance struct {
+	handler    http.Handler
+	investment *app.InvestmentService
+	backup     *app.BackupService
+}
+
+func newTestInstanceOnDatabase(t *testing.T, database *sql.DB, databaseURL string, options HandlerOptions) testInstance {
+	t.Helper()
 
 	// Exports read through the same second, read-only pool production wires
 	// (ADR 0011), so a test exercises the real isolation rather than a
@@ -374,7 +388,7 @@ func newSetupTestHandlerWithInvestment(t *testing.T, options HandlerOptions) (ht
 	)
 	backupService.SetSelfCheck(selfCheckService)
 
-	return NewHandler(logger, http.NotFoundHandler(), Services{
+	handler := NewHandler(logger, http.NotFoundHandler(), Services{
 		Setup:       setupService,
 		Auth:        authService,
 		Settings:    settingsService,
@@ -395,7 +409,8 @@ func newSetupTestHandlerWithInvestment(t *testing.T, options HandlerOptions) (ht
 		SelfCheck:   selfCheckService,
 		Forecast:    forecastService,
 		Budget:      budgetService,
-	}, options), database, investmentService
+	}, options)
+	return testInstance{handler: handler, investment: investmentService, backup: backupService}
 }
 
 func setSameOrigin(req *http.Request) {

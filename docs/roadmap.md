@@ -154,8 +154,8 @@ below is execution order, not a chain of hard dependencies.
    ([evidence](reviews/unresolved-basis-diagnostics-audit-2026-10-18.md)) and
    #313 shipped its incomplete self-check outcome, so supported unknown basis
    is now disclosed as incomplete coverage rather than a failure. Its
-   remaining acceptance is #277's independent bundle reconstruction; native
-   restore with unchanged CSV re-export is verified.
+   remaining bundle acceptance is met by #277's independent reconstruction;
+   native restore with unchanged CSV re-export is verified.
    Investment part 2 #273 is complete
    ([evidence](reviews/investment-operations-2-audit-2026-10-18.md)); its
    independent transfer/corporate-action/correction register and replay pass,
@@ -182,13 +182,18 @@ below is execution order, not a chain of hard dependencies.
    checks for shipped downloads and live-only API/browser figures. The
    original unmet criterion is retained in the audit record; comparison/FX
    downloads remain outside the saved-run contract. R13 can use the inventory.
-   The other five areas remain open
-   as sub-issues of #260, in this order (the shared reference book and
-   expected-figure register #266 is delivered, with
+   The planning audit #276 is complete
+   ([evidence](reviews/planning-audit-2026-10-18.md)); #319/#320 are fixed.
+   The recovery audit #277 is complete
+   ([evidence](reviews/recovery-audit-2026-10-18.md)): the #266 restore drill
+   matches the register exactly on a fresh instance, every corruption class is
+   detected, and the bundle reconstructs every ledger and investment figure.
+   That completes #272's bundle evidence. #321/#323 are fixed. #322 (P3) is
+   open: some bundle provenance ids do not resolve inside the archive.
+   The other areas remain open as sub-issues of #260, in this order (the
+   shared reference book and expected-figure register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):
-   recovery #277 (using #308's evidence);
-   then planning #276; then frontend #278, deployment
-   #279. Architecture/quality #280
+   frontend #278, then deployment #279. Architecture/quality #280
    runs last, with the shared gates once at the candidate SHA.
    Fix confirmed integrity/security defects before affected feature slices.
    This is a bounded review, not a recurring full-suite gate. Each open
