@@ -163,7 +163,7 @@
     </div>
   {:else if error}
     <div class="p-4">
-      <StatePanel title={m.transactions_error_title()} copy={m.transactions_error_copy()}>
+      <StatePanel alert title={m.transactions_error_title()} copy={m.transactions_error_copy()}>
         {#if onRetry}
           <button
             type="button"

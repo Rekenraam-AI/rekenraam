@@ -592,6 +592,21 @@ non-trivial diff (yours or reviewed):
     Exercise the actual FX refresh history consumer
     (`TestFXRefreshTransportFailureDoesNotPersistOperatorSecret`).
 
+52. **Colour utility naming no token** — Tailwind emits nothing for an
+    unknown colour, so `text-destructive`, `text-warning-foreground` or
+    `bg-accent-soft` compile silently and leave the element its inherited
+    colour: 22 investment errors and negative gains lost their danger colour,
+    and the danger/warning confirmation buttons drew foreground text on their
+    own fill (1.6:1 dark) (#324). Use only `@theme inline` tokens; text on a
+    danger or warning fill is `text-background`. Named check:
+    `src/lib/theme-tokens.test.ts` scans every `.svelte`/`.ts` source.
+
+53. **Sweep that audits the sign-in screen** — every Playwright test has its
+    own browser context, so a spec that seeds in one test and visits routes in
+    another is signed out and silently runs axe on the entry screen. Sign in
+    per test and assert the visited pathname before checking
+    (`route-sweep.spec.ts` `settle`).
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

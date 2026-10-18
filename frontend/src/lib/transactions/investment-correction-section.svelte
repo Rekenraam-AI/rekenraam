@@ -1095,7 +1095,7 @@
       <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
         <button type="button" class="min-h-10 rounded-[var(--radius-control)] border border-border bg-control px-4 text-sm font-semibold text-foreground"
           disabled={pending} onclick={closeModal}>{m.transactions_reconciliation_cancel()}</button>
-        <button type="button" bind:this={confirmButtonElement} class="min-h-10 rounded-[var(--radius-control)] bg-warning px-4 text-sm font-semibold text-warning-foreground disabled:opacity-60"
+        <button type="button" bind:this={confirmButtonElement} class="min-h-10 rounded-[var(--radius-control)] bg-warning px-4 text-sm font-semibold text-background disabled:opacity-60"
           disabled={pending || (modal === 'reason' && !reason.trim())}
           onclick={modal === 'reason' ? submitReason : confirmReconciliation}>
           {modal === 'reason'

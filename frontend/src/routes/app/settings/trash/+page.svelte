@@ -23,7 +23,8 @@
   } from '#lib/api/transactions.ts';
   import {
     formatSignedAmount,
-    commodityDisplay
+    commodityDisplay,
+    statusLabel
   } from '#lib/transactions/transaction-labels.ts';
   import TransactionTable from '#lib/transactions/transaction-table.svelte';
   import type { Column } from '#lib/transactions/transaction-table-types.ts';
@@ -181,7 +182,7 @@
     <div class="flex items-center gap-2">
       <span class="font-medium text-foreground">{row.payee_name || row.description || '—'}</span>
       {#if row.status === 'voided'}
-        <StatusBadge tone="warning">{row.status}</StatusBadge>
+        <StatusBadge tone="warning">{statusLabel(row.status)}</StatusBadge>
       {/if}
     </div>
   {/snippet}
@@ -252,7 +253,7 @@
 <!-- Reconciliation override confirmation modal (#225) -->
 {#if overrideModal.row}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm"
     role="presentation"
     onkeydown={(e) => { if (e.key === 'Escape' && !overrideModal.pending) cancelOverride(); }}
   >
@@ -312,7 +313,7 @@
           type="button"
           onclick={confirmOverride}
           disabled={overrideModal.impacts === null || overrideModal.pending}
-          class="rounded-(--radius-control) bg-danger px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          class="rounded-(--radius-control) bg-danger px-4 py-2 text-sm font-semibold text-background transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {overrideModal.pending ? m.trash_restoring() : m.trash_restore_confirm_proceed()}
         </button>

@@ -131,7 +131,7 @@
       case 'auto_posted': return 'bg-positive-soft text-positive';
       case 'ignored':
       case 'superseded': return 'bg-surface-strong text-foreground';
-      case 'failed': return 'bg-destructive/10 text-destructive';
+      case 'failed': return 'bg-danger-soft text-danger';
       default: return 'bg-surface-strong text-foreground';
     }
   }
@@ -203,7 +203,7 @@
       </button>
     </div>
     {#if fetchMessage}
-      <p role="status" class="mt-2 text-sm {fetchMessage.tone === 'error' ? 'text-destructive' : 'text-foreground'}">{fetchMessage.text}</p>
+      <p role="status" class="mt-2 text-sm {fetchMessage.tone === 'error' ? 'text-danger' : 'text-foreground'}">{fetchMessage.text}</p>
     {/if}
   </Panel>
 
@@ -213,7 +213,7 @@
     </Panel>
   {:else if suggestionsQuery.isError}
     <Panel>
-      <p class="text-sm text-destructive">{m.investments_suggestions_error()}</p>
+      <p class="text-sm text-danger">{m.investments_suggestions_error()}</p>
     </Panel>
   {:else}
     {#if pending.length > 0}
@@ -303,7 +303,7 @@
                 {/if}
 
                 {#if errors.has(s.id)}
-                  <p class="text-xs text-destructive" role="alert">{errors.get(s.id)}</p>
+                  <p class="text-xs text-danger" role="alert">{errors.get(s.id)}</p>
                 {/if}
 
                 <div class="flex flex-wrap justify-end gap-2">
@@ -357,7 +357,7 @@
                   <span class="text-xs text-muted">{m.investments_suggestion_ex_date({ date: s.event_date })}</span>
                 </div>
                 {#if s.failure_reason}
-                  <p class="mt-1 text-xs text-destructive">{s.failure_reason}</p>
+                  <p class="mt-1 text-xs text-danger">{s.failure_reason}</p>
                 {/if}
                 {#if s.revisions.length > 0}
                   <div class="mt-2">

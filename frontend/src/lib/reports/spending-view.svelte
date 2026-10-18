@@ -257,7 +257,7 @@
     </div>
   {:else if query.isError}
     <div class="mt-5">
-      <StatePanel title={m.reports_spending_error_title()} copy={errorState.copy}>
+      <StatePanel alert title={m.reports_spending_error_title()} copy={errorState.copy}>
         {#if errorState.retryable}
           <button
             type="button"
@@ -289,7 +289,8 @@
     {/if}
     <ValuationNotice valuation={query.data?.valuation} {commodityLabel} />
 
-    <div class="mt-5 overflow-x-auto">
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard users must be able to scroll the bounded table region, #328) -->
+    <div class="mt-5 overflow-x-auto" role="region" aria-label={mode === 'income' ? m.reports_income_title() : m.reports_spending_title()} tabindex="0">
       <table class="w-full border-collapse text-left text-sm">
         <caption class="sr-only">
           {mode === 'income' ? m.reports_income_title() : m.reports_spending_title()}

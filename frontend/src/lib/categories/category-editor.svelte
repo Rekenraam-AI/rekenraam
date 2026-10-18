@@ -250,7 +250,7 @@
             type="button"
             class={`inline-flex min-h-10 items-center gap-2 rounded-(--radius-control) border px-3 py-2 text-left text-sm transition ${
               icon === option
-                ? 'border-accent bg-accent-soft text-foreground shadow-sm'
+                ? 'border-accent status-accent-soft text-foreground shadow-sm'
                 : 'border-border bg-control text-muted hover:bg-control-hover hover:text-foreground'
             }`}
             aria-pressed={icon === option}

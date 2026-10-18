@@ -21,6 +21,6 @@
     {save.isPending ? m.valuation_runs_saving() : request.report_type === 'statement' ? m.valuation_runs_save_statement() : m.valuation_runs_save_gains()}
   </button>
   <p class="text-xs text-muted">{m.valuation_runs_save_note()}</p>
-  {#if save.isError}<p role="alert" class="text-sm text-destructive">{m.valuation_runs_save_error()}</p>{/if}
+  {#if save.isError}<p role="alert" class="text-sm text-danger">{m.valuation_runs_save_error()}</p>{/if}
   {#if save.isSuccess}<p role="status" class="text-sm text-foreground">{m.valuation_runs_saved()}</p>{/if}
 </div>

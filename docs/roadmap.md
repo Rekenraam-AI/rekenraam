@@ -191,10 +191,14 @@ below is execution order, not a chain of hard dependencies.
    detected, and the bundle reconstructs every ledger and investment figure.
    That completes #272's bundle evidence. #321/#323 are fixed, and #322 is
    fixed in bundle schema 15: every bundle id now resolves inside the archive.
+   The frontend audit #278 is complete
+   ([evidence](reviews/frontend-audit-2026-10-18.md)):
+   #324/#325/#328/#329/#330 are fixed; #327 (modal focus, P2) and #326
+   (URL state, P3) remain open.
    The other areas remain open as sub-issues of #260, in this order (the
    shared reference book and expected-figure register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):
-   frontend #278, then deployment #279. Architecture/quality #280
+   deployment #279. Architecture/quality #280
    runs last, with the shared gates once at the candidate SHA.
    Fix confirmed integrity/security defects before affected feature slices.
    This is a bounded review, not a recurring full-suite gate. Each open

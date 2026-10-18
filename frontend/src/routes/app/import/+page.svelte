@@ -1249,9 +1249,9 @@
       </div>
 
       {#if connectionsConfigError}
-        <p class="mt-4 text-sm text-warning">{m.import_connections_error_config()}</p>
+        <p role="alert" class="mt-4 text-sm text-warning">{m.import_connections_error_config()}</p>
       {:else if connectionsQuery.isError}
-        <p class="mt-4 text-sm text-warning">{m.import_connections_error_generic()}</p>
+        <p role="alert" class="mt-4 text-sm text-warning">{m.import_connections_load_error()}</p>
       {:else if connections.length === 0 && !showAddConnection}
         <p class="mt-4 text-sm text-muted">{m.import_connections_empty()}</p>
       {:else if connections.length > 0}
@@ -1299,6 +1299,7 @@
                   </td>
                   <td class="py-2.5 pr-4">
                     <select
+                      aria-label={m.import_connections_col_cash_account()}
                       class="rounded-(--radius-control) border border-border bg-control px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-foreground disabled:cursor-not-allowed disabled:opacity-60"
                       value={conn.cash_account_id ?? ''}
                       disabled={updatingCashAccountId === conn.id}
@@ -1671,7 +1672,7 @@
             </tr>
           </thead>
           <tbody>
-            {#each previewData.rows as row (row.id)}
+            {#each previewData.rows as row, rowIndex (row.id)}
               {@const norm = parseNormalized(row)}
               {@const cryptoSummary = cryptoCSVSummary(row.raw, getLocale())}
               {@const res = getResolution(row.id)}
@@ -1754,6 +1755,7 @@
                 <td class="px-4 py-2.5">
                   {#if !isBlocked && !cryptoSummary && !norm.investment}
                     <select
+                      aria-label={m.import_preview_row_account({ row: rowIndex + 1 })}
                       class="rounded-(--radius-control) border border-border bg-control px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"
                       value={res.account_id}
                       onchange={(e) =>
@@ -1773,6 +1775,7 @@
                 <td class="px-4 py-2.5">
                   {#if !isBlocked && !cryptoSummary && !norm.investment}
                     <select
+                      aria-label={m.import_preview_row_currency({ row: rowIndex + 1 })}
                       class="rounded-(--radius-control) border border-border bg-control px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"
                       value={res.commodity_id}
                       onchange={(e) =>
@@ -1793,6 +1796,7 @@
                   {#if !isBlocked && !cryptoSummary && !norm.investment}
                     {#if isTransfer}
                       <select
+                        aria-label={m.import_preview_row_transfer_account({ row: rowIndex + 1 })}
                         class="rounded-(--radius-control) border border-border bg-control px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"
                         value={res.transfer_account_id}
                         onchange={(e) =>
@@ -1807,6 +1811,7 @@
                       </select>
                     {:else}
                       <select
+                        aria-label={m.import_preview_row_category({ row: rowIndex + 1 })}
                         class="rounded-(--radius-control) border border-border bg-control px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"
                         value={res.category_id}
                         onchange={(e) =>

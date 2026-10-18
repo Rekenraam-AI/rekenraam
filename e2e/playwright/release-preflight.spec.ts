@@ -64,8 +64,8 @@ test.describe.serial('release preflight journeys', () => {
     // `import_preview_title` message exists in the catalog but is rendered
     // nowhere, so asserting "Preview import" could never pass.
     await expect(page.getByRole('button', { name: 'Commit to ledger' })).toBeVisible();
-    await page.getByLabel('Target account').selectOption(String(account.id));
-    await page.getByLabel('Currency').selectOption(String(currencyID));
+    await page.getByLabel('Target account', { exact: true }).selectOption(String(account.id));
+    await page.getByLabel('Currency', { exact: true }).selectOption(String(currencyID));
     // A QIF row with no category hint still needs a balancing account, so the
     // commit fails with "missing category or transfer account resolution"
     // unless a default category is mapped too. Skip index 0, the placeholder.

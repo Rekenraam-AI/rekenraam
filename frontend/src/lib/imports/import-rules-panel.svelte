@@ -151,7 +151,7 @@
   {#if rulesQuery.isLoading}
     <p class="mt-4 text-sm text-muted">{m.import_rules_loading()}</p>
   {:else if rulesQuery.isError}
-    <p class="mt-4 text-sm text-warning">{m.import_rules_error()}</p>
+    <p role="alert" class="mt-4 text-sm text-warning">{m.import_rules_error()}</p>
   {:else if rulesQuery.data?.rules.length === 0 && !showForm}
     <p class="mt-4 text-sm text-muted">{m.import_rules_empty()}</p>
   {:else}

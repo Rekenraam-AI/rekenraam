@@ -514,7 +514,7 @@
                   onToggle={() => toggleCategory(category.id)}
                 >
                   <div class="flex min-w-0 items-center gap-2">
-                    <span class="inline-flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-accent-soft text-accent">
+                    <span class="inline-flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] status-accent-soft text-accent">
                       <CategoryIcon icon={categoryIconName(category)} className="size-4" />
                     </span>
                     <a

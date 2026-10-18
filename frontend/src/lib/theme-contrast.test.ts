@@ -106,6 +106,14 @@ describe('theme contrast', () => {
         ['positive badge', contrast(p['positive'], p['positive-soft'])],
         ['button text on accent', contrast(p['accent-foreground'], p['accent'])],
         ['selected text', contrast(p['selected-foreground'], p['selected'])],
+        // Confirmation buttons carry the page background on their fill (#324).
+        ['button text on danger', contrast(p['background'], p['danger'])],
+        ['button text on warning', contrast(p['background'], p['warning'])],
+        ['note text on warning-soft', contrast(p['foreground'], p['warning-soft'])],
+        ...['surface', 'background', 'surface-strong'].flatMap((surface): [string, number][] => [
+          [`positive text on ${surface}`, contrast(p['positive'], p[surface])],
+          [`danger text on ${surface}`, contrast(p['danger'], p[surface])]
+        ]),
         ...surfaces.flatMap((surface): [string, number][] => [
           [`accent badge on ${surface}`, contrast(p['accent'], over(p['accent'], accentTint, p[surface]))],
           [`accent text on ${surface}`, contrast(p['accent'], p[surface])]

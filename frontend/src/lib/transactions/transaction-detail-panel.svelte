@@ -243,9 +243,9 @@
   const btnSecondary =
     'inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-control px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-control-hover';
   const btnDanger =
-    'inline-flex items-center gap-2 rounded-[var(--radius-control)] bg-danger px-4 py-2.5 text-sm font-semibold text-danger-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60';
+    'inline-flex items-center gap-2 rounded-[var(--radius-control)] bg-danger px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60';
   const btnWarning =
-    'inline-flex items-center gap-2 rounded-[var(--radius-control)] bg-warning px-4 py-2.5 text-sm font-semibold text-warning-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60';
+    'inline-flex items-center gap-2 rounded-[var(--radius-control)] bg-warning px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60';
   const btnAction =
     'inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60';
 </script>

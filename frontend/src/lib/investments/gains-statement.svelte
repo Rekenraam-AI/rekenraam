@@ -60,8 +60,8 @@
 
   function gainClass(value: string): string {
     const sign = coefficientSign(value);
-    if (sign > 0) return 'text-green-700 dark:text-green-400';
-    if (sign < 0) return 'text-destructive';
+    if (sign > 0) return 'text-positive';
+    if (sign < 0) return 'text-danger';
     return 'text-foreground';
   }
 
@@ -246,7 +246,7 @@
     </form>{/if}
   </div>
   {#if !saved && rangeInvalid}
-    <p id="gains-statement-range-error" class="text-sm text-destructive">{m.valuation_statement_range_invalid()}</p>
+    <p id="gains-statement-range-error" class="text-sm text-danger">{m.valuation_statement_range_invalid()}</p>
   {/if}
   <p class="text-xs text-muted">
     {m.valuation_statement_note({ from: day(saved?.from ?? applied.from), to: day(saved?.to ?? applied.to) })}
@@ -258,7 +258,7 @@
   {#if !saved && statementQuery.isPending}
     <Panel><p class="text-sm text-muted" role="status">{m.valuation_statement_loading()}</p></Panel>
   {:else if !saved && statementQuery.isError}
-    <Panel><p class="text-sm text-destructive" role="alert">{m.valuation_statement_error()}</p></Panel>
+    <Panel><p class="text-sm text-danger" role="alert">{m.valuation_statement_error()}</p></Panel>
   {:else if !statement || statement.rows.length === 0}
     <StatePanel title={m.valuation_statement_empty()} copy="" />
   {:else}

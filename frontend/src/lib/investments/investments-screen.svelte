@@ -178,6 +178,7 @@
       </Panel>
     {:else if isError}
       <StatePanel
+        alert
         title={m.investments_error_title()}
         copy={m.investments_error_copy()}
       />
@@ -289,7 +290,7 @@
                 {#if lotsQuery.isPending}
                   <p class="text-sm text-muted">{m.investments_lots_loading()}</p>
                 {:else if lotsQuery.isError}
-                  <p class="text-sm text-destructive">{m.investments_lots_error()}</p>
+                  <p class="text-sm text-danger">{m.investments_lots_error()}</p>
                 {:else if selectedLots.length === 0}
                   <p class="text-sm text-muted">{m.investments_lots_empty()}</p>
                 {:else}

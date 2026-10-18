@@ -337,11 +337,11 @@
           </label>
         {/if}
 
-        <div class="mt-5 rounded-(--radius-control) border border-border bg-subtle p-4">
+        <div class="mt-5 rounded-(--radius-control) border border-border bg-surface-strong p-4">
           {#if previewQuery.isPending}
             <p class="text-sm text-muted">{m.settings_status_loading()}</p>
           {:else if previewQuery.isError}
-            <p class="text-sm text-danger">{getAPIClientErrorMessage(previewQuery.error)}</p>
+            <p role="alert" class="text-sm text-danger">{getAPIClientErrorMessage(previewQuery.error)}</p>
           {:else if previewQuery.data && previewQuery.data.ledger.posting_count > 0}
             <p class="text-sm text-foreground" data-testid="export-summary">
               {m.settings_data_export_summary({
@@ -367,7 +367,7 @@
         </div>
 
         {#if needsQIFConfirmation}
-          <div class="mt-4 rounded-(--radius-control) border border-warning-border bg-warning-subtle p-4">
+          <div class="mt-4 rounded-(--radius-control) border border-warning/40 bg-warning-soft p-4">
             <p class="text-sm font-medium text-foreground">{m.settings_data_export_qif_excluded()}</p>
             <ul class="mt-2 space-y-0.5 text-sm text-muted">
               {#each unsupportedQIF as account (account.account_id)}
@@ -411,7 +411,7 @@
         {#if backupQuery.isPending}
           <p class="mt-4 text-sm text-muted">{m.settings_status_loading()}</p>
         {:else if backupQuery.isError}
-          <p class="mt-4 text-sm text-danger">{getAPIClientErrorMessage(backupQuery.error)}</p>
+          <p role="alert" class="mt-4 text-sm text-danger">{getAPIClientErrorMessage(backupQuery.error)}</p>
         {:else if backupQuery.data}
           <dl class="mt-4 grid gap-4 sm:grid-cols-3">
             <div>
@@ -434,7 +434,7 @@
             </div>
           </dl>
 
-          <div class="mt-4 flex items-start gap-3 rounded-(--radius-control) border border-border bg-subtle p-4">
+          <div class="mt-4 flex items-start gap-3 rounded-(--radius-control) border border-border bg-surface-strong p-4">
             <KeyRound class="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />
             <div>
               <p class="text-sm font-medium text-foreground">{m.settings_data_backups_key_title()}</p>
@@ -571,7 +571,7 @@
         {#if selfCheckQuery.isPending && !latestSelfCheck}
           <p class="mt-4 text-sm text-muted">{m.settings_status_loading()}</p>
         {:else if selfCheckQuery.isError && !latestSelfCheck}
-          <p class="mt-4 text-sm text-danger">{getAPIClientErrorMessage(selfCheckQuery.error)}</p>
+          <p role="alert" class="mt-4 text-sm text-danger">{getAPIClientErrorMessage(selfCheckQuery.error)}</p>
         {:else if !latestSelfCheck}
           <p class="mt-4 text-sm text-muted" data-testid="selfcheck-summary">
             {m.settings_data_selfcheck_never()}

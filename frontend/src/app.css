@@ -36,6 +36,11 @@
    * violet selected tokens. Only lightness moved; hue and chroma
    * keep each palette's character. The amber accent now carries light button
    * text, since a darkened amber no longer holds dark text at AA.
+   *
+   * #324 (2026-10-18) added danger/positive text on surface, background and
+   * surface-strong, and page-background text on the danger and warning
+   * confirmation buttons. Dark danger text on surface-strong was 4.36:1, so
+   * the dark danger moved from 0.69 to 0.71 lightness.
    */
   --color-selected: oklch(0.54 0.14 154);
   --color-selected-foreground: oklch(0.986 0.01 154);
@@ -92,7 +97,7 @@
   --color-positive-soft: oklch(0.3 0.06 155);
   --color-warning: oklch(0.78 0.12 78);
   --color-warning-soft: oklch(0.34 0.055 78);
-  --color-danger: oklch(0.69 0.18 25);
+  --color-danger: oklch(0.71 0.17 25);
   --color-danger-soft: oklch(0.3 0.06 25);
   --color-chart-1: oklch(0.69 0.13 154);
   --color-chart-2: oklch(0.74 0.11 175);
@@ -131,7 +136,7 @@
     --color-positive-soft: oklch(0.3 0.06 155);
     --color-warning: oklch(0.78 0.12 78);
     --color-warning-soft: oklch(0.34 0.055 78);
-    --color-danger: oklch(0.69 0.18 25);
+    --color-danger: oklch(0.71 0.17 25);
     --color-danger-soft: oklch(0.3 0.06 25);
     --color-chart-1: oklch(0.69 0.13 154);
     --color-chart-2: oklch(0.74 0.11 175);

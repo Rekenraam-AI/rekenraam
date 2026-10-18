@@ -793,7 +793,7 @@
         </button>
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-[var(--radius-control)] bg-warning px-4 py-2.5 text-sm font-semibold text-warning-foreground transition hover:opacity-90 disabled:opacity-60"
+          class="inline-flex items-center gap-2 rounded-[var(--radius-control)] bg-warning px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-60"
           onclick={confirmReconciliationOverride}
           disabled={pending}
         >
@@ -833,7 +833,7 @@
 
   <!-- Correction banner -->
   {#if mode === 'correct'}
-    <div class="flex items-start gap-2 rounded-[var(--radius-control)] border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm text-warning-foreground">
+    <div class="flex items-start gap-2 rounded-[var(--radius-control)] border border-warning/40 bg-warning-soft px-3 py-2.5 text-sm text-foreground">
       <AlertTriangle size={15} class="mt-0.5 shrink-0" aria-hidden="true" />
       <span>{m.transactions_correction_banner()}</span>
     </div>

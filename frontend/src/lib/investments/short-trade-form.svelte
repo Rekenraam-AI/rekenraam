@@ -490,7 +490,7 @@
           </span>
           <span class="text-muted">{m.investments_short_cover_result()}</span>
           {#if preview.realized_gain !== null && preview.realized_gain_scale !== null}
-            <span class="text-right font-mono {coefficientSign(preview.realized_gain) >= 0 ? 'text-foreground' : 'text-destructive'}"
+            <span class="text-right font-mono {coefficientSign(preview.realized_gain) >= 0 ? 'text-foreground' : 'text-danger'}"
               data-testid="short-cover-result">
               {coefficientSign(preview.realized_gain) >= 0 ? '+' : ''}{formatScaledValue(preview.realized_gain, preview.realized_gain_scale, locale)}
               {#if cashCurrencyCode}<span class="ml-1 text-muted">{cashCurrencyCode}</span>{/if}

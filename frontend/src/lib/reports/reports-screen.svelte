@@ -474,7 +474,7 @@
   {:else if netWorthQuery.isPending}
     <StatePanel title={m.reports_loading_title()} copy={m.reports_loading_copy()} />
   {:else if netWorthQuery.isError}
-    <StatePanel title={m.reports_error_title()} copy={netWorthError.copy}>
+    <StatePanel alert title={m.reports_error_title()} copy={netWorthError.copy}>
       {#if netWorthError.retryable}
         <button
           type="button"
@@ -514,7 +514,8 @@
       {/if}
       <ValuationNotice valuation={netWorthQuery.data?.valuation} {commodityLabel} />
 
-      <div class="mt-5 overflow-x-auto">
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard users must be able to scroll the bounded table region, #328) -->
+      <div class="mt-5 overflow-x-auto" role="region" aria-label={m.reports_net_worth_title()} tabindex="0">
         <table class="w-full min-w-[34rem] border-collapse text-left text-sm">
           <thead>
             <tr class="border-b border-border text-xs uppercase tracking-[0.12em] text-muted">

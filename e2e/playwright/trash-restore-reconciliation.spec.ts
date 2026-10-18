@@ -132,3 +132,30 @@ test('a plain trash restore refused by a newer statement opens the checkpoint li
   await expect.poll(() => s.deleted(s.subject.id)).toBe(false);
   expect(await s.active()).toEqual([]);
 });
+
+// #325: a deleted voided transaction is badged with its translated status, not
+// the raw `voided` code.
+test('a deleted voided transaction shows its translated status', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const suffix = Date.now();
+  const checking = await createCashAccount(page, csrfToken, `Trash voided ${suffix}`, currencyID);
+  const category = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/categories', csrfToken, {
+    name: `Trash voided groceries ${suffix}`, category_type: 'expense'
+  });
+  const day = todayISO();
+  const description = `Trash voided ${suffix}`;
+  const tx = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/transactions', csrfToken, {
+    transaction_date: day, status: 'posted', description,
+    journal_entries: [{ entry_date: day, postings: [
+      { account_id: checking.id, commodity_id: currencyID, quantity_value: '-700', quantity_scale: 2 },
+      { account_id: category.id, commodity_id: currencyID, quantity_value: '700', quantity_scale: 2 }
+    ] }]
+  });
+  await apiJSON(page, 'POST', `/api/v1/transactions/${tx.id}/void`, csrfToken, { change_reason: 'duplicate' });
+  await apiJSON(page, 'POST', `/api/v1/transactions/${tx.id}/soft-delete`, csrfToken, { change_reason: 'duplicate' });
+
+  await page.goto('/app/settings/trash');
+  const row = page.getByRole('row').filter({ hasText: description });
+  await expect(row.getByText('Voided', { exact: true })).toBeVisible();
+  await expect(row.getByText('voided', { exact: true })).toHaveCount(0);
+});

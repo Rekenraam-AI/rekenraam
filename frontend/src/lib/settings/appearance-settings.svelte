@@ -131,11 +131,11 @@
       </div>
 
       <div class="grid grid-cols-5 overflow-hidden rounded-(--radius-panel) border border-border">
-        <div class="h-12 bg-chart-1" aria-label={m.appearance_chart_1()}></div>
-        <div class="h-12 bg-chart-2" aria-label={m.appearance_chart_2()}></div>
-        <div class="h-12 bg-chart-3" aria-label={m.appearance_chart_3()}></div>
-        <div class="h-12 bg-chart-4" aria-label={m.appearance_chart_4()}></div>
-        <div class="h-12 bg-chart-5" aria-label={m.appearance_chart_5()}></div>
+        <div class="h-12 bg-chart-1" role="img" aria-label={m.appearance_chart_1()}></div>
+        <div class="h-12 bg-chart-2" role="img" aria-label={m.appearance_chart_2()}></div>
+        <div class="h-12 bg-chart-3" role="img" aria-label={m.appearance_chart_3()}></div>
+        <div class="h-12 bg-chart-4" role="img" aria-label={m.appearance_chart_4()}></div>
+        <div class="h-12 bg-chart-5" role="img" aria-label={m.appearance_chart_5()}></div>
       </div>
     </div>
   </Panel>

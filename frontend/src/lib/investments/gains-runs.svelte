@@ -37,7 +37,7 @@
   <h2 class="text-sm font-semibold text-foreground">{m.valuation_runs_title()}</h2>
   <p class="text-sm text-muted">{m.valuation_runs_note()}</p>
   {#if list.isPending}<p role="status" class="text-sm text-muted">{m.valuation_runs_loading()}</p>
-  {:else if list.isError}<p role="alert" class="text-sm text-destructive">{m.valuation_runs_load_error()}</p>
+  {:else if list.isError}<p role="alert" class="text-sm text-danger">{m.valuation_runs_load_error()}</p>
     <button type="button" class="min-h-11 text-sm underline" onclick={() => list.refetch()}>{m.valuation_runs_retry()}</button>
   {:else if runs.length === 0}<p class="text-sm text-muted">{m.valuation_runs_empty()}</p>
   {:else}
@@ -55,7 +55,7 @@
   {#if selectedID > 0}
     <div class="min-w-0 space-y-3 border-t border-border pt-3" data-testid="saved-gains-run">
       {#if query.isPending}<p role="status" class="text-sm text-muted">{m.valuation_runs_loading()}</p>
-      {:else if query.isError}<p role="alert" class="text-sm text-destructive">{m.valuation_runs_load_error()}</p>
+      {:else if query.isError}<p role="alert" class="text-sm text-danger">{m.valuation_runs_load_error()}</p>
         <button type="button" class="min-h-11 text-sm underline" onclick={() => query.refetch()}>{m.valuation_runs_retry()}</button>
       {:else if run}
         <h3 class="text-sm font-semibold text-foreground">{m.valuation_runs_selected({ id: String(run.id), date: dates.format(new Date(run.captured_at)) })}</h3>

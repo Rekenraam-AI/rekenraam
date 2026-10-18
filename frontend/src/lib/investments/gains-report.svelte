@@ -115,8 +115,8 @@
 
   function gainClass(value: string): string {
     const sign = coefficientSign(value);
-    if (sign > 0) return 'text-green-700 dark:text-green-400';
-    if (sign < 0) return 'text-destructive';
+    if (sign > 0) return 'text-positive';
+    if (sign < 0) return 'text-danger';
     return 'text-muted';
   }
 </script>
@@ -148,7 +148,7 @@
       {#if gainsQuery.isPending}
         <Panel><p class="text-sm text-muted">{m.investments_gains_loading()}</p></Panel>
       {:else if gainsQuery.isError}
-        <Panel><p class="text-sm text-destructive">{m.investments_gains_error()}</p></Panel>
+        <Panel><p class="text-sm text-danger">{m.investments_gains_error()}</p></Panel>
       {:else if gainsQuery.data?.alternative}
         <AlternativeGains data={gainsQuery.data} {instrumentName} {formatGain} />
       {/if}
@@ -173,11 +173,11 @@
         <input type="number" min="1" max="365" step="1" bind:value={fxMaxAge} aria-invalid={fxInvalid} class="w-24 rounded border border-border bg-control px-2 py-1 text-foreground" />
       </label>
     </div>
-    {#if fxInvalid}<p class="text-sm text-destructive" role="alert">{m.valuation_fx_age_invalid()}</p>{/if}
+    {#if fxInvalid}<p class="text-sm text-danger" role="alert">{m.valuation_fx_age_invalid()}</p>{/if}
     <p class="text-xs text-muted">{fxMethod === 'valuation_date_all' ? m.valuation_fx_valuation_note() : m.valuation_fx_historic_note()}</p>
     {#if fx}
       {#if gainsQuery.isPending}<Panel><p role="status" class="text-sm text-muted">{m.investments_gains_loading()}</p></Panel>
-      {:else if gainsQuery.isError}<Panel><p role="alert" class="text-sm text-destructive">{m.investments_gains_error()}</p></Panel>
+      {:else if gainsQuery.isError}<Panel><p role="alert" class="text-sm text-danger">{m.investments_gains_error()}</p></Panel>
       {:else if gainsQuery.data?.reporting}
         {@const reporting = gainsQuery.data.reporting}
         <GainsFXView profile={reporting.profile} {formatGain} figures={[
@@ -221,7 +221,7 @@
       </form>
     </div>
     {#if valuationDateFuture}
-      <p id="gains-valuation-date-error" class="mb-3 text-sm text-destructive">{m.valuation_gains_date_future()}</p>
+      <p id="gains-valuation-date-error" class="mb-3 text-sm text-danger">{m.valuation_gains_date_future()}</p>
     {/if}
     {#if profile}
       <p class="mb-3 text-sm text-muted" data-testid="gains-profile">{m.valuation_gains_profile({ date: profile.valuation_as_of })}</p>
@@ -232,7 +232,7 @@
       </Panel>
     {:else if gainsQuery.isError}
       <Panel>
-        <p class="text-sm text-destructive">{m.investments_gains_error()}</p>
+        <p class="text-sm text-danger">{m.investments_gains_error()}</p>
       </Panel>
     {:else if unrealized.length === 0}
       <StatePanel title={m.investments_gains_unrealized_empty()} copy="" />
@@ -326,7 +326,7 @@
       </Panel>
     {:else if gainsQuery.isError}
       <Panel>
-        <p class="text-sm text-destructive">{m.investments_gains_error()}</p>
+        <p class="text-sm text-danger">{m.investments_gains_error()}</p>
       </Panel>
     {:else if realized.length === 0}
       <StatePanel title={m.investments_gains_realized_empty()} copy="" />
@@ -415,7 +415,7 @@
     {#if gainsQuery.isPending}
       <Panel><p class="text-sm text-muted" role="status">{m.investments_gains_loading()}</p></Panel>
     {:else if gainsQuery.isError}
-      <Panel><p class="text-sm text-destructive" role="alert">{m.investments_gains_error()}</p></Panel>
+      <Panel><p class="text-sm text-danger" role="alert">{m.investments_gains_error()}</p></Panel>
     {:else if !gainsQuery.data?.capital_returns?.length}
       <StatePanel title={m.investments_roc_empty()} copy="" />
     {:else}

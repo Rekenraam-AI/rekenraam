@@ -722,7 +722,7 @@
         </span>
         <span class="text-muted">{m.investments_sell_preview_gain()}</span>
         {#if preview.realized_gain !== null && preview.realized_gain_scale !== null}
-          <span class="text-right font-mono {coefficientSign(preview.realized_gain) >= 0 ? 'text-foreground' : 'text-destructive'}">
+          <span class="text-right font-mono {coefficientSign(preview.realized_gain) >= 0 ? 'text-foreground' : 'text-danger'}">
             {coefficientSign(preview.realized_gain) >= 0 ? '+' : ''}{formatGain(preview.realized_gain, preview.realized_gain_scale)}
             {#if cashCurrencyCode}<span class="ml-1 text-muted">{cashCurrencyCode}</span>{/if}
           </span>

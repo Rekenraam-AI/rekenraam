@@ -111,6 +111,8 @@
     <p class="mt-1 text-sm leading-6 text-muted">{m.reconcile_start_copy()}</p>
   </div>
 
+  <!-- Without its accounts the picker would read as an empty book (#329). -->
+  <APIFormError error={accountsQuery.error ?? currenciesQuery.error} />
   {#if accountsQuery.isSuccess && reconcilableAccounts.length === 0}
     <p class="text-sm text-muted">{m.reconcile_start_no_accounts()}</p>
   {:else}

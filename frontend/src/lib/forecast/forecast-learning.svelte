@@ -233,7 +233,7 @@
             })}
           </p>
           {#each group.warnings as warning (warning)}
-            <p class="mt-2 rounded-(--radius-control) border border-warning/40 bg-warning/10 px-2.5 py-1.5 text-xs leading-5 text-warning-foreground">
+            <p class="mt-2 rounded-(--radius-control) border border-warning/40 bg-warning-soft px-2.5 py-1.5 text-xs leading-5 text-foreground">
               {warningText(warning)}
             </p>
           {/each}

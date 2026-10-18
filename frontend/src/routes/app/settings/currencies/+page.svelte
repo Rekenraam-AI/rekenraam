@@ -401,7 +401,7 @@
 {#if isLoading}
   <StatePanel title={m.currencies_loading_title()} copy={m.currencies_loading_copy()} />
 {:else if isError}
-  <StatePanel title={m.currencies_error_title()} copy={m.currencies_error_copy()}>
+  <StatePanel alert title={m.currencies_error_title()} copy={m.currencies_error_copy()}>
     <p class="text-sm leading-6 text-muted">{getAPIClientErrorMessage(pageError)}</p>
     <button
       type="button"

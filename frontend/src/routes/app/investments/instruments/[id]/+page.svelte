@@ -40,7 +40,7 @@
 {#if instrumentsQuery.isPending}
   <Panel><p role="status" class="text-sm text-muted">{m.investments_instrument_view_loading()}</p></Panel>
 {:else if instrumentsQuery.isError}
-  <StatePanel title={m.investments_error_title()} copy={m.investments_error_copy()} />
+  <StatePanel alert title={m.investments_error_title()} copy={m.investments_error_copy()} />
 {:else if !instrument}
   <div class="space-y-4">
     {@render back()}

@@ -2,6 +2,7 @@ import { expect, test } from './support/fixtures';
 import { todayISO } from './support/dates';
 import { apiJSON } from './support/api';
 import { createCashAccount, readyForLedger } from './support/ledger';
+import { expectNoAccessibilityViolations } from './support/a11y';
 
 function todayDMY(): string {
   const [year, month, day] = todayISO().split('-');
@@ -27,9 +28,12 @@ test('[acceptance] a bank CSV mapping is reused with payee resolution and previe
   await expect(page.getByText('Matching rows: 2')).toBeVisible();
   await page.getByRole('button', { name: 'Create “Bakker”' }).click();
   await expect(page.getByRole('heading', { name: 'Resolve payees' })).toBeHidden();
+  // #330: every per-row picker in the staged preview has its own name.
+  await expect(page.getByRole('combobox', { name: 'Category, row 2', exact: true })).toBeVisible();
+  await expectNoAccessibilityViolations(page, 'staged CSV preview');
 
-  await page.getByLabel('Target account').selectOption(String(account.id));
-  await page.getByLabel('Currency').selectOption(String(currencyID));
+  await page.getByLabel('Target account', { exact: true }).selectOption(String(account.id));
+  await page.getByLabel('Currency', { exact: true }).selectOption(String(currencyID));
   await page.getByLabel('Default category').selectOption({ index: 1 });
   await page.getByRole('button', { name: 'Apply to all rows' }).click();
   await page.getByRole('button', { name: 'Commit to ledger' }).click();
@@ -81,8 +85,8 @@ test('a CSV row rejected under the declared decimal comma is flagged and not com
   await expect(page.getByText('Row 2: Amount “-12.50” does not match the file\'s decimal separator; this row will not be imported')).toBeVisible();
   await expect(page.getByText('Not readable under this file\'s format', { exact: false })).toBeVisible();
 
-  await page.getByLabel('Target account').selectOption(String(account.id));
-  await page.getByLabel('Currency').selectOption(String(currencyID));
+  await page.getByLabel('Target account', { exact: true }).selectOption(String(account.id));
+  await page.getByLabel('Currency', { exact: true }).selectOption(String(currencyID));
   await page.getByLabel('Default category').selectOption({ index: 1 });
   await page.getByRole('button', { name: 'Apply to all rows' }).click();
   await page.getByRole('button', { name: 'Commit to ledger' }).click();
@@ -105,8 +109,8 @@ test('a failed import row is fixed and committed from review remaining rows', as
   });
   await page.getByLabel('Mapping name').fill(`Resume ${suffix}`);
   await page.getByRole('button', { name: 'Upload & preview' }).click();
-  await page.getByLabel('Target account').selectOption(String(account.id));
-  await page.getByLabel('Currency').selectOption(String(currencyID));
+  await page.getByLabel('Target account', { exact: true }).selectOption(String(account.id));
+  await page.getByLabel('Currency', { exact: true }).selectOption(String(currencyID));
   await page.getByLabel('Default category').selectOption({ index: 1 });
   await page.getByRole('button', { name: 'Apply to all rows' }).click();
   // Leave the Slager row without an account: it fails, Bakker commits.
@@ -177,8 +181,8 @@ test('the import override lists the checkpoints it will invalidate and commits a
   });
   await page.getByLabel('Mapping name').fill(`Reconciled ${suffix}`);
   await page.getByRole('button', { name: 'Upload & preview' }).click();
-  await page.getByLabel('Target account').selectOption(String(account.id));
-  await page.getByLabel('Currency').selectOption(String(currencyID));
+  await page.getByLabel('Target account', { exact: true }).selectOption(String(account.id));
+  await page.getByLabel('Currency', { exact: true }).selectOption(String(currencyID));
   await page.getByLabel('Default category').selectOption({ index: 1 });
   await page.getByRole('button', { name: 'Apply to all rows' }).click();
 
