@@ -147,6 +147,12 @@ below is execution order, not a chain of hard dependencies.
    The import audit #271 is complete
    ([evidence](reviews/import-audit-2026-10-17.md)); all its findings,
    #299 (P2) and #300–#303 (P3), are fixed.
+   Investment part 1 #272 has been executed
+   ([evidence](reviews/investment-operations-1-audit-2026-10-18.md)); the
+   operation matrix and exact-figure checks pass with no new financial defect.
+   Its final acceptance remains open: #277 must distinguish unresolved-basis
+   diagnostics from corruption and assess independent bundle reconstruction;
+   native restore with unchanged CSV re-export is verified.
    The other eight areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with
