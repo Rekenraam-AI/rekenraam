@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"testing/iotest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -256,13 +257,38 @@ func TestMarketDataHTTPRejectsNonSuccessStatus(t *testing.T) {
 }
 
 func TestMarketDataHTTPPropagatesTransportError(t *testing.T) {
+	cause := errors.New("network down: operator-secret")
 	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
-		return nil, errors.New("network down")
+		return nil, cause
 	})}
 
-	_, err := getBytes(context.Background(), client, "https://example.test/rates")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "network down")
+	_, err := getBytes(context.Background(), client, "https://example.test/rates?app_id=operator-secret")
+	require.ErrorIs(t, err, cause)
+	assert.Equal(t, "market data connection failed", err.Error())
+}
+
+func TestMarketDataHTTPRedactsUntrustedStatusAndReadErrors(t *testing.T) {
+	for _, scenario := range []string{"status", "read"} {
+		t.Run(scenario, func(t *testing.T) {
+			cause := errors.New("remote-read-operator-secret")
+			client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				response := &http.Response{StatusCode: 200, Header: make(http.Header), Request: r,
+					Body: io.NopCloser(iotest.ErrReader(cause))}
+				if scenario == "status" {
+					response.StatusCode = 500
+					response.Status = "500 remote-status-operator-secret"
+				}
+				return response, nil
+			})}
+			_, err := getBytes(context.Background(), client, "https://example.test/rates?app_id=operator-secret")
+			require.Error(t, err)
+			assert.NotContains(t, err.Error(), "operator-secret")
+			assert.NotContains(t, err.Error(), "https://example.test")
+			if scenario == "read" {
+				assert.ErrorIs(t, err, cause)
+			}
+		})
+	}
 }
 
 func TestDecimalToScaledRejectsInvalidValues(t *testing.T) {
