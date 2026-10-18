@@ -86,5 +86,41 @@ test('a CSV row rejected under the declared decimal comma is flagged and not com
   await page.getByRole('button', { name: 'Apply to all rows' }).click();
   await page.getByRole('button', { name: 'Commit to ledger' }).click();
   await expect(page.getByText('1 transactions committed')).toBeVisible();
-  await expect(page.getByText('1 failed — review errors below')).toBeVisible();
+  await expect(page.getByText('1 failed — review the remaining rows to fix them')).toBeVisible();
+});
+
+// #301: a failed row is repaired in its own batch. The result step goes back
+// to the preview, where only the uncommitted row can be re-resolved.
+test('a failed import row is fixed and committed from review remaining rows', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const suffix = Date.now();
+  const account = await createCashAccount(page, csrfToken, `CSV resume ${suffix}`, currencyID);
+
+  await page.goto('/app/import');
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'resume.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(`Valutadatum;Begunstigde;Bedrag EUR\n${todayDMY()};Bakker;-12,34\n${todayDMY()};Slager;-5,00\n`)
+  });
+  await page.getByLabel('Mapping name').fill(`Resume ${suffix}`);
+  await page.getByRole('button', { name: 'Upload & preview' }).click();
+  await page.getByLabel('Target account').selectOption(String(account.id));
+  await page.getByLabel('Currency').selectOption(String(currencyID));
+  await page.getByLabel('Default category').selectOption({ index: 1 });
+  await page.getByRole('button', { name: 'Apply to all rows' }).click();
+  // Leave the Slager row without an account: it fails, Bakker commits.
+  const slager = page.getByRole('row', { name: /Slager/ });
+  await slager.locator('select').first().selectOption('');
+  await page.getByRole('button', { name: 'Commit to ledger' }).click();
+  await expect(page.getByText('1 transactions committed')).toBeVisible();
+  await expect(page.getByText('1 failed — review the remaining rows to fix them')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Review remaining rows' }).click();
+  await expect(slager.getByText('Not imported — fix the row and commit again')).toBeVisible();
+  await expect(page.getByRole('row', { name: /Bakker/ }).locator('select')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Discard' })).toBeHidden();
+  await slager.locator('select').first().selectOption(String(account.id));
+  await page.getByRole('button', { name: 'Commit to ledger' }).click();
+  await expect(page.getByText('2 transactions committed')).toBeVisible();
+  await expect(page.getByText(/\d+ failed/)).toBeHidden();
 });

@@ -504,6 +504,7 @@ CommitImportBatchResponse:
     - failed_count
     - gain_review_row_ids
     - dividend_review_row_ids
+    - reconciliation_hold_row_ids
   properties:
     batch_id:
       type: integer
@@ -528,6 +529,16 @@ CommitImportBatchResponse:
         Imported acquisitions held pending because their committed-disposal
         gain changes were not acknowledged as they stand now. The batch stays
         partially_committed; preview and commit again to review them.
+      items:
+        type: integer
+        format: int64
+    reconciliation_hold_row_ids:
+      type: array
+      description: >-
+        Rows held pending because they would cross a reconciliation
+        checkpoint and reconciliation_override was not set. The batch stays
+        partially_committed; commit again with the override to post them
+        (#301).
       items:
         type: integer
         format: int64

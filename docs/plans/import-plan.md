@@ -352,17 +352,30 @@ all-or-nothing. One unbalanced/invalid/guarded row must not block an otherwise
 clean 500-row statement.
 
 - Each row commits in its own DB transaction; failures set
-  `commit_status='failed'` + `commit_error` and leave the row re-committable.
-- The batch lands in `committed` (all rows done) or `partially_committed` (some
-  skipped/failed), with counts in the response and an `import_batch_events` row.
-- The user can fix resolutions/overrides on the remaining rows and call `commit`
-  again — idempotency ensures already-committed rows are not duplicated.
-
-> **Audit status (2026-10-17, [#301](https://github.com/sergeyfarin/rekenraam/issues/301)).**
-> Not yet implemented as written: `skipped` and `failed` are terminal in the
-> batch, `PATCH` is refused once a batch leaves `previewing`, and a retry with
-> `reconciliation_override` does not revisit skipped rows. Re-uploading the file
-> recovers them, because identities are recorded only on commit.
+  `commit_status='failed'` + `commit_error` and leave the row re-committable:
+  every later commit of the batch retries it.
+- A row that would cross a reconciliation checkpoint without
+  `reconciliation_override` is **held**, not skipped: it stays `pending` with
+  `commit_error` "reconciliation override required" and is listed in the
+  response's `reconciliation_hold_row_ids`. Gain-review and dividend-review
+  holds are pending the same way.
+- `skipped` is final and only for rows that must not post from this batch:
+  duplicates, owner exclusions, rows whose identity already committed,
+  unsupported Trading 212 fills and changed-source fills awaiting a correction.
+- The batch lands in `committed` only when no row is pending or failed. With a
+  held row it is `partially_committed` (even if nothing committed yet); with
+  only failed rows left it is `partially_committed`, or `failed` when nothing
+  committed. Counts go in the response and an `import_batch_events` row.
+- `partially_committed` and `failed` batches stay open: `PATCH` re-resolves
+  their pending and failed rows (a re-resolved failed row is `pending` again),
+  and preview and `commit` run again. Committed and skipped rows are immutable.
+  Idempotency ensures already-committed rows are not duplicated. Discard stays
+  limited to `previewing` batches, which have committed nothing.
+- The result screen offers "review remaining rows" for failed and held rows,
+  back to the preview with the commit controls. Re-uploading the file also
+  still works, because identities are recorded only on commit
+  ([#301](https://github.com/sergeyfarin/rekenraam/issues/301),
+  `TestImportAuditHeldAndFailedRowsResumeInTheirBatch`).
 
 ### Rollback
 

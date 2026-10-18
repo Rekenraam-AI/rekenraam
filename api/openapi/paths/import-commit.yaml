@@ -12,7 +12,14 @@ post:
     explicit owner gross/withholding declarations; missing accounts or required
     facts leave only those rows pending, listed in dividend_review_row_ids, while
     unrelated rows can commit. These dividends never fall back to ordinary cash.
-    Accepted rows retain per-row atomicity.
+    Accepted rows retain per-row atomicity. A row that would cross a
+    reconciliation checkpoint without reconciliation_override stays pending
+    with commit_error "reconciliation override required" and is listed in
+    reconciliation_hold_row_ids. Failed rows are retried on every commit. The
+    batch is committed only when no row is left pending or failed; otherwise
+    it is partially_committed (failed when nothing committed and only failed
+    rows remain), and both states accept PATCH, preview and commit again
+    until it is (#301). Skipped duplicates and exclusions are final.
   parameters:
     - $ref: "../openapi.yaml#/components/parameters/ImportBatchID"
     - in: header

@@ -149,6 +149,9 @@ type commitImportBatchResponse struct {
 	// GainReviewRowIDs stay pending until their current gain changes are
 	// acknowledged in another preview and commit.
 	GainReviewRowIDs []int64 `json:"gain_review_row_ids"`
+	// ReconciliationHoldRowIDs would cross a reconciliation checkpoint and
+	// stay pending until a commit with reconciliation_override (#301).
+	ReconciliationHoldRowIDs []int64 `json:"reconciliation_hold_row_ids"`
 }
 
 type previewCommitResponse struct {
@@ -762,6 +765,10 @@ func commitImportBatch(logger *slog.Logger, authService *app.AuthService, import
 		if dividendReviewRowIDs == nil {
 			dividendReviewRowIDs = []int64{}
 		}
+		reconciliationHoldRowIDs := result.ReconciliationHoldRowIDs
+		if reconciliationHoldRowIDs == nil {
+			reconciliationHoldRowIDs = []int64{}
+		}
 		writeJSON(w, http.StatusOK, commitImportBatchResponse{
 			BatchID:              result.BatchID,
 			Status:               result.Status,
@@ -771,6 +778,8 @@ func commitImportBatch(logger *slog.Logger, authService *app.AuthService, import
 			FailedCount:          result.FailedCount,
 			GainReviewRowIDs:     gainReviewRowIDs,
 			DividendReviewRowIDs: dividendReviewRowIDs,
+
+			ReconciliationHoldRowIDs: reconciliationHoldRowIDs,
 		})
 	}))
 }
@@ -1012,6 +1021,8 @@ func writeImportServiceError(w http.ResponseWriter, r *http.Request, logger *slo
 		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "import batch not found")
 	case errors.Is(err, app.ErrImportBatchNotOpen):
 		writeAPIError(w, http.StatusConflict, "CONFLICT", "import batch is not in an open state")
+	case errors.Is(err, app.ErrImportStagedRowNotReviewable):
+		writeAPIError(w, http.StatusConflict, "CONFLICT", "import row is already committed or skipped")
 	case errors.Is(err, app.ErrImportProfileNotFound):
 		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "import profile not found")
 	case errors.Is(err, app.ErrImportRuleNotFound):

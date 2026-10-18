@@ -1408,15 +1408,25 @@ func (r *ImportRepository) UpdateImportStagedRowResolution(ctx context.Context, 
 }
 
 // ErrImportBatchNotPreviewing reports that a review patch reached a batch that
-// left the previewing state after the caller's admission check.
-var ErrImportBatchNotPreviewing = errors.New("import batch is not previewing")
+// is no longer open for review (committed or discarded) after the caller's
+// admission check.
+var ErrImportBatchNotPreviewing = errors.New("import batch is not open for review")
+
+// ErrImportStagedRowNotReviewable reports a review patch on a row that already
+// committed or was skipped: only pending and failed rows can be re-resolved.
+var ErrImportStagedRowNotReviewable = errors.New("import staged row is committed or skipped")
+
+// importBatchReviewableStatusSQL lists the batch states whose uncommitted rows
+// the owner may still re-resolve and commit (#301).
+const importBatchReviewableStatusSQL = `('previewing', 'partially_committed', 'failed')`
 
 // PatchImportStagedRowResolutions applies a review patch atomically: every
 // row update lands or none does. Each statement re-checks that the batch is
-// still previewing, so a commit or discard that wins the race after the
-// caller's admission check rejects the whole patch (ErrImportBatchNotPreviewing)
-// instead of rewriting a row the commit already read. A row outside the batch
-// rejects the whole patch with ErrNotFound.
+// still open and the row is still pending or failed, so a commit or discard
+// that wins the race after the caller's admission check rejects the whole
+// patch instead of rewriting a committed row. A failed row that is
+// re-resolved becomes pending again. A row outside the batch rejects the
+// whole patch with ErrNotFound.
 func (r *ImportRepository) PatchImportStagedRowResolutions(ctx context.Context, batchID int64, patches []UpdateImportStagedRowResolutionParams) error {
 	tx, err := r.database.BeginTx(ctx, nil)
 	if err != nil {
@@ -1432,10 +1442,10 @@ func (r *ImportRepository) PatchImportStagedRowResolutions(ctx context.Context, 
 	for _, patch := range patches {
 		result, err := tx.ExecContext(ctx, `
 			UPDATE import_staged_rows
-			SET dedupe_status = ?, resolution_json = ?
-			WHERE id = ? AND batch_id = ?
+			SET dedupe_status = ?, resolution_json = ?, commit_status = 'pending', commit_error = NULL
+			WHERE id = ? AND batch_id = ? AND commit_status IN ('pending', 'failed')
 			  AND EXISTS (SELECT 1 FROM import_batches b
-			    WHERE b.id = import_staged_rows.batch_id AND b.status = 'previewing')
+			    WHERE b.id = import_staged_rows.batch_id AND b.status IN `+importBatchReviewableStatusSQL+`)
 		`, patch.DedupeStatus, patch.ResolutionJSON, patch.RowID, batchID)
 		if err != nil {
 			return fmt.Errorf("update staged row %d resolution: %w", patch.RowID, err)
@@ -1454,8 +1464,16 @@ func (r *ImportRepository) PatchImportStagedRowResolutions(ctx context.Context, 
 			}
 			return fmt.Errorf("read import batch status: %w", err)
 		}
-		if status != "previewing" {
+		if status != "previewing" && status != "partially_committed" && status != "failed" {
 			return ErrImportBatchNotPreviewing
+		}
+		var commitStatus string
+		err = tx.QueryRowContext(ctx, `SELECT commit_status FROM import_staged_rows WHERE id = ? AND batch_id = ?`, patch.RowID, batchID).Scan(&commitStatus)
+		if err == nil {
+			return fmt.Errorf("staged row %d is %s: %w", patch.RowID, commitStatus, ErrImportStagedRowNotReviewable)
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("read staged row commit status: %w", err)
 		}
 		return fmt.Errorf("staged row %d: %w", patch.RowID, ErrNotFound)
 	}
@@ -1476,7 +1494,8 @@ func (r *ImportRepository) CommitImportStagedRowInTx(ctx context.Context, tx *sq
 }
 
 // MarkImportStagedRowCommittedIfPending records a successful idempotent
-// outcome without overwriting a terminal result written by a concurrent
+// outcome on a pending or failed row (a recommit retries failed rows, #301)
+// without overwriting a result written by a concurrent
 // commit. The identity and winning row marker are written atomically, so a
 // no-op here means the other caller has already marked the row committed, or
 // the batch was discarded and the row must stay uncommitted.
@@ -1484,7 +1503,7 @@ func (r *ImportRepository) MarkImportStagedRowCommittedIfPending(ctx context.Con
 	result, err := r.database.ExecContext(ctx, `
 		UPDATE import_staged_rows
 		SET commit_status = 'committed', committed_identity_id = ?, committed_transaction_id = NULLIF(?, 0), commit_error = NULL
-		WHERE id = ? AND commit_status = 'pending' AND `+stagedRowBatchOpenSQL, identityID, transactionID, rowID)
+		WHERE id = ? AND commit_status IN ('pending', 'failed') AND `+stagedRowBatchOpenSQL, identityID, transactionID, rowID)
 	if err != nil {
 		return false, fmt.Errorf("mark staged row committed if pending: %w", err)
 	}

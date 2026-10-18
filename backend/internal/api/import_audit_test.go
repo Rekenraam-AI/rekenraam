@@ -400,5 +400,117 @@ func TestImportAuditRejectedConventionRowsAreFlaggedAndNeverCommitted(t *testing
 				assert.Contains(t, row.CommitError, "convention", "%s row %d", tc.name, row.RowIndex)
 			}
 		}
+
+		// The batch stays open for its failed rows (#301), but a recommit,
+		// even after the owner re-includes them, refuses them again.
+		patchImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, resolutionPatchBody(t, account.ID, eur, groceries.ID, rejectedRowIDs(started.Rows, tc.rejected)...), http.StatusNoContent)
+		again := commitImportBatchForSession(t, handler, cookie, csrf, started.Batch.ID, `{"reconciliation_override":true}`, http.StatusOK)
+		assert.Equal(t, "partially_committed", again.Status, tc.name)
+		assert.Equal(t, len(tc.rejected), again.FailedCount, tc.name)
+		assert.Equal(t, auditRat(t, tc.balance), c.balance(account.ID, eur, "2026-12-31"), tc.name)
 	}
+}
+
+func rejectedRowIDs(rows []importStagedRowResponse, rejected map[int]string) []int64 {
+	var ids []int64
+	for _, row := range rows {
+		if _, ok := rejected[row.RowIndex]; ok {
+			ids = append(ids, row.ID)
+		}
+	}
+	return ids
+}
+
+// TestImportAuditHeldAndFailedRowsResumeInTheirBatch is the #301 regression.
+// A row held because it would cross a reconciliation checkpoint stays pending
+// and a retry with the override commits it exactly once; a batch that still
+// holds or failed rows is never reported committed; and a failed row is
+// repaired by PATCH and a recommit of the same batch, in a partially
+// committed batch as well as a failed one. Committed rows stay immutable.
+func TestImportAuditHeldAndFailedRowsResumeInTheirBatch(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	cookie, csrf, eur, checking, groceries := bootstrapImportAPITest(t, handler)
+	c := ledgerAuditClient{t: t, handler: handler, cookie: cookie, csrf: csrf}
+
+	// A 4.50 spend reconciled on 2026-06-07 closes the period before it.
+	reconciled := createTransactionForSession(t, handler, cookie, csrf,
+		balancedBody("2026-06-07", posting(checking.ID, -450, 2, eur), posting(groceries.ID, 450, 2, eur)), http.StatusCreated)
+	reconcilePostingForSession(t, handler, cookie, csrf, checking.ID, eur, reconciled.JournalEntries[0].Postings[0], "2026-06-07")
+	require.Equal(t, auditRat(t, "-4.50"), c.balance(checking.ID, eur, "2026-12-31"))
+
+	upload := func(name, file string) ([]importStagedRowResponse, int64) {
+		t.Helper()
+		started := uploadImportForAudit(t, c, name, []byte(file), nil)
+		return allImportRowsForAudit(t, c, started.Batch.ID), started.Batch.ID
+	}
+	resolve := func(batchID int64, want int, rowIDs ...int64) {
+		t.Helper()
+		patchImportBatchForSession(t, handler, cookie, csrf, batchID, resolutionPatchBody(t, checking.ID, eur, groceries.ID, rowIDs...), want)
+	}
+	const override = `{"reconciliation_override":true}`
+
+	// 1. Row 0 (06-01, -10.00) crosses the checkpoint; row 1 (06-20, -20.00)
+	// does not. Without the override row 0 is held, not skipped.
+	rows, batchID := upload("held.qif", qifRow("2026-06-01", "-10.00", "Held")+qifRow("2026-06-20", "-20.00", "Later"))
+	resolve(batchID, http.StatusNoContent, rowIDsForAudit(rows)...)
+	first := commitImportBatchForSession(t, handler, cookie, csrf, batchID, "", http.StatusOK)
+	assert.Equal(t, "partially_committed", first.Status)
+	assert.Equal(t, 1, first.CommittedCount)
+	assert.Equal(t, 0, first.SkippedCount)
+	assert.Equal(t, []int64{rows[0].ID}, first.ReconciliationHoldRowIDs)
+	held := allImportRowsForAudit(t, c, batchID)
+	assert.Equal(t, "pending", held[0].CommitStatus)
+	assert.Equal(t, "reconciliation override required", held[0].CommitError)
+	assert.Equal(t, auditRat(t, "-24.50"), c.balance(checking.ID, eur, "2026-12-31"), "-4.50 - 20.00")
+
+	// A committed row cannot be re-resolved.
+	resolve(batchID, http.StatusConflict, rows[1].ID)
+
+	// 2. A batch whose only row is held committed nothing and is not committed.
+	// It is staged before the override in step 1 invalidates the checkpoint.
+	onlyRows, onlyBatchID := upload("only-held.qif", qifRow("2026-06-02", "-7.00", "Only"))
+	resolve(onlyBatchID, http.StatusNoContent, onlyRows[0].ID)
+	none := commitImportBatchForSession(t, handler, cookie, csrf, onlyBatchID, "", http.StatusOK)
+	assert.NotEqual(t, "committed", none.Status)
+	assert.Equal(t, 0, none.CommittedCount)
+	assert.Equal(t, []int64{onlyRows[0].ID}, none.ReconciliationHoldRowIDs)
+	assert.Equal(t, auditRat(t, "-24.50"), c.balance(checking.ID, eur, "2026-12-31"))
+
+	retry := commitImportBatchForSession(t, handler, cookie, csrf, batchID, override, http.StatusOK)
+	assert.Equal(t, "committed", retry.Status)
+	assert.Equal(t, 2, retry.CommittedCount)
+	assert.Empty(t, retry.ReconciliationHoldRowIDs)
+	assert.Equal(t, auditRat(t, "-34.50"), c.balance(checking.ID, eur, "2026-12-31"), "-24.50 - 10.00, once")
+	commitImportBatchForSession(t, handler, cookie, csrf, batchID, override, http.StatusConflict)
+	assert.Equal(t, auditRat(t, "-34.50"), c.balance(checking.ID, eur, "2026-12-31"))
+
+	resumed := commitImportBatchForSession(t, handler, cookie, csrf, onlyBatchID, override, http.StatusOK)
+	assert.Equal(t, "committed", resumed.Status)
+	assert.Equal(t, 1, resumed.CommittedCount)
+	assert.Equal(t, auditRat(t, "-41.50"), c.balance(checking.ID, eur, "2026-12-31"), "-34.50 - 7.00")
+
+	// 3. Row 1 is left unresolved and fails; PATCH and a recommit repair it.
+	rows, batchID = upload("failed.qif", qifRow("2026-07-01", "-1.00", "Resolved")+qifRow("2026-07-02", "-2.00", "Unresolved"))
+	resolve(batchID, http.StatusNoContent, rows[0].ID)
+	partial := commitImportBatchForSession(t, handler, cookie, csrf, batchID, "", http.StatusOK)
+	assert.Equal(t, "partially_committed", partial.Status)
+	assert.Equal(t, 1, partial.FailedCount)
+	resolve(batchID, http.StatusNoContent, rows[1].ID)
+	repaired := commitImportBatchForSession(t, handler, cookie, csrf, batchID, "", http.StatusOK)
+	assert.Equal(t, "committed", repaired.Status)
+	assert.Equal(t, 2, repaired.CommittedCount)
+	assert.Equal(t, 0, repaired.FailedCount)
+	assert.Equal(t, auditRat(t, "-44.50"), c.balance(checking.ID, eur, "2026-12-31"), "-41.50 - 1.00 - 2.00")
+
+	// 4. Every row failed: the batch is failed, and still repairable.
+	rows, batchID = upload("all-failed.qif", qifRow("2026-07-03", "-3.00", "Nothing resolved"))
+	failed := commitImportBatchForSession(t, handler, cookie, csrf, batchID, "", http.StatusOK)
+	assert.Equal(t, "failed", failed.Status)
+	resolve(batchID, http.StatusNoContent, rows[0].ID)
+	assert.Equal(t, "pending", allImportRowsForAudit(t, c, batchID)[0].CommitStatus, "a re-resolved row is pending again")
+	fixed := commitImportBatchForSession(t, handler, cookie, csrf, batchID, "", http.StatusOK)
+	assert.Equal(t, "committed", fixed.Status)
+	assert.Equal(t, 1, fixed.CommittedCount)
+	assert.Equal(t, auditRat(t, "-47.50"), c.balance(checking.ID, eur, "2026-12-31"), "-44.50 - 3.00")
 }

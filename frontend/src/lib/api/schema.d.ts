@@ -10242,7 +10242,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update import row resolutions */
+        /**
+         * Update import row resolutions
+         * @description Replaces the review state of pending or failed rows of a previewing, partially_committed or failed batch. A re-resolved failed row becomes pending again, so the owner can fix the remaining rows and commit the same batch again (#301). Committed and skipped rows are immutable.
+         */
         patch: {
             parameters: {
                 query?: never;
@@ -10303,7 +10306,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Import batch is not open */
+                /** @description Import batch is not open, or a patched row is already committed or skipped */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -10581,7 +10584,7 @@ export interface paths {
         put?: never;
         /**
          * Preview import commit
-         * @description Read-only commit preview. gain_impacts runs each pending imported acquisition with an existing instrument and holding through the rolled-back buy writer against the current ledger (T-126). Also open for a partially_committed batch so held rows can be reviewed again. CSV investment rows use named dividend validation and reconciliation preview; unresolved mappings and inconsistent gross/tax/net amounts return 400 without writes.
+         * @description Read-only commit preview. gain_impacts runs each pending imported acquisition with an existing instrument and holding through the rolled-back buy writer against the current ledger (T-126). Also open for a partially_committed or failed batch so held and failed rows can be reviewed again (#301). CSV investment rows use named dividend validation and reconciliation preview; unresolved mappings and inconsistent gross/tax/net amounts return 400 without writes.
          */
         post: {
             parameters: {
@@ -10658,7 +10661,7 @@ export interface paths {
         put?: never;
         /**
          * Commit import batch
-         * @description Commits pending rows chronologically, each in its own transaction. An imported acquisition whose replay changes committed disposal gains commits only with that row's current preview-commit acknowledgement; otherwise it stays pending, is listed in gain_review_row_ids, and the batch stays partially_committed (T-126). CSV investment rows are validated with the named dividend writer before any row commits. Unresolved mappings or mismatched gross/tax/net amounts return 400; an unacknowledged reconciliation impact returns 409, leaving the batch reviewable. Trading 212 dividends require explicit owner gross/withholding declarations; missing accounts or required facts leave only those rows pending, listed in dividend_review_row_ids, while unrelated rows can commit. These dividends never fall back to ordinary cash. Accepted rows retain per-row atomicity.
+         * @description Commits pending rows chronologically, each in its own transaction. An imported acquisition whose replay changes committed disposal gains commits only with that row's current preview-commit acknowledgement; otherwise it stays pending, is listed in gain_review_row_ids, and the batch stays partially_committed (T-126). CSV investment rows are validated with the named dividend writer before any row commits. Unresolved mappings or mismatched gross/tax/net amounts return 400; an unacknowledged reconciliation impact returns 409, leaving the batch reviewable. Trading 212 dividends require explicit owner gross/withholding declarations; missing accounts or required facts leave only those rows pending, listed in dividend_review_row_ids, while unrelated rows can commit. These dividends never fall back to ordinary cash. Accepted rows retain per-row atomicity. A row that would cross a reconciliation checkpoint without reconciliation_override stays pending with commit_error "reconciliation override required" and is listed in reconciliation_hold_row_ids. Failed rows are retried on every commit. The batch is committed only when no row is left pending or failed; otherwise it is partially_committed (failed when nothing committed and only failed rows remain), and both states accept PATCH, preview and commit again until it is (#301). Skipped duplicates and exclusions are final.
          */
         post: {
             parameters: {
@@ -29405,6 +29408,8 @@ export interface components {
             dividend_review_row_ids: number[];
             /** @description Imported acquisitions held pending because their committed-disposal gain changes were not acknowledged as they stand now. The batch stays partially_committed; preview and commit again to review them. */
             gain_review_row_ids: number[];
+            /** @description Rows held pending because they would cross a reconciliation checkpoint and reconciliation_override was not set. The batch stays partially_committed; commit again with the override to post them (#301). */
+            reconciliation_hold_row_ids: number[];
         };
         ImportReconciliationIssue: {
             row_index: number;

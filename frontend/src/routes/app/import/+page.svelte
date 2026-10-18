@@ -60,6 +60,7 @@
     importProfilesQueryKey,
     type AnalyzeCSVImportResponse,
     type StartImportResponse,
+    type ImportBatch,
     type ImportStagedRow,
     type CommitImportBatchResponse,
     type ImportResolution,
@@ -170,6 +171,7 @@
   } | null>(null);
   let reviewChangedPending = $state(false);
   let reviewChangedError = $state<unknown>(undefined);
+  let reviewRemainingError = $state<unknown>(undefined);
 
   // Discard
   let discarding = $state(false);
@@ -668,20 +670,39 @@
   }
 
   // ── Commit ─────────────────────────────────────────────────────────
+  // A partially committed or failed batch resumes where it stopped: its
+  // pending and failed rows can be re-resolved and committed again (#301).
+  function batchReviewable(status: ImportBatch['status']): boolean {
+    return status === 'previewing' || status === 'partially_committed' || status === 'failed';
+  }
+
+  function rowReviewable(row: ImportStagedRow): boolean {
+    return row.commit_status === 'pending' || row.commit_status === 'failed';
+  }
+
+  function rowPatchChanged(row: ImportStagedRow): boolean {
+    return JSON.stringify(getResolution(row.id)) !== JSON.stringify(parseResolution(row));
+  }
+
   async function handleCommit() {
-    if (!batchId) return;
+    if (!batchId || !previewData) return;
     committing = true;
     commitError = undefined;
 
     try {
-      // First patch resolutions to the server.
-      const patches = (previewData?.rows ?? []).filter((row) => row.commit_status !== 'committed').map((row) => ({
-        row_id: row.id,
-        dedupe_status: getResolution(row.id).exclude ? 'excluded' : row.dedupe_status,
-        resolution: getResolution(row.id)
-      }));
+      // First patch resolutions to the server. A resumed batch patches only
+      // the rows the owner changed, so rows reviewed elsewhere (dividends)
+      // keep their stored review.
+      const resumed = previewData.batch.status !== 'previewing';
+      const patches = previewData.rows
+        .filter((row) => rowReviewable(row) && (!resumed || rowPatchChanged(row)))
+        .map((row) => ({
+          row_id: row.id,
+          dedupe_status: getResolution(row.id).exclude ? 'excluded' : row.dedupe_status,
+          resolution: getResolution(row.id)
+        }));
 
-      await patchImportBatch(batchId, patches, csrfToken);
+      if (patches.length > 0) await patchImportBatch(batchId, patches, csrfToken);
 
       if (await reviewImportGains(false)) return;
       await finishCommit([]);
@@ -751,6 +772,25 @@
     }
   }
 
+  // Back to the preview with the batch's current rows and commit controls,
+  // so held and failed rows can be fixed and committed in the same batch.
+  async function handleReviewRemainingRows() {
+    if (!batchId || !previewData) return;
+    reviewChangedPending = true;
+    reviewRemainingError = undefined;
+    try {
+      const refreshed = await getFullImportBatch(batchId);
+      previewData = { ...previewData, batch: refreshed.batch, rows: refreshed.rows, warnings: refreshed.warnings };
+      rowResolutions = new Map(refreshed.rows.map((row) => [row.id, parseResolution(row)]));
+      commitError = undefined;
+      step = 'preview';
+    } catch (err) {
+      reviewRemainingError = err;
+    } finally {
+      reviewChangedPending = false;
+    }
+  }
+
   // ── Discard ────────────────────────────────────────────────────────
   async function handleDiscard() {
     if (!batchId) return;
@@ -782,6 +822,7 @@
     batchId = null;
     selectedFile = null;
     commitResult = null;
+    reviewRemainingError = undefined;
     sourceCorrectionRowID = null;
     sourceCorrectionImpact = null;
     sourceCorrectionReason = '';
@@ -1580,7 +1621,7 @@
               {@const res = getResolution(row.id)}
               {@const isDuplicate = row.dedupe_status === 'duplicate'}
               {@const unsupportedFill = !norm.investment && unsupportedSourceFill(row)}
-              {@const isBlocked = unsupportedFill || isDuplicate || row.source_changed || row.commit_status === 'committed' || previewData.batch.status !== 'previewing'}
+              {@const isBlocked = unsupportedFill || isDuplicate || row.source_changed || !rowReviewable(row) || !batchReviewable(previewData.batch.status)}
               {@const isExcluded = res.exclude || row.dedupe_status === 'excluded'}
               {@const isTransfer = !!norm.transfer_hint}
               <tr
@@ -1609,6 +1650,12 @@
                       : unsupportedFill ? m.import_preview_unsupported_fill() : row.source_changed ? m.import_preview_source_changed()
                       : norm.parse_errors?.length ? m.import_preview_parse_error() : dedupeStatusLabel(row.dedupe_status)}
                   </span>
+                  {#if row.commit_status === 'pending' && row.commit_error === 'reconciliation override required'}
+                    <span class="mt-1 block text-xs font-medium text-warning">{m.import_preview_row_reconciliation_held()}</span>
+                  {:else if row.commit_status === 'failed'}
+                    <span class="mt-1 block text-xs font-medium text-warning">{m.import_preview_row_failed()}</span>
+                    {#if row.commit_error}<span class="block text-xs text-muted">{row.commit_error}</span>{/if}
+                  {/if}
                   {#if row.source_changed && row.source_transaction_id}
                     <a
                       href={`/app/transactions?transaction_id=${row.source_transaction_id}`}
@@ -1818,7 +1865,7 @@
     </Panel>
 
     <!-- Commit controls -->
-    {#if previewData.batch.status === 'previewing'}
+    {#if batchReviewable(previewData.batch.status)}
     <Panel>
       <div class="space-y-4">
         <label class="flex items-center gap-2 text-sm">
@@ -1843,13 +1890,15 @@
             {committing ? m.import_commit_pending() : m.import_commit_button()}
           </button>
 
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 rounded-(--radius-control) border border-border bg-control px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-control-hover"
-            onclick={() => { showDiscardConfirm = true; }}
-          >
-            {m.import_discard_button()}
-          </button>
+          {#if previewData.batch.status === 'previewing'}
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-(--radius-control) border border-border bg-control px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-control-hover"
+              onclick={() => { showDiscardConfirm = true; }}
+            >
+              {m.import_discard_button()}
+            </button>
+          {/if}
         </div>
       </div>
     </Panel>
@@ -1903,6 +1952,15 @@
         {/if}
         {#if commitResult.failed_count > 0}
           <p class="text-warning">{m.import_result_failed({ count: commitResult.failed_count })}</p>
+        {/if}
+        {#if commitResult.reconciliation_hold_row_ids.length > 0}
+          <p class="text-warning">{m.import_result_reconciliation_held({ count: commitResult.reconciliation_hold_row_ids.length })}</p>
+        {/if}
+        {#if commitResult.failed_count > 0 || commitResult.reconciliation_hold_row_ids.length > 0}
+          <button type="button" disabled={reviewChangedPending} class="inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-2 disabled:opacity-60" onclick={() => void handleReviewRemainingRows()}>
+            {m.import_result_review_remaining()}
+          </button>
+          <APIFormError error={reviewRemainingError} id="review-remaining-error" />
         {/if}
         {#if commitResult.dividend_review_row_ids.length > 0}
           <p class="text-warning">{m.import_dividend_held({ count: commitResult.dividend_review_row_ids.length })}</p>

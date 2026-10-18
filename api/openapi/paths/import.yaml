@@ -39,6 +39,11 @@ get:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
 patch:
   summary: Update import row resolutions
+  description: >-
+    Replaces the review state of pending or failed rows of a previewing,
+    partially_committed or failed batch. A re-resolved failed row becomes
+    pending again, so the owner can fix the remaining rows and commit the
+    same batch again (#301). Committed and skipped rows are immutable.
   parameters:
     - in: header
       name: X-CSRF-Token
@@ -79,7 +84,7 @@ patch:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
-      description: Import batch is not open
+      description: Import batch is not open, or a patched row is already committed or skipped
       content:
         application/json:
           schema:

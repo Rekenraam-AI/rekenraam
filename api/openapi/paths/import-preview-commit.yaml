@@ -4,7 +4,8 @@ post:
     Read-only commit preview. gain_impacts runs each pending imported
     acquisition with an existing instrument and holding through the rolled-back
     buy writer against the current ledger (T-126). Also open for a
-    partially_committed batch so held rows can be reviewed again. CSV investment
+    partially_committed or failed batch so held and failed rows can be
+    reviewed again (#301). CSV investment
     rows use named dividend validation and reconciliation preview; unresolved
     mappings and inconsistent gross/tax/net amounts return 400 without writes.
   parameters:

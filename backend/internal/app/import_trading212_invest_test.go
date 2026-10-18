@@ -927,12 +927,14 @@ func TestCommitImportBatch_InvestmentBuyCrossingReconciledPeriodRequiresOverride
 	result, err := f.importService.CommitImportBatch(context.Background(), CommitImportBatchInput{OwnerUserID: f.ownerUserID, BatchID: batchID})
 	require.NoError(t, err)
 	assert.Equal(t, 0, result.CommittedCount)
-	assert.Equal(t, 1, result.SkippedCount, "investment imports should use the same reconciled-period guard as generic imports")
+	assert.Equal(t, 0, result.SkippedCount)
+	assert.Equal(t, "partially_committed", result.Status, "a held row keeps the batch open (#301)")
+	require.Len(t, result.ReconciliationHoldRowIDs, 1, "investment imports should use the same reconciled-period guard as generic imports")
 
 	rows, err := f.importRepo.ListAllImportStagedRows(context.Background(), batchID)
 	require.NoError(t, err)
 	require.Len(t, rows, 1)
-	assert.Equal(t, "skipped", rows[0].CommitStatus)
+	assert.Equal(t, "pending", rows[0].CommitStatus)
 	require.True(t, rows[0].CommitError.Valid)
 	assert.Equal(t, "reconciliation override required", rows[0].CommitError.String)
 
@@ -959,6 +961,14 @@ func TestCommitImportBatch_InvestmentBuyCrossingReconciledPeriodRequiresOverride
 	require.NoError(t, err)
 	assert.Equal(t, 1, overrideResult.CommittedCount)
 	assert.Equal(t, 0, overrideResult.SkippedCount)
+
+	// The held row of the first batch resumes in its batch (#301).
+	resumed, err := f.importService.CommitImportBatch(context.Background(), CommitImportBatchInput{
+		OwnerUserID: f.ownerUserID, BatchID: batchID, ReconciliationOverride: true,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, resumed.CommittedCount)
+	assert.Equal(t, "committed", resumed.Status)
 
 	checkpoints, err = f.importService.transactionService.ReconciliationCheckpoints(context.Background(), ListReconciliationCheckpointsInput{
 		AccountID:   f.cashAccountID,

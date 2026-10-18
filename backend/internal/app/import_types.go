@@ -7,10 +7,13 @@ import (
 )
 
 var (
-	ErrImportBatchNotFound   = errors.New("import batch not found")
-	ErrImportBatchNotOpen    = errors.New("import batch is not in previewing state")
-	ErrImportProfileNotFound = errors.New("import profile not found")
-	ErrImportRuleNotFound    = errors.New("import rule not found")
+	ErrImportBatchNotFound = errors.New("import batch not found")
+	ErrImportBatchNotOpen  = errors.New("import batch is not open for review")
+	// ErrImportStagedRowNotReviewable refuses a review patch on a row that
+	// already committed or was skipped (#301).
+	ErrImportStagedRowNotReviewable = errors.New("import row is already committed or skipped")
+	ErrImportProfileNotFound        = errors.New("import profile not found")
+	ErrImportRuleNotFound           = errors.New("import rule not found")
 )
 
 // ImportBatch is the service-layer representation of an import batch.
@@ -343,6 +346,10 @@ type CommitImportBatchResult struct {
 	// (or no longer) acknowledged. They stay pending, not skipped, so a fresh
 	// preview and commit can post them.
 	GainReviewRowIDs []int64
+	// ReconciliationHoldRowIDs would cross a reconciliation checkpoint. They
+	// stay pending with commit_error "reconciliation override required" until
+	// a commit with ReconciliationOverride (#301).
+	ReconciliationHoldRowIDs []int64
 }
 
 type PreviewCommitInput struct {

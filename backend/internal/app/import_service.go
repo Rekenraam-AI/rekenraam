@@ -768,7 +768,9 @@ func (s *ImportService) PatchImportBatch(ctx context.Context, input PatchImportB
 		}
 		return fmt.Errorf("get import batch for patch: %w", err)
 	}
-	if batch.Status != "previewing" {
+	// Uncommitted rows of a partially committed or failed batch stay
+	// reviewable so the owner can fix them and commit again (#301).
+	if !importBatchReviewable(batch.Status) {
 		return ErrImportBatchNotOpen
 	}
 
@@ -798,6 +800,8 @@ func (s *ImportService) PatchImportBatch(ctx context.Context, input PatchImportB
 			return ErrImportBatchNotFound
 		case errors.Is(err, db.ErrImportBatchNotPreviewing):
 			return ErrImportBatchNotOpen
+		case errors.Is(err, db.ErrImportStagedRowNotReviewable):
+			return ErrImportStagedRowNotReviewable
 		case errors.Is(err, db.ErrNotFound):
 			return ValidationError{Message: "row_id is not a row of this import batch"}
 		}
@@ -851,9 +855,10 @@ func (s *ImportService) PreviewCommit(ctx context.Context, input PreviewCommitIn
 		}
 		return PreviewCommitResult{}, fmt.Errorf("get import batch for preview: %w", err)
 	}
-	// A partially committed batch can hold acquisitions awaiting gain review,
-	// so it previews the same way it commits (T-126).
-	if batch.Status != "previewing" && batch.Status != "partially_committed" {
+	// A partially committed or failed batch can hold rows awaiting review,
+	// an override or a repair, so it previews the same way it commits (T-126,
+	// #301).
+	if !importBatchReviewable(batch.Status) {
 		return PreviewCommitResult{}, ErrImportBatchNotOpen
 	}
 
@@ -1019,7 +1024,7 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 		}
 		return CommitImportBatchResult{}, fmt.Errorf("get import batch for commit: %w", err)
 	}
-	if batch.Status != "previewing" && batch.Status != "partially_committed" {
+	if !importBatchReviewable(batch.Status) {
 		return CommitImportBatchResult{}, ErrImportBatchNotOpen
 	}
 
@@ -1054,7 +1059,9 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 
 	for _, row := range rows {
 		if row.CommitStatus == "committed" || row.CommitStatus == "skipped" {
-			// Already committed or skipped in a prior partial-commit run — count and continue.
+			// Already committed or skipped in a prior partial-commit run — count
+			// and continue. A failed row is retried: the owner may have fixed
+			// its resolution or what made it fail (#301).
 			if row.CommitStatus == "committed" {
 				result.CommittedCount++
 			} else {
@@ -1144,12 +1151,8 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 				continue
 			}
 			if errors.Is(err, ErrReconciliationOverrideRequired) {
-				if err2 := s.recordImportStagedRowTerminal(ctx, &result, db.CommitImportStagedRowParams{
-					RowID:        row.ID,
-					CommitStatus: "skipped",
-					CommitError:  sql.NullString{String: "reconciliation override required", Valid: true},
-				}, nil); err2 != nil {
-					return result, fmt.Errorf("skip investment reconciliation row %d: %w", row.ID, err2)
+				if err2 := s.holdImportStagedRowForReconciliation(ctx, &result, row.ID); err2 != nil {
+					return result, fmt.Errorf("hold investment reconciliation row %d: %w", row.ID, err2)
 				}
 				continue
 			}
@@ -1214,13 +1217,10 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 		})
 		if err != nil {
 			if errors.Is(err, ErrReconciliationOverrideRequired) {
-				// Row crosses a reconciled period and override not set → skip.
-				if err2 := s.recordImportStagedRowTerminal(ctx, &result, db.CommitImportStagedRowParams{
-					RowID:        row.ID,
-					CommitStatus: "skipped",
-					CommitError:  sql.NullString{String: "reconciliation override required", Valid: true},
-				}, nil); err2 != nil {
-					return result, fmt.Errorf("skip reconciliation row %d: %w", row.ID, err2)
+				// Row crosses a reconciled period and override not set → hold it
+				// pending for a commit with the override (#301).
+				if err2 := s.holdImportStagedRowForReconciliation(ctx, &result, row.ID); err2 != nil {
+					return result, fmt.Errorf("hold reconciliation row %d: %w", row.ID, err2)
 				}
 				continue
 			}
@@ -1273,21 +1273,19 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 		result.CommittedCount++
 	}
 
-	// Determine final batch status.
+	// The batch is committed only when no row is left pending or failed
+	// (skipped duplicates and exclusions are settled). Rows held for gain,
+	// dividend or reconciliation review are still pending, so the batch stays
+	// open even if nothing committed; a batch whose remaining rows all failed
+	// is failed. Both stay open for repair and another commit (#301).
+	held := len(result.GainReviewRowIDs) + len(result.DividendReviewRowIDs) + len(result.ReconciliationHoldRowIDs)
 	finalStatus := "committed"
-	if result.FailedCount > 0 || result.SkippedCount > 0 {
-		if result.CommittedCount == 0 {
-			finalStatus = "failed"
-		} else {
-			finalStatus = "partially_committed"
-		}
-	}
-	// If all were skipped (e.g. all duplicates), treat as committed.
-	if result.CommittedCount == 0 && result.FailedCount == 0 {
-		finalStatus = "committed"
-	}
-	// Rows held for owner review are still pending: the batch stays open.
-	if len(result.GainReviewRowIDs) > 0 || len(result.DividendReviewRowIDs) > 0 {
+	switch {
+	case held > 0:
+		finalStatus = "partially_committed"
+	case result.FailedCount > 0 && result.CommittedCount == 0:
+		finalStatus = "failed"
+	case result.FailedCount > 0:
 		finalStatus = "partially_committed"
 	}
 
@@ -1297,6 +1295,7 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 		"failed":          result.FailedCount,
 		"gain_review":     len(result.GainReviewRowIDs),
 		"dividend_review": len(result.DividendReviewRowIDs),
+		"reconciliation":  len(result.ReconciliationHoldRowIDs),
 	})
 
 	eventKind := finalStatus
@@ -1311,7 +1310,7 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 		DetailJSON: string(detailJSON),
 		// A concurrent commit of the same batch may already have finished;
 		// only a discard (or failure) since the open check refuses.
-		FromStatuses:  []string{"previewing", "partially_committed", "committed"},
+		FromStatuses:  []string{"previewing", "partially_committed", "failed", "committed"},
 		ActorUserID:   input.OwnerUserID,
 		AuthSessionID: input.AuthSessionID,
 		RequestID:     input.RequestID,
@@ -1324,7 +1323,26 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 	return result, nil
 }
 
-// recordImportStagedRowTerminal applies a failed or skipped terminal update.
+// importBatchReviewable reports whether a batch's uncommitted rows can still
+// be re-resolved, previewed and committed: a partially committed or failed
+// batch resumes where it stopped (#301).
+func importBatchReviewable(status string) bool {
+	return status == "previewing" || status == "partially_committed" || status == "failed"
+}
+
+// holdImportStagedRowForReconciliation keeps a row that would cross a
+// reconciliation checkpoint pending, with the reason, so a commit with
+// reconciliation_override can post it (#301).
+func (s *ImportService) holdImportStagedRowForReconciliation(ctx context.Context, result *CommitImportBatchResult, rowID int64) error {
+	return s.recordImportStagedRowTerminal(ctx, result, db.CommitImportStagedRowParams{
+		RowID:        rowID,
+		CommitStatus: "pending",
+		CommitError:  sql.NullString{String: "reconciliation override required", Valid: true},
+	}, nil)
+}
+
+// recordImportStagedRowTerminal applies a failed or skipped terminal update,
+// or a pending reconciliation hold.
 // A caller may hold a stale pending snapshot while another caller atomically
 // commits the transaction, identity, and row marker. In that case the guarded
 // repository update reports ErrImportStagedRowAlreadyCommitted; reload and
@@ -1337,6 +1355,8 @@ func (s *ImportService) recordImportStagedRowTerminal(ctx context.Context, resul
 			result.SkippedCount++
 		case "failed":
 			result.FailedCount++
+		case "pending":
+			result.ReconciliationHoldRowIDs = append(result.ReconciliationHoldRowIDs, params.RowID)
 		default:
 			return fmt.Errorf("unsupported import staged-row terminal status %q", params.CommitStatus)
 		}
