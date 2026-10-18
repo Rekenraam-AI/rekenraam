@@ -48,10 +48,11 @@ silently edited into immutable broker facts. The supported first command of
 each family must either replay dependent later operations or refuse with the
 named dependency before posting; it must never leave the journal and lot
 projection at different historical states. Unknown-basis sales, transfers,
-splits and sourced positive resolution now ship under #160. Write-off, cash
-in lieu and return of capital still refuse unresolved inputs until
-[#169](https://github.com/sergeyfarin/rekenraam/issues/169) specifies each
-family; unsupported imported rows remain in review.
+splits and sourced positive resolution ship under #160. Write-off and cash
+in lieu admit unresolved basis with NULL basis/result; return of capital
+preserves exact cash and entitlement with NULL reduction/excess for unknown
+effects, under the delivered [#169 contract](investment-unresolved-non-sale-plan.md).
+Unsupported imported rows remain in review.
 
 ## In-kind transfers
 
@@ -196,8 +197,10 @@ history change that alters them appends a revision of the whole effect set
 (T-148 #163: `investment_capital_return_revisions` and `-revision_effects`,
 the original basis_reduction events then leave the effective lot events), and
 a slot with no entitled lot is refused with the operation named. A return
-dated behind a later depletion is admitted through replay at its own slot. An
-unknown-basis lot is refused.
+dated behind a later depletion is admitted through replay at its own slot.
+The first command refused unknown basis; [#169](investment-unresolved-non-sale-plan.md#return-of-capital)
+supersedes that fence with nullable reduction/excess, independent known-lot
+entitlement and explicit unresolved-average-pool behavior.
 Self-check verifies facts, events and conservation (allocations sum to the
 receipt, reduction + excess = allocation, event = −reduction); bundle files
 `investment-capital-return-facts.csv` and `-effects.csv`. Reversal
