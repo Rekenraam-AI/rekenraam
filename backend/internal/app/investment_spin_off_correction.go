@@ -3,9 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
-	"reflect"
 	"strings"
 
 	"rekenraam/backend/internal/db"
@@ -258,13 +256,11 @@ func (s *InvestmentService) prepareSpinOffReplacementWrite(ctx context.Context, 
 }
 
 // sameSourceEvidence reports whether corrected evidence is the recorded
-// evidence as a JSON object (the correction form pre-fills it).
+// evidence as a JSON object (the correction form pre-fills it). Compare exact
+// number tokens, as for basis provenance, so adjacent large source IDs do not
+// become a false no-op through float rounding (#309).
 func sameSourceEvidence(corrected, recorded string) bool {
-	var left, right map[string]any
-	if json.Unmarshal([]byte(corrected), &left) != nil || json.Unmarshal([]byte(recorded), &right) != nil {
-		return false
-	}
-	return reflect.DeepEqual(left, right)
+	return sameBasisResolutionEvidence(corrected, recorded)
 }
 
 // mapSpinOffCorrectionError adds the correction fences to the spin-off

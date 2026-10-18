@@ -411,6 +411,15 @@ non-trivial diff (yours or reviewed):
     native maxlength. Named cases:
     `TestBasisResolutionRequiresSourceDeclarationWithoutWriting`,
     `TestBasisResolutionSourceTextUsesUnicodeCharacterLimit`.
+    Compare source metadata without float decoding too: spin-off and merger
+    correction treated adjacent integers above 2^53 as unchanged evidence
+    (#309). Reuse the exact-number provenance comparator; named consumer:
+    `TestCorporateActionCorrectionDistinguishesExactSourceNumbers`.
+    Share-exchange replacement must compare that effective evidence too and
+    retain it when omitted (#310):
+    `TestShareExchangeCorrectionRejectsUnchangedSourceEvidence`. Parsed browser
+    metadata can still round before reaching this comparator; #311 tracks
+    that separately and is not fixed by the server comparison.
 
 38. **Treating source corrections as amount corrections** — comparing only an
     exact basis amount refused a genuinely changed declaration (#197). Evidence

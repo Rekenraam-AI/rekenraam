@@ -34,6 +34,7 @@ type ShareExchangeOperationRecord struct {
 	DestinationCommodityID int64
 	RatioNumerator         int64
 	RatioDenominator       int64
+	SourceEvidenceJSON     string
 	AlreadyCorrected       bool
 	ImportedLineage        bool
 }
@@ -47,7 +48,7 @@ func shareExchangeOperationByTransactionIDQuery(ctx context.Context, reader tran
 	var corrected int
 	err := reader.QueryRowContext(ctx, `SELECT o.id, linked_version.transaction_id, link.transaction_version_id,
 		current.id, f.effective_on, f.source_account_id, f.destination_account_id, f.commodity_id,
-		f.destination_commodity_id, f.ratio_numerator, f.ratio_denominator,
+		f.destination_commodity_id, f.ratio_numerator, f.ratio_denominator, f.source_evidence_json,
 		EXISTS(SELECT 1 FROM investment_operations successor WHERE successor.correction_of_operation_id = o.id)
 		FROM investment_operations o
 		JOIN investment_transfer_facts f ON f.operation_id = o.id AND f.book_id = o.book_id AND f.transfer_kind = 'exchange'
@@ -57,7 +58,8 @@ func shareExchangeOperationByTransactionIDQuery(ctx context.Context, reader tran
 		WHERE o.book_id = ? AND linked_version.transaction_id = ? AND o.operation_kind = 'share_exchange'`,
 		bookID, transactionID).Scan(&record.OperationID, &record.TransactionID, &record.TransactionVersionID,
 		&record.CurrentVersionID, &record.EventDate, &record.AccountID, &record.DestinationAccountID,
-		&record.CommodityID, &record.DestinationCommodityID, &record.RatioNumerator, &record.RatioDenominator, &corrected)
+		&record.CommodityID, &record.DestinationCommodityID, &record.RatioNumerator, &record.RatioDenominator,
+		&record.SourceEvidenceJSON, &corrected)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ShareExchangeOperationRecord{}, ErrNotFound
 	}

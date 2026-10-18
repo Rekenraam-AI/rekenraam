@@ -216,13 +216,17 @@ func (s *InvestmentService) prepareShareExchangeReplacementWrite(ctx context.Con
 	}
 	// The compound command's first journal carries the disclosure policy.
 	inverse.GainImpact = gainImpactPolicy(input.GainImpactAcknowledgement)
+	evidence := input.SourceEvidenceJSON
+	if strings.TrimSpace(evidence) == "" {
+		evidence = operation.SourceEvidenceJSON
+	}
 	replacement, exchange, err := s.prepareShareExchangeWriteWith(ctx, ShareExchangeInput{
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID, RequestID: input.RequestID,
 		EffectiveOn: input.EffectiveOn, HoldingAccountID: operation.AccountID,
 		DestinationHoldingAccountID: input.DestinationHoldingAccountID,
 		CommodityID:                 operation.CommodityID, DestinationCommodityID: input.DestinationCommodityID,
 		RatioNumerator: input.RatioNumerator, RatioDenominator: input.RatioDenominator,
-		SourceEvidenceJSON: input.SourceEvidenceJSON, Memo: input.Memo, ChangeReason: plannedInverse.ChangeReason,
+		SourceEvidenceJSON: evidence, Memo: input.Memo, ChangeReason: plannedInverse.ChangeReason,
 		ReconciliationOverride: input.ReconciliationOverride,
 	}, operation.OperationID, auditOperation)
 	if err != nil {
@@ -231,7 +235,8 @@ func (s *InvestmentService) prepareShareExchangeReplacementWrite(ctx context.Con
 	if exchange.EffectiveOn == operation.EventDate && exchange.RatioNumerator == operation.RatioNumerator &&
 		exchange.RatioDenominator == operation.RatioDenominator &&
 		exchange.DestinationCommodityID == operation.DestinationCommodityID &&
-		exchange.DestinationAccountID == operation.DestinationAccountID && strings.TrimSpace(input.SourceEvidenceJSON) == "" {
+		exchange.DestinationAccountID == operation.DestinationAccountID &&
+		sameSourceEvidence(exchange.SourceEvidenceJSON, operation.SourceEvidenceJSON) {
 		return fail(ValidationError{Message: "an exchange replacement must change the date, ratio, new instrument, receiving holding or source evidence"})
 	}
 	replacement.CorrectionOfTransactionID = sql.NullInt64{Int64: operation.TransactionID, Valid: true}

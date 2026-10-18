@@ -811,7 +811,12 @@ an exchange. It is an instrument version change with no position effect.
     transfer of the removed units is the named refusal.
   - A replacement keeps the exchanged holding and old instrument. It may
     change the date, ratio, new instrument, receiving holding or evidence,
-    and refuses unchanged terms. It takes the replaced exchange's
+    and refuses unchanged terms. Omitted evidence retains the recorded
+    declaration; resubmitting that object with different key order is not a
+    change (#310). Source comparisons preserve exact numeric tokens (#309),
+    as for basis provenance. The browser's preservation of arbitrary unedited
+    metadata still needs the separate #311 wire/form correction.
+    It takes the replaced exchange's
     correction-root slot and converts the whole holding open there, computed
     by the subject replay without the replaced exchange. Every holding either
     exchange touched then replays.
