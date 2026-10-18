@@ -1,5 +1,5 @@
 import { expect, test, type Page } from './support/fixtures';
-import { apiJSON } from './support/api';
+import { apiExactText, apiJSON, csrfTokenFor, exactJSON } from './support/api';
 import { readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
 
@@ -27,7 +27,21 @@ async function held(page: Page, accountID: number, commodityID: number): Promise
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  async function seedTransfer(page: Page, prefix: string) {
+  // #312: evidence is sent as raw text so exact tokens reach the server.
+  const exactEvidence = { reference: 'broker letter', revision: 'EXACT:9007199254740993',
+    nested: { rate: 'EXACT:0.1000000000000000055511151231257827' } };
+
+  async function correctionChainText(page: Page, transactionID: number): Promise<string> {
+    return apiExactText(page, 'GET', `/api/v1/investments/transactions/${transactionID}/correction-chain`);
+  }
+
+  function expectExactEvidence(chain: string) {
+    expect(chain).toContain('"revision":9007199254740993');
+    expect(chain).toContain('"rate":0.1000000000000000055511151231257827');
+    expect(chain).toContain('"reference":"broker letter"');
+  }
+
+  async function seedTransfer(page: Page, prefix: string, withExactEvidence = false) {
     const { csrfToken, currencyID } = await readyForLedger(page);
     const suffix = `${prefix}${Date.now()}`;
     const openedOn = daysFromTodayISO(-60);
@@ -50,11 +64,15 @@ test.describe('on a phone', () => {
       cash_account_id: cash.id, quantity_value: '10', quantity_scale: 0, cash_amount_value: '10000',
       cash_amount_scale: 2, cash_commodity_id: currencyID
     });
-    const moved = await apiJSON<{ transaction: { id: number } }>(page, 'POST', '/api/v1/investments/transfers/internal', csrfToken, {
+    const transfer = {
       effective_on: daysFromTodayISO(-10), source_account_id: source.id, destination_account_id: destination.id,
       commodity_id: instrument.commodity_id, cost_commodity_id: currencyID,
       lot_allocations: [{ lot_id: bought.lot_id, quantity_value: '4', quantity_scale: 0 }]
-    });
+    };
+    const moved = withExactEvidence
+      ? JSON.parse(await apiExactText(page, 'POST', '/api/v1/investments/transfers/internal', await csrfTokenFor(page),
+        exactJSON({ ...transfer, source_evidence: exactEvidence }))) as { transaction: { id: number } }
+      : await apiJSON<{ transaction: { id: number } }>(page, 'POST', '/api/v1/investments/transfers/internal', csrfToken, transfer);
     await expect.poll(() => held(page, destination.id, instrument.commodity_id)).toBe('4');
     return { source, destination, instrument, moved };
   }
@@ -92,6 +110,19 @@ test.describe('on a phone', () => {
     await expect.poll(() => held(page, source.id, instrument.commodity_id)).toBe('4');
   });
 
+  test('correcting an internal transfer preserves exact unedited source evidence', async ({ page }) => {
+    const { destination, instrument, moved } = await seedTransfer(page, 'xev', true);
+    await page.goto(`/app/transactions?transaction_id=${moved.transaction.id}`);
+    await page.getByRole('button', { name: 'Correct transfer…' }).click();
+    const form = page.getByRole('dialog', { name: 'Correct this transfer' });
+    await form.getByLabel('Reason for correction').fill('the statement shows six units');
+    await form.getByLabel(/^Lot #/).fill('6');
+    await form.getByRole('button', { name: 'Review and replace' }).click();
+    await expect(form).toBeHidden();
+    await expect.poll(() => held(page, destination.id, instrument.commodity_id)).toBe('6');
+    expectExactEvidence(await correctionChainText(page, moved.transaction.id));
+  });
+
   test('correcting an external transfer in changes the holding quantity', async ({ page }) => {
     const { csrfToken, currencyID } = await readyForLedger(page);
     const suffix = `xin${Date.now()}`;
@@ -103,11 +134,11 @@ test.describe('on a phone', () => {
     const holding = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/holding-accounts', csrfToken, {
       instrument_id: instrument.id, name: `Transfer in holding ${suffix}`, opened_on: openedOn, effective_from: openedOn
     });
-    const arrived = await apiJSON<{ transaction: { id: number } }>(page, 'POST', '/api/v1/investments/transfers/external/in', csrfToken, {
+    const arrived = JSON.parse(await apiExactText(page, 'POST', '/api/v1/investments/transfers/external/in', csrfToken, exactJSON({
       effective_on: daysFromTodayISO(-10), holding_account_id: holding.id, commodity_id: instrument.commodity_id,
       quantity_value: '2', quantity_scale: 0, carried_basis_value: '8000', carried_basis_scale: 2,
-      cost_commodity_id: currencyID, original_acquired_on: daysFromTodayISO(-50)
-    });
+      cost_commodity_id: currencyID, original_acquired_on: daysFromTodayISO(-50), source_evidence: exactEvidence
+    }))) as { transaction: { id: number } };
     await expect.poll(() => held(page, holding.id, instrument.commodity_id)).toBe('2');
 
     await page.goto(`/app/transactions?transaction_id=${arrived.transaction.id}`);
@@ -119,5 +150,7 @@ test.describe('on a phone', () => {
     await form.getByRole('button', { name: 'Review and replace' }).click();
     await expect(form).toBeHidden();
     await expect.poll(() => held(page, holding.id, instrument.commodity_id)).toBe('3');
+    // #312: the form sends no evidence, so the recorded tokens survive exactly.
+    expectExactEvidence(await correctionChainText(page, arrived.transaction.id));
   });
 });

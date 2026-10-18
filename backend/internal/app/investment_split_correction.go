@@ -41,6 +41,7 @@ type ReplaceInvestmentSplitInput struct {
 	RatioNumerator            int64
 	RatioDenominator          int64
 	SourceEvidenceJSON        string
+	SourceEvidenceEditsJSON   string
 	Memo                      string
 	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
@@ -242,19 +243,25 @@ func (s *InvestmentService) prepareSplitReplacementWrite(ctx context.Context, in
 		return fail(err)
 	}
 	inverse.GainImpact = gainImpactPolicy(input.GainImpactAcknowledgement)
+	// Omitted evidence keeps the recorded evidence instead of becoming {};
+	// edits apply to its exact recorded tokens (#312).
+	evidence, err := correctedSourceEvidence(operation.SourceEvidenceJSON, input.SourceEvidenceJSON, input.SourceEvidenceEditsJSON)
+	if err != nil {
+		return fail(err)
+	}
 	replacement, split, plan, err := s.prepareSplitWriteWith(ctx, InvestmentSplitInput{
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID, RequestID: input.RequestID,
 		Operation: "investment.split.replace", EffectiveOn: input.EffectiveOn,
 		HoldingAccountID: operation.AccountID, CommodityID: operation.CommodityID,
 		RatioNumerator: input.RatioNumerator, RatioDenominator: input.RatioDenominator,
-		SourceEvidenceJSON: input.SourceEvidenceJSON, Memo: input.Memo, ChangeReason: plannedInverse.ChangeReason,
+		SourceEvidenceJSON: evidence, Memo: input.Memo, ChangeReason: plannedInverse.ChangeReason,
 		ReconciliationOverride: input.ReconciliationOverride,
 	}, operation.OperationID)
 	if err != nil {
 		return fail(err)
 	}
 	if split.RatioNumerator == operation.RatioNumerator && split.RatioDenominator == operation.RatioDenominator &&
-		split.EffectiveOn == operation.EventDate && strings.TrimSpace(input.SourceEvidenceJSON) == "" {
+		split.EffectiveOn == operation.EventDate && sameSourceEvidence(split.SourceEvidenceJSON, operation.SourceEvidenceJSON) {
 		return fail(ValidationError{Message: "a split replacement must change the date, ratio or source evidence"})
 	}
 	if replacement.AuditOnly {

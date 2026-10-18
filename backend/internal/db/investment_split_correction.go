@@ -35,6 +35,8 @@ type SplitOperationRecord struct {
 	JournalDeltaScale int
 	AlreadyCorrected  bool
 	ImportedLineage   bool
+	// SourceEvidenceJSON is the recorded evidence's exact text (#312).
+	SourceEvidenceJSON string
 }
 
 func (r *InvestmentRepository) SplitOperationByTransactionID(ctx context.Context, bookID, transactionID int64) (SplitOperationRecord, error) {
@@ -61,6 +63,7 @@ func splitOperationQuery(ctx context.Context, reader splitOperationReader, bookI
 	var corrected int
 	err := reader.QueryRowContext(ctx, `SELECT o.id, COALESCE(linked_version.transaction_id, 0), COALESCE(link.transaction_version_id, 0),
 		COALESCE(current.id, 0), f.effective_on, f.account_id, f.commodity_id, f.ratio_numerator, f.ratio_denominator,
+		f.source_evidence_json,
 		EXISTS(SELECT 1 FROM investment_operations successor WHERE successor.correction_of_operation_id = o.id)
 		FROM investment_operations o
 		JOIN investment_split_facts f ON f.operation_id = o.id AND f.book_id = o.book_id
@@ -70,7 +73,7 @@ func splitOperationQuery(ctx context.Context, reader splitOperationReader, bookI
 		WHERE o.book_id = ? AND `+column+` = ? AND o.operation_kind = 'split'`,
 		bookID, id).Scan(&record.OperationID, &record.TransactionID, &record.TransactionVersionID,
 		&record.CurrentVersionID, &record.EventDate, &record.AccountID, &record.CommodityID,
-		&record.RatioNumerator, &record.RatioDenominator, &corrected)
+		&record.RatioNumerator, &record.RatioDenominator, &record.SourceEvidenceJSON, &corrected)
 	if errors.Is(err, sql.ErrNoRows) {
 		return SplitOperationRecord{}, ErrNotFound
 	}

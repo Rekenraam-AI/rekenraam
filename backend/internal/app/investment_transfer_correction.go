@@ -216,6 +216,9 @@ type ReplaceInvestmentTransferInput struct {
 	// lots, both accounts and destination lineage may change; the security
 	// and its cost currency stay those of the transfer.
 	Replacement InternalTransferInput
+	// SourceEvidenceEditsJSON applies top-level edits to the recorded
+	// evidence's exact tokens instead of a whole Replacement evidence (#312).
+	SourceEvidenceEditsJSON string
 }
 
 type ReplaceInvestmentTransferResult struct {
@@ -287,6 +290,12 @@ func (s *InvestmentService) prepareTransferReplacement(ctx context.Context, inpu
 	if replacement.CommodityID != operation.CommodityID || replacement.CostCommodityID != operation.CostCommodityID {
 		return preparedTransferReplacement{}, ValidationError{Message: "a transfer replacement keeps the security and its basis currency"}
 	}
+	// Omitted evidence keeps the recorded evidence; edits apply to its exact
+	// recorded tokens (#312).
+	if replacement.SourceEvidenceJSON, err = correctedSourceEvidence(operation.SourceEvidenceJSON,
+		replacement.SourceEvidenceJSON, input.SourceEvidenceEditsJSON); err != nil {
+		return preparedTransferReplacement{}, err
+	}
 	plan, transfer, err := s.internalTransferPlan(ctx, replacement)
 	if err != nil {
 		return preparedTransferReplacement{}, err
@@ -347,6 +356,9 @@ type ReplaceInvestmentTransferInInput struct {
 	// quantity, carried basis, original date and evidence may change; the
 	// security and basis currency stay those of the transfer.
 	Replacement ExternalTransferInInput
+	// SourceEvidenceEditsJSON applies top-level edits to the recorded
+	// evidence's exact tokens instead of a whole Replacement evidence (#312).
+	SourceEvidenceEditsJSON string
 }
 
 type ReplaceInvestmentTransferInResult struct {
@@ -414,6 +426,10 @@ func (s *InvestmentService) prepareTransferInReplacement(ctx context.Context, in
 	replacement.ChangeReason, replacement.ReconciliationOverride = inversePlan.ChangeReason, input.ReconciliationOverride
 	if replacement.CommodityID != operation.CommodityID || replacement.CostCommodityID != operation.CostCommodityID {
 		return preparedTransferInReplacement{}, ValidationError{Message: "a transfer replacement keeps the security and its basis currency"}
+	}
+	if replacement.SourceEvidenceJSON, err = correctedSourceEvidence(operation.SourceEvidenceJSON,
+		replacement.SourceEvidenceJSON, input.SourceEvidenceEditsJSON); err != nil {
+		return preparedTransferInReplacement{}, err
 	}
 	inversePlan.AuthSessionID, inversePlan.RequestID = input.AuthSessionID, input.RequestID
 	inversePlan.Operation = "investment.transfer_in.replace"

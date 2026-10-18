@@ -45,6 +45,9 @@ type TransferOperationRecord struct {
 	// adjustment that landed after the correction was planned (T-144).
 	BridgeValue exact.Coefficient
 	BridgeScale int
+	// SourceEvidenceJSON is the recorded evidence's exact text; a replacement
+	// applies its edits to these tokens (#312).
+	SourceEvidenceJSON string
 }
 
 func (r *InvestmentRepository) TransferOperationByTransactionID(ctx context.Context, bookID, transactionID int64) (TransferOperationRecord, error) {
@@ -64,7 +67,7 @@ func transferOperationByTransactionIDQuery(ctx context.Context, reader transferO
 	var costCommodities, corrected int
 	err := reader.QueryRowContext(ctx, `SELECT o.id, f.transfer_kind, linked_version.transaction_id,
 		link.transaction_version_id, current.id, f.effective_on, f.source_account_id, f.destination_account_id,
-		f.commodity_id,
+		f.commodity_id, f.source_evidence_json,
 		(SELECT MIN(x.cost_commodity_id) FROM investment_transfer_lot_links x WHERE x.operation_id = o.id),
 		(SELECT count(DISTINCT x.cost_commodity_id) FROM investment_transfer_lot_links x WHERE x.operation_id = o.id),
 		EXISTS(SELECT 1 FROM investment_operations successor WHERE successor.correction_of_operation_id = o.id)
@@ -77,7 +80,7 @@ func transferOperationByTransactionIDQuery(ctx context.Context, reader transferO
 			AND f.transfer_kind IN ('internal', 'external_in', 'external_out')`,
 		bookID, transactionID).Scan(&record.OperationID, &record.TransferKind, &record.TransactionID,
 		&record.TransactionVersionID, &record.CurrentVersionID, &record.EventDate, &source,
-		&destination, &record.CommodityID, &record.CostCommodityID, &costCommodities, &corrected)
+		&destination, &record.CommodityID, &record.SourceEvidenceJSON, &record.CostCommodityID, &costCommodities, &corrected)
 	if errors.Is(err, sql.ErrNoRows) {
 		return TransferOperationRecord{}, ErrNotFound
 	}

@@ -339,6 +339,9 @@ type ReplaceInvestmentCapitalReturnInput struct {
 	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 	Replacement               CapitalReturnInput
+	// SourceEvidenceEditsJSON applies top-level edits to the recorded
+	// evidence's exact tokens instead of a whole Replacement evidence (#312).
+	SourceEvidenceEditsJSON string
 }
 
 type ReplaceCapitalReturnResult struct {
@@ -361,6 +364,12 @@ func (s *InvestmentService) prepareCapitalReturnReplacement(ctx context.Context,
 	}
 	replacement.OwnerUserID, replacement.AuthSessionID, replacement.RequestID = input.OwnerUserID, input.AuthSessionID, input.RequestID
 	replacement.ChangeReason, replacement.ReconciliationOverride = inverse.InvestmentCorrectionReason, input.ReconciliationOverride
+	// Omitted evidence keeps the recorded evidence; edits apply to its exact
+	// recorded tokens (#312).
+	if replacement.SourceEvidenceJSON, err = correctedSourceEvidence(operation.SourceEvidenceJSON,
+		replacement.SourceEvidenceJSON, input.SourceEvidenceEditsJSON); err != nil {
+		return operation, inverse, db.CreateTransactionParams{}, db.CreateCapitalReturnParams{}, err
+	}
 	journal, params, err := s.capitalReturnWrite(ctx, replacement)
 	if err != nil {
 		return operation, inverse, journal, params, err

@@ -424,8 +424,14 @@ non-trivial diff (yours or reviewed):
     `source_evidence_edits` and the server merges them into the raw recorded
     tokens. Named cases:
     `TestSpinOffReplacementPreservesExactUneditedSourceEvidence`,
-    `TestSpinOffCorrectionAPIPreservesExactUneditedSourceEvidence`. Remaining
-    consumers (transfer, transfer-in, capital return, split) are #312.
+    `TestSpinOffCorrectionAPIPreservesExactUneditedSourceEvidence`. Every
+    investment correction form follows it (#312): a form that does not edit
+    evidence sends none, and an omitted evidence keeps the recorded one (never
+    `{}`), so a no-op check compares effective evidence, not "evidence was
+    sent". Named cases:
+    `TestInternalTransferReplacementPreservesExactUneditedSourceEvidence`,
+    `TestSplitReplacementPreservesExactUneditedSourceEvidence`,
+    `TestSplitCorrectionAPIPreservesExactUneditedSourceEvidence`.
 
 38. **Treating source corrections as amount corrections** — comparing only an
     exact basis amount refused a genuinely changed declaration (#197). Evidence

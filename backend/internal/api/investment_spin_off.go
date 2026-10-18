@@ -267,17 +267,13 @@ func spinOffReplacementInput(owner app.Owner, r *http.Request, transactionID int
 	if evidence == "null" {
 		evidence = ""
 	}
-	edits := rawJSONText(request.SourceEvidenceEdits)
-	if edits == "null" {
-		edits = ""
-	}
 	return app.ReplaceSpinOffInput{
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: transactionID, Reason: request.Reason, EffectiveOn: request.EffectiveOn,
 		DestinationHoldingAccountID: request.DestinationHoldingID, DestinationCommodityID: request.DestinationCommodityID,
 		RatioNumerator: request.RatioNumerator, RatioDenominator: request.RatioDenominator,
 		BasisFractionValue: request.BasisFractionValue, BasisFractionScale: request.BasisFractionScale,
-		SourceEvidenceJSON: evidence, SourceEvidenceEditsJSON: edits, Memo: request.Memo,
+		SourceEvidenceJSON: evidence, SourceEvidenceEditsJSON: sourceEvidenceEditsText(request.SourceEvidenceEdits), Memo: request.Memo,
 		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}

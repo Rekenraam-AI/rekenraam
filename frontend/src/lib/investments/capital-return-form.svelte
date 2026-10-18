@@ -8,10 +8,11 @@
   import {
     investmentInstrumentsQueryOptions, datedHoldingsQueryOptions, previewCapitalReturn,
     recordCapitalReturn, previewCapitalReturnReplacement, replaceCapitalReturn, type CapitalReturnEffect, type CapitalReturnRequest, type GainImpact,
-    type ReconciliationImpactResponse
+    type CapitalReturnReplacementRequest, type ReconciliationImpactResponse
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
   import { parseMoneyMagnitude, parseMagnitude } from './form-amounts';
+  import { evidenceText, newSourceEvidence, sourceEvidenceEdits } from './source-evidence';
   import {
     gainAcknowledgement,
     gainImpactCurrency,
@@ -45,6 +46,9 @@
     prefill?: InvestmentPrefill;
   } = $props();
 
+  // A correction carries its evidence edits beside the replacement terms.
+  type CapitalReturnPayload = CapitalReturnRequest & Pick<CapitalReturnReplacementRequest, 'source_evidence_edits'>;
+
   // Pre-select the position the screen names (#186).
   usePrefilledPosition(untrack(() => correction ? undefined : prefill), () => positions,
     (position) => `${position.account_id}:${position.commodity_id}:${position.cost_commodity_id}`, () => positionKey, (key) => { positionKey = key; });
@@ -63,7 +67,10 @@
   const positionsQuery = createQuery(() => datedHoldingsQueryOptions(effectiveOn || ownerToday()));
   let paymentOn = $state(initial?.payment_on ?? '');
   let amount = $state(initial ? formatEditableAmount(initial.amount_value, initial.amount_scale) : '');
-  let reference = $state(typeof initial?.source_evidence?.reference === 'string' ? initial.source_evidence.reference : '');
+  // The recorded evidence pre-fills the reference it was entered with; a
+  // correction sends only a changed reference, never the parsed object (#312).
+  const initialEvidence = initial?.source_evidence as Record<string, unknown> | undefined;
+  let reference = $state(evidenceText(initialEvidence, 'reference'));
   let reason = $state('');
   let explicitEntitlement = $state(!!initial?.lot_entitlements?.length || !!initial?.entitled_lot_ids?.length);
   let eligibleLots = $state<CapitalReturnEffect[]>([]);
@@ -77,7 +84,7 @@
     effects: CapitalReturnEffect[];
     impacts: ReconciliationImpactResponse['affected_checkpoints'];
     gainImpact: GainImpact | null;
-    payload: CapitalReturnRequest;
+    payload: CapitalReturnPayload;
   } | null>(null);
   let reviewModal = $state<{ gainRefreshed: boolean } | null>(null);
 
@@ -126,7 +133,7 @@
     return formatExactMoney(value, scale, currency?.standard_scale ?? 2, locale);
   }
 
-  function buildPayload(includeEntitlement = true): CapitalReturnRequest | null {
+  function buildPayload(includeEntitlement = true): CapitalReturnPayload | null {
     if (!position) return null;
     if (effectiveOn > paymentOn) {
       formError = new TranslatedFormError(m.investments_capital_return_dates_error());
@@ -161,14 +168,21 @@
       cash_account_id: Number(cashAccountID), currency_id: position.cost_commodity_id,
       effective_on: effectiveOn, payment_on: paymentOn,
       amount_value: parsed.field.value, amount_scale: parsed.field.scale,
-      source_evidence: reference.trim() ? { ...initial?.source_evidence, reference: reference.trim() } : initial?.source_evidence,
+      ...(correction
+        ? { source_evidence_edits: sourceEvidenceEdits(initialEvidence, { reference }) }
+        : { source_evidence: newSourceEvidence({ reference }) }),
       memo: memo.trim() || undefined
     };
   }
 
-  async function runPreview(payload: CapitalReturnRequest): Promise<void> {
+  function replacementRequest(payload: CapitalReturnPayload): CapitalReturnReplacementRequest {
+    const { source_evidence_edits, ...replacement } = payload;
+    return { reason: reason.trim(), replacement, source_evidence_edits };
+  }
+
+  async function runPreview(payload: CapitalReturnPayload): Promise<void> {
     const result = correction
-      ? await previewCapitalReturnReplacement(correction.transactionID, { reason: reason.trim(), replacement: payload })
+      ? await previewCapitalReturnReplacement(correction.transactionID, replacementRequest(payload))
       : await previewCapitalReturn(payload);
     preview = {
       effects: result.effects, impacts: result.impact.affected_checkpoints,
@@ -187,7 +201,7 @@
       pending = true;
       try {
         const result = correction
-          ? await previewCapitalReturnReplacement(correction.transactionID, { reason: reason.trim(), replacement: discovery })
+          ? await previewCapitalReturnReplacement(correction.transactionID, replacementRequest(discovery))
           : await previewCapitalReturn(discovery);
         eligibleLots = result.effects;
         if (initial?.entitled_lot_ids?.length && !initial.lot_entitlements?.length) {
@@ -223,7 +237,7 @@
         ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
       };
       if (correction) {
-        await replaceCapitalReturn(correction.transactionID, { reason: reason.trim(), replacement: preview.payload,
+        await replaceCapitalReturn(correction.transactionID, { ...replacementRequest(preview.payload),
           ...checkpointOverride(reviewed),
           ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {}) }, csrfToken);
       } else { await recordCapitalReturn(payload, csrfToken); }

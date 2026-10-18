@@ -240,16 +240,12 @@ func shareExchangeReplacementInput(owner app.Owner, r *http.Request, transaction
 	if evidence == "null" {
 		evidence = ""
 	}
-	edits := rawJSONText(request.SourceEvidenceEdits)
-	if edits == "null" {
-		edits = ""
-	}
 	return app.ReplaceShareExchangeInput{
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: transactionID, Reason: request.Reason, EffectiveOn: request.EffectiveOn,
 		DestinationHoldingAccountID: request.DestinationHoldingID, DestinationCommodityID: request.DestinationCommodityID,
 		RatioNumerator: request.RatioNumerator, RatioDenominator: request.RatioDenominator,
-		SourceEvidenceJSON: evidence, SourceEvidenceEditsJSON: edits, Memo: request.Memo,
+		SourceEvidenceJSON: evidence, SourceEvidenceEditsJSON: sourceEvidenceEditsText(request.SourceEvidenceEdits), Memo: request.Memo,
 		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}

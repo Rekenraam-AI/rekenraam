@@ -8,8 +8,8 @@
   import {
     investmentInstrumentsQueryOptions, datedHoldingsQueryOptions, previewInvestmentSplit,
     previewSplitReplacement, previewSplitOperationReplacement, recordInvestmentSplit, replaceSplit, replaceSplitOperation, type GainImpact,
-    type InvestmentCorrectionSplitTerms, type InvestmentSplitPlan, type InvestmentSplitRequest,
-    type ReconciliationImpactResponse
+    type InvestmentCorrectionSplitTerms, type InvestmentSplitPlan, type InvestmentSplitReplacementRequest,
+    type InvestmentSplitRequest, type ReconciliationImpactResponse
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
   import {
@@ -23,6 +23,7 @@
     type ReviewedCheckpoints
   } from './gain-impact';
   import ReconciliationConfirm from './reconciliation-confirm.svelte';
+  import { evidenceText, newSourceEvidence, sourceEvidenceEdits } from './source-evidence';
   import { parseSplitRatio } from './split-ratio';
   import { TranslatedFormError } from '#lib/form-errors.ts';
   import { coefficientSign } from '#lib/money/amount.ts';
@@ -44,6 +45,9 @@
     correction?: { transactionID?: number; operationID?: number; terms: InvestmentCorrectionSplitTerms };
   } = $props();
 
+  // A correction carries its evidence edits beside the creation terms.
+  type SplitPayload = InvestmentSplitRequest & Pick<InvestmentSplitReplacementRequest, 'source_evidence_edits'>;
+
   // Pre-select the holding the screen names (#186); a correction keeps its own.
   usePrefilledPosition(untrack(() => correction ? undefined : prefill),
     () => holdings.map((holding) => ({ account_id: holding.accountID, commodity_id: holding.commodityID, key: holding.key })),
@@ -61,7 +65,11 @@
   let newUnits = $state(initialTerms ? String(initialTerms.ratio_numerator) : '');
   let oldUnits = $state(initialTerms ? String(initialTerms.ratio_denominator) : '');
   let reason = $state('');
-  let sourceReference = $state('');
+  // The recorded evidence pre-fills the reference it was entered with; a
+  // correction sends only a changed reference, so omitting it keeps the
+  // recorded evidence exactly (#312).
+  const initialEvidence = initialTerms?.source_evidence as Record<string, unknown> | undefined;
+  let sourceReference = $state(evidenceText(initialEvidence, 'reference'));
   let memo = $state('');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
@@ -73,7 +81,7 @@
     plan: InvestmentSplitPlan;
     impacts: ReconciliationImpactResponse['affected_checkpoints'];
     gainImpact: GainImpact | null;
-    payload: InvestmentSplitRequest;
+    payload: SplitPayload;
   } | null>(null);
   let reviewModal = $state<{ gainRefreshed: boolean } | null>(null);
   // Holdings as they stood at the split's date, including ones a later sale
@@ -139,15 +147,15 @@
     formError = undefined;
   }
 
-  function replacementRequest(payload: InvestmentSplitRequest) {
+  function replacementRequest(payload: SplitPayload): InvestmentSplitReplacementRequest {
     return {
       reason: reason.trim(), effective_on: payload.effective_on,
       ratio_numerator: payload.ratio_numerator, ratio_denominator: payload.ratio_denominator,
-      source_evidence: payload.source_evidence, memo: payload.memo
+      source_evidence_edits: payload.source_evidence_edits, memo: payload.memo
     };
   }
 
-  async function runPreview(payload: InvestmentSplitRequest): Promise<void> {
+  async function runPreview(payload: SplitPayload): Promise<void> {
     const result = correction
       ? await (correction.operationID ? previewSplitOperationReplacement(correction.operationID, replacementRequest(payload)) : previewSplitReplacement(correction.transactionID!, replacementRequest(payload)))
       : await previewInvestmentSplit(payload);
@@ -176,7 +184,9 @@
         commodity_id: selectedHolding.commodityID,
         ratio_numerator: ratio.numerator,
         ratio_denominator: ratio.denominator,
-        source_evidence: sourceReference.trim() ? { reference: sourceReference.trim() } : undefined,
+        ...(correction
+          ? { source_evidence_edits: sourceEvidenceEdits(initialEvidence, { reference: sourceReference }) }
+          : { source_evidence: newSourceEvidence({ reference: sourceReference }) }),
         memo: memo.trim() || undefined
       });
     } catch (error) {

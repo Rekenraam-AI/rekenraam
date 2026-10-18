@@ -1012,6 +1012,16 @@ InvestmentTransferReplacementRequest:
         The full corrected internal transfer. Date, lots or pooled quantity, both holding accounts and
         destination lineage may change; commodity_id and cost_commodity_id must equal the transfer's. Its
         change_reason, reconciliation_override and gain_impact_acknowledgement are ignored.
+    source_evidence_edits:
+      type: object
+      additionalProperties: true
+      description: >
+        Top-level edits applied on the server to the recorded source evidence
+        (#312): a key set to null is removed, any other value replaces that key
+        exactly, and every key not named keeps its recorded JSON token (large
+        integers, decimals and nested data included). Mutually exclusive with
+        replacement.source_evidence, which replaces the evidence whole;
+        omitting both keeps the recorded evidence.
 
 InvestmentTransferReplacementResponse:
   type: object
@@ -1048,6 +1058,16 @@ InvestmentTransferOutReplacementRequest:
         The full corrected outbound transfer. Date, source holding and lots or pooled quantity may change;
         commodity_id and cost_commodity_id must equal the transfer's. Its change_reason,
         reconciliation_override and gain_impact_acknowledgement are ignored.
+    source_evidence_edits:
+      type: object
+      additionalProperties: true
+      description: >
+        Top-level edits applied on the server to the recorded source evidence
+        (#312): a key set to null is removed, any other value replaces that key
+        exactly, and every key not named keeps its recorded JSON token (large
+        integers, decimals and nested data included). Mutually exclusive with
+        replacement.source_evidence, which replaces the evidence whole;
+        omitting both keeps the recorded evidence.
 
 InvestmentTransferOutReplacementResponse:
   type: object
@@ -1300,6 +1320,16 @@ InvestmentTransferInReplacementRequest:
         The full corrected transfer in. Date, holding account, quantity, carried basis, original acquisition
         date and evidence may change; commodity_id and cost_commodity_id must equal the transfer's. Its
         change_reason, reconciliation_override and gain_impact_acknowledgement are ignored.
+    source_evidence_edits:
+      type: object
+      additionalProperties: true
+      description: >
+        Top-level edits applied on the server to the recorded source evidence
+        (#312): a key set to null is removed, any other value replaces that key
+        exactly, and every key not named keeps its recorded JSON token (large
+        integers, decimals and nested data included). Mutually exclusive with
+        replacement.source_evidence, which replaces the evidence whole;
+        omitting both keeps the recorded evidence.
 
 InvestmentTransferInReplacementResponse:
   type: object
@@ -2345,6 +2375,17 @@ InvestmentSplitReplacementRequest:
     source_evidence:
       type: object
       additionalProperties: true
+    source_evidence_edits:
+      type: object
+      additionalProperties: true
+      description: >
+        Top-level edits applied on the server to the recorded source evidence
+        (#312): a key set to null is removed, any other value replaces that key
+        exactly, and every key not named keeps its recorded JSON token (large
+        integers, decimals and nested data included). Mutually exclusive with
+        source_evidence, which replaces the evidence whole; omitting both keeps
+        the recorded evidence. Unchanged date, ratio and effective evidence are
+        refused as a no-op.
     memo:
       type: string
     reconciliation_override:
@@ -2451,7 +2492,7 @@ InvestmentCorrectionTransferTerms:
 InvestmentCorrectionSplitTerms:
   type: object
   description: The effective split's current terms, for pre-filling a replacement.
-  required: [holding_account_id, commodity_id, effective_on, ratio_numerator, ratio_denominator]
+  required: [holding_account_id, commodity_id, effective_on, ratio_numerator, ratio_denominator, source_evidence]
   properties:
     holding_account_id:
       type: integer
@@ -2468,6 +2509,13 @@ InvestmentCorrectionSplitTerms:
     ratio_denominator:
       type: integer
       format: int64
+    source_evidence:
+      type: object
+      additionalProperties: true
+      description: >
+        The recorded source evidence, for pre-filling the fields a correction
+        shows. A correction sends back only its edits as source_evidence_edits
+        (#312), never this parsed object.
 
 InvestmentCorrectionDividendTerms:
   type: object
@@ -4674,6 +4722,16 @@ CapitalReturnReplacementRequest:
       minLength: 1
     replacement:
       $ref: '#/CapitalReturnRequest'
+    source_evidence_edits:
+      type: object
+      additionalProperties: true
+      description: >
+        Top-level edits applied on the server to the recorded source evidence
+        (#312): a key set to null is removed, any other value replaces that key
+        exactly, and every key not named keeps its recorded JSON token (large
+        integers, decimals and nested data included). Mutually exclusive with
+        replacement.source_evidence, which replaces the evidence whole;
+        omitting both keeps the recorded evidence.
     reconciliation_override:
       type: boolean
     reconciliation_override_checkpoint_ids:

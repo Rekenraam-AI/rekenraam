@@ -30386,6 +30386,10 @@ export interface components {
             gain_impact_acknowledgement?: string;
             /** @description The full corrected outbound transfer. Date, source holding and lots or pooled quantity may change; commodity_id and cost_commodity_id must equal the transfer's. Its change_reason, reconciliation_override and gain_impact_acknowledgement are ignored. */
             replacement: components["schemas"]["ExternalTransferOutRequest"];
+            /** @description Top-level edits applied on the server to the recorded source evidence (#312): a key set to null is removed, any other value replaces that key exactly, and every key not named keeps its recorded JSON token (large integers, decimals and nested data included). Mutually exclusive with replacement.source_evidence, which replaces the evidence whole; omitting both keeps the recorded evidence. */
+            source_evidence_edits?: {
+                [key: string]: unknown;
+            };
         };
         InvestmentTransferOutReplacementResponse: {
             inverse: components["schemas"]["TransactionResponse"];
@@ -30498,6 +30502,10 @@ export interface components {
         CapitalReturnReplacementRequest: {
             reason: string;
             replacement: components["schemas"]["CapitalReturnRequest"];
+            /** @description Top-level edits applied on the server to the recorded source evidence (#312): a key set to null is removed, any other value replaces that key exactly, and every key not named keeps its recorded JSON token (large integers, decimals and nested data included). Mutually exclusive with replacement.source_evidence, which replaces the evidence whole; omitting both keeps the recorded evidence. */
+            source_evidence_edits?: {
+                [key: string]: unknown;
+            };
             reconciliation_override?: boolean;
             reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             gain_impact_acknowledgement?: string;
@@ -30625,6 +30633,10 @@ export interface components {
             gain_impact_acknowledgement?: string;
             /** @description The full corrected transfer in. Date, holding account, quantity, carried basis, original acquisition date and evidence may change; commodity_id and cost_commodity_id must equal the transfer's. Its change_reason, reconciliation_override and gain_impact_acknowledgement are ignored. */
             replacement: components["schemas"]["ExternalTransferInRequest"];
+            /** @description Top-level edits applied on the server to the recorded source evidence (#312): a key set to null is removed, any other value replaces that key exactly, and every key not named keeps its recorded JSON token (large integers, decimals and nested data included). Mutually exclusive with replacement.source_evidence, which replaces the evidence whole; omitting both keeps the recorded evidence. */
+            source_evidence_edits?: {
+                [key: string]: unknown;
+            };
         };
         InvestmentTransferInReplacementResponse: {
             inverse: components["schemas"]["TransactionResponse"];
@@ -30642,6 +30654,10 @@ export interface components {
             gain_impact_acknowledgement?: string;
             /** @description The full corrected internal transfer. Date, lots or pooled quantity, both holding accounts and destination lineage may change; commodity_id and cost_commodity_id must equal the transfer's. Its change_reason, reconciliation_override and gain_impact_acknowledgement are ignored. */
             replacement: components["schemas"]["InternalTransferRequest"];
+            /** @description Top-level edits applied on the server to the recorded source evidence (#312): a key set to null is removed, any other value replaces that key exactly, and every key not named keeps its recorded JSON token (large integers, decimals and nested data included). Mutually exclusive with replacement.source_evidence, which replaces the evidence whole; omitting both keeps the recorded evidence. */
+            source_evidence_edits?: {
+                [key: string]: unknown;
+            };
         };
         InvestmentTransferReplacementResponse: {
             inverse: components["schemas"]["TransactionResponse"];
@@ -31340,6 +31356,10 @@ export interface components {
             source_evidence?: {
                 [key: string]: unknown;
             };
+            /** @description Top-level edits applied on the server to the recorded source evidence (#312): a key set to null is removed, any other value replaces that key exactly, and every key not named keeps its recorded JSON token (large integers, decimals and nested data included). Mutually exclusive with source_evidence, which replaces the evidence whole; omitting both keeps the recorded evidence. Unchanged date, ratio and effective evidence are refused as a no-op. */
+            source_evidence_edits?: {
+                [key: string]: unknown;
+            };
             memo?: string;
             reconciliation_override?: boolean;
             reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
@@ -31419,6 +31439,10 @@ export interface components {
             ratio_numerator: number;
             /** Format: int64 */
             ratio_denominator: number;
+            /** @description The recorded source evidence, for pre-filling the fields a correction shows. A correction sends back only its edits as source_evidence_edits (#312), never this parsed object. */
+            source_evidence: {
+                [key: string]: unknown;
+            };
         };
         /** @description The effective cash dividend's posted facts, for pre-filling a replacement. The date, cash account and currency are fixed for a replacement. */
         InvestmentCorrectionDividendTerms: {

@@ -206,6 +206,9 @@ func toCapitalReturnTerms(terms *app.CapitalReturnInput) *capitalReturnRequest {
 type capitalReturnReplacementRequest struct {
 	Reason      string               `json:"reason"`
 	Replacement capitalReturnRequest `json:"replacement"`
+	// SourceEvidenceEdits are top-level edits to the recorded evidence's exact
+	// tokens, instead of a whole replacement.source_evidence (#312).
+	SourceEvidenceEdits json.RawMessage `json:"source_evidence_edits,omitempty"`
 	reconciliationOverrideFields
 	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
@@ -219,7 +222,7 @@ type capitalReturnReplacementResponse struct {
 func capitalReturnReplacementInput(owner app.Owner, r *http.Request, id int64, request capitalReturnReplacementRequest) app.ReplaceInvestmentCapitalReturnInput {
 	return app.ReplaceInvestmentCapitalReturnInput{OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: id, Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
-		Replacement: capitalReturnInput(owner, r, request.Replacement)}
+		Replacement: capitalReturnInput(owner, r, request.Replacement), SourceEvidenceEditsJSON: sourceEvidenceEditsText(request.SourceEvidenceEdits)}
 }
 
 func replaceCapitalReturn(logger *slog.Logger, authService *app.AuthService, service *app.InvestmentService, options HandlerOptions) http.HandlerFunc {

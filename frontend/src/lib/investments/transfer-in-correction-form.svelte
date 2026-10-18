@@ -112,7 +112,10 @@
         ? { carried_basis_value: amounts.values.carriedBasis.value, carried_basis_scale: amounts.values.carriedBasis.scale }
         : { basis_knowledge: 'unknown' as const }),
       cost_commodity_id: source.cost_commodity_id, original_acquired_on: originalAcquiredOn || undefined,
-      source_evidence: source.source_evidence, memo: memo.trim() || undefined
+      // No source_evidence: this form does not edit it, and sending back the
+      // parsed object would round its numbers. The server keeps the recorded
+      // evidence exactly (#312).
+      memo: memo.trim() || undefined
     };
   }
 

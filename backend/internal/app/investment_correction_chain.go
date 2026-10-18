@@ -213,6 +213,9 @@ type InvestmentCorrectionSplitTerms struct {
 	EffectiveOn      string
 	RatioNumerator   int64
 	RatioDenominator int64
+	// SourceEvidenceJSON pre-fills the evidence fields a correction shows;
+	// the form sends back only edits to it (#312).
+	SourceEvidenceJSON string
 }
 
 // CorrectionChain explains immutable investment history by transaction ID.
@@ -290,6 +293,7 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 			chain.EffectiveSplit = &InvestmentCorrectionSplitTerms{
 				HoldingAccountID: split.AccountID, CommodityID: split.CommodityID, EffectiveOn: split.EventDate,
 				RatioNumerator: split.RatioNumerator, RatioDenominator: split.RatioDenominator,
+				SourceEvidenceJSON: split.SourceEvidenceJSON,
 			}
 		}
 		correctable := effective && (!importedLineage || committedSource) &&

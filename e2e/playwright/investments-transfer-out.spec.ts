@@ -1,5 +1,5 @@
 import { expect, test, type Page } from './support/fixtures';
-import { apiJSON } from './support/api';
+import { apiExactText, apiJSON, exactJSON } from './support/api';
 import { readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
 
@@ -83,10 +83,12 @@ test('an outbound transfer is corrected and then reversed on mobile', async ({ p
   const costID = positions.positions.find((position) => position.account_id === s.holdingID)!.cost_commodity_id;
   const lots = await apiJSON<{ lots: Array<{ id: number }> }>(page, 'GET',
     `/api/v1/investments/lots?account_id=${s.holdingID}&commodity_id=${s.commodityID}`);
-  const out = await apiJSON<{ transaction: { id: number } }>(page, 'POST', '/api/v1/investments/transfers/external/out', csrfToken, {
+  // #312: evidence goes as raw text so its exact tokens reach the server.
+  const out = JSON.parse(await apiExactText(page, 'POST', '/api/v1/investments/transfers/external/out', csrfToken, exactJSON({
     effective_on: daysFromTodayISO(-10), source_account_id: s.holdingID, commodity_id: s.commodityID,
-    cost_commodity_id: costID, lot_allocations: [{ lot_id: lots.lots[0].id, quantity_value: '2', quantity_scale: 0 }]
-  });
+    cost_commodity_id: costID, lot_allocations: [{ lot_id: lots.lots[0].id, quantity_value: '2', quantity_scale: 0 }],
+    source_evidence: { reference: 'broker letter', revision: 'EXACT:9007199254740993' }
+  }))) as { transaction: { id: number } };
   const held = async () => {
     const result = await apiJSON<{ positions: Array<{ account_id: number; commodity_id: number; quantity_value: string }> }>(
       page, 'GET', '/api/v1/investments/positions');
@@ -105,9 +107,12 @@ test('an outbound transfer is corrected and then reversed on mobile', async ({ p
   await form.getByRole('button', { name: 'Review and replace' }).click();
   await expect(form).toBeHidden();
   await expect.poll(held).toBe('2');
+  // The form sends no evidence, so the recorded tokens survive exactly.
+  const chainText = await apiExactText(page, 'GET', `/api/v1/investments/transactions/${out.transaction.id}/correction-chain`);
+  expect(chainText).toContain('"revision":9007199254740993');
+  expect(chainText).toContain('"reference":"broker letter"');
 
-  const chain = await apiJSON<{ effective_transaction_id: number }>(page, 'GET',
-    `/api/v1/investments/transactions/${out.transaction.id}/correction-chain`);
+  const chain = JSON.parse(chainText) as { effective_transaction_id: number };
   await page.goto(`/app/transactions?transaction_id=${chain.effective_transaction_id}`);
   await page.getByRole('button', { name: 'Reverse transfer…' }).click();
   const dialog = page.getByRole('alertdialog');

@@ -180,6 +180,9 @@ type investmentTransferOutReplacementRequest struct {
 	reconciliationOverrideFields
 	GainImpactAcknowledgement string                     `json:"gain_impact_acknowledgement,omitempty"`
 	Replacement               externalTransferOutRequest `json:"replacement"`
+	// SourceEvidenceEdits are top-level edits to the recorded evidence's exact
+	// tokens, instead of a whole replacement.source_evidence (#312).
+	SourceEvidenceEdits json.RawMessage `json:"source_evidence_edits,omitempty"`
 }
 
 type investmentTransferOutReplacementResponse struct {
@@ -194,7 +197,7 @@ func investmentTransferOutReplacementInput(owner app.Owner, r *http.Request, tra
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: transactionID, Reason: request.Reason,
 		ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
-		Replacement: externalTransferOutInput(owner, r, request.Replacement),
+		Replacement: externalTransferOutInput(owner, r, request.Replacement), SourceEvidenceEditsJSON: sourceEvidenceEditsText(request.SourceEvidenceEdits),
 	}
 }
 

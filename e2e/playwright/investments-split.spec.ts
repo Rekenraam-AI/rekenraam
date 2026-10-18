@@ -1,5 +1,5 @@
 import { expect, test, type Page } from './support/fixtures';
-import { apiJSON } from './support/api';
+import { apiExactText, apiJSON, csrfTokenFor, exactJSON } from './support/api';
 import { readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
 
@@ -229,4 +229,34 @@ test('a journal-free split is inspected, corrected, settled and reversed by oper
   await expect(reversal).toBeHidden();
   await expect(page.getByRole('article').filter({hasText:s.holdingLabel.split(' · ')[0]}).first()).toContainText(/· Reversed/);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+// #312: the correction form pre-fills the recorded reference and sends no
+// evidence when only the ratio changes, so the recorded tokens survive
+// exactly instead of becoming {}.
+test('a split ratio correction preserves exact unedited source evidence', async ({ page }) => {
+  const s = await setup(page);
+  await s.trade('buy', 30, '10', '10000');
+  const created = await apiExactText(page, 'POST', '/api/v1/investments/splits', await csrfTokenFor(page), exactJSON({
+    effective_on: daysFromTodayISO(-20), holding_account_id: s.holdingID, commodity_id: s.commodityID,
+    ratio_numerator: 2, ratio_denominator: 1,
+    source_evidence: { reference: 'issuer notice', revision: 'EXACT:9007199254740993', nested: { rate: 'EXACT:0.1000000000000000055511151231257827' } }
+  }));
+  const transactionID = (JSON.parse(created) as { transaction: { id: number } }).transaction.id;
+  await page.goto(`/app/transactions?transaction_id=${transactionID}`);
+  await page.getByRole('button', { name: 'Correct split…' }).click();
+  const form = page.getByRole('dialog', { name: 'Correct this split' });
+  await expect(form.getByLabel('Broker or statement reference')).toHaveValue('issuer notice');
+  await form.getByLabel('Reason for correction').fill('it was a 3-for-1');
+  await form.getByLabel('New shares').fill('3');
+  await form.getByRole('button', { name: 'Preview split' }).click();
+  await expect(form.getByRole('region', { name: 'What changes' })).toContainText('Holding change: 20');
+  await form.getByRole('button', { name: 'Correct split' }).click();
+  await expect(form).toBeHidden();
+  // Read the response text, never a rounded JavaScript number.
+  const chain = await apiExactText(page, 'GET', `/api/v1/investments/transactions/${transactionID}/correction-chain`);
+  expect(chain).toContain('"ratio_numerator":3');
+  expect(chain).toContain('"revision":9007199254740993');
+  expect(chain).toContain('"rate":0.1000000000000000055511151231257827');
+  expect(chain).toContain('"reference":"issuer notice"');
 });

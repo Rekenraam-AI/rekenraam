@@ -2891,7 +2891,10 @@ type investmentSplitReplacementRequest struct {
 	RatioNumerator   int64           `json:"ratio_numerator"`
 	RatioDenominator int64           `json:"ratio_denominator"`
 	SourceEvidence   json.RawMessage `json:"source_evidence,omitempty"`
-	Memo             string          `json:"memo"`
+	// SourceEvidenceEdits are top-level edits to the recorded evidence's exact
+	// tokens; omitting both keeps the recorded evidence (#312).
+	SourceEvidenceEdits json.RawMessage `json:"source_evidence_edits,omitempty"`
+	Memo                string          `json:"memo"`
 	reconciliationOverrideFields
 	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
@@ -2944,8 +2947,8 @@ func investmentSplitReplacementInput(owner app.Owner, r *http.Request, transacti
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: transactionID, Reason: request.Reason, EffectiveOn: request.EffectiveOn,
 		RatioNumerator: request.RatioNumerator, RatioDenominator: request.RatioDenominator,
-		SourceEvidenceJSON: evidence, Memo: request.Memo,
-		ReconciliationOverride:    request.checkpointOverride(),
+		SourceEvidenceJSON: evidence, SourceEvidenceEditsJSON: sourceEvidenceEditsText(request.SourceEvidenceEdits),
+		Memo: request.Memo, ReconciliationOverride: request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -3136,11 +3139,12 @@ func defaultJSONObject(text string) string {
 }
 
 type investmentCorrectionSplitTerms struct {
-	HoldingAccountID int64  `json:"holding_account_id"`
-	CommodityID      int64  `json:"commodity_id"`
-	EffectiveOn      string `json:"effective_on"`
-	RatioNumerator   int64  `json:"ratio_numerator"`
-	RatioDenominator int64  `json:"ratio_denominator"`
+	HoldingAccountID int64           `json:"holding_account_id"`
+	CommodityID      int64           `json:"commodity_id"`
+	EffectiveOn      string          `json:"effective_on"`
+	RatioNumerator   int64           `json:"ratio_numerator"`
+	RatioDenominator int64           `json:"ratio_denominator"`
+	SourceEvidence   json.RawMessage `json:"source_evidence"`
 }
 
 func toInvestmentCorrectionSplitTerms(terms *app.InvestmentCorrectionSplitTerms) *investmentCorrectionSplitTerms {
@@ -3148,7 +3152,8 @@ func toInvestmentCorrectionSplitTerms(terms *app.InvestmentCorrectionSplitTerms)
 		return nil
 	}
 	return &investmentCorrectionSplitTerms{HoldingAccountID: terms.HoldingAccountID, CommodityID: terms.CommodityID,
-		EffectiveOn: terms.EffectiveOn, RatioNumerator: terms.RatioNumerator, RatioDenominator: terms.RatioDenominator}
+		EffectiveOn: terms.EffectiveOn, RatioNumerator: terms.RatioNumerator, RatioDenominator: terms.RatioDenominator,
+		SourceEvidence: json.RawMessage(defaultJSONObject(terms.SourceEvidenceJSON))}
 }
 
 type investmentCorrectionDividendTerms struct {
@@ -3410,6 +3415,9 @@ type investmentTransferReplacementRequest struct {
 	reconciliationOverrideFields
 	GainImpactAcknowledgement string                  `json:"gain_impact_acknowledgement,omitempty"`
 	Replacement               internalTransferRequest `json:"replacement"`
+	// SourceEvidenceEdits are top-level edits to the recorded evidence's exact
+	// tokens, instead of a whole replacement.source_evidence (#312).
+	SourceEvidenceEdits json.RawMessage `json:"source_evidence_edits,omitempty"`
 }
 
 type investmentTransferReplacementResponse struct {
@@ -3424,7 +3432,7 @@ func investmentTransferReplacementInput(owner app.Owner, r *http.Request, transa
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: transactionID, Reason: request.Reason,
 		ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
-		Replacement: internalTransferInput(owner, r, request.Replacement),
+		Replacement: internalTransferInput(owner, r, request.Replacement), SourceEvidenceEditsJSON: sourceEvidenceEditsText(request.SourceEvidenceEdits),
 	}
 }
 
@@ -3498,6 +3506,9 @@ type investmentTransferInReplacementRequest struct {
 	reconciliationOverrideFields
 	GainImpactAcknowledgement string                    `json:"gain_impact_acknowledgement,omitempty"`
 	Replacement               externalTransferInRequest `json:"replacement"`
+	// SourceEvidenceEdits are top-level edits to the recorded evidence's exact
+	// tokens, instead of a whole replacement.source_evidence (#312).
+	SourceEvidenceEdits json.RawMessage `json:"source_evidence_edits,omitempty"`
 }
 
 type investmentTransferInReplacementResponse struct {
@@ -3516,7 +3527,7 @@ func investmentTransferInReplacementInput(owner app.Owner, r *http.Request, tran
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: transactionID, Reason: request.Reason,
 		ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
-		Replacement: replacement,
+		Replacement: replacement, SourceEvidenceEditsJSON: sourceEvidenceEditsText(request.SourceEvidenceEdits),
 	}, nil
 }
 
@@ -3581,4 +3592,14 @@ func replaceInvestmentTransferInReconciliationImpact(logger *slog.Logger, authSe
 		}
 		writeReconciliationImpact(w, impact)
 	}
+}
+
+// sourceEvidenceEditsText reads a correction's optional source_evidence_edits
+// (#311, #312); an omitted or null value means no edits.
+func sourceEvidenceEditsText(raw json.RawMessage) string {
+	edits := rawJSONText(raw)
+	if edits == "null" {
+		return ""
+	}
+	return edits
 }

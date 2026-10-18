@@ -244,6 +244,9 @@ type ReplaceInvestmentTransferOutInput struct {
 	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 	Replacement               ExternalTransferOutInput
+	// SourceEvidenceEditsJSON applies top-level edits to the recorded
+	// evidence's exact tokens instead of a whole Replacement evidence (#312).
+	SourceEvidenceEditsJSON string
 }
 
 type ReplaceInvestmentTransferOutResult struct {
@@ -313,6 +316,10 @@ func (s *InvestmentService) prepareTransferOutReplacement(ctx context.Context, i
 	replacement.ChangeReason, replacement.ReconciliationOverride = inversePlan.ChangeReason, input.ReconciliationOverride
 	if replacement.CommodityID != operation.CommodityID || replacement.CostCommodityID != operation.CostCommodityID {
 		return preparedTransferOutReplacement{}, ValidationError{Message: "a transfer replacement keeps the security and its basis currency"}
+	}
+	if replacement.SourceEvidenceJSON, err = correctedSourceEvidence(operation.SourceEvidenceJSON,
+		replacement.SourceEvidenceJSON, input.SourceEvidenceEditsJSON); err != nil {
+		return preparedTransferOutReplacement{}, err
 	}
 	replacementParams, transfer, err := s.externalTransferOutWrite(ctx, replacement)
 	if err != nil {

@@ -105,8 +105,10 @@
     const base = {
       effective_on: effectiveOn, source_account_id: sourceAccountID,
       commodity_id: source.commodity_id,
-      cost_commodity_id: source.cost_commodity_id, source_evidence: source.source_evidence,
-      memo: memo.trim() || undefined,
+      // No source_evidence: this form does not edit it, and sending back the
+      // parsed object would round its numbers. The server keeps the recorded
+      // evidence exactly (#312).
+      cost_commodity_id: source.cost_commodity_id, memo: memo.trim() || undefined,
       ...(outbound ? {} : { destination_account_id: Number(destinationAccountID) })
     };
     if (pooled) {

@@ -640,6 +640,8 @@ type CapitalReturnOperationRecord struct {
 	CostCommodityID      int64
 	AlreadyCorrected     bool
 	ImportedLineage      bool
+	// SourceEvidenceJSON is the recorded evidence's exact text (#312).
+	SourceEvidenceJSON string
 }
 
 func (r *InvestmentRepository) CapitalReturnOperationByTransactionID(ctx context.Context, bookID, transactionID int64) (CapitalReturnOperationRecord, error) {
@@ -650,7 +652,7 @@ func capitalReturnOperationByTransactionIDQuery(ctx context.Context, reader sale
 	var record CapitalReturnOperationRecord
 	var corrected int
 	err := reader.QueryRowContext(ctx, `SELECT o.id, linked_version.transaction_id, link.transaction_version_id,
-		current.id, o.event_date, f.account_id, f.commodity_id, f.cost_commodity_id,
+		current.id, o.event_date, f.account_id, f.commodity_id, f.cost_commodity_id, f.source_evidence_json,
 		EXISTS(SELECT 1 FROM investment_operations successor WHERE successor.correction_of_operation_id = o.id)
 		FROM investment_operations o
 		JOIN investment_capital_return_facts f ON f.operation_id = o.id
@@ -660,7 +662,7 @@ func capitalReturnOperationByTransactionIDQuery(ctx context.Context, reader sale
 		WHERE o.book_id = ? AND linked_version.transaction_id = ? AND o.operation_kind = 'return_of_capital'`,
 		bookID, transactionID).Scan(&record.OperationID, &record.TransactionID, &record.TransactionVersionID,
 		&record.CurrentVersionID, &record.EventDate, &record.AccountID, &record.CommodityID, &record.CostCommodityID,
-		&corrected)
+		&record.SourceEvidenceJSON, &corrected)
 	if errors.Is(err, sql.ErrNoRows) {
 		return CapitalReturnOperationRecord{}, ErrNotFound
 	}
