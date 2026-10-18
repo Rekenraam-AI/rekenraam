@@ -29282,7 +29282,7 @@ export interface components {
         RowResolutionPatch: {
             /** Format: int64 */
             row_id: number;
-            /** @description Defaults to `new` when omitted. */
+            /** @description Defaults to `new` when omitted. For a CSV or QIF bank row, `duplicate` with a resolution that names an account is re-decided against that account: it is stored as `duplicate` only if the row was already committed to that account, and otherwise as `new` (`needs_attention` when the row has parse errors). */
             dedupe_status?: components["schemas"]["ImportDedupeStatus"];
             /** @description JSON string matching ImportResolution. Defaults to `{}` when omitted; a patch replaces the row's whole review state. */
             resolution?: string;

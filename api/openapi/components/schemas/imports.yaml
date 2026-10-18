@@ -432,7 +432,12 @@ RowResolutionPatch:
       type: integer
       format: int64
     dedupe_status:
-      description: Defaults to `new` when omitted.
+      description: >-
+        Defaults to `new` when omitted. For a CSV or QIF bank row, `duplicate`
+        with a resolution that names an account is re-decided against that
+        account: it is stored as `duplicate` only if the row was already
+        committed to that account, and otherwise as `new` (`needs_attention`
+        when the row has parse errors).
       allOf:
         - $ref: "../../openapi.yaml#/components/schemas/ImportDedupeStatus"
     resolution:

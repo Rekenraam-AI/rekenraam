@@ -508,25 +508,45 @@ func (s *ImportService) stageParseResult(ctx context.Context, batchID int64, par
 		parseResult.Rows[i].DedupeFingerprint = fp
 	}
 
-	// Check each row against existing commit identities (ledger-committed
-	// duplicates) — one DB lookup per unique fingerprint in this call.
-	fpCommittedDupe := make(map[string]bool)
-	for _, row := range parseResult.Rows {
-		if _, checked := fpCommittedDupe[row.DedupeFingerprint]; checked {
-			continue
-		}
-		_, found, err := s.repository.FindCommitIdentity(ctx, BookID, row.DedupeFingerprint)
-		if err != nil {
-			return nil, 0, fmt.Errorf("check commit identity: %w", err)
-		}
-		fpCommittedDupe[row.DedupeFingerprint] = found
+	batch, err := s.repository.ImportBatchByID(ctx, BookID, batchID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("get import batch for staging: %w", err)
 	}
-
-	// Insert staged rows.
 	rules, err := s.repository.ListApplicableImportRules(ctx, BookID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list applicable import rules: %w", err)
 	}
+
+	// Check each row against existing commit identities (ledger-committed
+	// duplicates) — one DB lookup per unique key in this call. An
+	// account-scoped row whose account a rule already resolved checks that
+	// account; otherwise it is flagged if it was committed to any account,
+	// and review re-decides once the owner picks one (#302).
+	committedKeys := make(map[string]bool)
+	committedBefore := func(row StagedRow, accountID int64) (bool, error) {
+		scoped := accountScopedImportIdentity(batch.SourceKind, row.Investment != nil)
+		key := importCommitKey(row.DedupeFingerprint, scoped, accountID)
+		if scoped && accountID == 0 {
+			key = "source:" + row.DedupeFingerprint
+		}
+		if found, checked := committedKeys[key]; checked {
+			return found, nil
+		}
+		var found bool
+		var err error
+		if scoped && accountID == 0 {
+			found, err = s.repository.CommitIdentityExistsForSource(ctx, BookID, row.DedupeFingerprint)
+		} else {
+			_, found, err = s.repository.FindCommitIdentity(ctx, BookID, key)
+		}
+		if err != nil {
+			return false, fmt.Errorf("check commit identity: %w", err)
+		}
+		committedKeys[key] = found
+		return found, nil
+	}
+
+	// Insert staged rows.
 	var dbRows []db.CreateImportStagedRowParams
 	type committedFillSnapshot struct {
 		rawJSON        string
@@ -556,8 +576,13 @@ func (s *ImportService) stageParseResult(ctx context.Context, batchID int64, par
 		}
 		normalizedJSON, _ := json.Marshal(normalized)
 
+		resolution := applyImportRules(row, rules)
+		committed, err := committedBefore(row, resolution.AccountID)
+		if err != nil {
+			return nil, 0, err
+		}
 		dedupeStatus := "new"
-		if fpCommittedDupe[row.DedupeFingerprint] {
+		if committed {
 			// Exists in commit_identities → duplicate of a previously committed row.
 			dedupeStatus = "duplicate"
 			if row.Investment == nil && row.Raw[rawKeyKind] == trading212RawKindOrderFill {
@@ -596,7 +621,7 @@ func (s *ImportService) stageParseResult(ctx context.Context, batchID int64, par
 		}
 
 		resolutionJSON := "{}"
-		if resolution := applyImportRules(row, rules); resolution.AppliedRuleID != nil {
+		if resolution.AppliedRuleID != nil {
 			encoded, err := json.Marshal(resolution)
 			if err != nil {
 				return nil, 0, fmt.Errorf("encode import rule resolution: %w", err)
@@ -780,11 +805,26 @@ func (s *ImportService) PatchImportBatch(ctx context.Context, input PatchImportB
 	// as a clean 400 VALIDATION_FAILED rather than a 500 from a raw SQL error.
 	// The repository then applies the whole patch in one transaction, so a
 	// row outside the batch cannot leave earlier choices half-applied.
+	rows, err := s.repository.ListAllImportStagedRows(ctx, input.BatchID)
+	if err != nil {
+		return fmt.Errorf("list staged rows for patch: %w", err)
+	}
+	rowsByID := make(map[int64]db.ImportStagedRowRecord, len(rows))
+	for _, row := range rows {
+		rowsByID[row.ID] = row
+	}
 	updates := make([]db.UpdateImportStagedRowResolutionParams, 0, len(input.RowResolutions))
 	for _, patch := range input.RowResolutions {
 		patch = normalizeRowResolutionPatch(patch)
 		if err := validateRowResolutionPatch(patch); err != nil {
 			return err
+		}
+		if row, ok := rowsByID[patch.RowID]; ok && patch.DedupeStatus == "duplicate" {
+			status, err := s.rederiveScopedDuplicate(ctx, batch, row, patch.ResolutionJSON)
+			if err != nil {
+				return err
+			}
+			patch.DedupeStatus = status
 		}
 		updates = append(updates, db.UpdateImportStagedRowResolutionParams{
 			RowID:          patch.RowID,
@@ -808,6 +848,34 @@ func (s *ImportService) PatchImportBatch(ctx context.Context, input PatchImportB
 		return fmt.Errorf("patch import batch rows: %w", err)
 	}
 	return nil
+}
+
+// rederiveScopedDuplicate re-decides a "duplicate" flag kept through review
+// for an account-scoped row once its account is known. Staging flags such a
+// row if it was committed to any account; it is a duplicate only of a commit
+// to the account now chosen (#302). Without an account, or for a book-global
+// identity, the flag stands.
+func (s *ImportService) rederiveScopedDuplicate(ctx context.Context, batch db.ImportBatchRecord, row db.ImportStagedRowRecord, resolutionJSON string) (string, error) {
+	if !accountScopedImportIdentity(batch.SourceKind, isCSVInvestmentRow(batch, row)) {
+		return "duplicate", nil
+	}
+	resolution, err := parseResolutionJSON(resolutionJSON)
+	if err != nil || resolution.AccountID == 0 {
+		return "duplicate", nil
+	}
+	_, found, err := s.repository.FindCommitIdentity(ctx, BookID, stagedRowCommitKey(batch, row, resolution.AccountID))
+	if err != nil {
+		return "", fmt.Errorf("check commit identity for patch: %w", err)
+	}
+	switch {
+	case found:
+		return "duplicate", nil
+	case refuseStagedParseErrors(row.NormalizedJSON) != nil:
+		// Staging would have flagged it for attention (#300).
+		return "needs_attention", nil
+	default:
+		return "new", nil
+	}
 }
 
 // normalizeRowResolutionPatch applies the documented defaults for omitted
@@ -1116,7 +1184,11 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 		if s.beforeImportCommitIdentityCheckForTest != nil {
 			s.beforeImportCommitIdentityCheckForTest()
 		}
-		identity, found, err := s.repository.FindCommitIdentity(ctx, BookID, row.DedupeFingerprint)
+		// A CSV or QIF bank row is a duplicate only of a commit to the
+		// account it resolves to now (#302).
+		stagedResolution, _ := parseResolutionJSON(row.ResolutionJSON)
+		commitKey := stagedRowCommitKey(batch, row, stagedResolution.AccountID)
+		identity, found, err := s.repository.FindCommitIdentity(ctx, BookID, commitKey)
 		if err != nil {
 			return result, fmt.Errorf("check idempotency row %d: %w", row.ID, err)
 		}
@@ -1144,7 +1216,7 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 				continue
 			}
 			if errors.Is(err, db.ErrCommitIdentityConflict) {
-				if err := s.resolveConcurrentImportCommit(ctx, row); err != nil {
+				if err := s.resolveConcurrentImportCommit(ctx, row, row.DedupeFingerprint); err != nil {
 					return result, fmt.Errorf("resolve concurrent investment commit row %d: %w", row.ID, err)
 				}
 				result.CommittedCount++
@@ -1239,7 +1311,8 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 		if _, err := s.repository.CommitImportedTransaction(ctx, db.CommitImportedTransactionParams{
 			Identity: db.CreateImportCommitIdentityParams{
 				BookID:            BookID,
-				DedupeFingerprint: row.DedupeFingerprint,
+				DedupeFingerprint: commitKey,
+				SourceFingerprint: row.DedupeFingerprint,
 				SourceKind:        batch.SourceKind,
 				AccountID:         resolution.AccountID,
 				CreatedAt:         nowStr,
@@ -1262,7 +1335,7 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 			// outcome, same as the Trading 212 investment path already does
 			// via resolveConcurrentImportCommit.
 			if errors.Is(err, db.ErrCommitIdentityConflict) {
-				if err2 := s.resolveConcurrentImportCommit(ctx, row); err2 != nil {
+				if err2 := s.resolveConcurrentImportCommit(ctx, row, commitKey); err2 != nil {
 					return result, fmt.Errorf("resolve concurrent commit row %d: %w", row.ID, err2)
 				}
 				result.CommittedCount++
@@ -1385,8 +1458,8 @@ func (s *ImportService) recordImportStagedRowTerminal(ctx context.Context, resul
 // row marker share one transaction, so once an identity conflict occurs its
 // referenced transaction is durable and the row is either already committed
 // or still pending for this conditional repair.
-func (s *ImportService) resolveConcurrentImportCommit(ctx context.Context, row db.ImportStagedRowRecord) error {
-	identity, found, err := s.repository.FindCommitIdentity(ctx, BookID, row.DedupeFingerprint)
+func (s *ImportService) resolveConcurrentImportCommit(ctx context.Context, row db.ImportStagedRowRecord, commitKey string) error {
+	identity, found, err := s.repository.FindCommitIdentity(ctx, BookID, commitKey)
 	if err != nil {
 		return fmt.Errorf("find existing commit identity: %w", err)
 	}
@@ -1559,6 +1632,31 @@ func investmentRowSortKey(row db.ImportStagedRowRecord) string {
 func hashFingerprint(raw string) string {
 	h := sha256.Sum256([]byte(raw))
 	return fmt.Sprintf("%x", h[:16]) // 32-char hex, sufficient uniqueness
+}
+
+// accountScopedImportIdentity reports whether a row's commit identity is
+// scoped to the account it posts to (#302). CSV and QIF bank rows are: the
+// same row in two accounts' statements is two transactions, and a statement
+// names no account until review. A CSV bank reference is scoped too, since a
+// bank may number each account's statement on its own. Provider rows
+// (Trading 212, crypto CSV) and CSV investment rows already carry their
+// connection or accounts in the fingerprint and stay book-global.
+func accountScopedImportIdentity(sourceKind string, investment bool) bool {
+	return (sourceKind == "csv" || sourceKind == "qif") && !investment
+}
+
+// importCommitKey is the unique import_commit_identities key for a staged
+// row's fingerprint committed to accountID.
+func importCommitKey(fingerprint string, scoped bool, accountID int64) string {
+	if !scoped {
+		return fingerprint
+	}
+	return hashFingerprint(fmt.Sprintf("%s|account:%d", fingerprint, accountID))
+}
+
+// stagedRowCommitKey is importCommitKey for a staged row resolved to accountID.
+func stagedRowCommitKey(batch db.ImportBatchRecord, row db.ImportStagedRowRecord, accountID int64) string {
+	return importCommitKey(row.DedupeFingerprint, accountScopedImportIdentity(batch.SourceKind, isCSVInvestmentRow(batch, row)), accountID)
 }
 
 func parseResolutionJSON(resolutionJSON string) (ImportRowResolution, error) {

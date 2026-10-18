@@ -280,8 +280,12 @@ type CommitImportStagedRowParams struct {
 }
 
 type CreateImportCommitIdentityParams struct {
-	BookID                 int64
+	BookID int64
+	// DedupeFingerprint is the unique commit key. SourceFingerprint is the
+	// staged row's fingerprint it was derived from; empty means the same
+	// (a book-global identity, #302).
 	DedupeFingerprint      string
+	SourceFingerprint      string
 	CommittedTransactionID int64
 	SourceKind             string
 	AccountID              int64
@@ -1637,6 +1641,18 @@ func (r *ImportRepository) FindCommitIdentity(ctx context.Context, bookID int64,
 	return rec, true, nil
 }
 
+// CommitIdentityExistsForSource reports whether a staged fingerprint was
+// committed to any account, before review knows the row's account (#302).
+func (r *ImportRepository) CommitIdentityExistsForSource(ctx context.Context, bookID int64, sourceFingerprint string) (bool, error) {
+	var exists bool
+	if err := r.database.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM import_commit_identities WHERE book_id = ? AND source_fingerprint = ?)
+	`, bookID, sourceFingerprint).Scan(&exists); err != nil {
+		return false, fmt.Errorf("find commit identity by source: %w", err)
+	}
+	return exists, nil
+}
+
 var ErrCommitIdentityConflict = errors.New("commit identity already exists for a different transaction")
 
 func (r *ImportRepository) CreateCommitIdentity(ctx context.Context, tx *sql.Tx, params CreateImportCommitIdentityParams) error {
@@ -1650,11 +1666,15 @@ func (r *ImportRepository) CreateCommitIdentityWithEffects(ctx context.Context, 
 	if len(effects) == 0 {
 		return 0, errors.New("import identity requires at least one effect")
 	}
+	sourceFingerprint := params.SourceFingerprint
+	if sourceFingerprint == "" {
+		sourceFingerprint = params.DedupeFingerprint
+	}
 	result, err := tx.ExecContext(ctx, `
 		INSERT OR IGNORE INTO import_commit_identities
-			(book_id, dedupe_fingerprint, source_kind, account_id, created_at)
-		VALUES (?, ?, ?, ?, ?)
-	`, params.BookID, params.DedupeFingerprint,
+			(book_id, dedupe_fingerprint, source_fingerprint, source_kind, account_id, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, params.BookID, params.DedupeFingerprint, sourceFingerprint,
 		params.SourceKind, params.AccountID, params.CreatedAt)
 	if err != nil {
 		return 0, fmt.Errorf("create commit identity: %w", err)

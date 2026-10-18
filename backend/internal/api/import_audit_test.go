@@ -514,3 +514,105 @@ func TestImportAuditHeldAndFailedRowsResumeInTheirBatch(t *testing.T) {
 	assert.Equal(t, 1, fixed.CommittedCount)
 	assert.Equal(t, auditRat(t, "-47.50"), c.balance(checking.ID, eur, "2026-12-31"), "-44.50 - 3.00")
 }
+
+// TestImportAuditIdenticalRowsInTwoAccountsStatementsCommitToEach is the #302
+// regression. One CSV profile (and QIF) feeds two accounts' statements that
+// share an identical row. A committed row's identity is scoped to the account
+// it posted to, so the savings copy commits once the owner picks savings, both
+// when the review keeps the staged "duplicate" flag (as the UI does) and when
+// it includes the row; a repeat import of either statement commits nothing.
+func TestImportAuditIdenticalRowsInTwoAccountsStatementsCommitToEach(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	cookie, csrf, eur, checking, groceries := bootstrapImportAPITest(t, handler)
+	savings := createLedgerAccount(t, handler, cookie, csrf, "Savings", "asset", "savings", eur, 2)
+	c := ledgerAuditClient{t: t, handler: handler, cookie: cookie, csrf: csrf}
+
+	var profile importProfileResponse
+	c.json(http.MethodPost, "/api/v1/import-profiles", `{"name":"Bank","adapter_kind":"csv","config":"{\"delimiter\":\"semicolon\",\"date_column\":\"Datum\",\"payee_column\":\"Naam\",\"amount_column\":\"Bedrag\",\"external_ref_column\":\"Ref\",\"date_layout\":\"DMY\",\"decimal_separator\":\",\"}"}`, http.StatusCreated, &profile)
+	fields := map[string]string{"profile_id": strconv.FormatInt(profile.ID, 10)}
+
+	// keepStatus resolves rows to one account and sends back each row's staged
+	// dedupe_status, as the review screen does.
+	keepStatus := func(batchID, accountID int64, rows []importStagedRowResponse) {
+		t.Helper()
+		resolution, err := json.Marshal(map[string]any{"account_id": accountID, "commodity_id": eur, "category_id": groceries.ID})
+		require.NoError(t, err)
+		patches := make([]rowResolutionPatchRequest, 0, len(rows))
+		for _, row := range rows {
+			patches = append(patches, rowResolutionPatchRequest{RowID: row.ID, DedupeStatus: row.DedupeStatus, ResolutionJSON: string(resolution)})
+		}
+		body, err := json.Marshal(patchImportBatchRequest{RowResolutions: patches})
+		require.NoError(t, err)
+		patchImportBatchForSession(t, handler, cookie, csrf, batchID, string(body), http.StatusNoContent)
+	}
+	include := func(batchID, accountID int64, rows []importStagedRowResponse) {
+		t.Helper()
+		patchImportBatchForSession(t, handler, cookie, csrf, batchID, resolutionPatchBody(t, accountID, eur, groceries.ID, rowIDsForAudit(rows)...), http.StatusNoContent)
+	}
+	commit := func(batchID int64, committed, skipped int) {
+		t.Helper()
+		result := commitImportBatchForSession(t, handler, cookie, csrf, batchID, "", http.StatusOK)
+		assert.Equal(t, committed, result.CommittedCount, "committed")
+		assert.Equal(t, skipped, result.SkippedCount, "skipped")
+		assert.Equal(t, 0, result.FailedCount, "failed")
+	}
+	balances := func(wantChecking, wantSavings, msg string) {
+		t.Helper()
+		assert.Equal(t, auditRat(t, wantChecking), c.balance(checking.ID, eur, "2026-12-31"), "checking: "+msg)
+		assert.Equal(t, auditRat(t, wantSavings), c.balance(savings.ID, eur, "2026-12-31"), "savings: "+msg)
+	}
+
+	// The fee is content-keyed; "B-7" is a bank reference both statements carry.
+	checkingCSV := []byte("Datum;Naam;Bedrag;Ref\n01/09/2026;Bank fee;-2,50;\n02/09/2026;Coffee;-3,00;\n03/09/2026;Interest;0,40;B-7\n")
+	savingsCSV := []byte("Datum;Naam;Bedrag;Ref\n01/09/2026;Bank fee;-2,50;\n03/09/2026;Interest;0,40;B-7\n")
+
+	first := uploadImportForAudit(t, c, "checking.csv", checkingCSV, fields)
+	firstRows := allImportRowsForAudit(t, c, first.Batch.ID)
+	require.Equal(t, map[string]int{"new": 3}, dedupeCountsForAudit(firstRows))
+	keepStatus(first.Batch.ID, checking.ID, firstRows)
+	commit(first.Batch.ID, 3, 0)
+	balances("-5.1", "0", "-2.50 - 3.00 + 0.40")
+
+	// Before an account is picked the savings rows read as already imported
+	// (to checking); picking savings clears the flag, and both commit.
+	second := uploadImportForAudit(t, c, "savings.csv", savingsCSV, fields)
+	secondRows := allImportRowsForAudit(t, c, second.Batch.ID)
+	require.Equal(t, map[string]int{"duplicate": 2}, dedupeCountsForAudit(secondRows))
+	keepStatus(second.Batch.ID, savings.ID, secondRows)
+	assert.Equal(t, map[string]int{"new": 2}, dedupeCountsForAudit(allImportRowsForAudit(t, c, second.Batch.ID)), "not a duplicate in savings")
+	commit(second.Batch.ID, 2, 0)
+	balances("-5.1", "-2.1", "savings: -2.50 + 0.40")
+
+	// Repeats of either statement commit nothing, whether the review keeps
+	// the flag or includes the rows.
+	again := uploadImportForAudit(t, c, "checking.csv", checkingCSV, fields)
+	againRows := allImportRowsForAudit(t, c, again.Batch.ID)
+	require.Equal(t, map[string]int{"duplicate": 3}, dedupeCountsForAudit(againRows))
+	keepStatus(again.Batch.ID, checking.ID, againRows)
+	assert.Equal(t, map[string]int{"duplicate": 3}, dedupeCountsForAudit(allImportRowsForAudit(t, c, again.Batch.ID)), "still duplicates in checking")
+	commit(again.Batch.ID, 0, 3)
+	againSavings := uploadImportForAudit(t, c, "savings.csv", savingsCSV, fields)
+	againSavingsRows := allImportRowsForAudit(t, c, againSavings.Batch.ID)
+	require.Equal(t, map[string]int{"duplicate": 2}, dedupeCountsForAudit(againSavingsRows))
+	include(againSavings.Batch.ID, savings.ID, againSavingsRows)
+	commit(againSavings.Batch.ID, 0, 2)
+	balances("-5.1", "-2.1", "repeats post nothing")
+
+	// QIF has the same account scope.
+	fee := []byte(qifRow("09/05/26", "-1.25", "Card fee"))
+	for _, account := range []accountResponse{checking, savings} {
+		started := uploadImportForAudit(t, c, "fee.qif", fee, nil)
+		include(started.Batch.ID, account.ID, allImportRowsForAudit(t, c, started.Batch.ID))
+		commit(started.Batch.ID, 1, 0)
+	}
+	balances("-6.35", "-3.35", "-1.25 in each")
+	for _, account := range []accountResponse{checking, savings} {
+		repeat := uploadImportForAudit(t, c, "fee.qif", fee, nil)
+		repeatRows := allImportRowsForAudit(t, c, repeat.Batch.ID)
+		require.Equal(t, map[string]int{"duplicate": 1}, dedupeCountsForAudit(repeatRows))
+		include(repeat.Batch.ID, account.ID, repeatRows)
+		commit(repeat.Batch.ID, 0, 1)
+	}
+	balances("-6.35", "-3.35", "QIF repeats post nothing")
+}

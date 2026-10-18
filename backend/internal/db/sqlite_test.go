@@ -1269,7 +1269,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(15), version, "the head lets a closed account accept its closing day")
+	assert.Equal(t, int64(16), version, "the head scopes CSV and QIF import identities to their account")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))
@@ -1298,7 +1298,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 		objectCounts[kind]++
 	}
 	assert.Equal(t, map[string]int{
-		"index":   117,
+		"index":   118,
 		"table":   116,
 		"trigger": 160,
 		"view":    15,
@@ -1323,6 +1323,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 	assert.Equal(t, "table", objects["investment_capital_return_effects"])
 	assert.Equal(t, "trigger", objects["investment_capital_return_facts_valid"])
 	assert.Equal(t, "table", objects["import_source_revisions"])
+	assert.Equal(t, "index", objects["import_commit_identities_source_idx"])
 	assert.Equal(t, "trigger", objects["import_source_revisions_same_book"])
 	assert.Equal(t, "trigger", objects["import_source_revisions_no_update"])
 	assert.Equal(t, "trigger", objects["import_source_revisions_no_delete"])

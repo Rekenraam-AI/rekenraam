@@ -254,7 +254,8 @@ The pre-beta baseline migration (`0001_initial_schema.sql`):
 - `import_commit_identities` — the durable idempotency record. One row per
   *committed* import row: `id`, `book_id`, `dedupe_fingerprint`,
   `committed_transaction_id`, `source_kind`, `account_id`, `created_at`, with
-  `UNIQUE(book_id, dedupe_fingerprint)`. Keeping idempotency here (not on the
+  `UNIQUE(book_id, dedupe_fingerprint)`, plus `source_fingerprint`, the staged
+  row's fingerprint an account-scoped key was derived from (#302). Keeping idempotency here (not on the
   transient staged rows) means re-importing the same file finds prior commits even
   after the originating batch is discarded, and staging stays disposable.
 - `import_profiles` — saved per-provider profiles (above).
@@ -278,9 +279,10 @@ Dedupe runs in two passes: **within the batch** (mark later identical-fingerprin
 rows for review, never silently drop) and **against the ledger** via
 `import_commit_identities` (a fingerprint already committed → `duplicate`,
 excluded from commit by default but overridable per row in the preview).
-Account scope matters: the same transfer can legitimately appear in two accounts'
-exports, so the fingerprint includes the resolved account and the importer pairs
-two-account transfers into one balanced transaction rather than double-counting.
+Account scope matters: the same row can legitimately appear in two accounts'
+exports, so the committed identity includes the resolved account (checked at
+commit, see below), and the importer pairs two-account transfers into one
+balanced transaction rather than double-counting.
 
 > **Implemented identity (2026-10-17, [#299](https://github.com/sergeyfarin/rekenraam/issues/299)).**
 > QIF and CSV content keys are built the same way: `qif|date|amount|payee|memo`
@@ -290,18 +292,42 @@ two-account transfers into one balanced transaction rather than double-counting.
 > overlapping re-export finds the rows it already committed
 > (`TestImportAuditQIFReexportIdentityIgnoresFileNameAndPosition`).
 >
-> **Account scope, decided for QIF: not in the identity yet.** The resolved
-> account is only known in review, after the fingerprint is computed at
-> staging. The QIF `!Account` name is not used either: a single-account
-> `!Type:Bank` export normally omits it, so the same row would get a different
-> identity depending on how the file was exported, which is the #299 failure
-> again (a silent double post). The cost of leaving it out is the safer
-> direction: an identical row in two accounts' QIF exports stages as
-> `duplicate` in the second (flagged and overridable, never hidden). That is
-> the same gap CSV has ([#302](https://github.com/sergeyfarin/rekenraam/issues/302)),
-> and #302 owns the account-scope fix for both adapters (a staging-time account
-> input or a per-account check at commit). Until then, the composite above
-> describes the target, not the current key.
+> **Account scope (2026-10-18, [#302](https://github.com/sergeyfarin/rekenraam/issues/302)):
+> checked per account at commit, option (b).** A CSV or QIF bank row is
+> committed under an identity scoped to the account it posts to: the
+> `import_commit_identities.dedupe_fingerprint` key is
+> `hash(<staged fingerprint>|account:<id>)`, and `source_fingerprint` keeps
+> the staged fingerprint it came from. The same row in two accounts'
+> statements is therefore two transactions, and a repeat of either statement
+> is a duplicate of its own account only
+> (`TestImportAuditIdenticalRowsInTwoAccountsStatementsCommitToEach`).
+>
+> - *Why not a staging input (option a).* A bank statement names no account
+>   until review, and the QIF `!Account` name is not reliable (a
+>   single-account `!Type:Bank` export normally omits it, so the identity
+>   would depend on how the file was exported, the #299 failure again).
+>   Option (c), one profile per account, would not cover QIF at all.
+> - *Review before the account is picked.* Staging flags a row `duplicate`
+>   if its staged fingerprint was committed to **any** account, so a repeat
+>   import still reads as duplicates at once. When an import rule already
+>   resolved the account, staging checks that account only. A `duplicate`
+>   flag kept through review (as the review screen sends it) is re-decided
+>   when the patch names an account: it stays `duplicate` only if the row was
+>   committed to that account, and otherwise becomes `new` (`needs_attention`
+>   if the row carries `parse_errors`, #300). The commit-time identity check
+>   uses the scoped key too, so an included row already committed to its
+>   account is still skipped, and a resumed batch (#301) re-checks each row
+>   against the account it resolves to then.
+> - *Bank references.* A CSV `external_ref` identity is scoped to the
+>   account as well. A bank may number each account's statement on its own,
+>   and a false duplicate drops a transaction by default, while the scope
+>   costs nothing for a repeat of the same account's statement.
+> - *Book-global identities.* Trading 212 rows (scoped by connection and
+>   provider id), crypto CSV rows (scoped by holding and cash account) and
+>   CSV investment rows keep one book-global key, which equals their source
+>   fingerprint.
+> - *Not covered.* Pairing the two sides of a transfer that appears in both
+>   accounts' exports is still a separate step; each side is its own row.
 
 ---
 
