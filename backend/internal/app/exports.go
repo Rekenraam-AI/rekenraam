@@ -101,6 +101,14 @@ var ExportExcludedData = []string{
 	"connection configuration",
 	"background work items",
 	"superseded, draft, and voided transaction versions",
+	"budget targets and on-budget account treatment",
+	"recurring templates and their occurrences (the transactions they posted are exported)",
+	"reconciliation checkpoints and sessions (each posting's reconciliation status and cleared date are exported)",
+	"effective-dated history of accounts, categories, payees and instruments (current values are exported)",
+	"instrument identifiers and exchange details, and institution details beyond the name",
+	"cost-basis method profiles (each disposal decision records the method it used)",
+	"pricing policies, quote sources and refresh state (price observations are exported)",
+	"owner preferences, backup policy and run history, and self-check history",
 }
 
 // ExportFilter is a scoped export's request, as the caller wrote it.

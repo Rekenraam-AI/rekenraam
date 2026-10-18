@@ -278,6 +278,17 @@ remains after shutdown or restore; a leftover file or PID does not mean a
 process is running. The OS lock establishes ownership. Leave that file in
 place: removing it can let processes lock different files at the same path.
 
+**Interrupted restore.** Ctrl-C or a stop signal before the previous database
+is moved aside ends the restore with nothing replaced. Once it has been moved,
+the install runs to completion. A restore killed outright between those two
+points (power loss, `SIGKILL`) cannot say so. It leaves nothing at the database
+path, the previous files whole in `<database>.before-restore-<timestamp>/`, and
+possibly a partial `<database>.restoring`. Do not start the server in that
+state: it would open a new, empty database. Run the same `restore` again. It
+installs the backup, overwrites the partial file and leaves the earlier
+preserved copy untouched. To go back instead, move the preserved files beside
+the database path under their original names.
+
 Restoring onto a host without the original `REKENRAAM_SECRET_KEY` succeeds and
 leaves an intact ledger — and unreadable two-factor enrolment and unusable
 connection credentials. `verify-backup` says so before you commit to it.

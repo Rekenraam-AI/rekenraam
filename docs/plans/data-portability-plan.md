@@ -190,7 +190,14 @@ guess:** credentials and secrets, auth sessions, MFA enrolment, audit events,
 authentication events, import profiles/batches/staged rows, provider events,
 their revisions and review suggestions (#111, #254; the dividends they posted or were linked to
 are ordinary exported transactions), connection configuration, background work
-items, and non-current (superseded) versions.
+items, and non-current (superseded) versions. Also named since #321: budget
+targets and account treatment, recurring templates and occurrences,
+reconciliation checkpoints and sessions (posting reconciliation status and
+cleared dates are exported), effective-dated reference-data history (current
+values are exported), instrument identifiers and institution details beyond
+names, cost-basis method profiles, pricing policies and quote sources, owner
+preferences, and backup/self-check history. The #277 audit found these absent
+from the archive without being named.
 The SQLite backup is the audit-complete artifact; the export is the portable
 one. Say this in the UI, not only here.
 

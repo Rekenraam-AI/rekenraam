@@ -60,7 +60,10 @@ WAL-mode database file.
 
 Start the new binary against the existing database. It applies every pending
 migration in order before listening. After startup, run Settings → Data →
-Self-check and retain the pre-upgrade backup until the result is `passed`.
+Self-check and retain the pre-upgrade backup until the result is `passed`, or
+`incomplete` with no failed check (a book holding unknown investment basis
+stays `incomplete`; the unavailable count should match what it was before the
+upgrade). Keep the backup after any `failed` result.
 
 The first installed release has no earlier supported release to upgrade from.
 Later releases must accept a database from any earlier installed release.
@@ -87,7 +90,8 @@ than the binary understands.
 - State the highest migration included in the release notes.
 - Walk *Before upgrading* against the release build (`pnpm build`, then
   `dist/rekenraam`) on a throwaway database: back up from the running app,
-  verify it, stop, restore, restart, and self-check. `restore_test.go` covers
+  verify it, stop, restore, restart, and self-check (`passed`, or `incomplete`
+  with the same unavailable coverage as before). `restore_test.go` covers
   the commands in isolation; this is the only thing that exercises the sequence
   an operator is told to follow, and it is how the sequence above was found to
   be impossible as written.

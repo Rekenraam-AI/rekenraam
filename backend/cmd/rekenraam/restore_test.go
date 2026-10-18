@@ -378,3 +378,42 @@ func TestRestoreCommandReleasesLockOnFailure(t *testing.T) {
 		})
 	}
 }
+
+// A restore killed between preserving and installing (power loss, SIGKILL)
+// cannot report anything. It leaves the previous database whole in its
+// preserved directory, a partial .restoring file and nothing at the database
+// path. Running the same restore again must install the backup, ignore the
+// stale partial file, and leave the first preserved copy untouched (#277).
+func TestRestoreCommandRerunsCleanlyAfterAnInterruptedReplacement(t *testing.T) {
+	databaseURL, backupPath := backupOf(t)
+	databasePath, err := db.ResolveSQLiteFilePath(databaseURL)
+	require.NoError(t, err)
+	t.Setenv("DATABASE_URL", databaseURL)
+	t.Setenv("APP_ENV", "development")
+
+	// The state the interrupted run left behind.
+	interrupted := databasePath + ".before-restore-20261018T000000Z"
+	require.NoError(t, os.Mkdir(interrupted, 0o700))
+	require.NoError(t, os.Rename(databasePath, filepath.Join(interrupted, filepath.Base(databasePath))))
+	require.NoError(t, os.WriteFile(databasePath+".restoring", []byte("half a database"), 0o600))
+	preservedBefore, err := os.ReadFile(filepath.Join(interrupted, filepath.Base(databasePath)))
+	require.NoError(t, err)
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := run(context.Background(), []string{"restore", "--from", backupPath}, strings.NewReader(""), stdout, stderr)
+	require.Equalf(t, 0, exitCode, "stderr: %s", stderr.String())
+	assert.NotContains(t, stdout.String(), "previous data:", "there was nothing at the path to preserve")
+
+	inspection, err := db.InspectBackup(context.Background(), databasePath)
+	require.NoError(t, err)
+	assert.True(t, inspection.IntegrityOK)
+	assert.NoFileExists(t, databasePath+".restoring")
+	preservedAfter, err := os.ReadFile(filepath.Join(interrupted, filepath.Base(databasePath)))
+	require.NoError(t, err)
+	assert.True(t, bytes.Equal(preservedBefore, preservedAfter), "the first preserved copy is never touched")
+	others, err := filepath.Glob(databasePath + ".before-restore-*")
+	require.NoError(t, err)
+	assert.Equal(t, []string{interrupted}, others)
+	require.NoError(t, lockfile.CheckAvailable(databasePath))
+}

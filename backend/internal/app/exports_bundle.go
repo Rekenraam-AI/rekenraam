@@ -1003,11 +1003,22 @@ metadata only categories carry. Do not add the two together.`,
 Credentials and secrets, authentication sessions and multi-factor enrolment,
 audit and authentication events, import profiles and batches, connection
 configuration, background work, and superseded, draft, or voided transaction
-versions. This is an export of the ledger, not a copy of the installation. The
-audit-complete record is the SQLite backup.
+versions. Nor does it contain budget targets and on-budget account treatment,
+recurring templates and occurrences, reconciliation checkpoints and sessions
+(ledger.csv keeps each posting's reconciliation status and cleared date), the
+effective-dated history of accounts, categories, payees and instruments (their
+current values are here), instrument identifiers and institution details beyond
+names, cost-basis method profiles (each disposal decision records its method),
+pricing policies and quote sources, owner preferences, or backup and self-check
+history. manifest.json lists the same exclusions. This is an export of the
+ledger, not a copy of the installation. The audit-complete record, with all of
+the above, is the SQLite backup.
 Attachments are not included; they are not implemented yet, and manifest.json
 says so rather than leaving you to assume either way.
 lots.csv is a statement of current lot state, not a replayable event log.
+Under average cost a disposal lot event carries the pool rate, not the lot's
+own basis, so one lot's events can sum below zero; the events of a whole
+position (account and instrument) reconcile with its lots.
 Both lots.csv and investment-lot-state.csv carry basis_knowledge for remaining
 projected basis. Unknown basis has empty amount/scale fields, never numeric
 zero; known zero remains explicit. Quantity and immutable opening facts remain
