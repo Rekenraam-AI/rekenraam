@@ -26,6 +26,8 @@ export type AxeViolation = {
   help: string;
   nodes: number;
   targets: string[];
+  /** axe's own explanation for the first node, e.g. a measured contrast ratio. */
+  summary?: string;
 };
 
 /** Runs axe and returns violations in a form a failure message can print. */
@@ -36,7 +38,8 @@ export async function accessibilityViolations(page: Page): Promise<AxeViolation[
     impact: violation.impact,
     help: violation.help,
     nodes: violation.nodes.length,
-    targets: violation.nodes.slice(0, 3).map((node) => node.target.join(' '))
+    targets: violation.nodes.slice(0, 3).map((node) => node.target.join(' ')),
+    summary: violation.nodes[0]?.failureSummary?.replace(/\s+/g, ' ').slice(0, 240)
   }));
 }
 

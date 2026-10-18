@@ -80,7 +80,7 @@
     </button>
     <button
       type="button"
-      class="inline-flex items-center gap-2 rounded-[var(--radius-control)] bg-warning px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      class="inline-flex items-center gap-2 rounded-[var(--radius-control)] bg-warning px-4 py-2.5 text-sm font-semibold text-background transition hover:ring-2 hover:ring-warning/40 disabled:cursor-not-allowed disabled:opacity-60"
       onclick={onConfirm}
       disabled={pending}
     >

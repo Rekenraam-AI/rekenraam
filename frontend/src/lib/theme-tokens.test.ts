@@ -56,4 +56,16 @@ describe('theme tokens', () => {
     }
     expect(unknown).toEqual([]);
   });
+
+  // Fading a warning fill to 90% opacity over the surface reads 4.2:1 in the
+  // light theme (#341); warning buttons show hover without changing colour.
+  it('never fades a warning-filled control on hover', () => {
+    const faded: string[] = [];
+    for (const file of sources(src)) {
+      readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
+        if (/(?<![\w-])bg-warning(?![\w/-])/.test(line) && /hover:opacity-/.test(line)) faded.push(`${path.relative(src, file)}:${index + 1}`);
+      });
+    }
+    expect(faded).toEqual([]);
+  });
 });

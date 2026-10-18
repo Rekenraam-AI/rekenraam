@@ -59,3 +59,8 @@ export async function setTrading212Dividends(apiKey: string, instrument: StubIns
   });
   if (res.status !== 204) throw new Error(`trading212 stub control failed with ${res.status}: ${await res.text()}`);
 }
+
+/** Whether the app under test can reach the stub (always, unless it is external without one). */
+export function trading212StubAvailable(): boolean {
+  return !process.env.E2E_BASE_URL || Boolean(process.env.E2E_TRADING212_STUB_URL);
+}

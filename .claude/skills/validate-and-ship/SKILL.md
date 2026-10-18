@@ -615,6 +615,14 @@ non-trivial diff (yours or reviewed):
     `keydown` Escape handler also fires under a nested dialog — let the
     dialog's `cancel` own Escape. Named check: `dialog-focus.spec.ts`.
 
+55. **Layout and hover states no sweep looked at** — Categories scrolled
+    118px sideways at 1280px once its `xl:` toolbar row applied, because the
+    route sweep only measured 390/640px (#340). `hover:opacity-90` on a
+    warning fill read 4.2:1 (#341): contrast tests covered the resting state
+    only. Measure overflow at desktop too, and pin hovered pairs. Interactive
+    sub-views (dialogs, forms, panels, import review) are swept by
+    `subview-sweep.spec.ts`; add new ones to its list.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

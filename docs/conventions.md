@@ -571,6 +571,7 @@ has actual installations, its migration files are immutable.
 - New screens must define loading, empty, error, and success states.
 - New interactions must be keyboard-usable and accessible.
 - Every modal dialog is `#lib/components/modal-dialog.svelte` (#327): mount it to open, unmount it to close. It is a native `<dialog>` opened with `showModal()`, so the page behind is inert; it wraps Tab inside, routes Escape to `onCancel` unless `pending` (or a form inside reports `aria-busy`), and returns focus to the opener. Destructive confirmations keep initial focus off the destructive button (put Cancel first, or mark a field `data-initial-focus`). Do not hand-roll `fixed inset-0` overlays with `aria-modal`; `e2e/playwright/dialog-focus.spec.ts` and `expectFocusTrapped` in `support/a11y.ts` check the behaviour.
+- A new route gets a row in `e2e/playwright/route-sweep.spec.ts`, and a new dialog, form, panel or review state reached by an action gets a row in `e2e/playwright/subview-sweep.spec.ts` (#331). Together they run axe and the sideways-scroll checks in both themes, at desktop and phone width and in long-copy locales.
 - Responsive behavior must be deliberate on both desktop and mobile.
 - Prefer shared frontend helpers and API seams over route-local ad hoc logic.
 - Use **`openapi-typescript`** (type generation) + **`openapi-fetch`** (typed HTTP client) for all frontend API calls. The OpenAPI spec is the single source of type truth.

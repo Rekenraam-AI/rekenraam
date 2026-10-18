@@ -9,8 +9,8 @@ import { ensureBrowserSession } from './support/session';
 // visits every route page on a seeded reference book (so lists, trees and
 // figures render, not only their empty states) and, for each, runs axe in the
 // light and dark themes at desktop and 390 px, checks that the page never
-// scrolls sideways at 390 px or at a 640 px viewport (a 1280 px window at 200%
-// zoom), and that the route's data failing renders a translated error state
+// scrolls sideways at desktop, 390 px or a 640 px viewport (a 1280 px window
+// at 200% zoom), and that the route's data failing renders a translated error state
 // rather than an endless spinner or a blank page.
 //
 // A pass means no machine-checkable defect on the state each route reaches
@@ -114,10 +114,10 @@ test.describe('route sweep (#278)', () => {
 
           const violations = await accessibilityViolations(page);
           if (violations.length > 0) failures.push(`${route.name} @ ${size}: ${describeViolations(violations)}`);
-          if (size !== 'desktop') {
-            const overflow = await horizontalOverflow(page);
-            if (overflow > 0) failures.push(`${route.name} @ ${size}: page scrolls ${overflow}px sideways`);
-          }
+          // Desktop too: the categories toolbar scrolled 118px sideways at
+          // 1280px once its row layout applied (#340).
+          const overflow = await horizontalOverflow(page);
+          if (overflow > 0) failures.push(`${route.name} @ ${size}: page scrolls ${overflow}px sideways`);
         }
       }
 
@@ -145,6 +145,11 @@ test.describe('route sweep (#278)', () => {
         if (overflow > 0) failures.push(`${route.name} in ${locale}: page scrolls ${overflow}px sideways`);
         const violations = await accessibilityViolations(page);
         if (violations.length > 0) failures.push(`${route.name} in ${locale}: ${describeViolations(violations)}`);
+        // Longer copy also widens desktop toolbars.
+        await page.setViewportSize(viewports.desktop);
+        const desktopOverflow = await horizontalOverflow(page);
+        if (desktopOverflow > 0) failures.push(`${route.name} in ${locale} @ desktop: page scrolls ${desktopOverflow}px sideways`);
+        await page.setViewportSize(viewports.phone);
       }
     }
     await page.evaluate(() => window.localStorage.setItem('PARAGLIDE_LOCALE', 'en'));

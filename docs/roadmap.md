@@ -194,9 +194,15 @@ below is execution order, not a chain of hard dependencies.
    The frontend audit #278 is complete
    ([evidence](reviews/frontend-audit-2026-10-18.md)):
    #324/#325/#328/#329/#330 are fixed, and #327 is fixed: every modal is the
-   shared native `ModalDialog`. #326 (URL state, P3) remains open. It created
-   the interactive sub-view audit #331 (dialogs, record forms, panels, import
-   review).
+   shared native `ModalDialog`. #326 (URL state, P3) remains open. Its
+   additional sub-view audit #331 is complete
+   ([evidence](reviews/subview-audit-2026-10-19.md)): 65 dialogs, record
+   forms, panels, import review states and editors pass axe, fit and close in
+   both themes and in de/ru at 1280 and 390 px (five more are unreachable on
+   the book, with reasons). #340 (Categories scrolled
+   sideways at desktop) and #341 (hovered warning buttons under AA) are fixed.
+   #342 (phone-width side panels do not hold focus, P2) and #339 (account and
+   version dates checked against the UTC day, P2) remain open.
    The deployment audit #279 is complete
    ([evidence](reviews/deployment-audit-2026-10-18.md)): fresh native/Compose
    builds, candidate migration 14→18, verified-backup rollback and the focused

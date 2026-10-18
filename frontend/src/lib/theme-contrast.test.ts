@@ -50,6 +50,7 @@ function over(tint: RGB, alpha: number, backdrop: RGB): RGB {
   return tint.map((c, i) => c * alpha + backdrop[i] * (1 - alpha)) as RGB;
 }
 
+
 function tokenBlocks(): Map<string, Record<string, RGB>> {
   const blocks = new Map<string, Record<string, RGB>>();
   for (const [, selector, body] of css.matchAll(/(:root[^{]*)\{([^}]*)\}/g)) {
@@ -109,6 +110,9 @@ describe('theme contrast', () => {
         // Confirmation buttons carry the page background on their fill (#324).
         ['button text on danger', contrast(p['background'], p['danger'])],
         ['button text on warning', contrast(p['background'], p['warning'])],
+        // Hovered danger buttons fade to 90% over the surface. Warning buttons
+        // ring instead: the same fade read 4.2:1 in light (#341).
+        ['button text on danger, hovered', contrast(over(p['background'], 0.9, p['surface']), over(p['danger'], 0.9, p['surface']))],
         ['note text on warning-soft', contrast(p['foreground'], p['warning-soft'])],
         ...['surface', 'background', 'surface-strong'].flatMap((surface): [string, number][] => [
           [`positive text on ${surface}`, contrast(p['positive'], p[surface])],

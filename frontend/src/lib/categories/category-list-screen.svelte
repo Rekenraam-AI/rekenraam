@@ -377,7 +377,8 @@
 
 <div class="space-y-4">
   <Panel variant="toolbar">
-    <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+    <!-- The filters need about 34rem; below that beside the counts they wrap to their own line. -->
+    <div class="flex flex-col gap-4 xl:flex-row xl:flex-wrap xl:items-end xl:justify-between">
       <div class="grid min-w-fit grid-cols-2 gap-2 text-sm sm:grid-cols-5">
         <div class="rounded-[var(--radius-control)] border border-border bg-surface px-3 py-2">
           <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted">{m.categories_stat_active()}</p>
@@ -401,7 +402,7 @@
         </div>
       </div>
 
-      <div class="grid min-w-0 flex-1 gap-3 md:grid-cols-[minmax(12rem,1fr)_10rem_10rem]">
+      <div class="grid min-w-0 grow gap-3 md:grid-cols-[minmax(12rem,1fr)_10rem_10rem] xl:basis-[34rem]">
         <label>
           <span class="block text-xs font-semibold uppercase tracking-[0.12em] text-muted">{m.categories_filter_search()}</span>
           <input

@@ -2,7 +2,7 @@ import { expect, test, type Page } from './support/fixtures';
 import { apiJSON } from './support/api';
 import { expectFocusTrapped } from './support/a11y';
 import { createCashAccount, readyForLedger } from './support/ledger';
-import { todayISO } from './support/dates';
+import { daysFromTodayISO, todayISO } from './support/dates';
 
 /**
  * #327: every modal dialog is the shared native one. Opened from the keyboard,
@@ -119,7 +119,8 @@ test('the trash restore override keeps focus, ignores Escape while restoring, an
 test('an investment correction dialog keeps and returns focus', async ({ page }) => {
   const { csrfToken, currencyID } = await readyForLedger(page);
   const suffix = `dlg${Date.now()}`;
-  const day = todayISO();
+  // Yesterday: opening dates are still checked against the UTC day (#339).
+  const day = daysFromTodayISO(-1);
   const cash = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
     name: `Dialog cash ${suffix}`, account_class: 'asset', account_kind: 'brokerage_cash',
     default_commodity_id: currencyID, allows_postings: true, opened_on: day, effective_from: day
