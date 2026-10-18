@@ -1,6 +1,6 @@
 import { expect, test } from './support/fixtures';
 import { apiJSON } from './support/api';
-import { readyForLedger } from './support/ledger';
+import { createCashAccount, readyForLedger } from './support/ledger';
 
 // #269 — account and category management at phone width. The API suites prove
 // the rules; this proves an owner can reach and complete the ordinary
@@ -12,15 +12,19 @@ async function expectNoHorizontalScroll(page: import('@playwright/test').Page): 
 
 test('[acceptance] accounts can be created, renamed and closed at 390 px', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const { currencyID } = await readyForLedger(page);
+  const { csrfToken, currencyID } = await readyForLedger(page);
   const suffix = Date.now();
   const name = `Mobile savings ${suffix}`;
   const renamed = `Mobile reserve ${suffix}`;
+  // Parent options are inside the select's wrapping label. A partial "Name"
+  // label lookup also matches that select when an account contains "name".
+  // Seed the collision here so this journey never depends on worker history.
+  await createCashAccount(page, csrfToken, `Name collision ${suffix}`, currencyID);
 
   await page.goto('/app/accounts');
   await page.getByRole('button', { name: 'Add account' }).first().click();
   let form = page.locator('form').filter({ has: page.getByRole('button', { name: 'Create account' }) });
-  await form.getByLabel('Name').fill(name);
+  await form.getByLabel('Name', { exact: true }).fill(name);
   await form.getByLabel('Account type').selectOption('savings');
   await form.getByLabel('Currency').selectOption(String(currencyID));
   await expectNoHorizontalScroll(page);
@@ -30,7 +34,7 @@ test('[acceptance] accounts can be created, renamed and closed at 390 px', async
 
   await page.getByRole('button', { name: `Edit ${name}` }).click();
   form = page.locator('form').filter({ has: page.getByRole('button', { name: 'Save account' }) });
-  await form.getByLabel('Name').fill(renamed);
+  await form.getByLabel('Name', { exact: true }).fill(renamed);
   await form.getByRole('button', { name: 'Save account' }).click();
   await expect(page.getByText(renamed).first()).toBeVisible();
 

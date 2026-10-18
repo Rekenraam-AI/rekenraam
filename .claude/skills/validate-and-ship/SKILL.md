@@ -544,6 +544,16 @@ non-trivial diff (yours or reviewed):
     `TestFailedDeviceApprovalLeavesNoOrphanSession`,
     `TestRecoverOwnerCommandRefusesWhileTheServerHoldsTheDatabase`.
 
+49. **Partial form labels matching data inside another control** — the mobile
+    account journey's `getByLabel('Name')` also matched the Parent select when
+    its wrapping label contained an account option with "name" in it. Worker
+    history made this intermittent. Match the Name field exactly on create
+    and edit, and seed a colliding account in the journey itself rather than
+    relying on another spec to expose it (`reference-data-management.spec.ts`).
+    Likewise, scope payment cards by a fixture's unique source identity rather
+    than amount/kind alone (`income-coverage.spec.ts`); repeated specs may
+    retain earlier equal-valued payments in the same worker's book.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

@@ -101,7 +101,8 @@ test.describe.serial('imported cash payments', () => {
     await expectNoAccessibilityViolations(page, 'Instrument income summary on a phone');
 
     await page.goto('/app/investments/income');
-    const card = page.getByRole('listitem').filter({ hasText: '12.34' }).filter({ hasText: 'Imported cash payment' });
+    const card = page.getByRole('listitem').filter({ hasText: '12.34' }).filter({ hasText: 'Imported cash payment' })
+      .filter({ hasText: f.ticker });
     await expect(card.getByText('Unknown — only the cash received is known', { exact: true })).toBeVisible();
     await expect(card.getByText('Unknown — not assumed to be zero', { exact: true })).toBeVisible();
     await expect(card.getByText(new RegExp(`Source names Coverage payer ${f.suffix}`))).toBeVisible();
