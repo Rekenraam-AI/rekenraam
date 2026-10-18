@@ -486,7 +486,7 @@ func TestReplaceOlderManualSaleRequiresReconciliationOverrideAtomically(t *testi
 		WHERE correction_of_operation_id IS NOT NULL`).Scan(&correctionCount))
 	require.Zero(t, correctionCount)
 	require.Equal(t, []int64{checkpointID}, activeCheckpointIDs(t, f))
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	result, err := acknowledgedReplaceSale(ctx, f.investmentService, input)
 	require.NoError(t, err)
 	require.Empty(t, activeCheckpointIDs(t, f))

@@ -28,7 +28,7 @@ type ReverseInvestmentDividendInput struct {
 	RequestID              string
 	TransactionID          int64
 	Reason                 string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 }
 
 type ReplaceInvestmentDividendInput struct {
@@ -37,7 +37,7 @@ type ReplaceInvestmentDividendInput struct {
 	RequestID              string
 	TransactionID          int64
 	Reason                 string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	Replacement            DividendInput
 }
 
@@ -60,7 +60,7 @@ func (s *InvestmentService) ReverseDividend(ctx context.Context, input ReverseIn
 }
 
 func (s *InvestmentService) ReverseDividendReconciliationImpact(ctx context.Context, input ReverseInvestmentDividendInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.prepareDividendReversalWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -113,7 +113,7 @@ func (s *InvestmentService) ReplaceDividend(ctx context.Context, input ReplaceIn
 }
 
 func (s *InvestmentService) ReplaceDividendReconciliationImpact(ctx context.Context, input ReplaceInvestmentDividendInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, inverse, replacement, err := s.prepareDividendReplacementWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -180,7 +180,7 @@ func (s *InvestmentService) prepareDividendReplacementWrite(ctx context.Context,
 // dividendCorrectionPlan pins the effective dividend and plans its exact
 // inverse. The writer rechecks the same facts inside its transaction.
 func (s *InvestmentService) dividendCorrectionPlan(ctx context.Context, ownerUserID, authSessionID int64, requestID string,
-	transactionID int64, reason string, override bool, operationCode string,
+	transactionID int64, reason string, override CheckpointOverride, operationCode string,
 ) (db.DividendOperationRecord, Transaction, CreateTransactionInput, error) {
 	if ownerUserID <= 0 || transactionID <= 0 {
 		return db.DividendOperationRecord{}, Transaction{}, CreateTransactionInput{}, ValidationError{Message: "owner and dividend id are required"}
@@ -223,7 +223,7 @@ func (s *InvestmentService) dividendCorrectionPlan(ctx context.Context, ownerUse
 		OriginType: "browser_api", Operation: operationCode,
 		CorrectionOfTransactionID: &operation.TransactionID,
 		Spec:                      invertedInvestmentTransactionSpec(original), ChangeReason: cleanReason,
-		ReconciliationOverride: override,
+		ReconciliationOverride: override.Allowed, ReconciliationOverrideCheckpointIDs: override.Reviewed,
 	}, nil
 }
 

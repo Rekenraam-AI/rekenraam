@@ -114,7 +114,7 @@ func TestQuantityOnlyBuyCorrectionPreservesCashCheckpointAndGuardsHolding(t *tes
 	require.Equal(t, []int64{cash}, activeCheckpointIDsFor(t, f, f.cashAccountID, f.eurCommodityID))
 	require.Equal(t, []int64{holding}, activeCheckpointIDsFor(t, f, f.holdingAccountID, f.stockCommodityID))
 
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = acknowledgedReplaceBuy(ctx, f.investmentService, input)
 	require.NoError(t, err)
 	require.Equal(t, []int64{cash}, activeCheckpointIDsFor(t, f, f.cashAccountID, f.eurCommodityID),
@@ -149,7 +149,7 @@ func TestCorrectionMovingSettlementAcrossBoundaryInvalidates(t *testing.T) {
 	late := reconcileAccount(t, f, f.cashAccountID, f.eurCommodityID, "2026-01-31", -990)
 	input := ReplaceInvestmentBuyInput{
 		OwnerUserID: f.ownerUserID, TransactionID: original.Transaction.ID, Reason: "settled later",
-		ReconciliationOverride: true,
+		ReconciliationOverride: unboundOverride,
 		Replacement: InvestmentTradeInput{
 			TransactionDate: "2026-01-01", CommodityID: f.stockCommodityID,
 			HoldingAccountID: f.holdingAccountID, CashAccountID: f.cashAccountID,
@@ -178,7 +178,7 @@ func TestCorrectionAfterEarlierCheckpointPreservesIt(t *testing.T) {
 	original := buyForNetting(t, f, "2026-02-10", 10, 100000)
 	february := reconcileAccount(t, f, f.cashAccountID, f.eurCommodityID, "2026-02-28", -950)
 	input := buyReplacementForNetting(f, original.Transaction.ID, "2026-02-10", 10, 110000)
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 
 	impact, err := f.investmentService.ReplaceBuyReconciliationImpact(ctx, input)
 	require.NoError(t, err)
@@ -261,7 +261,7 @@ func TestCorrectionMovingSeparatelyPaidFeeNetsPerBoundary(t *testing.T) {
 	require.ElementsMatch(t, []int64{early, late}, activeCheckpointIDsFor(t, f, f.cashAccountID, f.eurCommodityID))
 
 	across := ReplaceInvestmentBuyInput{OwnerUserID: f.ownerUserID, TransactionID: first.Replacement.Transaction.ID,
-		Reason: "fee was paid with the trade", ReconciliationOverride: true, Replacement: trade("2026-01-03")}
+		Reason: "fee was paid with the trade", ReconciliationOverride: unboundOverride, Replacement: trade("2026-01-03")}
 	impact, err = f.investmentService.ReplaceBuyReconciliationImpact(ctx, across)
 	require.NoError(t, err)
 	requireCheckpointImpactIDs(t, impact, early, late)

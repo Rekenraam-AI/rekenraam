@@ -35,7 +35,8 @@
     gainImpactRows,
     hasGainChanges,
     impactNeedsReview,
-    isGainAcknowledgementRefusal
+    isStaleImpactRefusal,
+    checkpointOverride
   } from '#lib/investments/gain-impact.ts';
   import {
     getInvestmentCorrectionChain,
@@ -286,7 +287,7 @@
     const acknowledgement = gainAcknowledgement(gainImpact);
     const body = {
       reason: reason.trim(),
-      ...(impacts.length > 0 ? { reconciliation_override: true } : {}),
+      ...checkpointOverride(impacts),
       ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
     };
     if (reversalKind === 'buy') {
@@ -352,7 +353,7 @@
     } catch (error) {
       // The gain set changed since review: show the current one, not a dead end.
       try {
-        if (!isGainAcknowledgementRefusal(error) || !(await previewReversal(true))) actionError = error;
+        if (!isStaleImpactRefusal(error) || !(await previewReversal(true))) actionError = error;
       } catch (previewError) {
         actionError = previewError;
       }

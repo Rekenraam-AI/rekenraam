@@ -1219,6 +1219,8 @@ components:
       $ref: "./components/schemas/auth-responses.yaml#/CreateOwnerResponse"
     CostBasisMethod:
       $ref: "./components/schemas/investments.yaml#/CostBasisMethod"
+    ReviewedCheckpointIds:
+      $ref: "./components/schemas/investments.yaml#/ReviewedCheckpointIds"
     InvestmentInstrumentResponse:
       $ref: "./components/schemas/investments.yaml#/InvestmentInstrumentResponse"
     InvestmentInstrumentsResponse:

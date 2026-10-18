@@ -363,7 +363,7 @@ func TestSpinOffReversalLateReconciliationRefusalRollsBackEverything(t *testing.
 	assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 	requireScaled(t, 9000, 2, lotRemainingBasis(t, f, *bought.LotID), "the parent stays reduced")
 
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.ReverseSpinOff(ctx, input)
 	require.NoError(t, err)
 	assert.Equal(t, "0", positionQuantity(t, f, f.holdingAccountID, newID))

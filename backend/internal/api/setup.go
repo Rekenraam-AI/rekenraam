@@ -205,7 +205,7 @@ func decodeJSONBody(r *http.Request, destination any) error {
 		return app.ValidationError{Message: "request body must contain a single JSON object"}
 	}
 
-	return nil
+	return validateDecoded(destination)
 }
 
 func decodeOptionalJSONBody(r *http.Request, destination any) error {
@@ -242,5 +242,14 @@ func decodeOptionalJSONBody(r *http.Request, destination any) error {
 		return app.ValidationError{Message: "request body must contain a single JSON object"}
 	}
 
+	return validateDecoded(destination)
+}
+
+// validateDecoded applies a request's own decode-time rules, such as an
+// override having to name its reviewed checkpoints (#304).
+func validateDecoded(destination any) error {
+	if request, ok := destination.(interface{ validateDecoded() error }); ok {
+		return request.validateDecoded()
+	}
 	return nil
 }

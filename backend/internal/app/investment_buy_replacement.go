@@ -24,7 +24,7 @@ type ReplaceInvestmentBuyInput struct {
 	RequestID              string
 	TransactionID          int64
 	Reason                 string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	Replacement            InvestmentTradeInput
 	// GainImpactAcknowledgement echoes the preview token for the committed
 	// disposal gain changes the user accepted (T-126).
@@ -122,7 +122,7 @@ func (s *InvestmentService) prepareAcquisitionReplacementWrite(ctx context.Conte
 	}
 	inversePlan.OriginType = originType
 	inversePlan.Operation = operationCode
-	inversePlan.ReconciliationOverride = input.ReconciliationOverride
+	inversePlan.ReconciliationOverride, inversePlan.ReconciliationOverrideCheckpointIDs = input.ReconciliationOverride.Allowed, input.ReconciliationOverride.Reviewed
 	inverseParams, err := s.transactionService.prepareInvestmentTransactionForWrite(ctx, inversePlan, nil)
 	if err != nil {
 		return preparedBuyReplacementWrite{}, err
@@ -149,7 +149,7 @@ func (s *InvestmentService) prepareAcquisitionReplacementWrite(ctx context.Conte
 func (s *InvestmentService) ReplaceBuyReconciliationImpact(ctx context.Context, input ReplaceInvestmentBuyInput) (ReconciliationImpact, error) {
 	// A preview can examine reconciled periods without the owner authorizing a
 	// write. Simulation and all checkpoint changes are rolled back together.
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	prepared, err := s.prepareBuyReplacementWrite(ctx, input, "browser_api", "investment.buy.replace")
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -178,7 +178,7 @@ type acquisitionCorrectionRequest struct {
 	RequestID              string
 	TransactionID          int64
 	Reason                 string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	OperationKind          string
 	Operation              string
 	Noun                   string
@@ -237,7 +237,7 @@ func (s *InvestmentService) acquisitionCorrectionPlan(ctx context.Context, input
 		RequestID: input.RequestID, OriginType: "browser_api",
 		Operation: input.Operation, CorrectionOfTransactionID: &operation.TransactionID,
 		Spec: invertedInvestmentTransactionSpec(original), ChangeReason: reason,
-		ReconciliationOverride: input.ReconciliationOverride,
+		ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 	}, nil
 }
 

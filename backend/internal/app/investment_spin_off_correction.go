@@ -31,7 +31,7 @@ type ReverseSpinOffInput struct {
 	RequestID                 string
 	TransactionID             int64
 	Reason                    string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 }
 
@@ -53,7 +53,7 @@ type ReplaceSpinOffInput struct {
 	BasisFractionScale          int
 	SourceEvidenceJSON          string
 	Memo                        string
-	ReconciliationOverride      bool
+	ReconciliationOverride      CheckpointOverride
 	GainImpactAcknowledgement   string
 }
 
@@ -81,7 +81,7 @@ func (s *InvestmentService) ReverseSpinOff(ctx context.Context, input ReverseSpi
 // ReverseSpinOffReconciliationImpact runs the reversal writer and rolls back:
 // the checkpoints and gains it would change.
 func (s *InvestmentService) ReverseSpinOffReconciliationImpact(ctx context.Context, input ReverseSpinOffInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.prepareSpinOffReversalWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -114,7 +114,7 @@ func (s *InvestmentService) prepareSpinOffReversalWrite(ctx context.Context, inp
 // spinOffInversePlan pins the effective spin-off and plans its exact inverse
 // journal. The writer rechecks the same facts in its transaction.
 func (s *InvestmentService) spinOffInversePlan(ctx context.Context, ownerUserID, authSessionID int64, requestID string,
-	transactionID int64, rawReason string, override bool, auditOperation string) (db.SpinOffOperationRecord, CreateTransactionInput, error) {
+	transactionID int64, rawReason string, override CheckpointOverride, auditOperation string) (db.SpinOffOperationRecord, CreateTransactionInput, error) {
 	fail := func(err error) (db.SpinOffOperationRecord, CreateTransactionInput, error) {
 		return db.SpinOffOperationRecord{}, CreateTransactionInput{}, err
 	}
@@ -156,7 +156,7 @@ func (s *InvestmentService) spinOffInversePlan(ctx context.Context, ownerUserID,
 	return operation, CreateTransactionInput{
 		OwnerUserID: ownerUserID, AuthSessionID: authSessionID, RequestID: requestID, OriginType: "browser_api",
 		Operation: auditOperation, CorrectionOfTransactionID: &operation.TransactionID,
-		Spec: invertedInvestmentTransactionSpec(original), ChangeReason: reason, ReconciliationOverride: override,
+		Spec: invertedInvestmentTransactionSpec(original), ChangeReason: reason, ReconciliationOverride: override.Allowed, ReconciliationOverrideCheckpointIDs: override.Reviewed,
 	}, nil
 }
 
@@ -183,7 +183,7 @@ func (s *InvestmentService) ReplaceSpinOff(ctx context.Context, input ReplaceSpi
 // PreviewSpinOffReplacement runs the replacement writer and every replay,
 // then rolls back: the plan the replacement would carry and its impact.
 func (s *InvestmentService) PreviewSpinOffReplacement(ctx context.Context, input ReplaceSpinOffInput) (SpinOffPreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, inverse, replacement, spinOff, err := s.prepareSpinOffReplacementWrite(ctx, input)
 	if err != nil {
 		return SpinOffPreview{}, err

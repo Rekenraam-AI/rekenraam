@@ -37,7 +37,7 @@ type CashStockMergerInput struct {
 	SourceEvidenceJSON          string
 	Memo                        string
 	ChangeReason                string
-	ReconciliationOverride      bool
+	ReconciliationOverride      CheckpointOverride
 	// GainImpactAcknowledgement accepts the restated gains of later
 	// decisions a backdated merger revises (#184); an in-order merger revises
 	// none.
@@ -193,7 +193,7 @@ func (s *InvestmentService) prepareCashStockMergerWriteWith(ctx context.Context,
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID,
 		RequestID: input.RequestID, OriginType: "browser_api",
 		Operation: auditOperation, ChangeReason: input.ChangeReason,
-		ReconciliationOverride: input.ReconciliationOverride,
+		ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 		Spec: TransactionInput{
 			Status: "posted", TransactionKind: "investment", InvestmentOperationKind: "cash_and_stock_merger",
 			TransactionDate: date, Description: memo,
@@ -246,7 +246,7 @@ func cleanCashBasisFraction(value exact.Coefficient, scale int) (exact.Coefficie
 // PreviewCashStockMerger runs the complete merger writer, including
 // checkpoint invalidation, then rolls back.
 func (s *InvestmentService) PreviewCashStockMerger(ctx context.Context, input CashStockMergerInput) (CashStockMergerPreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	journal, merger, err := s.prepareCashStockMergerWrite(ctx, input)
 	if err != nil {
 		return CashStockMergerPreview{}, err

@@ -231,7 +231,7 @@ func TestSplitReversalIntoReconciledPeriodNeedsOverride(t *testing.T) {
 	_, err = f.investmentService.ReverseSplit(ctx, input)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	assert.Equal(t, before, countSplitRows(t, f.database))
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.ReverseSplit(ctx, input)
 	require.NoError(t, err)
 	requireSelfCheckPasses(t, f)

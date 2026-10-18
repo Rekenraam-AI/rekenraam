@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 )
 
 // executeInvestmentWriteTx commits an investment journal, its domain effects,
@@ -137,7 +138,9 @@ func runInvestmentJournalsWithGuardTx[T any](ctx context.Context, database *sql.
 			return nil, zero, fmt.Errorf("investment journals must share book and actor")
 		}
 		// The combined checkpoint guard applies one decision to the command.
-		if journal.ReconciliationOverride != params[0].ReconciliationOverride {
+		if journal.ReconciliationOverride != params[0].ReconciliationOverride ||
+			(journal.ReviewedCheckpointIDs == nil) != (params[0].ReviewedCheckpointIDs == nil) ||
+			!slices.Equal(journal.ReviewedCheckpointIDs, params[0].ReviewedCheckpointIDs) {
 			return nil, zero, fmt.Errorf("investment journals must share one reconciliation override")
 		}
 	}
@@ -226,10 +229,12 @@ func runInvestmentJournalsWithGuardTx[T any](ctx context.Context, database *sql.
 	if err != nil {
 		return nil, zero, err
 	}
+	// The override is bound to the set the owner reviewed (#304), as a
+	// generic ledger write's is (#296); both refusals name the current set.
+	if err := bindCheckpointOverride(refs, params[0].ReconciliationOverride, params[0].ReviewedCheckpointIDs); err != nil {
+		return nil, zero, err
+	}
 	if len(refs) > 0 {
-		if !params[0].ReconciliationOverride {
-			return nil, zero, ErrReconciliationOverrideRequired
-		}
 		invalidatedIDs, err := invalidateReconciliationCheckpoints(ctx, tx, checkpointInvalidationParams{
 			BookID: params[0].BookID, Refs: refs, ActorUserID: params[0].ActorUserID,
 			AuditEventID: auditEventID, OccurredAt: params[0].CreatedAt,

@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { parseISO } from 'date-fns';
+  import { checkpointOverride, isStaleImpactRefusal, type ReviewedCheckpoints } from '#lib/investments/gain-impact.ts';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
@@ -148,14 +149,8 @@
     pending = true;
     formError = undefined;
     try {
-      const impact = initial
-        ? await previewPaymentInLieuReplacementReconciliation(initial.transactionID, { reason: reason.trim(), replacement: payload })
-        : await paymentInLieuReconciliationImpact(payload);
-      if (impact.affected_checkpoints.length > 0) {
-        review = { impacts: impact.affected_checkpoints, payload };
-        return;
-      }
-      await commit(payload, false);
+      if (await reviewImpact(payload)) return;
+      await commit(payload, []);
     } catch (error) {
       formError = error;
     } finally {
@@ -163,12 +158,22 @@
     }
   }
 
-  async function commit(payload: PaymentInLieuRequest, override: boolean) {
+  // Show the checkpoints the write would invalidate, if any, for an override.
+  async function reviewImpact(payload: PaymentInLieuRequest): Promise<boolean> {
+    const impact = initial
+      ? await previewPaymentInLieuReplacementReconciliation(initial.transactionID, { reason: reason.trim(), replacement: payload })
+      : await paymentInLieuReconciliationImpact(payload);
+    if (impact.affected_checkpoints.length === 0) return false;
+    review = { impacts: impact.affected_checkpoints, payload };
+    return true;
+  }
+
+  async function commit(payload: PaymentInLieuRequest, reviewed: ReviewedCheckpoints) {
     if (initial) {
       await replacePaymentInLieu(initial.transactionID,
-        { reason: reason.trim(), replacement: payload, ...(override ? { reconciliation_override: true } : {}) }, csrfToken);
+        { reason: reason.trim(), replacement: payload, ...checkpointOverride(reviewed) }, csrfToken);
     } else {
-      await recordPaymentInLieu({ ...payload, ...(override ? { reconciliation_override: true } : {}) }, csrfToken);
+      await recordPaymentInLieu({ ...payload, ...checkpointOverride(reviewed) }, csrfToken);
     }
     await invalidateInvestmentReads(queryClient);
     onSaved();
@@ -176,14 +181,19 @@
 
   async function confirmOverride() {
     if (!review) return;
-    const { payload } = review;
+    const { payload, impacts } = review;
     review = null;
     pending = true;
     formError = undefined;
     try {
-      await commit(payload, true);
+      await commit(payload, impacts);
     } catch (error) {
-      formError = error;
+      // A statement finished since the review: show the current set (#304).
+      try {
+        if (!isStaleImpactRefusal(error) || !(await reviewImpact(payload))) formError = error;
+      } catch (previewError) {
+        formError = previewError;
+      }
     } finally {
       pending = false;
     }

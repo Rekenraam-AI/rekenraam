@@ -14,7 +14,7 @@ type reviewImportDividendRequest struct {
 	Resolution                   app.ImportRowResolution `json:"resolution"`
 	ExpectedTransactionVersionID int64                   `json:"expected_transaction_version_id"`
 	Reason                       string                  `json:"reason"`
-	ReconciliationOverride       bool                    `json:"reconciliation_override"`
+	reconciliationOverrideFields
 }
 
 func listImportDividends(logger *slog.Logger, auth *app.AuthService, service *app.ImportService) http.HandlerFunc {
@@ -68,7 +68,7 @@ func reviewImportDividend(logger *slog.Logger, auth *app.AuthService, service *a
 			writeDecodeError(w, err)
 			return
 		}
-		input := app.ReviewImportDividendInput{OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()), BatchID: batchID, RowID: rowID, Resolution: request.Resolution, Reason: request.Reason, ExpectedTransactionVersionID: request.ExpectedTransactionVersionID, ReconciliationOverride: request.ReconciliationOverride}
+		input := app.ReviewImportDividendInput{OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()), BatchID: batchID, RowID: rowID, Resolution: request.Resolution, Reason: request.Reason, ExpectedTransactionVersionID: request.ExpectedTransactionVersionID, ReconciliationOverride: request.checkpointOverride()}
 		if preview {
 			impact, err := service.ImportDividendReviewImpact(r.Context(), input)
 			if err != nil {

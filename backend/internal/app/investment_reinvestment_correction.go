@@ -27,7 +27,7 @@ type ReverseReinvestedDividendInput struct {
 	RequestID              string
 	TransactionID          int64
 	Reason                 string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	// GainImpactAcknowledgement echoes the preview token for the committed
 	// disposal gain changes the user accepted.
 	GainImpactAcknowledgement string
@@ -39,7 +39,7 @@ type ReplaceReinvestedDividendInput struct {
 	RequestID                 string
 	TransactionID             int64
 	Reason                    string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	Replacement               ReinvestedDividendInput
 	GainImpactAcknowledgement string
 }
@@ -65,7 +65,7 @@ func (s *InvestmentService) ReverseReinvestedDividend(ctx context.Context, input
 // ReverseReinvestedDividendReconciliationImpact runs the reversal writer and
 // its dependent replay in a rolled-back transaction.
 func (s *InvestmentService) ReverseReinvestedDividendReconciliationImpact(ctx context.Context, input ReverseReinvestedDividendInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.prepareReinvestmentReversalWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -119,7 +119,7 @@ func (s *InvestmentService) ReplaceReinvestedDividend(ctx context.Context, input
 // writer — inverse, corrected opening, replay, price retirement and
 // checkpoint invalidation — and rolls it back.
 func (s *InvestmentService) ReplaceReinvestedDividendReconciliationImpact(ctx context.Context, input ReplaceReinvestedDividendInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	prepared, err := s.prepareReinvestmentReplacementWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err

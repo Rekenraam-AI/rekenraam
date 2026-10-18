@@ -17,7 +17,9 @@
     gainImpactRows,
     hasGainChanges,
     impactNeedsReview,
-    isGainAcknowledgementRefusal
+    isStaleImpactRefusal,
+    checkpointOverride,
+    type ReviewedCheckpoints
   } from '#lib/investments/gain-impact.ts';
   import {
     previewDividendReplacementReconciliation,
@@ -164,7 +166,7 @@
     pending = true;
     formError = undefined;
     try {
-      if (!(await reviewImpact(target, false))) await commit(target, false, '');
+      if (!(await reviewImpact(target, false))) await commit(target, [], '');
     } catch (error) {
       await recover(error, target);
     } finally {
@@ -185,8 +187,8 @@
     return true;
   }
 
-  async function commit(target: Pending, override: boolean, acknowledgement: string) {
-    const body = { reason: reason.trim(), ...(override ? { reconciliation_override: true } : {}) };
+  async function commit(target: Pending, reviewed: ReviewedCheckpoints, acknowledgement: string) {
+    const body = { reason: reason.trim(), ...checkpointOverride(reviewed) };
     if (target.kind === 'reinvested') {
       await replaceReinvestedDividend(transactionID, { ...body, replacement: target.payload,
         ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {}) }, csrfToken);
@@ -200,7 +202,7 @@
   // The gain set changed since review: show the current set, not a dead end.
   async function recover(error: unknown, target: Pending) {
     try {
-      if (!isGainAcknowledgementRefusal(error) || !(await reviewImpact(target, true))) formError = error;
+      if (!isStaleImpactRefusal(error) || !(await reviewImpact(target, true))) formError = error;
     } catch (previewError) {
       formError = previewError;
     }
@@ -213,7 +215,7 @@
     pending = true;
     formError = undefined;
     try {
-      await commit(target, impacts.length > 0, gainAcknowledgement(gainImpact));
+      await commit(target, impacts, gainAcknowledgement(gainImpact));
     } catch (error) {
       await recover(error, target);
     } finally {

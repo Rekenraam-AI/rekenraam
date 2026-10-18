@@ -33,7 +33,7 @@ type CapitalReturnInput struct {
 	SourceEvidenceJSON        string
 	Memo                      string
 	ChangeReason              string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 	// EntitledLotIDs names the lots the corporate action entitles; each takes
 	// its whole remaining quantity. Empty applies the per-share rule (T-148).
@@ -137,7 +137,7 @@ func (s *InvestmentService) capitalReturnWrite(ctx context.Context, input Capita
 	create := CreateTransactionInput{
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID, RequestID: input.RequestID,
 		OriginType: "browser_api", Operation: "investment.return_of_capital", ChangeReason: input.ChangeReason,
-		ReconciliationOverride: input.ReconciliationOverride,
+		ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 		Spec: TransactionInput{
 			Status: "posted", TransactionKind: "investment", InvestmentOperationKind: "return_of_capital",
 			TransactionDate: payment, Description: memo,
@@ -165,7 +165,7 @@ func (s *InvestmentService) capitalReturnWrite(ctx context.Context, input Capita
 // PreviewCapitalReturn runs the complete writer and rolls back: the per-lot
 // reduction and excess a commit would record, and its impact.
 func (s *InvestmentService) PreviewCapitalReturn(ctx context.Context, input CapitalReturnInput) (CapitalReturnPreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	journal, params, err := s.capitalReturnWrite(ctx, input)
 	if err != nil {
 		return CapitalReturnPreview{}, err
@@ -244,7 +244,7 @@ type ReverseInvestmentCapitalReturnInput struct {
 	RequestID                 string
 	TransactionID             int64
 	Reason                    string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 }
 
@@ -265,7 +265,7 @@ func (s *InvestmentService) ReverseCapitalReturn(ctx context.Context, input Reve
 }
 
 func (s *InvestmentService) ReverseCapitalReturnReconciliationImpact(ctx context.Context, input ReverseInvestmentCapitalReturnInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.prepareCapitalReturnReversal(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -306,7 +306,7 @@ func (s *InvestmentService) prepareCapitalReturnReversal(ctx context.Context, in
 	params, err := s.transactionService.prepareInvestmentTransactionForWrite(ctx, CreateTransactionInput{
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID, RequestID: input.RequestID,
 		OriginType: "browser_api", Operation: "investment.return_of_capital.reverse", ChangeReason: reason,
-		ReconciliationOverride: input.ReconciliationOverride, CorrectionOfTransactionID: &operation.TransactionID,
+		ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed, CorrectionOfTransactionID: &operation.TransactionID,
 		Spec: spec,
 	}, nil)
 	if err != nil {
@@ -336,7 +336,7 @@ type ReplaceInvestmentCapitalReturnInput struct {
 	RequestID                 string
 	TransactionID             int64
 	Reason                    string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 	Replacement               CapitalReturnInput
 }
@@ -392,7 +392,7 @@ func (s *InvestmentService) ReplaceCapitalReturn(ctx context.Context, input Repl
 }
 
 func (s *InvestmentService) PreviewCapitalReturnReplacement(ctx context.Context, input ReplaceInvestmentCapitalReturnInput) (CapitalReturnPreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, inverse, replacement, params, err := s.prepareCapitalReturnReplacement(ctx, input)
 	if err != nil {
 		return CapitalReturnPreview{}, err

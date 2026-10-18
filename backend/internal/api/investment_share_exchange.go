@@ -12,18 +12,18 @@ import (
 // Share exchange (#177): the whole holding of one instrument in an account
 // becomes another instrument at an exact ratio, carrying each lot's basis.
 type shareExchangeRequest struct {
-	EffectiveOn               string          `json:"effective_on"`
-	HoldingAccountID          int64           `json:"holding_account_id"`
-	DestinationHoldingID      int64           `json:"destination_holding_account_id,omitempty"`
-	CommodityID               int64           `json:"commodity_id"`
-	DestinationCommodityID    int64           `json:"destination_commodity_id"`
-	RatioNumerator            int64           `json:"ratio_numerator"`
-	RatioDenominator          int64           `json:"ratio_denominator"`
-	SourceEvidence            json.RawMessage `json:"source_evidence,omitempty"`
-	Memo                      string          `json:"memo"`
-	ChangeReason              string          `json:"change_reason"`
-	ReconciliationOverride    bool            `json:"reconciliation_override"`
-	GainImpactAcknowledgement string          `json:"gain_impact_acknowledgement,omitempty"`
+	EffectiveOn            string          `json:"effective_on"`
+	HoldingAccountID       int64           `json:"holding_account_id"`
+	DestinationHoldingID   int64           `json:"destination_holding_account_id,omitempty"`
+	CommodityID            int64           `json:"commodity_id"`
+	DestinationCommodityID int64           `json:"destination_commodity_id"`
+	RatioNumerator         int64           `json:"ratio_numerator"`
+	RatioDenominator       int64           `json:"ratio_denominator"`
+	SourceEvidence         json.RawMessage `json:"source_evidence,omitempty"`
+	Memo                   string          `json:"memo"`
+	ChangeReason           string          `json:"change_reason"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type shareExchangeLinkResponse struct {
@@ -116,7 +116,7 @@ func shareExchangeInput(owner app.Owner, r *http.Request, request shareExchangeR
 		CommodityID: request.CommodityID, DestinationCommodityID: request.DestinationCommodityID,
 		RatioNumerator: request.RatioNumerator, RatioDenominator: request.RatioDenominator,
 		SourceEvidenceJSON: evidence, Memo: request.Memo, ChangeReason: request.ChangeReason,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -215,16 +215,16 @@ func shareExchangePreview(logger *slog.Logger, authService *app.AuthService, inv
 // and response; replacement carries corrected terms for the same holding and
 // old instrument.
 type shareExchangeReplacementRequest struct {
-	Reason                    string          `json:"reason"`
-	EffectiveOn               string          `json:"effective_on"`
-	DestinationHoldingID      int64           `json:"destination_holding_account_id,omitempty"`
-	DestinationCommodityID    int64           `json:"destination_commodity_id"`
-	RatioNumerator            int64           `json:"ratio_numerator"`
-	RatioDenominator          int64           `json:"ratio_denominator"`
-	SourceEvidence            json.RawMessage `json:"source_evidence,omitempty"`
-	Memo                      string          `json:"memo"`
-	ReconciliationOverride    bool            `json:"reconciliation_override"`
-	GainImpactAcknowledgement string          `json:"gain_impact_acknowledgement,omitempty"`
+	Reason                 string          `json:"reason"`
+	EffectiveOn            string          `json:"effective_on"`
+	DestinationHoldingID   int64           `json:"destination_holding_account_id,omitempty"`
+	DestinationCommodityID int64           `json:"destination_commodity_id"`
+	RatioNumerator         int64           `json:"ratio_numerator"`
+	RatioDenominator       int64           `json:"ratio_denominator"`
+	SourceEvidence         json.RawMessage `json:"source_evidence,omitempty"`
+	Memo                   string          `json:"memo"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type shareExchangeReplacementResponse struct {
@@ -245,7 +245,7 @@ func shareExchangeReplacementInput(owner app.Owner, r *http.Request, transaction
 		DestinationHoldingAccountID: request.DestinationHoldingID, DestinationCommodityID: request.DestinationCommodityID,
 		RatioNumerator: request.RatioNumerator, RatioDenominator: request.RatioDenominator,
 		SourceEvidenceJSON: evidence, Memo: request.Memo,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -268,7 +268,7 @@ func reverseShareExchange(logger *slog.Logger, authService *app.AuthService, inv
 		transaction, err := investmentService.ReverseShareExchange(r.Context(), app.ReverseShareExchangeInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 			TransactionID: transactionID, Reason: request.Reason,
-			ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+			ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "reverse share exchange", err)

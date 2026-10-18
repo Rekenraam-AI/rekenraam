@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { isValid, parseISO } from 'date-fns';
+  import { checkpointOverride, isStaleImpactRefusal, type ReviewedCheckpoints } from '#lib/investments/gain-impact.ts';
   import type { AccountResponse } from '#lib/api/accounts.ts';
   import type { CurrencyResponse } from '#lib/api/currencies.ts';
   import type { InvestmentInstrumentResponse, ReconciliationImpactResponse } from '#lib/api/investments.ts';
@@ -29,16 +30,24 @@
   const date = $derived(isValid(sourceDate) ? new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium' }).format(sourceDate) : review.source_date);
   const currency = $derived(review.source_currency || currencies.find(c => c.id === resolution.commodity_id)?.code || '—');
   const source = $derived({ cash_valid: !!parsedCash, kind: 'dividend' as const, instrument_code: review.source_instrument, gross_amount: '', withholding_amount: '' });
-  function request(override = false) {
-    return { resolution, expected_transaction_version_id: review.expected_transaction_version_id, reason, reconciliation_override: override };
+  function request(reviewed: ReviewedCheckpoints = []) {
+    return { resolution, expected_transaction_version_id: review.expected_transaction_version_id, reason, reconciliation_override: false, ...checkpointOverride(reviewed) };
   }
-  async function save(override = false) {
+  async function save(reviewed: ReviewedCheckpoints = []) {
     pending = true; error = undefined;
     try {
-      const transaction = await reviewImportDividend(review, request(override), csrfToken);
+      const transaction = await reviewImportDividend(review, request(reviewed), csrfToken);
       impact = null;
       await onSaved(transaction.id, repaired);
-    } catch (err) { error = err; impact = null; }
+    } catch (err) {
+      impact = null;
+      // A statement finished since the review: show the current set (#304).
+      try {
+        const current = isStaleImpactRefusal(err) ? await importDividendReviewImpact(review, request()) : null;
+        if (current?.affected_checkpoints.length) impact = current;
+        else error = err;
+      } catch (previewErr) { error = previewErr; }
+    }
     finally { pending = false; }
   }
   async function submit(event: SubmitEvent) {
@@ -72,5 +81,5 @@
   </button>
 </form>
 {#if impact}
-  <ReconciliationConfirm impacts={impact.affected_checkpoints} {pending} onCancel={() => { impact = null; }} onConfirm={() => void save(true)} />
+  <ReconciliationConfirm impacts={impact.affected_checkpoints} {pending} onCancel={() => { impact = null; }} onConfirm={() => void save(impact?.affected_checkpoints ?? [])} />
 {/if}

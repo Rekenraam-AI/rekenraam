@@ -281,7 +281,7 @@ func TestBuyGainImpactAcknowledgementRollsBackOnLateFailure(t *testing.T) {
 
 	// A failure after the acknowledgement is validated, journals written,
 	// replay persisted and checkpoints invalidated still rolls back all of it.
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	transactionParams, lotParams, err := f.investmentService.prepareBuyWrite(ctx, input)
 	require.NoError(t, err)
 	transactionParams.GainImpact = &db.GainImpactPolicy{Acknowledgement: input.GainImpactAcknowledgement}

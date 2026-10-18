@@ -312,7 +312,7 @@ func TestShareExchangeReversalLateReconciliationRefusalRollsBackEverything(t *te
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.ReverseShareExchange(ctx, input)
 	require.NoError(t, err)
 	assert.Equal(t, "10", positionQuantity(t, f, f.holdingAccountID, f.stockCommodityID))

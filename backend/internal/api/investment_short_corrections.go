@@ -73,7 +73,7 @@ func reverseShortSaleHandler(logger *slog.Logger, authService *app.AuthService, 
 			return investmentService.ReverseShortSale(r.Context(), app.ReverseInvestmentBuyInput{
 				OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 				TransactionID: transactionID, Reason: request.Reason,
-				ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+				ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 			})
 		})
 }
@@ -93,7 +93,7 @@ func reverseShortCoverHandler(logger *slog.Logger, authService *app.AuthService,
 			return investmentService.ReverseShortCover(r.Context(), app.ReverseInvestmentSaleInput{
 				OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 				OriginType: "browser_api", TransactionID: transactionID, Reason: request.Reason,
-				ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+				ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 			})
 		})
 }
@@ -125,7 +125,7 @@ func replaceShortSaleHandler(logger *slog.Logger, authService *app.AuthService, 
 		result, err := investmentService.ReplaceShortSale(r.Context(), app.ReplaceInvestmentBuyInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r),
 			RequestID: RequestIDFromContext(r.Context()), TransactionID: transactionID,
-			Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 			Replacement:               toInvestmentTradeInput(owner, r, request.Replacement),
 			GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
@@ -168,7 +168,7 @@ func replaceShortCoverHandler(logger *slog.Logger, authService *app.AuthService,
 		result, err := investmentService.ReplaceShortCover(r.Context(), app.ReplaceInvestmentSaleInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r),
 			RequestID: RequestIDFromContext(r.Context()), TransactionID: transactionID,
-			Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 			Replacement:               toInvestmentTradeInput(owner, r, request.Replacement),
 			GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})

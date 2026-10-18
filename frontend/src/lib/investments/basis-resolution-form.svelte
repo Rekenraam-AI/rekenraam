@@ -14,7 +14,9 @@
     gainImpactRows,
     hasGainChanges,
     impactNeedsReview,
-    isGainAcknowledgementRefusal
+    isStaleImpactRefusal,
+    checkpointOverride,
+    type ReviewedCheckpoints
   } from '#lib/investments/gain-impact.ts';
   import { formatEditableAmount } from '#lib/money/amount.ts';
   import {
@@ -114,7 +116,7 @@
     if (!payload) return;
     pending = true;
     try {
-      if (!(await reviewImpact(payload, false))) await commit(payload, false, '');
+      if (!(await reviewImpact(payload, false))) await commit(payload, [], '');
     } catch (error) {
       await recover(error, payload);
     } finally {
@@ -134,10 +136,10 @@
     return true;
   }
 
-  async function commit(payload: InvestmentBasisResolutionRequest, override: boolean, acknowledgement: string) {
+  async function commit(payload: InvestmentBasisResolutionRequest, reviewed: ReviewedCheckpoints, acknowledgement: string) {
     const body = {
       ...payload,
-      ...(override ? { reconciliation_override: true } : {}),
+      ...checkpointOverride(reviewed),
       ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
     };
     if (correcting) await replaceBasisResolution(transactionID, body, csrfToken);
@@ -148,7 +150,7 @@
 
   async function recover(error: unknown, payload: InvestmentBasisResolutionRequest) {
     try {
-      if (!isGainAcknowledgementRefusal(error) || !(await reviewImpact(payload, true))) formError = error;
+      if (!isStaleImpactRefusal(error) || !(await reviewImpact(payload, true))) formError = error;
     } catch (previewError) {
       formError = previewError;
     }
@@ -161,7 +163,7 @@
     pending = true;
     formError = undefined;
     try {
-      await commit(payload, impacts.length > 0, gainAcknowledgement(gainImpact));
+      await commit(payload, impacts, gainAcknowledgement(gainImpact));
     } catch (error) {
       await recover(error, payload);
     } finally {

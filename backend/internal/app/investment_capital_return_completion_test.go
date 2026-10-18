@@ -183,7 +183,7 @@ func TestCapitalReturnReplacementLateFailureRollsBackJournalFactsAndReplay(t *te
 	require.NoError(t, err)
 	checkpoint := reconcileCash(t, f, "2026-07-01", -16)
 	input := ReplaceInvestmentCapitalReturnInput{OwnerUserID: f.ownerUserID, TransactionID: roc.Transaction.ID,
-		Reason: "receipt corrected", ReconciliationOverride: true, Replacement: capitalReturnInput(f, "2026-06-01", 600)}
+		Reason: "receipt corrected", ReconciliationOverride: unboundOverride, Replacement: capitalReturnInput(f, "2026-06-01", 600)}
 	preview, err := f.investmentService.PreviewCapitalReturnReplacement(ctx, input)
 	require.NoError(t, err)
 	require.Len(t, preview.Impact.AffectedCheckpoints, 1)

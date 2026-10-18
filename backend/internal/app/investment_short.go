@@ -102,7 +102,7 @@ func shortCoverResult(decision db.DisposalDecisionRecord) (*exact.ScaledInt, err
 }
 
 func (s *InvestmentService) simulateShortCover(ctx context.Context, input InvestmentTradeInput) (db.SimulatedInvestmentWrite, []db.LotDisposalRecord, db.DisposalDecisionRecord, tradeEconomics, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	plan, err := s.shortPlan(ctx, input, false)
 	if err != nil {
 		return db.SimulatedInvestmentWrite{}, nil, db.DisposalDecisionRecord{}, tradeEconomics{}, err
@@ -180,7 +180,7 @@ func (s *InvestmentService) shortPlan(ctx context.Context, input InvestmentTrade
 			OriginType:             defaultString(input.OriginType, "browser_api"),
 			Operation:              defaultString(input.Operation, operation),
 			ChangeReason:           input.ChangeReason,
-			ReconciliationOverride: input.ReconciliationOverride,
+			ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 			Spec: TransactionInput{
 				Status:                  defaultString(strings.TrimSpace(input.Status), "posted"),
 				TransactionKind:         "investment",
@@ -297,7 +297,7 @@ func (s *InvestmentService) shortCoverWriteFromPlan(ctx context.Context, input I
 
 // shortSaleReconciliationImpact runs the opening writer and rolls back.
 func (s *InvestmentService) shortSaleReconciliationImpact(ctx context.Context, input InvestmentTradeInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	transactionParams, lotParams, err := s.prepareShortSaleWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err

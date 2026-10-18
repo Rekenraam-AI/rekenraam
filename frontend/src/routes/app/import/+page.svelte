@@ -31,7 +31,8 @@
     gainImpactCurrency,
     gainImpactRows,
     hasGainChanges,
-    type GainImpactRow
+    type GainImpactRow,
+    checkpointOverride
   } from '#lib/investments/gain-impact.ts';
   import { categoriesQueryOptions } from '#lib/api/categories.ts';
   import { tagsQueryOptions } from '#lib/api/tags.ts';
@@ -599,7 +600,8 @@
       const acknowledgement = gainAcknowledgement(sourceCorrectionImpact.gain_impact);
       const result = await (kind === 'sale' ? correctTrading212Sale : correctTrading212Buy)(batchId, rowId, {
         reason: sourceCorrectionReason.trim(),
-        reconciliation_override: sourceCorrectionOverride,
+        // The override names the checkpoints the preview showed (#304).
+        ...(sourceCorrectionOverride ? checkpointOverride(sourceCorrectionImpact.affected_checkpoints) : {}),
         ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
       }, csrfToken);
       sourceCorrectionSuccessID = result.replacement.transaction.id;
@@ -622,8 +624,8 @@
         // The correction is committed; keep its success link and local row state.
       }
     } catch (err) {
-      // A stale gain acknowledgement clears the preview; the next click
-      // previews the current change set again.
+      // A stale gain acknowledgement or checkpoint set clears the preview; the
+      // next click previews the current impact again.
       sourceCorrectionImpact = null;
       sourceCorrectionOverride = false;
       sourceCorrectionAcceptGains = false;

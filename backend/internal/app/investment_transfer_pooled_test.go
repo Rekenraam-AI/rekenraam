@@ -520,7 +520,7 @@ func TestPooledTransferLateReconciliationRefusalRollsBackEverything(t *testing.T
 	assert.Zero(t, facts)
 	assert.Zero(t, events)
 
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.InternalTransfer(ctx, input)
 	require.NoError(t, err)
 	assert.Equal(t, SelfCheckPassed, resultFor(t, mustRunInvestmentSelfCheck(t, f), CheckInvestmentFoundation).Status)

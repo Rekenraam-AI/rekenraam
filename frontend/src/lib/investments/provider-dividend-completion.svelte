@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
+  import { checkpointOverride, isStaleImpactRefusal } from '#lib/investments/gain-impact.ts';
   import { createQuery } from '@tanstack/svelte-query';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
@@ -117,26 +118,7 @@
     pending = true;
     formError = undefined;
     try {
-      // A backdated payment can land in a reconciled period: the same named
-      // confirmation as manual dividend entry.
-      const impact = await dividendReconciliationImpact({
-        transaction_date: completion.transaction_date,
-        withholding_only: false,
-        commodity_id: commodityID,
-        cash_account_id: completion.cash_account_id,
-        cash_commodity_id: completion.cash_commodity_id,
-        income_account_id: completion.income_account_id,
-        amount_value: completion.amount_value,
-        amount_scale: completion.amount_scale,
-        withholding_value: completion.withholding_value,
-        withholding_scale: completion.withholding_scale,
-        withholding_account_id: completion.withholding_account_id,
-        memo: completion.memo
-      });
-      if (impact.affected_checkpoints.length > 0) {
-        reconciliation = { impacts: impact.affected_checkpoints, completion };
-        return;
-      }
+      if (await reviewImpact(completion)) return;
       await post(completion);
     } catch (err) {
       formError = err;
@@ -145,16 +127,45 @@
     }
   }
 
+  async function reviewImpact(completion: EventSuggestionCompletion): Promise<boolean> {
+    // A backdated payment can land in a reconciled period: the same named
+    // confirmation as manual dividend entry.
+    const impact = await dividendReconciliationImpact({
+      transaction_date: completion.transaction_date,
+      withholding_only: false,
+      commodity_id: commodityID,
+      cash_account_id: completion.cash_account_id,
+      cash_commodity_id: completion.cash_commodity_id,
+      income_account_id: completion.income_account_id,
+      amount_value: completion.amount_value,
+      amount_scale: completion.amount_scale,
+      withholding_value: completion.withholding_value,
+      withholding_scale: completion.withholding_scale,
+      withholding_account_id: completion.withholding_account_id,
+      memo: completion.memo
+    });
+    if (impact.affected_checkpoints.length > 0) {
+      reconciliation = { impacts: impact.affected_checkpoints, completion };
+      return true;
+    }
+    return false;
+  }
+
   async function confirmOverride() {
     if (!reconciliation) return;
-    const { completion } = reconciliation;
+    const { completion, impacts } = reconciliation;
     reconciliation = null;
     pending = true;
     formError = undefined;
     try {
-      await post({ ...completion, reconciliation_override: true });
+      await post({ ...completion, ...checkpointOverride(impacts) });
     } catch (err) {
-      formError = err;
+      // A statement finished since the review: show the current set (#304).
+      try {
+        if (!isStaleImpactRefusal(err) || !(await reviewImpact(completion))) formError = err;
+      } catch (previewErr) {
+        formError = previewErr;
+      }
     } finally {
       pending = false;
     }

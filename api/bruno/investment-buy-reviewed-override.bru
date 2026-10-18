@@ -1,0 +1,42 @@
+meta {
+  name: Record Buy - Reviewed Override
+  type: http
+  seq: 37
+}
+
+docs {
+  Every investment write, investment correction, Trading 212 source
+  correction and imported dividend review that overrides the reconciliation
+  guard names the checkpoint ids its reconciliation-impact preview returned
+  (reconciliation_override_checkpoint_ids, required with the override, #304).
+  A different set answers 409 RECONCILIATION_IMPACT_STALE with the current set
+  in error.checkpoint_ids, and nothing is invalidated; an override without the
+  set answers 400 VALIDATION_FAILED. The import batch commit is the one
+  exception until it has a preview (#305).
+}
+
+post {
+  url: {{baseUrl}}/api/v1/investments/buy
+  body: json
+  auth: none
+}
+
+headers {
+  X-CSRF-Token: {{csrfToken}}
+}
+
+body:json {
+  {
+    "transaction_date": "2026-01-15",
+    "commodity_id": {{instrumentCommodityId}},
+    "holding_account_id": {{holdingAccountId}},
+    "cash_account_id": {{cashAccountId}},
+    "quantity_value": "5",
+    "quantity_scale": 0,
+    "cash_amount_value": "50000",
+    "cash_amount_scale": 2,
+    "cash_commodity_id": {{commodityId}},
+    "reconciliation_override": true,
+    "reconciliation_override_checkpoint_ids": [{{reviewedCheckpointId}}]
+  }
+}

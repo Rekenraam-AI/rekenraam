@@ -522,7 +522,7 @@ func TestSplitAdjustmentIntoReconciledPeriodNeedsOverride(t *testing.T) {
 	_, err = f.investmentService.Buy(ctx, backdated)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	assert.Equal(t, before, countSplitRows(t, f.database))
-	backdated.ReconciliationOverride = true
+	backdated.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.Buy(ctx, backdated)
 	require.NoError(t, err)
 	assert.Len(t, splitAdjustments(t, f), 1)
@@ -656,7 +656,7 @@ func TestSplitIntoReconciledPeriodNeedsOverride(t *testing.T) {
 	_, err = f.investmentService.Split(ctx, input)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	assert.Equal(t, before, countSplitRows(t, f.database))
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.Split(ctx, input)
 	require.NoError(t, err)
 	var status string

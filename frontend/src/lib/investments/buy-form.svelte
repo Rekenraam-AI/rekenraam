@@ -12,7 +12,9 @@
     gainImpactRows,
     hasGainChanges,
     impactNeedsReview,
-    isGainAcknowledgementRefusal
+    isStaleImpactRefusal,
+    checkpointOverride,
+    type ReviewedCheckpoints
   } from '#lib/investments/gain-impact.ts';
   import { parseTradeAmounts, type AmountFieldError } from '#lib/investments/form-amounts.ts';
   import TradeEconomicsFields from '#lib/investments/trade-economics-fields.svelte';
@@ -242,7 +244,7 @@
     try {
       const correctionReason = reason.trim();
       if (await reviewImpact(payload, correctionReason, false)) return;
-      await submitBuy(payload, false, correctionReason, '');
+      await submitBuy(payload, [], correctionReason, '');
     } catch (err) {
       try {
         if (!(await reviewAfterGainRefusal(err, payload, reason.trim()))) formError = err;
@@ -271,7 +273,7 @@
   // The server recomputes the change set at commit. When it differs from what
   // the user reviewed, show the current set again instead of a dead-end error.
   async function reviewAfterGainRefusal(err: unknown, payload: InvestmentTradeRequest, correctionReason: string): Promise<boolean> {
-    if (!isGainAcknowledgementRefusal(err)) return false;
+    if (!isStaleImpactRefusal(err)) return false;
     return reviewImpact(payload, correctionReason, true);
   }
 
@@ -283,7 +285,7 @@
     formError = undefined;
 
     try {
-      await submitBuy(payload, impacts.length > 0, correctionReason, gainAcknowledgement(gainImpact));
+      await submitBuy(payload, impacts, correctionReason, gainAcknowledgement(gainImpact));
     } catch (err) {
       try {
         if (!(await reviewAfterGainRefusal(err, payload, correctionReason))) formError = err;
@@ -295,19 +297,19 @@
     }
   }
 
-  async function submitBuy(payload: InvestmentTradeRequest, override: boolean, correctionReason: string, acknowledgement: string) {
+  async function submitBuy(payload: InvestmentTradeRequest, reviewed: ReviewedCheckpoints, correctionReason: string, acknowledgement: string) {
     const gainFields = acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {};
     if (correction) {
       await replaceManualBuy(correction.transaction_id, {
         reason: correctionReason,
         replacement: { ...payload, charges: payload.charges?.map((charge) => ({ ...charge, treatment: charge.treatment! })) },
-        reconciliation_override: override,
+        ...checkpointOverride(reviewed),
         ...gainFields
       }, csrfToken);
     } else {
       await recordBuy({
         ...payload,
-        ...(override ? { reconciliation_override: true } : {}),
+        ...checkpointOverride(reviewed),
         ...gainFields
       }, csrfToken);
     }

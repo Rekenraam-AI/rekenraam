@@ -774,7 +774,7 @@ func TestCorrectTrading212BuyRequiresReconciliationOverride(t *testing.T) {
 	staged, err := f.importRepo.ImportStagedRowByID(ctx, changedRowID)
 	require.NoError(t, err)
 	require.Equal(t, "pending", staged.CommitStatus)
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	result, err := acknowledgedCorrectTrading212Buy(ctx, f.importService, input)
 	require.NoError(t, err)
 	require.Contains(t, append(result.Inverse.InvalidatedCheckpointIDs, result.Replacement.Transaction.InvalidatedCheckpointIDs...), checkpointID)
@@ -956,7 +956,7 @@ func TestCommitImportBatch_InvestmentBuyCrossingReconciledPeriodRequiresOverride
 	overrideResult, err := f.importService.CommitImportBatch(context.Background(), CommitImportBatchInput{
 		OwnerUserID:            f.ownerUserID,
 		BatchID:                overrideBatchID,
-		ReconciliationOverride: true,
+		ReconciliationOverride: unboundOverride,
 	})
 	require.NoError(t, err)
 	assert.Equal(t, 1, overrideResult.CommittedCount)
@@ -964,7 +964,7 @@ func TestCommitImportBatch_InvestmentBuyCrossingReconciledPeriodRequiresOverride
 
 	// The held row of the first batch resumes in its batch (#301).
 	resumed, err := f.importService.CommitImportBatch(context.Background(), CommitImportBatchInput{
-		OwnerUserID: f.ownerUserID, BatchID: batchID, ReconciliationOverride: true,
+		OwnerUserID: f.ownerUserID, BatchID: batchID, ReconciliationOverride: unboundOverride,
 	})
 	require.NoError(t, err)
 	assert.Equal(t, 1, resumed.CommittedCount)

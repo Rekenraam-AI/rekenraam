@@ -133,8 +133,8 @@ type rowGainImpactAcknowledgementRequest struct {
 }
 
 type correctTrading212SourceRequest struct {
-	Reason                    string `json:"reason"`
-	ReconciliationOverride    bool   `json:"reconciliation_override"`
+	Reason string `json:"reason"`
+	reconciliationOverrideFields
 	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
@@ -745,11 +745,12 @@ func commitImportBatch(logger *slog.Logger, authService *app.AuthService, import
 			gainAcknowledgements[acknowledgement.RowID] = acknowledgement.Acknowledgement
 		}
 		result, err := importService.CommitImportBatch(r.Context(), app.CommitImportBatchInput{
-			OwnerUserID:                owner.ID,
-			AuthSessionID:              authenticatedSessionID(r),
-			RequestID:                  RequestIDFromContext(r.Context()),
-			BatchID:                    batchID,
-			ReconciliationOverride:     request.ReconciliationOverride,
+			OwnerUserID:   owner.ID,
+			AuthSessionID: authenticatedSessionID(r),
+			RequestID:     RequestIDFromContext(r.Context()),
+			BatchID:       batchID,
+			// The batch has no checkpoint preview to bind to yet (#305).
+			ReconciliationOverride:     app.CheckpointOverride{Allowed: request.ReconciliationOverride},
 			GainImpactAcknowledgements: gainAcknowledgements,
 		})
 		if err != nil {
@@ -843,7 +844,7 @@ func correctTrading212Buy(logger *slog.Logger, authService *app.AuthService, imp
 		result, err := importService.CorrectTrading212Buy(r.Context(), app.CorrectTrading212BuyInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r),
 			RequestID: RequestIDFromContext(r.Context()), BatchID: batchID, RowID: rowID,
-			Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 			GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
@@ -924,7 +925,7 @@ func correctTrading212Sale(logger *slog.Logger, authService *app.AuthService, im
 		result, err := importService.CorrectTrading212Sale(r.Context(), app.CorrectTrading212SaleInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r),
 			RequestID: RequestIDFromContext(r.Context()), BatchID: batchID, RowID: rowID,
-			Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 			GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
@@ -1014,9 +1015,14 @@ func listImportBatches(logger *slog.Logger, authService *app.AuthService, import
 // --- Error handler ---
 
 func writeImportServiceError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, op string, err error) {
+	if writeCheckpointImpactRefusal(w, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, app.ErrReconciliationOverrideRequired):
 		writeAPIError(w, http.StatusConflict, "CONFLICT", "reconciliation override required")
+	case errors.Is(err, app.ErrReconciliationImpactStale):
+		writeAPIError(w, http.StatusConflict, "RECONCILIATION_IMPACT_STALE", "the checkpoints this write would invalidate changed after they were reviewed; review them again")
 	case errors.Is(err, app.ErrImportBatchNotFound):
 		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "import batch not found")
 	case errors.Is(err, app.ErrImportBatchNotOpen):

@@ -11,18 +11,8 @@ import (
 func writeTransactionServiceError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, action string, err error) {
 	var validationError app.ValidationError
 	var overflowError app.LedgerOverflowError
-	var impactError app.CheckpointImpactError
-	if errors.As(err, &impactError) {
-		// A guard refusal names the set the write would invalidate now, so a
-		// caller without a preview can show it and bind its override (#296).
-		switch {
-		case errors.Is(err, app.ErrReconciliationImpactStale):
-			writeCheckpointRefusal(w, "RECONCILIATION_IMPACT_STALE", "the checkpoints this write would invalidate changed after they were reviewed; review them again", impactError.CheckpointIDs)
-			return
-		case errors.Is(err, app.ErrReconciliationOverrideRequired):
-			writeCheckpointRefusal(w, "CONFLICT", "reconciliation override is required", impactError.CheckpointIDs)
-			return
-		}
+	if writeCheckpointImpactRefusal(w, err) {
+		return
 	}
 	switch {
 	case errors.Is(err, app.ErrTransactionDraftNotUserCreatable):
@@ -68,6 +58,25 @@ func writeTransactionServiceError(w http.ResponseWriter, r *http.Request, logger
 	default:
 		writeServiceInternalError(w, r, logger, action, err)
 	}
+}
+
+// writeCheckpointImpactRefusal writes a guard refusal that names the set the
+// write would invalidate now, so a caller can show it and bind its override
+// (#296, #304). It reports whether err was such a refusal.
+func writeCheckpointImpactRefusal(w http.ResponseWriter, err error) bool {
+	var impactError app.CheckpointImpactError
+	if !errors.As(err, &impactError) {
+		return false
+	}
+	switch {
+	case errors.Is(err, app.ErrReconciliationImpactStale):
+		writeCheckpointRefusal(w, "RECONCILIATION_IMPACT_STALE", "the checkpoints this write would invalidate changed after they were reviewed; review them again", impactError.CheckpointIDs)
+	case errors.Is(err, app.ErrReconciliationOverrideRequired):
+		writeCheckpointRefusal(w, "CONFLICT", "reconciliation override is required", impactError.CheckpointIDs)
+	default:
+		return false
+	}
+	return true
 }
 
 func writeCheckpointRefusal(w http.ResponseWriter, code, message string, checkpointIDs []int64) {

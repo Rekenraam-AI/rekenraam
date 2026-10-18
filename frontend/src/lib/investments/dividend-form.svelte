@@ -31,7 +31,8 @@
     gainImpactRows,
     hasGainChanges,
     impactNeedsReview,
-    isGainAcknowledgementRefusal
+    isStaleImpactRefusal,
+    checkpointOverride
   } from '#lib/investments/gain-impact.ts';
   import type { GainImpact } from '#lib/api/investments.ts';
 
@@ -269,17 +270,7 @@
           memo: memo.trim() || undefined
         };
 
-        const impact = await dividendReconciliationImpact(payload);
-        if (impact.affected_checkpoints.length > 0) {
-          reconciliationModal = {
-            impacts: impact.affected_checkpoints,
-            gainImpact: null,
-            gainRefreshed: false,
-            pending: { mode: 'cash', payload }
-          };
-          return;
-        }
-
+        if (await reviewCash(payload)) return;
         await recordDividend(payload, csrfToken);
       } else {
         if (!selectedInstrument || !quantity) return;
@@ -311,6 +302,13 @@
     }
   }
 
+  async function reviewCash(payload: DividendRequest): Promise<boolean> {
+    const impact = await dividendReconciliationImpact(payload);
+    if (impact.affected_checkpoints.length === 0) return false;
+    reconciliationModal = { impacts: impact.affected_checkpoints, gainImpact: null, gainRefreshed: false, pending: { mode: 'cash', payload } };
+    return true;
+  }
+
   async function reviewReinvestment(payload: ReinvestedDividendRequest, refreshed: boolean): Promise<boolean> {
     const impact = await reinvestedDividendReconciliationImpact(payload);
     if (!impactNeedsReview(impact)) return false;
@@ -325,7 +323,7 @@
   let lastReinvestment: ReinvestedDividendRequest | null = null;
   async function recoverFromRefusal(err: unknown) {
     try {
-      if (!isGainAcknowledgementRefusal(err) || !lastReinvestment || !(await reviewReinvestment(lastReinvestment, true))) {
+      if (!isStaleImpactRefusal(err) || !lastReinvestment || !(await reviewReinvestment(lastReinvestment, true))) {
         formError = err;
       }
     } catch (previewErr) {
@@ -342,13 +340,19 @@
 
     try {
       if (target.mode === 'cash') {
-        await recordDividend({ ...target.payload, reconciliation_override: true }, csrfToken);
+        try {
+          await recordDividend({ ...target.payload, ...checkpointOverride(impacts) }, csrfToken);
+        } catch (err) {
+          // A statement finished since the review: show the current set (#304).
+          if (isStaleImpactRefusal(err) && (await reviewCash(target.payload))) return;
+          throw err;
+        }
       } else {
         const acknowledgement = gainAcknowledgement(gainImpact);
         lastReinvestment = target.payload;
         await recordReinvestedDividend({
           ...target.payload,
-          ...(impacts.length > 0 ? { reconciliation_override: true } : {}),
+          ...checkpointOverride(impacts),
           ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
         }, csrfToken);
       }

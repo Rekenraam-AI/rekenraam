@@ -34,7 +34,7 @@ type ExternalTransferInInput struct {
 	SourceEvidenceJSON     string
 	Memo                   string
 	ChangeReason           string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	// GainImpactAcknowledgement echoes the preview token when a transfer dated
 	// behind later disposals revises their gains (T-117).
 	GainImpactAcknowledgement string
@@ -119,7 +119,7 @@ func (s *InvestmentService) externalTransferInPlan(ctx context.Context, input Ex
 			OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID,
 			RequestID: input.RequestID, OriginType: "browser_api",
 			Operation: "investment.external_transfer_in", ChangeReason: input.ChangeReason,
-			ReconciliationOverride: input.ReconciliationOverride,
+			ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 			Spec: TransactionInput{
 				Status: "posted", TransactionKind: "investment", InvestmentOperationKind: "external_transfer_in",
 				TransactionDate: date, Description: memo,
@@ -156,7 +156,7 @@ func (s *InvestmentService) externalTransferInWrite(ctx context.Context, input E
 // PreviewExternalTransferInReconciliationImpact runs the complete writer,
 // including replay of later disposals, and rolls back.
 func (s *InvestmentService) PreviewExternalTransferInReconciliationImpact(ctx context.Context, input ExternalTransferInInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	journal, transfer, err := s.externalTransferInWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err

@@ -27,7 +27,7 @@ type ResolveTransferBasisInput struct {
 	// ReconciliationOverride lets the dated bridge invalidate affected
 	// checkpoints; GainImpactAcknowledgement echoes the preview token for the
 	// sales and transfers the resolution revises.
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 }
 
@@ -94,7 +94,7 @@ func (s *InvestmentService) transferBasisResolutionJournal(ctx context.Context, 
 	journal, err := s.transactionService.prepareInvestmentTransactionForWrite(ctx, CreateTransactionInput{
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID, RequestID: input.RequestID,
 		OriginType: "browser_api", Operation: "investment.basis_resolution", ChangeReason: reason,
-		ReconciliationOverride: input.ReconciliationOverride,
+		ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 		Spec: TransactionInput{
 			Status: "posted", TransactionKind: "investment", InvestmentOperationKind: "basis_resolution",
 			TransactionDate: effectiveOn, Description: reason, MetadataJSON: evidence,
@@ -111,13 +111,14 @@ func (s *InvestmentService) transferBasisResolutionJournal(ctx context.Context, 
 // investment command (#168): who, when and why, and the operation kind and
 // date its effect records, with no journal.
 func (s *InvestmentService) journalFreeInvestmentHeader(ownerUserID, authSessionID int64, requestID, operation, reason,
-	kind, eventDate string, reconciliationOverride bool,
+	kind, eventDate string, reconciliationOverride CheckpointOverride,
 ) db.CreateTransactionParams {
 	return db.CreateTransactionParams{
 		BookID: BookID, ActorUserID: ownerUserID, AuthSessionID: authSessionID, RequestID: requestID,
 		OriginType: "browser_api", Operation: operation, ChangeReason: reason,
 		CreatedAt:              s.transactionService.now().UTC().Format(time.RFC3339),
-		ReconciliationOverride: reconciliationOverride, InvalidateCheckpointReason: reason, AuditOnly: true,
+		ReconciliationOverride: reconciliationOverride.Allowed, ReviewedCheckpointIDs: reconciliationOverride.Reviewed,
+		InvalidateCheckpointReason: reason, AuditOnly: true,
 		Spec: db.TransactionSpec{Status: "posted", TransactionKind: "investment",
 			InvestmentOperationKind: kind, TransactionDate: eventDate},
 	}
@@ -126,7 +127,7 @@ func (s *InvestmentService) journalFreeInvestmentHeader(ownerUserID, authSession
 // ResolveTransferBasisImpact runs the complete resolution, replay and gain
 // comparison, then rolls back, so a preview reports what the commit would do.
 func (s *InvestmentService) ResolveTransferBasisImpact(ctx context.Context, input ResolveTransferBasisInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	journal, params, err := s.resolveTransferBasisWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -174,7 +175,7 @@ type CorrectTransferBasisResolutionInput struct {
 	RequestID                     string
 	TransactionID                 int64
 	Reason                        string
-	ReconciliationOverride        bool
+	ReconciliationOverride        CheckpointOverride
 	GainImpactAcknowledgement     string
 	ExpectedResolutionOperationID int64
 	ExpectedProvenanceRevision    *int
@@ -248,7 +249,7 @@ func (s *InvestmentService) prepareBasisResolutionReversal(ctx context.Context, 
 	params, err := s.transactionService.prepareInvestmentTransactionForWrite(ctx, CreateTransactionInput{
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID, RequestID: input.RequestID,
 		OriginType: "browser_api", Operation: "investment.basis_resolution.reverse", ChangeReason: reason,
-		ReconciliationOverride: input.ReconciliationOverride, CorrectionOfTransactionID: &operation.TransactionID,
+		ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed, CorrectionOfTransactionID: &operation.TransactionID,
 		Spec: spec,
 	}, nil)
 	if err != nil {
@@ -279,7 +280,7 @@ func (s *InvestmentService) ReverseTransferBasisResolution(ctx context.Context, 
 }
 
 func (s *InvestmentService) ReverseTransferBasisResolutionImpact(ctx context.Context, input CorrectTransferBasisResolutionInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.prepareBasisResolutionReversal(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -384,7 +385,7 @@ func (s *InvestmentService) ReplaceTransferBasisResolution(ctx context.Context, 
 }
 
 func (s *InvestmentService) ReplaceTransferBasisResolutionImpact(ctx context.Context, input CorrectTransferBasisResolutionInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	input.GainImpactAcknowledgement = ""
 	operation, write, params, err := s.prepareBasisResolutionReplacement(ctx, input)
 	if err != nil {

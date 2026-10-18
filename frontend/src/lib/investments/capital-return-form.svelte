@@ -13,8 +13,14 @@
   import { invalidateInvestmentReads } from './invalidate';
   import { parseMoneyMagnitude, parseMagnitude } from './form-amounts';
   import {
-    gainAcknowledgement, gainImpactCurrency, gainImpactRows, hasGainChanges, impactNeedsReview,
-    isGainAcknowledgementRefusal
+    gainAcknowledgement,
+    gainImpactCurrency,
+    gainImpactRows,
+    hasGainChanges,
+    impactNeedsReview,
+    isStaleImpactRefusal,
+    checkpointOverride,
+    type ReviewedCheckpoints
   } from './gain-impact';
   import ReconciliationConfirm from './reconciliation-confirm.svelte';
   import { TranslatedFormError } from '#lib/form-errors.ts';
@@ -205,7 +211,7 @@
     }
   }
 
-  async function commit(override: boolean) {
+  async function commit(reviewed: ReviewedCheckpoints) {
     if (!preview) return;
     pending = true;
     formError = undefined;
@@ -213,18 +219,18 @@
       const acknowledgement = gainAcknowledgement(preview.gainImpact);
       const payload = {
         ...preview.payload,
-        ...(override ? { reconciliation_override: true } : {}),
+        ...checkpointOverride(reviewed),
         ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
       };
       if (correction) {
         await replaceCapitalReturn(correction.transactionID, { reason: reason.trim(), replacement: preview.payload,
-          ...(override ? { reconciliation_override: true } : {}),
+          ...checkpointOverride(reviewed),
           ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {}) }, csrfToken);
       } else { await recordCapitalReturn(payload, csrfToken); }
       await invalidateInvestmentReads(queryClient);
       onSaved();
     } catch (error) {
-      if (isGainAcknowledgementRefusal(error) && preview) {
+      if (isStaleImpactRefusal(error) && preview) {
         try {
           await runPreview(preview.payload);
           if (preview && impactNeedsReview({ affected_checkpoints: preview.impacts, gain_impact: preview.gainImpact })) {
@@ -248,14 +254,14 @@
       reviewModal = { gainRefreshed: false };
       return;
     }
-    void commit(false);
+    void commit([]);
   }
 
   function confirmReview() {
     if (!preview) return;
-    const override = preview.impacts.length > 0;
+    const reviewed = preview.impacts;
     reviewModal = null;
-    void commit(override);
+    void commit(reviewed);
   }
 </script>
 

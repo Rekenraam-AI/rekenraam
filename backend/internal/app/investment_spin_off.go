@@ -45,7 +45,7 @@ type SpinOffInput struct {
 	SourceEvidenceJSON          string
 	Memo                        string
 	ChangeReason                string
-	ReconciliationOverride      bool
+	ReconciliationOverride      CheckpointOverride
 	// GainImpactAcknowledgement acknowledges the gains a backdated spin-off
 	// revises (#183); an in-order spin-off changes no committed disposal.
 	GainImpactAcknowledgement string
@@ -177,7 +177,7 @@ func (s *InvestmentService) prepareSpinOffWriteWith(ctx context.Context, input S
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID,
 		RequestID: input.RequestID, OriginType: "browser_api",
 		Operation: auditOperation, ChangeReason: input.ChangeReason,
-		ReconciliationOverride: input.ReconciliationOverride,
+		ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 		Spec: TransactionInput{
 			Status: "posted", TransactionKind: "investment", InvestmentOperationKind: "spin_off",
 			TransactionDate: date, Description: memo,
@@ -222,7 +222,7 @@ func validSpinOffFraction(value exact.Coefficient, scale int) bool {
 // PreviewSpinOff runs the complete spin-off writer, including checkpoint
 // invalidation, then rolls back.
 func (s *InvestmentService) PreviewSpinOff(ctx context.Context, input SpinOffInput) (SpinOffPreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	journal, spinOff, err := s.prepareSpinOffWrite(ctx, input)
 	if err != nil {
 		return SpinOffPreview{}, err

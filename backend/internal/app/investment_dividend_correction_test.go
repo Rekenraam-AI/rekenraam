@@ -123,7 +123,7 @@ func TestReverseDividendRequiresReconciliationOverride(t *testing.T) {
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	require.Equal(t, []int64{checkpointID}, activeCheckpointIDs(t, f))
 
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	reversal, err := f.investmentService.ReverseDividend(ctx, input)
 	require.NoError(t, err)
 	require.Equal(t, original.ID, *reversal.CorrectionOfTransactionID)
@@ -164,7 +164,7 @@ func TestDividendReplacementRollsBackLateFailure(t *testing.T) {
 	require.NoError(t, err)
 	reconcileCash(t, f, "2026-04-01", 100)
 	input := ReplaceInvestmentDividendInput{OwnerUserID: f.ownerUserID, TransactionID: original.ID,
-		Reason: "wrong amount", ReconciliationOverride: true, Replacement: cashDividendInput(f, 0, 11000, 0)}
+		Reason: "wrong amount", ReconciliationOverride: unboundOverride, Replacement: cashDividendInput(f, 0, 11000, 0)}
 	before := buyReplacementPreviewSnapshot(t, f.database)
 	_, err = f.database.Exec(`CREATE TRIGGER reject_dividend_checkpoint AFTER UPDATE ON reconciliation_checkpoints
 		WHEN NEW.status = 'invalidated' BEGIN SELECT RAISE(ABORT, 'forced checkpoint failure'); END`)

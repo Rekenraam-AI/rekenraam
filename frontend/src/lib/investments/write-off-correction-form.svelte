@@ -17,7 +17,9 @@
     gainImpactRows,
     hasGainChanges,
     impactNeedsReview,
-    isGainAcknowledgementRefusal
+    isStaleImpactRefusal,
+    checkpointOverride,
+    type ReviewedCheckpoints
   } from '#lib/investments/gain-impact.ts';
   import {
     previewWriteOffReplacementReconciliation,
@@ -140,7 +142,7 @@
     pending = true;
     formError = undefined;
     try {
-      if (!(await reviewImpact(payload, false))) await commit(payload, false, '');
+      if (!(await reviewImpact(payload, false))) await commit(payload, [], '');
     } catch (error) {
       await recover(error, payload);
     } finally {
@@ -159,10 +161,10 @@
     return true;
   }
 
-  async function commit(payload: InvestmentWriteOffRequest, override: boolean, acknowledgement: string) {
+  async function commit(payload: InvestmentWriteOffRequest, reviewed: ReviewedCheckpoints, acknowledgement: string) {
     await replaceWriteOff(source.transaction_id, {
       reason: reason.trim(), replacement: payload,
-      ...(override ? { reconciliation_override: true } : {}),
+      ...checkpointOverride(reviewed),
       ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
     }, csrfToken);
     await invalidateInvestmentReads(queryClient);
@@ -172,7 +174,7 @@
   // The gain set changed since review: show the current set, not a dead end.
   async function recover(error: unknown, payload: InvestmentWriteOffRequest) {
     try {
-      if (!isGainAcknowledgementRefusal(error) || !(await reviewImpact(payload, true))) formError = error;
+      if (!isStaleImpactRefusal(error) || !(await reviewImpact(payload, true))) formError = error;
     } catch (previewError) {
       formError = previewError;
     }
@@ -185,7 +187,7 @@
     pending = true;
     formError = undefined;
     try {
-      await commit(payload, impacts.length > 0, gainAcknowledgement(gainImpact));
+      await commit(payload, impacts, gainAcknowledgement(gainImpact));
     } catch (error) {
       await recover(error, payload);
     } finally {

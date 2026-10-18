@@ -29,7 +29,7 @@ type ReplaceInvestmentSaleInput struct {
 	RequestID              string
 	TransactionID          int64
 	Reason                 string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	Replacement            InvestmentTradeInput
 	// GainImpactAcknowledgement echoes the preview token for the committed
 	// disposal gain changes the user accepted (T-126).
@@ -146,7 +146,7 @@ func (s *InvestmentService) ReplaceSaleReconciliationImpact(ctx context.Context,
 func (s *InvestmentService) replaceDisposalReconciliationImpact(ctx context.Context, input ReplaceInvestmentSaleInput,
 	operationCode string, family disposalCorrectionFamily,
 ) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	prepared, err := s.prepareSaleReplacementWrite(ctx, input, "browser_api", operationCode, family)
 	if err != nil {
 		return ReconciliationImpact{}, err

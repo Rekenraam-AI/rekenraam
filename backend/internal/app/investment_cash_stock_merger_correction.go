@@ -32,7 +32,7 @@ type ReverseCashStockMergerInput struct {
 	RequestID                 string
 	TransactionID             int64
 	Reason                    string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 }
 
@@ -59,7 +59,7 @@ type ReplaceCashStockMergerInput struct {
 	CashBasisFractionScale      int
 	SourceEvidenceJSON          string
 	Memo                        string
-	ReconciliationOverride      bool
+	ReconciliationOverride      CheckpointOverride
 	GainImpactAcknowledgement   string
 }
 
@@ -87,7 +87,7 @@ func (s *InvestmentService) ReverseCashStockMerger(ctx context.Context, input Re
 // ReverseCashStockMergerReconciliationImpact runs the reversal writer and
 // rolls back: the checkpoints and gains it would change.
 func (s *InvestmentService) ReverseCashStockMergerReconciliationImpact(ctx context.Context, input ReverseCashStockMergerInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.prepareCashStockMergerReversalWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -121,7 +121,7 @@ func (s *InvestmentService) prepareCashStockMergerReversalWrite(ctx context.Cont
 // inverse journal: both entries, each on its own date. The writer rechecks
 // the same facts in its transaction.
 func (s *InvestmentService) cashStockMergerInversePlan(ctx context.Context, ownerUserID, authSessionID int64, requestID string,
-	transactionID int64, rawReason string, override bool, auditOperation string) (db.CashStockMergerOperationRecord, CreateTransactionInput, error) {
+	transactionID int64, rawReason string, override CheckpointOverride, auditOperation string) (db.CashStockMergerOperationRecord, CreateTransactionInput, error) {
 	fail := func(err error) (db.CashStockMergerOperationRecord, CreateTransactionInput, error) {
 		return db.CashStockMergerOperationRecord{}, CreateTransactionInput{}, err
 	}
@@ -163,7 +163,7 @@ func (s *InvestmentService) cashStockMergerInversePlan(ctx context.Context, owne
 	return operation, CreateTransactionInput{
 		OwnerUserID: ownerUserID, AuthSessionID: authSessionID, RequestID: requestID, OriginType: "browser_api",
 		Operation: auditOperation, CorrectionOfTransactionID: &operation.TransactionID,
-		Spec: invertedInvestmentTransactionSpec(original), ChangeReason: reason, ReconciliationOverride: override,
+		Spec: invertedInvestmentTransactionSpec(original), ChangeReason: reason, ReconciliationOverride: override.Allowed, ReconciliationOverrideCheckpointIDs: override.Reviewed,
 	}, nil
 }
 
@@ -190,7 +190,7 @@ func (s *InvestmentService) ReplaceCashStockMerger(ctx context.Context, input Re
 // replay, then rolls back: the plan the replacement would carry and its
 // impact.
 func (s *InvestmentService) PreviewCashStockMergerReplacement(ctx context.Context, input ReplaceCashStockMergerInput) (CashStockMergerPreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, inverse, replacement, merger, err := s.prepareCashStockMergerReplacementWrite(ctx, input)
 	if err != nil {
 		return CashStockMergerPreview{}, err

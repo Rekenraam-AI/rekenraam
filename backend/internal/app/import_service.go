@@ -1120,7 +1120,7 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 		if err != nil {
 			return result, err
 		}
-		if len(impact.AffectedCheckpoints) > 0 && !input.ReconciliationOverride {
+		if len(impact.AffectedCheckpoints) > 0 && !input.ReconciliationOverride.Allowed {
 			return result, ErrReconciliationOverrideRequired
 		}
 	}
@@ -1285,7 +1285,7 @@ func (s *ImportService) commitImportBatch(ctx context.Context, input CommitImpor
 			Operation:              "transaction.create",
 			Spec:                   spec,
 			ChangeReason:           "imported from " + batch.SourceKind,
-			ReconciliationOverride: input.ReconciliationOverride,
+			ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 		})
 		if err != nil {
 			if errors.Is(err, ErrReconciliationOverrideRequired) {

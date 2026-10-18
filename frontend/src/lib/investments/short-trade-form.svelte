@@ -42,7 +42,9 @@
     gainImpactRows,
     hasGainChanges,
     impactNeedsReview,
-    isGainAcknowledgementRefusal
+    isStaleImpactRefusal,
+    checkpointOverride,
+    type ReviewedCheckpoints
   } from '#lib/investments/gain-impact.ts';
   import { formatScaledValue, costBasisMethodLabel } from '#lib/investments/investment-labels.ts';
   import { coefficientSign, negateCoefficient } from '#lib/money/amount.ts';
@@ -269,7 +271,7 @@
     formError = undefined;
     try {
       if (await reviewImpact(built.payload, false)) return;
-      await submit(built.payload, false, '');
+      await submit(built.payload, [], '');
     } catch (err) {
       await recoverFromRefusal(err, built.payload);
     } finally {
@@ -297,7 +299,7 @@
 
   async function recoverFromRefusal(err: unknown, payload: InvestmentTradeRequest) {
     try {
-      if (!isGainAcknowledgementRefusal(err) || !(await reviewImpact(payload, true))) formError = err;
+      if (!isStaleImpactRefusal(err) || !(await reviewImpact(payload, true))) formError = err;
     } catch (previewErr) {
       formError = previewErr;
     }
@@ -310,7 +312,7 @@
     pending = true;
     formError = undefined;
     try {
-      await submit(payload, impacts.length > 0, gainAcknowledgement(gainImpact));
+      await submit(payload, impacts, gainAcknowledgement(gainImpact));
     } catch (err) {
       await recoverFromRefusal(err, payload);
     } finally {
@@ -318,9 +320,9 @@
     }
   }
 
-  async function submit(payload: InvestmentTradeRequest, override: boolean, acknowledgement: string) {
+  async function submit(payload: InvestmentTradeRequest, reviewed: ReviewedCheckpoints, acknowledgement: string) {
     const flags = {
-      ...(override ? { reconciliation_override: true } : {}),
+      ...checkpointOverride(reviewed),
       ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
     };
     const body = { ...payload, ...flags };

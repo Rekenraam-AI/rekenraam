@@ -62,7 +62,7 @@ type ReverseInvestmentSaleInput struct {
 	OperationID            int64
 	TransactionID          int64
 	Reason                 string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	// GainImpactAcknowledgement echoes the preview token for the committed
 	// disposal gain changes the user accepted (T-126).
 	GainImpactAcknowledgement string
@@ -97,7 +97,7 @@ func (s *InvestmentService) ReverseSaleReconciliationImpact(ctx context.Context,
 func (s *InvestmentService) reverseDisposalReconciliationImpact(ctx context.Context, input ReverseInvestmentSaleInput,
 	family disposalCorrectionFamily,
 ) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.prepareSaleReversalWrite(ctx, input, family)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -177,7 +177,7 @@ func (s *InvestmentService) reverseSalePlan(ctx context.Context, input ReverseIn
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID,
 		RequestID: input.RequestID, OriginType: defaultString(input.OriginType, "browser_api"),
 		Operation: family.reverseOperation, CorrectionOfTransactionID: &operation.TransactionID,
-		Spec: spec, ChangeReason: reason, ReconciliationOverride: input.ReconciliationOverride,
+		Spec: spec, ChangeReason: reason, ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 	}, nil
 }
 

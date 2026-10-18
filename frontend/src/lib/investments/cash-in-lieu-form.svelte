@@ -11,7 +11,7 @@
   import { compareScaledAmounts, formatEditableAmount } from '#lib/money/amount.ts';
   import { formatExactMoney, formatQuantity } from '#lib/money/format.ts';
   import { invalidateInvestmentReads } from './invalidate';
-  import { gainAcknowledgement, gainImpactCurrency, gainImpactRows, hasGainChanges, impactNeedsReview, isGainAcknowledgementRefusal } from './gain-impact';
+  import { checkpointOverride, gainAcknowledgement, gainImpactCurrency, gainImpactRows, hasGainChanges, impactNeedsReview, isStaleImpactRefusal, type ReviewedCheckpoints } from './gain-impact';
   import ReconciliationConfirm from './reconciliation-confirm.svelte';
   import { TranslatedFormError } from '#lib/form-errors.ts';
   import { m } from '#lib/paraglide/messages.js';
@@ -104,16 +104,16 @@
     pending=true;
     try {await runPreview(payload);} catch(error){preview=null;formError=error;} finally{pending=false;}
   }
-  async function commit(override:boolean) {
+  async function commit(reviewed:ReviewedCheckpoints) {
     if (!preview) return;pending=true;formError=undefined;
     try {
       const acknowledgement=gainAcknowledgement(gainImpact);
-      const guards={reconciliation_override:override,gain_impact_acknowledgement:acknowledgement || undefined};
+      const guards={...checkpointOverride(reviewed),gain_impact_acknowledgement:acknowledgement || undefined};
       if (initial) await replaceCashInLieu(initial.transaction_id,{reason:reason.trim(),replacement:preview.payload,...guards},csrfToken);
       else await recordCashInLieu({...preview.payload,...guards},csrfToken);
       await invalidateInvestmentReads(queryClient);onSaved();
     } catch(error) {
-      if (isGainAcknowledgementRefusal(error) && preview) {
+      if (isStaleImpactRefusal(error) && preview) {
         try {await runPreview(preview.payload);reviewing=!!preview && impactNeedsReview(preview.result.impact);gainRefreshed=reviewing;}
         catch(refreshError){preview=null;formError=refreshError;}
       } else formError=error;
@@ -121,10 +121,10 @@
   }
   function record() {
     if (!preview) return;
-    if (impactNeedsReview(preview.result.impact)) {gainRefreshed=false;reviewing=true;} else void commit(false);
+    if (impactNeedsReview(preview.result.impact)) {gainRefreshed=false;reviewing=true;} else void commit([]);
   }
   function confirm() {
-    if (!preview) return;const override=preview.result.impact.affected_checkpoints.length>0;reviewing=false;void commit(override);
+    if (!preview) return;reviewing=false;void commit(preview.result.impact.affected_checkpoints);
   }
 </script>
 

@@ -24,7 +24,7 @@ type spinOffRequest struct {
 	SourceEvidence         json.RawMessage   `json:"source_evidence,omitempty"`
 	Memo                   string            `json:"memo"`
 	ChangeReason           string            `json:"change_reason"`
-	ReconciliationOverride bool              `json:"reconciliation_override"`
+	reconciliationOverrideFields
 	// GainImpactAcknowledgement acknowledges the gains a backdated spin-off
 	// revises (#183).
 	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
@@ -126,7 +126,7 @@ func spinOffInput(owner app.Owner, r *http.Request, request spinOffRequest) app.
 		RatioNumerator: request.RatioNumerator, RatioDenominator: request.RatioDenominator,
 		BasisFractionValue: request.BasisFractionValue, BasisFractionScale: request.BasisFractionScale,
 		SourceEvidenceJSON: evidence, Memo: request.Memo, ChangeReason: request.ChangeReason,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -240,18 +240,18 @@ func writeSpinOffPreview(w http.ResponseWriter, preview app.SpinOffPreview) {
 // response; replacement carries corrected terms for the same parent holding
 // and instrument.
 type spinOffReplacementRequest struct {
-	Reason                    string            `json:"reason"`
-	EffectiveOn               string            `json:"effective_on"`
-	DestinationHoldingID      int64             `json:"destination_holding_account_id,omitempty"`
-	DestinationCommodityID    int64             `json:"destination_commodity_id"`
-	RatioNumerator            int64             `json:"ratio_numerator"`
-	RatioDenominator          int64             `json:"ratio_denominator"`
-	BasisFractionValue        exact.Coefficient `json:"basis_fraction_value"`
-	BasisFractionScale        int               `json:"basis_fraction_scale"`
-	SourceEvidence            json.RawMessage   `json:"source_evidence,omitempty"`
-	Memo                      string            `json:"memo"`
-	ReconciliationOverride    bool              `json:"reconciliation_override"`
-	GainImpactAcknowledgement string            `json:"gain_impact_acknowledgement,omitempty"`
+	Reason                 string            `json:"reason"`
+	EffectiveOn            string            `json:"effective_on"`
+	DestinationHoldingID   int64             `json:"destination_holding_account_id,omitempty"`
+	DestinationCommodityID int64             `json:"destination_commodity_id"`
+	RatioNumerator         int64             `json:"ratio_numerator"`
+	RatioDenominator       int64             `json:"ratio_denominator"`
+	BasisFractionValue     exact.Coefficient `json:"basis_fraction_value"`
+	BasisFractionScale     int               `json:"basis_fraction_scale"`
+	SourceEvidence         json.RawMessage   `json:"source_evidence,omitempty"`
+	Memo                   string            `json:"memo"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type spinOffReplacementResponse struct {
@@ -273,7 +273,7 @@ func spinOffReplacementInput(owner app.Owner, r *http.Request, transactionID int
 		RatioNumerator: request.RatioNumerator, RatioDenominator: request.RatioDenominator,
 		BasisFractionValue: request.BasisFractionValue, BasisFractionScale: request.BasisFractionScale,
 		SourceEvidenceJSON: evidence, Memo: request.Memo,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -296,7 +296,7 @@ func reverseSpinOff(logger *slog.Logger, authService *app.AuthService, investmen
 		transaction, err := investmentService.ReverseSpinOff(r.Context(), app.ReverseSpinOffInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 			TransactionID: transactionID, Reason: request.Reason,
-			ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+			ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "reverse spin-off", err)

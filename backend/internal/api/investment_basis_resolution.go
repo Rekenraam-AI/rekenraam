@@ -20,8 +20,8 @@ type investmentBasisResolutionRequest struct {
 	BasisScale                    int               `json:"basis_scale"`
 	SourceEvidence                json.RawMessage   `json:"source_evidence"`
 	Reason                        string            `json:"reason"`
-	ReconciliationOverride        bool              `json:"reconciliation_override"`
-	GainImpactAcknowledgement     string            `json:"gain_impact_acknowledgement,omitempty"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 // investmentBasisResolutionResponse has a null transaction for a journal-free
@@ -51,7 +51,7 @@ func basisResolutionInput(owner app.Owner, r *http.Request, transactionID int64,
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: transactionID, BasisValue: int64(*request.BasisValue), BasisScale: request.BasisScale,
 		SourceEvidenceJSON: evidence, Reason: request.Reason,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}, nil
 }
@@ -170,7 +170,7 @@ func basisResolutionCorrectionInput(owner app.Owner, r *http.Request, transactio
 func reversalBasisResolutionInput(owner app.Owner, r *http.Request, transactionID int64, request investmentSaleReversalRequest) app.CorrectTransferBasisResolutionInput {
 	return app.CorrectTransferBasisResolutionInput{
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-		TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+		TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }

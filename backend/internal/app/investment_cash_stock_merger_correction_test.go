@@ -555,7 +555,7 @@ func TestCashStockMergerReversalLateReconciliationRefusalRollsBackEverything(t *
 	assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 	assert.Equal(t, "closed", lotStatus(t, f, *bought.LotID), "the old lot stays merged")
 
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.ReverseCashStockMerger(ctx, input)
 	require.NoError(t, err)
 	assert.Equal(t, "0", positionQuantity(t, f, f.holdingAccountID, newID))

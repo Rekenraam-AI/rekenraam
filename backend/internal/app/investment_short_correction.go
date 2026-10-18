@@ -93,7 +93,7 @@ func (s *InvestmentService) ReverseShortSale(ctx context.Context, input ReverseI
 }
 
 func (s *InvestmentService) ReverseShortSaleReconciliationImpact(ctx context.Context, input ReverseInvestmentBuyInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.prepareShortSaleReversalWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -125,7 +125,7 @@ func (s *InvestmentService) ReplaceShortSale(ctx context.Context, input ReplaceI
 }
 
 func (s *InvestmentService) ReplaceShortSaleReconciliationImpact(ctx context.Context, input ReplaceInvestmentBuyInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	prepared, err := s.prepareAcquisitionReplacementWrite(ctx, input, "browser_api", "investment.short_sale.replace", "short_sale")
 	if err != nil {
 		return ReconciliationImpact{}, err

@@ -328,7 +328,7 @@ type CommitImportBatchInput struct {
 	AuthSessionID          int64
 	RequestID              string
 	BatchID                int64
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	// GainImpactAcknowledgements maps a staged row ID to the preview token for
 	// the committed-disposal gain changes its imported acquisition makes (T-126).
 	GainImpactAcknowledgements map[int64]string

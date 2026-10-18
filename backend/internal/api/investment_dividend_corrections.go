@@ -12,9 +12,9 @@ import (
 // run each command's writer in a rolled-back transaction.
 
 type investmentDividendReplacementRequest struct {
-	Reason                 string          `json:"reason"`
-	ReconciliationOverride bool            `json:"reconciliation_override"`
-	Replacement            dividendRequest `json:"replacement"`
+	Reason string `json:"reason"`
+	reconciliationOverrideFields
+	Replacement dividendRequest `json:"replacement"`
 }
 
 type investmentDividendReplacementResponse struct {
@@ -24,8 +24,8 @@ type investmentDividendReplacementResponse struct {
 }
 
 type investmentReinvestmentReplacementRequest struct {
-	Reason                    string                    `json:"reason"`
-	ReconciliationOverride    bool                      `json:"reconciliation_override"`
+	Reason string `json:"reason"`
+	reconciliationOverrideFields
 	Replacement               reinvestedDividendRequest `json:"replacement"`
 	GainImpactAcknowledgement string                    `json:"gain_impact_acknowledgement,omitempty"`
 }
@@ -57,7 +57,7 @@ func reverseInvestmentDividend(logger *slog.Logger, authService *app.AuthService
 		}
 		transaction, err := investmentService.ReverseDividend(r.Context(), app.ReverseInvestmentDividendInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 		})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "reverse investment dividend", err)
@@ -100,7 +100,7 @@ func replaceInvestmentDividend(logger *slog.Logger, authService *app.AuthService
 		}
 		result, err := investmentService.ReplaceDividend(r.Context(), app.ReplaceInvestmentDividendInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 			Replacement: toDividendInput(owner, r, request.Replacement),
 		})
 		if err != nil {
@@ -149,7 +149,7 @@ func reverseInvestmentReinvestedDividend(logger *slog.Logger, authService *app.A
 		}
 		transaction, err := investmentService.ReverseReinvestedDividend(r.Context(), app.ReverseReinvestedDividendInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 			GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
@@ -193,7 +193,7 @@ func replaceInvestmentReinvestedDividend(logger *slog.Logger, authService *app.A
 		}
 		result, err := investmentService.ReplaceReinvestedDividend(r.Context(), app.ReplaceReinvestedDividendInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 			Replacement:               toReinvestedDividendInput(owner, r, request.Replacement),
 			GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})

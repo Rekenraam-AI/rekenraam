@@ -18,7 +18,7 @@ type CorrectTrading212SourceInput struct {
 	BatchID                int64
 	RowID                  int64
 	Reason                 string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	// GainImpactAcknowledgement echoes the preview token for the committed
 	// disposal gain changes the user accepted (T-126).
 	GainImpactAcknowledgement string

@@ -36,7 +36,9 @@
     gainImpactRows,
     hasGainChanges,
     impactNeedsReview,
-    isGainAcknowledgementRefusal
+    isStaleImpactRefusal,
+    checkpointOverride,
+    type ReviewedCheckpoints
   } from '#lib/investments/gain-impact.ts';
   import type { GainImpact } from '#lib/api/investments.ts';
   import { formatScaledValue, costBasisMethodLabel } from '#lib/investments/investment-labels.ts';
@@ -354,7 +356,7 @@
     const correctionReason = reason.trim();
     try {
       if (await reviewImpact(payload, correctionReason, false)) return;
-      await submitSell(payload, false, correctionReason, '');
+      await submitSell(payload, [], correctionReason, '');
     } catch (err) {
       await recoverFromRefusal(err, payload, correctionReason);
     } finally {
@@ -381,7 +383,7 @@
   // A stale or missing gain acknowledgement re-previews the current set.
   async function recoverFromRefusal(err: unknown, payload: InvestmentTradeRequest, correctionReason: string) {
     try {
-      if (!isGainAcknowledgementRefusal(err) || !(await reviewImpact(payload, correctionReason, true))) formError = err;
+      if (!isStaleImpactRefusal(err) || !(await reviewImpact(payload, correctionReason, true))) formError = err;
     } catch (previewErr) {
       formError = previewErr;
     }
@@ -395,7 +397,7 @@
     formError = undefined;
 
     try {
-      await submitSell(payload, impacts.length > 0, correctionReason, gainAcknowledgement(gainImpact));
+      await submitSell(payload, impacts, correctionReason, gainAcknowledgement(gainImpact));
     } catch (err) {
       await recoverFromRefusal(err, payload, correctionReason);
     } finally {
@@ -403,10 +405,10 @@
     }
   }
 
-  async function submitSell(payload: InvestmentTradeRequest, override: boolean, correctionReason: string, acknowledgement: string) {
+  async function submitSell(payload: InvestmentTradeRequest, reviewed: ReviewedCheckpoints, correctionReason: string, acknowledgement: string) {
     if (correction) {
       await replaceManualSale(correction.transaction_id, {
-        reason: correctionReason, reconciliation_override: override,
+        reason: correctionReason, ...checkpointOverride(reviewed),
         replacement: { ...payload, cost_basis_method: payload.cost_basis_method!,
           charges: payload.charges?.map((charge) => ({ ...charge, treatment: charge.treatment! })) },
         ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
@@ -415,7 +417,7 @@
       // A sale dated behind a later one replays it (T-117); echo the accepted gains.
       await recordSell({
         ...payload,
-        ...(override ? { reconciliation_override: true } : {}),
+        ...checkpointOverride(reviewed),
         ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
       }, csrfToken);
     }

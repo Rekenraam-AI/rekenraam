@@ -63,7 +63,7 @@ type InvestmentSplitInput struct {
 	SourceEvidenceJSON        string
 	Memo                      string
 	ChangeReason              string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 }
 
@@ -184,7 +184,7 @@ func (s *InvestmentService) prepareSplitWriteWith(ctx context.Context, input Inv
 			OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID,
 			RequestID: input.RequestID, OriginType: defaultString(input.OriginType, "browser_api"),
 			Operation: defaultString(input.Operation, "investment.split"), ChangeReason: input.ChangeReason,
-			ReconciliationOverride: input.ReconciliationOverride,
+			ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 			Spec: TransactionInput{
 				Status: "posted", TransactionKind: "investment", InvestmentOperationKind: "split",
 				TransactionDate: date, Description: memo,
@@ -208,7 +208,7 @@ func (s *InvestmentService) prepareSplitWriteWith(ctx context.Context, input Inv
 // PreviewSplit plans the split and runs its complete writer, including any
 // dependent replay, in a rolled-back transaction.
 func (s *InvestmentService) PreviewSplit(ctx context.Context, input InvestmentSplitInput) (InvestmentSplitPreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	journal, split, plan, err := s.prepareSplitWrite(ctx, input)
 	if err != nil {
 		return InvestmentSplitPreview{}, err

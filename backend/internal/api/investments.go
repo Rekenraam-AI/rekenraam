@@ -166,28 +166,28 @@ type investmentTradeRequest struct {
 	// period, invalidating the affected checkpoints. The service has always
 	// honoured it; without it on the wire a buy, sell, or write-off dated
 	// before a checkpoint was simply unreachable (T-53).
-	ReconciliationOverride bool `json:"reconciliation_override"`
+	reconciliationOverrideFields
 	// GainImpactAcknowledgement echoes the preview token for the committed
 	// disposal gain changes the user accepted (T-114).
 	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type externalTransferInRequest struct {
-	EffectiveOn               string            `json:"effective_on"`
-	HoldingAccountID          int64             `json:"holding_account_id"`
-	CommodityID               int64             `json:"commodity_id"`
-	QuantityValue             exact.Coefficient `json:"quantity_value"`
-	QuantityScale             int               `json:"quantity_scale"`
-	CarriedBasisValue         *moneyCoefficient `json:"carried_basis_value"`
-	CarriedBasisScale         int               `json:"carried_basis_scale"`
-	BasisKnowledge            string            `json:"basis_knowledge,omitempty"`
-	CostCommodityID           int64             `json:"cost_commodity_id"`
-	OriginalAcquiredOn        string            `json:"original_acquired_on"`
-	SourceEvidence            json.RawMessage   `json:"source_evidence,omitempty"`
-	Memo                      string            `json:"memo"`
-	ChangeReason              string            `json:"change_reason"`
-	ReconciliationOverride    bool              `json:"reconciliation_override"`
-	GainImpactAcknowledgement string            `json:"gain_impact_acknowledgement,omitempty"`
+	EffectiveOn        string            `json:"effective_on"`
+	HoldingAccountID   int64             `json:"holding_account_id"`
+	CommodityID        int64             `json:"commodity_id"`
+	QuantityValue      exact.Coefficient `json:"quantity_value"`
+	QuantityScale      int               `json:"quantity_scale"`
+	CarriedBasisValue  *moneyCoefficient `json:"carried_basis_value"`
+	CarriedBasisScale  int               `json:"carried_basis_scale"`
+	BasisKnowledge     string            `json:"basis_knowledge,omitempty"`
+	CostCommodityID    int64             `json:"cost_commodity_id"`
+	OriginalAcquiredOn string            `json:"original_acquired_on"`
+	SourceEvidence     json.RawMessage   `json:"source_evidence,omitempty"`
+	Memo               string            `json:"memo"`
+	ChangeReason       string            `json:"change_reason"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type externalTransferInResponse struct {
@@ -208,12 +208,12 @@ type internalTransferRequest struct {
 	QuantityScale int               `json:"quantity_scale,omitempty"`
 	// DestinationLineage chooses, for a pooled quantity, one pooled
 	// destination lot (default) or one lot per source lot (T-135).
-	DestinationLineage        string          `json:"destination_lineage,omitempty"`
-	SourceEvidence            json.RawMessage `json:"source_evidence,omitempty"`
-	Memo                      string          `json:"memo"`
-	ChangeReason              string          `json:"change_reason"`
-	ReconciliationOverride    bool            `json:"reconciliation_override"`
-	GainImpactAcknowledgement string          `json:"gain_impact_acknowledgement,omitempty"`
+	DestinationLineage string          `json:"destination_lineage,omitempty"`
+	SourceEvidence     json.RawMessage `json:"source_evidence,omitempty"`
+	Memo               string          `json:"memo"`
+	ChangeReason       string          `json:"change_reason"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type internalTransferLinkResponse struct {
@@ -250,8 +250,8 @@ type internalTransferResponse struct {
 }
 
 type investmentSaleReversalRequest struct {
-	Reason                    string `json:"reason"`
-	ReconciliationOverride    bool   `json:"reconciliation_override"`
+	Reason string `json:"reason"`
+	reconciliationOverrideFields
 	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
@@ -261,8 +261,8 @@ type investmentSaleReversalResponse struct {
 }
 
 type investmentSaleReplacementRequest struct {
-	Reason                    string                 `json:"reason"`
-	ReconciliationOverride    bool                   `json:"reconciliation_override"`
+	Reason string `json:"reason"`
+	reconciliationOverrideFields
 	Replacement               investmentTradeRequest `json:"replacement"`
 	GainImpactAcknowledgement string                 `json:"gain_impact_acknowledgement,omitempty"`
 }
@@ -276,15 +276,15 @@ type investmentSaleReplacementResponse struct {
 // investmentWriteOffReplacementRequest carries a full corrected write-off
 // (T-118): no cash fields, its own worthless-holding reason in replacement.
 type investmentWriteOffReplacementRequest struct {
-	Reason                    string                    `json:"reason"`
-	ReconciliationOverride    bool                      `json:"reconciliation_override"`
+	Reason string `json:"reason"`
+	reconciliationOverrideFields
 	Replacement               investmentWriteOffRequest `json:"replacement"`
 	GainImpactAcknowledgement string                    `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type investmentBuyReplacementRequest struct {
-	Reason                    string                 `json:"reason"`
-	ReconciliationOverride    bool                   `json:"reconciliation_override"`
+	Reason string `json:"reason"`
+	reconciliationOverrideFields
 	Replacement               investmentTradeRequest `json:"replacement"`
 	GainImpactAcknowledgement string                 `json:"gain_impact_acknowledgement,omitempty"`
 }
@@ -490,7 +490,7 @@ type investmentWriteOffRequest struct {
 	CostBasisMethod  string                           `json:"cost_basis_method"`
 	// ReconciliationOverride lets a backdated write-off proceed into a
 	// reconciled period, invalidating the affected checkpoints (T-53).
-	ReconciliationOverride bool `json:"reconciliation_override"`
+	reconciliationOverrideFields
 	// GainImpactAcknowledgement echoes the preview token when a backdated
 	// write-off revises committed gains (T-117).
 	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
@@ -561,40 +561,40 @@ type investmentLotDisposalResponse struct {
 }
 
 type dividendRequest struct {
-	WithholdingOnly        bool              `json:"withholding_only"`
-	TransactionDate        string            `json:"transaction_date"`
-	CommodityID            *int64            `json:"commodity_id"`
-	CashAccountID          int64             `json:"cash_account_id"`
-	CashCommodityID        int64             `json:"cash_commodity_id"`
-	IncomeAccountID        *int64            `json:"income_account_id"`
-	AmountValue            moneyCoefficient  `json:"amount_value"`
-	AmountScale            int               `json:"amount_scale"`
-	WithholdingValue       *moneyCoefficient `json:"withholding_value"`
-	WithholdingScale       *int              `json:"withholding_scale"`
-	WithholdingAccountID   *int64            `json:"withholding_account_id"`
-	Memo                   string            `json:"memo"`
-	PayeeID                *int64            `json:"payee_id"`
-	Status                 string            `json:"status"`
-	ChangeReason           string            `json:"change_reason"`
-	ReconciliationOverride bool              `json:"reconciliation_override"`
+	WithholdingOnly      bool              `json:"withholding_only"`
+	TransactionDate      string            `json:"transaction_date"`
+	CommodityID          *int64            `json:"commodity_id"`
+	CashAccountID        int64             `json:"cash_account_id"`
+	CashCommodityID      int64             `json:"cash_commodity_id"`
+	IncomeAccountID      *int64            `json:"income_account_id"`
+	AmountValue          moneyCoefficient  `json:"amount_value"`
+	AmountScale          int               `json:"amount_scale"`
+	WithholdingValue     *moneyCoefficient `json:"withholding_value"`
+	WithholdingScale     *int              `json:"withholding_scale"`
+	WithholdingAccountID *int64            `json:"withholding_account_id"`
+	Memo                 string            `json:"memo"`
+	PayeeID              *int64            `json:"payee_id"`
+	Status               string            `json:"status"`
+	ChangeReason         string            `json:"change_reason"`
+	reconciliationOverrideFields
 }
 
 type reinvestedDividendRequest struct {
-	TransactionDate           string            `json:"transaction_date"`
-	CommodityID               int64             `json:"commodity_id"`
-	HoldingAccountID          int64             `json:"holding_account_id"`
-	IncomeAccountID           *int64            `json:"income_account_id"`
-	QuantityValue             exact.Coefficient `json:"quantity_value"`
-	QuantityScale             int               `json:"quantity_scale"`
-	AmountValue               moneyCoefficient  `json:"amount_value"`
-	AmountScale               int               `json:"amount_scale"`
-	CashCommodityID           int64             `json:"cash_commodity_id"`
-	Memo                      string            `json:"memo"`
-	PayeeID                   *int64            `json:"payee_id"`
-	Status                    string            `json:"status"`
-	ChangeReason              string            `json:"change_reason"`
-	ReconciliationOverride    bool              `json:"reconciliation_override"`
-	GainImpactAcknowledgement string            `json:"gain_impact_acknowledgement,omitempty"`
+	TransactionDate  string            `json:"transaction_date"`
+	CommodityID      int64             `json:"commodity_id"`
+	HoldingAccountID int64             `json:"holding_account_id"`
+	IncomeAccountID  *int64            `json:"income_account_id"`
+	QuantityValue    exact.Coefficient `json:"quantity_value"`
+	QuantityScale    int               `json:"quantity_scale"`
+	AmountValue      moneyCoefficient  `json:"amount_value"`
+	AmountScale      int               `json:"amount_scale"`
+	CashCommodityID  int64             `json:"cash_commodity_id"`
+	Memo             string            `json:"memo"`
+	PayeeID          *int64            `json:"payee_id"`
+	Status           string            `json:"status"`
+	ChangeReason     string            `json:"change_reason"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type investmentLotResponse struct {
@@ -725,23 +725,32 @@ type acceptEventSuggestionRequest struct {
 	Completion *eventSuggestionCompletionRequest `json:"completion"`
 }
 
+// validateDecoded reaches the nested completion, whose override the top-level
+// decode check would otherwise never see (#304).
+func (request *acceptEventSuggestionRequest) validateDecoded() error {
+	if request.Completion == nil {
+		return nil
+	}
+	return request.Completion.validateDecoded()
+}
+
 type eventSuggestionCompletionRequest struct {
-	TransactionDate        string            `json:"transaction_date"`
-	CashAccountID          int64             `json:"cash_account_id"`
-	CashCommodityID        int64             `json:"cash_commodity_id"`
-	AmountValue            moneyCoefficient  `json:"amount_value"`
-	AmountScale            int               `json:"amount_scale"`
-	IncomeAccountID        *int64            `json:"income_account_id"`
-	WithholdingValue       *moneyCoefficient `json:"withholding_value"`
-	WithholdingScale       *int              `json:"withholding_scale"`
-	WithholdingAccountID   *int64            `json:"withholding_account_id"`
-	HoldingAccountID       *int64            `json:"holding_account_id"`
-	ExpenseAccountID       *int64            `json:"expense_account_id"`
-	RecoveryValue          *moneyCoefficient `json:"recovery_value"`
-	RecoveryScale          *int              `json:"recovery_scale"`
-	RecoveryAccountID      *int64            `json:"recovery_account_id"`
-	Memo                   string            `json:"memo"`
-	ReconciliationOverride bool              `json:"reconciliation_override"`
+	TransactionDate      string            `json:"transaction_date"`
+	CashAccountID        int64             `json:"cash_account_id"`
+	CashCommodityID      int64             `json:"cash_commodity_id"`
+	AmountValue          moneyCoefficient  `json:"amount_value"`
+	AmountScale          int               `json:"amount_scale"`
+	IncomeAccountID      *int64            `json:"income_account_id"`
+	WithholdingValue     *moneyCoefficient `json:"withholding_value"`
+	WithholdingScale     *int              `json:"withholding_scale"`
+	WithholdingAccountID *int64            `json:"withholding_account_id"`
+	HoldingAccountID     *int64            `json:"holding_account_id"`
+	ExpenseAccountID     *int64            `json:"expense_account_id"`
+	RecoveryValue        *moneyCoefficient `json:"recovery_value"`
+	RecoveryScale        *int              `json:"recovery_scale"`
+	RecoveryAccountID    *int64            `json:"recovery_account_id"`
+	Memo                 string            `json:"memo"`
+	reconciliationOverrideFields
 }
 
 type linkEventSuggestionRequest struct {
@@ -1051,7 +1060,7 @@ func externalTransferInInput(owner app.Owner, r *http.Request, request externalT
 		CarriedBasisValue: carried, CarriedBasisScale: request.CarriedBasisScale, BasisKnowledge: request.BasisKnowledge,
 		CostCommodityID: request.CostCommodityID, OriginalAcquiredOn: request.OriginalAcquiredOn,
 		SourceEvidenceJSON: evidence, Memo: request.Memo,
-		ChangeReason: request.ChangeReason, ReconciliationOverride: request.ReconciliationOverride,
+		ChangeReason: request.ChangeReason, ReconciliationOverride: request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}, nil
 }
@@ -1125,7 +1134,7 @@ func internalTransferInput(owner app.Owner, r *http.Request, request internalTra
 		CommodityID: request.CommodityID, CostCommodityID: request.CostCommodityID,
 		Allocations: allocations, QuantityValue: request.QuantityValue, QuantityScale: request.QuantityScale,
 		DestinationLineage: request.DestinationLineage, SourceEvidenceJSON: evidence, Memo: request.Memo,
-		ChangeReason: request.ChangeReason, ReconciliationOverride: request.ReconciliationOverride,
+		ChangeReason: request.ChangeReason, ReconciliationOverride: request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -1318,7 +1327,7 @@ func reverseInvestmentSale(logger *slog.Logger, authService *app.AuthService, in
 		transaction, err := investmentService.ReverseSale(r.Context(), app.ReverseInvestmentSaleInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 			OriginType: "browser_api", TransactionID: transactionID, Reason: request.Reason,
-			ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+			ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "reverse investment sale", err)
@@ -1372,7 +1381,7 @@ func reverseInvestmentBuy(logger *slog.Logger, authService *app.AuthService, inv
 		transaction, err := investmentService.ReverseBuy(r.Context(), app.ReverseInvestmentBuyInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 			TransactionID: transactionID, Reason: request.Reason,
-			ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+			ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "reverse investment buy", err)
@@ -1426,7 +1435,7 @@ func replaceInvestmentSale(logger *slog.Logger, authService *app.AuthService, in
 		result, err := investmentService.ReplaceSale(r.Context(), app.ReplaceInvestmentSaleInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r),
 			RequestID: RequestIDFromContext(r.Context()), TransactionID: transactionID,
-			Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 			Replacement:               toInvestmentTradeInput(owner, r, request.Replacement),
 			GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
@@ -1487,7 +1496,7 @@ func replaceInvestmentBuy(logger *slog.Logger, authService *app.AuthService, inv
 		result, err := investmentService.ReplaceBuy(r.Context(), app.ReplaceInvestmentBuyInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r),
 			RequestID: RequestIDFromContext(r.Context()), TransactionID: transactionID,
-			Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 			Replacement:               toInvestmentTradeInput(owner, r, request.Replacement),
 			GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
@@ -1875,7 +1884,7 @@ func (request *eventSuggestionCompletionRequest) toApp() *app.SuggestionCompleti
 		WithholdingAccountID: request.WithholdingAccountID, HoldingAccountID: request.HoldingAccountID,
 		ExpenseAccountID: request.ExpenseAccountID, RecoveryValue: moneyInt64Pointer(request.RecoveryValue),
 		RecoveryScale: request.RecoveryScale, RecoveryAccountID: request.RecoveryAccountID,
-		Memo: request.Memo, ReconciliationOverride: request.ReconciliationOverride}
+		Memo: request.Memo, ReconciliationOverride: request.checkpointOverride()}
 }
 
 // queueDividendEventFetch accepts durable work; it never calls a provider
@@ -1993,6 +2002,9 @@ func saveInvestmentAutomationRules(logger *slog.Logger, authService *app.AuthSer
 }
 
 func writeInvestmentServiceError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, action string, err error) {
+	if writeCheckpointImpactRefusal(w, err) {
+		return
+	}
 	var validationError app.ValidationError
 	var overflowError app.LedgerOverflowError
 	var projectionDependency app.AlternativeGainsDependencyError
@@ -2169,6 +2181,8 @@ func writeInvestmentServiceError(w http.ResponseWriter, r *http.Request, logger 
 	// looked like a fault rather than the deliberate refusal it is.
 	case errors.Is(err, app.ErrReconciliationOverrideRequired):
 		writeAPIError(w, http.StatusConflict, "CONFLICT", "reconciliation override is required")
+	case errors.Is(err, app.ErrReconciliationImpactStale):
+		writeAPIError(w, http.StatusConflict, "RECONCILIATION_IMPACT_STALE", "the checkpoints this write would invalidate changed after they were reviewed; review them again")
 	case errors.Is(err, app.ErrInvestmentSuggestionNotFound):
 		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "investment event suggestion not found")
 	case errors.Is(err, app.ErrInvestmentSuggestionNotPending):
@@ -2223,7 +2237,7 @@ func toInvestmentTradeInput(owner app.Owner, r *http.Request, request investment
 		SettlementDate: request.SettlementDate, Charges: charges,
 		Memo: request.Memo, PayeeID: request.PayeeID, Status: request.Status, LotAllocations: allocations,
 		ChangeReason: request.ChangeReason, CostBasisMethod: request.CostBasisMethod,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -2251,7 +2265,7 @@ func toDividendInput(owner app.Owner, r *http.Request, request dividendRequest) 
 		AmountScale: request.AmountScale, WithholdingValue: moneyInt64Pointer(request.WithholdingValue), WithholdingScale: request.WithholdingScale,
 		WithholdingAccountID: request.WithholdingAccountID, Memo: request.Memo, PayeeID: request.PayeeID,
 		Status: request.Status, ChangeReason: request.ChangeReason,
-		ReconciliationOverride: request.ReconciliationOverride,
+		ReconciliationOverride: request.checkpointOverride(),
 	}
 }
 
@@ -2262,7 +2276,7 @@ func toReinvestedDividendInput(owner app.Owner, r *http.Request, request reinves
 		IncomeAccountID: request.IncomeAccountID, QuantityValue: request.QuantityValue, QuantityScale: request.QuantityScale,
 		AmountValue: int64(request.AmountValue), AmountScale: request.AmountScale, CashCommodityID: request.CashCommodityID,
 		Memo: request.Memo, PayeeID: request.PayeeID, Status: request.Status, ChangeReason: request.ChangeReason,
-		ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+		ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
 
@@ -2278,7 +2292,7 @@ func toInvestmentWriteOffInput(owner app.Owner, r *http.Request, request investm
 		CostCommodityID: request.CostCommodityID,
 		Memo:            request.Memo, PayeeID: request.PayeeID, Status: request.Status, LotAllocations: allocations,
 		ChangeReason: request.ChangeReason, CostBasisMethod: request.CostBasisMethod,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -2743,16 +2757,16 @@ func projectedBasisScale(scale int, knowledge string) *int {
 }
 
 type investmentSplitRequest struct {
-	EffectiveOn               string          `json:"effective_on"`
-	HoldingAccountID          int64           `json:"holding_account_id"`
-	CommodityID               int64           `json:"commodity_id"`
-	RatioNumerator            int64           `json:"ratio_numerator"`
-	RatioDenominator          int64           `json:"ratio_denominator"`
-	SourceEvidence            json.RawMessage `json:"source_evidence,omitempty"`
-	Memo                      string          `json:"memo"`
-	ChangeReason              string          `json:"change_reason"`
-	ReconciliationOverride    bool            `json:"reconciliation_override"`
-	GainImpactAcknowledgement string          `json:"gain_impact_acknowledgement,omitempty"`
+	EffectiveOn      string          `json:"effective_on"`
+	HoldingAccountID int64           `json:"holding_account_id"`
+	CommodityID      int64           `json:"commodity_id"`
+	RatioNumerator   int64           `json:"ratio_numerator"`
+	RatioDenominator int64           `json:"ratio_denominator"`
+	SourceEvidence   json.RawMessage `json:"source_evidence,omitempty"`
+	Memo             string          `json:"memo"`
+	ChangeReason     string          `json:"change_reason"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type investmentSplitLotEffectResponse struct {
@@ -2795,7 +2809,7 @@ func investmentSplitInput(owner app.Owner, r *http.Request, request investmentSp
 		HoldingAccountID: request.HoldingAccountID, CommodityID: request.CommodityID,
 		RatioNumerator: request.RatioNumerator, RatioDenominator: request.RatioDenominator,
 		SourceEvidenceJSON: evidence, Memo: request.Memo, ChangeReason: request.ChangeReason,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -2872,14 +2886,14 @@ func investmentSplitPreview(logger *slog.Logger, authService *app.AuthService, i
 // Split correction (T-129). Reversal reuses the sale-reversal request and
 // response; replacement carries corrected terms for the same holding.
 type investmentSplitReplacementRequest struct {
-	Reason                    string          `json:"reason"`
-	EffectiveOn               string          `json:"effective_on"`
-	RatioNumerator            int64           `json:"ratio_numerator"`
-	RatioDenominator          int64           `json:"ratio_denominator"`
-	SourceEvidence            json.RawMessage `json:"source_evidence,omitempty"`
-	Memo                      string          `json:"memo"`
-	ReconciliationOverride    bool            `json:"reconciliation_override"`
-	GainImpactAcknowledgement string          `json:"gain_impact_acknowledgement,omitempty"`
+	Reason           string          `json:"reason"`
+	EffectiveOn      string          `json:"effective_on"`
+	RatioNumerator   int64           `json:"ratio_numerator"`
+	RatioDenominator int64           `json:"ratio_denominator"`
+	SourceEvidence   json.RawMessage `json:"source_evidence,omitempty"`
+	Memo             string          `json:"memo"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type investmentSplitReplacementResponse struct {
@@ -2931,7 +2945,7 @@ func investmentSplitReplacementInput(owner app.Owner, r *http.Request, transacti
 		TransactionID: transactionID, Reason: request.Reason, EffectiveOn: request.EffectiveOn,
 		RatioNumerator: request.RatioNumerator, RatioDenominator: request.RatioDenominator,
 		SourceEvidenceJSON: evidence, Memo: request.Memo,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -2954,7 +2968,7 @@ func reverseInvestmentSplit(logger *slog.Logger, authService *app.AuthService, i
 		transaction, err := investmentService.ReverseSplitWithIdentity(r.Context(), app.ReverseInvestmentSplitInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 			TransactionID: transactionID, OperationID: operationID, Reason: request.Reason,
-			ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+			ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "reverse investment split", err)
@@ -3237,7 +3251,7 @@ func reverseInvestmentWriteOff(logger *slog.Logger, authService *app.AuthService
 		transaction, err := investmentService.ReverseWriteOff(r.Context(), app.ReverseInvestmentSaleInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 			OriginType: "browser_api", TransactionID: transactionID, Reason: request.Reason,
-			ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+			ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "reverse investment write-off", err)
@@ -3291,7 +3305,7 @@ func replaceInvestmentWriteOff(logger *slog.Logger, authService *app.AuthService
 		result, err := investmentService.ReplaceWriteOff(r.Context(), app.ReplaceInvestmentWriteOffInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r),
 			RequestID: RequestIDFromContext(r.Context()), TransactionID: transactionID,
-			Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 			Replacement:               toInvestmentWriteOffInput(owner, r, request.Replacement),
 			GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
@@ -3352,7 +3366,7 @@ func reverseInvestmentTransfer(logger *slog.Logger, authService *app.AuthService
 		transaction, err := investmentService.ReverseTransfer(r.Context(), app.ReverseInvestmentTransferInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 			TransactionID: transactionID, Reason: request.Reason,
-			ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+			ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "reverse investment transfer", err)
@@ -3392,8 +3406,8 @@ func reverseInvestmentTransferReconciliationImpact(logger *slog.Logger, authServ
 // Replacement is a full internal transfer; its own reason, override and
 // acknowledgement fields are ignored in favour of the outer ones.
 type investmentTransferReplacementRequest struct {
-	Reason                    string                  `json:"reason"`
-	ReconciliationOverride    bool                    `json:"reconciliation_override"`
+	Reason string `json:"reason"`
+	reconciliationOverrideFields
 	GainImpactAcknowledgement string                  `json:"gain_impact_acknowledgement,omitempty"`
 	Replacement               internalTransferRequest `json:"replacement"`
 }
@@ -3409,7 +3423,7 @@ func investmentTransferReplacementInput(owner app.Owner, r *http.Request, transa
 	return app.ReplaceInvestmentTransferInput{
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: transactionID, Reason: request.Reason,
-		ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+		ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		Replacement: internalTransferInput(owner, r, request.Replacement),
 	}
 }
@@ -3480,8 +3494,8 @@ func replaceInvestmentTransferPreview(logger *slog.Logger, authService *app.Auth
 // (T-119). Replacement is a full transfer in; its own reason, override and
 // acknowledgement fields are ignored in favour of the outer ones.
 type investmentTransferInReplacementRequest struct {
-	Reason                    string                    `json:"reason"`
-	ReconciliationOverride    bool                      `json:"reconciliation_override"`
+	Reason string `json:"reason"`
+	reconciliationOverrideFields
 	GainImpactAcknowledgement string                    `json:"gain_impact_acknowledgement,omitempty"`
 	Replacement               externalTransferInRequest `json:"replacement"`
 }
@@ -3501,7 +3515,7 @@ func investmentTransferInReplacementInput(owner app.Owner, r *http.Request, tran
 	return app.ReplaceInvestmentTransferInInput{
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: transactionID, Reason: request.Reason,
-		ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+		ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		Replacement: replacement,
 	}, nil
 }

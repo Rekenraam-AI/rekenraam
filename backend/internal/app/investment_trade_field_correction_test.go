@@ -341,7 +341,7 @@ func TestReplaceBuyDateCrossingCheckpointRequiresOverride(t *testing.T) {
 			require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 			assert.Zero(t, correctionCount(t, f))
 			assert.Equal(t, []int64{checkpointID}, activeCheckpointIDs(t, f))
-			input.ReconciliationOverride = true
+			input.ReconciliationOverride = unboundOverride
 			_, err = acknowledgedReplaceBuy(ctx, f.investmentService, input)
 			require.NoError(t, err)
 			assert.Empty(t, activeCheckpointIDs(t, f))

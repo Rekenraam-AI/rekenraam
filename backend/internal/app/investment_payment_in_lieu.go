@@ -76,7 +76,7 @@ type PaymentInLieuInput struct {
 	ChangeReason      string
 	// ReconciliationOverride allows a backdated payment to invalidate the
 	// cash, expense or recovery checkpoints it lands behind.
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	OriginType             string
 	Operation              string
 }
@@ -106,7 +106,7 @@ func (s *InvestmentService) paymentInLieu(ctx context.Context, input PaymentInLi
 // PaymentInLieuReconciliationImpact runs the complete writer, entitlement
 // check included, and rolls it back.
 func (s *InvestmentService) PaymentInLieuReconciliationImpact(ctx context.Context, input PaymentInLieuInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	params, err := s.preparePaymentInLieuWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -221,7 +221,7 @@ func (s *InvestmentService) paymentInLieuPlan(ctx context.Context, input Payment
 			OriginType:             defaultString(input.OriginType, "browser_api"),
 			Operation:              defaultString(input.Operation, "investment.payment_in_lieu"),
 			ChangeReason:           input.ChangeReason,
-			ReconciliationOverride: input.ReconciliationOverride,
+			ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 			Spec: TransactionInput{
 				Status:                  "posted",
 				TransactionKind:         "investment",
@@ -279,7 +279,7 @@ type ReverseInvestmentPaymentInLieuInput struct {
 	RequestID              string
 	TransactionID          int64
 	Reason                 string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 }
 
 type ReplaceInvestmentPaymentInLieuInput struct {
@@ -288,7 +288,7 @@ type ReplaceInvestmentPaymentInLieuInput struct {
 	RequestID              string
 	TransactionID          int64
 	Reason                 string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	Replacement            PaymentInLieuInput
 }
 
@@ -311,7 +311,7 @@ func (s *InvestmentService) ReversePaymentInLieu(ctx context.Context, input Reve
 }
 
 func (s *InvestmentService) ReversePaymentInLieuReconciliationImpact(ctx context.Context, input ReverseInvestmentPaymentInLieuInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.preparePaymentInLieuReversalWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -364,7 +364,7 @@ func (s *InvestmentService) ReplacePaymentInLieu(ctx context.Context, input Repl
 }
 
 func (s *InvestmentService) ReplacePaymentInLieuReconciliationImpact(ctx context.Context, input ReplaceInvestmentPaymentInLieuInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, inverse, replacement, err := s.preparePaymentInLieuReplacementWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -430,7 +430,7 @@ func (s *InvestmentService) preparePaymentInLieuReplacementWrite(ctx context.Con
 // paymentInLieuCorrectionPlan pins the effective payment and plans its exact
 // inverse. The writer rechecks the same facts inside its transaction.
 func (s *InvestmentService) paymentInLieuCorrectionPlan(ctx context.Context, ownerUserID, authSessionID int64, requestID string,
-	transactionID int64, reason string, override bool, operationCode string,
+	transactionID int64, reason string, override CheckpointOverride, operationCode string,
 ) (db.PaymentInLieuOperationRecord, Transaction, CreateTransactionInput, error) {
 	if ownerUserID <= 0 || transactionID <= 0 {
 		return db.PaymentInLieuOperationRecord{}, Transaction{}, CreateTransactionInput{}, ValidationError{Message: "owner and payment in lieu id are required"}
@@ -464,7 +464,7 @@ func (s *InvestmentService) paymentInLieuCorrectionPlan(ctx context.Context, own
 		OriginType: "browser_api", Operation: operationCode,
 		CorrectionOfTransactionID: &operation.TransactionID,
 		Spec:                      invertedInvestmentTransactionSpec(original), ChangeReason: cleanReason,
-		ReconciliationOverride: override,
+		ReconciliationOverride: override.Allowed, ReconciliationOverrideCheckpointIDs: override.Reviewed,
 	}, nil
 }
 

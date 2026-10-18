@@ -103,7 +103,7 @@ func TestJournalFreeSplitAdjustmentUsesGainAndCheckpointGuards(t *testing.T) {
 	_, err = f.investmentService.Buy(ctx, input)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.Buy(ctx, input)
 	require.ErrorIs(t, err, ErrGainImpactAcknowledgementRequired)
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))

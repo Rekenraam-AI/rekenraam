@@ -17,13 +17,13 @@ type externalTransferOutRequest struct {
 	LotAllocations  []investmentLotAllocationRequest `json:"lot_allocations"`
 	// QuantityValue/Scale move a total out of an average-cost pool instead of
 	// selected lots.
-	QuantityValue             exact.Coefficient `json:"quantity_value,omitempty"`
-	QuantityScale             int               `json:"quantity_scale,omitempty"`
-	SourceEvidence            json.RawMessage   `json:"source_evidence,omitempty"`
-	Memo                      string            `json:"memo"`
-	ChangeReason              string            `json:"change_reason"`
-	ReconciliationOverride    bool              `json:"reconciliation_override"`
-	GainImpactAcknowledgement string            `json:"gain_impact_acknowledgement,omitempty"`
+	QuantityValue  exact.Coefficient `json:"quantity_value,omitempty"`
+	QuantityScale  int               `json:"quantity_scale,omitempty"`
+	SourceEvidence json.RawMessage   `json:"source_evidence,omitempty"`
+	Memo           string            `json:"memo"`
+	ChangeReason   string            `json:"change_reason"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type externalTransferOutLinkResponse struct {
@@ -76,7 +76,7 @@ func externalTransferOutInput(owner app.Owner, r *http.Request, request external
 		CostCommodityID: request.CostCommodityID, Allocations: allocations,
 		QuantityValue: request.QuantityValue, QuantityScale: request.QuantityScale,
 		SourceEvidenceJSON: evidence, Memo: request.Memo, ChangeReason: request.ChangeReason,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -176,8 +176,8 @@ func externalTransferOutReconciliationImpact(logger *slog.Logger, authService *a
 // (T-144). Replacement is a full outbound transfer; its own reason, override
 // and acknowledgement fields are ignored in favour of the outer ones.
 type investmentTransferOutReplacementRequest struct {
-	Reason                    string                     `json:"reason"`
-	ReconciliationOverride    bool                       `json:"reconciliation_override"`
+	Reason string `json:"reason"`
+	reconciliationOverrideFields
 	GainImpactAcknowledgement string                     `json:"gain_impact_acknowledgement,omitempty"`
 	Replacement               externalTransferOutRequest `json:"replacement"`
 }
@@ -193,7 +193,7 @@ func investmentTransferOutReplacementInput(owner app.Owner, r *http.Request, tra
 	return app.ReplaceInvestmentTransferOutInput{
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 		TransactionID: transactionID, Reason: request.Reason,
-		ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+		ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		Replacement: externalTransferOutInput(owner, r, request.Replacement),
 	}
 }

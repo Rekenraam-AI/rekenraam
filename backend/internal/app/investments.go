@@ -254,7 +254,7 @@ type InvestmentTradeInput struct {
 	CostBasisMethod    string
 	// ReconciliationOverride allows backdated investment trades to invalidate
 	// affected checkpoints through the normal transaction write guard.
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	// GainImpactAcknowledgement is the token a preview returned for the
 	// committed-disposal gain changes the user accepted (T-114). Commands that
 	// opt into gain disclosure refuse a non-empty change set without the exact
@@ -318,7 +318,7 @@ type InvestmentWriteOffInput struct {
 	CostBasisMethod string
 	// ReconciliationOverride lets a backdated write-off invalidate affected
 	// checkpoints through the normal transaction write guard.
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	OriginType             string
 	Operation              string
 	// GainImpactAcknowledgement echoes the preview token when a backdated
@@ -547,7 +547,7 @@ type DividendInput struct {
 	ChangeReason         string
 	// ReconciliationOverride allows backdated dividends to invalidate affected
 	// checkpoints through the normal transaction write guard.
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	// OriginType/Operation: see InvestmentTradeInput's doc comment — same
 	// override mechanism, same reason (B-T212-INVST import attribution).
 	OriginType string
@@ -571,7 +571,7 @@ type ReinvestedDividendInput struct {
 	PayeeID                *int64
 	Status                 string
 	ChangeReason           string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	// GainImpactAcknowledgement echoes the preview token for the committed
 	// disposal gain changes the user accepted (T-126).
 	GainImpactAcknowledgement string
@@ -732,7 +732,7 @@ type SuggestionCompletion struct {
 	RecoveryScale          *int
 	RecoveryAccountID      *int64
 	Memo                   string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 }
 
 type InvestmentAutomationRule struct {
@@ -1239,7 +1239,7 @@ func (s *InvestmentService) buyPlan(ctx context.Context, input InvestmentTradeIn
 			OriginType:             defaultString(input.OriginType, "browser_api"),
 			Operation:              defaultString(input.Operation, "investment.buy"),
 			ChangeReason:           input.ChangeReason,
-			ReconciliationOverride: input.ReconciliationOverride,
+			ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 			Spec: TransactionInput{
 				Status:                  status,
 				TransactionKind:         "investment",
@@ -1389,7 +1389,7 @@ func (s *InvestmentService) resolveCostBasisMethod(ctx context.Context, holdingA
 // and rolls back, so a preview reports exactly what the commit would do
 // (T-117).
 func (s *InvestmentService) simulateDisposal(ctx context.Context, input InvestmentTradeInput) (db.SimulatedInvestmentWrite, []db.LotDisposalRecord, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	transactionParams, disposalParams, err := s.prepareSellWrite(ctx, input)
 	if err != nil {
 		return db.SimulatedInvestmentWrite{}, nil, err
@@ -1657,7 +1657,7 @@ func (s *InvestmentService) sellPlan(ctx context.Context, input InvestmentTradeI
 			OriginType:             defaultString(input.OriginType, "browser_api"),
 			Operation:              defaultString(input.Operation, "investment.sell"),
 			ChangeReason:           input.ChangeReason,
-			ReconciliationOverride: input.ReconciliationOverride,
+			ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 			Spec: TransactionInput{
 				Status:                  status,
 				TransactionKind:         "investment",
@@ -1852,7 +1852,7 @@ func (s *InvestmentService) dividendPlan(ctx context.Context, input DividendInpu
 			OriginType:             defaultString(input.OriginType, "browser_api"),
 			Operation:              defaultString(input.Operation, operation),
 			ChangeReason:           input.ChangeReason,
-			ReconciliationOverride: input.ReconciliationOverride,
+			ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 			Spec: TransactionInput{
 				Status:                  status,
 				TransactionKind:         "investment",
@@ -1984,7 +1984,7 @@ func (s *InvestmentService) reinvestedDividendPlanAs(ctx context.Context, input 
 			OriginType:             "browser_api",
 			Operation:              operationCode,
 			ChangeReason:           input.ChangeReason,
-			ReconciliationOverride: input.ReconciliationOverride,
+			ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 			Spec: TransactionInput{
 				Status:                  status,
 				TransactionKind:         "investment",
@@ -2201,6 +2201,11 @@ func (s *InvestmentService) AcceptSuggestionWithCompletion(ctx context.Context, 
 		}
 		return s.failSuggestion(ctx, suggestionID, err.Error(), now, ownerUserID, authSessionID, requestID)
 	}
+	// Only an owner who completed the proposal can have reviewed its impact.
+	var override CheckpointOverride
+	if ownerCompleted {
+		override = completion.ReconciliationOverride
+	}
 
 	commodityID := proposal.CommodityID
 	if commodityID == nil && record.InstrumentID.Valid {
@@ -2228,7 +2233,7 @@ func (s *InvestmentService) AcceptSuggestionWithCompletion(ctx context.Context, 
 		Memo:                   proposal.Memo,
 		ExternalRefHint:        proposal.ExternalRefHint,
 		PayeeID:                proposal.PayeeID,
-		ReconciliationOverride: ownerCompleted && completion.ReconciliationOverride,
+		ReconciliationOverride: override,
 		ChangeReason:           "accepted provider event suggestion",
 		Operation:              "investment.event_suggestion.accept",
 	}
@@ -3342,7 +3347,7 @@ const (
 func (s *InvestmentService) TradeReconciliationImpact(ctx context.Context, kind InvestmentImpactKind, input InvestmentTradeInput) (ReconciliationImpact, error) {
 	switch kind {
 	case InvestmentImpactBuy:
-		input.ReconciliationOverride = true
+		input.ReconciliationOverride = unboundOverride
 		transactionParams, lotParams, err := s.prepareBuyWrite(ctx, input)
 		if err != nil {
 			return ReconciliationImpact{}, err
@@ -3376,7 +3381,7 @@ func (s *InvestmentService) DividendReconciliationImpact(ctx context.Context, in
 // ReinvestedDividendReconciliationImpact is TradeReconciliationImpact for a
 // reinvested dividend.
 func (s *InvestmentService) ReinvestedDividendReconciliationImpact(ctx context.Context, input ReinvestedDividendInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	transactionParams, lotParams, err := s.prepareReinvestmentWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err

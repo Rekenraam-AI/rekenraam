@@ -43,7 +43,7 @@ type ShareExchangeInput struct {
 	SourceEvidenceJSON          string
 	Memo                        string
 	ChangeReason                string
-	ReconciliationOverride      bool
+	ReconciliationOverride      CheckpointOverride
 	// GainImpactAcknowledgement acknowledges the gains a backdated exchange
 	// revises (#179); an in-order exchange changes no committed disposal.
 	GainImpactAcknowledgement string
@@ -187,7 +187,7 @@ func (s *InvestmentService) prepareShareExchangeWriteWith(ctx context.Context, i
 			OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID,
 			RequestID: input.RequestID, OriginType: "browser_api",
 			Operation: auditOperation, ChangeReason: input.ChangeReason,
-			ReconciliationOverride: input.ReconciliationOverride,
+			ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 			Spec: TransactionInput{
 				Status: "posted", TransactionKind: "investment", InvestmentOperationKind: "share_exchange",
 				TransactionDate: date, Description: memo,
@@ -215,7 +215,7 @@ func (s *InvestmentService) prepareShareExchangeWriteWith(ctx context.Context, i
 // PreviewShareExchange runs the complete exchange writer, including checkpoint
 // invalidation, then rolls back.
 func (s *InvestmentService) PreviewShareExchange(ctx context.Context, input ShareExchangeInput) (ShareExchangePreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	journal, exchange, err := s.prepareShareExchangeWrite(ctx, input)
 	if err != nil {
 		return ShareExchangePreview{}, err

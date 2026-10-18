@@ -171,7 +171,7 @@ func TestCorrectTrading212SalePreviewAndSourceAcceptanceRollback(t *testing.T) {
 	require.Equal(t, before, sourceSaleWriteSnapshot(t, f))
 	_, err = f.database.Exec(`CREATE TRIGGER abort_sale_source_revision BEFORE INSERT ON import_source_revisions BEGIN SELECT RAISE(ABORT, 'injected source acceptance failure'); END`)
 	require.NoError(t, err)
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = acknowledgedCorrectTrading212Sale(ctx, f.importService, input)
 	require.ErrorContains(t, err, "injected source acceptance failure")
 	require.Equal(t, before, sourceSaleWriteSnapshot(t, f))

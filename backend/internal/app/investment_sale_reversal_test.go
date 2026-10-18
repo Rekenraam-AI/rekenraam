@@ -149,7 +149,7 @@ func TestReverseManualSaleRequiresReconciliationOverrideAtomically(t *testing.T)
 		sale.Transaction.VersionID).Scan(&activePriceCount))
 	require.Equal(t, 1, activePriceCount)
 	require.Equal(t, []int64{checkpointID}, activeCheckpointIDs(t, f))
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = acknowledgedReverseSale(ctx, f.investmentService, input)
 	require.NoError(t, err)
 	require.Empty(t, activeCheckpointIDs(t, f))

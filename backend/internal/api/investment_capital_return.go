@@ -10,18 +10,18 @@ import (
 )
 
 type capitalReturnRequest struct {
-	HoldingAccountID          int64                             `json:"holding_account_id"`
-	CommodityID               int64                             `json:"commodity_id"`
-	CashAccountID             int64                             `json:"cash_account_id"`
-	CurrencyID                int64                             `json:"currency_id"`
-	EffectiveOn               string                            `json:"effective_on"`
-	PaymentOn                 string                            `json:"payment_on"`
-	AmountValue               exact.Coefficient                 `json:"amount_value"`
-	AmountScale               int                               `json:"amount_scale"`
-	SourceEvidence            json.RawMessage                   `json:"source_evidence,omitempty"`
-	Memo                      string                            `json:"memo"`
-	ChangeReason              string                            `json:"change_reason"`
-	ReconciliationOverride    bool                              `json:"reconciliation_override"`
+	HoldingAccountID int64             `json:"holding_account_id"`
+	CommodityID      int64             `json:"commodity_id"`
+	CashAccountID    int64             `json:"cash_account_id"`
+	CurrencyID       int64             `json:"currency_id"`
+	EffectiveOn      string            `json:"effective_on"`
+	PaymentOn        string            `json:"payment_on"`
+	AmountValue      exact.Coefficient `json:"amount_value"`
+	AmountScale      int               `json:"amount_scale"`
+	SourceEvidence   json.RawMessage   `json:"source_evidence,omitempty"`
+	Memo             string            `json:"memo"`
+	ChangeReason     string            `json:"change_reason"`
+	reconciliationOverrideFields
 	GainImpactAcknowledgement string                            `json:"gain_impact_acknowledgement,omitempty"`
 	LotEntitlements           []capitalReturnEntitlementRequest `json:"lot_entitlements,omitempty"`
 	EntitledLotIDs            []int64                           `json:"entitled_lot_ids,omitempty"`
@@ -75,7 +75,7 @@ func capitalReturnInput(owner app.Owner, r *http.Request, request capitalReturnR
 		EffectiveOn: request.EffectiveOn, PaymentOn: request.PaymentOn,
 		AmountValue: request.AmountValue, AmountScale: request.AmountScale,
 		SourceEvidenceJSON: evidence, Memo: request.Memo, ChangeReason: request.ChangeReason,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		EntitledLotIDs:            request.EntitledLotIDs, LotEntitlements: entitlements,
 	}
@@ -157,7 +157,7 @@ func reverseCapitalReturn(logger *slog.Logger, authService *app.AuthService, inv
 		}
 		transaction, err := investmentService.ReverseCapitalReturn(r.Context(), app.ReverseInvestmentCapitalReturnInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 			GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
@@ -204,10 +204,10 @@ func toCapitalReturnTerms(terms *app.CapitalReturnInput) *capitalReturnRequest {
 }
 
 type capitalReturnReplacementRequest struct {
-	Reason                    string               `json:"reason"`
-	Replacement               capitalReturnRequest `json:"replacement"`
-	ReconciliationOverride    bool                 `json:"reconciliation_override"`
-	GainImpactAcknowledgement string               `json:"gain_impact_acknowledgement,omitempty"`
+	Reason      string               `json:"reason"`
+	Replacement capitalReturnRequest `json:"replacement"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type capitalReturnReplacementResponse struct {
@@ -218,7 +218,7 @@ type capitalReturnReplacementResponse struct {
 
 func capitalReturnReplacementInput(owner app.Owner, r *http.Request, id int64, request capitalReturnReplacementRequest) app.ReplaceInvestmentCapitalReturnInput {
 	return app.ReplaceInvestmentCapitalReturnInput{OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-		TransactionID: id, Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+		TransactionID: id, Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		Replacement: capitalReturnInput(owner, r, request.Replacement)}
 }
 

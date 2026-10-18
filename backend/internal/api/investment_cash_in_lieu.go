@@ -11,22 +11,22 @@ import (
 )
 
 type cashInLieuRequest struct {
-	SettledOperationID        int64                            `json:"settled_operation_id"`
-	SettledTransactionID      int64                            `json:"settled_transaction_id"`
-	DisposalOn                string                           `json:"disposal_on"`
-	PaymentOn                 string                           `json:"payment_on"`
-	QuantityValue             exact.Coefficient                `json:"quantity_value"`
-	QuantityScale             int                              `json:"quantity_scale"`
-	CashAccountID             int64                            `json:"cash_account_id"`
-	CurrencyID                int64                            `json:"currency_id"`
-	ProceedsValue             moneyCoefficient                 `json:"proceeds_value"`
-	ProceedsScale             int                              `json:"proceeds_scale"`
-	CostBasisMethod           string                           `json:"cost_basis_method,omitempty"`
-	LotAllocations            []investmentLotAllocationRequest `json:"lot_allocations,omitempty"`
-	Memo                      string                           `json:"memo"`
-	ChangeReason              string                           `json:"change_reason"`
-	ReconciliationOverride    bool                             `json:"reconciliation_override"`
-	GainImpactAcknowledgement string                           `json:"gain_impact_acknowledgement,omitempty"`
+	SettledOperationID   int64                            `json:"settled_operation_id"`
+	SettledTransactionID int64                            `json:"settled_transaction_id"`
+	DisposalOn           string                           `json:"disposal_on"`
+	PaymentOn            string                           `json:"payment_on"`
+	QuantityValue        exact.Coefficient                `json:"quantity_value"`
+	QuantityScale        int                              `json:"quantity_scale"`
+	CashAccountID        int64                            `json:"cash_account_id"`
+	CurrencyID           int64                            `json:"currency_id"`
+	ProceedsValue        moneyCoefficient                 `json:"proceeds_value"`
+	ProceedsScale        int                              `json:"proceeds_scale"`
+	CostBasisMethod      string                           `json:"cost_basis_method,omitempty"`
+	LotAllocations       []investmentLotAllocationRequest `json:"lot_allocations,omitempty"`
+	Memo                 string                           `json:"memo"`
+	ChangeReason         string                           `json:"change_reason"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type cashInLieuPreviewResponse struct {
@@ -54,7 +54,7 @@ func cashInLieuInput(owner app.Owner, r *http.Request, request cashInLieuRequest
 		ProceedsValue: int64(request.ProceedsValue), ProceedsScale: request.ProceedsScale,
 		CostBasisMethod: request.CostBasisMethod, LotAllocations: allocations,
 		Memo: request.Memo, ChangeReason: request.ChangeReason,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -110,14 +110,14 @@ func cashInLieuPreview(logger *slog.Logger, authService *app.AuthService, invest
 }
 
 type cashInLieuReplacementRequest struct {
-	Reason                    string            `json:"reason"`
-	Replacement               cashInLieuRequest `json:"replacement"`
-	ReconciliationOverride    bool              `json:"reconciliation_override"`
-	GainImpactAcknowledgement string            `json:"gain_impact_acknowledgement,omitempty"`
+	Reason      string            `json:"reason"`
+	Replacement cashInLieuRequest `json:"replacement"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 func cashInLieuCorrectionInput(owner app.Owner, r *http.Request, id int64, request cashInLieuReplacementRequest) app.ReplaceCashInLieuInput {
-	return app.ReplaceCashInLieuInput{OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()), TransactionID: id, Reason: request.Reason, Replacement: cashInLieuInput(owner, r, request.Replacement), ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement}
+	return app.ReplaceCashInLieuInput{OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()), TransactionID: id, Reason: request.Reason, Replacement: cashInLieuInput(owner, r, request.Replacement), ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement}
 }
 
 func replaceCashInLieu(logger *slog.Logger, auth *app.AuthService, service *app.InvestmentService, options HandlerOptions) http.HandlerFunc {
@@ -174,7 +174,7 @@ func reverseCashInLieu(logger *slog.Logger, auth *app.AuthService, service *app.
 		if !ok {
 			return
 		}
-		result, err := service.ReverseCashInLieu(r.Context(), app.ReverseInvestmentSaleInput{OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()), TransactionID: id, Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement})
+		result, err := service.ReverseCashInLieu(r.Context(), app.ReverseInvestmentSaleInput{OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()), TransactionID: id, Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "reverse cash in lieu", err)
 			return

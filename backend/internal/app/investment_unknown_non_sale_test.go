@@ -560,7 +560,7 @@ func TestUnknownNonSaleCheckpointsAndLateActionRollback(t *testing.T) {
 			_, err = reverse(ctx, input)
 			require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 			require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
-			input.ReconciliationOverride = true
+			input.ReconciliationOverride = unboundOverride
 			_, err = f.database.Exec(`CREATE TRIGGER refuse_unknown_action_checkpoint AFTER UPDATE ON reconciliation_checkpoints
 				WHEN NEW.status = 'invalidated' BEGIN SELECT RAISE(ABORT, 'forced late checkpoint failure'); END`)
 			require.NoError(t, err)

@@ -10,7 +10,7 @@
   import CashInLieuForm from './cash-in-lieu-form.svelte';
   import ReconciliationConfirm from './reconciliation-confirm.svelte';
   import { invalidateInvestmentReads } from './invalidate';
-  import { gainAcknowledgement, gainImpactCurrency, gainImpactRows, impactNeedsReview, isGainAcknowledgementRefusal } from './gain-impact';
+  import { checkpointOverride, gainAcknowledgement, gainImpactCurrency, gainImpactRows, impactNeedsReview, isStaleImpactRefusal } from './gain-impact';
   import { formatQuantity } from '#lib/money/format.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
@@ -57,12 +57,12 @@
     pending=true;error=undefined;
     try {
       await reverseSplitOperation(selected.operation_id,{reason:reviewedReason,
-        reconciliation_override:impact.affected_checkpoints.length>0,
+        ...checkpointOverride(impact.affected_checkpoints),
         gain_impact_acknowledgement:gainAcknowledgement(impact.gain_impact)},csrfToken);
       await invalidateInvestmentReads(client);
       await saved();
     } catch (failure) {
-      if (isGainAcknowledgementRefusal(failure)) {
+      if (isStaleImpactRefusal(failure)) {
         try { impact=await previewSplitOperationReversal(selected.operation_id,{reason:reviewedReason});gainRefreshed=true; }
         catch (previewFailure) {impact=null;error=previewFailure;}
       } else {impact=null;error=failure;}

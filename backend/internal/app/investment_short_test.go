@@ -543,7 +543,7 @@ func TestShortReconciliationImpactNamesCheckpointsWithoutWriting(t *testing.T) {
 	_, err = f.investmentService.ShortCover(ctx, cover)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
-	cover.ReconciliationOverride = true
+	cover.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.ShortCover(ctx, cover)
 	require.NoError(t, err)
 }

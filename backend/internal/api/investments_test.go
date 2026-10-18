@@ -57,7 +57,13 @@ func doInvestmentRequest(t *testing.T, handler http.Handler, sessionCookie *http
 	if body != nil {
 		encoded, err := json.Marshal(body)
 		require.NoError(t, err)
-		reader = strings.NewReader(string(encoded))
+		// A typed request marshals an unset reviewed set as null; bind a test's
+		// bare override to the set its refusal names, as the browser does (#304).
+		raw := strings.ReplaceAll(string(encoded), `,"reconciliation_override_checkpoint_ids":null`, "")
+		if csrfToken != "" {
+			raw = asReviewedByBrowser(t, handler, sessionCookie, csrfToken, method, path, raw, wantStatus)
+		}
+		reader = strings.NewReader(raw)
 	} else {
 		reader = strings.NewReader("")
 	}

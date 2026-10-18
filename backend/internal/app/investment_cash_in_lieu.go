@@ -52,7 +52,7 @@ type CashInLieuInput struct {
 	LotAllocations            []InvestmentLotAllocationInput
 	Memo                      string
 	ChangeReason              string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 }
 
@@ -135,7 +135,7 @@ func cashInLieuPreviewResult(allocations []db.LotDisposalRecord, record db.Dispo
 }
 
 func (s *InvestmentService) PreviewCashInLieu(ctx context.Context, input CashInLieuInput) (CashInLieuPreviewResult, ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	trade, settledOperationID, payment, err := s.cashInLieuTrade(ctx, input)
 	if err != nil {
 		return CashInLieuPreviewResult{}, ReconciliationImpact{}, err
@@ -196,7 +196,7 @@ type ReplaceCashInLieuInput struct {
 	RequestID                 string
 	TransactionID             int64
 	Reason                    string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 	Replacement               CashInLieuInput
 }
@@ -252,7 +252,7 @@ func (s *InvestmentService) ReplaceCashInLieuReconciliationImpact(ctx context.Co
 }
 
 func (s *InvestmentService) PreviewCashInLieuReplacement(ctx context.Context, input ReplaceCashInLieuInput) (CashInLieuPreviewResult, ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	sale, settledOperationID, payment, err := s.cashInLieuReplacement(ctx, input)
 	if err != nil {
 		return CashInLieuPreviewResult{}, ReconciliationImpact{}, err

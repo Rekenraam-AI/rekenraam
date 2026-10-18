@@ -30,7 +30,7 @@ type InternalTransferInput struct {
 	SourceEvidenceJSON        string
 	Memo                      string
 	ChangeReason              string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 }
 
@@ -152,7 +152,7 @@ func (s *InvestmentService) internalTransferPlan(ctx context.Context, input Inte
 			OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID,
 			RequestID: input.RequestID, OriginType: "browser_api",
 			Operation: "investment.internal_transfer", ChangeReason: input.ChangeReason,
-			ReconciliationOverride: input.ReconciliationOverride,
+			ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 			Spec: TransactionInput{
 				Status: "posted", TransactionKind: "investment", InvestmentOperationKind: "internal_transfer",
 				TransactionDate: date, Description: memo,
@@ -184,7 +184,7 @@ func (s *InvestmentService) internalTransferPlan(ctx context.Context, input Inte
 // pooled allocation, checkpoint invalidation and gain comparison, then rolls
 // back. The plan shows exactly what a commit would carry.
 func (s *InvestmentService) PreviewInternalTransfer(ctx context.Context, input InternalTransferInput) (InternalTransferPreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	plan, transfer, err := s.internalTransferPlan(ctx, input)
 	if err != nil {
 		return InternalTransferPreview{}, err

@@ -12,28 +12,28 @@ import (
 // trade-reversal request and response shapes.
 
 type paymentInLieuRequest struct {
-	HoldingAccountID       int64             `json:"holding_account_id"`
-	CommodityID            int64             `json:"commodity_id"`
-	ExDate                 string            `json:"ex_date"`
-	TransactionDate        string            `json:"transaction_date"`
-	CashAccountID          int64             `json:"cash_account_id"`
-	CashCommodityID        int64             `json:"cash_commodity_id"`
-	ExpenseAccountID       int64             `json:"expense_account_id"`
-	AmountValue            moneyCoefficient  `json:"amount_value"`
-	AmountScale            int               `json:"amount_scale"`
-	RecoveryValue          *moneyCoefficient `json:"recovery_value"`
-	RecoveryScale          *int              `json:"recovery_scale"`
-	RecoveryAccountID      *int64            `json:"recovery_account_id"`
-	Memo                   string            `json:"memo"`
-	PayeeID                *int64            `json:"payee_id"`
-	ChangeReason           string            `json:"change_reason"`
-	ReconciliationOverride bool              `json:"reconciliation_override"`
+	HoldingAccountID  int64             `json:"holding_account_id"`
+	CommodityID       int64             `json:"commodity_id"`
+	ExDate            string            `json:"ex_date"`
+	TransactionDate   string            `json:"transaction_date"`
+	CashAccountID     int64             `json:"cash_account_id"`
+	CashCommodityID   int64             `json:"cash_commodity_id"`
+	ExpenseAccountID  int64             `json:"expense_account_id"`
+	AmountValue       moneyCoefficient  `json:"amount_value"`
+	AmountScale       int               `json:"amount_scale"`
+	RecoveryValue     *moneyCoefficient `json:"recovery_value"`
+	RecoveryScale     *int              `json:"recovery_scale"`
+	RecoveryAccountID *int64            `json:"recovery_account_id"`
+	Memo              string            `json:"memo"`
+	PayeeID           *int64            `json:"payee_id"`
+	ChangeReason      string            `json:"change_reason"`
+	reconciliationOverrideFields
 }
 
 type investmentPaymentInLieuReplacementRequest struct {
-	Reason                 string               `json:"reason"`
-	ReconciliationOverride bool                 `json:"reconciliation_override"`
-	Replacement            paymentInLieuRequest `json:"replacement"`
+	Reason string `json:"reason"`
+	reconciliationOverrideFields
+	Replacement paymentInLieuRequest `json:"replacement"`
 }
 
 func toPaymentInLieuInput(owner app.Owner, r *http.Request, request paymentInLieuRequest) app.PaymentInLieuInput {
@@ -44,7 +44,7 @@ func toPaymentInLieuInput(owner app.Owner, r *http.Request, request paymentInLie
 		ExpenseAccountID: request.ExpenseAccountID, AmountValue: int64(request.AmountValue), AmountScale: request.AmountScale,
 		RecoveryValue: moneyInt64Pointer(request.RecoveryValue), RecoveryScale: request.RecoveryScale,
 		RecoveryAccountID: request.RecoveryAccountID, Memo: request.Memo, PayeeID: request.PayeeID,
-		ChangeReason: request.ChangeReason, ReconciliationOverride: request.ReconciliationOverride,
+		ChangeReason: request.ChangeReason, ReconciliationOverride: request.checkpointOverride(),
 	}
 }
 
@@ -100,7 +100,7 @@ func reverseInvestmentPaymentInLieu(logger *slog.Logger, authService *app.AuthSe
 		}
 		transaction, err := investmentService.ReversePaymentInLieu(r.Context(), app.ReverseInvestmentPaymentInLieuInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 		})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "reverse payment in lieu", err)
@@ -143,7 +143,7 @@ func replaceInvestmentPaymentInLieu(logger *slog.Logger, authService *app.AuthSe
 		}
 		result, err := investmentService.ReplacePaymentInLieu(r.Context(), app.ReplaceInvestmentPaymentInLieuInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.ReconciliationOverride,
+			TransactionID: transactionID, Reason: request.Reason, ReconciliationOverride: request.checkpointOverride(),
 			Replacement: toPaymentInLieuInput(owner, r, request.Replacement),
 		})
 		if err != nil {

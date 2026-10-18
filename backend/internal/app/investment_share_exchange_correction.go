@@ -29,7 +29,7 @@ type ReverseShareExchangeInput struct {
 	RequestID                 string
 	TransactionID             int64
 	Reason                    string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 }
 
@@ -49,7 +49,7 @@ type ReplaceShareExchangeInput struct {
 	RatioDenominator            int64
 	SourceEvidenceJSON          string
 	Memo                        string
-	ReconciliationOverride      bool
+	ReconciliationOverride      CheckpointOverride
 	GainImpactAcknowledgement   string
 }
 
@@ -77,7 +77,7 @@ func (s *InvestmentService) ReverseShareExchange(ctx context.Context, input Reve
 // ReverseShareExchangeReconciliationImpact runs the reversal writer and rolls
 // back: the checkpoints and gains it would change.
 func (s *InvestmentService) ReverseShareExchangeReconciliationImpact(ctx context.Context, input ReverseShareExchangeInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.prepareShareExchangeReversalWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -110,7 +110,7 @@ func (s *InvestmentService) prepareShareExchangeReversalWrite(ctx context.Contex
 // shareExchangeInversePlan pins the effective exchange and plans its exact
 // inverse journal. The writer rechecks the same facts in its transaction.
 func (s *InvestmentService) shareExchangeInversePlan(ctx context.Context, ownerUserID, authSessionID int64, requestID string,
-	transactionID int64, rawReason string, override bool, auditOperation string) (db.ShareExchangeOperationRecord, CreateTransactionInput, error) {
+	transactionID int64, rawReason string, override CheckpointOverride, auditOperation string) (db.ShareExchangeOperationRecord, CreateTransactionInput, error) {
 	fail := func(err error) (db.ShareExchangeOperationRecord, CreateTransactionInput, error) {
 		return db.ShareExchangeOperationRecord{}, CreateTransactionInput{}, err
 	}
@@ -152,7 +152,7 @@ func (s *InvestmentService) shareExchangeInversePlan(ctx context.Context, ownerU
 	return operation, CreateTransactionInput{
 		OwnerUserID: ownerUserID, AuthSessionID: authSessionID, RequestID: requestID, OriginType: "browser_api",
 		Operation: auditOperation, CorrectionOfTransactionID: &operation.TransactionID,
-		Spec: invertedInvestmentTransactionSpec(original), ChangeReason: reason, ReconciliationOverride: override,
+		Spec: invertedInvestmentTransactionSpec(original), ChangeReason: reason, ReconciliationOverride: override.Allowed, ReconciliationOverrideCheckpointIDs: override.Reviewed,
 	}, nil
 }
 
@@ -178,7 +178,7 @@ func (s *InvestmentService) ReplaceShareExchange(ctx context.Context, input Repl
 // PreviewShareExchangeReplacement runs the replacement writer and every
 // replay, then rolls back: the plan the replacement would carry and its impact.
 func (s *InvestmentService) PreviewShareExchangeReplacement(ctx context.Context, input ReplaceShareExchangeInput) (ShareExchangePreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, inverse, replacement, exchange, err := s.prepareShareExchangeReplacementWrite(ctx, input)
 	if err != nil {
 		return ShareExchangePreview{}, err

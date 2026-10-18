@@ -54,7 +54,7 @@ type ReverseInvestmentTransferInput struct {
 	RequestID                 string
 	TransactionID             int64
 	Reason                    string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 }
 
@@ -75,7 +75,7 @@ func (s *InvestmentService) ReverseTransfer(ctx context.Context, input ReverseIn
 
 // ReverseTransferReconciliationImpact runs the reversal writer and rolls back.
 func (s *InvestmentService) ReverseTransferReconciliationImpact(ctx context.Context, input ReverseInvestmentTransferInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.prepareTransferReversalWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -93,7 +93,7 @@ func (s *InvestmentService) prepareTransferReversalWrite(ctx context.Context, in
 		return db.TransferOperationRecord{}, db.CreateTransactionParams{}, err
 	}
 	planned.AuthSessionID, planned.RequestID = input.AuthSessionID, input.RequestID
-	planned.ReconciliationOverride = input.ReconciliationOverride
+	planned.ReconciliationOverride, planned.ReconciliationOverrideCheckpointIDs = input.ReconciliationOverride.Allowed, input.ReconciliationOverride.Reviewed
 	planned.Operation = "investment.transfer.reverse"
 	planned.Spec.InvestmentOperationKind = "reversal"
 	params, err := s.transactionService.prepareInvestmentTransactionForWrite(ctx, planned, nil)
@@ -210,7 +210,7 @@ type ReplaceInvestmentTransferInput struct {
 	RequestID                 string
 	TransactionID             int64
 	Reason                    string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 	// Replacement is the full corrected internal transfer. Date, quantity or
 	// lots, both accounts and destination lineage may change; the security
@@ -255,7 +255,7 @@ func (s *InvestmentService) ReplaceTransfer(ctx context.Context, input ReplaceIn
 // PreviewTransferReplacement runs the replacement writer and every replay,
 // then rolls back: the plan the replacement would carry and its impact.
 func (s *InvestmentService) PreviewTransferReplacement(ctx context.Context, input ReplaceInvestmentTransferInput) (InternalTransferPreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	prepared, err := s.prepareTransferReplacement(ctx, input)
 	if err != nil {
 		return InternalTransferPreview{}, err
@@ -293,7 +293,7 @@ func (s *InvestmentService) prepareTransferReplacement(ctx context.Context, inpu
 	}
 	inversePlan.AuthSessionID, inversePlan.RequestID = input.AuthSessionID, input.RequestID
 	inversePlan.Operation = "investment.transfer.replace"
-	inversePlan.ReconciliationOverride = input.ReconciliationOverride
+	inversePlan.ReconciliationOverride, inversePlan.ReconciliationOverrideCheckpointIDs = input.ReconciliationOverride.Allowed, input.ReconciliationOverride.Reviewed
 	inversePlan.Spec.InvestmentOperationKind = ""
 	inverse, err := s.transactionService.prepareInvestmentTransactionForWrite(ctx, inversePlan, nil)
 	if err != nil {
@@ -341,7 +341,7 @@ type ReplaceInvestmentTransferInInput struct {
 	RequestID                 string
 	TransactionID             int64
 	Reason                    string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 	// Replacement is the full corrected external transfer in. Date, holding,
 	// quantity, carried basis, original date and evidence may change; the
@@ -387,7 +387,7 @@ func (s *InvestmentService) ReplaceTransferIn(ctx context.Context, input Replace
 // ReplaceTransferInReconciliationImpact runs the replacement writer and
 // every replay, then rolls back.
 func (s *InvestmentService) ReplaceTransferInReconciliationImpact(ctx context.Context, input ReplaceInvestmentTransferInInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	prepared, err := s.prepareTransferInReplacement(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -417,7 +417,7 @@ func (s *InvestmentService) prepareTransferInReplacement(ctx context.Context, in
 	}
 	inversePlan.AuthSessionID, inversePlan.RequestID = input.AuthSessionID, input.RequestID
 	inversePlan.Operation = "investment.transfer_in.replace"
-	inversePlan.ReconciliationOverride = input.ReconciliationOverride
+	inversePlan.ReconciliationOverride, inversePlan.ReconciliationOverrideCheckpointIDs = input.ReconciliationOverride.Allowed, input.ReconciliationOverride.Reviewed
 	inversePlan.Spec.InvestmentOperationKind = ""
 	inverse, err := s.transactionService.prepareInvestmentTransactionForWrite(ctx, inversePlan, nil)
 	if err != nil {

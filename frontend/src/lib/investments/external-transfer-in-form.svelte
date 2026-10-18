@@ -15,8 +15,13 @@
   import { invalidateInvestmentReads } from './invalidate';
   import { parseTransferInAmounts } from '#lib/investments/form-amounts.ts';
   import {
-    gainAcknowledgement, gainImpactCurrency, gainImpactRows, hasGainChanges, impactNeedsReview,
-    isGainAcknowledgementRefusal
+    gainAcknowledgement,
+    gainImpactCurrency,
+    gainImpactRows,
+    hasGainChanges,
+    impactNeedsReview,
+    isStaleImpactRefusal,
+    checkpointOverride
   } from '#lib/investments/gain-impact.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
@@ -149,7 +154,7 @@
   // A stale or missing gain acknowledgement re-previews the current set.
   async function recoverFromRefusal(error: unknown, payload: ExternalTransferInRequest) {
     try {
-      if (!isGainAcknowledgementRefusal(error) || !(await reviewImpact(payload, true))) formError = error;
+      if (!isStaleImpactRefusal(error) || !(await reviewImpact(payload, true))) formError = error;
     } catch (previewError) {
       formError = previewError;
     }
@@ -165,7 +170,7 @@
     try {
       await post({
         ...payload,
-        ...(impacts.length > 0 ? { reconciliation_override: true } : {}),
+        ...checkpointOverride(impacts),
         ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
       });
     } catch (error) {

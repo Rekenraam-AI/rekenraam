@@ -27,7 +27,7 @@ type ExternalTransferOutInput struct {
 	SourceEvidenceJSON        string
 	Memo                      string
 	ChangeReason              string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 }
 
@@ -149,7 +149,7 @@ func (s *InvestmentService) externalTransferOutWrite(ctx context.Context, input 
 		OwnerUserID: input.OwnerUserID, AuthSessionID: input.AuthSessionID,
 		RequestID: input.RequestID, OriginType: "browser_api",
 		Operation: "investment.external_transfer_out", ChangeReason: input.ChangeReason,
-		ReconciliationOverride: input.ReconciliationOverride,
+		ReconciliationOverride: input.ReconciliationOverride.Allowed, ReconciliationOverrideCheckpointIDs: input.ReconciliationOverride.Reviewed,
 		Spec: TransactionInput{
 			Status: "posted", TransactionKind: "investment", InvestmentOperationKind: "external_transfer_out",
 			TransactionDate: date, Description: memo,
@@ -181,7 +181,7 @@ func (s *InvestmentService) externalTransferOutWrite(ctx context.Context, input 
 // journal and checkpoint netting, then rolls back. The plan is exactly what a
 // commit would carry out.
 func (s *InvestmentService) PreviewExternalTransferOut(ctx context.Context, input ExternalTransferOutInput) (ExternalTransferOutPreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	journal, transfer, err := s.externalTransferOutWrite(ctx, input)
 	if err != nil {
 		return ExternalTransferOutPreview{}, err
@@ -241,7 +241,7 @@ type ReplaceInvestmentTransferOutInput struct {
 	RequestID                 string
 	TransactionID             int64
 	Reason                    string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 	Replacement               ExternalTransferOutInput
 }
@@ -282,7 +282,7 @@ func (s *InvestmentService) ReplaceTransferOut(ctx context.Context, input Replac
 // PreviewTransferOutReplacement runs the replacement writer and every replay,
 // then rolls back.
 func (s *InvestmentService) PreviewTransferOutReplacement(ctx context.Context, input ReplaceInvestmentTransferOutInput) (ExternalTransferOutPreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	prepared, err := s.prepareTransferOutReplacement(ctx, input)
 	if err != nil {
 		return ExternalTransferOutPreview{}, err
@@ -320,7 +320,7 @@ func (s *InvestmentService) prepareTransferOutReplacement(ctx context.Context, i
 	}
 	inversePlan.AuthSessionID, inversePlan.RequestID = input.AuthSessionID, input.RequestID
 	inversePlan.Operation = "investment.transfer.replace"
-	inversePlan.ReconciliationOverride = input.ReconciliationOverride
+	inversePlan.ReconciliationOverride, inversePlan.ReconciliationOverrideCheckpointIDs = input.ReconciliationOverride.Allowed, input.ReconciliationOverride.Reviewed
 	inversePlan.Spec.InvestmentOperationKind = ""
 	inverse, err := s.transactionService.prepareInvestmentTransactionForWrite(ctx, inversePlan, nil)
 	if err != nil {

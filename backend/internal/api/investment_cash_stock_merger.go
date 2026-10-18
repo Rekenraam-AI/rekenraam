@@ -12,25 +12,25 @@ import (
 // Cash-and-stock merger (#181): a share exchange that also pays cash, with an
 // explicit election of the basis share the cash recovers.
 type cashStockMergerRequest struct {
-	EffectiveOn               string            `json:"effective_on"`
-	PayableOn                 string            `json:"payable_on"`
-	HoldingAccountID          int64             `json:"holding_account_id"`
-	DestinationHoldingID      int64             `json:"destination_holding_account_id,omitempty"`
-	CommodityID               int64             `json:"commodity_id"`
-	DestinationCommodityID    int64             `json:"destination_commodity_id"`
-	RatioNumerator            int64             `json:"ratio_numerator"`
-	RatioDenominator          int64             `json:"ratio_denominator"`
-	CashAccountID             int64             `json:"cash_account_id"`
-	CurrencyID                int64             `json:"currency_id"`
-	CashValue                 moneyCoefficient  `json:"cash_value"`
-	CashScale                 int               `json:"cash_scale"`
-	CashBasisFractionValue    exact.Coefficient `json:"cash_basis_fraction_value"`
-	CashBasisFractionScale    int               `json:"cash_basis_fraction_scale"`
-	SourceEvidence            json.RawMessage   `json:"source_evidence,omitempty"`
-	Memo                      string            `json:"memo"`
-	ChangeReason              string            `json:"change_reason"`
-	ReconciliationOverride    bool              `json:"reconciliation_override"`
-	GainImpactAcknowledgement string            `json:"gain_impact_acknowledgement,omitempty"`
+	EffectiveOn            string            `json:"effective_on"`
+	PayableOn              string            `json:"payable_on"`
+	HoldingAccountID       int64             `json:"holding_account_id"`
+	DestinationHoldingID   int64             `json:"destination_holding_account_id,omitempty"`
+	CommodityID            int64             `json:"commodity_id"`
+	DestinationCommodityID int64             `json:"destination_commodity_id"`
+	RatioNumerator         int64             `json:"ratio_numerator"`
+	RatioDenominator       int64             `json:"ratio_denominator"`
+	CashAccountID          int64             `json:"cash_account_id"`
+	CurrencyID             int64             `json:"currency_id"`
+	CashValue              moneyCoefficient  `json:"cash_value"`
+	CashScale              int               `json:"cash_scale"`
+	CashBasisFractionValue exact.Coefficient `json:"cash_basis_fraction_value"`
+	CashBasisFractionScale int               `json:"cash_basis_fraction_scale"`
+	SourceEvidence         json.RawMessage   `json:"source_evidence,omitempty"`
+	Memo                   string            `json:"memo"`
+	ChangeReason           string            `json:"change_reason"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type cashStockMergerLinkResponse struct {
@@ -92,7 +92,7 @@ func cashStockMergerInput(owner app.Owner, r *http.Request, request cashStockMer
 		CashValue: int64(request.CashValue), CashScale: request.CashScale,
 		CashBasisFractionValue: request.CashBasisFractionValue, CashBasisFractionScale: request.CashBasisFractionScale,
 		SourceEvidenceJSON: evidence, Memo: request.Memo, ChangeReason: request.ChangeReason,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -232,23 +232,23 @@ func toInvestmentCorrectionCashStockMergerTerms(terms *app.InvestmentCorrectionC
 // response; replacement carries corrected terms for the same merged holding
 // and old instrument.
 type cashStockMergerReplacementRequest struct {
-	Reason                    string            `json:"reason"`
-	EffectiveOn               string            `json:"effective_on"`
-	PayableOn                 string            `json:"payable_on"`
-	DestinationHoldingID      int64             `json:"destination_holding_account_id,omitempty"`
-	DestinationCommodityID    int64             `json:"destination_commodity_id"`
-	RatioNumerator            int64             `json:"ratio_numerator"`
-	RatioDenominator          int64             `json:"ratio_denominator"`
-	CashAccountID             int64             `json:"cash_account_id"`
-	CurrencyID                int64             `json:"currency_id"`
-	CashValue                 moneyCoefficient  `json:"cash_value"`
-	CashScale                 int               `json:"cash_scale"`
-	CashBasisFractionValue    exact.Coefficient `json:"cash_basis_fraction_value"`
-	CashBasisFractionScale    int               `json:"cash_basis_fraction_scale"`
-	SourceEvidence            json.RawMessage   `json:"source_evidence,omitempty"`
-	Memo                      string            `json:"memo"`
-	ReconciliationOverride    bool              `json:"reconciliation_override"`
-	GainImpactAcknowledgement string            `json:"gain_impact_acknowledgement,omitempty"`
+	Reason                 string            `json:"reason"`
+	EffectiveOn            string            `json:"effective_on"`
+	PayableOn              string            `json:"payable_on"`
+	DestinationHoldingID   int64             `json:"destination_holding_account_id,omitempty"`
+	DestinationCommodityID int64             `json:"destination_commodity_id"`
+	RatioNumerator         int64             `json:"ratio_numerator"`
+	RatioDenominator       int64             `json:"ratio_denominator"`
+	CashAccountID          int64             `json:"cash_account_id"`
+	CurrencyID             int64             `json:"currency_id"`
+	CashValue              moneyCoefficient  `json:"cash_value"`
+	CashScale              int               `json:"cash_scale"`
+	CashBasisFractionValue exact.Coefficient `json:"cash_basis_fraction_value"`
+	CashBasisFractionScale int               `json:"cash_basis_fraction_scale"`
+	SourceEvidence         json.RawMessage   `json:"source_evidence,omitempty"`
+	Memo                   string            `json:"memo"`
+	reconciliationOverrideFields
+	GainImpactAcknowledgement string `json:"gain_impact_acknowledgement,omitempty"`
 }
 
 type cashStockMergerReplacementResponse struct {
@@ -273,7 +273,7 @@ func cashStockMergerReplacementInput(owner app.Owner, r *http.Request, transacti
 		CashValue: int64(request.CashValue), CashScale: request.CashScale,
 		CashBasisFractionValue: request.CashBasisFractionValue, CashBasisFractionScale: request.CashBasisFractionScale,
 		SourceEvidenceJSON: evidence, Memo: request.Memo,
-		ReconciliationOverride:    request.ReconciliationOverride,
+		ReconciliationOverride:    request.checkpointOverride(),
 		GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 	}
 }
@@ -296,7 +296,7 @@ func reverseCashStockMerger(logger *slog.Logger, authService *app.AuthService, i
 		transaction, err := investmentService.ReverseCashStockMerger(r.Context(), app.ReverseCashStockMergerInput{
 			OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 			TransactionID: transactionID, Reason: request.Reason,
-			ReconciliationOverride: request.ReconciliationOverride, GainImpactAcknowledgement: request.GainImpactAcknowledgement,
+			ReconciliationOverride: request.checkpointOverride(), GainImpactAcknowledgement: request.GainImpactAcknowledgement,
 		})
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "reverse cash-and-stock merger", err)

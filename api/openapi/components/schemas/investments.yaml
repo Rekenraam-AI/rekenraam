@@ -459,6 +459,8 @@ InvestmentTradeRequest:
         Allows a backdated trade to proceed into a reconciled period,
         invalidating the affected checkpoints. Without it such a trade is
         refused with a 409 CONFLICT.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -572,6 +574,8 @@ InvestmentWriteOffRequest:
         Allows a backdated write-off to proceed into a reconciled period,
         invalidating the affected checkpoints. Without it such a write-off is
         refused with a 409 CONFLICT.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -697,6 +701,8 @@ ExternalTransferInRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -773,6 +779,8 @@ InternalTransferRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: Echoes the preview gain-impact token when committed gains would change.
@@ -901,6 +909,8 @@ ExternalTransferOutRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
 
@@ -989,6 +999,8 @@ InvestmentTransferReplacementRequest:
     reconciliation_override:
       type: boolean
       description: Omit or set false to keep affected reconciliation checkpoints active.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -1025,6 +1037,8 @@ InvestmentTransferOutReplacementRequest:
     reconciliation_override:
       type: boolean
       description: Omit or set false to keep affected reconciliation checkpoints active.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: The gain_impact.acknowledgement token from this command's preview.
@@ -1108,6 +1122,8 @@ CashInLieuRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
 
@@ -1200,6 +1216,8 @@ CapitalReturnRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
 
@@ -1269,6 +1287,8 @@ InvestmentTransferInReplacementRequest:
     reconciliation_override:
       type: boolean
       description: Omit or set false to keep affected reconciliation checkpoints active.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -1329,6 +1349,8 @@ InvestmentSplitRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: Token from the preview's gain_impact, accepting the committed-disposal gain changes it disclosed.
@@ -1451,6 +1473,8 @@ ShareExchangeRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >
@@ -1684,6 +1708,8 @@ CashStockMergerRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: The preview's acknowledgement of the later gains a backdated merger restates (#184); an in-order merger revises none.
@@ -1844,6 +1870,8 @@ SpinOffRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >
@@ -2057,6 +2085,8 @@ SpinOffReplacementRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
 
@@ -2183,6 +2213,8 @@ CashStockMergerReplacementRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
 
@@ -2238,6 +2270,8 @@ ShareExchangeReplacementRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
 
@@ -2285,6 +2319,8 @@ InvestmentSplitReplacementRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: Token from the preview's impact.gain_impact, accepting the committed-disposal gain changes it disclosed.
@@ -2484,6 +2520,8 @@ InvestmentSaleReversalRequest:
     reconciliation_override:
       type: boolean
       description: Omit or set false to keep affected reconciliation checkpoints active.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -2517,6 +2555,8 @@ InvestmentBuyReversalRequest:
     reconciliation_override:
       type: boolean
       description: Omit or set false to keep affected reconciliation checkpoints active.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -2548,6 +2588,8 @@ InvestmentWriteOffReplacementRequest:
     reconciliation_override:
       type: boolean
       description: Omit or set false to preserve affected reconciliation checkpoints.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -2569,6 +2611,8 @@ InvestmentSaleReplacementRequest:
     reconciliation_override:
       type: boolean
       description: Omit or set false to preserve affected reconciliation checkpoints.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -2627,6 +2671,8 @@ InvestmentBuyReplacementRequest:
     reconciliation_override:
       type: boolean
       description: Omit or set false to preserve affected reconciliation checkpoints.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -2682,6 +2728,8 @@ InvestmentDividendReplacementRequest:
     reconciliation_override:
       type: boolean
       description: Omit or set false to preserve affected reconciliation checkpoints.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     replacement:
       $ref: "#/DividendRequest"
 
@@ -2709,6 +2757,8 @@ InvestmentReinvestmentReplacementRequest:
     reconciliation_override:
       type: boolean
       description: Omit or set false to preserve affected reconciliation checkpoints.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -3166,6 +3216,8 @@ DividendRequest:
         Allows a backdated trade to proceed into a reconciled period,
         invalidating the affected checkpoints. Without it such a trade is
         refused with a 409 CONFLICT.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
 
 PaymentInLieuRequest:
   type: object
@@ -3204,6 +3256,8 @@ PaymentInLieuRequest:
     reconciliation_override:
       type: boolean
       description: Allows a backdated payment to invalidate the checkpoints it lands behind.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
 
 InvestmentPaymentInLieuReplacementRequest:
   type: object
@@ -3216,6 +3270,8 @@ InvestmentPaymentInLieuReplacementRequest:
       description: Why the posted payment in lieu is being corrected.
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     replacement:
       $ref: "#/PaymentInLieuRequest"
 
@@ -3272,6 +3328,8 @@ ReinvestedDividendRequest:
         Allows a backdated trade to proceed into a reconciled period,
         invalidating the affected checkpoints. Without it such a trade is
         refused with a 409 CONFLICT.
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -3762,6 +3820,8 @@ EventSuggestionCompletion:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
 
 LinkEventSuggestionRequest:
   type: object
@@ -4586,6 +4646,8 @@ CapitalReturnReplacementRequest:
       $ref: '#/CapitalReturnRequest'
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
 
@@ -4613,6 +4675,8 @@ CashInLieuReplacementRequest:
       $ref: '#/CashInLieuRequest'
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
 
@@ -4750,6 +4814,8 @@ InvestmentBasisResolutionRequest:
       type: string
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "#/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
 
@@ -5282,3 +5348,15 @@ IncomeCoverageResponse:
       type: array
       items: { $ref: '../../openapi.yaml#/components/schemas/IncomeCoverageItem' }
     next_cursor: { type: [string, 'null'] }
+ReviewedCheckpointIds:
+  type: array
+  items:
+    type: integer
+    format: int64
+  description: >
+    Required with reconciliation_override=true (#304): the checkpoint ids the
+    owner reviewed, as this action's reconciliation-impact preview returned
+    them. The write refuses with 409 RECONCILIATION_IMPACT_STALE, invalidating
+    nothing, when the set it would invalidate now differs; that refusal's
+    checkpoint_ids name the current set. An override without it is refused
+    with 400 VALIDATION_FAILED.

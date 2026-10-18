@@ -68,12 +68,12 @@ func TestBuyReplacementPreviewRejectsDependentDisposalWithoutWriting(t *testing.
 			}
 			prepared, err := f.investmentService.prepareBuyReplacementWrite(ctx,
 				ReplaceInvestmentBuyInput{OwnerUserID: input.OwnerUserID, TransactionID: input.TransactionID,
-					Reason: input.Reason, Replacement: input.Replacement, ReconciliationOverride: true}, "browser_api", "investment.buy.replace")
+					Reason: input.Reason, Replacement: input.Replacement, ReconciliationOverride: unboundOverride}, "browser_api", "investment.buy.replace")
 			require.NoError(t, err)
 			_, err = acknowledgedReplaceBuy(ctx, f.investmentService, input)
 			require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 			require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
-			input.ReconciliationOverride = true
+			input.ReconciliationOverride = unboundOverride
 			_, err = acknowledgedReplaceBuy(ctx, f.investmentService, input)
 			require.NoError(t, err)
 			gains, err := f.investmentService.ListRealizedGains(ctx, GainsReportParams{})

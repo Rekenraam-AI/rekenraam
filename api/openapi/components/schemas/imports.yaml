@@ -489,6 +489,8 @@ CorrectTrading212BuyRequest:
       minLength: 1
     reconciliation_override:
       type: boolean
+    reconciliation_override_checkpoint_ids:
+      $ref: "../../openapi.yaml#/components/schemas/ReviewedCheckpointIds"
     gain_impact_acknowledgement:
       type: string
       description: >-
@@ -806,3 +808,5 @@ ReviewImportDividendRequest:
       description: Required for repair; must match the current posted ordinary transaction.
     reason: { type: string, description: Required nonempty audit reason for historical repair. }
     reconciliation_override: { type: boolean, default: false }
+    reconciliation_override_checkpoint_ids:
+      $ref: "../../openapi.yaml#/components/schemas/ReviewedCheckpointIds"

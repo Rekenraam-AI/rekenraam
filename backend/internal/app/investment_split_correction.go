@@ -24,7 +24,7 @@ type ReverseInvestmentSplitInput struct {
 	TransactionID             int64
 	OperationID               int64
 	Reason                    string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 }
 
@@ -42,7 +42,7 @@ type ReplaceInvestmentSplitInput struct {
 	RatioDenominator          int64
 	SourceEvidenceJSON        string
 	Memo                      string
-	ReconciliationOverride    bool
+	ReconciliationOverride    CheckpointOverride
 	GainImpactAcknowledgement string
 }
 
@@ -85,7 +85,7 @@ func (s *InvestmentService) ReverseSplitWithIdentity(ctx context.Context, input 
 // ReverseSplitReconciliationImpact runs the reversal writer in a rolled-back
 // transaction and reports its checkpoints and revised gains.
 func (s *InvestmentService) ReverseSplitReconciliationImpact(ctx context.Context, input ReverseInvestmentSplitInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.prepareSplitReversalWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err
@@ -119,7 +119,7 @@ func (s *InvestmentService) prepareSplitReversalWrite(ctx context.Context, input
 // journal dated to the split that negates its current journal delta: the
 // primary journal plus every adjustment (T-129).
 func (s *InvestmentService) splitInversePlan(ctx context.Context, ownerUserID, authSessionID int64, requestID string,
-	transactionID, operationID int64, rawReason string, override bool, auditOperation string) (db.SplitOperationRecord, CreateTransactionInput, error) {
+	transactionID, operationID int64, rawReason string, override CheckpointOverride, auditOperation string) (db.SplitOperationRecord, CreateTransactionInput, error) {
 	if ownerUserID <= 0 || (transactionID <= 0) == (operationID <= 0) {
 		return db.SplitOperationRecord{}, CreateTransactionInput{}, ValidationError{Message: "owner and split id are required"}
 	}
@@ -174,7 +174,7 @@ func (s *InvestmentService) splitInversePlan(ctx context.Context, ownerUserID, a
 	return operation, CreateTransactionInput{
 		OwnerUserID: ownerUserID, AuthSessionID: authSessionID, RequestID: requestID, OriginType: "browser_api",
 		Operation: auditOperation, CorrectionOfTransactionID: splitPrimaryTransactionID(operation.TransactionID),
-		ChangeReason: reason, ReconciliationOverride: override,
+		ChangeReason: reason, ReconciliationOverride: override.Allowed, ReconciliationOverrideCheckpointIDs: override.Reviewed,
 		Spec: TransactionInput{
 			Status: "posted", TransactionKind: "investment", TransactionDate: operation.EventDate,
 			Description: original.Description,
@@ -210,7 +210,7 @@ func (s *InvestmentService) ReplaceSplit(ctx context.Context, input ReplaceInves
 // PreviewSplitReplacement returns the corrected split's per-lot plan plus
 // the checkpoints and gains the replacement writer would change.
 func (s *InvestmentService) PreviewSplitReplacement(ctx context.Context, input ReplaceInvestmentSplitInput) (InvestmentSplitPreview, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, inverse, replacement, split, plan, err := s.prepareSplitReplacementWrite(ctx, input)
 	if err != nil {
 		return InvestmentSplitPreview{}, err
@@ -279,7 +279,8 @@ func (s *InvestmentService) prepareSplitInverseHeader(ctx context.Context, opera
 		return s.transactionService.prepareInvestmentTransactionForWrite(ctx, planned, nil)
 	}
 	header := s.journalFreeInvestmentHeader(planned.OwnerUserID, planned.AuthSessionID, planned.RequestID,
-		planned.Operation, planned.ChangeReason, planned.Spec.InvestmentOperationKind, operation.EventDate, planned.ReconciliationOverride)
+		planned.Operation, planned.ChangeReason, planned.Spec.InvestmentOperationKind, operation.EventDate,
+		CheckpointOverride{Allowed: planned.ReconciliationOverride, Reviewed: planned.ReconciliationOverrideCheckpointIDs})
 	header.CorrectionOfTransactionID = sql.NullInt64{Int64: operation.TransactionID, Valid: operation.TransactionID > 0}
 	return header, nil
 }

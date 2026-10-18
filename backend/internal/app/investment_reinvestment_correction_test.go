@@ -198,7 +198,7 @@ func TestReinvestedDividendCorrectionRequiresReconciliationOverride(t *testing.T
 	require.Equal(t, checkpointID, impact.AffectedCheckpoints[0].CheckpointID)
 	_, err = f.investmentService.ReplaceReinvestedDividend(ctx, input)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.ReplaceReinvestedDividend(ctx, input)
 	require.NoError(t, err)
 	var status string
@@ -219,7 +219,7 @@ func TestReinvestedDividendReplacementRollsBackLateFailure(t *testing.T) {
 	// reaches checkpoint invalidation; an amount-only correction nets to zero
 	// in the holding and leaves the checkpoint active (T-120 #135).
 	input := ReplaceReinvestedDividendInput{OwnerUserID: f.ownerUserID, TransactionID: original.Transaction.ID,
-		Reason: "broker restated", ReconciliationOverride: true, Replacement: reinvestmentInput(f, "2026-01-01", 11, 4000)}
+		Reason: "broker restated", ReconciliationOverride: unboundOverride, Replacement: reinvestmentInput(f, "2026-01-01", 11, 4000)}
 	impact, err := f.investmentService.ReplaceReinvestedDividendReconciliationImpact(ctx, input)
 	require.NoError(t, err)
 	input.GainImpactAcknowledgement = impact.GainImpact.Acknowledgement

@@ -29076,6 +29076,7 @@ export interface components {
             reason?: string;
             /** @default false */
             reconciliation_override: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
         };
         /** @enum {string} */
         ImportBatchStatus: "previewing" | "committed" | "partially_committed" | "discarded" | "failed";
@@ -29394,6 +29395,7 @@ export interface components {
         CorrectTrading212BuyRequest: {
             reason: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's reconciliation-impact preview, accepting the committed-disposal gain changes it disclosed (T-126). A non-empty change set without it is refused with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED, a token for any other set with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE. */
             gain_impact_acknowledgement?: string;
         };
@@ -29823,6 +29825,8 @@ export interface components {
         };
         /** @enum {string} */
         CostBasisMethod: "fifo" | "lifo" | "average_cost" | "specific_lot";
+        /** @description Required with reconciliation_override=true (#304): the checkpoint ids the owner reviewed, as this action's reconciliation-impact preview returned them. The write refuses with 409 RECONCILIATION_IMPACT_STALE, invalidating nothing, when the set it would invalidate now differs; that refusal's checkpoint_ids name the current set. An override without it is refused with 400 VALIDATION_FAILED. */
+        ReviewedCheckpointIds: number[];
         InvestmentInstrumentResponse: {
             /** Format: int64 */
             id: number;
@@ -30037,6 +30041,7 @@ export interface components {
             cost_basis_method?: components["schemas"]["CostBasisMethod"];
             /** @description Allows a backdated trade to proceed into a reconciled period, invalidating the affected checkpoints. Without it such a trade is refused with a 409 CONFLICT. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token returned by this command's preview for the committed-disposal gain changes the user accepted. Honoured by buys (manual and imported); sells and write-offs do not replay committed disposals and ignore it. Commit recomputes the change set in its write transaction; a non-empty set without this token is refused with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED, and a token for any other set with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE. An empty set needs no token and ignores one. */
             gain_impact_acknowledgement?: string;
         };
@@ -30134,6 +30139,7 @@ export interface components {
             cost_basis_method?: components["schemas"]["CostBasisMethod"];
             /** @description Allows a backdated write-off to proceed into a reconciled period, invalidating the affected checkpoints. Without it such a write-off is refused with a 409 CONFLICT. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's reconciliation-impact preview, required when an entry dated behind a later disposal revises committed gains (T-117). */
             gain_impact_acknowledgement?: string;
         };
@@ -30196,6 +30202,7 @@ export interface components {
             memo?: string;
             change_reason?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's reconciliation-impact preview, required when an entry dated behind a later disposal revises committed gains (T-117). */
             gain_impact_acknowledgement?: string;
         };
@@ -30230,6 +30237,7 @@ export interface components {
             memo?: string;
             change_reason?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             gain_impact_acknowledgement?: string;
         };
         ExternalTransferOutLink: {
@@ -30305,6 +30313,7 @@ export interface components {
             memo?: string;
             change_reason?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description Echoes the preview gain-impact token when committed gains would change. */
             gain_impact_acknowledgement?: string;
         };
@@ -30365,6 +30374,7 @@ export interface components {
             reason: string;
             /** @description Omit or set false to keep affected reconciliation checkpoints active. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's preview. */
             gain_impact_acknowledgement?: string;
             /** @description The full corrected outbound transfer. Date, source holding and lots or pooled quantity may change; commodity_id and cost_commodity_id must equal the transfer's. Its change_reason, reconciliation_override and gain_impact_acknowledgement are ignored. */
@@ -30380,6 +30390,7 @@ export interface components {
             reason: string;
             replacement: components["schemas"]["CashInLieuRequest"];
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             gain_impact_acknowledgement?: string;
         };
         CashInLieuLotsResponse: {
@@ -30454,6 +30465,7 @@ export interface components {
             memo?: string;
             change_reason?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             gain_impact_acknowledgement?: string;
         } & (unknown | unknown);
         CashInLieuPreviewResponse: {
@@ -30480,6 +30492,7 @@ export interface components {
             reason: string;
             replacement: components["schemas"]["CapitalReturnRequest"];
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             gain_impact_acknowledgement?: string;
         };
         CapitalReturnReplacementResponse: {
@@ -30522,6 +30535,7 @@ export interface components {
             memo?: string;
             change_reason?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             gain_impact_acknowledgement?: string;
         };
         /** @description One immutable whole allocation set. Original is revision 1 with null revision_id; effective is true only for the latest set of an effective operation. Excess has no tax or income classification. Reading never changes journals or projections. Total reduction/excess are null if any lot is unknown; independent known effects stay visible. Source JSON is exact saved text, including additional metadata. */
@@ -30599,6 +30613,7 @@ export interface components {
             reason: string;
             /** @description Omit or set false to keep affected reconciliation checkpoints active. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's preview, accepting exactly the committed disposal gain changes it disclosed (T-126). */
             gain_impact_acknowledgement?: string;
             /** @description The full corrected transfer in. Date, holding account, quantity, carried basis, original acquisition date and evidence may change; commodity_id and cost_commodity_id must equal the transfer's. Its change_reason, reconciliation_override and gain_impact_acknowledgement are ignored. */
@@ -30615,6 +30630,7 @@ export interface components {
             reason: string;
             /** @description Omit or set false to keep affected reconciliation checkpoints active. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's preview, accepting exactly the committed disposal gain changes it disclosed (T-126). */
             gain_impact_acknowledgement?: string;
             /** @description The full corrected internal transfer. Date, lots or pooled quantity, both holding accounts and destination lineage may change; commodity_id and cost_commodity_id must equal the transfer's. Its change_reason, reconciliation_override and gain_impact_acknowledgement are ignored. */
@@ -30652,6 +30668,7 @@ export interface components {
             memo?: string;
             change_reason?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description Token from the preview's gain_impact, accepting the committed-disposal gain changes it disclosed. */
             gain_impact_acknowledgement?: string;
         };
@@ -30776,6 +30793,7 @@ export interface components {
             memo?: string;
             change_reason?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The preview's exact acknowledgement when a backdated exchange revises a committed disposal (#179); an in-order exchange changes none. */
             gain_impact_acknowledgement?: string;
         };
@@ -30954,6 +30972,7 @@ export interface components {
             memo?: string;
             change_reason?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The preview's acknowledgement of the later gains a backdated merger restates (#184); an in-order merger revises none. */
             gain_impact_acknowledgement?: string;
         };
@@ -31029,6 +31048,7 @@ export interface components {
             };
             memo?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             gain_impact_acknowledgement?: string;
         };
         CashStockMergerReplacementResponse: {
@@ -31116,6 +31136,7 @@ export interface components {
             memo?: string;
             change_reason?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The preview's exact acknowledgement of the committed gains a backdated spin-off revises (#183). An in-order spin-off needs none. */
             gain_impact_acknowledgement?: string;
         };
@@ -31242,6 +31263,7 @@ export interface components {
             };
             memo?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             gain_impact_acknowledgement?: string;
         };
         SpinOffReplacementResponse: {
@@ -31276,6 +31298,7 @@ export interface components {
             };
             memo?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             gain_impact_acknowledgement?: string;
         };
         ShareExchangeReplacementResponse: {
@@ -31300,6 +31323,7 @@ export interface components {
             };
             memo?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description Token from the preview's impact.gain_impact, accepting the committed-disposal gain changes it disclosed. */
             gain_impact_acknowledgement?: string;
         };
@@ -31459,6 +31483,7 @@ export interface components {
             reason: string;
             /** @description Omit or set false to keep affected reconciliation checkpoints active. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's reconciliation-impact preview, accepting the committed-disposal gain changes it disclosed (T-126). A non-empty change set without it is refused with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED, a token for any other set with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE. */
             gain_impact_acknowledgement?: string;
         };
@@ -31504,6 +31529,7 @@ export interface components {
             source_evidence: components["schemas"]["InvestmentBasisResolutionSourceDeclaration"];
             reason: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             gain_impact_acknowledgement?: string;
         };
         InvestmentBasisResolutionResponse: {
@@ -31601,6 +31627,7 @@ export interface components {
             reason: string;
             /** @description Omit or set false to keep affected reconciliation checkpoints active. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's reconciliation-impact preview, accepting the committed-disposal gain changes it disclosed (T-126). A non-empty change set without it is refused with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED, a token for any other set with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE. */
             gain_impact_acknowledgement?: string;
         };
@@ -31614,6 +31641,7 @@ export interface components {
             reason: string;
             /** @description Omit or set false to preserve affected reconciliation checkpoints. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's reconciliation-impact preview, accepting the committed-disposal gain changes it disclosed (T-126). A non-empty change set without it is refused with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED, a token for any other set with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE. */
             gain_impact_acknowledgement?: string;
             replacement: components["schemas"]["InvestmentSaleReplacementTradeRequest"];
@@ -31623,6 +31651,7 @@ export interface components {
             reason: string;
             /** @description Omit or set false to preserve affected reconciliation checkpoints. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's reconciliation-impact preview (T-126). */
             gain_impact_acknowledgement?: string;
             /** @description The full corrected write-off; its reason is why the holding is worthless. */
@@ -31647,6 +31676,7 @@ export interface components {
             reason: string;
             /** @description Omit or set false to preserve affected reconciliation checkpoints. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's reconciliation-impact preview, accepting the committed-disposal gain changes it disclosed (T-126). A non-empty change set without it is refused with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED, a token for any other set with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE. */
             gain_impact_acknowledgement?: string;
             replacement: components["schemas"]["InvestmentBuyReplacementTradeRequest"];
@@ -31669,6 +31699,7 @@ export interface components {
             reason: string;
             /** @description Omit or set false to preserve affected reconciliation checkpoints. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             replacement: components["schemas"]["DividendRequest"];
         };
         InvestmentDividendReplacementResponse: {
@@ -31682,6 +31713,7 @@ export interface components {
             reason: string;
             /** @description Omit or set false to preserve affected reconciliation checkpoints. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's reconciliation-impact preview, accepting the committed-disposal gain changes it disclosed. A non-empty change set without it is refused with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED, a token for any other set with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE. */
             gain_impact_acknowledgement?: string;
             replacement: components["schemas"]["ReinvestedDividendRequest"];
@@ -31956,6 +31988,7 @@ export interface components {
             change_reason?: string;
             /** @description Allows a backdated trade to proceed into a reconciled period, invalidating the affected checkpoints. Without it such a trade is refused with a 409 CONFLICT. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
         };
         /** @description A payment in lieu of a dividend owed by a short holder (#255). Posts cash −amount against the expense account, and optionally cash +recovery against the recovery account. It never touches the short lot or its opening proceeds. The holding must hold open short units of the instrument at the close before ex_date, checked inside the write. */
         PaymentInLieuRequest: {
@@ -31990,11 +32023,13 @@ export interface components {
             change_reason?: string;
             /** @description Allows a backdated payment to invalidate the checkpoints it lands behind. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
         };
         InvestmentPaymentInLieuReplacementRequest: {
             /** @description Why the posted payment in lieu is being corrected. */
             reason: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             replacement: components["schemas"]["PaymentInLieuRequest"];
         };
         ReinvestedDividendRequest: {
@@ -32020,6 +32055,7 @@ export interface components {
             change_reason?: string;
             /** @description Allows a backdated trade to proceed into a reconciled period, invalidating the affected checkpoints. Without it such a trade is refused with a 409 CONFLICT. */
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
             /** @description The gain_impact.acknowledgement token from this command's reconciliation-impact preview, accepting the committed-disposal gain changes it disclosed (T-126). A non-empty change set without it is refused with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED, a token for any other set with INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE. */
             gain_impact_acknowledgement?: string;
         };
@@ -32265,6 +32301,7 @@ export interface components {
             recovery_account_id?: number;
             memo?: string;
             reconciliation_override?: boolean;
+            reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
         };
         LinkEventSuggestionRequest: {
             /** Format: int64 */

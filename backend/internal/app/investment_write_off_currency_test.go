@@ -171,16 +171,16 @@ func TestWriteOffSelectedCurrencyUsesClosedHistoricalLotsAndGuardsGainsAndCheckp
 			require.Equal(t, checkpoint, impact.AffectedCheckpoints[0].CheckpointID)
 			change := gainChangeFor(t, impact, sold.Transaction.ID)
 			require.Equal(t, f.eurCommodityID, change.After.CostCommodityID)
-			input.ReconciliationOverride = true
+			input.ReconciliationOverride = unboundOverride
 			_, err = f.investmentService.WriteOff(ctx, input)
 			require.ErrorIs(t, err, ErrGainImpactAcknowledgementRequired)
 			require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 			input.GainImpactAcknowledgement = impact.GainImpact.Acknowledgement
-			input.ReconciliationOverride = false
+			input.ReconciliationOverride = CheckpointOverride{}
 			_, err = f.investmentService.WriteOff(ctx, input)
 			require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 			require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
-			input.ReconciliationOverride = true
+			input.ReconciliationOverride = unboundOverride
 			result, err := f.investmentService.WriteOff(ctx, input)
 			require.NoError(t, err)
 			require.Equal(t, preview.Allocations, result.Allocations)

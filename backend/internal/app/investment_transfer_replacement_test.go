@@ -211,7 +211,7 @@ func TestReplaceTransferLateReconciliationRefusalRollsBackEverything(t *testing.
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = acknowledgedReplaceTransfer(ctx, f.investmentService, input)
 	require.NoError(t, err)
 	assert.Equal(t, "1", positionQuantity(t, f, f.holdingAccountID, f.stockCommodityID))

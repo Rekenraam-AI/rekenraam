@@ -50,7 +50,7 @@ func TestReplacementWriterRollsBackLateFailure(t *testing.T) {
 			}
 			beforeCounts := counts()
 			buyReplacement := ReplaceInvestmentBuyInput{
-				OwnerUserID: f.ownerUserID, TransactionID: target.ID, Reason: "correct acquisition", ReconciliationOverride: true,
+				OwnerUserID: f.ownerUserID, TransactionID: target.ID, Reason: "correct acquisition", ReconciliationOverride: unboundOverride,
 				Replacement: InvestmentTradeInput{TransactionDate: target.TransactionDate,
 					HoldingAccountID: f.holdingAccountID, CommodityID: f.stockCommodityID,
 					CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
@@ -63,7 +63,7 @@ func TestReplacementWriterRollsBackLateFailure(t *testing.T) {
 			// correction nets to zero in cash (T-120 #135).
 			corrected.CashAmountValue = 12000
 			saleReplacement := ReplaceInvestmentSaleInput{
-				OwnerUserID: f.ownerUserID, TransactionID: target.ID, Reason: "correct disposal", ReconciliationOverride: true,
+				OwnerUserID: f.ownerUserID, TransactionID: target.ID, Reason: "correct disposal", ReconciliationOverride: unboundOverride,
 				Replacement: corrected,
 			}
 			// Review the gain changes before forcing a failure: the preview runs

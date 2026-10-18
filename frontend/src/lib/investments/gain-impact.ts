@@ -90,11 +90,23 @@ export function gainAcknowledgement(impact: GainImpact | null | undefined): stri
   return hasGainChanges(impact) ? impact.acknowledgement : '';
 }
 
-/** The server recomputed the change set at commit and it differs from what
- * the user accepted (or was never accepted): preview again, do not dead-end. */
-export function isGainAcknowledgementRefusal(error: unknown): boolean {
+/** The server recomputed the gain change set or the checkpoint set at commit
+ * and it differs from what the user accepted (or was never accepted): preview
+ * again and show the current impact, do not dead-end (T-126, #304). */
+export function isStaleImpactRefusal(error: unknown): boolean {
   return error instanceof APIClientError && (
     error.code === 'INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED' ||
-    error.code === 'INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE'
+    error.code === 'INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE' ||
+    error.code === 'RECONCILIATION_IMPACT_STALE'
   );
+}
+
+/** The override fields that acknowledge exactly the checkpoints the preview
+ * named; none when it named none, so no override is sent (#304). */
+export type ReviewedCheckpoints = readonly { checkpoint_id: number }[];
+
+export function checkpointOverride(impacts: ReviewedCheckpoints) {
+  return impacts.length > 0
+    ? { reconciliation_override: true, reconciliation_override_checkpoint_ids: impacts.map((impact) => impact.checkpoint_id) }
+    : {};
 }

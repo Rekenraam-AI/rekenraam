@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import type { GainImpactChange } from '#lib/api/investments.ts';
 import { APIClientError } from '#lib/api/client.ts';
 import {
+  checkpointOverride,
   gainAcknowledgement,
   gainImpactCurrency,
   gainImpactRows,
   hasGainChanges,
   impactNeedsReview,
-  isGainAcknowledgementRefusal
+  isStaleImpactRefusal
 } from './gain-impact';
 
 function state(gain: string | null, date = '2026-03-01'): GainImpactChange['before'] {
@@ -96,11 +97,19 @@ describe('impact review helpers', () => {
     expect(gainAcknowledgement(undefined)).toBe('');
   });
 
-  it('recognises both gain refusals and nothing else', () => {
-    expect(isGainAcknowledgementRefusal(new APIClientError({ status: 409, code: 'INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE' }))).toBe(true);
-    expect(isGainAcknowledgementRefusal(new APIClientError({ status: 409, code: 'INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED' }))).toBe(true);
-    expect(isGainAcknowledgementRefusal(new APIClientError({ status: 409, code: 'CONFLICT' }))).toBe(false);
-    expect(isGainAcknowledgementRefusal(new Error('x'))).toBe(false);
+  it('recognises both gain refusals and a stale checkpoint set, and nothing else', () => {
+    expect(isStaleImpactRefusal(new APIClientError({ status: 409, code: 'INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE' }))).toBe(true);
+    expect(isStaleImpactRefusal(new APIClientError({ status: 409, code: 'INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED' }))).toBe(true);
+    expect(isStaleImpactRefusal(new APIClientError({ status: 409, code: 'RECONCILIATION_IMPACT_STALE' }))).toBe(true);
+    expect(isStaleImpactRefusal(new APIClientError({ status: 409, code: 'CONFLICT' }))).toBe(false);
+    expect(isStaleImpactRefusal(new Error('x'))).toBe(false);
+  });
+
+  it('binds an override to exactly the reviewed checkpoints and sends none without them (#304)', () => {
+    expect(checkpointOverride([{ checkpoint_id: 7 }, { checkpoint_id: 3 }])).toEqual({
+      reconciliation_override: true, reconciliation_override_checkpoint_ids: [7, 3]
+    });
+    expect(checkpointOverride([])).toEqual({});
   });
 
   it('keeps every digit for an unknown currency', () => {

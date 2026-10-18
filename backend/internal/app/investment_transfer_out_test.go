@@ -164,7 +164,7 @@ func TestExternalTransferOutIntoReconciledPeriodNeedsOverride(t *testing.T) {
 	_, err = f.investmentService.ExternalTransferOut(ctx, input)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 
-	input.ReconciliationOverride, input.ChangeReason = true, "broker statement shows the move"
+	input.ReconciliationOverride, input.ChangeReason = unboundOverride, "broker statement shows the move"
 	result, err := f.investmentService.ExternalTransferOut(ctx, input)
 	require.NoError(t, err)
 	assert.Contains(t, result.Transaction.InvalidatedCheckpointIDs, checkpointID)

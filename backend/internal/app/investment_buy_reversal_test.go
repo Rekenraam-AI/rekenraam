@@ -127,7 +127,7 @@ func TestReverseManualBuyRequiresReconciliationOverride(t *testing.T) {
 	_, err = acknowledgedReverseBuy(ctx, f.investmentService, input)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	require.Equal(t, []int64{checkpointID}, activeCheckpointIDs(t, f))
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = acknowledgedReverseBuy(ctx, f.investmentService, input)
 	require.NoError(t, err)
 	require.Empty(t, activeCheckpointIDs(t, f))

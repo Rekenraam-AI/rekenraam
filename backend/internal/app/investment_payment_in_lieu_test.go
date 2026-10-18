@@ -171,7 +171,7 @@ func TestReversePaymentInLieuRequiresReconciliationOverride(t *testing.T) {
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	require.Equal(t, []int64{checkpointID}, activeCheckpointIDs(t, f))
 
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	reversal, err := f.investmentService.ReversePaymentInLieu(ctx, input)
 	require.NoError(t, err)
 	require.Equal(t, payment.ID, *reversal.CorrectionOfTransactionID)
@@ -253,7 +253,7 @@ func TestPaymentInLieuReplacementRollsBackLateFailure(t *testing.T) {
 	require.NoError(t, err)
 	reconcileCash(t, f, "2026-04-30", 950)
 	input := ReplaceInvestmentPaymentInLieuInput{OwnerUserID: f.ownerUserID, TransactionID: payment.ID,
-		Reason: "wrong amount", ReconciliationOverride: true, Replacement: paymentInLieuInput(f, expense, 5500)}
+		Reason: "wrong amount", ReconciliationOverride: unboundOverride, Replacement: paymentInLieuInput(f, expense, 5500)}
 	before := buyReplacementPreviewSnapshot(t, f.database)
 	_, err = f.database.Exec(`CREATE TRIGGER reject_pil_checkpoint AFTER UPDATE ON reconciliation_checkpoints
 		WHEN NEW.status = 'invalidated' BEGIN SELECT RAISE(ABORT, 'forced checkpoint failure'); END`)

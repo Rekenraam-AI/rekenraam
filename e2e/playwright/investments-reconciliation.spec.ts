@@ -107,15 +107,40 @@ test('a backdated buy names the reconciliation it would invalidate, then proceed
 
   const before = await activeCheckpointCount(page, cash.id);
   expect(before).toBe(1);
+  const checkpoints = await apiJSON<{ checkpoints: Array<{ id: number; status: string }> }>(
+    page, 'GET', `/api/v1/accounts/${cash.id}/reconciliation-checkpoints`);
+  const checkpointID = checkpoints.checkpoints.find((checkpoint) => checkpoint.status === 'active')!.id;
+
+  // The override names the checkpoints the dialog showed (#304). The first
+  // one is answered as if another tab had finished a statement meanwhile:
+  // the form must preview again and show the set, not dead-end.
+  const reviewedSets: unknown[] = [];
+  await page.route('**/api/v1/investments/buy', async (route) => {
+    const body = route.request().postDataJSON();
+    if (body.reconciliation_override !== true) return route.continue();
+    reviewedSets.push(body.reconciliation_override_checkpoint_ids);
+    if (reviewedSets.length === 1) {
+      return route.fulfill({ status: 409, json: { error: { code: 'RECONCILIATION_IMPACT_STALE',
+        message: 'the checkpoints this write would invalidate changed after they were reviewed; review them again',
+        checkpoint_ids: [checkpointID] } } });
+    }
+    return route.continue();
+  });
 
   await page.getByRole('button', { name: 'Record buy' }).last().click();
   await expect(page.getByRole('alertdialog')).toBeVisible();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Proceed and invalidate' }).click();
+  await expect.poll(() => reviewedSets.length).toBe(1);
+  await expect(page.getByRole('alertdialog')).toContainText(cash.name);
+  expect(await activeCheckpointCount(page, cash.id)).toBe(1);
   await page.getByRole('alertdialog').getByRole('button', { name: 'Proceed and invalidate' }).click();
 
   // The trade lands, and the checkpoint it warned about is no longer claiming
   // the account is reconciled.
   await expect(page.getByRole('alertdialog')).toBeHidden();
   await expect.poll(() => activeCheckpointCount(page, cash.id)).toBe(0);
+  expect(reviewedSets).toEqual([[checkpointID], [checkpointID]]);
+  await page.unroute('**/api/v1/investments/buy');
 });
 
 /**

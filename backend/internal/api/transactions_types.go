@@ -424,3 +424,23 @@ func toAccountRegisterEntryResponses(entries []app.AccountRegisterEntry) []accou
 	}
 	return responses
 }
+
+// reconciliationOverrideFields is the override an investment or import write
+// request carries (#304). An override must name the checkpoint set the owner
+// reviewed (the action's preview), checked once at decode; the write refuses
+// a different set with 409 RECONCILIATION_IMPACT_STALE.
+type reconciliationOverrideFields struct {
+	ReconciliationOverride              bool    `json:"reconciliation_override"`
+	ReconciliationOverrideCheckpointIDs []int64 `json:"reconciliation_override_checkpoint_ids"`
+}
+
+// validateDecoded runs after decodeJSONBody fills a request that embeds these
+// fields, so no handler can accept an unbound browser override.
+func (f *reconciliationOverrideFields) validateDecoded() error {
+	_, err := reviewedOverride(f.ReconciliationOverride, f.ReconciliationOverrideCheckpointIDs)
+	return err
+}
+
+func (f reconciliationOverrideFields) checkpointOverride() app.CheckpointOverride {
+	return app.CheckpointOverride{Allowed: f.ReconciliationOverride, Reviewed: f.ReconciliationOverrideCheckpointIDs}
+}

@@ -13,7 +13,7 @@ type ReverseInvestmentBuyInput struct {
 	RequestID              string
 	TransactionID          int64
 	Reason                 string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	// GainImpactAcknowledgement echoes the preview token for the committed
 	// disposal gain changes the user accepted (T-126).
 	GainImpactAcknowledgement string
@@ -37,7 +37,7 @@ func (s *InvestmentService) ReverseBuy(ctx context.Context, input ReverseInvestm
 // ReverseBuyReconciliationImpact runs the actual reversal writer and its
 // dependent replay in a rolled-back transaction (T-126).
 func (s *InvestmentService) ReverseBuyReconciliationImpact(ctx context.Context, input ReverseInvestmentBuyInput) (ReconciliationImpact, error) {
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	operation, params, err := s.prepareBuyReversalWrite(ctx, input)
 	if err != nil {
 		return ReconciliationImpact{}, err

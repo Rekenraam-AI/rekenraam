@@ -43,7 +43,7 @@ type ReviewImportDividendInput struct {
 	OwnerUserID, AuthSessionID, BatchID, RowID, ExpectedTransactionVersionID int64
 	RequestID, Reason                                                        string
 	Resolution                                                               ImportRowResolution
-	ReconciliationOverride                                                   bool
+	ReconciliationOverride                                                   CheckpointOverride
 }
 
 type importDividendSource struct {
@@ -315,7 +315,7 @@ func (s *ImportService) writeReviewedPendingDividend(ctx context.Context, c impo
 	if err != nil {
 		return db.TransactionRecord{}, err
 	}
-	if len(impact.AffectedCheckpoints) > 0 && !input.ReconciliationOverride {
+	if len(impact.AffectedCheckpoints) > 0 && !input.ReconciliationOverride.Allowed {
 		return db.TransactionRecord{}, ErrReconciliationOverrideRequired
 	}
 	var instrumentID, commodityID int64
@@ -528,7 +528,7 @@ func (s *ImportService) ImportDividendReviewImpact(ctx context.Context, input Re
 		}
 		return s.investmentService.DividendReconciliationImpact(ctx, dividend)
 	}
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	p, err := s.prepareImportDividendRepair(ctx, c, input)
 	if err != nil {
 		return ReconciliationImpact{}, mapImportDividendReviewError(err)

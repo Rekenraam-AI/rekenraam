@@ -45,9 +45,9 @@ func TestReversalWriterRollsBackLateCheckpointFailure(t *testing.T) {
 			// Review the gain changes before the forced failure: the preview runs
 			// the same checkpoint invalidation, so it must happen first.
 			buyReversal := ReverseInvestmentBuyInput{OwnerUserID: f.ownerUserID, TransactionID: target.ID,
-				Reason: "reverse duplicate acquisition", ReconciliationOverride: true}
+				Reason: "reverse duplicate acquisition", ReconciliationOverride: unboundOverride}
 			saleReversal := ReverseInvestmentSaleInput{OwnerUserID: f.ownerUserID, TransactionID: target.ID,
-				Reason: "reverse erroneous disposal", ReconciliationOverride: true}
+				Reason: "reverse erroneous disposal", ReconciliationOverride: unboundOverride}
 			if kind == "buy" {
 				impact, err := f.investmentService.ReverseBuyReconciliationImpact(ctx, buyReversal)
 				require.NoError(t, err)

@@ -288,7 +288,7 @@ func TestReverseWriteOffRequiresReconciliationOverride(t *testing.T) {
 	assert.Equal(t, checkpointID, impact.AffectedCheckpoints[0].CheckpointID)
 	_, err = acknowledgedReverseWriteOff(ctx, f.investmentService, input)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = acknowledgedReverseWriteOff(ctx, f.investmentService, input)
 	require.NoError(t, err)
 	requireSelfCheckPasses(t, f)

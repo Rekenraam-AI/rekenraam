@@ -28,7 +28,7 @@ type ReplaceInvestmentWriteOffInput struct {
 	RequestID              string
 	TransactionID          int64
 	Reason                 string
-	ReconciliationOverride bool
+	ReconciliationOverride CheckpointOverride
 	// Replacement is the full corrected write-off. Its own Reason is why the
 	// holding is worthless; the correction Reason is why the record changed.
 	Replacement               InvestmentWriteOffInput

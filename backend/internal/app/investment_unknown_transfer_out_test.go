@@ -169,7 +169,7 @@ func TestReplayRefusesToChangeAKnownOutboundToUnknown(t *testing.T) {
 
 	before := buyReplacementPreviewSnapshot(t, f.database)
 	input := unknownTransferInInput(f, "2026-02-01", "")
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.ExternalTransferIn(ctx, input)
 	var dependency InvestmentBuyDependencyError
 	require.ErrorAs(t, err, &dependency)

@@ -66,7 +66,7 @@ func TestSalePreviewReportsEveryCheckpointCommitInvalidates(t *testing.T) {
 	_, err := f.investmentService.Sell(ctx, input)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	committed, err := f.investmentService.Sell(ctx, input)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []int64{first, second}, committed.Transaction.InvalidatedCheckpointIDs)

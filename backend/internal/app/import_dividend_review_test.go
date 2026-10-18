@@ -281,7 +281,7 @@ func TestImportedDividendRepairGrossTaxChangeRequiresReconciliationOverride(t *t
 	_, err = f.importService.ReviewImportDividend(ctx, input)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	require.Equal(t, before, csvIncomeDurableCount(t, f))
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	_, err = f.importService.ReviewImportDividend(ctx, input)
 	require.NoError(t, err)
 	require.Empty(t, activeCheckpointIDs(t, fixture))

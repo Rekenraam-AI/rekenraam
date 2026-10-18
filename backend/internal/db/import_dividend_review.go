@@ -155,7 +155,7 @@ func (r *ImportRepository) RepairImportDividend(ctx context.Context, p RepairImp
 			return TransactionRecord{}, err
 		}
 	}
-	record.InvalidatedCheckpointIDs, err = enforceCheckpointBoundaryTx(ctx, tx, checkpointBoundaryParams{BookID: j.BookID, Candidates: p.CheckpointCandidates, ReconciliationOverride: j.ReconciliationOverride, ActorUserID: j.ActorUserID, AuditEventID: auditID, OccurredAt: j.CreatedAt, Reason: j.ChangeReason})
+	record.InvalidatedCheckpointIDs, err = enforceCheckpointBoundaryTx(ctx, tx, checkpointBoundaryParams{BookID: j.BookID, Candidates: p.CheckpointCandidates, ReconciliationOverride: j.ReconciliationOverride, ReviewedCheckpointIDs: j.ReviewedCheckpointIDs, ActorUserID: j.ActorUserID, AuditEventID: auditID, OccurredAt: j.CreatedAt, Reason: j.ChangeReason})
 	if err != nil {
 		return TransactionRecord{}, err
 	}

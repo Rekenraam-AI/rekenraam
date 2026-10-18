@@ -82,7 +82,7 @@ func TestReinvestmentPreviewReplaysAndRollsBackReconciledHolding(t *testing.T) {
 	_, err = acknowledgedReinvestedDividend(ctx, f.investmentService, input)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
-	input.ReconciliationOverride = true
+	input.ReconciliationOverride = unboundOverride
 	result, err := acknowledgedReinvestedDividend(ctx, f.investmentService, input)
 	require.NoError(t, err)
 	require.Equal(t, []int64{checkpoints[0].ID}, result.Transaction.InvalidatedCheckpointIDs)

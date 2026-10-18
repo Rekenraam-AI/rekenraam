@@ -15,8 +15,14 @@
   import { parseCorrectionLotChoices } from '#lib/investments/trade-economics.ts';
   import { invalidateInvestmentReads } from '#lib/investments/invalidate.ts';
   import {
-    gainAcknowledgement, gainImpactCurrency, gainImpactRows, hasGainChanges,
-    impactNeedsReview, isGainAcknowledgementRefusal
+    gainAcknowledgement,
+    gainImpactCurrency,
+    gainImpactRows,
+    hasGainChanges,
+    impactNeedsReview,
+    isStaleImpactRefusal,
+    checkpointOverride,
+    type ReviewedCheckpoints
   } from '#lib/investments/gain-impact.ts';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
   import { coefficientSign, compareScaledAmounts } from '#lib/money/amount.ts';
@@ -163,21 +169,21 @@
     catch (error) { preview = null; formError = error; }
     finally { pending = false; }
   }
-  async function commit(override: boolean) {
+  async function commit(reviewed: ReviewedCheckpoints) {
     if (!preview || pending) return;
     pending = true;
     formError = undefined;
     const payload = preview.payload;
     try {
       await recordWriteOff({ ...payload,
-        ...(override ? { reconciliation_override: true } : {}),
+        ...checkpointOverride(reviewed),
         gain_impact_acknowledgement: gainAcknowledgement(gainImpact) || undefined
       }, csrfToken);
       await invalidateInvestmentReads(queryClient);
       dialog?.close();
       onSaved();
     } catch (error) {
-      if (isGainAcknowledgementRefusal(error)) {
+      if (isStaleImpactRefusal(error)) {
         try {
           await runPreview(payload);
           reviewing = !!preview && impactNeedsReview(preview.impact);
@@ -189,12 +195,12 @@
   function record() {
     if (!preview || pending) return;
     if (impactNeedsReview(preview.impact)) { gainRefreshed = false; reviewing = true; }
-    else void commit(false);
+    else void commit([]);
   }
   function confirm() {
     if (!preview || pending) return;
     reviewing = false;
-    void commit(preview.impact.affected_checkpoints.length > 0);
+    void commit(preview.impact.affected_checkpoints);
   }
 </script>
 

@@ -255,7 +255,7 @@ func TestSeparateWithholdingReconciliationPreviewGuardsCreate(t *testing.T) {
 	_, err = f.investmentService.Dividend(ctx, tax)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
-	tax.ReconciliationOverride = true
+	tax.ReconciliationOverride = unboundOverride
 	recorded, err := f.investmentService.Dividend(ctx, tax)
 	require.NoError(t, err)
 	require.NotZero(t, recorded.ID)
@@ -283,7 +283,7 @@ func TestSeparateWithholdingCorrectionRequiresReconciliationOverride(t *testing.
 	require.Equal(t, checkpoint, impact.AffectedCheckpoints[0].CheckpointID)
 	_, err = f.investmentService.ReplaceDividend(ctx, correction)
 	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
-	correction.ReconciliationOverride = true
+	correction.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.ReplaceDividend(ctx, correction)
 	require.NoError(t, err)
 	require.Equal(t, int64(-2000), accountBalance(t, f, f.cashAccountID))
