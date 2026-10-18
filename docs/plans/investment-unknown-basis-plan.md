@@ -463,6 +463,13 @@ refusal fences are superseded by that contract.
 Cash in lieu, write-off and return of capital now admit unresolved results
 under the separate #169 contract linked above.
 
+The #308 diagnostic audit verifies knowledge transitions and native restore
+without treating missing basis as corruption. The
+[portability diagnostic disposition](data-portability-plan.md#unresolved-investment-basis-diagnostic-acceptance-308)
+records the current failed/unavailable result, #272/#273's remaining acceptance
+and the separately scoped #313 status/coverage implementation. Quantity,
+historical allocation, bridge, provenance and replay checks remain active.
+
 Named #197 regressions: `TestSameBasisChangedEvidenceCorrectionPostsNoJournals`,
 `TestProvenanceCorrectionAdmitsExactScaledEqualityKnownZeroAndLegacy`,
 `TestProvenanceCorrectionPreservesDownstreamSalesTransfersAndCheckpoints`,

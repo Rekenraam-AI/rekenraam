@@ -150,19 +150,23 @@ below is execution order, not a chain of hard dependencies.
    Investment part 1 #272 has been executed
    ([evidence](reviews/investment-operations-1-audit-2026-10-18.md)); the
    operation matrix and exact-figure checks pass with no new financial defect.
-   Its final acceptance remains open: #308 (with #277) must distinguish
-   unresolved-basis diagnostics from corruption; #277 also assesses independent
-   bundle reconstruction; native restore with unchanged CSV re-export is verified.
+   Its final acceptance remains open: #308's diagnostic audit is complete
+   ([evidence](reviews/unresolved-basis-diagnostics-audit-2026-10-18.md)); #313
+   owns the required incomplete-status implementation. #277 also assesses
+   independent bundle reconstruction; native restore with unchanged CSV
+   re-export is verified.
    Investment part 2 #273 has been executed
    ([evidence](reviews/investment-operations-2-audit-2026-10-18.md)); its
    independent transfer/corporate-action/correction register and replay pass.
-   #307/#309/#310/#311/#312 are fixed. Its clean-self-check acceptance remains blocked by #308's
-   diagnostic disposition, as for #272.
+   #307/#309/#310/#311/#312 are fixed. Its clean-self-check acceptance remains
+   blocked by #313, as for #272. #308 verified exact knowledge transitions,
+   all six deliberate-damage controls and 24 native restore comparisons;
+   unknown projected basis still reports failed under the shipped contract.
    The other seven areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):
-   reports and R13 readiness #275, and recovery #277 (including #308);
+   reports and R13 readiness #275, and recovery #277 (using #308's evidence);
    then planning #276, prices and durable work #274; then frontend #278, deployment
    #279. Architecture/quality #280
    runs last, with the shared gates once at the candidate SHA.

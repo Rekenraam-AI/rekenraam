@@ -805,6 +805,36 @@ blocks a write. Synchronous execution is fine at personal-finance scale (one
 ordered scan of `posting_versions`); if a book ever exceeds a documented
 ceiling, it moves onto the work queue as a follow-up, not a redesign.
 
+### Unresolved investment basis diagnostic acceptance (#308)
+
+The [2026-10-18 audit](../reviews/unresolved-basis-diagnostics-audit-2026-10-18.md)
+verifies the current behavior through six financial lifecycles, deliberate
+damage controls and native restore. Supported unknown projected basis leaves
+basis reconciliation unavailable. It currently produces a failed
+`lot_reconciliation` result and failed overall run, even after quantity closes.
+Positive and sourced-known-zero resolutions pass; withdrawal restores the
+unavailable-basis finding. Immutable original unknown evidence stays unknown
+throughout. Missing information is not proof of financial corruption.
+
+This is an explicit **retained diagnostic limitation**, not an all-green
+acceptance result. An unknown-basis book does not satisfy #272/#273's literal
+clean-self-check requirement under the shipped status contract. #308 completes
+the audit and hands the required status/coverage implementation to
+[#313](https://github.com/sergeyfarin/rekenraam/issues/313); those original
+acceptance items remain open. #272 separately retains #277's bundle evidence
+requirement. No failed historical run is reinterpreted or rewritten here.
+
+The follow-up must specify a distinct incomplete outcome for supported
+unavailable basis, separate its coverage/counts from integrity findings, and
+carry the same meaning through storage, aggregate status, API, UI and scheduled
+runs. This is a proposed implementation requirement, not a delivered enum.
+`not_applicable` and `errored` retain their existing meanings. Any real
+quantity, allocation, link, bridge, provenance or replay failure must remain
+failed beside unknown basis, including superseded evidence. No blanket
+unknown-lot exemption, skipped whole position, zero substitution or automatic
+financial repair is acceptable. In particular, replay must still detect a
+known peer's damaged basis when aggregate position basis is unavailable.
+
 ## Attachments hook (designed, empty — decided 2026-08-05)
 
 R14a will put files under `ATTACHMENTS_DIR`, outside SQLite, where `VACUUM
