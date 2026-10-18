@@ -1712,6 +1712,45 @@ func TestDrillDownFilters(t *testing.T) {
 	require.Len(t, juneIncome.Transactions, 1)
 	assert.Equal(t, straddling.ID, juneIncome.Transactions[0].ID)
 
+	// A posted-on split with two accounts (#187, #298): checking pays 60.00 on
+	// the transaction date and the card 40.00 two days later. Groceries stays
+	// on the transaction date with checking and a transfer_clearing bridge, so
+	// the report counts the whole 100.00 as spent from checking and none from
+	// the card, whose entry holds no category. The one-account drill-down has
+	// to list the same set.
+	mutateAccount(t, handler, sessionCookie, csrfToken, http.MethodPost, "/api/v1/setup/system-accounts", http.StatusCreated)
+	card := createLedgerAccount(t, handler, sessionCookie, csrfToken, "Card", "liability", "credit_card", commodityID, 2)
+	split := createTransactionForSession(t, handler, sessionCookie, csrfToken, `{
+		"transaction_date":"2026-07-01",
+		"journal_entries":[{"entry_date":"2026-07-01","postings":[
+			{"account_id":`+strconvFormatInt(checking.ID)+`,"commodity_id":`+strconvFormatInt(commodityID)+`,"quantity_value":"-6000","quantity_scale":2},
+			{"account_id":`+strconvFormatInt(card.ID)+`,"commodity_id":`+strconvFormatInt(commodityID)+`,"quantity_value":"-4000","quantity_scale":2,"posted_on":"2026-07-03"},
+			`+posting(groceries.ID, 10000, 2, commodityID)+`]}]
+	}`, http.StatusCreated)
+	require.Len(t, split.JournalEntries, 2, "one dated entry per posting day")
+	julyRange := "?after_date=2026-07-01&before_date=2026-07-31"
+	julyGroceries := func(accountID int64) ([]int64, []spendingGroupResponse) {
+		t.Helper()
+		listed := listTransactionsForSession(t, handler, sessionCookie, julyRange+"&date_basis=entry&status=posted&category_id="+strconvFormatInt(groceries.ID)+"&account_id="+strconvFormatInt(accountID))
+		ids := make([]int64, 0, len(listed.Transactions))
+		for _, tx := range listed.Transactions {
+			ids = append(ids, tx.ID)
+		}
+		report := readSpendingForSession(t, handler, sessionCookie, "?start_date=2026-07-01&end_date=2026-07-31&group_by=category&account_id="+strconvFormatInt(accountID))
+		return ids, report.Groups
+	}
+	checkingIDs, checkingGroups := julyGroceries(checking.ID)
+	require.Len(t, checkingGroups, 1, "the report counts the split under checking")
+	require.NotNil(t, checkingGroups[0].CategoryID)
+	assert.Equal(t, groceries.ID, *checkingGroups[0].CategoryID)
+	require.Len(t, checkingGroups[0].Totals, 1)
+	assert.Equal(t, commodityID, checkingGroups[0].Totals[0].CommodityID)
+	assert.Equal(t, "10000/2", checkingGroups[0].Totals[0].QuantityValue.String()+"/"+strconvFormatInt(int64(checkingGroups[0].Totals[0].QuantityScale)), "the whole 100.00")
+	assert.Equal(t, []int64{split.ID}, checkingIDs, "the drill-down lists it under checking")
+	cardIDs, cardGroups := julyGroceries(card.ID)
+	assert.Empty(t, cardGroups, "the report counts nothing under the card")
+	assert.Empty(t, cardIDs, "so the drill-down lists nothing under the card")
+
 	// Invalid values are refused rather than silently ignored.
 	assertListTransactionsStatus(t, handler, sessionCookie, "?date_basis=nonsense", http.StatusBadRequest)
 	assertListTransactionsStatus(t, handler, sessionCookie, "?category_type=asset", http.StatusBadRequest)

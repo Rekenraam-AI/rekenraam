@@ -8349,7 +8349,7 @@ export interface paths {
                     before_date?: string;
                     /** @description Filter to transactions with a posting to an income or expense category, matching the direction a spending report was run in. The class is read from the account version in effect on the posting's entry date. */
                     category_type?: "income" | "expense";
-                    /** @description Which date after_date/before_date apply to. `transaction` (the default) uses the transaction's own date. `entry` uses journal-entry dates, the basis the reports sum on, and requires one entry to satisfy the range together with category_id and category_type — so a drill-down from a spending row lists exactly that row's transactions. */
+                    /** @description Which date after_date/before_date apply to. `transaction` (the default) uses the transaction's own date. `entry` uses journal-entry dates, the basis the reports sum on, and requires one entry to satisfy the range together with category_id, category_type, account_id (some posting of that entry is on the account) and commodity_id — so a drill-down from a spending row lists exactly that row's transactions. */
                     date_basis?: "transaction" | "entry";
                     limit?: number;
                     cursor?: string;

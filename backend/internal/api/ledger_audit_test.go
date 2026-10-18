@@ -181,14 +181,30 @@ func TestLedgerAuditJourneyBalancesOnBothDateAxesThroughLifecycleAndReReconcilia
 
 	// Transaction-date axis: a range on the 7th by transaction date holds the
 	// whole transfer, savings' leg included, although that leg posts on the
-	// 9th. (The entry-date list does not yet pin account_id to the matching
-	// entry: #298.)
+	// 9th.
 	var byTransactionDate transactionsResponse
 	c.json(http.MethodGet, "/api/v1/transactions?after_date=2026-05-07&before_date=2026-05-07&account_id="+strconvFormatInt(savings.ID), "", http.StatusOK, &byTransactionDate)
 	require.Len(t, byTransactionDate.Transactions, 1, "savings' leg belongs to the 7th by transaction date")
 	assert.Equal(t, transfer.ID, byTransactionDate.Transactions[0].ID)
 	require.Len(t, transfer.JournalEntries, 2, "one dated entry per posting day")
 	assert.Equal(t, []string{"2026-05-07", "2026-05-09"}, []string{transfer.JournalEntries[0].EntryDate, transfer.JournalEntries[1].EntryDate})
+
+	// Entry-date axis: account_id is matched inside the entry that matches the
+	// range (#298). Savings has no posting dated the 7th; its leg is the 9th's.
+	entryDay := func(day string, accountID int64) []int64 {
+		t.Helper()
+		var listed transactionsResponse
+		c.json(http.MethodGet, "/api/v1/transactions?after_date="+day+"&before_date="+day+"&date_basis=entry&account_id="+strconvFormatInt(accountID), "", http.StatusOK, &listed)
+		ids := make([]int64, 0, len(listed.Transactions))
+		for _, listedTransaction := range listed.Transactions {
+			ids = append(ids, listedTransaction.ID)
+		}
+		return ids
+	}
+	assert.Empty(t, entryDay("2026-05-07", savings.ID), "savings posts nothing on the 7th")
+	assert.Equal(t, []int64{transfer.ID}, entryDay("2026-05-09", savings.ID), "savings' leg posts on the 9th")
+	assert.Equal(t, []int64{transfer.ID}, entryDay("2026-05-07", checking.ID), "checking's leg posts on the 7th")
+	assert.Empty(t, entryDay("2026-05-09", checking.ID), "checking posts nothing on the 9th")
 
 	// T7 and T8 on the 10th: coffee 4.50, then the card payment 120.00.
 	coffee := createTransactionForSession(t, handler, cookie, csrf, balancedBody("2026-05-10",

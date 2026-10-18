@@ -52,7 +52,7 @@ the findings.
 |---|---|---|
 | Generic ledger writes are not bound to what the owner reviewed. A stale form's save overwrites a newer amount, and an override invalidates checkpoints the preview never named | P2, [#296](https://github.com/sergeyfarin/rekenraam/issues/296). (1) Tab B edits 10.00 → 20.00 (`200`). Tab A saves a description-only change from its stale form: `200`, and the balance returns from −20.00 to −10.00. (2) The edit preview names `[1]`. A later statement is then finished, and the override write answers `invalidated_checkpoint_ids: [1, 2]`. `PATCH /transactions/{id}` takes no client version, and `reconciliation_override` is a boolean | **Confirmed defect**, filed; **fixed** 2026-10-17: the edit requires `expected_version_id` and an override names its reviewed checkpoint ids (`RECONCILIATION_IMPACT_STALE`). The in-request seam is closed (T-94). The guard always runs on the current version, so a reconciled posting is never changed silently. Only an unreconciled amount can be lost, and only a later checkpoint can be invalidated unseen |
 | A financial edit keeps the posting's `reconciled` status and `cleared_on` | P3, [#297](https://github.com/sergeyfarin/rekenraam/issues/297). Probe: after an override edit of a reconciled 10.00 posting to 15.00, the new version shows `reconciled` with the old `cleared_on 2026-05-12`. Journey: the edited 92.40 posting is offered `reconciled` and preselected in the next session. `cleanPosting` carries the status by line key whatever changed | **Confirmed defect**, filed; **fixed** 2026-10-18: a write that changes a line's account, commodity, amount, scale or posting date resets it to `uncleared` with no `cleared_on`; metadata-only edits keep the status (conventions, re-reconciliation). The checkpoint is invalidated as required, so nothing is locked. Only the trust claim on the edited row was wrong |
-| On the entry-date basis, the transaction list matches `account_id` in any entry, not the entry that matched the date | P3, [#298](https://github.com/sergeyfarin/rekenraam/issues/298). `?after_date=2026-05-07&before_date=2026-05-07&date_basis=entry&account_id={savings}` returns the transfer, although savings posts on the 9th. `matchingEntryClause` pins category filters only | **Confirmed defect**, filed. A list shows an extra row. No balance or report total changes |
+| On the entry-date basis, the transaction list matches `account_id` in any entry, not the entry that matched the date | P3, [#298](https://github.com/sergeyfarin/rekenraam/issues/298). `?after_date=2026-05-07&before_date=2026-05-07&date_basis=entry&account_id={savings}` returns the transfer, although savings posts on the 9th. `matchingEntryClause` pins category filters only | **Confirmed defect**, filed; **fixed** 2026-10-18: `matchingEntryClause` also pins `account_id` and `commodity_id` to the matching entry. A posted-on split lists under the account posted with its category entry, as the report counts it. No balance or report total changed |
 | The override-required refusal uses the generic `409 CONFLICT` code | `ErrReconciliationOverrideRequired` → `CONFLICT` (`api/transactions_errors.go`). The stale refusals have their own codes (`TRANSACTION_VERSION_STALE`, `RECONCILIATION_START_STALE`) | **Verified behavior**, recorded. The browser flows rely on the endpoint having no other conflict (see maintainability notes) |
 | `docs/implemented.md` said the T-94 version guard means "a prepared edit cannot land on top of someone else's newer" version | True within one request only (#296) | **Corrected** in the same change. The reports drill-down row now names #298 as a known limit |
 
@@ -64,7 +64,7 @@ the findings.
 |---|---|---|---|
 | Opening balance, salary, expense, refund, three-way card split | Checking 1000 + 2500 − 82.40 + 12.40 = **3430.00**. Card **−120.00**. Groceries 82.40 − 12.40 + 45 + 25 = **140.00**. Dining **50.00** | Journey test: all exact | Verified |
 | Same-currency transfer, transaction date 05-07, savings leg `posted_on` 05-09 | On the 7th and 8th: checking **2930.00**, savings **0**, `transfer_clearing` **500.00**. On the 9th: savings **500.00**, clearing **0** | Journey test: all exact. The response holds two entries, 05-07 and 05-09 | Verified |
-| Transaction-date axis | A transaction-date range on the 7th, filtered to savings, holds the transfer | Journey test: one row, the transfer | Verified. The entry-date list over-matches (#298) |
+| Transaction-date axis | A transaction-date range on the 7th, filtered to savings, holds the transfer | Journey test: one row, the transfer | Verified. The entry-date list over-matched until #298 was fixed |
 | Cross-currency transfer (reference book T11): 2500.00 EUR on the 26th, 2750.00 USD on the 28th | 2750.00 USD in `transfer_clearing` on the 27th, 0 on the 28th. Commodity-trading legs stay on the transaction date | `TestReferenceBookProducesItsRegister`: all 24 balance figures exact, including the in-transit rows | Verified |
 | Register running balance matches the as-of balance | After the reorder: payment row **2810.00**, then coffee **2805.50**. Day-end balance **2805.50** | Journey test: exact | Verified |
 
@@ -174,8 +174,9 @@ before the write transaction, and where they are rechecked.
   amount change would break it silently.
 - **Two filter builders for the transaction list.** The account and commodity
   filters live in the shared `where` list, the entry-basis category filters in
-  `matchingEntryClause` (`backend/internal/db/transactions_read.go`). #298 is
-  the divergence.
+  `matchingEntryClause` (`backend/internal/db/transactions_read.go`). #298 was
+  the divergence; on the entry basis all of them now live in
+  `matchingEntryClause`.
 - **Three reorder writers compute boundary crossing separately.**
   `MovePosting` (`db/transactions_move.go`) and `PlaceTransaction`
   (`db/transactions_reorder.go`) each work out the crossed same-day checkpoints

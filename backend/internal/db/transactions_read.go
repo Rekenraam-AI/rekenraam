@@ -50,7 +50,9 @@ func (r *TransactionRepository) ListTransactions(ctx context.Context, params Lis
 		where = append(where, "tv.payee_id = ?")
 		args = append(args, params.PayeeID)
 	}
-	if params.AccountID > 0 {
+	// On the entry-date basis the account and commodity filters move into
+	// matchingEntryClause, which pins them to the entry that matches the range.
+	if params.AccountID > 0 && !params.EntryDateBasis {
 		where = append(where, `EXISTS (
 			SELECT 1
 			FROM journal_entries account_je
@@ -60,21 +62,13 @@ func (r *TransactionRepository) ListTransactions(ctx context.Context, params Lis
 		)`)
 		args = append(args, params.AccountID)
 	}
-	if params.CommodityID > 0 {
+	if params.CommodityID > 0 && !params.EntryDateBasis {
 		where = append(where, `(EXISTS (
 			SELECT 1
 			FROM posting_versions commodity_pv
 			WHERE commodity_pv.transaction_version_id = tv.id
 				AND commodity_pv.commodity_id = ?
-		) OR EXISTS (
-			SELECT 1 FROM investment_operation_journal_links link
-			JOIN investment_operations operation ON operation.id = link.operation_id
-			JOIN investment_dividend_facts dividend ON dividend.operation_id =
-				CASE WHEN link.role = 'reversal' THEN operation.correction_of_operation_id ELSE operation.id END
-			JOIN transaction_versions linked ON linked.id = link.transaction_version_id
-			WHERE dividend.book_id = t.book_id AND dividend.commodity_id = ?
-				AND linked.transaction_id = t.id AND link.role IN ('primary', 'reversal')
-		))`)
+		) OR `+dividendCommodityClause+`)`)
 		args = append(args, params.CommodityID, params.CommodityID)
 	}
 	if params.NeedsReview {
@@ -905,10 +899,29 @@ func DecodeDeletionCursor(cursor string) (deletedAt string, id int64, err error)
 	return ts, txID, nil
 }
 
+// dividendCommodityClause matches a transaction linked to a dividend of the
+// security, whose cash postings carry no posting in that commodity. It reads
+// the transaction, not an entry, so it takes the commodity id as its one arg.
+const dividendCommodityClause = `EXISTS (
+			SELECT 1 FROM investment_operation_journal_links link
+			JOIN investment_operations operation ON operation.id = link.operation_id
+			JOIN investment_dividend_facts dividend ON dividend.operation_id =
+				CASE WHEN link.role = 'reversal' THEN operation.correction_of_operation_id ELSE operation.id END
+			JOIN transaction_versions linked ON linked.id = link.transaction_version_id
+			WHERE dividend.book_id = t.book_id AND dividend.commodity_id = ?
+				AND linked.transaction_id = t.id AND link.role IN ('primary', 'reversal')
+		)`
+
 // matchingEntryClause requires one journal entry of the transaction to satisfy
-// every entry-scoped filter at once: the date range, the category account, and
-// the category direction. It exists so a drill-down from a spending row lists
-// exactly the transactions that row was built from.
+// every entry-scoped filter at once: the date range, the category account, the
+// category direction, the account and the commodity. It exists so a drill-down
+// from a spending row lists exactly the transactions that row was built from.
+//
+// The account is matched as the spending report's counterpart filter is: some
+// posting of the matching entry is on that account (#298). So a transfer whose
+// savings leg posts two days later is not a savings row on the earlier day, and
+// a posted-on split whose category stays on the transaction date (#187) lists
+// under the account posting in that entry, exactly as the report counts it.
 func matchingEntryClause(params ListTransactionsParams) (string, []any) {
 	conditions := []string{"range_je.transaction_version_id = tv.id"}
 	args := []any{}
@@ -949,6 +962,24 @@ func matchingEntryClause(params ListTransactionsParams) (string, []any) {
 					AND type_av.account_kind = type_av.account_class
 			)`)
 		args = append(args, params.CategoryType)
+	}
+	if params.AccountID > 0 {
+		conditions = append(conditions, `EXISTS (
+				SELECT 1
+				FROM posting_versions account_pv
+				WHERE account_pv.journal_entry_id = range_je.id
+					AND account_pv.account_id = ?
+			)`)
+		args = append(args, params.AccountID)
+	}
+	if params.CommodityID > 0 {
+		conditions = append(conditions, `(EXISTS (
+				SELECT 1
+				FROM posting_versions commodity_pv
+				WHERE commodity_pv.journal_entry_id = range_je.id
+					AND commodity_pv.commodity_id = ?
+			) OR `+dividendCommodityClause+`)`)
+		args = append(args, params.CommodityID, params.CommodityID)
 	}
 
 	return `EXISTS (
