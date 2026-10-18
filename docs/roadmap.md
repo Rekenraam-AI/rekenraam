@@ -154,8 +154,9 @@ below is execution order, not a chain of hard dependencies.
    ([evidence](reviews/unresolved-basis-diagnostics-audit-2026-10-18.md)) and
    #313 shipped its incomplete self-check outcome, so supported unknown basis
    is now disclosed as incomplete coverage rather than a failure. Its
-   remaining bundle acceptance is met by #277's independent reconstruction;
-   native restore with unchanged CSV re-export is verified.
+   bundle acceptance is met by #277's independent reconstruction, and #272 is
+   closed: the literal import round trip is retired (no importer exists),
+   replaced by figure reconstruction plus the exact native-backup round trip.
    Investment part 2 #273 is complete
    ([evidence](reviews/investment-operations-2-audit-2026-10-18.md)); its
    independent transfer/corporate-action/correction register and replay pass,
