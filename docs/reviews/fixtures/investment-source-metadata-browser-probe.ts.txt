@@ -1,0 +1,37 @@
+// Append to e2e/playwright/investments-spin-off.spec.ts for the #273/#311
+// reproduction. It reuses that spec's setup and date helpers. This is a
+// desired-behavior probe, not a passing regression while #311 is open.
+test('audit: a correction preserves exact unedited source metadata', async ({ page }) => {
+  const s = await setup(page);
+  await s.buy(40, '10', '10000');
+  const session = await apiJSON<{ csrf_token: string }>(page, 'GET', '/api/v1/auth/session');
+  const raw = JSON.stringify({
+    effective_on: daysFromTodayISO(-10), holding_account_id: s.parent.holdingID,
+    destination_holding_account_id: s.spun.holdingID, commodity_id: s.parent.commodity_id,
+    destination_commodity_id: s.spun.commodity_id, ratio_numerator: 1, ratio_denominator: 1,
+    basis_fraction_value: '1', basis_fraction_scale: 1,
+    source_evidence: { reference: 'issuer notice', revision: 'EXACT_NUMBER_TOKEN' }
+  }).replace('"EXACT_NUMBER_TOKEN"', '9007199254740993');
+  const created = await page.evaluate(async ({ raw, token }) => {
+    const response = await fetch('/api/v1/investments/spin-offs', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token }, body: raw
+    });
+    return { status: response.status, text: await response.text() };
+  }, { raw, token: session.csrf_token });
+  expect(created.status).toBe(201);
+  const transactionID = JSON.parse(created.text).transaction.id;
+  await page.goto(`/app/transactions?transaction_id=${transactionID}`);
+  await page.getByRole('group', { name: 'Spin-off' }).getByRole('button', { name: 'Correct spin-off…' }).click();
+  const form = page.getByRole('dialog', { name: 'Correct this spin-off' });
+  await form.getByLabel('Reason for correction').fill('issuer corrected the allocation to 20 percent');
+  await form.getByLabel('Cost basis moved to the new instrument').fill('20');
+  await form.getByRole('button', { name: 'Preview spin-off' }).click();
+  await expect(form.getByRole('region', { name: 'Spin-off preview' })).toBeVisible();
+  await form.getByRole('button', { name: 'Correct spin-off' }).click();
+  await expect(form).toBeHidden();
+  const chainText = await page.evaluate(async (id) =>
+    (await fetch(`/api/v1/investments/transactions/${id}/correction-chain`)).text(), transactionID);
+  // Read the original response text, never a rounded JavaScript number.
+  expect(chainText).toContain('"revision":9007199254740993');
+  expect(chainText).not.toContain('"revision":9007199254740992');
+});
