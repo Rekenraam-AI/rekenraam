@@ -579,9 +579,11 @@ non-trivial diff (yours or reviewed):
     its identical successor before completing, so active deduplication returned
     the running item and completion lost the remaining horizon (#314). Complete
     and enqueue atomically, with lease fencing and rollback; exercise more than
-    two chunks (`TestFXCoverageWorkerFinishesEveryContinuationChunk`). A skipped
-    publication date can still starve the horizon (#315); it needs distinct
-    progress evidence rather than a fabricated observation.
+    two chunks (`TestFXCoverageWorkerFinishesEveryContinuationChunk`). #315
+    also fixes starvation at missing publication dates: persist scan progress
+    separately from observations, retry failed dates independently, count every
+    attempt against the budget, and test fresh posting demand while a cursor
+    is queued (`TestFXCoverageFreshDemandRevisitsLatePublicationAndEarlierDates`).
 
 51. **Transport errors copying operator secrets into history** — Go HTTP
     errors render the full request URL, including Open Exchange Rates' app_id

@@ -8,6 +8,13 @@ owner decisions; partial states are exposed through real APIs and mobile UI.
 This is bounded evidence, not certification of every possible interleaving or
 live provider payload.
 
+**Follow-up resolution:** #315 is fixed locally by the
+[FX progress delivery](fx-coverage-progress-fix-2026-10-18.md). The findings
+and results below retain the audit-time state. The retained text probe was
+promoted into `TestFXCoverageWorkerHolidayDoesNotStarveLaterPublicationDates`
+in the normal app suite; the old copy/run instructions apply to the recorded
+audit baseline, where that test was not yet part of the normal suite.
+
 ## Baseline and method
 
 - Baseline: `10a03db733385faea10bf18660b743db35217741`; clean working tree.

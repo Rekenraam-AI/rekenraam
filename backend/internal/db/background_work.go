@@ -60,12 +60,16 @@ func (r *BackgroundWorkRepository) EnqueueBackgroundWork(ctx context.Context, bo
 // the transactional-outbox rule from ADR 0010, and the fix for the
 // guard-then-create race that stranded imports (T-14).
 func EnqueueBackgroundWorkTx(ctx context.Context, tx *sql.Tx, bookID int64, kind string, payloadJSON string, availableAt string) (BackgroundWorkItemRecord, error) {
+	return enqueueBackgroundWorkAtTx(ctx, tx, bookID, kind, payloadJSON, availableAt, availableAt)
+}
+
+func enqueueBackgroundWorkAtTx(ctx context.Context, tx *sql.Tx, bookID int64, kind, payloadJSON, availableAt, createdAt string) (BackgroundWorkItemRecord, error) {
 	result, err := tx.ExecContext(ctx, `
 		INSERT INTO background_work_items (
 			book_id, kind, payload_json, available_at, created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT(book_id, kind, payload_json) WHERE status IN ('pending', 'running') DO NOTHING
-	`, bookID, kind, payloadJSON, availableAt, availableAt, availableAt)
+	`, bookID, kind, payloadJSON, availableAt, createdAt, createdAt)
 	if err != nil {
 		return BackgroundWorkItemRecord{}, fmt.Errorf("enqueue background work: %w", err)
 	}
@@ -185,6 +189,21 @@ func (r *BackgroundWorkRepository) CompleteBackgroundWork(ctx context.Context, i
 // have exactly the same payload as the running item (#314). A crash or failed
 // enqueue must leave the original lease reclaimable, never lose the horizon.
 func (r *BackgroundWorkRepository) CompleteBackgroundWorkAndEnqueue(ctx context.Context, id int64, leaseOwner, now, payloadJSON string) error {
+	return r.CompleteBackgroundWorkWithSuccessors(ctx, id, leaseOwner, now, []BackgroundWorkSuccessor{{PayloadJSON: payloadJSON, AvailableAt: now}})
+}
+
+// BackgroundWorkSuccessor preserves independent retries beside scan progress.
+// Attempts includes any failed attempt already performed by the parent scan.
+type BackgroundWorkSuccessor struct {
+	PayloadJSON string
+	AvailableAt string
+	Attempts    int
+}
+
+// CompleteBackgroundWorkWithSuccessors commits completion and all follow-up
+// work together. Successors use the parent's book and kind. Active duplicates
+// retain their lease/backoff and never have their attempt count reset.
+func (r *BackgroundWorkRepository) CompleteBackgroundWorkWithSuccessors(ctx context.Context, id int64, leaseOwner, now string, successors []BackgroundWorkSuccessor) error {
 	tx, err := r.database.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin background work continuation: %w", err)
@@ -206,8 +225,16 @@ func (r *BackgroundWorkRepository) CompleteBackgroundWorkAndEnqueue(ctx context.
 	if err := requireOneBackgroundWorkRow(result); err != nil {
 		return err
 	}
-	if _, err := EnqueueBackgroundWorkTx(ctx, tx, item.BookID, item.Kind, payloadJSON, now); err != nil {
-		return err
+	for _, successor := range successors {
+		next, err := enqueueBackgroundWorkAtTx(ctx, tx, item.BookID, item.Kind, successor.PayloadJSON, successor.AvailableAt, now)
+		if err != nil {
+			return err
+		}
+		if successor.Attempts > next.Attempts {
+			if _, err := tx.ExecContext(ctx, `UPDATE background_work_items SET attempts = MAX(attempts, ?) WHERE id = ?`, successor.Attempts, next.ID); err != nil {
+				return fmt.Errorf("preserve background work attempts: %w", err)
+			}
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit background work continuation: %w", err)

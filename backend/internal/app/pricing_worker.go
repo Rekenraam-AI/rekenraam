@@ -25,9 +25,20 @@ const fxCoverageWorkKind = "pricing.fx_coverage"
 const maxFXCoverageAttempts = 8
 
 type fxCoverageWorkPayload struct {
-	Reason     string `json:"reason"`
-	StartDate  string `json:"start_date"`
-	CurrencyID int64  `json:"currency_id,omitempty"`
+	Reason      string            `json:"reason"`
+	StartDate   string            `json:"start_date"`
+	CurrencyID  int64             `json:"currency_id,omitempty"`
+	ThroughDate string            `json:"through_date,omitempty"`
+	Next        *fxCoverageCursor `json:"next,omitempty"`
+	Retry       *fxCoverageCursor `json:"retry,omitempty"`
+}
+
+// Cursor identity is independent of map iteration and of observation existence:
+// a successful earlier-date response is visited without inventing a fixing.
+type fxCoverageCursor struct {
+	BaseID  int64  `json:"base_commodity_id"`
+	QuoteID int64  `json:"quote_commodity_id"`
+	Date    string `json:"date"`
 }
 
 func (s *PricingService) StartBackgroundWorker(ctx context.Context, logger *slog.Logger) <-chan struct{} {
@@ -104,16 +115,19 @@ func (s *PricingService) processFXCoverageWork(ctx context.Context, logger *slog
 			return
 		}
 	}
+	if !validFXCoverageProgress(payload) {
+		_ = s.repository.FailBackgroundWork(ctx, item.ID, workerID, s.now().UTC().Format(time.RFC3339), "invalid FX coverage progress")
+		return
+	}
 	var err error
 	ownerID, err := s.repository.CurrentBookOwnerID(ctx, item.BookID)
 	if err == nil {
-		var hasMore bool
-		_, hasMore, err = s.runFXCoverage(ctx, ownerID, payload.CurrencyID, payload.StartDate, backgroundRunTrigger(payload.Reason))
+		var successors []db.BackgroundWorkSuccessor
+		_, successors, err = s.runFXCoverage(ctx, ownerID, payload)
 		if err == nil {
 			now := s.now().UTC().Format(time.RFC3339)
-			if hasMore {
-				continuation, _ := json.Marshal(fxCoverageWorkPayload{Reason: "continuation", StartDate: payload.StartDate, CurrencyID: payload.CurrencyID})
-				err = s.repository.CompleteBackgroundWorkAndEnqueue(ctx, item.ID, workerID, now, string(continuation))
+			if len(successors) > 0 {
+				err = s.repository.CompleteBackgroundWorkWithSuccessors(ctx, item.ID, workerID, now, successors)
 			} else {
 				err = s.repository.CompleteBackgroundWork(ctx, item.ID, workerID, now)
 			}
@@ -137,6 +151,29 @@ func (s *PricingService) processFXCoverageWork(ctx context.Context, logger *slog
 		return
 	}
 	logger.WarnContext(ctx, "FX coverage will retry", slog.Int64("work_id", item.ID), slog.Duration("retry_in", delay), slog.Any("err", err))
+}
+
+func validFXCoverageProgress(payload fxCoverageWorkPayload) bool {
+	if payload.Next != nil && payload.Retry != nil {
+		return false
+	}
+	if payload.ThroughDate != "" {
+		if _, err := time.Parse(time.DateOnly, payload.ThroughDate); err != nil {
+			return false
+		}
+	}
+	for _, cursor := range []*fxCoverageCursor{payload.Next, payload.Retry} {
+		if cursor == nil {
+			continue
+		}
+		if cursor.BaseID <= 0 || cursor.QuoteID <= 0 || cursor.BaseID == cursor.QuoteID {
+			return false
+		}
+		if _, err := time.Parse(time.DateOnly, cursor.Date); err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 // PricingBackgroundWorkItem is a queued FX coverage work item as surfaced to

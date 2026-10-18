@@ -170,9 +170,11 @@ below is execution order, not a chain of hard dependencies.
    The prices/FX/durable-work audit #274 is complete
    ([evidence](reviews/pricing-durable-work-audit-2026-10-18.md)); #314's FX
    continuation loss and #316's FX transport-error key disclosure are fixed.
-   #315 (P2) remains open: non-publication gaps can consume every execution
-   chunk and starve later history. Manual prices and partial-coverage disclosure
-   remain usable; historical backfill completeness is not certified.
+   #315's publication-gap starvation is also fixed locally
+   ([delivery evidence](reviews/fx-coverage-progress-fix-2026-10-18.md)): durable
+   scan cursors and independent bounded date retries preserve progress and fresh
+   demand. Missing/stale coverage disclosure remains; provider availability is
+   not a completeness guarantee.
    The other six areas remain pending
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with

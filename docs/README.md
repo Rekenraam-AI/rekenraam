@@ -98,7 +98,9 @@ is complete with fixes, including the #262 reauthentication budget. Subsequent
 area dispositions and remaining work live in the roadmap and #260. The
 [prices/FX/durable-work audit](reviews/pricing-durable-work-audit-2026-10-18.md)
 records #274's real-worker recovery and browser evidence, corrected findings
-#314/#316, and the open publication-gap defect #315.
+#314/#316, and the publication-gap finding #315. Its
+[follow-up delivery](reviews/fx-coverage-progress-fix-2026-10-18.md) corrects
+starvation with durable scan progress and independent failed-date retries.
 
 Earlier strategic proposal:
 [2026-09-09 product direction, AI and privacy](reviews/product-direction-ai-privacy-2026-09-09.md).

@@ -220,7 +220,11 @@ When a feature introduces a durable new rule, update one of those documents in t
   Unsaved entries (in-progress UI working copies with no database row) and import
   previews do not trigger coverage; import rows trigger only after posting.
   `max_backfill_days` is an execution chunk bound and must not silently truncate
-  the required history.
+  the required history. Missing-date traversal progress is distinct from rate
+  coverage: durable per-sweep cursors advance past earlier observations, while
+  failed dates retain independent bounded retries. Fresh demand must not
+  coalesce against an already traversed scan prefix. See the
+  [FX progress contract](plans/pricing-management-plan.md#historical-fx-progress-315).
 
 ## Financial Date Defaults
 

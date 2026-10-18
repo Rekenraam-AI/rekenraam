@@ -294,9 +294,9 @@ func TestFXCoverageBackfillsHistoricalPublicationDatesIdempotently(t *testing.T)
 	`)
 	require.NoError(t, err)
 
-	run, hasMore, err := service.runFXCoverage(ctx, 1, 2, "2026-06-09", "domain")
+	run, successors, err := service.runFXCoverage(ctx, 1, fxCoverageWorkPayload{CurrencyID: 2, StartDate: "2026-06-09", Reason: "domain"})
 	require.NoError(t, err)
-	assert.False(t, hasMore)
+	assert.Empty(t, successors)
 	assert.Equal(t, "succeeded", run.Status)
 	assert.Equal(t, 8, run.ItemsTotal)
 
@@ -306,9 +306,9 @@ func TestFXCoverageBackfillsHistoricalPublicationDatesIdempotently(t *testing.T)
 	assert.Equal(t, "2026-06-12", prices[0].ValuationDate)
 	assert.Equal(t, "2026-06-09", prices[3].ValuationDate)
 
-	run, hasMore, err = service.runFXCoverage(ctx, 1, 2, "2026-06-09", "recovery")
+	run, successors, err = service.runFXCoverage(ctx, 1, fxCoverageWorkPayload{CurrencyID: 2, StartDate: "2026-06-09", Reason: "continuation"})
 	require.NoError(t, err)
-	assert.False(t, hasMore)
+	assert.Empty(t, successors)
 	assert.Equal(t, 0, run.ItemsTotal)
 }
 

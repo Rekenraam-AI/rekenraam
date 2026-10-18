@@ -249,6 +249,14 @@ func (s *PricingService) fetchAndStoreDirectFX(ctx context.Context, ownerUserID 
 	if err != nil {
 		return fxRefreshOutcome{}, err
 	}
+	ceiling := valuationDate
+	if ceiling == "" {
+		boundary, err := s.repository.CurrentObservationBoundary(ctx, BookID, now)
+		if err != nil {
+			return fxRefreshOutcome{}, err
+		}
+		ceiling = boundary.AsOf
+	}
 
 	var lastErr error
 	for _, source := range sources {
@@ -275,6 +283,10 @@ func (s *PricingService) fetchAndStoreDirectFX(ctx context.Context, ownerUserID 
 		}
 		for _, observation := range observations {
 			if strings.EqualFold(observation.BaseCode, target.Base.Code) && strings.EqualFold(observation.QuoteCode, target.Quote.Code) {
+				if _, err := time.Parse(time.DateOnly, observation.ValuationDate); err != nil || observation.ValuationDate > ceiling {
+					lastErr = fmt.Errorf("provider returned an invalid or future FX valuation date")
+					continue
+				}
 				price, skipped, err := s.storeProviderFXObservation(ctx, ownerUserID, source.Record.ID, target, observation, now)
 				if err != nil {
 					lastErr = err

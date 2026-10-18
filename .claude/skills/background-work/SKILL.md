@@ -37,6 +37,12 @@ hardened — copy this shape for new workers).
   deduplication, or an identical continuation can coalesce with itself and lose
   the rest of the horizon (#314). Test at least three chunks and rollback when
   successor enqueue fails.
+- A scan cursor records traversal, not rate coverage (#315). Persist a stable
+  pair/date cursor; count failures/earlier observations against the chunk
+  budget. Fork failed dates into independently bounded retries in the same
+  completion transaction, carrying the first failed attempt into their cap.
+  Fresh outbox demand must not coalesce against a suffix continuation or
+  targeted retry. Revisit gaps in new scans; never manufacture holiday rates.
 
 ## Scheduler shape
 

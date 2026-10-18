@@ -1269,7 +1269,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(17), version, "the head records incomplete self-check coverage separately from failures")
+	assert.Equal(t, int64(18), version, "the head preserves fresh FX demand beside scan continuations and retries")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))

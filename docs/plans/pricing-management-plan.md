@@ -48,12 +48,41 @@ a provider/trade quote produces explicitly manual evidence.
 ## Commands and review
 
 The [2026-10-18 audit](../reviews/pricing-durable-work-audit-2026-10-18.md)
-verified these management/selection workflows. Historical FX fetching retains
-an actionable limit in [#315](https://github.com/sergeyfarin/rekenraam/issues/315):
-non-publication gaps can exhaust each execution chunk and starve later dates.
-Latest-pair diagnostic coverage does not certify a fully fetched historical
-horizon. ADR 0010's publication-date requirement remains in force; no absent
-rate is manufactured or treated as zero.
+verified these management/selection workflows. Its publication-gap finding
+[#315](https://github.com/sergeyfarin/rekenraam/issues/315) is corrected by the
+[FX progress delivery](../reviews/fx-coverage-progress-fix-2026-10-18.md).
+Latest-pair diagnostic coverage still does not certify a fully fetched
+historical horizon; no absent rate is manufactured or treated as zero.
+
+### Historical FX progress (#315)
+
+Each durable sweep stores its next pair/date and an owner-local end date in
+the work payload. Pair ordering is stable. Every attempted missing date consumes
+one `max_backfill_days` budget slot, including a failed download or a valid
+response carrying an earlier observation. An earlier quote keeps its actual
+valuation date, and ingest evidence records requested/observed dates with a
+skipped outcome. This is traversal progress, not proof of a holiday or complete
+rate coverage. Future or invalid returned valuation dates are refused.
+
+Failed dates become independent pair/date retry items. Completing the scan
+chunk, queuing those retries and queuing the remaining scan happen in one
+lease-fenced transaction; late failure leaves the parent recoverable. The
+initial failed download counts toward the existing eight-attempt cap. Exhausted
+items appear in the existing failed-work/retry surface with pair/date context;
+ingest history retains failed/partial outcomes. A retry never becomes a skipped
+publication merely because it failed. Other dates and pairs keep progressing.
+
+A cursor applies only to its sweep. Fresh manual/scheduled refreshes and new
+financial demand start fresh missing-date scans, so late publications and
+earlier required dates remain discoverable. The posting outbox's range guard
+coalesces only against an unattempted full pending scan, never a running scan,
+suffix continuation or targeted retry; exact active-payload deduplication still
+applies. Migration 0018 updates that trigger without
+rewriting financial data or existing queued items. No new tables or public API
+are required. Network I/O stays outside write transactions; observations and
+their deduplication identity retain the existing immutable model.
+
+### Manual commands
 
 Manual entry requires an exact positive price and base quantity, a valuation
 date, and a reason. It always uses the seeded manual source, manual quote type,

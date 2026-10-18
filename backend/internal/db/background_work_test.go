@@ -168,3 +168,69 @@ func TestBackgroundWorkContinuationIsAtomicAndLeaseFenced(t *testing.T) {
 		})
 	}
 }
+
+func TestBackgroundWorkSuccessorsCommitTogetherAndPreserveRetryBudget(t *testing.T) {
+	t.Parallel()
+	for _, scenario := range []string{"success", "second insert failure", "stale owner", "active retry"} {
+		t.Run(scenario, func(t *testing.T) {
+			database, _, _ := migratedInvestmentTestDatabase(t)
+			r := NewBackgroundWorkRepository(database)
+			ctx := context.Background()
+			const now = "2026-06-12T08:00:00Z"
+			_, err := r.EnqueueBackgroundWork(ctx, 1, "probe", `{}`, now)
+			require.NoError(t, err)
+			parent, err := r.ClaimBackgroundWork(ctx, "probe", "owner", now, "2026-06-12T10:00:00Z")
+			require.NoError(t, err)
+			successors := []BackgroundWorkSuccessor{
+				{PayloadJSON: `{"retry":1}`, AvailableAt: "2026-06-12T08:01:00Z", Attempts: 1},
+				{PayloadJSON: `{"next":2}`, AvailableAt: now},
+			}
+			owner := "owner"
+			if scenario == "stale owner" {
+				owner = "old-owner"
+			}
+			if scenario == "second insert failure" {
+				_, err = database.Exec(`CREATE TRIGGER refuse_next BEFORE INSERT ON background_work_items WHEN json_extract(NEW.payload_json,'$.next')=2 BEGIN SELECT RAISE(ABORT, 'injected second insert failure'); END`)
+				require.NoError(t, err)
+			}
+			var active BackgroundWorkItemRecord
+			if scenario == "active retry" {
+				_, err = r.EnqueueBackgroundWork(ctx, 1, "probe", successors[0].PayloadJSON, now)
+				require.NoError(t, err)
+				active, err = r.ClaimBackgroundWork(ctx, "probe", "retry-owner", now, "2026-06-12T08:15:00Z")
+				require.NoError(t, err)
+				require.NoError(t, r.RetryBackgroundWork(ctx, active.ID, "retry-owner", "2026-06-12T09:00:00Z", now, "provider failed"))
+				active, err = r.ClaimBackgroundWork(ctx, "probe", "retry-owner", "2026-06-12T09:00:00Z", "2026-06-12T09:15:00Z")
+				require.NoError(t, err)
+			}
+			err = r.CompleteBackgroundWorkWithSuccessors(ctx, parent.ID, owner, now, successors)
+			current, readErr := r.BackgroundWorkByID(ctx, parent.ID)
+			require.NoError(t, readErr)
+			var count int
+			require.NoError(t, database.QueryRow(`SELECT count(*) FROM background_work_items WHERE kind='probe'`).Scan(&count))
+			if scenario == "second insert failure" || scenario == "stale owner" {
+				require.Error(t, err)
+				assert.Equal(t, "running", current.Status)
+				assert.Equal(t, 1, count, "no partial retry or continuation")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, "completed", current.Status)
+			assert.Equal(t, 3, count)
+			if scenario == "active retry" {
+				current, err = r.BackgroundWorkByID(ctx, active.ID)
+				require.NoError(t, err)
+				assert.Equal(t, active.Attempts, current.Attempts)
+				assert.Equal(t, active.LeaseOwner, current.LeaseOwner)
+				assert.Equal(t, active.AvailableAt, current.AvailableAt)
+			} else {
+				item, err := r.ClaimBackgroundWork(ctx, "probe", "next", now, "2026-06-12T08:15:00Z")
+				require.NoError(t, err)
+				assert.Equal(t, successors[1].PayloadJSON, item.PayloadJSON)
+				item, err = r.ClaimBackgroundWork(ctx, "probe", "retry", "2026-06-12T08:01:00Z", "2026-06-12T08:16:00Z")
+				require.NoError(t, err)
+				assert.Equal(t, 2, item.Attempts, "the parent's failed download counts toward the cap")
+			}
+		})
+	}
+}
