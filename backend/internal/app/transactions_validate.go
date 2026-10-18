@@ -499,6 +499,17 @@ func (s *TransactionService) cleanPosting(ctx context.Context, input PostingInpu
 	}
 
 	existingState, hasExistingState := options.ExistingPostings[lineKey]
+	if hasExistingState && reconciliationAffectingChange(existingState.EntryDate, existingState.Posting, entryDate, db.PostingSpec{
+		AccountID: input.AccountID, CommodityID: input.CommodityID, QuantityValue: input.QuantityValue, QuantityScale: input.QuantityScale,
+	}) {
+		// A cleared or reconciled status records that a statement verified
+		// this line's account, commodity, amount and date. Once one of them
+		// changes, no statement verified what the line now shows, so it starts
+		// again as uncleared. Its checkpoint links stay with the line as
+		// evidence (#297).
+		existingState = existingPostingState{}
+		hasExistingState = false
+	}
 	reconciliationStatus := "uncleared"
 	if hasExistingState {
 		reconciliationStatus = existingState.ReconciliationStatus
@@ -670,6 +681,8 @@ func existingPostingStateSet(record db.TransactionRecord) map[string]existingPos
 			states[posting.LineKey] = existingPostingState{
 				ReconciliationStatus: posting.ReconciliationStatus,
 				ClearedOn:            nullableString(posting.ClearedOn),
+				EntryDate:            entry.EntryDate,
+				Posting:              posting,
 			}
 		}
 	}

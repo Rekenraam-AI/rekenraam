@@ -253,6 +253,7 @@ func TestLedgerAuditJourneyBalancesOnBothDateAxesThroughLifecycleAndReReconcilia
 			{"line_key":"`+groceryRun.JournalEntries[0].Postings[1].LineKey+`","account_id":`+strconvFormatInt(dining.ID)+`,"commodity_id":`+strconvFormatInt(eur)+`,"quantity_value":"8240","quantity_scale":2}]}]}`, http.StatusOK)
 	assert.Empty(t, edited.InvalidatedCheckpointIDs)
 	assert.Equal(t, "active", c.checkpoints(checking.ID)[firstCheckpoint].Status)
+	assert.Equal(t, "reconciled", postingByAccount(t, edited, checking.ID).ReconciliationStatus, "a metadata-only edit keeps the verified status (#297)")
 	eq("2805.50", c.balance(checking.ID, eur, "2026-05-10"), "a category move changes no account balance")
 	eq("57.60", c.balance(groceries.ID, eur, "2026-05-10"), "140 - 82.40 moved to dining")
 
@@ -271,26 +272,30 @@ func TestLedgerAuditJourneyBalancesOnBothDateAxesThroughLifecycleAndReReconcilia
 	overridden := mutateTransaction(t, handler, cookie, csrf, http.MethodPatch, "/api/v1/transactions/"+strconvFormatInt(groceryRun.ID),
 		amountEdit+`,"reconciliation_override":true,"reconciliation_override_checkpoint_ids":[`+strconvFormatInt(firstCheckpoint)+`]}`, http.StatusOK)
 	assert.Equal(t, []int64{firstCheckpoint}, overridden.InvalidatedCheckpointIDs, "preview equals write")
+	// No statement verified 92.40, so the edited line is uncleared again; its
+	// counter-posting changed amount too (#297).
+	for _, entry := range overridden.JournalEntries {
+		for _, edited := range entry.Postings {
+			assert.Equalf(t, "uncleared", edited.ReconciliationStatus, "account %d", edited.AccountID)
+			assert.Emptyf(t, edited.ClearedOn, "account %d", edited.AccountID)
+		}
+	}
 	eq("2795.50", c.balance(checking.ID, eur, "2026-05-10"), "2805.50 - 10.00")
 	eq("3407.60", c.balance(checking.ID, eur, "2026-05-04"), "1000 + 2500 - 92.40 on the edited day")
 
 	// Reconcile again from zero: the first checkpoint no longer covers
 	// anything, every posting is offered, and the once-reconciled ones start
-	// selected for re-verification (#240). The edited posting keeps its
-	// reconciled status through the amount edit (#297), so it is preselected
-	// too; only the six unchanged postings are asserted here.
+	// selected for re-verification (#240). The amount-edited posting is
+	// uncleared, so it is offered unselected, like any new posting (#297).
 	second, secondCheckpoint := reconcileAll("2026-05-10", "279550")
 	assert.Nil(t, second.StartingCheckpointID, "the invalidated checkpoint is no starting balance")
 	assert.Len(t, second.Candidates, 7)
 	editedPosting := postingByAccount(t, overridden, checking.ID).ID
-	unchangedSelected := 0
+	require.Len(t, second.SelectedPostings, 6, "every unchanged once-reconciled posting starts selected")
 	for _, selected := range second.SelectedPostings {
 		assert.Equal(t, "reconciled", selected.ReconciliationStatus, "only once-reconciled postings start selected")
-		if selected.PostingID != editedPosting {
-			unchangedSelected++
-		}
+		assert.NotEqual(t, editedPosting, selected.PostingID, "the amount-edited posting is not preselected")
 	}
-	assert.Equal(t, 6, unchangedSelected, "every unchanged once-reconciled posting starts selected")
 
 	// Void the second checkpoint (a wrong statement), then reconcile a third
 	// time; the history keeps every checkpoint with its reason.

@@ -314,3 +314,60 @@ func currentCashPostingID(t *testing.T, f *investmentsTestFixture, transactionID
 	`, transactionID, f.cashAccountID).Scan(&postingID))
 	return postingID
 }
+
+// #297. A cleared or reconciled status is a claim about the facts a statement
+// showed. An edit that keeps those facts keeps the status; one that changes the
+// posting's account, commodity, amount, scale or date resets it to uncleared.
+func TestEditResetsReconciliationStatusOnlyWhenPostingFactsChange(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newInvestmentsTestFixture(t)
+
+	posted := postEUR(t, f, "2026-01-10", 10)
+	cleared, err := f.transactionService.ChangePostingReconciliationStatus(ctx, ChangePostingReconciliationStatusInput{
+		OriginType: "browser_api", OwnerUserID: f.ownerUserID, AccountID: f.cashAccountID,
+		PostingVersionIDs: []int64{currentCashPostingID(t, f, posted.ID)}, Status: "cleared", ClearedOn: "2026-01-12",
+	})
+	require.NoError(t, err)
+	require.Len(t, cleared, 1)
+
+	edit := func(current Transaction, change func(*TransactionInput)) Transaction {
+		t.Helper()
+		spec := transactionInputFromTransaction(current)
+		change(&spec)
+		updated, err := f.transactionService.UpdateTransaction(ctx, UpdateTransactionInput{
+			OwnerUserID: f.ownerUserID, OriginType: "browser_api", TransactionID: current.ID,
+			ExpectedVersionID: current.VersionID, Spec: spec,
+		})
+		require.NoError(t, err)
+		return updated
+	}
+	cashState := func(transaction Transaction) (string, string) {
+		t.Helper()
+		for _, entry := range transaction.JournalEntries {
+			for _, posting := range entry.Postings {
+				if posting.AccountID == f.cashAccountID {
+					return posting.ReconciliationStatus, posting.ClearedOn
+				}
+			}
+		}
+		t.Fatal("cash posting not found")
+		return "", ""
+	}
+
+	memoEdited := edit(cleared[0], func(spec *TransactionInput) {
+		spec.Description = "salary"
+		spec.JournalEntries[0].Postings[0].Memo = "January"
+	})
+	status, clearedOn := cashState(memoEdited)
+	require.Equal(t, "cleared", status, "a metadata-only edit keeps the status")
+	require.Equal(t, "2026-01-12", clearedOn)
+
+	dateEdited := edit(memoEdited, func(spec *TransactionInput) {
+		spec.TransactionDate = "2026-01-11"
+		spec.JournalEntries[0].EntryDate = "2026-01-11"
+	})
+	status, clearedOn = cashState(dateEdited)
+	require.Equal(t, "uncleared", status, "no statement verified the posting on its new date")
+	require.Empty(t, clearedOn)
+}

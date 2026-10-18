@@ -465,7 +465,12 @@ func (d *accountRuleDependencies) list() []db.AccountRuleDependency {
 	return dependencies
 }
 
+// existingPostingState is what a write carries forward for a posting line it
+// keeps. EntryDate and Posting are the facts the stored status was given for:
+// a write that changes them resets the status (#297).
 type existingPostingState struct {
 	ReconciliationStatus string
 	ClearedOn            string
+	EntryDate            string
+	Posting              db.PostingRecord
 }
