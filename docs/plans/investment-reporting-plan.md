@@ -491,6 +491,36 @@ failed writes and isolation from a source write before report persistence
 (`TestGainsRunSnapshot*`). `investments-gains-runs.spec.ts` exercises save,
 reversal, reopen, download, six locales and 390px accessibility.
 
+### Report audit and export acceptance (#318)
+
+The 2026-10-18 [export-acceptance disposition](../reviews/reports-r18-audit-2026-10-18.md#export-acceptance-disposition-318)
+retains the existing delivery boundary. Original-currency operational gains
+save as schema 1; current operational statements save as schema 3, with old
+statement schemas 1/2 still readable. Alternative FIFO/LIFO/average and
+person-pooled comparisons, and reporting-currency gains/statement projections,
+remain live-only. None of the saved schemas adds those projections. The save
+control computes a fresh original-currency operational report for the applied
+dates even when a live comparison or gains-FX method is selected.
+
+Audit acceptance follows the surfaces that ship:
+
+- Every shipped report download must preserve its own exact API figures and
+  independent expected figures, together with its applicable profile, dates,
+  coverage and provenance. R2 CSVs include their shipped reporting-currency
+  restatements; this is distinct from the live-only R18 gains-FX boundary.
+- Live-only R18 projections must match independent expectations through their
+  API and visible browser consumers, disclose unavailable figures and retain
+  their named profile/date/FX rules. They carry no download-parity claim.
+- Saving while a comparison is selected must still identify the operational
+  output and satisfy that output's download checks. Saving computes a new run;
+  equality with an earlier live response is conditional on unchanged inputs.
+
+This explicitly replaces #275's overbroad all-projections export criterion;
+its original unmet outcome remains in the dated audit and GitHub record.
+The disposition changes audit acceptance, not calculations or export formats.
+Any future comparison/FX download requires a separately agreed contract for
+its input state, profile, coverage, rounding, provenance and preservation.
+
 ### Person-pooled average cost (#235)
 
 `GET /api/v1/investments/gains?alternative_method=person_pooled_average`

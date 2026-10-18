@@ -175,18 +175,18 @@ below is execution order, not a chain of hard dependencies.
    scan cursors and independent bounded date retries preserve progress and fresh
    demand. Missing/stale coverage disclosure remains; provider availability is
    not a completeness guarantee.
-   The reports/R18 audit #275 has run
+   The reports/R18 audit #275 is complete
    ([evidence](reviews/reports-r18-audit-2026-10-18.md)); exact reference figures,
-   current exports, saved schemas and R13 input readiness are recorded. #317's
-   filter-scope documentation is corrected. Closure remains **blocked by #318**:
-   its literal export acceptance includes live-only R18 comparisons excluded
-   by the governing saved-run contract. R13 specification can use the inventory
-   now; no new saved-projection feature is implied.
-   The other six areas remain open
+   shipped exports, saved schemas and R13 input readiness are verified. #317 is
+   fixed; #318 resolves the original export-acceptance mismatch with separate
+   checks for shipped downloads and live-only API/browser figures. The
+   original unmet criterion is retained in the audit record; comparison/FX
+   downloads remain outside the saved-run contract. R13 can use the inventory.
+   The other five areas remain open
    as sub-issues of #260, in this order (the shared reference book and
    expected-figure register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):
-   resolve #275's export acceptance through #318, and recovery #277 (using #308's evidence);
+   recovery #277 (using #308's evidence);
    then planning #276; then frontend #278, deployment
    #279. Architecture/quality #280
    runs last, with the shared gates once at the candidate SHA.

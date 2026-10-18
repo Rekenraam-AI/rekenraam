@@ -1,11 +1,11 @@
 # Reports, R18 and R13 input-readiness audit — 2026-10-18
 
-**Status:** [#275](https://github.com/sergeyfarin/rekenraam/issues/275) executed;
-**BLOCKED for closure by [#318](https://github.com/sergeyfarin/rekenraam/issues/318)**.
-Its literal browser-export acceptance extends beyond the deliberately shipped
-R18 export boundary. The other two acceptance items are met. No new financial
-or security defect was confirmed. The small documentation finding
-[#317](https://github.com/sergeyfarin/rekenraam/issues/317) is corrected here.
+**Status:** [#275](https://github.com/sergeyfarin/rekenraam/issues/275) complete
+under the explicit [#318 export-acceptance disposition](#export-acceptance-disposition-318).
+The original all-projections browser-export criterion was unmet and is retired,
+with its original outcome preserved below. Current shipped-download parity and
+live-only API/browser parity are verified separately. No new financial or
+security defect was confirmed; #317's documentation correction is delivered.
 This is area 7 of [#260](https://github.com/sergeyfarin/rekenraam/issues/260),
 not certification of the whole app or implementation of R13.
 
@@ -39,6 +39,11 @@ incomplete self-check outcome ships and #273 is closed. #272 remains open for
 all-green self-check or reconstruction acceptance is claimed here.
 
 ## Findings and acceptance disposition
+
+The initial execution record below predates #318's disposition. Its unchecked
+export criterion and blocker are retained as historical outcomes; the
+[resolution at the end](#export-acceptance-disposition-318) supersedes their
+open status without claiming that comparison downloads were implemented.
 
 | Finding | Severity and evidence | Disposition |
 |---|---|---|
@@ -206,3 +211,64 @@ at the candidate SHA. No production deployment, owner household dry run, live pr
 wire verification, push or remote CI result is claimed. #277 retains complete
 bundle reconstruction/recovery; #278 retains the wider route/accessibility audit.
 The additional #318 audit is the only new closure dependency identified here.
+
+## Export-acceptance disposition (#318)
+
+Reviewed at `7bb46d0f5b9b40e3c8c5997c403e398c19c5ef4f` on 2026-10-18,
+following the owner's request to work on #318. **Disposition: retain the shipped
+export boundary and explicitly replace the audit criterion.** The
+[governing saved-run plan](../plans/investment-reporting-plan.md#report-audit-and-export-acceptance-318)
+now records the decision. Product requirements and ADR 0012 already establish
+original-currency operational saved reports; no new feature is needed to
+reconcile this audit with that contract.
+
+Original #275 criterion: “Every report figure in the scenario matches the
+register exactly through the API and the browser export.” **Not met as
+written**, because the register includes live-only comparisons. That criterion
+is retired explicitly, not checked as though those downloads exist.
+
+Replacement criterion: **Every shipped report download matches its own API
+and independent expected figures; live-only R18 projections match independent
+expectations through the API and visible browser. Retain the named date,
+profile, FX, coverage and original-currency save boundary.** Both parts are
+verified by the evidence above and the focused recheck below.
+
+| Report | Live API | Visible browser | Downloadable output and parity disposition |
+|---|---|---|---|
+| R2 net worth | Exact raw totals; optional reporting-currency restatement | Same commodity/bucket figures and incomplete coverage | CSV includes raw and available restated figures; independent register/API parity verified |
+| R2 spending/income | Exact category/payee totals, filters and optional restatement | Same figures, refunds and filters | CSV parity verified; reference expenses 175/55/45 EUR and 8 USD, income 5000 EUR and 15 USD |
+| R2 cashflow | Exact gross/net operating and transfer measures | Same scoped bucket measures | CSV parity verified; reference movements 5300 EUR and 2792 USD |
+| Operational R18 gains | Dated `operational_v1` | Dated positions and realized figures | Fresh original-currency schema-1 saved JSON; reference realized 350 USD, unknown gift gain absent; bytes match server attachment |
+| Operational R18 statement | Native period components and coverage | Native period cards and disclosures | Fresh original-currency schema-3 saved JSON; legacy schemas 1/2 readable. Saved-byte/migration/reversal evidence retained |
+| FIFO/LIFO/average comparison | Exact hypothetical basis/gains; reference realized 380/255/300 USD | Position comparisons and realized totals shown; API/register and visible position controls pass | **No download.** API/browser acceptance only; selecting average and saving still produces the 350 USD operational report |
+| Person-pooled comparison | Owner/security/cost-currency/side pool; independent conservation cases pass | Six-locale position/operational comparison verified | **No download.** Existing independent API/browser evidence applies; no saved person-pool output claimed |
+| R18 reporting-currency gains/statement | Named valuation-date-all or historic-basis FX, component evidence and complete-only totals | Same named FX controls, figures and unavailable coverage | **No download.** Saves remain original-currency operational; R2 CSV restatements are a separate shipped surface |
+
+Source confirmation: `app.GainsRunRequest` accepts type and dates, without a
+comparison/FX selector. `gains-report.svelte` and `gains-statement.svelte` pass
+only those operational save inputs; `gains-runs.svelte` downloads the stored
+server document. This matches the translated save explanation already shown
+by `save-gains-run.svelte`. No code, generated file or stored document changes.
+
+Validation reused #275's 156 focused backend race tests, 141 frontend tests
+and 62 distinct browser journeys because all implementation/test inputs remain
+unchanged. Fresh bounded confirmation for #318:
+
+- `GOCACHE=/tmp/rekenraam-go-build-cache ./scripts/go-backend.sh test
+  ./internal/api -run '^TestReferenceBookProducesItsRegister$' -count=1`:
+  passed (1.857 s).
+- `E2E_SKIP_BUILD=1 E2E_WORKERS=2 pnpm --dir e2e exec playwright test
+  reports.spec.ts investments-reference-audit.spec.ts -g 'reference'`:
+  **3 passed** (7.3 s), covering core CSV register parity, live comparison
+  figures and operational saved JSON/bytes while a comparison is selected.
+- All 49 local documentation file/anchor references and `git diff --check`
+  passed. `SKIP_OPENAPI=1 ./scripts/check-post-merge.sh HEAD` reports only the
+  existing identical Chromium-install step in two unchanged workflows; no new
+  structural finding. OpenAPI generation is skipped for this docs-only change.
+  No full shared suite, new provider evidence, push or remote CI is claimed.
+
+#318's disposition removes #275's only remaining closure blocker; #275 closes
+with its original criterion visibly retired and the replacement satisfied.
+#260 records the area complete. #119's readiness hand-off and #284/#277/#280
+responsibilities remain as recorded above. No new actionable defect or further
+audit scope was identified by this bounded disposition.
