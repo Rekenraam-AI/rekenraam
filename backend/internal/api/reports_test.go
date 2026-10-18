@@ -627,6 +627,18 @@ func TestNetWorthSeriesResolvesSubtreeAgainstEachBucketsAccountVersions(t *testi
 		}
 		assertBalance(t, bucket.Totals, usdID, 100000, 2, 100000)
 	}
+	// #275: flow reports deliberately resolve one stable descendant scope at
+	// range end, unlike the historical balance series above. The salary from
+	// June 5 therefore belongs to the newly selected subtree for this range.
+	query := "?start_date=2026-06-01&end_date=2026-06-30&include_descendants=true&account_id=" + strconvFormatInt(grandparent.ID)
+	income := readSpendingForSession(t, handler, sessionCookie, query+"&group_by=category&mode=income")
+	require.Len(t, income.CommodityTotals, 1)
+	require.Equal(t, exactValue(t, "1000"), exactCoefficientValue(t, income.CommodityTotals[0].QuantityValue, income.CommodityTotals[0].QuantityScale))
+	cashflow := readCashflowForSession(t, handler, sessionCookie, query+"&bucket=day")
+	require.Len(t, cashflow.Buckets, 30)
+	require.Len(t, cashflow.Buckets[4].Inflow, 1)
+	amount := cashflow.Buckets[4].Inflow[0]
+	require.Equal(t, exactValue(t, "1000"), exactCoefficientValue(t, amount.QuantityValue, amount.QuantityScale))
 }
 
 // TestSpendingAccountFilterMatchesPerJournalEntry pins the tightening that lets

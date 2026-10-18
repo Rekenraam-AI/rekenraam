@@ -105,9 +105,12 @@ selector, restated rows, coverage notices, charts, and CSV output ship in
   labels the actual inclusive bucket start/end dates.
 - Repeated query parameters represent an OR-set within that filter, for example
   `account_id=12&account_id=14`. Different filter types combine with AND.
-- Account filters use account IDs plus `include_descendants`. The backend
-  resolves descendants as of each reporting date; the frontend must not flatten
-  the account tree itself.
+- Account filters use account IDs plus `include_descendants`. Net worth resolves
+  descendants at each bucket end. Spending/income and cashflow resolve one
+  stable scope at the inclusive range's `end_date`, then apply it to the whole
+  range. The frontend must not flatten the account tree itself. Reparenting a
+  non-posting group can therefore change which earlier flows fall in a selected
+  range, while historical net-worth buckets retain their dated membership.
 - Category and payee filters are IDs. Commodity filtering is by commodity ID.
   Account-class/kind, tag, country, and jurisdiction filters are deliberately
   absent from the first public contract until a concrete report needs them.

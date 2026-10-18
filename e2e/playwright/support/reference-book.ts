@@ -37,6 +37,25 @@ export type ReferenceBook = {
       accounts: string[];
       rows: Array<Record<string, string>>;
     };
+    spending: {
+      accounts: string[];
+      expense: Array<{ category: string; commodity: string; amount: string }>;
+      income: Array<{ category: string; commodity: string; amount: string }>;
+    };
+    net_worth: Array<{
+      as_of: string;
+      totals: Array<{ commodity: string; value: string }>;
+      converted_eur: string | null;
+    }>;
+    gains: {
+      valuation_as_of: string;
+      methods: Array<{
+        method: string;
+        realized: Array<{ account: string; disposal_date: string; basis?: string; proceeds?: string; gain: string }>;
+        realized_total: string;
+        unrealized: Array<{ account: string; gain: string | null }>;
+      }>;
+    };
     [section: string]: unknown;
   };
 };

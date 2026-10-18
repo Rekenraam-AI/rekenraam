@@ -648,6 +648,77 @@ test('[acceptance] the reference book downloads its register cashflow', async ({
   expect(rows.sort(byCommodity)).toEqual(cashflow.rows.map(({ why: _why, ...row }) => row).sort(byCommodity));
 });
 
+// #275: the same independent register must survive all three report exports.
+test('[acceptance] reference spending and net worth CSVs equal the API and register', async ({ page }) => {
+  test.setTimeout(120_000);
+  const { book, ids, suffix } = await seedReferenceBook(page);
+  const { period, spending, net_worth: netWorth } = book.register;
+  const scope = (keys: string[]) => keys.map((key) => `&account_id=${ids.get(key)}`).join('');
+  const range = `start_date=${period.start_date}&end_date=${period.end_date}&include_descendants=false`;
+  const categoryKeys = new Map(book.steps.filter((step) => step.path === '/api/v1/categories').map((step) => {
+    const body = step.body as { name: string };
+    return [body.name.replaceAll('{suffix}', suffix), Object.keys(step.capture!)[0]];
+  }));
+  for (const direction of ['expense', 'income'] as const) {
+    const mode = direction === 'expense' ? 'spending' : 'income';
+    const query = `${range}&bucket=quarter&group_by=category&mode=${mode}${scope(spending.accounts)}`;
+    await page.goto(`/app/reports?view=spending&${query}`);
+    await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(spending[direction].length);
+    const actual = (await downloadReportCSV(page)).filter((row) => categoryKeys.has(row[0])).map(([label, commodity, amount]) => ({
+      category: categoryKeys.get(label), commodity, amount: normalizeReportDecimal(amount)
+    }));
+    const expected = spending[direction].map(({ category, commodity, amount }) => ({ category, commodity, amount: normalizeReportDecimal(amount) }));
+    const sort = (rows: typeof actual) => rows.sort((a, b) => `${a.category}/${a.commodity}`.localeCompare(`${b.category}/${b.commodity}`));
+    expect(sort(actual)).toEqual(sort(expected));
+    const api = await apiJSON<{ groups: Array<{ category_id: number; totals: Array<{ commodity_id: number; quantity_value: string; quantity_scale: number }> }> }>(page, 'GET', `/api/v1/reports/spending?${query}`);
+    for (const figure of spending[direction]) {
+      const total = api.groups.find((row) => row.category_id === ids.get(figure.category))!.totals.find((row) => row.commodity_id === ids.get(figure.commodity))!;
+      expectReportAmount(total.quantity_value, total.quantity_scale, figure.amount);
+    }
+  }
+  // Scope all reference asset/liability accounts so other tests in this worker
+  // cannot change the register. Month ends have no transfer-clearing residual.
+  const accounts = [...spending.accounts, 'hold_fifo', 'hold_avg', 'hold_gift', 'hold_short'];
+  const query = `${range}&bucket=month&reporting_currency_id=${ids.get('EUR')}${scope(accounts)}`;
+  await page.goto(`/app/reports?view=net-worth&${query}`);
+  const count = netWorth.reduce((sum, row) => sum + row.totals.length + (row.converted_eur === null ? 0 : 1), 0);
+  await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(count);
+  const csv = (await downloadReportCSV(page)).filter((row) => netWorth.some((figure) => figure.as_of === row[1]));
+  expect(csv).toHaveLength(count);
+  const api = await apiJSON<{ buckets: Array<{ end_date: string; totals: Array<{ commodity_id: number; quantity_value: string; quantity_scale: number }>; converted?: { quantity_value: string; quantity_scale: number } }> }>(page, 'GET', `/api/v1/reports/net-worth?${query}`);
+  for (const figure of netWorth) {
+    const bucket = api.buckets.find((row) => row.end_date === figure.as_of)!;
+    for (const total of figure.totals) {
+      const label = ['REF', 'SHRT'].includes(total.commodity) ? total.commodity + suffix : total.commodity;
+      const exported = csv.find((row) => row[1] === figure.as_of && row[2] === label && row[5] === '');
+      expect(exported, `${figure.as_of} ${label}`).toBeDefined();
+      expect(normalizeReportDecimal(exported![3])).toBe(normalizeReportDecimal(total.value));
+      const amount = bucket.totals.find((row) => row.commodity_id === ids.get(total.commodity))!;
+      expectReportAmount(amount.quantity_value, amount.quantity_scale, total.value);
+    }
+    const converted = csv.find((row) => row[1] === figure.as_of && row[5] === 'EUR');
+    if (figure.converted_eur === null) {
+      expect(converted).toBeUndefined();
+      expect(bucket.converted).toBeUndefined();
+    } else {
+      expect(normalizeReportDecimal(converted![3])).toBe(normalizeReportDecimal(figure.converted_eur));
+      expectReportAmount(bucket.converted!.quantity_value, bucket.converted!.quantity_scale, figure.converted_eur);
+    }
+  }
+});
+
+// Test-only exact comparisons, independent of the production CSV formatter.
+function normalizeReportDecimal(value: string): string {
+  const [integer, fraction = ''] = value.split('.');
+  const trimmed = fraction.replace(/0+$/, '');
+  return integer + (trimmed ? `.${trimmed}` : '');
+}
+
+function expectReportAmount(value: string, scale: number, expected: string): void {
+  const places = expected.split('.')[1]?.length ?? 0;
+  expect(BigInt(value) * 10n ** BigInt(places)).toBe(BigInt(expected.replace('.', '')) * 10n ** BigInt(scale));
+}
+
 /** Downloads the current report's CSV and returns its rows as fields. */
 async function downloadReportCSV(page: Page): Promise<string[][]> {
   const download = page.waitForEvent('download');

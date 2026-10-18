@@ -199,8 +199,8 @@ func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisc
 	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &receipt))
 	ctx := context.Background()
 	service := app.NewInvestmentService(db.NewInvestmentRepository(database), nil, nil, nil)
-	// Manufacture the prior wire format on schema 7 using the real computation,
-	// then persist as the old server did. No new-code save claims it is schema 1.
+	// Manufacture the schema-1/2 wire formats using the real computation,
+	// then persist on migrations 7/8 as the old servers did.
 	statement, err := service.GainsStatement(ctx, "2026-06-01", "2026-06-30")
 	require.NoError(t, err)
 	statement.Profile.From, statement.Profile.To = statement.From, statement.To
@@ -210,12 +210,18 @@ func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisc
 	encoded, err := json.Marshal(gainsStatementResponse(statement, currencies))
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(encoded, &output))
-	delete(output, "capital_returns")
 	var rows []map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(output["rows"], &rows))
 	for _, row := range rows {
-		delete(row, "capital_return")
 		delete(row, "unclassified_dividends")
+	}
+	output["rows"], err = json.Marshal(rows)
+	require.NoError(t, err)
+	schema2Output, err := json.Marshal(output)
+	require.NoError(t, err)
+	delete(output, "capital_returns")
+	for _, row := range rows {
+		delete(row, "capital_return")
 	}
 	output["rows"], err = json.Marshal(rows)
 	require.NoError(t, err)
@@ -237,17 +243,27 @@ func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisc
 	legacy, err = db.NewInvestmentRepository(database).CreateGainsRun(ctx, legacy, db.AuditEventParams{BookID: 1, ActorUserID: ownerID, OriginType: "browser_api", OccurredAt: legacy.CreatedAt})
 	require.NoError(t, err)
 	require.True(t, db.ValidGainsRunDocument(legacy))
+	_, err = provider.UpTo(ctx, 8)
+	require.NoError(t, err)
+	legacy2 := legacy
+	legacy2.SchemaVersion = 2
+	legacy2.OutputJSON = schema2Output
+	legacy2.OutputSHA256 = db.GainsRunDigest(schema2Output)
+	legacy2, err = db.NewInvestmentRepository(database).CreateGainsRun(ctx, legacy2, db.AuditEventParams{BookID: 1, ActorUserID: ownerID, OriginType: "browser_api", OccurredAt: legacy2.CreatedAt})
+	require.NoError(t, err)
+	require.True(t, db.ValidGainsRunDocument(legacy2))
 	_, err = provider.Up(ctx)
 	require.NoError(t, err)
-	got, err := service.GainsRun(ctx, legacy.ID)
-	require.NoError(t, err)
-	require.Equal(t, legacy, got, "forward migration retains all original bytes and hashes")
-	// Retrieval/download never fills in missing schema-1 disclosure.
-	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/gains/runs/"+strconv.FormatInt(legacy.ID, 10)+"?download=true", nil, http.StatusOK)
-	var downloaded db.GainsRunRecord
-	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &downloaded))
-	downloaded.BookID = legacy.BookID
-	require.Equal(t, legacy, downloaded)
+	for _, run := range []db.GainsRunRecord{legacy, legacy2} {
+		got, err := service.GainsRun(ctx, run.ID)
+		require.NoError(t, err)
+		require.Equal(t, run, got, "forward migration retains original bytes and hashes")
+		res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/gains/runs/"+strconv.FormatInt(run.ID, 10)+"?download=true", nil, http.StatusOK)
+		var downloaded db.GainsRunRecord
+		require.NoError(t, json.Unmarshal(res.Body.Bytes(), &downloaded))
+		downloaded.BookID = run.BookID
+		require.Equal(t, run, downloaded, "retrieval never backfills an old schema")
+	}
 	res = doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/gains/runs", app.GainsRunRequest{ReportType: "statement", From: "2026-06-01", To: "2026-06-30"}, http.StatusCreated)
 	var saved db.GainsRunRecord
 	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &saved))
@@ -260,7 +276,7 @@ func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisc
 	require.Len(t, savedStatement.CapitalReturns, 1)
 	requireScaledAPIAmount(t, 300, 2, &savedStatement.Rows[0].CapitalReturn.Excess.Value, &savedStatement.Rows[0].CapitalReturn.Excess.Scale)
 	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/transactions/"+strconv.FormatInt(receipt.Transaction.ID, 10)+"/reverse-return-of-capital", map[string]any{"reason": "withdrawn"}, http.StatusCreated)
-	for _, run := range []db.GainsRunRecord{legacy, saved} {
+	for _, run := range []db.GainsRunRecord{legacy, legacy2, saved} {
 		got, err := service.GainsRun(ctx, run.ID)
 		require.NoError(t, err)
 		require.Equal(t, run, got)
@@ -274,11 +290,11 @@ func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisc
 	// have been removed before schema 8 refuses. Restore the head before using
 	// the current server's export contract.
 	require.NoError(t, db.Migrate(ctx, database))
-	// Existing portable export and backup tests exercise both saved schemas.
+	// The portable export preserves all three saved schemas, even outside its ledger scope.
 	bundle := downloadBundle(t, handler, f.sessionCookie, "?from=2026-07-01&to=2026-07-31")
 	table := bundle.table(t, "investment-gains-runs.csv")
-	require.Len(t, table.rows, 2)
-	for i, run := range []db.GainsRunRecord{legacy, saved} {
+	require.Len(t, table.rows, 3)
+	for i, run := range []db.GainsRunRecord{legacy, legacy2, saved} {
 		require.Equal(t, string(run.OutputJSON), table.column(table.rows[i], "output_json"))
 		require.Equal(t, strconv.Itoa(run.SchemaVersion), table.column(table.rows[i], "schema_version"))
 	}
