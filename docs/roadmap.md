@@ -196,11 +196,19 @@ below is execution order, not a chain of hard dependencies.
    #324/#325/#328/#329/#330 are fixed; #327 (modal focus, P2) and #326
    (URL state, P3) remain open. It created the interactive sub-view audit #331
    (dialogs, record forms, panels, import review), best run after #327.
-   The other areas remain open as sub-issues of #260, in this order (the
-   shared reference book and expected-figure register #266 is delivered, with
-   [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):
-   deployment #279. Architecture/quality #280
-   runs last, with the shared gates once at the candidate SHA.
+   The deployment audit #279 is complete
+   ([evidence](reviews/deployment-audit-2026-10-18.md)): fresh native/Compose
+   builds, candidate migration 14→18, verified-backup rollback and the focused
+   release preflight pass. #332's private build-context exposure and #338's
+   stale upgrade-evidence references are fixed. Available Debian updates are
+   applied; residual image-advisory review is additional audit #337. Owner
+   deployment/household evidence is additional audit #336, blocked on actual
+   owner evidence. Release gaps now have issues: signing #333 (owner decision),
+   PATs #334 and adoption assets #335. These remain release gates, not a claim
+   that the synthetic deployment is ready to announce.
+   Architecture/quality #280 runs last, with the shared gates once at the
+   candidate SHA. The shared reference register #266 is delivered, with
+   [evidence](reviews/reference-book-audit-2026-10-17.md); #281 is fixed.
    Fix confirmed integrity/security defects before affected feature slices.
    This is a bounded review, not a recurring full-suite gate. Each open
    sub-audit also records maintainability notes, without fixing them.
@@ -381,6 +389,12 @@ scanning and push-protection settings; the current checkout alone cannot
 establish those remote settings. Maintain the disclosure and dependency
 scanning paths before an announcement.
 
+The [2026-10-18 deployment audit](reviews/deployment-audit-2026-10-18.md)
+records a complete local-history scan with five inspected synthetic-test
+detections, no reachable Go vulnerability and no JavaScript advisory. Remote
+settings and the real operator/household acceptance remain #336; residual
+runtime-image advisory triage remains #337. These are dated, bounded checks.
+
 ### Before public announcement or marketplace listings
 
 1. ✅ Complete R2, R3, and R5 so a newcomer can migrate, inspect, and export
@@ -403,13 +417,13 @@ scanning paths before an announcement.
    #102 catalog parity and its regression gate are delivered. Assign native
    reviewers and record terminology sign-off before describing those catalogs
    as complete; see the [review packet](reviews/localization-native-review-2026-10-13.md).
-4. **Personal-access tokens — open** (added 2026-08-05, review §3f). The
+4. **Personal-access tokens — open, #334** (added 2026-08-05, review §3f). The
    typed OpenAPI surface is the foundation for an ecosystem, but session
    cookie + CSRF header auth supplies no dedicated scoped credential for
    scripts, tools or community clients. Announcement is the moment of maximum developer attention.
    Required shape: hashed at rest, scoped, expiring by default, revocable,
    and emitting authentication events.
-5. ◐ Produce signed release binaries with reproducibility notes.
+5. ◐ Produce signed release binaries with reproducibility notes (#333).
    **Reproducibility rechecked 2026-10-12** (#195): native SQLite uses
    `-trimpath`, CGO and a pinned bundled engine. Identical Go/C toolchain,
    source and embedded frontend inputs produce matching hashes. The Linux
@@ -419,7 +433,7 @@ scanning paths before an announcement.
    release workflow, neither of which exists yet — there is no release job in
    `.github/workflows/`. The existing `ci.yml`, `govulncheck.yml` and scheduled
    `large-book.yml` and `release-preflight.yml` are validation workflows.
-6. Prepare adoption assets: seeded demo, README screenshots, and a short
+6. Prepare adoption assets (#335): seeded demo, README screenshots, and a short
    migration walkthrough — courting the plain-text-accounting audience
    explicitly by leading with the correctness architecture (append-only
    versions, exact decimals, trial balance).

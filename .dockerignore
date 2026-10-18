@@ -1,0 +1,27 @@
+# Only inputs used by deploy/docker/Dockerfile may reach a local/remote builder.
+**
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!frontend/
+!frontend/**
+!api/
+!api/**
+!backend/
+!backend/**
+!scripts/
+!scripts/native-sqlite-env.sh
+
+# Local secrets, runtime data and generated output are never build inputs.
+**/.env
+**/.env.*
+**/node_modules
+**/*.sqlite
+**/*.sqlite-*
+**/*.db
+**/*.db-*
+backend/var
+backend/coverage.out
+backend/internal/web/dist
+frontend/.svelte-kit
+frontend/build

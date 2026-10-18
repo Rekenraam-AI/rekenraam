@@ -71,6 +71,11 @@ on port `16888` by default. The provided Compose example binds only to
 docker compose -f deploy/docker/compose.yaml up --build
 ```
 
+The build excludes local data and environment files and updates Debian runtime
+packages. Maintainers can check the build-context boundary with
+`bash scripts/test-docker-context.sh`; the disposable install/upgrade/rollback
+drill is documented in the [developer workflow](docs/developer-workflow.md#deployment-audit).
+
 Optional quote adapters use operator environment keys `COINGECKO_DEMO_API_KEY`
 and `TWELVE_DATA_API_KEY`. Configure instrument identifiers and quote assignments
 in Investments → Instruments; the [quote/crypto contract](docs/plans/quote-providers-crypto-plan.md)

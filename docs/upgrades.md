@@ -70,9 +70,15 @@ upgrade). Keep the backup after any `failed` result.
 
 The first installed release has no earlier supported release to upgrade from.
 Later releases must accept a database from any earlier installed release.
-No legacy databases currently exist. CI loads the current consolidated baseline with frozen seeded user data, repeats migration admission, and asserts
+No legacy databases currently exist. CI's
+`TestMigrateSeededBaselineMatchesFreshSchema` loads the current consolidated
+baseline with frozen seeded user data, repeats migration admission, and asserts
 data preservation and schema equivalence with a fresh install. Installed-release
-upgrade fixtures will be required once those releases exist.
+upgrade fixtures will be required once those releases exist. The
+[2026-10-18 deployment audit](reviews/deployment-audit-2026-10-18.md) separately
+records an actual candidate-image upgrade from migrations 14 to 18 and rollback
+by verified pre-upgrade backup. That synthetic drill does not establish support
+for an earlier installed release or for every intermediate development schema.
 
 ## Failed upgrade or rollback
 

@@ -225,6 +225,14 @@ uses a read-only root filesystem, drops Linux capabilities, and leaves only the
 SQLite volume and a temporary directory writable. Add a TLS reverse proxy
 instead of changing its port mapping to all interfaces.
 
+The Docker build context admits only the source inputs used by the Dockerfile.
+`.dockerignore` excludes local runtime databases/backups, environment files and
+generated dependencies/output, so these do not reach a remote builder. The
+runtime stage applies available Debian package updates before installing its
+utilities. Rebuild regularly; this does not mean the image has no advisories.
+The [2026-10-18 audit](reviews/deployment-audit-2026-10-18.md) records the scan
+and the remaining advisory review in #337.
+
 ## Backups
 
 **A backup is the only complete copy; an export is not a backup.** Restoring a

@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # Regenerates a frozen release seed fixture for the historical-upgrade test.
 #
-# The fixture stands in for "a database written by a released version of the
-# app". internal/db's TestMigrateUpgradesV01DatabaseToFreshHeadSchema replays it
-# into a database migrated only to that release's baseline, upgrades it to HEAD,
-# and asserts every durable figure survived.
+# The existing fixture describes the consolidated candidate baseline, not an
+# installed release. TestMigrateSeededBaselineMatchesFreshSchema loads it into
+# migration 0001, upgrades to HEAD, and asserts every durable figure survived.
 #
 # EXISTING FIXTURES ARE FROZEN. Regenerating v01_seed.sql against a later schema
 # defeats the test it feeds: the point is to migrate data written by the OLD
@@ -75,9 +74,9 @@ fields = re.match(r"INSERT INTO books VALUES\((.*)\);$", books, re.S).group(1).s
 currency, fields[4] = fields[4], "NULL"
 
 header = """-- Frozen v0.1 seed: a realistic book built through the real HTTP API against
--- migration 0001, then dumped. TestMigrateUpgradesV01DatabaseToFreshHeadSchema
--- replays it into a 0001-only database and upgrades that to HEAD, so this file
--- stands in for "a database written by a released version".
+-- migration 0001, then dumped. TestMigrateSeededBaselineMatchesFreshSchema
+-- replays it into a 0001-only database and upgrades that to HEAD. This is a
+-- candidate-baseline fixture, not evidence of an installed-release upgrade.
 --
 -- FROZEN. Regenerating this against a later schema would defeat the test: the
 -- point is to migrate data written by the OLD app, which current code may no

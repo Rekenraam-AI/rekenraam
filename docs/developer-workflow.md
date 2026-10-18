@@ -16,6 +16,36 @@ Before changing durable behavior, read:
 
 Run from repo root unless noted otherwise.
 
+### Deployment audit
+
+`bash scripts/test-docker-context.sh` uses Docker COPY with synthetic files to
+check that `.dockerignore` retains required source and excludes private/runtime
+data and generated output. It needs Docker, but reads no real private files.
+
+For a provider-free production Compose install/upgrade/rollback drill, build
+the two candidate images first, then run (substitute their tags and highest
+migrations):
+
+```sh
+python3 scripts/audit-deployment.py \
+  --old-image rekenraam-audit279-old:00fdbd8f \
+  --new-image rekenraam-audit279-rekenraam:latest \
+  --old-schema 14 --new-schema 18
+```
+
+This requires Python 3, Docker Compose with `!override` support, and a free
+loopback port (16889 by default; change it with `--port`). It uses a unique
+Compose project, synthetic credentials and a disposable volume, removed even
+on failure. It retains evidence in a private temporary directory printed at
+startup. It never uses a real deployment's data. The independent oracle is a
+USD transfer of 25.00: exactly two CSV rows (-25.00/+25.00), with every prior
+column preserved across upgrade, restart and restored rollback. Head's added
+posting-version identity column is checked separately. Both versions must pass
+self-check; a newer backup must be refused by the old binary. This is a
+candidate drill, not an installed-release compatibility claim. The
+[2026-10-18 report](reviews/deployment-audit-2026-10-18.md) records image builds,
+scan results and limits.
+
 ### Install
 
 ```sh

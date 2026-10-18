@@ -21,6 +21,7 @@ RUN bash -c 'source /src/scripts/native-sqlite-env.sh && go build -trimpath -o /
 FROM debian:trixie-slim
 WORKDIR /app
 RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /app/data \
