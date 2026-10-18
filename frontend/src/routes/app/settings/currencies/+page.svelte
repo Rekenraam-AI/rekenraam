@@ -29,6 +29,7 @@
   import { currencySettingsPageQueryOptions } from '#lib/api/settings.ts';
   import { getAPIClientErrorMessage } from '#lib/api-error-messages.ts';
   import Panel from '#lib/components/panel.svelte';
+  import ModalDialog from '#lib/components/modal-dialog.svelte';
   import StatePanel from '#lib/components/state-panel.svelte';
   import StatusBadge from '#lib/components/status-badge.svelte';
   import { localizedCurrencyCatalog, type LocalizedCurrencyCatalogEntry } from '#lib/install-gate/currency-options.ts';
@@ -199,6 +200,12 @@
       queryClient.invalidateQueries({ queryKey: forecastQueryKey }),
       queryClient.invalidateQueries({ queryKey: priceManagementQueryKey })
     ]);
+  }
+
+  function closeAddCurrencyDialog() {
+    addCurrencyDialogOpen = false;
+    addCurrencySearch = '';
+    addCurrencyError = undefined;
   }
 
   async function handleAddCurrency(entry: LocalizedCurrencyCatalogEntry) {
@@ -818,63 +825,62 @@
 {/if}
 
 {#if addCurrencyDialogOpen}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-4 py-6 backdrop-blur-sm">
-    <section class="w-full max-w-lg rounded-(--radius-panel) border border-border bg-surface shadow-(--shadow-panel)">
-      <div class="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
-        <div class="min-w-0">
-          <h3 class="text-sm font-semibold text-foreground">{m.currencies_add_dialog_title()}</h3>
-          <p class="mt-1 text-xs leading-5 text-muted">{m.currencies_add_dialog_copy()}</p>
-        </div>
-        <button
-          type="button"
-          class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-(--radius-control) border border-border bg-control text-foreground transition hover:bg-control-hover"
-          onclick={() => { addCurrencyDialogOpen = false; addCurrencySearch = ''; addCurrencyError = undefined; }}
-          aria-label={m.currencies_add_dialog_close()}
-          title={m.currencies_add_dialog_close()}
-        >
-          <X size={15} aria-hidden="true" />
-        </button>
+  <ModalDialog labelledby="add-currency-title" pending={addCurrencyPending} onCancel={closeAddCurrencyDialog} class="max-w-lg">
+    <div class="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+      <div class="min-w-0">
+        <h3 id="add-currency-title" class="text-sm font-semibold text-foreground">{m.currencies_add_dialog_title()}</h3>
+        <p class="mt-1 text-xs leading-5 text-muted">{m.currencies_add_dialog_copy()}</p>
       </div>
+      <button
+        type="button"
+        class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-(--radius-control) border border-border bg-control text-foreground transition hover:bg-control-hover"
+        onclick={closeAddCurrencyDialog}
+        aria-label={m.currencies_add_dialog_close()}
+        title={m.currencies_add_dialog_close()}
+      >
+        <X size={15} aria-hidden="true" />
+      </button>
+    </div>
 
-      <div class="space-y-3 px-4 py-4">
-        <label>
-          <span class="block text-xs font-semibold uppercase tracking-[0.12em] text-muted">{m.currencies_add_dialog_search()}</span>
-          <input
-            bind:value={addCurrencySearch}
-            class="mt-1.5 h-10 w-full rounded-(--radius-control) border border-border bg-control px-3 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted hover:bg-control-hover focus:border-accent"
-            autocomplete="off"
-            placeholder={m.currencies_add_dialog_search_placeholder()}
-          />
-        </label>
+    <div class="space-y-3 px-4 py-4">
+      <label>
+        <span class="block text-xs font-semibold uppercase tracking-[0.12em] text-muted">{m.currencies_add_dialog_search()}</span>
+        <input
+          bind:value={addCurrencySearch}
+          data-initial-focus
+          class="mt-1.5 h-10 w-full rounded-(--radius-control) border border-border bg-control px-3 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted hover:bg-control-hover focus:border-accent"
+          autocomplete="off"
+          placeholder={m.currencies_add_dialog_search_placeholder()}
+        />
+      </label>
 
-        {#if addCurrencyError}
-          <p class="text-sm font-semibold text-danger">{getAPIClientErrorMessage(addCurrencyError)}</p>
-        {/if}
+      {#if addCurrencyError}
+        <p class="text-sm font-semibold text-danger">{getAPIClientErrorMessage(addCurrencyError)}</p>
+      {/if}
 
-        <div class="max-h-72 overflow-auto rounded-(--radius-control) border border-border">
-          {#each filteredCatalog as entry (entry.code)}
-            {@const alreadyActive = activeCurrencyCodes.has(entry.code)}
-            <button
-              type="button"
-              class="flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2 text-left text-sm transition last:border-b-0 hover:bg-row-hover disabled:cursor-not-allowed disabled:opacity-50"
-              onclick={() => handleAddCurrency(entry)}
-              disabled={alreadyActive || addCurrencyPending}
-            >
-              <span class="min-w-0">
-                <span class="block font-semibold text-foreground">{entry.code}</span>
-                <span class="block truncate text-xs text-muted">{entry.name}</span>
-              </span>
-              {#if alreadyActive}
-                <span class="shrink-0 text-xs text-muted">{m.currencies_add_dialog_already_active()}</span>
-              {:else}
-                <span class="shrink-0 text-muted">{entry.symbol}</span>
-              {/if}
-            </button>
-          {:else}
-            <p class="px-3 py-6 text-center text-sm text-muted">{m.currencies_add_dialog_empty()}</p>
-          {/each}
-        </div>
+      <div class="max-h-72 overflow-auto rounded-(--radius-control) border border-border">
+        {#each filteredCatalog as entry (entry.code)}
+          {@const alreadyActive = activeCurrencyCodes.has(entry.code)}
+          <button
+            type="button"
+            class="flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2 text-left text-sm transition last:border-b-0 hover:bg-row-hover disabled:cursor-not-allowed disabled:opacity-50"
+            onclick={() => handleAddCurrency(entry)}
+            disabled={alreadyActive || addCurrencyPending}
+          >
+            <span class="min-w-0">
+              <span class="block font-semibold text-foreground">{entry.code}</span>
+              <span class="block truncate text-xs text-muted">{entry.name}</span>
+            </span>
+            {#if alreadyActive}
+              <span class="shrink-0 text-xs text-muted">{m.currencies_add_dialog_already_active()}</span>
+            {:else}
+              <span class="shrink-0 text-muted">{entry.symbol}</span>
+            {/if}
+          </button>
+        {:else}
+          <p class="px-3 py-6 text-center text-sm text-muted">{m.currencies_add_dialog_empty()}</p>
+        {/each}
       </div>
-    </section>
-  </div>
+    </div>
+  </ModalDialog>
 {/if}

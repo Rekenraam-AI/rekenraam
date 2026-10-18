@@ -201,7 +201,7 @@
     {pending} onCancel={() => (review = null)} onConfirm={confirmReview} />
 {/if}
 
-<form onsubmit={handleSubmit} class="space-y-4">
+<form onsubmit={handleSubmit} aria-busy={pending} class="space-y-4">
   <h2 class="text-base font-semibold text-foreground">{m.transactions_investment_replace_write_off_title()}</h2>
   <p class="text-sm text-muted">{m.transactions_investment_replace_write_off_copy()}</p>
 

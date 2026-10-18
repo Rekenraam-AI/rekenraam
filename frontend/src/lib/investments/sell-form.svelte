@@ -474,7 +474,7 @@
   />
 {/if}
 
-<form onsubmit={handleSubmit} class="space-y-4">
+<form onsubmit={handleSubmit} aria-busy={pending} class="space-y-4">
   <h2 class="text-base font-semibold text-foreground">
     {correction ? m.transactions_investment_replace_sale_title() : m.investments_sell_title()}
   </h2>

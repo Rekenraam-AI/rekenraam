@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import X from '@lucide/svelte/icons/x';
   import AlertTriangle from '@lucide/svelte/icons/triangle-alert';
+  import ModalDialog from '#lib/components/modal-dialog.svelte';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -252,149 +253,135 @@
 
 <!-- Reconciliation override modal -->
 {#if reconciliationModal.open}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-4 py-6 backdrop-blur-sm">
-    <div
-      class="w-full max-w-lg rounded-[var(--radius-panel)] border border-border bg-surface shadow-[var(--shadow-panel)]"
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="recon-modal-title"
-    >
-      <div class="flex items-start gap-3 border-b border-border px-4 py-3">
-        <AlertTriangle size={18} class="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
-        <div class="min-w-0">
-          <h3 id="recon-modal-title" class="text-sm font-semibold text-foreground">
-            {m.transactions_reconciliation_warning_title()}
-          </h3>
-          <p class="mt-1 text-xs leading-5 text-muted">{m.transactions_reconciliation_warning_copy()}</p>
-        </div>
-      </div>
-
-      <ul class="divide-y divide-border px-4 py-3 text-sm">
-        {#each reconciliationModal.impacts as cp (cp.checkpoint_id)}
-          <li class="py-2 text-foreground">
-            {m.transactions_reconciliation_checkpoint_label({
-              account: cp.account_label,
-              commodity: cp.commodity_code,
-              date: cp.statement_date
-            })}
-          </li>
-        {/each}
-      </ul>
-
-      <div class="px-4">
-        <APIFormError error={actionError} id="recon-modal-error" />
-      </div>
-
-      <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
-        <button
-          type="button"
-          class={btnSecondary}
-          onclick={cancelReconciliationOverride}
-        >
-          {m.transactions_reconciliation_cancel()}
-        </button>
-        <button
-          type="button"
-          class={btnWarning}
-          onclick={confirmReconciliationOverride}
-          disabled={actionPending}
-        >
-          <AlertTriangle size={14} aria-hidden="true" />
-          {m.transactions_reconciliation_confirm()}
-        </button>
+  <ModalDialog role="alertdialog" labelledby="recon-modal-title" pending={actionPending} onCancel={cancelReconciliationOverride} class="max-w-lg">
+    <div class="flex items-start gap-3 border-b border-border px-4 py-3">
+      <AlertTriangle size={18} class="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+      <div class="min-w-0">
+        <h3 id="recon-modal-title" class="text-sm font-semibold text-foreground">
+          {m.transactions_reconciliation_warning_title()}
+        </h3>
+        <p class="mt-1 text-xs leading-5 text-muted">{m.transactions_reconciliation_warning_copy()}</p>
       </div>
     </div>
-  </div>
+
+    <ul class="divide-y divide-border px-4 py-3 text-sm">
+      {#each reconciliationModal.impacts as cp (cp.checkpoint_id)}
+        <li class="py-2 text-foreground">
+          {m.transactions_reconciliation_checkpoint_label({
+            account: cp.account_label,
+            commodity: cp.commodity_code,
+            date: cp.statement_date
+          })}
+        </li>
+      {/each}
+    </ul>
+
+    <div class="px-4">
+      <APIFormError error={actionError} id="recon-modal-error" />
+    </div>
+
+    <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
+      <button
+        type="button"
+        class={btnSecondary}
+        onclick={cancelReconciliationOverride}
+      >
+        {m.transactions_reconciliation_cancel()}
+      </button>
+      <button
+        type="button"
+        class={btnWarning}
+        onclick={confirmReconciliationOverride}
+        disabled={actionPending}
+      >
+        <AlertTriangle size={14} aria-hidden="true" />
+        {m.transactions_reconciliation_confirm()}
+      </button>
+    </div>
+  </ModalDialog>
 {/if}
 
 <!-- Reason modal for void / unvoid / soft-delete / restore -->
 {#if activeModal !== null}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-4 py-6 backdrop-blur-sm">
-    <div
-      class="w-full max-w-md rounded-[var(--radius-panel)] border border-border bg-surface shadow-[var(--shadow-panel)]"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="action-modal-title"
-    >
-      <div class="border-b border-border px-4 py-3">
-        <h3 id="action-modal-title" class="text-sm font-semibold text-foreground">
-          {#if activeModal === 'void'}
-            {m.transactions_void_title()}
-          {:else if activeModal === 'unvoid'}
-            {m.transactions_unvoid_title()}
-          {:else if activeModal === 'soft-delete'}
-            {m.transactions_soft_delete_title()}
-          {:else}
-            {m.transactions_restore_title()}
-          {/if}
-        </h3>
-        {#if activeModal === 'soft-delete'}
-          <p class="mt-1 text-xs leading-5 text-muted">{m.transactions_soft_delete_copy()}</p>
+  <ModalDialog labelledby="action-modal-title" pending={actionPending} onCancel={closeModal} class="max-w-md">
+    <div class="border-b border-border px-4 py-3">
+      <h3 id="action-modal-title" class="text-sm font-semibold text-foreground">
+        {#if activeModal === 'void'}
+          {m.transactions_void_title()}
+        {:else if activeModal === 'unvoid'}
+          {m.transactions_unvoid_title()}
+        {:else if activeModal === 'soft-delete'}
+          {m.transactions_soft_delete_title()}
+        {:else}
+          {m.transactions_restore_title()}
         {/if}
-      </div>
-
-      <div class="px-4 py-3">
-        <label>
-          <span class={labelClass}>
-            {#if activeModal === 'void'}
-              {m.transactions_void_reason_label()}
-            {:else if activeModal === 'unvoid'}
-              {m.transactions_unvoid_reason_label()}
-            {:else if activeModal === 'soft-delete'}
-              {m.transactions_soft_delete_reason_label()}
-            {:else}
-              {m.transactions_restore_reason_label()}
-            {/if}
-          </span>
-          <input
-            type="text"
-            bind:value={reasonInput}
-            class={reasonInputClass}
-            placeholder={activeModal === 'void'
-              ? m.transactions_void_reason_placeholder()
-              : activeModal === 'unvoid'
-                ? m.transactions_unvoid_reason_placeholder()
-                : activeModal === 'soft-delete'
-                  ? m.transactions_soft_delete_reason_placeholder()
-                  : m.transactions_restore_reason_placeholder()}
-            maxlength="500"
-          />
-        </label>
-
-        <APIFormError error={actionError} id="action-modal-error" />
-      </div>
-
-      <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
-        <button type="button" class={btnSecondary} onclick={closeModal} disabled={actionPending}>
-          {#if activeModal === 'void'}
-            {m.transactions_void_cancel()}
-          {:else if activeModal === 'unvoid'}
-            {m.transactions_unvoid_cancel()}
-          {:else if activeModal === 'soft-delete'}
-            {m.transactions_soft_delete_cancel()}
-          {:else}
-            {m.transactions_restore_cancel()}
-          {/if}
-        </button>
-        <button
-          type="button"
-          class={activeModal === 'soft-delete' ? btnDanger : activeModal === 'void' ? btnWarning : btnPrimary}
-          onclick={confirmAction}
-          disabled={actionPending}
-        >
-          {#if activeModal === 'void'}
-            {m.transactions_void_confirm()}
-          {:else if activeModal === 'unvoid'}
-            {m.transactions_unvoid_confirm()}
-          {:else if activeModal === 'soft-delete'}
-            {m.transactions_soft_delete_confirm()}
-          {:else}
-            {m.transactions_restore_confirm()}
-          {/if}
-        </button>
-      </div>
+      </h3>
+      {#if activeModal === 'soft-delete'}
+        <p class="mt-1 text-xs leading-5 text-muted">{m.transactions_soft_delete_copy()}</p>
+      {/if}
     </div>
-  </div>
+
+    <div class="px-4 py-3">
+      <label>
+        <span class={labelClass}>
+          {#if activeModal === 'void'}
+            {m.transactions_void_reason_label()}
+          {:else if activeModal === 'unvoid'}
+            {m.transactions_unvoid_reason_label()}
+          {:else if activeModal === 'soft-delete'}
+            {m.transactions_soft_delete_reason_label()}
+          {:else}
+            {m.transactions_restore_reason_label()}
+          {/if}
+        </span>
+        <input
+          type="text"
+          bind:value={reasonInput}
+          class={reasonInputClass}
+          placeholder={activeModal === 'void'
+            ? m.transactions_void_reason_placeholder()
+            : activeModal === 'unvoid'
+              ? m.transactions_unvoid_reason_placeholder()
+              : activeModal === 'soft-delete'
+                ? m.transactions_soft_delete_reason_placeholder()
+                : m.transactions_restore_reason_placeholder()}
+          maxlength="500"
+        />
+      </label>
+
+      <APIFormError error={actionError} id="action-modal-error" />
+    </div>
+
+    <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
+      <button type="button" class={btnSecondary} onclick={closeModal} disabled={actionPending}>
+        {#if activeModal === 'void'}
+          {m.transactions_void_cancel()}
+        {:else if activeModal === 'unvoid'}
+          {m.transactions_unvoid_cancel()}
+        {:else if activeModal === 'soft-delete'}
+          {m.transactions_soft_delete_cancel()}
+        {:else}
+          {m.transactions_restore_cancel()}
+        {/if}
+      </button>
+      <button
+        type="button"
+        class={activeModal === 'soft-delete' ? btnDanger : activeModal === 'void' ? btnWarning : btnPrimary}
+        onclick={confirmAction}
+        disabled={actionPending}
+      >
+        {#if activeModal === 'void'}
+          {m.transactions_void_confirm()}
+        {:else if activeModal === 'unvoid'}
+          {m.transactions_unvoid_confirm()}
+        {:else if activeModal === 'soft-delete'}
+          {m.transactions_soft_delete_confirm()}
+        {:else}
+          {m.transactions_restore_confirm()}
+        {/if}
+      </button>
+    </div>
+  </ModalDialog>
 {/if}
 
 <!-- Detail panel body -->

@@ -6,6 +6,7 @@
   import { APIClientError } from '#lib/api/client.ts';
   import { createManualPrice, correctPrice, withdrawPrice, getPriceImpact, invalidatePriceReads, type PriceImpact, type PriceObservation, type PricingWorkspace, type ManualPriceRequest } from '#lib/api/price-management.ts';
   import APIFormError from '#lib/components/api-form-error.svelte';
+  import ModalDialog from '#lib/components/modal-dialog.svelte';
   import { TranslatedFormError } from '#lib/form-errors.ts';
   import { formatEditableAmount } from '#lib/money/amount.ts';
   import { formatQuantity } from '#lib/money/format.ts';
@@ -37,7 +38,6 @@
   let reviewing = $state(false);
   let impact = $state<PriceImpact | null>(null);
   let error = $state<unknown>();
-  let dialog = $state<HTMLDialogElement>();
   let reviewButton = $state<HTMLButtonElement>();
   let confirmButton = $state<HTMLButtonElement>();
   const locale = $derived(getLocale());
@@ -45,11 +45,9 @@
   const parsedPrice = $derived(parsePriceAmount(price));
   const parsedQuantity = $derived(parsePriceAmount(quantity));
   const canReview = $derived(!!reason.trim() && (mode === 'void' || (base > 0 && quote > 0 && base !== quote && !!valuationDate && !!parsedPrice && !!parsedQuantity)));
-  $effect(() => { if (dialog && !dialog.open) dialog.showModal(); });
   $effect(() => { if (reviewing) void tick().then(() => confirmButton?.focus()); });
-  function close() { if (pending) return; dialog?.close(); onCancel(); }
+  function close() { if (pending) return; onCancel(); }
   function cancelReview() { reviewing = false; impact = null; void tick().then(() => reviewButton?.focus()); }
-  function cancelDialog(event: Event) { event.preventDefault(); if (!pending) { if (reviewing) cancelReview(); else close(); } }
   async function review() {
     if (!canReview || pending) return;
     pending = true; error = undefined;
@@ -81,7 +79,7 @@
         else throw new TranslatedFormError(m.pricing_stale_review());
       }
       await invalidatePriceReads(queryClient);
-      dialog?.close(); onSaved(base, quote);
+      onSaved(base, quote);
     } catch (failure) {
       error = failure; reviewing = false; impact = null;
       void tick().then(() => reviewButton?.focus());
@@ -89,7 +87,7 @@
   }
 </script>
 
-<dialog bind:this={dialog} oncancel={cancelDialog} aria-labelledby="price-form-title" class="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-(--radius-panel) border border-border bg-surface p-4 text-foreground shadow-xl backdrop:bg-foreground/30 sm:p-6">
+<ModalDialog labelledby="price-form-title" {pending} onCancel={() => (reviewing ? cancelReview() : close())} class="max-w-2xl p-4 sm:p-6">
   <h2 id="price-form-title" class="text-lg font-semibold">{title}</h2>
   <p class="mt-2 text-sm text-muted">{m.pricing_mutation_copy()}</p>
   {#if mode === 'correct'}<p class="mt-2 text-sm text-muted">{m.pricing_correction_copy()}</p>{/if}
@@ -134,4 +132,4 @@
       </div>
     </section>
   {/if}
-</dialog>
+</ModalDialog>

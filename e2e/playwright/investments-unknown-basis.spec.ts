@@ -246,7 +246,7 @@ test('an explicit owner assertion resolves basis with source history on mobile',
   await expect(submit).toBeEnabled();
   await expect(form).toContainText('The app does not verify your declaration.');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  const accessibility = await new AxeBuilder({ page }).include('[role="dialog"]').analyze();
+  const accessibility = await new AxeBuilder({ page }).include('dialog[open]').analyze();
   expect(accessibility.violations).toEqual([]);
   await submit.click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Accept changed gains' }).click();
@@ -282,7 +282,7 @@ test('basis provenance is corrected without changing gains on mobile', async ({ 
   await form.getByLabel('Basis source').selectOption('provider');
   await form.getByLabel('Statement or provider reference').fill('Synthetic corrected provider row');
   await form.getByLabel('Reason', { exact: true }).fill('corrected the source reference');
-  const accessibility = await new AxeBuilder({ page }).include('[role="dialog"]').analyze();
+  const accessibility = await new AxeBuilder({ page }).include('dialog[open]').analyze();
   expect(accessibility.violations).toEqual([]);
   await form.getByRole('button', { name: 'Review and correct' }).click();
   await expect(form).toBeHidden();

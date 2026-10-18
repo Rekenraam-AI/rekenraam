@@ -229,7 +229,7 @@
     {pending} onCancel={() => (review = null)} onConfirm={confirmReview} />
 {/if}
 
-<form onsubmit={handleSubmit} class="space-y-4">
+<form onsubmit={handleSubmit} aria-busy={pending} class="space-y-4">
   <h2 class="text-base font-semibold text-foreground">
     {withholdingOnly ? m.investments_withholding_correct_title() : reinvested ? m.transactions_investment_replace_reinvestment_title() : m.transactions_investment_replace_dividend_title()}
   </h2>

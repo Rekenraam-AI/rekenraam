@@ -38,6 +38,10 @@ description: SvelteKit frontend rules for Rekenraam - static adapter constraints
 - Build screens from the shared primitives (`PageHeader`, `Panel`,
   `StatePanel`, status badges — see `frontend/src/lib/components/`) before
   adding route-local styling.
+- Every modal is `ModalDialog` (`#lib/components/modal-dialog.svelte`, #327):
+  wrap it in `{#if}`, pass `onCancel` and `pending`, and keep Cancel before a
+  destructive confirm. Never hand-roll a `fixed inset-0` + `aria-modal`
+  overlay — it leaves focus on the page behind it.
 
 ## i18n (every user-visible string, no exceptions)
 

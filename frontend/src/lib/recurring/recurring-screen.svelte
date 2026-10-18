@@ -3,6 +3,7 @@
   import { addDays, formatISO, parseISO } from 'date-fns';
   import StatePanel from '#lib/components/state-panel.svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
+  import ModalDialog from '#lib/components/modal-dialog.svelte';
   import TransactionEditor from '#lib/transactions/transaction-editor.svelte';
   import TemplateEditor from './template-editor.svelte';
   import { m } from '#lib/paraglide/messages.js';
@@ -31,7 +32,6 @@
   let notice = $state('');
   let pending = $state(false);
   let selected = $state<number[]>([]);
-  let dialog: HTMLDialogElement;
   type Review = { kind: 'post'; items: DueItem[]; impacts: ReconciliationImpactResponse[] }
     | { kind: 'skip'; templateID: number; date: string }
     | { kind: 'discard'; transactionID: number }
@@ -54,11 +54,6 @@
     queryFn: () => getRecurringOccurrences(inspecting!.id, occurrenceRange!.from, occurrenceRange!.to),
     enabled: !!inspecting && !!occurrenceRange
   }));
-  $effect(() => {
-    if (!dialog) return;
-    if (review && !dialog.open) dialog.showModal();
-    else if (!review && dialog.open) dialog.close();
-  });
   async function refresh() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['api', 'recurring'] }),
@@ -228,7 +223,8 @@
   {/if}
 </div>
 
-<dialog bind:this={dialog} oncancel={(event) => {if(pending) event.preventDefault();else review=null;}} onclose={() => {review=null;}} class="m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-3xl overflow-y-auto rounded-(--radius-panel) border border-border bg-surface p-5 text-foreground shadow-(--shadow-panel) backdrop:bg-background/80" aria-label={m.recurring_review()}>
+{#if review}
+<ModalDialog label={m.recurring_review()} {pending} onCancel={close} class="max-w-3xl p-5">
   {#if review?.kind === 'template' && summary.data}
     {#key review}<TemplateEditor template={review.template} today={summary.data.today} csrfToken={csrf} onSaved={templateSaved} onCancel={close} onPendingChange={(value) => pending=value} />{/key}
   {:else if review?.kind === 'edit'}
@@ -246,4 +242,5 @@
     {#if notice}<p role="status" class="my-2 text-sm">{notice}</p>{/if}
     <div class="mt-4 flex flex-wrap justify-end gap-2"><button class={button} disabled={pending} onclick={close}>{m.recurring_cancel()}</button><button class={button} disabled={pending || impactChanged || reviewStale || !csrf || (review.kind==='skip' && !reason.trim())} onclick={confirm}>{pending?m.recurring_saving():m.recurring_confirm()}</button></div>
   {/if}
-</dialog>
+</ModalDialog>
+{/if}

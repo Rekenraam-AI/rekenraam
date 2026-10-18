@@ -6,6 +6,7 @@
   import { getSplitActivity, investmentSplitsQueryKey, previewSplitOperationReversal, reverseSplitOperation,
     type InvestmentSplitActivity, type ReconciliationImpactResponse } from '#lib/api/investments.ts';
   import APIFormError from '#lib/components/api-form-error.svelte';
+  import ModalDialog from '#lib/components/modal-dialog.svelte';
   import SplitForm from './split-form.svelte';
   import CashInLieuForm from './cash-in-lieu-form.svelte';
   import ReconciliationConfirm from './reconciliation-confirm.svelte';
@@ -34,7 +35,6 @@
   const currencyByID = $derived(new Map((currencies.data?.currencies ?? []).map((currency) => [currency.id,currency])));
   let selected = $state<InvestmentSplitActivity | null>(null);
   let mode = $state<'replace' | 'reverse' | 'settle'>('replace');
-  let dialog = $state<HTMLDialogElement>();
   let reason = $state('');
   let pending = $state(false);
   let error = $state<unknown>();
@@ -43,7 +43,6 @@
   let gainRefreshed = $state(false);
   const gainRows = $derived(impact?.gain_impact ? gainImpactRows(impact.gain_impact.changes,gainImpactCurrency(currencyByID),locale) : []);
   const modalTitle = $derived(mode === 'replace' ? m.transactions_investment_replace_split_title() : mode === 'settle' ? m.investments_cash_in_lieu_title() : m.transactions_investment_reverse_split_action());
-  $effect(() => { if (!dialog) return; if (selected && !dialog.open) dialog.showModal(); else if (!selected && dialog.open) dialog.close(); });
 
   const reference = (row: InvestmentSplitActivity): string => typeof row.source_evidence.reference === 'string' ? row.source_evidence.reference : '';
   const standing = (row: InvestmentSplitActivity) => row.standing === 'effective' ? m.investments_split_standing_effective() : row.standing === 'superseded' ? m.investments_split_standing_superseded() : m.investments_split_standing_reversed();
@@ -124,8 +123,8 @@
   {/if}
 </section>
 
-<dialog bind:this={dialog} onclose={close} oncancel={(event)=>{if(pending)event.preventDefault();else close();}} aria-labelledby="split-action-title" class="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-(--radius-panel) border border-border bg-surface p-6 text-foreground backdrop:bg-background/70">
-  {#if selected}
+{#if selected}
+  <ModalDialog labelledby="split-action-title" {pending} onCancel={close} class="max-w-lg p-6">
     <h2 id="split-action-title" class="mb-4 text-base font-semibold">{modalTitle}</h2>
     {#if mode === 'replace'}
       <SplitForm {csrfToken} correction={{operationID:selected.operation_id,terms:selected}} onSaved={saved} onCancel={close}/>
@@ -145,5 +144,5 @@
         </div>
       </form>
     {/if}
-  {/if}
-</dialog>
+  </ModalDialog>
+{/if}

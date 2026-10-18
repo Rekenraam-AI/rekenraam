@@ -6,6 +6,7 @@
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import APIFormError from '#lib/components/api-form-error.svelte';
+  import ModalDialog from '#lib/components/modal-dialog.svelte';
   import CapitalReturnSummary from '#lib/investments/capital-return-summary.svelte';
   import CapitalReturnForm from '#lib/investments/capital-return-form.svelte';
   import CashInLieuForm from '#lib/investments/cash-in-lieu-form.svelte';
@@ -210,17 +211,14 @@
         (currenciesQuery.data?.currencies ?? []).map((c: CurrencyResponse) => [c.id, c]))), getLocale())
     : []);
   let reasonInputElement: HTMLInputElement | undefined = $state();
-  let confirmButtonElement: HTMLButtonElement | undefined = $state();
+  let cancelButtonElement: HTMLButtonElement | undefined = $state();
 
+  // The dialog stays open from the reason step into the review step; the
+  // review keeps focus on Cancel, off the confirming button.
   $effect(() => {
     if (modal === 'reason') reasonInputElement?.focus();
-    if (modal === 'reconciliation') confirmButtonElement?.focus();
+    if (modal === 'reconciliation') cancelButtonElement?.focus();
   });
-
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && modal !== 'closed' && !pending) closeModal();
-    else if (event.key === 'Escape' && replacementKind !== null) replacementKind = null;
-  }
 
   const locale = $derived(getLocale());
   const dateFormatter = $derived(new Intl.DateTimeFormat(locale, {
@@ -369,7 +367,6 @@
   }
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
 
 <section class="space-y-3 border-t border-border pt-4" aria-labelledby="investment-correction-heading">
   <h3 id="investment-correction-heading" class="text-xs font-semibold uppercase tracking-[0.12em] text-muted">
@@ -821,290 +818,247 @@
 </section>
 
 {#if (replacementKind === 'cash_in_lieu' || replacementKind === 'cash_in_lieu_entry') && csrfToken}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm" role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={replacementKind === 'cash_in_lieu' ? m.investments_cash_in_lieu_correct() : m.investments_cash_in_lieu_title()}>
-      {#if replacementKind === 'cash_in_lieu_entry' && chainQuery.data?.effective_split}
-        <CashInLieuForm {csrfToken} split={{ transactionID, holdingAccountID: chainQuery.data.effective_split.holding_account_id, commodityID: chainQuery.data.effective_split.commodity_id, effectiveOn: chainQuery.data.effective_split.effective_on }} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-      {:else if replacementKind === 'cash_in_lieu_entry' && cashInLieuSettles}
-        <CashInLieuForm {csrfToken} split={cashInLieuSettles} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-      {:else if replacementQuery.isPending}<p role="status" class="text-sm text-muted">{m.investments_loading()}</p>
-      {:else if replacementQuery.isError}<APIFormError error={replacementQuery.error} />
-      {:else if replacementQuery.data?.operation_kind === 'cash_in_lieu' && !replacementQuery.data.already_corrected}
-        <CashInLieuForm {csrfToken} correction={replacementQuery.data} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-      {:else}<p class="text-sm text-muted">{m.transactions_investment_replace_unavailable()}</p>{/if}
-      {#if replacementQuery.isError || (replacementQuery.data?.already_corrected && replacementKind === 'cash_in_lieu')}
-        <button type="button" onclick={() => (replacementKind = null)} class="mt-3 rounded-[var(--radius-control)] border border-border bg-control px-3 py-2 text-sm text-foreground">{m.investments_form_cancel()}</button>
-      {/if}
-    </div>
-  </div>
+  <ModalDialog label={replacementKind === 'cash_in_lieu' ? m.investments_cash_in_lieu_correct() : m.investments_cash_in_lieu_title()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  {#if replacementKind === 'cash_in_lieu_entry' && chainQuery.data?.effective_split}
+    <CashInLieuForm {csrfToken} split={{ transactionID, holdingAccountID: chainQuery.data.effective_split.holding_account_id, commodityID: chainQuery.data.effective_split.commodity_id, effectiveOn: chainQuery.data.effective_split.effective_on }} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  {:else if replacementKind === 'cash_in_lieu_entry' && cashInLieuSettles}
+    <CashInLieuForm {csrfToken} split={cashInLieuSettles} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  {:else if replacementQuery.isPending}<p role="status" class="text-sm text-muted">{m.investments_loading()}</p>
+  {:else if replacementQuery.isError}<APIFormError error={replacementQuery.error} />
+  {:else if replacementQuery.data?.operation_kind === 'cash_in_lieu' && !replacementQuery.data.already_corrected}
+    <CashInLieuForm {csrfToken} correction={replacementQuery.data} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  {:else}<p class="text-sm text-muted">{m.transactions_investment_replace_unavailable()}</p>{/if}
+  {#if replacementQuery.isError || (replacementQuery.data?.already_corrected && replacementKind === 'cash_in_lieu')}
+    <button type="button" onclick={() => (replacementKind = null)} class="mt-3 rounded-[var(--radius-control)] border border-border bg-control px-3 py-2 text-sm text-foreground">{m.investments_form_cancel()}</button>
+  {/if}
+  </ModalDialog>
 {:else if replacementKind === 'capital_return' && csrfToken && chainQuery.data?.effective_return_of_capital}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm" role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={m.investments_capital_return_correct()}>
-      <CapitalReturnForm {csrfToken} correction={{ transactionID, terms: chainQuery.data.effective_return_of_capital }}
-        onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-    </div>
-  </div>
+  <ModalDialog label={m.investments_capital_return_correct()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  <CapitalReturnForm {csrfToken} correction={{ transactionID, terms: chainQuery.data.effective_return_of_capital }}
+    onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  </ModalDialog>
 {:else if replacementKind === 'payment_in_lieu' && csrfToken && paymentInLieuCorrectable && chainQuery.data?.effective_payment_in_lieu}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
-    role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-labelledby="payment-in-lieu-title">
-      <PaymentInLieuForm {csrfToken} correction={{ transactionID, terms: chainQuery.data.effective_payment_in_lieu }}
-        onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-    </div>
-  </div>
+  <ModalDialog labelledby="payment-in-lieu-title"
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  <PaymentInLieuForm {csrfToken} correction={{ transactionID, terms: chainQuery.data.effective_payment_in_lieu }}
+    onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  </ModalDialog>
 {:else if (replacementKind === 'dividend' || replacementKind === 'reinvestment') && csrfToken}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
-    role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={replacementKind === 'dividend'
-        ? (withholdingOnly ? m.investments_withholding_correct_title() : m.transactions_investment_replace_dividend_title()) : m.transactions_investment_replace_reinvestment_title()}>
-      {#if replacementKind === 'dividend' && dividendCorrectable && chainQuery.data?.effective_dividend}
-        <DividendCorrectionForm {csrfToken} {transactionID} dividend={chainQuery.data.effective_dividend}
-          onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-      {:else if replacementKind === 'reinvestment' && reinvestmentCorrectable && chainQuery.data?.effective_reinvestment}
-        <DividendCorrectionForm {csrfToken} {transactionID} reinvestment={chainQuery.data.effective_reinvestment}
-          onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-      {:else}
-        <p class="text-sm text-muted">{m.transactions_investment_replace_unavailable()}</p>
-        <button type="button" class="mt-4 min-h-10 rounded-[var(--radius-control)] border border-border bg-control px-4 text-sm font-semibold text-foreground"
-          onclick={() => (replacementKind = null)}>{m.investments_form_cancel()}</button>
-      {/if}
-    </div>
-  </div>
+  <ModalDialog label={replacementKind === 'dividend'
+        ? (withholdingOnly ? m.investments_withholding_correct_title() : m.transactions_investment_replace_dividend_title()) : m.transactions_investment_replace_reinvestment_title()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  {#if replacementKind === 'dividend' && dividendCorrectable && chainQuery.data?.effective_dividend}
+    <DividendCorrectionForm {csrfToken} {transactionID} dividend={chainQuery.data.effective_dividend}
+      onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  {:else if replacementKind === 'reinvestment' && reinvestmentCorrectable && chainQuery.data?.effective_reinvestment}
+    <DividendCorrectionForm {csrfToken} {transactionID} reinvestment={chainQuery.data.effective_reinvestment}
+      onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  {:else}
+    <p class="text-sm text-muted">{m.transactions_investment_replace_unavailable()}</p>
+    <button type="button" class="mt-4 min-h-10 rounded-[var(--radius-control)] border border-border bg-control px-4 text-sm font-semibold text-foreground"
+      onclick={() => (replacementKind = null)}>{m.investments_form_cancel()}</button>
+  {/if}
+  </ModalDialog>
 {:else if replacementKind === 'transfer' && csrfToken && chainQuery.data?.effective_transfer}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
-    role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={chainQuery.data.effective_transfer.transfer_kind === 'external_out'
-        ? m.transactions_investment_replace_transfer_out_title() : m.transactions_investment_replace_transfer_title()}>
-      {#if chainQuery.data.effective_transfer.transfer_kind === 'external_in'}
-        <TransferInCorrectionForm {csrfToken} {transactionID} transfer={chainQuery.data.effective_transfer}
-          onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-      {:else}
-        <TransferCorrectionForm {csrfToken} {transactionID} transfer={chainQuery.data.effective_transfer}
-          onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-      {/if}
-    </div>
-  </div>
+  <ModalDialog label={chainQuery.data.effective_transfer.transfer_kind === 'external_out'
+        ? m.transactions_investment_replace_transfer_out_title() : m.transactions_investment_replace_transfer_title()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  {#if chainQuery.data.effective_transfer.transfer_kind === 'external_in'}
+    <TransferInCorrectionForm {csrfToken} {transactionID} transfer={chainQuery.data.effective_transfer}
+      onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  {:else}
+    <TransferCorrectionForm {csrfToken} {transactionID} transfer={chainQuery.data.effective_transfer}
+      onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  {/if}
+  </ModalDialog>
 {:else if replacementKind === 'resolve_basis' && csrfToken && chainQuery.data?.effective_transfer}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
-    role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={m.investments_basis_resolution_title()}>
-      <BasisResolutionForm {csrfToken} {transactionID} costCommodityID={chainQuery.data.effective_transfer.cost_commodity_id}
-        onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-    </div>
-  </div>
+  <ModalDialog label={m.investments_basis_resolution_title()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  <BasisResolutionForm {csrfToken} {transactionID} costCommodityID={chainQuery.data.effective_transfer.cost_commodity_id}
+    onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  </ModalDialog>
 {:else if replacementKind === 'correct_basis' && csrfToken && chainQuery.data?.effective_basis_resolution}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
-    role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={m.investments_basis_resolution_correct_title()}>
-      <BasisResolutionForm {csrfToken} {transactionID}
-        costCommodityID={chainQuery.data.effective_basis_resolution.cost_commodity_id}
-        current={chainQuery.data.effective_basis_resolution}
-        onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-    </div>
-  </div>
+  <ModalDialog label={m.investments_basis_resolution_correct_title()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  <BasisResolutionForm {csrfToken} {transactionID}
+    costCommodityID={chainQuery.data.effective_basis_resolution.cost_commodity_id}
+    current={chainQuery.data.effective_basis_resolution}
+    onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  </ModalDialog>
 {:else if (replacementKind === 'short_sale' || replacementKind === 'short_cover') && csrfToken}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
-    role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={replacementKind === 'short_sale'
-        ? m.investments_short_sale_correct_title() : m.investments_short_cover_correct_title()}>
-      {#if replacementQuery.isPending}
-        <p class="text-sm text-muted" role="status">{m.transactions_investment_replace_loading()}</p>
-      {:else if replacementQuery.isError}
-        <APIFormError error={replacementQuery.error} />
-        <button type="button" class="mt-2 text-sm font-semibold text-accent" onclick={() => replacementQuery.refetch()}>{m.transactions_retry()}</button>
-      {:else if replacementQuery.data?.operation_kind === replacementKind && !replacementQuery.data.already_corrected}
-        <ShortTradeForm mode={replacementKind === 'short_sale' ? 'open' : 'cover'} {csrfToken} correction={replacementQuery.data}
-          onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-      {:else}
-        <p class="text-sm text-muted">{m.transactions_investment_replace_unavailable()}</p>
-        <button type="button" class="mt-4 min-h-10 rounded-[var(--radius-control)] border border-border bg-control px-4 text-sm font-semibold text-foreground"
-          onclick={() => (replacementKind = null)}>{m.investments_form_cancel()}</button>
-      {/if}
-    </div>
-  </div>
+  <ModalDialog label={replacementKind === 'short_sale'
+        ? m.investments_short_sale_correct_title() : m.investments_short_cover_correct_title()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  {#if replacementQuery.isPending}
+    <p class="text-sm text-muted" role="status">{m.transactions_investment_replace_loading()}</p>
+  {:else if replacementQuery.isError}
+    <APIFormError error={replacementQuery.error} />
+    <button type="button" class="mt-2 text-sm font-semibold text-accent" onclick={() => replacementQuery.refetch()}>{m.transactions_retry()}</button>
+  {:else if replacementQuery.data?.operation_kind === replacementKind && !replacementQuery.data.already_corrected}
+    <ShortTradeForm mode={replacementKind === 'short_sale' ? 'open' : 'cover'} {csrfToken} correction={replacementQuery.data}
+      onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  {:else}
+    <p class="text-sm text-muted">{m.transactions_investment_replace_unavailable()}</p>
+    <button type="button" class="mt-4 min-h-10 rounded-[var(--radius-control)] border border-border bg-control px-4 text-sm font-semibold text-foreground"
+      onclick={() => (replacementKind = null)}>{m.investments_form_cancel()}</button>
+  {/if}
+  </ModalDialog>
 {:else if replacementKind === 'write_off' && csrfToken}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
-    role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={m.transactions_investment_replace_write_off_title()}>
-      {#if replacementQuery.isPending}
-        <p class="text-sm text-muted" role="status">{m.transactions_investment_replace_loading()}</p>
-      {:else if replacementQuery.isError}
-        <APIFormError error={replacementQuery.error} />
-        <button type="button" class="mt-2 text-sm font-semibold text-accent" onclick={() => replacementQuery.refetch()}>{m.transactions_retry()}</button>
-      {:else if replacementQuery.data?.operation_kind === 'write_off' && replacementQuery.data.can_replace_sale && !replacementQuery.data.already_corrected}
-        <WriteOffCorrectionForm {csrfToken} correction={replacementQuery.data} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-      {:else}
-        <p class="text-sm text-muted">{m.transactions_investment_replace_unavailable()}</p>
-        <button type="button" class="mt-4 min-h-10 rounded-[var(--radius-control)] border border-border bg-control px-4 text-sm font-semibold text-foreground"
-          onclick={() => (replacementKind = null)}>{m.investments_form_cancel()}</button>
-      {/if}
-    </div>
-  </div>
+  <ModalDialog label={m.transactions_investment_replace_write_off_title()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  {#if replacementQuery.isPending}
+    <p class="text-sm text-muted" role="status">{m.transactions_investment_replace_loading()}</p>
+  {:else if replacementQuery.isError}
+    <APIFormError error={replacementQuery.error} />
+    <button type="button" class="mt-2 text-sm font-semibold text-accent" onclick={() => replacementQuery.refetch()}>{m.transactions_retry()}</button>
+  {:else if replacementQuery.data?.operation_kind === 'write_off' && replacementQuery.data.can_replace_sale && !replacementQuery.data.already_corrected}
+    <WriteOffCorrectionForm {csrfToken} correction={replacementQuery.data} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  {:else}
+    <p class="text-sm text-muted">{m.transactions_investment_replace_unavailable()}</p>
+    <button type="button" class="mt-4 min-h-10 rounded-[var(--radius-control)] border border-border bg-control px-4 text-sm font-semibold text-foreground"
+      onclick={() => (replacementKind = null)}>{m.investments_form_cancel()}</button>
+  {/if}
+  </ModalDialog>
 {:else if replacementKind === 'share_exchange' && csrfToken && shareExchange}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
-    role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={m.transactions_investment_replace_exchange_title()}>
-      <ShareExchangeForm {csrfToken} correction={{ transactionID, terms: shareExchange }}
-        onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-    </div>
-  </div>
+  <ModalDialog label={m.transactions_investment_replace_exchange_title()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  <ShareExchangeForm {csrfToken} correction={{ transactionID, terms: shareExchange }}
+    onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  </ModalDialog>
 {:else if replacementKind === 'spin_off' && csrfToken && spinOff}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
-    role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={m.transactions_investment_replace_spin_off_title()}>
-      <SpinOffForm {csrfToken} correction={{ transactionID, terms: spinOff }}
-        onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-    </div>
-  </div>
+  <ModalDialog label={m.transactions_investment_replace_spin_off_title()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  <SpinOffForm {csrfToken} correction={{ transactionID, terms: spinOff }}
+    onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  </ModalDialog>
 {:else if replacementKind === 'cash_and_stock_merger' && csrfToken && merger}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
-    role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={m.transactions_investment_replace_merger_title()}>
-      <CashAndStockMergerForm {csrfToken} correction={{ transactionID, terms: merger }}
-        onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-    </div>
-  </div>
+  <ModalDialog label={m.transactions_investment_replace_merger_title()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  <CashAndStockMergerForm {csrfToken} correction={{ transactionID, terms: merger }}
+    onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  </ModalDialog>
 {:else if replacementKind === 'split' && csrfToken && chainQuery.data?.effective_split}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
-    role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={m.transactions_investment_replace_split_title()}>
-      <SplitForm {csrfToken} correction={{ transactionID, terms: chainQuery.data.effective_split }}
-        onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-    </div>
-  </div>
+  <ModalDialog label={m.transactions_investment_replace_split_title()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  <SplitForm {csrfToken} correction={{ transactionID, terms: chainQuery.data.effective_split }}
+    onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  </ModalDialog>
 {:else if replacementKind === 'buy' || replacementKind === 'sell'}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-3 py-4 backdrop-blur-sm"
-    role="presentation">
-    <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-6"
-      role="dialog" aria-modal="true" aria-label={replacementKind === 'buy'
-        ? m.transactions_investment_replace_buy_title() : m.transactions_investment_replace_sale_title()}>
-      {#if replacementQuery.isPending}
-        <p class="text-sm text-muted" role="status">{m.transactions_investment_replace_loading()}</p>
-      {:else if replacementQuery.isError}
-        <APIFormError error={replacementQuery.error} />
-        <button type="button" class="mt-2 text-sm font-semibold text-accent" onclick={() => replacementQuery.refetch()}>{m.transactions_retry()}</button>
-      {:else if replacementQuery.data?.operation_kind === 'buy' && replacementKind === 'buy' && (!replacementQuery.data.imported || replacementQuery.data.source_identity_id > 0 || sourceLinkedEffectiveBuy) && !replacementQuery.data.already_corrected && csrfToken}
-        <BuyForm {csrfToken} correction={replacementQuery.data} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-      {:else if replacementQuery.data?.operation_kind === 'sell' && replacementKind === 'sell' && replacementQuery.data.can_replace_sale && !replacementQuery.data.already_corrected && csrfToken}
-        <SellForm {csrfToken} correction={replacementQuery.data} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-      {:else}
-        <p class="text-sm text-muted">{m.transactions_investment_replace_unavailable()}</p>
-      {/if}
-      {#if replacementQuery.isPending || replacementQuery.isError || replacementQuery.data?.operation_kind !== replacementKind || (replacementQuery.data.imported && replacementQuery.data.source_identity_id === 0 && !(replacementKind === 'buy' && sourceLinkedEffectiveBuy)) || replacementQuery.data.already_corrected || (replacementKind === 'sell' && !replacementQuery.data.can_replace_sale) || !csrfToken}
-        <button type="button" class="mt-4 min-h-10 rounded-[var(--radius-control)] border border-border bg-control px-4 text-sm font-semibold text-foreground"
-          onclick={() => (replacementKind = null)}>{m.investments_form_cancel()}</button>
-      {/if}
-    </div>
-  </div>
+  <ModalDialog label={replacementKind === 'buy'
+        ? m.transactions_investment_replace_buy_title() : m.transactions_investment_replace_sale_title()}
+    onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
+  {#if replacementQuery.isPending}
+    <p class="text-sm text-muted" role="status">{m.transactions_investment_replace_loading()}</p>
+  {:else if replacementQuery.isError}
+    <APIFormError error={replacementQuery.error} />
+    <button type="button" class="mt-2 text-sm font-semibold text-accent" onclick={() => replacementQuery.refetch()}>{m.transactions_retry()}</button>
+  {:else if replacementQuery.data?.operation_kind === 'buy' && replacementKind === 'buy' && (!replacementQuery.data.imported || replacementQuery.data.source_identity_id > 0 || sourceLinkedEffectiveBuy) && !replacementQuery.data.already_corrected && csrfToken}
+    <BuyForm {csrfToken} correction={replacementQuery.data} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  {:else if replacementQuery.data?.operation_kind === 'sell' && replacementKind === 'sell' && replacementQuery.data.can_replace_sale && !replacementQuery.data.already_corrected && csrfToken}
+    <SellForm {csrfToken} correction={replacementQuery.data} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
+  {:else}
+    <p class="text-sm text-muted">{m.transactions_investment_replace_unavailable()}</p>
+  {/if}
+  {#if replacementQuery.isPending || replacementQuery.isError || replacementQuery.data?.operation_kind !== replacementKind || (replacementQuery.data.imported && replacementQuery.data.source_identity_id === 0 && !(replacementKind === 'buy' && sourceLinkedEffectiveBuy)) || replacementQuery.data.already_corrected || (replacementKind === 'sell' && !replacementQuery.data.can_replace_sale) || !csrfToken}
+    <button type="button" class="mt-4 min-h-10 rounded-[var(--radius-control)] border border-border bg-control px-4 text-sm font-semibold text-foreground"
+      onclick={() => (replacementKind = null)}>{m.investments_form_cancel()}</button>
+  {/if}
+  </ModalDialog>
 {/if}
 
 {#if modal !== 'closed'}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-4 py-6 backdrop-blur-sm">
-    <div class="max-h-full w-full max-w-lg overflow-y-auto rounded-[var(--radius-panel)] border border-border bg-surface shadow-[var(--shadow-panel)]"
-      role="alertdialog" aria-modal="true" aria-labelledby="investment-reversal-title">
-      <div class="border-b border-border px-4 py-3">
-        <h3 id="investment-reversal-title" class="text-sm font-semibold text-foreground">
+  <ModalDialog role="alertdialog" labelledby="investment-reversal-title" {pending} onCancel={closeModal} class="max-w-lg">
+    <div class="border-b border-border px-4 py-3">
+      <h3 id="investment-reversal-title" class="text-sm font-semibold text-foreground">
+        {modal === 'reason'
+          ? reversalKind === 'buy' ? m.transactions_investment_reverse_buy_title()
+            : reversalKind === 'split' ? m.transactions_investment_reverse_split_title()
+            : reversalKind === 'dividend' ? (withholdingOnly ? m.investments_withholding_reverse_title() : m.transactions_investment_reverse_dividend_title())
+            : reversalKind === 'payment_in_lieu' ? m.investments_payment_in_lieu_reverse_title()
+            : reversalKind === 'reinvestment' ? m.transactions_investment_reverse_reinvestment_title()
+            : reversalKind === 'write_off' ? m.transactions_investment_reverse_write_off_title()
+            : reversalKind === 'transfer' ? m.transactions_investment_reverse_transfer_title()
+            : reversalKind === 'capital_return' ? m.transactions_investment_reverse_capital_return_title()
+            : reversalKind === 'cash_in_lieu' ? m.investments_cash_in_lieu_reverse_title()
+            : reversalKind === 'short_sale' ? m.investments_short_sale_reverse_title()
+            : reversalKind === 'short_cover' ? m.investments_short_cover_reverse_title()
+            : reversalKind === 'basis_resolution' ? m.transactions_investment_withdraw_basis_title()
+            : reversalKind === 'share_exchange' ? m.transactions_investment_reverse_exchange_title()
+            : reversalKind === 'spin_off' ? m.transactions_investment_reverse_spin_off_title()
+            : reversalKind === 'cash_and_stock_merger' ? m.transactions_investment_reverse_merger_title()
+            : m.transactions_investment_reverse_title()
+          : impacts.length > 0 ? m.transactions_reconciliation_warning_title() : m.investments_gain_impact_title()}
+      </h3>
+      {#if modal === 'reason' || impacts.length > 0}
+        <p class="mt-1 text-xs leading-5 text-muted">
           {modal === 'reason'
-            ? reversalKind === 'buy' ? m.transactions_investment_reverse_buy_title()
-              : reversalKind === 'split' ? m.transactions_investment_reverse_split_title()
-              : reversalKind === 'dividend' ? (withholdingOnly ? m.investments_withholding_reverse_title() : m.transactions_investment_reverse_dividend_title())
-              : reversalKind === 'payment_in_lieu' ? m.investments_payment_in_lieu_reverse_title()
-              : reversalKind === 'reinvestment' ? m.transactions_investment_reverse_reinvestment_title()
-              : reversalKind === 'write_off' ? m.transactions_investment_reverse_write_off_title()
-              : reversalKind === 'transfer' ? m.transactions_investment_reverse_transfer_title()
-              : reversalKind === 'capital_return' ? m.transactions_investment_reverse_capital_return_title()
-              : reversalKind === 'cash_in_lieu' ? m.investments_cash_in_lieu_reverse_title()
-              : reversalKind === 'short_sale' ? m.investments_short_sale_reverse_title()
-              : reversalKind === 'short_cover' ? m.investments_short_cover_reverse_title()
-              : reversalKind === 'basis_resolution' ? m.transactions_investment_withdraw_basis_title()
-              : reversalKind === 'share_exchange' ? m.transactions_investment_reverse_exchange_title()
-              : reversalKind === 'spin_off' ? m.transactions_investment_reverse_spin_off_title()
-              : reversalKind === 'cash_and_stock_merger' ? m.transactions_investment_reverse_merger_title()
-              : m.transactions_investment_reverse_title()
-            : impacts.length > 0 ? m.transactions_reconciliation_warning_title() : m.investments_gain_impact_title()}
-        </h3>
-        {#if modal === 'reason' || impacts.length > 0}
-          <p class="mt-1 text-xs leading-5 text-muted">
-            {modal === 'reason'
-              ? reversalKind === 'buy' ? m.transactions_investment_reverse_buy_copy()
-                : reversalKind === 'split' ? m.transactions_investment_reverse_split_copy()
-                : reversalKind === 'dividend' ? (withholdingOnly ? m.investments_withholding_reverse_copy() : m.transactions_investment_reverse_dividend_copy())
-                : reversalKind === 'payment_in_lieu' ? m.investments_payment_in_lieu_reverse_copy()
-                : reversalKind === 'reinvestment' ? m.transactions_investment_reverse_reinvestment_copy()
-                : reversalKind === 'write_off' ? m.transactions_investment_reverse_write_off_copy()
-                : reversalKind === 'transfer' ? m.transactions_investment_reverse_transfer_copy()
-                : reversalKind === 'capital_return' ? m.transactions_investment_reverse_capital_return_copy()
-                : reversalKind === 'cash_in_lieu' ? m.investments_cash_in_lieu_reverse_copy()
-                : reversalKind === 'short_sale' ? m.investments_short_sale_reverse_copy()
-                : reversalKind === 'short_cover' ? m.investments_short_cover_reverse_copy()
-                : reversalKind === 'basis_resolution' ? m.transactions_investment_withdraw_basis_copy()
-                : reversalKind === 'share_exchange' ? m.transactions_investment_reverse_exchange_copy()
-                : reversalKind === 'spin_off' ? m.transactions_investment_reverse_spin_off_copy()
-                : reversalKind === 'cash_and_stock_merger' ? m.transactions_investment_reverse_merger_copy()
-                : m.transactions_investment_reverse_copy()
-              : m.transactions_reconciliation_warning_copy()}
-          </p>
-        {/if}
-      </div>
-
-      {#if modal === 'reason'}
-        <div class="px-4 py-3">
-          <label for="investment-reversal-reason" class="block text-xs font-semibold uppercase tracking-[0.12em] text-muted">
-            {m.transactions_investment_reverse_reason()}
-          </label>
-          <input id="investment-reversal-reason" type="text" bind:this={reasonInputElement} bind:value={reason} maxlength="500" required
-            class="mt-1.5 h-10 w-full rounded-[var(--radius-control)] border border-border bg-control px-3 text-sm text-foreground outline-none focus:border-accent" />
-        </div>
-      {:else}
-        {#if impacts.length > 0}
-        <ul class="divide-y divide-border px-4 py-3 text-sm">
-          {#each impacts as checkpoint (checkpoint.checkpoint_id)}
-            <li class="flex gap-2 py-2 text-foreground">
-              <AlertTriangle size={16} class="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
-              {m.transactions_reconciliation_checkpoint_label({
-                account: checkpoint.account_label,
-                commodity: checkpoint.commodity_code,
-                date: checkpoint.statement_date
-              })}
-            </li>
-          {/each}
-        </ul>
-        {/if}
-        {#if gainRows.length > 0}
-          <div class:border-t={impacts.length > 0} class="border-border">
-            <GainImpactList rows={gainRows} refreshed={gainRefreshed} showHeading={impacts.length > 0}
-              labelledBy="investment-reversal-title" />
-          </div>
-        {/if}
+            ? reversalKind === 'buy' ? m.transactions_investment_reverse_buy_copy()
+              : reversalKind === 'split' ? m.transactions_investment_reverse_split_copy()
+              : reversalKind === 'dividend' ? (withholdingOnly ? m.investments_withholding_reverse_copy() : m.transactions_investment_reverse_dividend_copy())
+              : reversalKind === 'payment_in_lieu' ? m.investments_payment_in_lieu_reverse_copy()
+              : reversalKind === 'reinvestment' ? m.transactions_investment_reverse_reinvestment_copy()
+              : reversalKind === 'write_off' ? m.transactions_investment_reverse_write_off_copy()
+              : reversalKind === 'transfer' ? m.transactions_investment_reverse_transfer_copy()
+              : reversalKind === 'capital_return' ? m.transactions_investment_reverse_capital_return_copy()
+              : reversalKind === 'cash_in_lieu' ? m.investments_cash_in_lieu_reverse_copy()
+              : reversalKind === 'short_sale' ? m.investments_short_sale_reverse_copy()
+              : reversalKind === 'short_cover' ? m.investments_short_cover_reverse_copy()
+              : reversalKind === 'basis_resolution' ? m.transactions_investment_withdraw_basis_copy()
+              : reversalKind === 'share_exchange' ? m.transactions_investment_reverse_exchange_copy()
+              : reversalKind === 'spin_off' ? m.transactions_investment_reverse_spin_off_copy()
+              : reversalKind === 'cash_and_stock_merger' ? m.transactions_investment_reverse_merger_copy()
+              : m.transactions_investment_reverse_copy()
+            : m.transactions_reconciliation_warning_copy()}
+        </p>
       {/if}
-
-      <div class="px-4 pb-2"><APIFormError error={actionError} /></div>
-      <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
-        <button type="button" class="min-h-10 rounded-[var(--radius-control)] border border-border bg-control px-4 text-sm font-semibold text-foreground"
-          disabled={pending} onclick={closeModal}>{m.transactions_reconciliation_cancel()}</button>
-        <button type="button" bind:this={confirmButtonElement} class="min-h-10 rounded-[var(--radius-control)] bg-warning px-4 text-sm font-semibold text-background disabled:opacity-60"
-          disabled={pending || (modal === 'reason' && !reason.trim())}
-          onclick={modal === 'reason' ? submitReason : confirmReconciliation}>
-          {modal === 'reason'
-            ? m.transactions_investment_reverse_confirm()
-            : impacts.length > 0 && gainRows.length > 0
-              ? m.investments_gain_impact_confirm_with_reconciliation()
-              : impacts.length > 0 ? m.transactions_reconciliation_confirm() : m.investments_gain_impact_confirm()}
-        </button>
-      </div>
     </div>
-  </div>
+
+    {#if modal === 'reason'}
+      <div class="px-4 py-3">
+        <label for="investment-reversal-reason" class="block text-xs font-semibold uppercase tracking-[0.12em] text-muted">
+          {m.transactions_investment_reverse_reason()}
+        </label>
+        <input id="investment-reversal-reason" type="text" bind:this={reasonInputElement} bind:value={reason} maxlength="500" required
+          class="mt-1.5 h-10 w-full rounded-[var(--radius-control)] border border-border bg-control px-3 text-sm text-foreground outline-none focus:border-accent" />
+      </div>
+    {:else}
+      {#if impacts.length > 0}
+      <ul class="divide-y divide-border px-4 py-3 text-sm">
+        {#each impacts as checkpoint (checkpoint.checkpoint_id)}
+          <li class="flex gap-2 py-2 text-foreground">
+            <AlertTriangle size={16} class="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+            {m.transactions_reconciliation_checkpoint_label({
+              account: checkpoint.account_label,
+              commodity: checkpoint.commodity_code,
+              date: checkpoint.statement_date
+            })}
+          </li>
+        {/each}
+      </ul>
+      {/if}
+      {#if gainRows.length > 0}
+        <div class:border-t={impacts.length > 0} class="border-border">
+          <GainImpactList rows={gainRows} refreshed={gainRefreshed} showHeading={impacts.length > 0}
+            labelledBy="investment-reversal-title" />
+        </div>
+      {/if}
+    {/if}
+
+    <div class="px-4 pb-2"><APIFormError error={actionError} /></div>
+    <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
+      <button type="button" bind:this={cancelButtonElement} class="min-h-10 rounded-[var(--radius-control)] border border-border bg-control px-4 text-sm font-semibold text-foreground"
+        disabled={pending} onclick={closeModal}>{m.transactions_reconciliation_cancel()}</button>
+      <button type="button" class="min-h-10 rounded-[var(--radius-control)] bg-warning px-4 text-sm font-semibold text-background disabled:opacity-60"
+        disabled={pending || (modal === 'reason' && !reason.trim())}
+        onclick={modal === 'reason' ? submitReason : confirmReconciliation}>
+        {modal === 'reason'
+          ? m.transactions_investment_reverse_confirm()
+          : impacts.length > 0 && gainRows.length > 0
+            ? m.investments_gain_impact_confirm_with_reconciliation()
+            : impacts.length > 0 ? m.transactions_reconciliation_confirm() : m.investments_gain_impact_confirm()}
+      </button>
+    </div>
+  </ModalDialog>
 {/if}

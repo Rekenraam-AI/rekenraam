@@ -41,7 +41,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
     await page.goto(`/app/transactions?transaction_id=${split.transaction.id}`);
     await page.getByRole('button', { name: settings.investments_cash_in_lieu_entry_action, exact: true }).click();
-    const cil = page.locator('[role="dialog"]').filter({ has: page.locator('#cil-quantity') });
+    const cil = page.locator('dialog[open]').filter({ has: page.locator('#cil-quantity') });
     // Editable amounts parse in the active locale (#100).
     await cil.locator('#cil-quantity').fill(new Intl.NumberFormat(locale).format(0.5));
     await cil.locator('#cil-payment').fill(ago(25));
@@ -51,13 +51,13 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     const cilPreview = cil.getByRole('region', { name: settings.investments_cash_in_lieu_preview_title });
     await expect(cilPreview).toContainText(app.investments_basis_unknown);
     await expect(cilPreview).toContainText(app.investments_gain_unresolved);
-    expect((await new AxeBuilder({ page }).include('[role="dialog"]').analyze()).violations).toEqual([]);
+    expect((await new AxeBuilder({ page }).include('dialog[open]').analyze()).violations).toEqual([]);
     await cil.getByRole('button', { name: settings.investments_cash_in_lieu_submit, exact: true }).click();
     await expect(cil).toBeHidden();
 
     await page.goto('/app/investments');
     await page.getByRole('button', { name: settings.investments_record_capital_return, exact: true }).click();
-    const roc = page.locator('[role="dialog"]').filter({ has: page.locator('#capital-return-position') });
+    const roc = page.locator('dialog[open]').filter({ has: page.locator('#capital-return-position') });
     await roc.locator('#capital-return-position').selectOption(`${holding.id}:${instrument.commodity_id}:${currencyID}`);
     await roc.locator('#capital-return-cash').selectOption(String(cash.id));
     await roc.locator('#capital-return-effective').fill(ago(20));
@@ -66,7 +66,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     await roc.getByRole('button', { name: settings.investments_capital_return_preview, exact: true }).click();
     const rocPreview = roc.getByRole('region', { name: settings.investments_capital_return_preview_title });
     await expect(rocPreview).toContainText(settings.investments_capital_return_effect_unknown.split('{currency}')[1]);
-    expect((await new AxeBuilder({ page }).include('[role="dialog"]').analyze()).violations).toEqual([]);
+    expect((await new AxeBuilder({ page }).include('dialog[open]').analyze()).violations).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await roc.getByRole('button', { name: settings.investments_capital_return_submit, exact: true }).click();
     await expect(roc).toBeHidden();

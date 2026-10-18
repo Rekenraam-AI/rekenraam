@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { tick } from 'svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
   import { m } from '#lib/paraglide/messages.js';
@@ -7,6 +6,7 @@
   import Panel from '#lib/components/panel.svelte';
   import StatusBadge from '#lib/components/status-badge.svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
+  import ModalDialog from '#lib/components/modal-dialog.svelte';
   import { formatQuantity } from '#lib/money/format.ts';
   import { coveredByLaterActiveCheckpoint } from '#lib/reconcile/checkpoint-chain.ts';
   import {
@@ -76,29 +76,23 @@
   let voidError = $state<unknown>(undefined);
   let voidNeedsReason = $state(false);
   let voidedNotice = $state<string | undefined>(undefined);
-  let voidTrigger: HTMLElement | null = null;
   let reasonInput = $state<HTMLTextAreaElement | undefined>(undefined);
 
   const voidTargetChained = $derived(
     voidTarget !== undefined && coveredByLaterActiveCheckpoint(voidTarget.id, checkpoints)
   );
 
-  async function openVoid(checkpoint: ReconciliationCheckpointResponse, event: MouseEvent) {
-    voidTrigger = event.currentTarget as HTMLElement;
+  function openVoid(checkpoint: ReconciliationCheckpointResponse) {
     voidTarget = checkpoint;
     voidReason = '';
     voidError = undefined;
     voidNeedsReason = false;
     voidedNotice = undefined;
-    await tick();
-    reasonInput?.focus();
   }
 
   function cancelVoid() {
     if (voidPending) return;
     voidTarget = undefined;
-    voidTrigger?.focus();
-    voidTrigger = null;
   }
 
   async function confirmVoid(event: SubmitEvent) {
@@ -116,7 +110,6 @@
       const voided = await voidReconciliationCheckpoint(voidTarget.id, { change_reason: voidReason.trim() }, csrfToken);
       voidedNotice = m.reconcile_checkpoint_voided({ date: voided.statement_date });
       voidTarget = undefined;
-      voidTrigger = null;
       await queryClient.invalidateQueries({ queryKey: reconciliationQueryKey });
     } catch (error) {
       voidError = error;
@@ -171,7 +164,7 @@
                   class="inline-flex min-h-9 items-center rounded-(--radius-control) border border-border bg-control px-3 py-1.5 text-sm font-semibold text-danger transition-colors hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
                   aria-label={m.reconcile_checkpoint_void_aria({ date: checkpoint.statement_date })}
                   disabled={!csrfToken}
-                  onclick={(event) => openVoid(checkpoint, event)}
+                  onclick={() => openVoid(checkpoint)}
                 >
                   {m.reconcile_checkpoint_void()}
                 </button>
@@ -217,84 +210,73 @@
 </Panel>
 
 {#if voidTarget}
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-4 py-6 backdrop-blur-sm"
-    role="presentation"
-    onkeydown={(e) => { if (e.key === 'Escape') cancelVoid(); }}
-  >
-    <div
-      class="max-h-full w-full max-w-md overflow-y-auto rounded-(--radius-panel) border border-border bg-surface shadow-(--shadow-panel)"
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="checkpoint-void-title"
-      aria-describedby="checkpoint-void-description"
-    >
-      <form onsubmit={confirmVoid}>
-        <div class="flex items-start gap-3 border-b border-border px-4 py-3">
-          <AlertTriangle size={18} class="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
-          <div class="min-w-0">
-            <h3 id="checkpoint-void-title" class="text-sm font-semibold text-foreground">
-              {m.reconcile_checkpoint_void_title()}
-            </h3>
-            <div id="checkpoint-void-description" class="mt-1 space-y-2 text-xs leading-5 text-muted">
-              <p>
-                {m.reconcile_checkpoint_void_copy({
-                  date: voidTarget.statement_date,
-                  balance: balanceOf(voidTarget)
-                })}
-              </p>
-              <p>
-                {voidTargetChained
-                  ? m.reconcile_checkpoint_void_chained_copy()
-                  : m.reconcile_checkpoint_void_offered_copy()}
-              </p>
-            </div>
+  <ModalDialog role="alertdialog" labelledby="checkpoint-void-title" describedby="checkpoint-void-description"
+    pending={voidPending} onCancel={cancelVoid} class="max-w-md">
+    <form onsubmit={confirmVoid}>
+      <div class="flex items-start gap-3 border-b border-border px-4 py-3">
+        <AlertTriangle size={18} class="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+        <div class="min-w-0">
+          <h3 id="checkpoint-void-title" class="text-sm font-semibold text-foreground">
+            {m.reconcile_checkpoint_void_title()}
+          </h3>
+          <div id="checkpoint-void-description" class="mt-1 space-y-2 text-xs leading-5 text-muted">
+            <p>
+              {m.reconcile_checkpoint_void_copy({
+                date: voidTarget.statement_date,
+                balance: balanceOf(voidTarget)
+              })}
+            </p>
+            <p>
+              {voidTargetChained
+                ? m.reconcile_checkpoint_void_chained_copy()
+                : m.reconcile_checkpoint_void_offered_copy()}
+            </p>
           </div>
         </div>
+      </div>
 
-        <div class="space-y-2 px-4 py-3">
-          <label
-            class="block text-xs font-semibold uppercase tracking-[0.12em] text-muted"
-            for="checkpoint-void-reason"
-          >
-            {m.reconcile_checkpoint_void_reason_label()}
-          </label>
-          <textarea
-            id="checkpoint-void-reason"
-            bind:this={reasonInput}
-            bind:value={voidReason}
-            rows="2"
-            aria-required="true"
-            aria-invalid={voidNeedsReason}
-            aria-describedby={voidNeedsReason ? 'checkpoint-void-reason-error' : undefined}
-            placeholder={m.reconcile_checkpoint_void_reason_placeholder()}
-            disabled={voidPending}
-            class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted focus:border-accent disabled:cursor-not-allowed disabled:opacity-70"
-          ></textarea>
-          {#if voidNeedsReason}
-            <p id="checkpoint-void-reason-error" class="text-xs text-danger">{m.reconcile_checkpoint_void_needs_reason()}</p>
-          {/if}
-          <APIFormError error={voidError} id="checkpoint-void-error" />
-        </div>
+      <div class="space-y-2 px-4 py-3">
+        <label
+          class="block text-xs font-semibold uppercase tracking-[0.12em] text-muted"
+          for="checkpoint-void-reason"
+        >
+          {m.reconcile_checkpoint_void_reason_label()}
+        </label>
+        <textarea
+          id="checkpoint-void-reason"
+          bind:this={reasonInput}
+          bind:value={voidReason}
+          rows="2"
+          aria-required="true"
+          aria-invalid={voidNeedsReason}
+          aria-describedby={voidNeedsReason ? 'checkpoint-void-reason-error' : undefined}
+          placeholder={m.reconcile_checkpoint_void_reason_placeholder()}
+          disabled={voidPending}
+          class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted focus:border-accent disabled:cursor-not-allowed disabled:opacity-70"
+        ></textarea>
+        {#if voidNeedsReason}
+          <p id="checkpoint-void-reason-error" class="text-xs text-danger">{m.reconcile_checkpoint_void_needs_reason()}</p>
+        {/if}
+        <APIFormError error={voidError} id="checkpoint-void-error" />
+      </div>
 
-        <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 rounded-(--radius-control) border border-border bg-control px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
-            onclick={cancelVoid}
-            disabled={voidPending}
-          >
-            {m.reconcile_checkpoint_void_cancel()}
-          </button>
-          <button
-            type="submit"
-            class="inline-flex items-center gap-2 rounded-(--radius-control) bg-danger px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={voidPending || !csrfToken}
-          >
-            {voidPending ? m.reconcile_checkpoint_voiding() : m.reconcile_checkpoint_void_confirm()}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+      <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-(--radius-control) border border-border bg-control px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
+          onclick={cancelVoid}
+          disabled={voidPending}
+        >
+          {m.reconcile_checkpoint_void_cancel()}
+        </button>
+        <button
+          type="submit"
+          class="inline-flex items-center gap-2 rounded-(--radius-control) bg-danger px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={voidPending || !csrfToken}
+        >
+          {voidPending ? m.reconcile_checkpoint_voiding() : m.reconcile_checkpoint_void_confirm()}
+        </button>
+      </div>
+    </form>
+  </ModalDialog>
 {/if}

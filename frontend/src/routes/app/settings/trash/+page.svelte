@@ -8,6 +8,7 @@
   import Panel from '#lib/components/panel.svelte';
   import StatePanel from '#lib/components/state-panel.svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
+  import ModalDialog from '#lib/components/modal-dialog.svelte';
   import StatusBadge from '#lib/components/status-badge.svelte';
   import {
     deletedTransactionsInfiniteQueryOptions,
@@ -252,72 +253,61 @@
 
 <!-- Reconciliation override confirmation modal (#225) -->
 {#if overrideModal.row}
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm"
-    role="presentation"
-    onkeydown={(e) => { if (e.key === 'Escape' && !overrideModal.pending) cancelOverride(); }}
-  >
-    <div
-      class="max-h-full w-full max-w-md overflow-y-auto rounded-(--radius-panel) border border-border bg-surface p-6 shadow-lg"
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="trash-override-title"
-      aria-describedby="trash-override-description"
-    >
-      <h3 id="trash-override-title" class="text-base font-semibold text-foreground">
-        {m.trash_restore_confirm_title()}
-      </h3>
-      <p id="trash-override-description" class="mt-2 text-sm text-muted">{m.trash_restore_confirm_description()}</p>
+  <ModalDialog role="alertdialog" labelledby="trash-override-title" describedby="trash-override-description"
+    pending={overrideModal.pending} onCancel={cancelOverride} class="max-w-md p-6">
+    <h3 id="trash-override-title" class="text-base font-semibold text-foreground">
+      {m.trash_restore_confirm_title()}
+    </h3>
+    <p id="trash-override-description" class="mt-2 text-sm text-muted">{m.trash_restore_confirm_description()}</p>
 
-      {#if overrideModal.loadError}
-        <div class="mt-3 space-y-2">
-          <APIFormError error={overrideModal.loadError} />
-          <button
-            type="button"
-            onclick={() => overrideModal.row && openOverride(overrideModal.row)}
-            class="rounded-(--radius-control) border border-border bg-control px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-control-hover"
-          >
-            {m.transactions_retry()}
-          </button>
-        </div>
-      {:else if overrideModal.impacts === null}
-        <p class="mt-3 text-sm text-muted" role="status">{m.trash_restore_confirm_loading()}</p>
-      {:else}
-        <ul class="mt-3 divide-y divide-border text-sm">
-          {#each overrideModal.impacts as cp (cp.checkpoint_id)}
-            <li class="py-2 text-foreground">
-              {m.transactions_reconciliation_checkpoint_label({
-                account: cp.account_label,
-                commodity: cp.commodity_code,
-                date: cp.statement_date
-              })}
-            </li>
-          {/each}
-        </ul>
-      {/if}
-
-      {#if overrideModal.writeError}
-        <div class="mt-3"><APIFormError error={overrideModal.writeError} /></div>
-      {/if}
-
-      <div class="mt-4 flex flex-wrap justify-end gap-3">
+    {#if overrideModal.loadError}
+      <div class="mt-3 space-y-2">
+        <APIFormError error={overrideModal.loadError} />
         <button
           type="button"
-          onclick={cancelOverride}
-          disabled={overrideModal.pending}
-          class="rounded-(--radius-control) border border-border bg-control px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
+          onclick={() => overrideModal.row && openOverride(overrideModal.row)}
+          class="rounded-(--radius-control) border border-border bg-control px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-control-hover"
         >
-          {m.trash_restore_confirm_cancel()}
-        </button>
-        <button
-          type="button"
-          onclick={confirmOverride}
-          disabled={overrideModal.impacts === null || overrideModal.pending}
-          class="rounded-(--radius-control) bg-danger px-4 py-2 text-sm font-semibold text-background transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {overrideModal.pending ? m.trash_restoring() : m.trash_restore_confirm_proceed()}
+          {m.transactions_retry()}
         </button>
       </div>
+    {:else if overrideModal.impacts === null}
+      <p class="mt-3 text-sm text-muted" role="status">{m.trash_restore_confirm_loading()}</p>
+    {:else}
+      <ul class="mt-3 divide-y divide-border text-sm">
+        {#each overrideModal.impacts as cp (cp.checkpoint_id)}
+          <li class="py-2 text-foreground">
+            {m.transactions_reconciliation_checkpoint_label({
+              account: cp.account_label,
+              commodity: cp.commodity_code,
+              date: cp.statement_date
+            })}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+
+    {#if overrideModal.writeError}
+      <div class="mt-3"><APIFormError error={overrideModal.writeError} /></div>
+    {/if}
+
+    <div class="mt-4 flex flex-wrap justify-end gap-3">
+      <button
+        type="button"
+        onclick={cancelOverride}
+        disabled={overrideModal.pending}
+        class="rounded-(--radius-control) border border-border bg-control px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {m.trash_restore_confirm_cancel()}
+      </button>
+      <button
+        type="button"
+        onclick={confirmOverride}
+        disabled={overrideModal.impacts === null || overrideModal.pending}
+        class="rounded-(--radius-control) bg-danger px-4 py-2 text-sm font-semibold text-background transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {overrideModal.pending ? m.trash_restoring() : m.trash_restore_confirm_proceed()}
+      </button>
     </div>
-  </div>
+  </ModalDialog>
 {/if}

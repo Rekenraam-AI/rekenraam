@@ -9,6 +9,7 @@
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import X from '@lucide/svelte/icons/x';
   import AlertTriangle from '@lucide/svelte/icons/triangle-alert';
+  import ModalDialog from '#lib/components/modal-dialog.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { isSubledgerManagedAccountKind } from '#lib/accounts/subledger-accounts.ts';
@@ -754,55 +755,49 @@
 
 <!-- Reconciliation warning modal -->
 {#if reconciliationModal.open}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-4 py-6 backdrop-blur-sm">
-    <div
-      class="w-full max-w-lg rounded-[var(--radius-panel)] border border-border bg-surface shadow-[var(--shadow-panel)]"
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="recon-modal-title"
-    >
-      <div class="flex items-start gap-3 border-b border-border px-4 py-3">
-        <AlertTriangle size={18} class="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
-        <div class="min-w-0">
-          <h3 id="recon-modal-title" class="text-sm font-semibold text-foreground">
-            {m.transactions_reconciliation_warning_title()}
-          </h3>
-          <p class="mt-1 text-xs leading-5 text-muted">{m.transactions_reconciliation_warning_copy()}</p>
-        </div>
-      </div>
-
-      <ul class="divide-y divide-border px-4 py-3 text-sm">
-        {#each reconciliationModal.impacts as cp (cp.checkpoint_id)}
-          <li class="py-2 text-foreground">
-            {m.transactions_reconciliation_checkpoint_label({
-              account: cp.account_label,
-              commodity: cp.commodity_code,
-              date: cp.statement_date
-            })}
-          </li>
-        {/each}
-      </ul>
-
-      <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-control px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-control-hover"
-          onclick={() => (reconciliationModal = { ...reconciliationModal, open: false })}
-        >
-          {m.transactions_reconciliation_cancel()}
-        </button>
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 rounded-[var(--radius-control)] bg-warning px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-60"
-          onclick={confirmReconciliationOverride}
-          disabled={pending}
-        >
-          <AlertTriangle size={14} aria-hidden="true" />
-          {m.transactions_reconciliation_confirm()}
-        </button>
+  <ModalDialog role="alertdialog" labelledby="recon-modal-title" {pending}
+    onCancel={() => (reconciliationModal = { ...reconciliationModal, open: false })} class="max-w-lg">
+    <div class="flex items-start gap-3 border-b border-border px-4 py-3">
+      <AlertTriangle size={18} class="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+      <div class="min-w-0">
+        <h3 id="recon-modal-title" class="text-sm font-semibold text-foreground">
+          {m.transactions_reconciliation_warning_title()}
+        </h3>
+        <p class="mt-1 text-xs leading-5 text-muted">{m.transactions_reconciliation_warning_copy()}</p>
       </div>
     </div>
-  </div>
+
+    <ul class="divide-y divide-border px-4 py-3 text-sm">
+      {#each reconciliationModal.impacts as cp (cp.checkpoint_id)}
+        <li class="py-2 text-foreground">
+          {m.transactions_reconciliation_checkpoint_label({
+            account: cp.account_label,
+            commodity: cp.commodity_code,
+            date: cp.statement_date
+          })}
+        </li>
+      {/each}
+    </ul>
+
+    <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-control px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-control-hover"
+        onclick={() => (reconciliationModal = { ...reconciliationModal, open: false })}
+      >
+        {m.transactions_reconciliation_cancel()}
+      </button>
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 rounded-[var(--radius-control)] bg-warning px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-60"
+        onclick={confirmReconciliationOverride}
+        disabled={pending}
+      >
+        <AlertTriangle size={14} aria-hidden="true" />
+        {m.transactions_reconciliation_confirm()}
+      </button>
+    </div>
+  </ModalDialog>
 {/if}
 
 <form class="space-y-4" onsubmit={handleSubmit}>

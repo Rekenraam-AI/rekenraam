@@ -607,6 +607,14 @@ non-trivial diff (yours or reviewed):
     per test and assert the visited pathname before checking
     (`route-sweep.spec.ts` `settle`).
 
+54. **Hand-rolled modal overlay** — a `fixed inset-0` div with `aria-modal`
+    hides nothing from the keyboard: focus stayed on the trigger, Tab walked
+    the blurred page behind, Escape did nothing and Cancel dropped focus on
+    `<body>` (#327). Use `ModalDialog`; a native `<dialog>` alone still lets
+    Tab leave for the browser chrome, which the component wraps. A window
+    `keydown` Escape handler also fires under a nested dialog — let the
+    dialog's `cancel` own Escape. Named check: `dialog-focus.spec.ts`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

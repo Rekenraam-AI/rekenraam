@@ -15,7 +15,7 @@
  */
 
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /** WCAG 2.1 A and AA, which is what the product's copy claims to aim at. */
 const STANDARD_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
@@ -108,4 +108,25 @@ export async function expectFocusIsNotOrphaned(page: Page, label: string) {
     return !active.isConnected;
   });
   expect(orphaned, `${label}: focus is on an element that is no longer in the document`).toBe(false);
+}
+
+/** Whether keyboard focus is on an element inside `dialog`. */
+export function focusIsInside(dialog: Locator): Promise<boolean> {
+  return dialog.evaluate((element) => element.contains(document.activeElement));
+}
+
+/**
+ * The WAI-ARIA dialog pattern's keyboard half (#327): focus starts inside the
+ * open dialog, and Tab and Shift+Tab never reach the page behind it. `presses`
+ * is how far to walk in each direction; it should exceed the dialog's
+ * focusable controls so the walk wraps at least once.
+ */
+export async function expectFocusTrapped(page: Page, dialog: Locator, label: string, presses = 12) {
+  await expect.poll(() => focusIsInside(dialog), { message: `${label}: initial focus inside` }).toBe(true);
+  for (const key of ['Tab', 'Shift+Tab']) {
+    for (let press = 1; press <= presses; press++) {
+      await page.keyboard.press(key);
+      expect(await focusIsInside(dialog), `${label}: focus inside after ${key} ×${press}`).toBe(true);
+    }
+  }
 }

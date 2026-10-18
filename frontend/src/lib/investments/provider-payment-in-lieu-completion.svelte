@@ -178,7 +178,7 @@
     onCancel={() => (reconciliation = null)} onConfirm={confirmOverride} />
 {/if}
 
-<form onsubmit={handleSubmit} class="mt-3 space-y-3 rounded-(--radius-panel) border border-border p-3" aria-labelledby="{idPrefix}-complete-title">
+<form onsubmit={handleSubmit} aria-busy={pending} class="mt-3 space-y-3 rounded-(--radius-panel) border border-border p-3" aria-labelledby="{idPrefix}-complete-title">
   <h3 id="{idPrefix}-complete-title" class="text-sm font-semibold text-foreground">{m.investments_suggestion_payment_in_lieu_complete_title()}</h3>
   <div class="grid gap-3 sm:grid-cols-2">
     {#if initial.holdingAccountIDs.length > 1}

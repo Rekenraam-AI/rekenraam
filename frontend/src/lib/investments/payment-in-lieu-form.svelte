@@ -207,7 +207,7 @@
     onCancel={() => (review = null)} onConfirm={confirmOverride} />
 {/if}
 
-<form onsubmit={handleSubmit} class="space-y-4" aria-describedby="pil-copy">
+<form onsubmit={handleSubmit} aria-busy={pending} class="space-y-4" aria-describedby="pil-copy">
   <h2 id="payment-in-lieu-title" class="text-base font-semibold text-foreground">
     {initial ? m.investments_payment_in_lieu_correct_title() : m.investments_payment_in_lieu_title()}
   </h2>

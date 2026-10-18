@@ -3,6 +3,7 @@
   import { tick, untrack } from 'svelte';
   import { parseISO } from 'date-fns';
   import APIFormError from '#lib/components/api-form-error.svelte';
+  import ModalDialog from '#lib/components/modal-dialog.svelte';
   import { accountsQueryOptions } from '#lib/api/accounts.ts';
   import { currenciesQueryOptions } from '#lib/api/currencies.ts';
   import {
@@ -60,7 +61,6 @@
   } | null>(null);
   let reviewing = $state(false);
   let gainRefreshed = $state(false);
-  let dialog = $state<HTMLDialogElement>();
   let recordButton = $state<HTMLButtonElement>();
 
   const locale = $derived(getLocale());
@@ -84,28 +84,14 @@
   const gainImpact = $derived(preview && hasGainChanges(preview.impact.gain_impact) ? preview.impact.gain_impact : null);
   const gainRows = $derived(gainImpact ? gainImpactRows(gainImpact.changes, gainImpactCurrency(currenciesByID), locale) : []);
 
-  $effect(() => { if (dialog && !dialog.open) dialog.showModal(); });
-  $effect(() => {
-    if (reviewing) {
-      // The form controls are disabled during review, so the native dialog's
-      // focus boundary contains only the shared confirmation's controls.
-      void tick().then(() => dialog?.querySelector<HTMLButtonElement>('[role="alertdialog"] button')?.focus());
-    }
-  });
 
   function close() {
     if (pending) return;
-    dialog?.close();
     onCancel();
   }
   function cancelReview() {
     reviewing = false;
     void tick().then(() => recordButton?.focus());
-  }
-  function cancelDialog(event: Event) {
-    event.preventDefault();
-    if (pending) return;
-    if (reviewing) cancelReview(); else close();
   }
   function clearPreview() { preview = null; formError = undefined; }
   function changeDate() { holdingKey = ''; quantity = ''; quantities = {}; clearPreview(); }
@@ -180,7 +166,6 @@
         gain_impact_acknowledgement: gainAcknowledgement(gainImpact) || undefined
       }, csrfToken);
       await invalidateInvestmentReads(queryClient);
-      dialog?.close();
       onSaved();
     } catch (error) {
       if (isStaleImpactRefusal(error)) {
@@ -204,8 +189,7 @@
   }
 </script>
 
-<dialog bind:this={dialog} oncancel={cancelDialog} aria-labelledby="write-off-title"
-  class="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-(--radius-panel) border border-border bg-surface p-6 text-foreground shadow-(--shadow-panel) backdrop:bg-background/70">
+<ModalDialog labelledby="write-off-title" {pending} onCancel={close} class="max-w-lg p-6">
   {#if reviewing && preview}
     <ReconciliationConfirm impacts={preview.impact.affected_checkpoints} {gainRows} {gainRefreshed} {pending}
       onCancel={cancelReview} onConfirm={confirm} />
@@ -314,4 +298,4 @@
       {/if}
     </div>
   </form>
-</dialog>
+</ModalDialog>

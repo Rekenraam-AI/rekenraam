@@ -3,6 +3,7 @@
   import Save from '@lucide/svelte/icons/save';
   import X from '@lucide/svelte/icons/x';
   import APIFormError from '#lib/components/api-form-error.svelte';
+  import ModalDialog from '#lib/components/modal-dialog.svelte';
   import {
     createAccountAdvanced,
     updateAccount,
@@ -545,54 +546,53 @@
   </div>
 
   {#if currencyDialogOpen}
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-4 py-6 backdrop-blur-sm">
-      <section class="w-full max-w-lg rounded-(--radius-panel) border border-border bg-surface shadow-(--shadow-panel)">
-        <div class="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
-          <div class="min-w-0">
-            <h3 class="text-sm font-semibold text-foreground">{m.accounts_currency_dialog_title()}</h3>
-            <p class="mt-1 text-xs leading-5 text-muted">{m.accounts_currency_dialog_copy()}</p>
-          </div>
-          <button
-            type="button"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-(--radius-control) border border-border bg-control text-foreground transition hover:bg-control-hover"
-            onclick={() => (currencyDialogOpen = false)}
-            aria-label={m.accounts_currency_dialog_close()}
-            title={m.accounts_currency_dialog_close()}
-          >
-            <X size={15} aria-hidden="true" />
-          </button>
+    <ModalDialog labelledby="account-currency-title" onCancel={() => (currencyDialogOpen = false)} class="max-w-lg">
+      <div class="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+        <div class="min-w-0">
+          <h3 id="account-currency-title" class="text-sm font-semibold text-foreground">{m.accounts_currency_dialog_title()}</h3>
+          <p class="mt-1 text-xs leading-5 text-muted">{m.accounts_currency_dialog_copy()}</p>
         </div>
+        <button
+          type="button"
+          class="inline-flex h-8 w-8 items-center justify-center rounded-(--radius-control) border border-border bg-control text-foreground transition hover:bg-control-hover"
+          onclick={() => (currencyDialogOpen = false)}
+          aria-label={m.accounts_currency_dialog_close()}
+          title={m.accounts_currency_dialog_close()}
+        >
+          <X size={15} aria-hidden="true" />
+        </button>
+      </div>
 
-        <div class="space-y-3 px-4 py-4">
-          <label>
-            <span class={labelClass}>{m.accounts_currency_dialog_search()}</span>
-            <input
-              bind:value={currencySearch}
-              class={inputClass}
-              autocomplete="off"
-              placeholder={m.accounts_currency_dialog_search_placeholder()}
-            />
-          </label>
+      <div class="space-y-3 px-4 py-4">
+        <label>
+          <span class={labelClass}>{m.accounts_currency_dialog_search()}</span>
+          <input
+            bind:value={currencySearch}
+            data-initial-focus
+            class={inputClass}
+            autocomplete="off"
+            placeholder={m.accounts_currency_dialog_search_placeholder()}
+          />
+        </label>
 
-          <div class="max-h-72 overflow-auto rounded-(--radius-control) border border-border">
-            {#each filteredCurrencyCatalog as currency (currency.code)}
-              <button
-                type="button"
-                class="flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2 text-left text-sm transition last:border-b-0 hover:bg-row-hover"
-                onclick={() => chooseCatalogCurrency(currency)}
-              >
-                <span class="min-w-0">
-                  <span class="block font-semibold text-foreground">{currency.code}</span>
-                  <span class="block truncate text-xs text-muted">{currency.name}</span>
-                </span>
-                <span class="shrink-0 text-muted">{currency.symbol}</span>
-              </button>
-            {:else}
-              <p class="px-3 py-6 text-center text-sm text-muted">{m.accounts_currency_dialog_empty()}</p>
-            {/each}
-          </div>
+        <div class="max-h-72 overflow-auto rounded-(--radius-control) border border-border">
+          {#each filteredCurrencyCatalog as currency (currency.code)}
+            <button
+              type="button"
+              class="flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2 text-left text-sm transition last:border-b-0 hover:bg-row-hover"
+              onclick={() => chooseCatalogCurrency(currency)}
+            >
+              <span class="min-w-0">
+                <span class="block font-semibold text-foreground">{currency.code}</span>
+                <span class="block truncate text-xs text-muted">{currency.name}</span>
+              </span>
+              <span class="shrink-0 text-muted">{currency.symbol}</span>
+            </button>
+          {:else}
+            <p class="px-3 py-6 text-center text-sm text-muted">{m.accounts_currency_dialog_empty()}</p>
+          {/each}
         </div>
-      </section>
-    </div>
+      </div>
+    </ModalDialog>
   {/if}
 </form>

@@ -389,7 +389,7 @@
   />
 {/if}
 
-<form onsubmit={handleSubmit} class="space-y-4">
+<form onsubmit={handleSubmit} aria-busy={pending} class="space-y-4">
   <h2 id={mode === 'withholding' ? 'withholding-title' : undefined} class="text-base font-semibold text-foreground">{title}</h2>
 
   <!-- Date -->

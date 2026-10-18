@@ -2,6 +2,7 @@
   import { createQuery } from '@tanstack/svelte-query';
   import Plus from '@lucide/svelte/icons/plus';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
+  import ModalDialog from '#lib/components/modal-dialog.svelte';
   import { authSessionQueryOptions } from '#lib/api/auth.ts';
   import BuyForm from '#lib/investments/buy-form.svelte';
   import SellForm from '#lib/investments/sell-form.svelte';
@@ -62,6 +63,7 @@
 
   let active = $state<Activity | null>(null);
   let menuOpen = $state(false);
+  let menuButton = $state<HTMLButtonElement>();
   let writeOffSaved = $state(false);
   const titleID = $derived(activities.find((activity) => activity.id === active)?.titleID);
 
@@ -85,6 +87,7 @@
 
 {#if layout === 'menu'}
   <button
+    bind:this={menuButton}
     type="button"
     aria-expanded={menuOpen}
     aria-controls="investment-entry-menu"
@@ -121,48 +124,41 @@
 {#if active === 'write-off'}
   <WriteOffForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
 {:else if active !== null}
-  <div class="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm" role="presentation" onclick={close}></div>
-
-  <div
-    class="fixed inset-x-4 bottom-0 z-50 max-h-[90vh] overflow-y-auto rounded-t-(--radius-panel) border border-border bg-surface shadow-(--shadow-panel) sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-(--radius-panel)"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby={titleID}
-  >
-    <div class="p-6">
-      {#if active === 'buy'}
-        <BuyForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'sell'}
-        <SellForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'short-open'}
-        <ShortTradeForm mode="open" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'short-cover'}
-        <ShortTradeForm mode="cover" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'payment-in-lieu'}
-        <PaymentInLieuForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'dividend'}
-        <DividendForm mode="cash" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'withholding'}
-        <DividendForm mode="withholding" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'reinvested'}
-        <DividendForm mode="reinvested" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'external-transfer-in'}
-        <ExternalTransferInForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'internal-transfer'}
-        <InternalTransferForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'external-transfer-out'}
-        <ExternalTransferOutForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'split'}
-        <SplitForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'share-exchange'}
-        <ShareExchangeForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'cash-and-stock-merger'}
-        <CashAndStockMergerForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'spin-off'}
-        <SpinOffForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {:else if active === 'capital-return'}
-        <CapitalReturnForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
-      {/if}
-    </div>
+  <ModalDialog labelledby={titleID} onCancel={close} closeOnBackdrop fallbackFocus={() => menuButton} class="max-w-lg">
+  <div class="p-6">
+    {#if active === 'buy'}
+      <BuyForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'sell'}
+      <SellForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'short-open'}
+      <ShortTradeForm mode="open" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'short-cover'}
+      <ShortTradeForm mode="cover" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'payment-in-lieu'}
+      <PaymentInLieuForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'dividend'}
+      <DividendForm mode="cash" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'withholding'}
+      <DividendForm mode="withholding" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'reinvested'}
+      <DividendForm mode="reinvested" {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'external-transfer-in'}
+      <ExternalTransferInForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'internal-transfer'}
+      <InternalTransferForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'external-transfer-out'}
+      <ExternalTransferOutForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'split'}
+      <SplitForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'share-exchange'}
+      <ShareExchangeForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'cash-and-stock-merger'}
+      <CashAndStockMergerForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'spin-off'}
+      <SpinOffForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {:else if active === 'capital-return'}
+      <CapitalReturnForm {csrfToken} {prefill} onSaved={saved} onCancel={close} />
+    {/if}
   </div>
+  </ModalDialog>
 {/if}

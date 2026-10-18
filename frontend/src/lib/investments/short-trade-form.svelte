@@ -357,7 +357,7 @@
   />
 {/if}
 
-<form onsubmit={handleSubmit} class="space-y-4" aria-labelledby="{idPrefix}-title">
+<form onsubmit={handleSubmit} aria-busy={pending} class="space-y-4" aria-labelledby="{idPrefix}-title">
   <h2 id="{idPrefix}-title" class="text-base font-semibold text-foreground">
     {correction
       ? cover ? m.investments_short_cover_correct_title() : m.investments_short_sale_correct_title()
