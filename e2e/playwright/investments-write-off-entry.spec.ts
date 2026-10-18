@@ -70,8 +70,10 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     const dialog = page.getByRole('dialog', { name: m.investments_write_off_title });
     await expect(dialog.locator('#write-off-date')).toBeFocused();
     await expect(dialog).toContainText(m.investments_write_off_choose_date);
-    // Before any position exists, the date remains editable for recovery.
-    await dialog.locator('#write-off-date').fill(ago(90));
+    // Before any position exists, the date remains editable for recovery. The
+    // worker's book is shared with other specs (the #266 reference book holds
+    // positions from 2020), so the empty date precedes every seeded holding.
+    await dialog.locator('#write-off-date').fill('2001-01-02');
     await expect(dialog).toContainText(m.investments_write_off_empty);
 
     let release!: () => void;
