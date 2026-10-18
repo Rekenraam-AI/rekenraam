@@ -8,6 +8,9 @@ failure stops startup; the app never serves against a partially upgraded schema.
 
 ## Before upgrading
 
+Use a **backup**, not an export, as your safety copy. Only a backup restores the
+whole installation; the Settings → Data exports cannot be imported back.
+
 The first two steps need the old version **running**; the rest need it
 **stopped**. Taking the backup is not something a stopped app can do — the copy
 is made by the running process through SQLite's online backup API, and there is

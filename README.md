@@ -86,6 +86,24 @@ authentication. Use the [upgrade and restore guide](docs/upgrades.md) before
 changing a populated installation. Local password recovery commands are in the
 [developer workflow](docs/developer-workflow.md#local-owner-recovery).
 
+## Backups and exports
+
+Rekenraam keeps two different kinds of copy, and they are not interchangeable:
+
+- **Backups** (Settings → Data → Backups) are the only complete copy of your
+  data: the ledger, investments, budgets, recurring transactions,
+  reconciliations, settings and history. The app takes one nightly and on
+  request. To recover, or to move to another server, restore one with
+  `rekenraam restore --from <backup>`, following the
+  [upgrade and restore guide](docs/upgrades.md). Keep `REKENRAAM_SECRET_KEY`
+  separately; it is deliberately not in the backup.
+- **Exports** (Settings → Data → Export: archive, ledger CSV or QIF) are plain
+  files for reading your figures in spreadsheets and other finance or
+  accounting tools. Every balance, lot and gain can be recomputed from the
+  archive, and its manifest lists what it leaves out. An export **cannot be
+  imported back** into Rekenraam, and it does not contain budgets, recurring
+  transactions, saved reconciliations or settings. Use a backup for that.
+
 ## Repository layout
 
 | Path | Purpose |

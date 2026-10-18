@@ -285,6 +285,9 @@
       <div class="min-w-0 flex-1">
         <h2 class="text-sm font-semibold text-foreground">{m.settings_data_export_title()}</h2>
         <p class="mt-1 max-w-3xl text-sm leading-6 text-muted">{m.settings_data_export_copy()}</p>
+        <p class="mt-2 max-w-3xl text-sm leading-6 text-muted" data-testid="export-not-backup">
+          {m.settings_data_export_not_backup()}
+        </p>
 
         <fieldset class="mt-5">
           <legend class={labelClass}>{m.settings_data_export_format()}</legend>
@@ -401,6 +404,9 @@
       <div class="min-w-0 flex-1">
         <h2 class="text-sm font-semibold text-foreground">{m.settings_data_backups_title()}</h2>
         <p class="mt-1 max-w-3xl text-sm leading-6 text-muted">{m.settings_data_backups_copy()}</p>
+        <p class="mt-2 max-w-3xl text-sm leading-6 text-muted" data-testid="backup-complete-copy">
+          {m.settings_data_backups_complete()}
+        </p>
 
         {#if backupQuery.isPending}
           <p class="mt-4 text-sm text-muted">{m.settings_status_loading()}</p>

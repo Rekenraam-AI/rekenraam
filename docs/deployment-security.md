@@ -227,6 +227,14 @@ instead of changing its port mapping to all interfaces.
 
 ## Backups
 
+**A backup is the only complete copy; an export is not a backup.** Restoring a
+backup brings back the whole installation: ledger, investments, budgets,
+recurring transactions, reconciliations, settings and audit history. Use one to
+recover, or to move to another server. The CSV/QIF/archive exports on the same
+screen are portable files for other tools. They cannot be imported back into
+Rekenraam and leave out budgets, recurring transactions, saved reconciliations
+and settings (decided 2026-10-18, `product-requirements.md`).
+
 Scheduled backups are on by default and write to `BACKUP_DIR` (or
 `<database directory>/backups`). Two deployment decisions the app cannot make
 for itself:

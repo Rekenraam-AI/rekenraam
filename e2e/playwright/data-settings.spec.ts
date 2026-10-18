@@ -53,6 +53,12 @@ test('[acceptance] the data screen exports, backs up, and checks the ledger', as
   await page.goto('/app/settings/data');
   await expect(page.getByTestId('data-settings')).toBeVisible();
 
+  // Export and backup have different jobs (product decision 2026-10-18): the
+  // screen says an export cannot be imported back, and that only a backup is
+  // a complete copy to restore from.
+  await expect(page.getByTestId('export-not-backup')).toContainText('cannot be imported back');
+  await expect(page.getByTestId('backup-complete-copy')).toContainText('only complete copy');
+
   // The export says what it holds before offering the file, so a download is
   // never a black box.
   await expect(page.getByTestId('export-summary')).toContainText(/postings/i);
