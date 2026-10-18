@@ -69,7 +69,7 @@ func TestInvestmentSlice1FreshAndSeededBundleContract(t *testing.T) {
 				} `json:"files"`
 			}
 			require.NoError(t, json.Unmarshal(files["manifest.json"], &manifest))
-			require.Equal(t, 14, manifest.SchemaVersion)
+			require.Equal(t, 15, manifest.SchemaVersion)
 			manifestRows := map[string]int64{}
 			for _, file := range manifest.Files {
 				manifestRows[file.Name] = file.Rows
@@ -88,7 +88,7 @@ func TestInvestmentSlice1FreshAndSeededBundleContract(t *testing.T) {
 				"investment-lot-facts.csv":                         {"lot_id", "operation_id", "account_id", "commodity_id", "position_side", "opened_on", "quantity_value", "quantity_scale", "consideration_value", "consideration_scale", "cost_commodity_id", "audit_event_id", "opening_basis_knowledge"},
 				"investment-lot-events.csv":                        {"lot_event_id", "lot_id", "event_kind", "transaction_id", "event_date", "quantity_value", "quantity_scale", "cost_basis_value", "cost_basis_scale", "cost_basis_method", "metadata_json", "audit_event_id", "basis_knowledge"},
 				"investment-lot-effects.csv":                       {"operation_id", "effect_seq", "lot_event_id"},
-				"investment-transfer-facts.csv":                    {"operation_id", "transfer_kind", "effective_on", "commodity_id", "source_account_id", "destination_account_id", "source_evidence_json", "audit_event_id", "basis_allocation", "cost_basis_method", "method_resolution_tier", "method_account_version_id", "method_profile_version_id", "destination_lineage", "destination_commodity_id", "ratio_numerator", "ratio_denominator", "basis_fraction_value", "basis_fraction_scale", "cash_basis_fraction_value", "cash_basis_fraction_scale"},
+				"investment-transfer-facts.csv":                    {"operation_id", "transfer_kind", "effective_on", "commodity_id", "source_account_id", "destination_account_id", "source_evidence_json", "audit_event_id", "basis_allocation", "cost_basis_method", "method_resolution_tier", "destination_lineage", "destination_commodity_id", "ratio_numerator", "ratio_denominator", "basis_fraction_value", "basis_fraction_scale", "cash_basis_fraction_value", "cash_basis_fraction_scale"},
 				"investment-transfer-lot-links.csv":                {"operation_id", "link_seq", "source_lot_id", "destination_lot_id", "quantity_value", "quantity_scale", "basis_knowledge", "carried_basis_value", "carried_basis_scale", "cost_commodity_id", "original_date_knowledge", "original_acquired_on", "source_evidence_json"},
 				"investment-transfer-link-revisions.csv":           {"revision_id", "operation_id", "link_seq", "revision_seq", "caused_by_operation_id", "supersedes_revision_id", "source_lot_id", "carried_basis_value", "carried_basis_scale", "created_at", "audit_event_id", "original_date_knowledge", "original_acquired_on", "basis_knowledge"},
 				"investment-transfer-link-revision-depletions.csv": {"revision_id", "depletion_seq", "source_lot_id", "quantity_value", "quantity_scale", "cost_basis_value", "cost_basis_scale", "basis_knowledge"},
@@ -105,7 +105,7 @@ func TestInvestmentSlice1FreshAndSeededBundleContract(t *testing.T) {
 				"investment-split-revision-effects.csv":            {"revision_id", "effect_seq", "lot_id", "quantity_delta_value", "quantity_delta_scale"},
 				"investment-fee-policies.csv":                      {"policy_id", "account_id", "charge_kind", "created_at", "audit_event_id"},
 				"investment-fee-policy-versions.csv":               {"version_id", "policy_id", "version_seq", "effective_from", "treatment", "charge_account_id", "recorded_at", "audit_event_id"},
-				"disposal-decisions.csv":                           {"decision_id", "decision_seq", "transaction_id", "transaction_version_id", "account_id", "commodity_id", "cost_commodity_id", "event_date", "quantity", "disposed_basis", "cost_basis_method", "resolution_tier", "account_version_id", "profile_id", "profile_version_id", "source_effective_from", "source_recorded_at", "created_at", "audit_event_id", "operation_id", "position_side", "proceeds_value", "proceeds_scale", "basis_knowledge"},
+				"disposal-decisions.csv":                           {"decision_id", "decision_seq", "transaction_id", "transaction_version_id", "account_id", "commodity_id", "cost_commodity_id", "event_date", "quantity", "disposed_basis", "cost_basis_method", "resolution_tier", "source_effective_from", "source_recorded_at", "created_at", "audit_event_id", "operation_id", "position_side", "proceeds_value", "proceeds_scale", "basis_knowledge"},
 				"disposal-allocations.csv":                         {"decision_id", "allocation_seq", "lot_event_id", "lot_id", "quantity", "cost_basis", "proceeds_value", "proceeds_scale", "basis_knowledge"},
 				"disposal-revisions.csv":                           {"revision_id", "decision_id", "revision_seq", "caused_by_operation_id", "supersedes_revision_id", "disposed_basis_value", "disposed_basis_scale", "created_at", "audit_event_id", "basis_knowledge"},
 				"disposal-revision-allocations.csv":                {"revision_id", "allocation_seq", "lot_id", "quantity_value", "quantity_scale", "cost_basis_value", "cost_basis_scale", "proceeds_value", "proceeds_scale", "basis_knowledge"},
@@ -139,8 +139,8 @@ func TestInvestmentSlice1FreshAndSeededBundleContract(t *testing.T) {
 				require.Equal(t, "1300.00", decisions[1][9])
 				require.Equal(t, "fifo", decisions[1][10])
 				require.Equal(t, "fallback", decisions[1][11])
-				require.Equal(t, operations[3][0], decisions[1][19], "disposal decision links its operation")
-				require.Equal(t, "long", decisions[1][20])
+				require.Equal(t, operations[3][0], decisions[1][16], "disposal decision links its operation")
+				require.Equal(t, "long", decisions[1][17])
 				require.NotEmpty(t, decisions[1][3], "the export must retain the posted transaction version")
 
 				allocations := readInvestmentContractCSV(t, files, "disposal-allocations.csv")

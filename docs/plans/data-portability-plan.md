@@ -226,10 +226,15 @@ transaction_id, transaction_version_id, transaction_kind, status,
 transaction_date, correction_of_transaction_id, payee_id, payee, description,
 external_ref_hint, needs_review, transaction_tags, transaction_complete,
 journal_entry_id, entry_seq, entry_kind, entry_date, entry_memo,
-posting_line_key, line_seq, account_id, account_path, account_class,
-account_kind, quantity, commodity_id, commodity, commodity_kind, posting_memo,
-reconciliation_status, cleared_on, posting_tags
+posting_line_key, posting_version_id, line_seq, account_id, account_path,
+account_class, account_kind, quantity, commodity_id, commodity, commodity_kind,
+posting_memo, reconciliation_status, cleared_on, posting_tags
 ```
+
+- `posting_version_id` arrived with bundle schema 15 (#322) so the investment
+  files that name a posting version join to their ledger row. It sits beside
+  `posting_line_key` under ADR 0011's pre-release exception; from the first
+  release on, columns are append-only.
 
 - Three identifier columns were added when slice 1 shipped, so every dimension
   the export names can be joined rather than matched on text: `payee_id`,

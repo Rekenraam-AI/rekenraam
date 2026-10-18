@@ -147,6 +147,13 @@ append-only: columns are added at the end, never reordered, renamed, or removed
 within a major export schema version. A change that cannot be made that way
 requires a new ADR.
 
+**Pre-release exception (2026-10-18, #322).** Until the first installed release
+there are no exports or consumers to keep compatible, matching the migration
+policy in `docs/conventions.md`. A layout change before then (a column placed
+where it reads best, or one removed) needs a bundle schema bump and an update
+to this ADR, the plan and the README. It does not need a new ADR. The
+append-only rule applies from the first release on.
+
 The pre-release investment foundation extends the bundle archive to manifest
 schema version 2. It adds operation-to-journal links, typed dates, exact
 source components, lot-opening facts, lot events and effects, and versioned fee
@@ -241,7 +248,8 @@ Within schema version 6, `investment-transfer-facts.csv` appends
 `cost_basis_method`, `method_resolution_tier` (`account`, `global`,
 `fallback`, or `position_lock` when an open position's method family
 overrode the default) and the resolving `method_account_version_id` /
-`method_profile_version_id`. They are empty for external transfers. A pooled
+`method_profile_version_id` (dropped in schema 15, #322). They are empty for
+external transfers. A pooled
 transfer's per-source-lot depletions are `transfer_out` rows with
 `cost_basis_method = average_cost`; its links carry each lot's pool-rate basis,
 with the final touched lot absorbing the exact remainder.
@@ -335,6 +343,19 @@ These book-level documents are included in full even when the ledger is scoped;
 their original periods and descriptors remain attached, and ledger filters do
 not re-scope or recalculate them. Existing CSV files and columns remain unchanged.
 ADR 0012 and the reporting plan own the saved-run policy and schema lifecycle.
+
+### Resolvable ids (2026-10-18, #322)
+
+Manifest schema version 15 makes every id column in the archive resolve to a
+row in it, except audit event and user ids (both documented exclusions).
+`ledger.csv` gains `posting_version_id`, placed after `posting_line_key`
+under the pre-release exception above, so `posting_version_id` in
+`investment-operation-components.csv` and `disposal-clearing-allocations.csv`
+joins to its ledger row. `disposal-decisions.csv` drops `account_version_id`,
+`profile_id` and `profile_version_id`, and `investment-transfer-facts.csv`
+drops `method_account_version_id` and `method_profile_version_id`: account
+versions and cost-basis profiles are not exported, and each row already states
+its `cost_basis_method` and resolution tier. The SQLite backup keeps them.
 
 ### Payment-in-lieu facts (2026-10-17, #255)
 

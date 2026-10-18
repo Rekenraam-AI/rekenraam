@@ -189,8 +189,8 @@ below is execution order, not a chain of hard dependencies.
    ([evidence](reviews/recovery-audit-2026-10-18.md)): the #266 restore drill
    matches the register exactly on a fresh instance, every corruption class is
    detected, and the bundle reconstructs every ledger and investment figure.
-   That completes #272's bundle evidence. #321/#323 are fixed. #322 (P3) is
-   open: some bundle provenance ids do not resolve inside the archive.
+   That completes #272's bundle evidence. #321/#323 are fixed, and #322 is
+   fixed in bundle schema 15: every bundle id now resolves inside the archive.
    The other areas remain open as sub-issues of #260, in this order (the
    shared reference book and expected-figure register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):

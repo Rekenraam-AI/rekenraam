@@ -13,8 +13,8 @@ data-loss defect was found. Three P3 findings were filed:
 list incomplete) and [#323](https://github.com/sergeyfarin/rekenraam/issues/323)
 (two recovery documentation gaps) are fixed in this change;
 [#322](https://github.com/sergeyfarin/rekenraam/issues/322) (bundle id columns
-that resolve to nothing in the archive) stays open and needs an export-contract
-decision. This is bounded evidence, not certification of every interleaving or
+that resolve to nothing in the archive) was fixed afterwards in bundle schema 15
+(see the addendum). This is bounded evidence, not certification of every interleaving or
 of release readiness.
 
 ## Scope and baseline
@@ -44,7 +44,7 @@ of release readiness.
 | Finding | Severity | Expected versus actual | Disposition |
 |---|---|---|---|
 | [#321](https://github.com/sergeyfarin/rekenraam/issues/321): export exclusion list omits owner data | P3 | The manifest/preview `excluded` list and README say they name what the archive leaves out. Comparing the schema's tables with the bundle files found eight kinds of owner data absent and unnamed. Among them: budget targets and account treatment, recurring templates, reconciliation checkpoints, effective-dated history, cost-basis profiles, pricing policies and preferences. The README also did not explain that average-cost disposal events carry the pool rate, so one lot's events can sum below zero (B3: 200.00 − 230.00). | **Confirmed, fixed.** `ExportExcludedData`, the README and the plan name each category; README adds the average-cost note. No file layout or bundle schema change. `TestRecoveryAuditBundleReconstructsTheRegister` failed on the baseline on exactly these assertions and passes now. |
-| [#322](https://github.com/sergeyfarin/rekenraam/issues/322): bundle id columns resolve to nothing | P3 | Every ledger, lot, event, operation, decision, commodity and account reference resolves. `posting_version_id` in `investment-operation-components.csv` and `disposal-clearing-allocations.csv`, and account-version/cost-basis-profile ids in `disposal-decisions.csv` and `investment-transfer-facts.csv`, point at records no file carries. Nothing says so. | **Confirmed, open.** No figure depends on these joins (the reconstruction below needs none). Fixing it means choosing between a `ledger.csv` column (bundle schema bump, ADR 0011), an exported key, or documented provenance. The test lists these columns in `knownUnexportedReferences` and fails if one starts resolving or a new one appears. |
+| [#322](https://github.com/sergeyfarin/rekenraam/issues/322): bundle id columns resolve to nothing | P3 | Every ledger, lot, event, operation, decision, commodity and account reference resolves. `posting_version_id` in `investment-operation-components.csv` and `disposal-clearing-allocations.csv`, and account-version/cost-basis-profile ids in `disposal-decisions.csv` and `investment-transfer-facts.csv`, point at records no file carries. Nothing says so. | **Confirmed, fixed after the audit** (addendum). No figure depended on these joins. |
 | [#323](https://github.com/sergeyfarin/rekenraam/issues/323): recovery documents | P3 | `docs/upgrades.md` said to keep the pre-upgrade backup "until the result is `passed`". The reference book is `incomplete` before and after restore (#313), so that instruction could never be met. No document described what a killed restore leaves behind. | **Confirmed, fixed.** The upgrade step and maintainer checklist accept `incomplete` with unchanged coverage and no failure. `deployment-security.md` gains an *Interrupted restore* paragraph, backed by the new re-run regression. |
 
 Handed to #278, not filed here: the Data screen renders the export's
@@ -102,7 +102,7 @@ Unit-level coverage of every check id is reused: `TestSelfCheckCatchesEachCorrup
 |---|---|---|---|
 | Manifest completeness | Every archive file listed; each listed digest, byte count and CSV row count recomputed independently | `TestRecoveryAuditBundleReconstructsTheRegister`: all 45 listed files match; nothing unlisted | **Verified.** `TestExportBundleChecksumsVerify` reused. |
 | Exclusion list | Names every kind of owner data the archive omits | See #321 | **Confirmed defect, fixed.** |
-| References | Every id column resolves to an exported row or is a documented exclusion | See #322; all others resolve | **Confirmed defect, open (P3).** |
+| References | Every id column resolves to an exported row or is a documented exclusion | See #322; all others resolve | **Confirmed defect, fixed in schema 15.** |
 | Balances rebuilt from `ledger.csv` | All 24 register balances by entry date, including #187 in-transit `transfer_clearing` figures; both subtree balances via `accounts.csv` parents; archived status of old cash | Same consumer | **Verified.** |
 | Reconciliation rebuilt | Reconciled postings cleared by 15 Jan sum to the 5460.00 statement | Same consumer | **Verified.** The checkpoint row itself is not exported (#321 names it). |
 | Spending and cash movement | Expense 175.00 / 55.00 / 45.00 EUR, 8.00 USD; income 5000.00 EUR, 15.00 USD; cashflow net movement per currency | Same consumer | **Verified.** Cashflow inflow/outflow/transfer classification is not rebuilt; the API register check covers it. |
@@ -120,7 +120,7 @@ balances, reconciled statement, spending, net movement, net worth, lots,
 positions, realized and unrealized gains under all four methods. It does not
 support a full **installation** round trip. Budgets, recurring templates,
 reconciliation checkpoints, reference-data history and settings are not in it
-(#321 now says so), and some provenance ids do not resolve (#322). The native
+(#321 now says so). Since bundle schema 15 every id resolves inside the archive (#322). The native
 SQLite backup is the complete round trip, and the drill proves it exactly. No
 bundle importer exists or is implied. This disposes of #272's remaining
 bundle-reconstruction acceptance item.
@@ -171,8 +171,7 @@ bundle-reconstruction acceptance item.
   above. The unknown-basis `lot_reconciliation` result is distinguished from
   deliberate corruption in the drill.
 
-#322 (P3) stays open. Its impact is limited to joining two provenance files
-to `ledger.csv` rows; no figure depends on it.
+#322 (P3) was fixed after the audit; see the addendum.
 
 ## Validation
 
@@ -230,3 +229,14 @@ Retained limits:
   lock. The drill had to reproduce that pairing.
 
 These notes feed #284; no refactoring or refactor issues were created.
+
+## Addendum: #322 fixed (2026-10-18)
+
+The owner noted that no exports exist yet, so the layout could change freely
+before the first release. Bundle schema 15 adds `posting_version_id` to
+`ledger.csv` beside `posting_line_key`. It drops the account-version and
+cost-basis-profile ids from `disposal-decisions.csv` and
+`investment-transfer-facts.csv`. ADR 0011 records the pre-release exception
+to append-only. `TestRecoveryAuditBundleReconstructsTheRegister` now requires
+**every** id column to resolve inside the archive, except audit-event and user
+attribution, with no known-gap list.

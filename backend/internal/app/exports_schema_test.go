@@ -14,7 +14,10 @@ import (
 // silently broken consumer.
 //
 // ADR 0011 clause 6 makes this list append-only within a major export schema
-// version: columns are added at the end, never reordered, renamed, or removed.
+// version once a release has shipped: columns are added at the end, never
+// reordered, renamed, or removed. Before the first release there are no
+// exports to keep compatible, so bundle schema 15 placed posting_version_id
+// beside posting_line_key (#322).
 // Nothing else in the suite could tell the difference — every other export test
 // reads its columns *by name* through the header, which is exactly what makes
 // them immune to the change that would break a script parsing by position.
@@ -41,6 +44,7 @@ var ledgerCSVSchemaV1 = []string{
 	"entry_date",
 	"entry_memo",
 	"posting_line_key",
+	"posting_version_id",
 	"line_seq",
 	"account_id",
 	"account_path",

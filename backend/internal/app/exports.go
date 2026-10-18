@@ -37,9 +37,9 @@ func NewExportService(repository *db.ExportRepository) *ExportService {
 func (s *ExportService) SetNowForTest(now func() time.Time) { s.now = now }
 
 // LedgerExportColumns is the stable schema of ledger.csv, in order. It is a
-// published contract (ADR 0011): columns are appended, never reordered or
-// renamed, and the preview endpoint serves this same list so a consumer can
-// check what it is about to parse.
+// published contract (ADR 0011): after the first release columns are appended,
+// never reordered or renamed, and the preview endpoint serves this same list so
+// a consumer can check what it is about to parse.
 var LedgerExportColumns = []string{
 	"transaction_id",
 	"transaction_version_id",
@@ -60,6 +60,7 @@ var LedgerExportColumns = []string{
 	"entry_date",
 	"entry_memo",
 	"posting_line_key",
+	"posting_version_id",
 	"line_seq",
 	"account_id",
 	"account_path",
@@ -452,6 +453,7 @@ func ledgerExportRow(record db.LedgerExportPostingRecord, paths map[int64]string
 		record.EntryDate,
 		record.EntryMemo,
 		record.PostingLineKey,
+		strconv.FormatInt(record.PostingVersionID, 10),
 		strconv.FormatInt(record.LineSeq, 10),
 		strconv.FormatInt(record.AccountID, 10),
 		paths[record.AccountID],

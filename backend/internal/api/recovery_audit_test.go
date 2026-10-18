@@ -525,23 +525,6 @@ func csvRecords(t *testing.T, files map[string][]byte, name string) []map[string
 	return out
 }
 
-// knownUnexportedReferences are id columns whose targets no exported file
-// carries and the archive does not say so (#322). The audit asserts they are
-// still dangling, so fixing the archive is what removes them from this list.
-// audit_event_id and *_user_id attribution are skipped: audit events are a
-// documented exclusion and the book has one owner.
-var knownUnexportedReferences = map[string]string{
-	"investment-operation-components.csv:posting_version_id":  "posting version",
-	"disposal-clearing-allocations.csv:posting_version_id":    "posting version",
-	"disposal-decisions.csv:account_version_id":               "account version",
-	"disposal-decisions.csv:profile_id":                       "cost-basis profile",
-	"disposal-decisions.csv:profile_version_id":               "cost-basis profile version",
-	"investment-transfer-facts.csv:method_account_version_id": "account version",
-	"investment-transfer-facts.csv:method_profile_version_id": "cost-basis profile version",
-	"investment-fee-policy-versions.csv:account_version_id":   "account version",
-	"investment-fee-policies.csv:account_version_id":          "account version",
-}
-
 // The bundle's manifest and references are checked independently of the
 // exporter, and the register is rebuilt from the archive alone: balances,
 // reconciled statement, spending, cash movement, net worth, lots, positions
@@ -568,7 +551,7 @@ func TestRecoveryAuditBundleReconstructsTheRegister(t *testing.T) {
 		Excluded []string `json:"excluded"`
 	}
 	require.NoError(t, json.Unmarshal(files["manifest.json"], &manifest))
-	assert.Equal(t, 14, manifest.SchemaVersion)
+	assert.Equal(t, 15, manifest.SchemaVersion)
 	listed := map[string]bool{}
 	for _, file := range manifest.Files {
 		listed[file.Name] = true
@@ -598,8 +581,8 @@ func TestRecoveryAuditBundleReconstructsTheRegister(t *testing.T) {
 	}
 	assert.Contains(t, string(files["README.txt"]), "budget targets")
 
-	// References: every id column resolves inside the archive, except the
-	// documented audit attribution and the known gaps above.
+	// References: every id column resolves inside the archive, except audit
+	// event and user attribution, which are documented exclusions (#322).
 	idSets := map[string]map[string]bool{}
 	collect := func(set, file, column string) {
 		if idSets[set] == nil {
@@ -613,6 +596,7 @@ func TestRecoveryAuditBundleReconstructsTheRegister(t *testing.T) {
 	collect("commodity", "commodities.csv", "commodity_id")
 	collect("transaction", "ledger.csv", "transaction_id")
 	collect("transaction_version", "ledger.csv", "transaction_version_id")
+	collect("posting_version", "ledger.csv", "posting_version_id")
 	collect("lot", "lots.csv", "lot_id")
 	collect("lot_event", "investment-lot-events.csv", "lot_event_id")
 	collect("operation", "investment-operations.csv", "operation_id")
@@ -629,7 +613,7 @@ func TestRecoveryAuditBundleReconstructsTheRegister(t *testing.T) {
 		"lot_id": "lot", "source_lot_id": "lot", "destination_lot_id": "lot",
 		"lot_event_id": "lot_event", "operation_id": "operation", "settled_operation_id": "operation",
 		"split_operation_id": "operation", "correction_of_operation_id": "operation", "decision_id": "decision",
-		"fee_policy_version_id": "fee_policy_version",
+		"fee_policy_version_id": "fee_policy_version", "posting_version_id": "posting_version",
 	}
 	unresolved := map[string]bool{}
 	for name := range files {
@@ -643,17 +627,12 @@ func TestRecoveryAuditBundleReconstructsTheRegister(t *testing.T) {
 				}
 				key := name + ":" + column
 				set, typed := targets[column]
-				if _, known := knownUnexportedReferences[key]; known {
-					if typed && idSets[set][value] {
-						t.Errorf("%s now resolves; remove it from knownUnexportedReferences", key)
-					}
-					continue
-				}
 				switch {
 				case name == "accounts.csv" && column == "account_id",
 					name == "commodities.csv" && column == "commodity_id",
 					name == "lots.csv" && column == "lot_id",
 					name == "investment-lot-events.csv" && column == "lot_event_id",
+					name == "ledger.csv" && column == "posting_version_id",
 					name == "investment-operations.csv" && column == "operation_id",
 					name == "disposal-decisions.csv" && column == "decision_id",
 					column == "policy_id" || column == "policy_version_id" || column == "version_id" || column == "payee_id" ||

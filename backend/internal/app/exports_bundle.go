@@ -22,7 +22,7 @@ import (
 // BundleSchemaVersion is the archive's own version, carried in manifest.json.
 // Columns are appended within a version; a change that cannot be made by
 // appending increments this and needs an ADR (ADR 0011).
-const BundleSchemaVersion = 14
+const BundleSchemaVersion = 15
 
 // bundleFile is one entry of the archive, recorded in the manifest with the
 // checksum computed while it was written.
@@ -211,7 +211,7 @@ func (s *ExportService) WriteBundle(ctx context.Context, out io.Writer, filter E
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "lot-effects", []string{"operation_id", "effect_seq", "lot_event_id"})
 		}},
 		{"investment-transfer-facts.csv", func(w io.Writer) (int64, error) {
-			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "transfer-facts", []string{"operation_id", "transfer_kind", "effective_on", "commodity_id", "source_account_id", "destination_account_id", "source_evidence_json", "audit_event_id", "basis_allocation", "cost_basis_method", "method_resolution_tier", "method_account_version_id", "method_profile_version_id", "destination_lineage", "destination_commodity_id", "ratio_numerator", "ratio_denominator", "basis_fraction_value", "basis_fraction_scale", "cash_basis_fraction_value", "cash_basis_fraction_scale"})
+			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "transfer-facts", []string{"operation_id", "transfer_kind", "effective_on", "commodity_id", "source_account_id", "destination_account_id", "source_evidence_json", "audit_event_id", "basis_allocation", "cost_basis_method", "method_resolution_tier", "destination_lineage", "destination_commodity_id", "ratio_numerator", "ratio_denominator", "basis_fraction_value", "basis_fraction_scale", "cash_basis_fraction_value", "cash_basis_fraction_scale"})
 		}},
 		{"investment-transfer-lot-links.csv", func(w io.Writer) (int64, error) {
 			return s.writeInvestmentFoundationCSV(ctx, w, snapshot, "transfer-lot-links", []string{"operation_id", "link_seq", "source_lot_id", "destination_lot_id", "quantity_value", "quantity_scale", "basis_knowledge", "carried_basis_value", "carried_basis_scale", "cost_commodity_id", "original_date_knowledge", "original_acquired_on", "source_evidence_json"})
@@ -639,8 +639,7 @@ func (s *ExportService) writeDisposalDecisionsCSV(ctx context.Context, out io.Wr
 	writer, err := newBundleCSV(out, []string{
 		"decision_id", "decision_seq", "transaction_id", "transaction_version_id", "account_id", "commodity_id",
 		"cost_commodity_id", "event_date", "quantity", "disposed_basis", "cost_basis_method",
-		"resolution_tier", "account_version_id", "profile_id", "profile_version_id",
-		"source_effective_from", "source_recorded_at", "created_at", "audit_event_id",
+		"resolution_tier", "source_effective_from", "source_recorded_at", "created_at", "audit_event_id",
 		"operation_id", "position_side", "proceeds_value", "proceeds_scale", "basis_knowledge",
 	})
 	if err != nil {
@@ -653,8 +652,7 @@ func (s *ExportService) writeDisposalDecisionsCSV(ctx context.Context, out io.Wr
 			strconv.FormatInt(decision.CommodityID, 10), strconv.FormatInt(decision.CostCommodityID, 10),
 			decision.EventDate, exact.Decimal(decision.QuantityValue, decision.QuantityScale),
 			optionalExportDecimal(decision.DisposedBasisValue, decision.DisposedBasisScale), decision.CostBasisMethod,
-			decision.ResolutionTier, nullableID(decision.AccountVersionID), nullableID(decision.ProfileID),
-			nullableID(decision.ProfileVersionID), decision.SourceEffectiveFrom.String,
+			decision.ResolutionTier, decision.SourceEffectiveFrom.String,
 			decision.SourceRecordedAt.String, decision.CreatedAt, strconv.FormatInt(decision.CreatedAuditEventID, 10),
 			strconv.FormatInt(decision.OperationID, 10), decision.PositionSide,
 			strconv.FormatInt(decision.ProceedsValue, 10), strconv.Itoa(decision.ProceedsScale), decision.BasisKnowledge,
@@ -1023,6 +1021,14 @@ Both lots.csv and investment-lot-state.csv carry basis_knowledge for remaining
 projected basis. Unknown basis has empty amount/scale fields, never numeric
 zero; known zero remains explicit. Quantity and immutable opening facts remain
 separate from that current knowledge state.
+Bundle schema 15 adds posting_version_id to ledger.csv, beside
+posting_line_key, so the posting_version_id columns of
+investment-operation-components.csv and disposal-clearing-allocations.csv join
+to their ledger rows. It drops account-version and cost-basis-profile ids from
+disposal-decisions.csv and investment-transfer-facts.csv: those records are not
+in this archive, and each row already states its method and resolution tier.
+Every id column in this archive now resolves to a row in it, except audit event
+and user ids (audit events and users are not exported).
 Bundle schema 14 adds investment-payment-in-lieu-facts.csv: the short holding,
 instrument and ex-date each payment in lieu of a dividend was owed for, repeated
 by its reversal. The charge, its expense account and any recovery are in the

@@ -47,6 +47,7 @@ type LedgerExportPostingRecord struct {
 	EntryDate                 string
 	EntryMemo                 string
 	PostingLineKey            string
+	PostingVersionID          int64
 	LineSeq                   int64
 	AccountID                 int64
 	AccountClass              string
@@ -198,9 +199,6 @@ type ExportDisposalDecisionRecord struct {
 	BasisKnowledge       string
 	CostBasisMethod      string
 	ResolutionTier       string
-	AccountVersionID     sql.NullInt64
-	ProfileID            sql.NullInt64
-	ProfileVersionID     sql.NullInt64
 	SourceEffectiveFrom  sql.NullString
 	SourceRecordedAt     sql.NullString
 	CreatedAt            string
@@ -458,6 +456,7 @@ func (r *ExportRepository) StreamLedgerPostings(ctx context.Context, transaction
 			je.entry_date,
 			je.memo,
 			pl.line_key,
+			pv.id,
 			pv.line_seq,
 			pv.account_id,
 			COALESCE(av.account_class, ''),
@@ -510,6 +509,7 @@ func (r *ExportRepository) StreamLedgerPostings(ctx context.Context, transaction
 			&record.EntryDate,
 			&record.EntryMemo,
 			&record.PostingLineKey,
+			&record.PostingVersionID,
 			&record.LineSeq,
 			&record.AccountID,
 			&record.AccountClass,
@@ -889,7 +889,7 @@ func (r *ExportRepository) ExportDisposalDecisions(ctx context.Context, transact
 		SELECT id, decision_seq, transaction_id, transaction_version_id, account_id, commodity_id,
 			cost_commodity_id, event_date, quantity_value, quantity_scale,
 			disposed_basis_value, disposed_basis_scale, cost_basis_method, resolution_tier,
-			account_version_id, profile_id, profile_version_id, source_effective_from,
+			source_effective_from,
 			source_recorded_at, created_at, created_audit_event_id, operation_id, position_side,
 			proceeds_value, proceeds_scale, basis_knowledge
 		FROM investment_disposal_decisions
@@ -907,7 +907,6 @@ func (r *ExportRepository) ExportDisposalDecisions(ctx context.Context, transact
 			&record.AccountID, &record.CommodityID, &record.CostCommodityID, &record.EventDate,
 			&record.QuantityValue, &record.QuantityScale, &record.DisposedBasisValue,
 			&record.DisposedBasisScale, &record.CostBasisMethod, &record.ResolutionTier,
-			&record.AccountVersionID, &record.ProfileID, &record.ProfileVersionID,
 			&record.SourceEffectiveFrom, &record.SourceRecordedAt, &record.CreatedAt,
 			&record.CreatedAuditEventID, &record.OperationID, &record.PositionSide,
 			&record.ProceedsValue, &record.ProceedsScale, &record.BasisKnowledge); err != nil {
