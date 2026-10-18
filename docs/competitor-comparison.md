@@ -12,7 +12,8 @@ Local status was reconciled at `f35cc723`; see the
 [app-state review and proposed audits](reviews/app-state-and-audit-plan-2026-10-17.md).
 Official pages for the products below were rechecked on 2026-10-17. Firefly III
 was available through indexed official documentation; direct retrieval failed,
-so current release/tier details are unverified. Provider signup, feed availability
+so current release/tier details are unverified. The export/backup section was
+added on 2026-10-18 from the same kind of sources. Provider signup, feed availability
 and licensing are separate checks. Documentation supports a workflow comparison,
 not measured usability, equivalent financial semantics or market demand.
 
@@ -29,6 +30,50 @@ not measured usability, equivalent financial semantics or market demand.
 | **Firefly III** | Its [rules](https://docs.firefly-iii.org/how-to/firefly-iii/features/rules/), [data importer](https://docs.firefly-iii.org/how-to/data-importer/import/csv/) and [budgets](https://docs.firefly-iii.org/how-to/firefly-iii/finances/budgets/) cover mature routine transaction management. | Keep R6 import depth and rules on the later list. This review did not verify comparable security-lot accounting, so it makes no claim about its presence or absence. |
 | **PocketSmith** | Its [multi-currency guide](https://pocketsmith.helpkit.so/multi-currency/6a6X8SseDBfyRznV6vJTS3/multi-currency-an-overview/6a6X8SseDAA5o85oTGHWtJ) and [investment-account guide](https://learn.pocketsmith.com/net-worth-assets--debts/6a6X8SseDAohQfjgQVP5mj/managing-investment-accounts/6a6X8SseDCNBiAKmvJS9uG) document cross-currency planning and alternative ways to represent investments. | Rekenraam's R10 forecast is already a differentiated, exact per-currency base. No lot-level parity or pricing claim is inferred from these guides. |
 | **Monarch Money** | Its [manual holdings guide](https://help.monarch.com/hc/en-us/articles/10032888165140-Manual-Investment-Holdings) documents priced holdings and separates quantity tracking from manually entered balances. Its [CSV guide](https://help.monarch.com/hc/en-us/articles/4409682789908-Importing-Transactions-Manually) now documents overlap choices and transaction-ID matching. Its [manual transaction guide](https://help.monarch.com/hc/en-us/articles/360058441811-Creating-Manual-Transactions) says it lacks reconciliation. | Shows that a polished general finance app can have a different investment and trust boundary. Rekenraam should emphasize auditable import, reconciliation and investment history in migration examples without asserting feature-wide superiority. |
+
+## Export, backup and restore
+
+Added 2026-10-18, after the [#277 recovery audit](reviews/recovery-audit-2026-10-18.md)
+and the product decision that the native backup is Rekenraam's only
+full-installation round trip (`product-requirements.md`). "Re-importable" means
+the vendor documents loading its own export back into the same product.
+
+| Product | Complete copy and restore | Portable export | Export re-importable? |
+|---|---|---|---|
+| **Rekenraam** | Nightly and on-demand SQLite backups made by the running app, verified before they are kept, with retention and a chained ledger self-check. `rekenraam verify-backup` checks one, including whether sealed data opens with the configured key. `rekenraam restore` installs one under the server lock and keeps the previous database. The #277 drill restores the reference book exactly. The encryption key is deliberately not in the backup. | Ledger CSV, QIF (cash accounts) and an archive with a manifest of checksums and named exclusions, a trial balance, lots and the investment evidence files. Every balance, lot and gain can be rebuilt from it. | **No, by decision.** The Data screen says so and points to backups. |
+| **Actual Budget** | Desktop **Backup Now** ([backup guide](https://actualbudget.org/docs/backup-restore/backup/)). Settings → Export data saves the budget, and Import file restores it ([restore guide](https://actualbudget.org/docs/backup-restore/restore/)). | The same export. The API also has `exportBudget`/`importBudget` ([API reference](https://actualbudget.org/docs/api/reference/)). | **Yes:** one file serves as both backup and transfer. |
+| **Firefly III** | No built-in backup routine; the operator backs up the database, `.env`/`APP_KEY` and uploads ([backup how-to](https://docs.firefly-iii.org/how-to/firefly-iii/advanced/backup/)). | CSV export from the web or the CLI ([exporting data](https://docs.firefly-iii.org/tutorials/firefly-iii/exporting-data/), [CLI](https://docs.firefly-iii.org/references/firefly-iii/cli/)). | **No.** Its docs say the export is not a backup and cannot be imported (indexed official text; direct retrieval failed). |
+| **Ghostfolio** | The [README](https://github.com/ghostfolio/ghostfolio/blob/main/README.md) documents PostgreSQL and automatic migrations, but no backup routine. Database backup is the operator's job. | Activity import/export API (`/api/v1/import`, `/api/v1/export`). | The import takes activity JSON; whether the export is complete is not documented, so no round-trip claim is made. |
+| **GnuCash** | An XML book keeps a timestamped copy on every save, plus change logs, deleted after 30 days by default. SQL backends make no backup files ([backup guide](https://www.gnucash.org/docs/v5/C/gnucash-guide/basics-backup1.html), [wiki](https://wiki.gnucash.org/wiki/Backup)). | CSV export of the account tree and of transactions; QIF is import-only ([FAQ](https://code.gnucash.org/wiki/FAQ)). | The book file itself is the round trip; the CSV export is not documented as one. |
+| **Portfolio Performance** | Optional backup copy on every save, plus interval autosave ([preferences](https://help.portfolio-performance.info/en/reference/help/preferences/)). | CSV (transactions, securities, quotes) and Portfolio Performance XML ([File → Export](https://help.portfolio-performance.info/en/reference/file/export/)). | The XML is its own file format; CSV is for other tools. |
+| **Quicken Classic** | Backups hold reports, passwords, accounts and attachments; restoring replaces the current file ([backup and restore](https://www.quicken.com/support/how-backup-or-restore-your-quicken-data)). | QXF moves non-investment accounts, scheduled transactions, categories and tags, but not investments, budgets, attachments, reports or settings ([QXF](https://info.quicken.com/win/how-do-i-export-data-to-a-qxf-file)). QIF for the rest. | **Partly:** QXF between Quicken files, within those limits. |
+| **PocketSmith** | **Backup and restore** CSVs for categories, rules and transactions, restored in that order. Budgets, attachments and saved searches are excluded ([backup and restore](https://learn.pocketsmith.com/article/1455-backup-and-restore-your-pocketsmith-data)). | Transaction export as XLSX/CSV ([exporting](https://learn.pocketsmith.com/article/158-exporting-your-transactions)). | **Yes,** for the backed-up data types. |
+| **Monarch Money** | Hosted service; no owner-held backup is documented. | Transaction and balance history as CSV, available even after a subscription ends ([downloading history](https://help.monarch.com/hc/en-us/articles/15526600975764-Downloading-Transaction-or-Account-History)). | **Partly:** re-importing with the transaction-ID column updates matching transactions ([CSV import](https://help.monarch.com/hc/en-us/articles/4409682789908-Importing-Transactions-Manually)). |
+
+What this means for Rekenraam:
+
+- **Backups are a strength among self-hosted peers.** Firefly III and Ghostfolio
+  leave backup to the operator. Rekenraam schedules, verifies, prunes and
+  self-checks its own backups, and it ships verify and restore commands with a
+  proven drill. Desktop products back up their own file on save, which a server
+  app cannot rely on.
+- **The export carries accounting evidence** (an exact trial balance, a
+  checksummed manifest, named exclusions, lot and gain facts) that none of the
+  pages reviewed here document for their exports. This is not a claim about
+  undocumented features. Unlike Actual, PocketSmith or Portfolio Performance's XML, it is not
+  re-importable. That is a deliberate boundary. Owners coming from Actual
+  expect one file to do both jobs, which is why the Data screen and README now
+  say plainly that an export is not a backup, as Firefly III's documentation
+  does.
+- **Restore is operator-run, not a screen action.** Actual, Quicken and
+  PocketSmith restore from inside the app. Rekenraam restores with a CLI command
+  that holds the server lock and preserves the previous database, which is
+  safer for a running server but less approachable. This is an observation for
+  the household dry run, not an accepted gap; any in-app restore would need its
+  own decision.
+- **Key custody.** Firefly III likewise tells the operator to back up `APP_KEY`
+  apart from the database. None of the pages reviewed document a check, like
+  `verify-backup`'s, that a backup's sealed data opens with the configured key.
 
 ## Priority decisions from this review
 
