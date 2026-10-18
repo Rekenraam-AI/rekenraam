@@ -194,7 +194,8 @@ below is execution order, not a chain of hard dependencies.
    The frontend audit #278 is complete
    ([evidence](reviews/frontend-audit-2026-10-18.md)):
    #324/#325/#328/#329/#330 are fixed; #327 (modal focus, P2) and #326
-   (URL state, P3) remain open.
+   (URL state, P3) remain open. It created the interactive sub-view audit #331
+   (dialogs, record forms, panels, import review), best run after #327.
    The other areas remain open as sub-issues of #260, in this order (the
    shared reference book and expected-figure register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); its finding #281 is fixed):
