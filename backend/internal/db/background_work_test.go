@@ -120,3 +120,51 @@ func TestAnExpiredLeaseIsReclaimedAndCountsAsAnotherAttempt(t *testing.T) {
 	assert.Equal(t, 2, second.Attempts, "a reclaim is another attempt, not a fresh start")
 	assert.Equal(t, "worker-b", second.LeaseOwner.String)
 }
+
+func TestBackgroundWorkContinuationIsAtomicAndLeaseFenced(t *testing.T) {
+	t.Parallel()
+	for _, scenario := range []string{"same payload", "existing successor", "stale owner", "enqueue failure"} {
+		t.Run(scenario, func(t *testing.T) {
+			database, _, _ := migratedInvestmentTestDatabase(t)
+			repository := NewBackgroundWorkRepository(database)
+			ctx := context.Background()
+			const now = "2026-06-12T08:00:00Z"
+			const payload = `{"reason":"continuation"}`
+			_, err := repository.EnqueueBackgroundWork(ctx, 1, "probe", payload, now)
+			require.NoError(t, err)
+			item, err := repository.ClaimBackgroundWork(ctx, "probe", "owner", now, "2026-06-12T08:15:00Z")
+			require.NoError(t, err)
+			successorPayload, owner := payload, "owner"
+			if scenario == "existing successor" {
+				successorPayload = `{"reason":"next"}`
+				_, err = repository.EnqueueBackgroundWork(ctx, 1, "probe", successorPayload, now)
+				require.NoError(t, err)
+			}
+			if scenario == "stale owner" {
+				owner = "old-owner"
+			}
+			if scenario == "enqueue failure" {
+				_, err = database.Exec(`CREATE TRIGGER refuse_continuation BEFORE INSERT ON background_work_items BEGIN SELECT RAISE(ABORT, 'injected enqueue failure'); END`)
+				require.NoError(t, err)
+			}
+			err = repository.CompleteBackgroundWorkAndEnqueue(ctx, item.ID, owner, now, successorPayload)
+			current, readErr := repository.BackgroundWorkByID(ctx, item.ID)
+			require.NoError(t, readErr)
+			if scenario == "stale owner" || scenario == "enqueue failure" {
+				require.Error(t, err)
+				assert.Equal(t, "running", current.Status)
+				assert.Equal(t, "owner", current.LeaseOwner.String)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, "completed", current.Status)
+				next, err := repository.ClaimBackgroundWork(ctx, "probe", "next-owner", now, "2026-06-12T08:15:00Z")
+				require.NoError(t, err)
+				assert.NotEqual(t, item.ID, next.ID)
+				assert.Equal(t, successorPayload, next.PayloadJSON)
+				assert.Equal(t, 1, next.Attempts)
+				_, err = repository.ClaimBackgroundWork(ctx, "probe", "extra-owner", now, "2026-06-12T08:15:00Z")
+				assert.ErrorIs(t, err, ErrNotFound)
+			}
+		})
+	}
+}

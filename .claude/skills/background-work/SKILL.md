@@ -32,6 +32,11 @@ hardened — copy this shape for new workers).
   duplicates via a partial unique index on `(book_id, kind, payload_json)
   WHERE status IN ('pending','running')` and returns the existing item;
   equivalent work can be enqueued again after completion.
+- Complete a successful chunk and enqueue its continuation in one transaction
+  (`CompleteBackgroundWorkAndEnqueue`). Retire the running item before active
+  deduplication, or an identical continuation can coalesce with itself and lose
+  the rest of the horizon (#314). Test at least three chunks and rollback when
+  successor enqueue fails.
 
 ## Scheduler shape
 

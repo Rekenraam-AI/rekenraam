@@ -180,6 +180,41 @@ func (r *BackgroundWorkRepository) CompleteBackgroundWork(ctx context.Context, i
 	return requireOneBackgroundWorkRow(result)
 }
 
+// CompleteBackgroundWorkAndEnqueue hands a successful chunk to its successor
+// atomically. Retire the current item before deduplicating: a continuation may
+// have exactly the same payload as the running item (#314). A crash or failed
+// enqueue must leave the original lease reclaimable, never lose the horizon.
+func (r *BackgroundWorkRepository) CompleteBackgroundWorkAndEnqueue(ctx context.Context, id int64, leaseOwner, now, payloadJSON string) error {
+	tx, err := r.database.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin background work continuation: %w", err)
+	}
+	defer tx.Rollback()
+	item, err := backgroundWorkByIDTx(ctx, tx, id)
+	if err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, `
+		UPDATE background_work_items
+		SET status = 'completed', completed_at = ?, updated_at = ?,
+			lease_owner = NULL, lease_expires_at = NULL, last_error = NULL
+		WHERE id = ? AND status = 'running' AND lease_owner = ?
+	`, now, now, id, leaseOwner)
+	if err != nil {
+		return fmt.Errorf("complete background work chunk: %w", err)
+	}
+	if err := requireOneBackgroundWorkRow(result); err != nil {
+		return err
+	}
+	if _, err := EnqueueBackgroundWorkTx(ctx, tx, item.BookID, item.Kind, payloadJSON, now); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit background work continuation: %w", err)
+	}
+	return nil
+}
+
 func (r *BackgroundWorkRepository) RetryBackgroundWork(ctx context.Context, id int64, leaseOwner string, availableAt string, now string, workError string) error {
 	result, err := r.database.ExecContext(ctx, `
 		UPDATE background_work_items

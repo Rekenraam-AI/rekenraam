@@ -113,9 +113,8 @@ func (s *PricingService) processFXCoverageWork(ctx context.Context, logger *slog
 			now := s.now().UTC().Format(time.RFC3339)
 			if hasMore {
 				continuation, _ := json.Marshal(fxCoverageWorkPayload{Reason: "continuation", StartDate: payload.StartDate, CurrencyID: payload.CurrencyID})
-				_, err = s.repository.EnqueueBackgroundWork(ctx, item.BookID, fxCoverageWorkKind, string(continuation), now)
-			}
-			if err == nil {
+				err = s.repository.CompleteBackgroundWorkAndEnqueue(ctx, item.ID, workerID, now, string(continuation))
+			} else {
 				err = s.repository.CompleteBackgroundWork(ctx, item.ID, workerID, now)
 			}
 		}
