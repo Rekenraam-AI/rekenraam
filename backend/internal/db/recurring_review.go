@@ -21,7 +21,10 @@ type RecurringDueRecord struct {
 	TemplateArchived bool
 	Description      string
 	PayeeName        string
-	Postings         []RecurringDuePosting
+	// VersionID is the draft's current version, which a post binds to so it
+	// cannot post a draft edited after the owner reviewed it (#296).
+	VersionID sql.NullInt64
+	Postings  []RecurringDuePosting
 }
 
 // RecurringDue reads a whole page and its current posting amounts in one SQL
@@ -51,7 +54,7 @@ func (r *RecurringRepository) RecurringDue(ctx context.Context, bookID int64, af
  )
  SELECT p.id, p.book_id, p.template_id, p.occurrence_date, p.status, p.transaction_id,
  p.error_summary, p.skip_reason, p.materialized_at, p.created_at, p.updated_at,
- p.last_audit_event_id, p.template_name, p.enabled, p.archived, p.description, p.payee_name,
+ p.last_audit_event_id, p.template_name, p.enabled, p.archived, p.description, p.payee_name, p.version_id,
  a.commodity_id, c.code, a.quantity_value, a.quantity_scale
  FROM page p LEFT JOIN amounts a ON a.occurrence_id = p.id
  LEFT JOIN commodities c ON c.id = a.commodity_id AND c.book_id = p.book_id
@@ -67,7 +70,7 @@ func (r *RecurringRepository) RecurringDue(ctx context.Context, bookID int64, af
 		var code, value sql.NullString
 		if err := rows.Scan(&item.ID, &item.BookID, &item.TemplateID, &item.OccurrenceDate, &item.Status, &item.TransactionID,
 			&item.ErrorSummary, &item.SkipReason, &item.MaterializedAt, &item.CreatedAt, &item.UpdatedAt,
-			&item.LastAuditEventID, &item.TemplateName, &item.TemplateEnabled, &item.TemplateArchived, &item.Description, &item.PayeeName,
+			&item.LastAuditEventID, &item.TemplateName, &item.TemplateEnabled, &item.TemplateArchived, &item.Description, &item.PayeeName, &item.VersionID,
 			&commodityID, &code, &value, &scale); err != nil {
 			return nil, fmt.Errorf("scan recurring due: %w", err)
 		}

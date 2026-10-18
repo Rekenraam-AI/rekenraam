@@ -10,7 +10,7 @@
   import { authSessionQueryOptions } from '#lib/api/auth.ts';
   import { currenciesQueryOptions } from '#lib/api/currencies.ts';
   import { forecastQueryKey } from '#lib/api/forecast.ts';
-  import { getTransaction, getPostReconciliationImpact, postTransaction, deleteDraftTransaction, isReconciliationImpactStale, reviewedOverride, transactionsQueryKey, type TransactionResponse, type ReconciliationImpactResponse } from '#lib/api/transactions.ts';
+  import { getTransaction, getPostReconciliationImpact, postTransaction, deleteDraftTransaction, isReconciliationImpactStale, isTransactionVersionStale, reviewedOverride, transactionsQueryKey, type TransactionResponse, type ReconciliationImpactResponse } from '#lib/api/transactions.ts';
   import { recurringTemplatesQueryOptions, recurringDueInfiniteQueryOptions, recurringSummaryQueryOptions, getRecurringOccurrences, archiveRecurringTemplate, updateRecurringTemplate, skipRecurringOccurrence, retryRecurringOccurrence, runRecurringNow, type RecurringTemplate, type RecurringDueResponse } from '#lib/api/recurring.ts';
   import { formatQuantity } from '#lib/money/format.ts';
   import { displayDate, scheduleLabel } from './recurring-model';
@@ -42,6 +42,8 @@
   let reason = $state('');
   let dialogError = $state<unknown>();
   let impactChanged = $state(false);
+  // A draft edited after the review was refused; the dialog's rows are stale (#296).
+  let reviewStale = $state(false);
   let inspecting = $state<RecurringTemplate>();
   const occurrenceRange = $derived.by(() => {
     const from = summary.data?.today;
@@ -66,7 +68,7 @@
       queryClient.invalidateQueries({ queryKey: forecastQueryKey })
     ]);
   }
-  function open(next: Review) { impactChanged = false; dialogError = undefined; reason = ''; review = next; }
+  function open(next: Review) { impactChanged = false; reviewStale = false; dialogError = undefined; reason = ''; review = next; }
   function close() { if (!pending) review = null; }
   async function action(fn: () => Promise<void>) {
     if (pending) return;
@@ -96,12 +98,17 @@
           const approved = current.impacts[i].affected_checkpoints.map(c => c.checkpoint_id).sort();
           const actual = fresh.affected_checkpoints.map(c => c.checkpoint_id).sort();
           if (JSON.stringify(approved) !== JSON.stringify(actual)) { impactChanged = true; return; }
-          // The post itself is bound to the approved set too: a statement
-          // finished after the check above is refused, not invalidated (#296).
+          // The post itself is bound to the approved set and to the draft
+          // version the row showed: a statement finished after the check
+          // above, or an edit in another tab, is refused (#296).
           try {
-            await postTransaction(item.transaction_id!, csrf, actual.length > 0 ? reviewedOverride(current.impacts[i]) : {});
+            await postTransaction(item.transaction_id!, csrf, {
+              ...(item.transaction_version_id ? { expected_version_id: item.transaction_version_id } : {}),
+              ...(actual.length > 0 ? reviewedOverride(current.impacts[i]) : {})
+            });
           } catch (error) {
             if (isReconciliationImpactStale(error)) { impactChanged = true; return; }
+            if (isTransactionVersionStale(error)) { reviewStale = true; dialogError = error; return; }
             throw error;
           }
           count++;
@@ -237,6 +244,6 @@
     {#if impactChanged}<p role="alert" class="my-3 text-sm text-danger">{m.recurring_impact_changed()}</p>{/if}
     {#if dialogError}<APIFormError error={dialogError} />{/if}
     {#if notice}<p role="status" class="my-2 text-sm">{notice}</p>{/if}
-    <div class="mt-4 flex flex-wrap justify-end gap-2"><button class={button} disabled={pending} onclick={close}>{m.recurring_cancel()}</button><button class={button} disabled={pending || impactChanged || !csrf || (review.kind==='skip' && !reason.trim())} onclick={confirm}>{pending?m.recurring_saving():m.recurring_confirm()}</button></div>
+    <div class="mt-4 flex flex-wrap justify-end gap-2"><button class={button} disabled={pending} onclick={close}>{m.recurring_cancel()}</button><button class={button} disabled={pending || impactChanged || reviewStale || !csrf || (review.kind==='skip' && !reason.trim())} onclick={confirm}>{pending?m.recurring_saving():m.recurring_confirm()}</button></div>
   {/if}
 </dialog>

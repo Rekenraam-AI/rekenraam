@@ -23,18 +23,21 @@ type recurringDueResponse struct {
 }
 
 type recurringDueItemResponse struct {
-	ID               int64                     `json:"id"`
-	TemplateID       int64                     `json:"template_id"`
-	TemplateName     string                    `json:"template_name"`
-	TemplateEnabled  bool                      `json:"template_enabled"`
-	TemplateArchived bool                      `json:"template_archived"`
-	OccurrenceDate   string                    `json:"occurrence_date"`
-	Status           string                    `json:"status"`
-	TransactionID    *int64                    `json:"transaction_id"`
-	Description      string                    `json:"description"`
-	PayeeName        string                    `json:"payee_name"`
-	ErrorSummary     string                    `json:"error_summary"`
-	Amounts          []recurringAmountResponse `json:"amounts"`
+	ID               int64  `json:"id"`
+	TemplateID       int64  `json:"template_id"`
+	TemplateName     string `json:"template_name"`
+	TemplateEnabled  bool   `json:"template_enabled"`
+	TemplateArchived bool   `json:"template_archived"`
+	OccurrenceDate   string `json:"occurrence_date"`
+	Status           string `json:"status"`
+	TransactionID    *int64 `json:"transaction_id"`
+	// TransactionVersionID is the draft version this row shows; a post names
+	// it as expected_version_id (#296).
+	TransactionVersionID *int64                    `json:"transaction_version_id"`
+	Description          string                    `json:"description"`
+	PayeeName            string                    `json:"payee_name"`
+	ErrorSummary         string                    `json:"error_summary"`
+	Amounts              []recurringAmountResponse `json:"amounts"`
 }
 
 type recurringOccurrenceResponse struct {
@@ -88,6 +91,10 @@ func listRecurringDue(logger *slog.Logger, auth *app.AuthService, service *app.R
 			if item.TransactionID.Valid {
 				id := item.TransactionID.Int64
 				row.TransactionID = &id
+			}
+			if item.VersionID.Valid {
+				versionID := item.VersionID.Int64
+				row.TransactionVersionID = &versionID
 			}
 			for _, a := range item.Amounts {
 				row.Amounts = append(row.Amounts, recurringAmountResponse{CommodityID: a.CommodityID, CommodityCode: a.CommodityCode, DebitValue: a.DebitValue, CreditValue: a.CreditValue, QuantityScale: a.QuantityScale})

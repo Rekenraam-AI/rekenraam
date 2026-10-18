@@ -172,7 +172,8 @@
   async function handleUndoDelete(transaction: TransactionResponse) {
     if (!csrfToken) return;
     try {
-      await restoreTransaction(transaction.id, csrfToken, {});
+      // Undo restores exactly what was just deleted, not a later version (#296).
+      await restoreTransaction(transaction.id, csrfToken, { expected_version_id: transaction.version_id });
       await invalidate();
     } catch {
       // It stays deleted; Settings → Trash can still restore it.

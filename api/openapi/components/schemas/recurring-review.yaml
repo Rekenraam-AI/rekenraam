@@ -18,7 +18,7 @@ RecurringAmount:
       maximum: 24
 RecurringDueItem:
   type: object
-  required: [id, template_id, template_name, template_enabled, template_archived, occurrence_date, status, transaction_id, description, payee_name, error_summary, amounts]
+  required: [id, template_id, template_name, template_enabled, template_archived, occurrence_date, status, transaction_id, transaction_version_id, description, payee_name, error_summary, amounts]
   properties:
     id:
       type: integer
@@ -38,6 +38,12 @@ RecurringDueItem:
       enum: [generated, blocked]
     transaction_id:
       type: [integer, 'null']
+    transaction_version_id:
+      type: [integer, 'null']
+      description: >
+        The draft version the row shows (null for a blocked attempt). Posting
+        the draft sends it as expected_version_id, so a draft edited after the
+        review is refused with 409 TRANSACTION_VERSION_STALE (#296).
     description:
       type: string
     payee_name:

@@ -26985,6 +26985,8 @@ export interface components {
             /** @enum {string} */
             status: "generated" | "blocked";
             transaction_id: number | null;
+            /** @description The draft version the row shows (null for a blocked attempt). Posting the draft sends it as expected_version_id, so a draft edited after the review is refused with 409 TRANSACTION_VERSION_STALE (#296). */
+            transaction_version_id: number | null;
             description: string;
             payee_name: string;
             /** @description Diagnostic detail for a blocked attempt; do not treat as a localized UI message. */
