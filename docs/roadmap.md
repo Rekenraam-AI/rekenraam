@@ -171,7 +171,7 @@ below is execution order, not a chain of hard dependencies.
    The prices/FX/durable-work audit #274 is complete
    ([evidence](reviews/pricing-durable-work-audit-2026-10-18.md)); #314's FX
    continuation loss and #316's FX transport-error key disclosure are fixed.
-   #315's publication-gap starvation is also fixed locally
+   #315's publication-gap starvation is also fixed
    ([delivery evidence](reviews/fx-coverage-progress-fix-2026-10-18.md)): durable
    scan cursors and independent bounded date retries preserve progress and fresh
    demand. Missing/stale coverage disclosure remains; provider availability is
@@ -218,8 +218,19 @@ below is execution order, not a chain of hard dependencies.
    owner evidence. Release gaps now have issues: signing #333 (owner decision),
    PATs #334 and adoption assets #335. These remain release gates, not a claim
    that the synthetic deployment is ready to announce.
-   Architecture/quality #280 runs last, with the shared gates once at the
-   candidate SHA. The shared reference register #266 is delivered, with
+   Architecture/quality #280 has been executed
+   ([evidence](reviews/architecture-quality-audit-2026-10-19.md)); closure is
+   **blocked by #344**, reproduced in the full browser gate at `25a24f4e`.
+   Backend race, frontend and structural gates pass, but there is no all-green
+   candidate SHA for #260 closure. #345–#347
+   (P3 contract/tooling gaps) and #351 (P3 direct-step duplicate detection)
+   are fixed. #352 (P2 full-suite FX test isolation) is fixed in its own
+   worker project; its full-suite acceptance also waits for #344. #348 (P2) retains the demonstrated
+   nested-dialog contrast-oracle gap: a black border can hide low-contrast text
+   from the screenshot fallback. Additional audit #349 covers runtime API
+   response-schema conformance beyond verified route/client parity; #350 (P3)
+   records missing HTTP 413 responses on capped JSON operations. The shared
+   reference register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); #281 is fixed.
    Fix confirmed integrity/security defects before affected feature slices.
    This is a bounded review, not a recurring full-suite gate. Each open

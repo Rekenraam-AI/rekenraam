@@ -19,6 +19,17 @@ No finding affects financial data. This is bounded evidence on the states
 each check reaches. It does not certify every state of every screen, a
 native-language review (#102), or release readiness.
 
+## Evidence limitation identified by #280
+
+[#348](https://github.com/sergeyfarin/rekenraam/issues/348) demonstrates that the
+nested-dialog pixel override below can accept low-contrast text when a border
+or icon has higher contrast. A real Chromium negative control yielded one axe
+violation but zero retained violations and a reported 21:1 border ratio. The
+matrix's pixel-override rows therefore do **not** establish text contrast.
+The historical ratios below remain the original observation, with this limit;
+other axe/fit/close checks retain their bounded evidence. #344 separately tracks
+failures when this sweep runs with the complete shared-worker suite.
+
 ## Scope and baseline
 
 - Baseline: `46e2db2e` (#327, every modal on the shared native
