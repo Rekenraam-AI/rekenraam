@@ -1685,5 +1685,6 @@
   "api_error_investment_payment_in_lieu_already_corrected": "Diese Ersatzzahlung wurde bereits korrigiert. Aktualisieren Sie, um den aktuellen Eintrag zu sehen.",
   "api_error_investment_payment_in_lieu_changed": "Diese Ersatzzahlung hat sich seit dem Laden geändert. Aktualisieren und erneut versuchen.",
   "api_error_investment_payment_in_lieu_not_short": "Dieser Bestand war zum Handelsschluss vor dem Ex-Tag nicht short in diesem Instrument, daher ist keine Ersatzzahlung geschuldet.",
-  "api_error_investment_payment_in_lieu_dependency": "Eine Ersatzzahlung hängt von dieser Short-Position ab. Storniere zuerst diese Ersatzzahlung und korrigiere dann die Short-Position."
+  "api_error_investment_payment_in_lieu_dependency": "Eine Ersatzzahlung hängt von dieser Short-Position ab. Storniere zuerst diese Ersatzzahlung und korrigiere dann die Short-Position.",
+  "api_error_request_too_large": "Die Anfrage ist zu groß. Verkleinern Sie sie und versuchen Sie es erneut."
 }

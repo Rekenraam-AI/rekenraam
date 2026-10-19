@@ -1685,5 +1685,6 @@
   "api_error_investment_payment_in_lieu_already_corrected": "Ce paiement compensatoire a déjà été corrigé. Actualisez pour voir l'écriture actuelle.",
   "api_error_investment_payment_in_lieu_changed": "Ce paiement compensatoire a changé depuis son chargement. Actualisez et réessayez.",
   "api_error_investment_payment_in_lieu_not_short": "Cette position n'était pas courte sur cet instrument à la clôture précédant la date ex : aucun paiement compensatoire n'est dû.",
-  "api_error_investment_payment_in_lieu_dependency": "Un paiement compensatoire dépend de cette position courte. Annulez d'abord ce paiement compensatoire, puis corrigez la position courte."
+  "api_error_investment_payment_in_lieu_dependency": "Un paiement compensatoire dépend de cette position courte. Annulez d'abord ce paiement compensatoire, puis corrigez la position courte.",
+  "api_error_request_too_large": "La requête est trop volumineuse. Réduisez sa taille et réessayez."
 }

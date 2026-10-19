@@ -4,6 +4,8 @@ import { m } from '#lib/paraglide/messages.js';
 
 const apiErrorMessageByCode: Record<APIErrorCode, () => string> = {
   VALIDATION_FAILED: () => m.api_error_validation_failed(),
+  DECODE_ERROR: () => m.api_error_validation_failed(),
+  REQUEST_TOO_LARGE: () => m.api_error_request_too_large(),
   UNAUTHENTICATED: () => m.api_error_unauthenticated(),
   FORBIDDEN: () => m.api_error_forbidden(),
   NOT_FOUND: () => m.api_error_not_found(),
