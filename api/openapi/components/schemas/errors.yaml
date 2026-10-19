@@ -8,6 +8,8 @@ ErrorBody:
       type: string
       enum:
         - VALIDATION_FAILED
+        - DECODE_ERROR
+        - REQUEST_TOO_LARGE
         - UNAUTHENTICATED
         - FORBIDDEN
         - NOT_FOUND
