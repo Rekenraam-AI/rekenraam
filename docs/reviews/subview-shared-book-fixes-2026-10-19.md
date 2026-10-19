@@ -46,8 +46,24 @@ per configuration, no failed axe/fit/close cells**.
 
 Shared frontend validation passes (zero diagnostics, 691 unit cases, 66 catalog
 cases), backend race validation passes, and the structural audit against
-`ee23e455` passes. Integrated production build passes. The complete browser gate
-and remote `E2E Smoke` remain pending; #344 stays open until both pass.
+`ee23e455` passes. Integrated production build passes. The final shared gates at `af233abb82fe88e0b30c1274eb698d280069820f` all pass:
+
+| Gate | Result |
+|---|---|
+| `GOCACHE=/tmp/rekenraam-go-build-cache ./scripts/test-backend.sh` | Formatting, vet and every package under race pass; unchanged package inputs reuse Go's valid cached results. |
+| `./scripts/test-frontend.sh` | Zero diagnostics; 691 unit and 66 catalog cases pass; generation leaves no diff. |
+| `E2E_SKIP_BUILD=1 E2E_WORKERS=3 ./scripts/test-e2e.sh` | **352 passed (21.5m)**; complete selection, including both isolated FX journeys and all five release-preflight cases. No retries, skips or interruptions. Uses the separately validated production build. |
+| `./scripts/check-post-merge.sh ee23e455` | Clean. |
+
+All eight complete sub-view matrices have 65 reachable and five explicitly
+unreachable rows each, with zero failed opener/axe/fit/close cells. The named
+geometry rows run with the explicit long-option and precise-lot fixtures in
+both themes and in de/ru, at desktop and 390 px. #348's contrast limit below
+still applies to the affected axe rows.
+
+These results resolve the local final-gate blocker for #280 and #352's
+complete-suite condition. The published main-branch CI / E2E Smoke result is
+recorded in #344's delivery comment; remote green is required before closure.
 
 ## Limits
 

@@ -206,10 +206,10 @@ below is execution order, not a chain of hard dependencies.
    bounded and defaulted by the owner's day; the remaining UTC-day blank
    defaults (transaction date, ledger read dates, FX refresh lookup) are #343
    (P3).
-   #344 (P2) repairs the shared-book transaction lookup and import/lot overflow;
+   #344 repairs the shared-book transaction lookup and import/lot overflow;
    explicit long-option and 24-place quantity fixtures pass before/after checks
-   ([evidence](reviews/subview-shared-book-fixes-2026-10-19.md)). Its complete
-   browser gate and main-branch E2E Smoke acceptance are pending.
+   and the complete browser gate ([evidence](reviews/subview-shared-book-fixes-2026-10-19.md)).
+   Its published main CI / E2E Smoke acceptance is recorded on the issue.
    The deployment audit #279 is complete
    ([evidence](reviews/deployment-audit-2026-10-18.md)): fresh native/Compose
    builds, candidate migration 14→18, verified-backup rollback and the focused
@@ -221,13 +221,14 @@ below is execution order, not a chain of hard dependencies.
    PATs #334 and adoption assets #335. These remain release gates, not a claim
    that the synthetic deployment is ready to announce.
    Architecture/quality #280 has been executed
-   ([evidence](reviews/architecture-quality-audit-2026-10-19.md)); closure is
-   **blocked by #344**, reproduced in the full browser gate at `25a24f4e`.
-   Backend race, frontend and structural gates pass, but there is no all-green
-   candidate SHA for #260 closure. #345–#347
+   ([evidence](reviews/architecture-quality-audit-2026-10-19.md)); #344 resolves
+   the initial browser failures. All four shared gates pass at `af233abb`:
+   backend race, frontend, structural audit and all 352 browser journeys.
+   #260 can cite that final-gate SHA with the report's explicit retained limits.
+   #345–#347
    (P3 contract/tooling gaps) and #351 (P3 direct-step duplicate detection)
    are fixed. #352 (P2 full-suite FX test isolation) is fixed in its own
-   worker project; its full-suite acceptance also waits for #344. #348 (P2) retains the demonstrated
+   worker project, and its full-suite acceptance now passes. #348 (P2) retains the demonstrated
    nested-dialog contrast-oracle gap: a black border can hide low-contrast text
    from the screenshot fallback. Additional audit #349 covers runtime API
    response-schema conformance beyond verified route/client parity; #350 (P3)

@@ -2,9 +2,12 @@
 
 **Status:** [#280](https://github.com/sergeyfarin/rekenraam/issues/280), area 12
 of [#260](https://github.com/sergeyfarin/rekenraam/issues/260).
-**Review and measurements executed; closure BLOCKED by #344**. The final
-full browser gate is not green, so #280 stays open and there is no all-green
-SHA for #260 to cite at closure. This does not certify release/household acceptance.
+**Review, measurements and all four local shared gates complete.** Following
+[#344](https://github.com/sergeyfarin/rekenraam/issues/344), the green final-gate
+SHA is `af233abb82fe88e0b30c1274eb698d280069820f`. The earlier failed attempt remains below as historical evidence;
+see the [repair and final validation](subview-shared-book-fixes-2026-10-19.md).
+Publication / main CI evidence is recorded on #280 and #344. This does not
+certify release/household acceptance.
 
 ## Scope and audited revisions
 
@@ -12,7 +15,7 @@ Clean checkout of baseline `ee23e45509f8b90da4079fd51f8873f56963f795`.
 The initial application/performance review used `ee23e455`. Bounded fixes are
 `7b7af72b` (#345), `c64886a4` (#346), `a5b42fc9` (#347) and `91563e00` (#345
 presentation); `dea2c418` adds the opt-in representative-read measurement.
-**Final gate candidate: `25a24f4ed5dff81528535fb6b238c37dbd2345bb`.**
+**Initial failed gate candidate: `25a24f4ed5dff81528535fb6b238c37dbd2345bb`.**
 The first shared-gate attempt used `91563e00`; its full browser selection exposed
 #352. The separate #351 checker repair landed as `0a891aa5` with before/after
 controls; #352 then moved the unchanged FX-selection journeys to their own
@@ -20,13 +23,14 @@ worker book/project in `25a24f4e`. The full browser retest and shared wrappers
 are recorded at that final revision below. Git tree hashes confirm that
 `backend`, `frontend`, `api` and `pnpm-lock.yaml` are unchanged between
 `91563e00` and `25a24f4e`; the follow-ups affect test infrastructure. Later
-evidence/status changes are docs only.
+evidence/status changes through `7e1ffa6b` are docs only. The subsequent #344
+repair changes frontend layout and browser fixtures, as recorded below.
 No changes were made to financial rules,
 database schema, provider admission or saved-output contracts.
 
 All preceding #266–#279 audit dependencies have published evidence and landed
 their integrity fixes. Existing #343 (P3 API/internal blank UTC-day defaults),
-#344 (P2 full-suite browser failures), #326 (P3 URL state), #102 (human native
+#326 (P3 URL state), #102 (human native
 language review), #336 (owner deployment/household evidence) and #337 (runtime
 image advisory disposition) retain their own acceptance. Their open status does
 not imply that this review repeated those audits. #284 owns refactoring decisions.
@@ -46,8 +50,8 @@ provider were required (ADR 0017).
 | #351: duplicate scanner misses inline YAML steps | A valid temporary `- run: ./scripts/test-backend.sh` workflow must be detected just like a named step. Before the fix the checker returned 0; after normalizing both spellings it returns 1 with the duplicate diagnostic. Normal workflows remain green. | P3, **confirmed checker defect, fixed** in `0a891aa5`. This is a separate finding from #347’s setup false positive. |
 | #348: nested-dialog contrast override has an unsound oracle | Text contrast must concern text and its background. An actual Chromium negative control used nested dialogs with `#999` paragraph text, white background and a black 2px border. Axe found one color-contrast violation at **2.84:1**. Invoking the unchanged `withRenderedContrast` function from the sweep returned zero retained findings and reported **21.00:1**, the border contrast. | P2, **confirmed test-evidence defect, open**. This does not prove an app dialog fails contrast. Replacing the override requires rendered text/background evidence and rechecking the affected dialog cases; simply dropping it revives the disputed axe readings. #331's pixel-override rows are not accepted contrast certification. |
 | #350: HTTP 413 status absent from JSON operation contracts | The same real setup POST returns 413, while `paths/setup-owner.yaml` declares only 201/400/403/409/500. Static inventory finds 213 JSON request operations without 413; each needs mapping to capped decoder callers before a blanket change. | P3, **confirmed contract gap, open**. #345 repairs the code enum only. #350 owns public/authenticated/optional-body status responses and accurate shared 1 MiB versus multipart limits; #349 includes the matrix. Runtime refusal is correct. |
-| #352: FX-selection test assumes exclusive built-in pair history | The full gate at `91563e00` failed `observation-selection.spec.ts:54`: after withdrawing its current-day rates it expected “Only future prices available”, but the report correctly retained USD 100.00 with “No compatible price within the allowed age”. Read-only inspection of its disposable `app-1` book found prior live USD/EUR manual observations dated January 31 and March 31, older than its October 19 boundary. | P2, **confirmed test-isolation defect; implementation fixed, closure blocked by #344** in `25a24f4e`: isolate the spec in a dedicated self-managed Playwright project, keeping every assertion. An explicit external `E2E_BASE_URL` remains a shared operator book and gains no isolation. Focused/final validation recorded below. |
-| #344: existing full-suite sweep isolation/fit failures | A sweep must target its own created operations and fit real long data. Its `seedFixture` reads only one investment transaction page from the worker's shared book, then groups all those rows by date; its lot opener selects the first unrelated position. Earlier CI/full-run evidence is recorded on #344. | P2, **retained existing issue**. Eight focused configurations passed on a fresh book; a second 26-journey run (12 upload-limit, 6 share-exchange, 8 limited sweep configurations) also passed on one shared worker. Neither result retires the full-suite failure. The corrected full run reproduces all three classes: 11/13 unopened views from missing/wrong IDs, 32 px overflow in five import states, and 2 px lot-panel overflow. See the actual final counts/matrix below. |
+| #352: FX-selection test assumes exclusive built-in pair history | The full gate at `91563e00` failed `observation-selection.spec.ts:54`: after withdrawing its current-day rates it expected “Only future prices available”, but the report correctly retained USD 100.00 with “No compatible price within the allowed age”. Read-only inspection of its disposable `app-1` book found prior live USD/EUR manual observations dated January 31 and March 31, older than its October 19 boundary. | P2, **confirmed test-isolation defect, fixed** in `25a24f4e` and full-suite validated at `af233abb`: isolate the spec in a dedicated self-managed Playwright project, keeping every assertion. An explicit external `E2E_BASE_URL` remains a shared operator book and gains no isolation. Focused/final validation recorded below. |
+| #344: existing full-suite sweep isolation/fit failures | A sweep must target its own created operations and fit real long data. Its `seedFixture` reads only one investment transaction page from the worker's shared book, then groups all those rows by date; its lot opener selects the first unrelated position. Earlier CI/full-run evidence is recorded on #344. | P2, **confirmed existing defect, subsequently fixed by #344**. The following describes the initial failed gate; the repair and green candidate are recorded below. Eight focused configurations passed on a fresh book; a second 26-journey run (12 upload-limit, 6 share-exchange, 8 limited sweep configurations) also passed on one shared worker. Neither result retires the full-suite failure. The corrected full run reproduces all three classes: 11/13 unopened views from missing/wrong IDs, 32 px overflow in five import states, and 2 px lot-panel overflow. See the actual final counts/matrix below. |
 
 Each new finding is a separate bounded GitHub issue (#345–#348 and #350–#352), including those
 fixed here. Additional audit **#349** covers runtime response-schema conformance;
@@ -144,7 +148,7 @@ its higher latency is recorded without inferring a regression or silently
 setting a new performance requirement. The large generated book is cash-ledger
 work, not evidence for large investment-history gains/alternative projections.
 
-## Final shared gates
+## Initial shared gates — failed candidate `25a24f4e`
 
 | Gate at `25a24f4e` | Actual result |
 |---|---|
@@ -200,7 +204,8 @@ enum required localized presentation mappings. `91563e00` adds them; the later
 candidate's result is the governing one. The superseded `91563e00` full browser
 attempt was stopped after the #352 failure was diagnosed and fixed, preserving
 its log/database and completed matrices. It is not counted as a full pass;
-the complete `25a24f4e` retest is the final browser evidence. The first broad browser invocation was
+the complete `25a24f4e` retest was the final browser evidence for the initial
+blocked delivery, superseded by the green #344 follow-up below. The first broad browser invocation was
 stopped after its build, before tests, to select focused probes first; it is
 not counted as a gate pass. Exploratory performance requests that omitted
 `group_by=category` or invented `as_of_date` were rejected with 400; the final
@@ -217,7 +222,26 @@ passed, while [CI](https://github.com/sergeyfarin/rekenraam/actions/runs/3920696
 was in progress. These are publication-time observations, not a claim that
 remote CI is green. Current remote status is recorded in #280’s delivery
 comment. Later publication-note commits change documentation only; the failed
-shared-gate candidate remains `25a24f4e` and #344 still blocks closure.
+shared-gate candidate for that initial blocked delivery was `25a24f4e`. The
+subsequent #344 follow-up below resolves its shared-gate failures.
+
+## #344 follow-up — green final shared gates
+
+The [bounded repair and before/after evidence](subview-shared-book-fixes-2026-10-19.md)
+records owned write-response transaction IDs, explicit long account options and
+24-place crypto lots, and the two UI width fixes. The saved-book controls fail
+against the unchanged UI and pass after rebuilding. No fit assertion was weakened.
+
+At `af233abb82fe88e0b30c1274eb698d280069820f`, all four shared wrappers pass: backend race, frontend (zero diagnostics,
+691 unit cases / 66 catalog cases), structural audit, and the complete browser
+selection: **352 passed (21.5m)**. All eight sub-view matrices have zero failed
+cells; the five unreachable branches per configuration remain explicit. Both
+isolated FX journeys and all five release-preflight cases pass. The build is
+fresh; `E2E_SKIP_BUILD=1 E2E_WORKERS=3 ./scripts/test-e2e.sh` reuses it. There are
+no retries, skips or interruptions. #260 can cite this SHA as its green shared-gate
+candidate; #352's literal complete-suite condition is met. #348's independently
+confirmed contrast-oracle limit and the other retained findings remain unchanged.
+Remote publication / E2E Smoke acceptance is recorded on #344 and #280.
 
 ## Maintainability notes
 
@@ -267,7 +291,8 @@ can support contrast acceptance. The witness above invokes the actual production
 test helper on real rendered pixels;
 [its standalone reproduction is on #348](https://github.com/sergeyfarin/rekenraam/issues/348#issuecomment-6260489959).
 It is not a financial/security defect probe.
-#344 retains its broader isolation/layout acceptance, even when a smaller probe
-passes. Human language, actual owner deployment/key custody/household acceptance,
+#344 retained its broader isolation/layout acceptance during the initial audit, even when a smaller probe
+passed. The complete local acceptance now passes at `af233abb`; main CI evidence
+is recorded on the issue. Human language, actual owner deployment/key custody/household acceptance,
 release signing/PAT/demo work and image-advisory disposition remain outside this
 bounded area; the umbrella must name them rather than infer all-app readiness.

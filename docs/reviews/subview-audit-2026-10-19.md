@@ -27,8 +27,10 @@ or icon has higher contrast. A real Chromium negative control yielded one axe
 violation but zero retained violations and a reported 21:1 border ratio. The
 matrix's pixel-override rows therefore do **not** establish text contrast.
 The historical ratios below remain the original observation, with this limit;
-other axe/fit/close checks retain their bounded evidence. #344 separately tracks
-failures when this sweep runs with the complete shared-worker suite.
+other axe/fit/close checks retain their bounded evidence. #344's separate
+shared-worker fixture/fit failures are repaired with explicit long-option and
+24-place lot fixtures; the complete 352-journey gate passes at `af233abb`
+([follow-up evidence](subview-shared-book-fixes-2026-10-19.md)).
 
 ## Scope and baseline
 
