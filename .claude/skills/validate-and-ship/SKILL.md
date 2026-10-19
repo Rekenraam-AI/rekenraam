@@ -460,6 +460,9 @@ non-trivial diff (yours or reviewed):
     must match explicit owner-local today. Named regressions:
     `TestDatedValuationDefaultExcludesFutureInvestmentEvents`,
     `TestInvestmentGainsDefaultTodayKeepsFutureSaleOutOfValuation`.
+    The backend has the same trap: grep `UTC().Format(time.DateOnly)` and
+    bound/default owner-entered dates through `SettingsService.OwnerTodayAt`
+    (#339, `TestOwnerEnteredDatesFollowOwnerDay`).
 
 40. **Checking a process lock without holding it through replacement** —
     `CheckAvailable` releases its lock immediately; it cannot protect a later

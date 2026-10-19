@@ -232,6 +232,10 @@ When a feature introduces a durable new rule, update one of those documents in t
   for financial entry defaults, report ranges/year and unchosen dated
   investment discovery. The settings service resolves it from the server clock
   and saved owner IANA zone; absent preferences follow the existing UTC default.
+- Backend services bound and default owner-entered dates (account opened and
+  closed dates, version effective dates, reconciliation cleared dates) by the
+  same day through `SettingsService.OwnerTodayAt`, never
+  `now.UTC().Format(time.DateOnly)` (#339).
 - Share the date through the app shell; missing/invalid authenticated date
   data is an error, never a browser-clock fallback. Session focus/minute refresh
   and preference saves update the shared date for newly opened forms.

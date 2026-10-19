@@ -136,8 +136,12 @@ type EnsureCategoriesResult struct {
 type CategoryService struct {
 	repository   *db.CategoryRepository
 	setupService *SetupService
+	settings     *SettingsService
 	now          func() time.Time
 }
+
+// SetSettings resolves owner-entered version dates from the owner's day (#339).
+func (s *CategoryService) SetSettings(settings *SettingsService) { s.settings = settings }
 
 func NewCategoryService(repository *db.CategoryRepository, setupService *SetupService) *CategoryService {
 	return &CategoryService{
@@ -292,7 +296,11 @@ func (s *CategoryService) UpdateCategory(ctx context.Context, input UpdateCatego
 	if err != nil {
 		return Category{}, err
 	}
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return Category{}, err
+	}
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return Category{}, err
 	}
@@ -410,7 +418,11 @@ func (s *CategoryService) changeCategoryStatus(ctx context.Context, input Catego
 	}
 
 	now := s.now().UTC()
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return Category{}, err
+	}
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return Category{}, err
 	}

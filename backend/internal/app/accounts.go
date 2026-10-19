@@ -200,6 +200,7 @@ type AccountService struct {
 	repository            *db.AccountRepository
 	institutionRepository *db.InstitutionRepository
 	setupService          *SetupService
+	settings              *SettingsService
 	now                   func() time.Time
 }
 
@@ -211,6 +212,9 @@ func NewAccountService(repository *db.AccountRepository, institutionRepository *
 		now:                   time.Now,
 	}
 }
+
+// SetSettings resolves owner-entered account dates from the owner's day (#339).
+func (s *AccountService) SetSettings(settings *SettingsService) { s.settings = settings }
 
 func (s *AccountService) ListAccounts(ctx context.Context, input ListAccountsInput) ([]Account, error) {
 	status := strings.TrimSpace(input.Status)
@@ -299,7 +303,11 @@ func (s *AccountService) CreateAccount(ctx context.Context, input CreateAccountI
 	}
 
 	now := s.now().UTC()
-	openedOn, err := cleanAccountOpenedOn(input.OpenedOn, input.EffectiveFrom, now)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return Account{}, err
+	}
+	openedOn, err := cleanAccountOpenedOn(input.OpenedOn, input.EffectiveFrom, today)
 	if err != nil {
 		return Account{}, err
 	}
@@ -307,7 +315,7 @@ func (s *AccountService) CreateAccount(ctx context.Context, input CreateAccountI
 	if strings.TrimSpace(effectiveInput) == "" {
 		effectiveInput = openedOn
 	}
-	effectiveFrom, err := cleanEffectiveFrom(effectiveInput, now)
+	effectiveFrom, err := cleanEffectiveFrom(effectiveInput, today)
 	if err != nil {
 		return Account{}, err
 	}
@@ -405,11 +413,15 @@ func (s *AccountService) UpdateAccount(ctx context.Context, input UpdateAccountI
 	}
 
 	now := s.now().UTC()
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
 	if err != nil {
 		return Account{}, err
 	}
-	openedOn, err := cleanAccountOpenedOn(input.OpenedOn, current.OpenedOn, now)
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
+	if err != nil {
+		return Account{}, err
+	}
+	openedOn, err := cleanAccountOpenedOn(input.OpenedOn, current.OpenedOn, today)
 	if err != nil {
 		return Account{}, err
 	}
@@ -518,6 +530,10 @@ func (s *AccountService) EnsureSystemAccounts(ctx context.Context, input EnsureS
 	}
 
 	now := s.now().UTC()
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return EnsureSystemAccountsResult{}, err
+	}
 	starterCashSpecs, err := s.repository.ListActiveCurrencyStarterSpecs(ctx, BookID)
 	if err != nil {
 		return EnsureSystemAccountsResult{}, fmt.Errorf("read starter cash account currencies: %w", err)
@@ -534,7 +550,7 @@ func (s *AccountService) EnsureSystemAccounts(ctx context.Context, input EnsureS
 		StarterCashSpecs:     starterCashSpecs,
 		CreatedAt:            now.Format(time.RFC3339),
 		EffectiveFrom:        systemAccountDate,
-		StarterEffectiveFrom: now.Format(time.DateOnly),
+		StarterEffectiveFrom: today,
 	})
 	if err != nil {
 		switch {
@@ -581,6 +597,10 @@ func (s *AccountService) changeAccountStatus(ctx context.Context, input AccountL
 	}
 
 	now := s.now().UTC()
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return Account{}, err
+	}
 	effectiveInput := input.EffectiveFrom
 	closedOn := current.ClosedOn
 	if status == "closed" {
@@ -588,7 +608,7 @@ func (s *AccountService) changeAccountStatus(ctx context.Context, input AccountL
 		if fallbackClosedOn == "" {
 			fallbackClosedOn = effectiveInput
 		}
-		closedOn, err = cleanAccountLifecycleDate(input.ClosedOn, fallbackClosedOn, now)
+		closedOn, err = cleanAccountLifecycleDate(input.ClosedOn, fallbackClosedOn, today)
 		if err != nil {
 			return Account{}, err
 		}
@@ -604,7 +624,7 @@ func (s *AccountService) changeAccountStatus(ctx context.Context, input AccountL
 	} else if status == "active" {
 		closedOn = ""
 	}
-	effectiveFrom, err := cleanEffectiveFrom(effectiveInput, now)
+	effectiveFrom, err := cleanEffectiveFrom(effectiveInput, today)
 	if err != nil {
 		return Account{}, err
 	}
@@ -1016,21 +1036,22 @@ func nullableIntPtrEqual(left *int, right sql.NullInt64) bool {
 	return right.Valid && int64(*left) == right.Int64
 }
 
-func cleanAccountOpenedOn(value string, fallback string, now time.Time) (string, error) {
-	return cleanOptionalAccountDate(value, fallback, now, "account opened date")
+func cleanAccountOpenedOn(value string, fallback string, today string) (string, error) {
+	return cleanOptionalAccountDate(value, fallback, today, "account opened date")
 }
 
-func cleanAccountLifecycleDate(value string, fallback string, now time.Time) (string, error) {
-	return cleanOptionalAccountDate(value, fallback, now, "account closed date")
+func cleanAccountLifecycleDate(value string, fallback string, today string) (string, error) {
+	return cleanOptionalAccountDate(value, fallback, today, "account closed date")
 }
 
-func cleanOptionalAccountDate(value string, fallback string, now time.Time, field string) (string, error) {
+// cleanOptionalAccountDate defaults and bounds by the owner's day, not UTC (#339).
+func cleanOptionalAccountDate(value string, fallback string, today string, field string) (string, error) {
 	cleaned := strings.TrimSpace(value)
 	if cleaned == "" {
 		cleaned = strings.TrimSpace(fallback)
 	}
 	if cleaned == "" {
-		cleaned = now.UTC().Format(time.DateOnly)
+		cleaned = today
 	}
 
 	parsed, err := time.Parse(time.DateOnly, cleaned)
@@ -1038,8 +1059,8 @@ func cleanOptionalAccountDate(value string, fallback string, now time.Time, fiel
 		return "", ValidationError{Message: field + " must use YYYY-MM-DD"}
 	}
 
-	today, _ := time.Parse(time.DateOnly, now.UTC().Format(time.DateOnly))
-	if parsed.After(today) {
+	todayDate, _ := time.Parse(time.DateOnly, today)
+	if parsed.After(todayDate) {
 		return "", ValidationError{Message: field + " must not be in the future"}
 	}
 

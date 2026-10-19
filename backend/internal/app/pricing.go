@@ -207,9 +207,13 @@ type PricingSourceHealth struct {
 type PricingService struct {
 	repository       *db.PricingRepository
 	providerRegistry *marketdata.Registry
+	settings         *SettingsService
 	now              func() time.Time
 	wake             chan struct{}
 }
+
+// SetSettings resolves owner-entered assignment dates from the owner's day (#339).
+func (s *PricingService) SetSettings(settings *SettingsService) { s.settings = settings }
 
 func NewPricingService(repository *db.PricingRepository, registries ...*marketdata.Registry) *PricingService {
 	registry := marketdata.DefaultRegistry("")
@@ -413,7 +417,11 @@ func (s *PricingService) SaveSourceAssignment(ctx context.Context, input Pricing
 	if input.OwnerUserID <= 0 {
 		return PricingSourceAssignment{}, ValidationError{Message: "owner user is required"}
 	}
-	spec, err := cleanPricingSourceAssignmentSpec(input, s.now().UTC())
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, s.now())
+	if err != nil {
+		return PricingSourceAssignment{}, err
+	}
+	spec, err := cleanPricingSourceAssignmentSpec(input, today)
 	if err != nil {
 		return PricingSourceAssignment{}, err
 	}
@@ -680,7 +688,7 @@ func localDailyTimeUTC(hour int, minute int, timeZone string, now time.Time) (in
 	return utcScheduledAt.Hour(), utcScheduledAt.Minute(), nil
 }
 
-func cleanPricingSourceAssignmentSpec(input PricingSourceAssignmentInput, now time.Time) (db.PricingSourceAssignmentSpec, error) {
+func cleanPricingSourceAssignmentSpec(input PricingSourceAssignmentInput, today string) (db.PricingSourceAssignmentSpec, error) {
 	if input.CommodityID <= 0 || input.QuoteCommodityID <= 0 || input.SourceID <= 0 {
 		return db.PricingSourceAssignmentSpec{}, ValidationError{Message: "source assignment references are required"}
 	}
@@ -695,7 +703,7 @@ func cleanPricingSourceAssignmentSpec(input PricingSourceAssignmentInput, now ti
 	if priority < 0 {
 		return db.PricingSourceAssignmentSpec{}, ValidationError{Message: "priority is invalid"}
 	}
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return db.PricingSourceAssignmentSpec{}, err
 	}

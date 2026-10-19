@@ -63,6 +63,11 @@ func newAuthHandlerForDatabaseWithOptions(database *sql.DB, options HandlerOptio
 	transactionService := app.NewTransactionService(db.NewTransactionRepository(database), payeeRepository, accountRepository, commodityRepository)
 	pricingService := app.NewPricingService(db.NewPricingRepository(database))
 	investmentService := app.NewInvestmentService(db.NewInvestmentRepository(database), accountService, transactionService, pricingService)
+	for _, service := range []interface{ SetSettings(*app.SettingsService) }{
+		institutionService, accountService, categoryService, payeeService, transactionService, pricingService, investmentService,
+	} {
+		service.SetSettings(settingsService)
+	}
 	importService := app.NewImportService(db.NewImportRepository(database), transactionService, accountRepository, nil, nil, nil)
 
 	return NewHandler(logger, http.NotFoundHandler(), Services{

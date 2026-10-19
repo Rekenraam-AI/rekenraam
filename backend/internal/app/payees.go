@@ -87,8 +87,12 @@ type PayeeLifecycleInput struct {
 type PayeeService struct {
 	repository        *db.PayeeRepository
 	accountRepository *db.AccountRepository
+	settings          *SettingsService
 	now               func() time.Time
 }
+
+// SetSettings resolves owner-entered version dates from the owner's day (#339).
+func (s *PayeeService) SetSettings(settings *SettingsService) { s.settings = settings }
 
 func NewPayeeService(repository *db.PayeeRepository, accountRepository *db.AccountRepository) *PayeeService {
 	return &PayeeService{
@@ -150,7 +154,11 @@ func (s *PayeeService) CreatePayee(ctx context.Context, input CreatePayeeInput) 
 		return Payee{}, err
 	}
 
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return Payee{}, err
+	}
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return Payee{}, err
 	}
@@ -230,7 +238,11 @@ func (s *PayeeService) UpdatePayee(ctx context.Context, input UpdatePayeeInput) 
 	}
 
 	now := s.now().UTC()
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return Payee{}, err
+	}
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return Payee{}, err
 	}
@@ -288,7 +300,11 @@ func (s *PayeeService) changePayeeStatus(ctx context.Context, input PayeeLifecyc
 	}
 
 	now := s.now().UTC()
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return Payee{}, err
+	}
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return Payee{}, err
 	}

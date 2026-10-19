@@ -1397,7 +1397,7 @@ func TestCleanDividendDefaultSpec_RejectsInvalidInputs(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			input := valid
 			test.mutate(&input)
-			_, err := cleanDividendDefaultSpec(input, mustParseTestTime(t, "2026-01-01"))
+			_, err := cleanDividendDefaultSpec(input, "2026-01-01")
 			require.Error(t, err)
 		})
 	}
@@ -1615,7 +1615,7 @@ func TestCleanAutomationRuleSpec_RejectsInvalidInputs(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			input := valid
 			test.mutate(&input)
-			_, err := cleanAutomationRuleSpec(input, mustParseTestTime(t, "2026-01-01"))
+			_, err := cleanAutomationRuleSpec(input, "2026-01-01")
 			require.Error(t, err)
 		})
 	}

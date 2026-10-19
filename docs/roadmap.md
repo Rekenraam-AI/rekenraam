@@ -202,8 +202,12 @@ below is execution order, not a chain of hard dependencies.
    the book, with reasons). #340 (Categories scrolled
    sideways at desktop) and #341 (hovered warning buttons under AA) are fixed.
    #342 is fixed: below `lg` the transaction and lot panels hold focus like a
-   dialog. #339 (account and version dates checked against the UTC day, P2)
-   remains open.
+   dialog. #339 is fixed: account, version and reconciliation dates are
+   bounded and defaulted by the owner's day; the remaining UTC-day blank
+   defaults (transaction date, ledger read dates, FX refresh lookup) are #343
+   (P3).
+   #344 (P2): in full e2e runs the sub-view sweep fails on sideways overflow
+   and shared-book row lookups, so E2E Smoke is red on `main`.
    The deployment audit #279 is complete
    ([evidence](reviews/deployment-audit-2026-10-18.md)): fresh native/Compose
    builds, candidate migration 14→18, verified-backup rollback and the focused

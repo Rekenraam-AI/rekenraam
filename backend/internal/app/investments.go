@@ -779,8 +779,12 @@ type InvestmentService struct {
 	accountService        *AccountService
 	transactionService    *TransactionService
 	pricingService        *PricingService
+	settings              *SettingsService
 	now                   func() time.Time
 }
+
+// SetSettings resolves owner-entered version dates from the owner's day (#339).
+func (s *InvestmentService) SetSettings(settings *SettingsService) { s.settings = settings }
 
 func NewInvestmentService(repository *db.InvestmentRepository, accountService *AccountService, transactionService *TransactionService, pricingService *PricingService) *InvestmentService {
 	return &InvestmentService{
@@ -846,7 +850,11 @@ func (s *InvestmentService) CreateInstrument(ctx context.Context, input Investme
 	}
 
 	now := s.now().UTC()
-	_, err = cleanEffectiveFrom(input.EffectiveFrom, now)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return InvestmentInstrument{}, err
+	}
+	_, err = cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return InvestmentInstrument{}, err
 	}
@@ -1008,7 +1016,11 @@ func (s *InvestmentService) UpdateInstrument(ctx context.Context, input Investme
 	}
 
 	now := s.now().UTC()
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return InvestmentInstrument{}, err
+	}
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return InvestmentInstrument{}, err
 	}
@@ -1136,7 +1148,11 @@ func (s *InvestmentService) SaveDividendDefault(ctx context.Context, input Divid
 	if input.OwnerUserID <= 0 {
 		return DividendDefault{}, ValidationError{Message: "owner user is required"}
 	}
-	spec, err := cleanDividendDefaultSpec(input, s.now().UTC())
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, s.now())
+	if err != nil {
+		return DividendDefault{}, err
+	}
+	spec, err := cleanDividendDefaultSpec(input, today)
 	if err != nil {
 		return DividendDefault{}, err
 	}
@@ -2444,9 +2460,13 @@ func (s *InvestmentService) SaveAutomationRules(ctx context.Context, input SaveA
 	}
 	now := s.now().UTC()
 	recordedAt := now.Format(time.RFC3339)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return nil, err
+	}
 	upserts := make([]db.AutomationRuleUpsert, 0, len(input.Rules))
 	for _, ruleInput := range input.Rules {
-		spec, err := cleanAutomationRuleSpec(ruleInput, now)
+		spec, err := cleanAutomationRuleSpec(ruleInput, today)
 		if err != nil {
 			return nil, err
 		}
@@ -2472,7 +2492,7 @@ func (s *InvestmentService) SaveAutomationRules(ctx context.Context, input SaveA
 	return toInvestmentAutomationRules(records), nil
 }
 
-func cleanAutomationRuleSpec(input InvestmentAutomationRuleInput, now time.Time) (db.AutomationRuleSpec, error) {
+func cleanAutomationRuleSpec(input InvestmentAutomationRuleInput, today string) (db.AutomationRuleSpec, error) {
 	eventFamily := strings.TrimSpace(input.EventFamily)
 	if !map[string]bool{"dividend": true, "distribution": true, "split": true, "merger": true, "spin_off": true, "ticker_change": true, "delisting": true, "cash_in_lieu": true, "return_of_capital": true, "corporate_action": true}[eventFamily] {
 		return db.AutomationRuleSpec{}, ValidationError{Message: "event family is invalid"}
@@ -2494,7 +2514,7 @@ func cleanAutomationRuleSpec(input InvestmentAutomationRuleInput, now time.Time)
 	if status != "active" && status != "archived" {
 		return db.AutomationRuleSpec{}, ValidationError{Message: "automation rule status is invalid"}
 	}
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return db.AutomationRuleSpec{}, err
 	}
@@ -2667,7 +2687,7 @@ func cleanCostBasisProfileSpec(input CostBasisProfileInput) (db.CostBasisProfile
 	return db.CostBasisProfileSpec{Name: name, Method: method, IsDefault: input.IsDefault, Status: status, Description: description, MetadataJSON: metadataJSON}, nil
 }
 
-func cleanDividendDefaultSpec(input DividendDefaultInput, now time.Time) (db.DividendDefaultSpec, error) {
+func cleanDividendDefaultSpec(input DividendDefaultInput, today string) (db.DividendDefaultSpec, error) {
 	if input.IncomeAccountID <= 0 {
 		return db.DividendDefaultSpec{}, ValidationError{Message: "income account is required"}
 	}
@@ -2678,7 +2698,7 @@ func cleanDividendDefaultSpec(input DividendDefaultInput, now time.Time) (db.Div
 	if status != "active" && status != "archived" {
 		return db.DividendDefaultSpec{}, ValidationError{Message: "dividend default status is invalid"}
 	}
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return db.DividendDefaultSpec{}, err
 	}

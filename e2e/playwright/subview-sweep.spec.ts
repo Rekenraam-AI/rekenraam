@@ -670,8 +670,7 @@ async function seedProviderImport(page: Page, csrf: string, ids: Map<string, num
   const suffix = `SWP${Date.now()}`;
   const ticker = `${suffix}_US_EQ`;
   const usd = ids.get('USD')!;
-  // Opening dates are checked against the UTC day, not the owner's (#339);
-  // a fixed past day holds at any hour.
+  // A fixed past day holds at any hour in any runner zone.
   const opened = '2026-04-01';
   const cash = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrf, {
     name: `Sweep broker cash ${suffix}`, account_class: 'asset', account_kind: 'brokerage_cash',

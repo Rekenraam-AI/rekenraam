@@ -21,6 +21,7 @@ type TransactionService struct {
 	// selector: reports work without it, and refuse a reporting currency
 	// rather than inventing one.
 	pricingRepository *db.PricingRepository
+	settings          *SettingsService
 	now               func() time.Time
 	newLineKey        func() string
 }
@@ -49,6 +50,9 @@ func NewTransactionService(
 func (s *TransactionService) SetPricingRepository(pricingRepository *db.PricingRepository) {
 	s.pricingRepository = pricingRepository
 }
+
+// SetSettings resolves owner-entered reconciliation dates from the owner's day (#339).
+func (s *TransactionService) SetSettings(settings *SettingsService) { s.settings = settings }
 
 func (s *TransactionService) ListTransactions(ctx context.Context, input ListTransactionsInput) (ListTransactionsResult, error) {
 	params, err := s.listParams(ctx, input, false)

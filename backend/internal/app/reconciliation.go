@@ -423,7 +423,10 @@ func (s *TransactionService) ChangePostingReconciliationStatus(ctx context.Conte
 		return nil, err
 	}
 	if status == "cleared" && clearedOn == "" {
-		clearedOn = s.now().UTC().Format(time.DateOnly)
+		clearedOn, err = s.settings.OwnerTodayAt(ctx, input.OwnerUserID, s.now())
+		if err != nil {
+			return nil, err
+		}
 	}
 	if status == "uncleared" {
 		clearedOn = ""

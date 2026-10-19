@@ -119,7 +119,7 @@ test('the trash restore override keeps focus, ignores Escape while restoring, an
 test('an investment correction dialog keeps and returns focus', async ({ page }) => {
   const { csrfToken, currencyID } = await readyForLedger(page);
   const suffix = `dlg${Date.now()}`;
-  // Yesterday: opening dates are still checked against the UTC day (#339).
+  // Yesterday holds whatever the runner zone is against the owner's day.
   const day = daysFromTodayISO(-1);
   const cash = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
     name: `Dialog cash ${suffix}`, account_class: 'asset', account_kind: 'brokerage_cash',

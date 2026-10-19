@@ -50,6 +50,17 @@ func (s *SettingsService) OwnerToday(ctx context.Context, userID int64) (string,
 	if s == nil {
 		return "", errors.New("settings service is required")
 	}
+	return s.OwnerTodayAt(ctx, userID, s.now())
+}
+
+// OwnerTodayAt resolves the owner's calendar day at the caller's clock, so a
+// service validates and defaults owner-entered dates against the same day the
+// session reports as owner_today (#339). A nil service is an unwired caller
+// and follows the UTC day, the same default as absent preferences.
+func (s *SettingsService) OwnerTodayAt(ctx context.Context, userID int64, now time.Time) (string, error) {
+	if s == nil {
+		return now.UTC().Format(time.DateOnly), nil
+	}
 	preferences, err := s.Preferences(ctx, userID)
 	if err != nil {
 		return "", err
@@ -58,7 +69,7 @@ func (s *SettingsService) OwnerToday(ctx context.Context, userID int64) (string,
 	if err != nil {
 		return "", fmt.Errorf("load owner time zone: %w", err)
 	}
-	return s.now().In(location).Format(time.DateOnly), nil
+	return now.In(location).Format(time.DateOnly), nil
 }
 
 func (s *SettingsService) SavePreferences(ctx context.Context, input SaveUserPreferencesInput) (UserPreferences, error) {

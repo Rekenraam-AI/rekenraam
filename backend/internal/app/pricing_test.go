@@ -709,7 +709,7 @@ func TestSaveSourceAssignment_MultipleActiveAssignmentsResolveByPriority(t *test
 
 func TestCleanPricingSourceAssignmentSpec_RejectsInvalidInputs(t *testing.T) {
 	t.Parallel()
-	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	today := "2026-01-01"
 	valid := PricingSourceAssignmentInput{CommodityID: 1, QuoteCommodityID: 2, SourceID: 3, Status: "active", EffectiveFrom: "2026-01-01"}
 	tests := []struct {
 		name   string
@@ -725,7 +725,7 @@ func TestCleanPricingSourceAssignmentSpec_RejectsInvalidInputs(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			input := valid
 			test.mutate(&input)
-			_, err := cleanPricingSourceAssignmentSpec(input, now)
+			_, err := cleanPricingSourceAssignmentSpec(input, today)
 			require.Error(t, err)
 		})
 	}

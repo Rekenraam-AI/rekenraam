@@ -11,10 +11,12 @@ import (
 
 const changeReasonMaxBytes = 500
 
-func cleanEffectiveFrom(value string, now time.Time) (string, error) {
+// cleanEffectiveFrom defaults and bounds a version date by the owner's day
+// (SettingsService.OwnerTodayAt), never the server's UTC day.
+func cleanEffectiveFrom(value string, today string) (string, error) {
 	cleaned := strings.TrimSpace(value)
 	if cleaned == "" {
-		return now.UTC().Format(time.DateOnly), nil
+		return today, nil
 	}
 
 	parsed, err := time.Parse(time.DateOnly, cleaned)
@@ -22,8 +24,8 @@ func cleanEffectiveFrom(value string, now time.Time) (string, error) {
 		return "", ValidationError{Message: "effective date must use YYYY-MM-DD"}
 	}
 
-	today, _ := time.Parse(time.DateOnly, now.UTC().Format(time.DateOnly))
-	if parsed.After(today) {
+	todayDate, _ := time.Parse(time.DateOnly, today)
+	if parsed.After(todayDate) {
 		return "", ValidationError{Message: "effective date must not be in the future"}
 	}
 

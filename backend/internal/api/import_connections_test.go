@@ -78,6 +78,11 @@ func newImportConnectionsTestHandlerWith(t *testing.T, prober app.ConnectionProb
 	transactionService := app.NewTransactionService(db.NewTransactionRepository(database), payeeRepository, accountRepository, commodityRepository)
 	pricingService := app.NewPricingService(db.NewPricingRepository(database))
 	investmentService := app.NewInvestmentService(db.NewInvestmentRepository(database), accountService, transactionService, pricingService)
+	for _, service := range []interface{ SetSettings(*app.SettingsService) }{
+		institutionService, accountService, categoryService, payeeService, transactionService, pricingService, investmentService,
+	} {
+		service.SetSettings(settingsService)
+	}
 	connectionService := app.NewImportConnectionService(db.NewImportConnectionRepository(database), accountService, importConnectionsTestSecretKey(), prober)
 	importService := app.NewImportService(db.NewImportRepository(database), transactionService, accountRepository, connectionService, db.NewBackgroundWorkRepository(database), investmentService)
 	if configure != nil {

@@ -118,8 +118,12 @@ type DeleteInstitutionInput struct {
 
 type InstitutionService struct {
 	repository *db.InstitutionRepository
+	settings   *SettingsService
 	now        func() time.Time
 }
+
+// SetSettings resolves owner-entered version dates from the owner's day (#339).
+func (s *InstitutionService) SetSettings(settings *SettingsService) { s.settings = settings }
 
 func NewInstitutionService(repository *db.InstitutionRepository) *InstitutionService {
 	return &InstitutionService{
@@ -199,7 +203,11 @@ func (s *InstitutionService) CreateInstitution(ctx context.Context, input Create
 	}
 
 	now := s.now().UTC()
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return Institution{}, err
+	}
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return Institution{}, err
 	}
@@ -251,7 +259,11 @@ func (s *InstitutionService) UpdateInstitution(ctx context.Context, input Update
 	}
 
 	now := s.now().UTC()
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return Institution{}, err
+	}
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return Institution{}, err
 	}
@@ -333,7 +345,11 @@ func (s *InstitutionService) changeInstitutionStatus(ctx context.Context, input 
 	}
 
 	now := s.now().UTC()
-	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, now)
+	today, err := s.settings.OwnerTodayAt(ctx, input.OwnerUserID, now)
+	if err != nil {
+		return Institution{}, err
+	}
+	effectiveFrom, err := cleanEffectiveFrom(input.EffectiveFrom, today)
 	if err != nil {
 		return Institution{}, err
 	}
