@@ -385,7 +385,7 @@
 {/if}
 
 <!-- Detail panel body -->
-<div class="space-y-4">
+<div class="space-y-4" aria-busy={actionPending}>
   <!-- Header -->
   <div class="flex items-start justify-between gap-3">
     <div class="min-w-0">

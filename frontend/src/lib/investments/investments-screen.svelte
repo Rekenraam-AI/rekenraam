@@ -6,6 +6,7 @@
   import TrendingUp from '@lucide/svelte/icons/trending-up';
   import X from '@lucide/svelte/icons/x';
   import Panel from '#lib/components/panel.svelte';
+  import { phoneModal } from '#lib/components/modal-focus.ts';
   import StatePanel from '#lib/components/state-panel.svelte';
   import { authSessionQueryOptions } from '#lib/api/auth.ts';
   import {
@@ -210,7 +211,13 @@
                       onclick={() => selectPosition(pos)}
                       role="button"
                       tabindex="0"
-                      onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && selectPosition(pos)}
+                      onkeydown={(e) => {
+                        // Prevented, or the key's activation lands on the
+                        // panel control that now has focus and closes it.
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        e.preventDefault();
+                        selectPosition(pos);
+                      }}
                     >
                       <td class="py-3 pl-5 pr-3">
                         <div class="flex items-center gap-2">
@@ -254,9 +261,11 @@
 
         <!-- Lot detail panel -->
         {#if selectedPosition}
+          <!-- Mobile: a full-screen modal overlay (#342). Desktop: the right-hand column. -->
           <aside
-            class="fixed inset-0 z-30 overflow-y-auto bg-surface lg:relative lg:inset-auto lg:z-auto lg:overflow-visible"
+            class="fixed inset-0 z-30 overflow-y-auto bg-surface outline-none lg:relative lg:inset-auto lg:z-auto lg:overflow-visible"
             aria-label={m.investments_lots_detail_label()}
+            {@attach phoneModal({ onCancel: closeDetail })}
           >
             <div
               class="fixed inset-0 bg-background/50 lg:hidden"

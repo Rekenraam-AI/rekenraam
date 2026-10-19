@@ -35,6 +35,7 @@
   import { m } from '#lib/paraglide/messages.js';
   import Panel from '#lib/components/panel.svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
+  import { phoneModal } from '#lib/components/modal-focus.ts';
   import { authSessionQueryOptions } from '#lib/api/auth.ts';
   import { accountRegisterQueryKey, approveTransaction, getTransaction, restoreTransaction, transactionsQueryKey } from '#lib/api/transactions.ts';
   import { forecastQueryKey } from '#lib/api/forecast.ts';
@@ -218,10 +219,11 @@
   </div>
 
   {#if panel.type !== 'none'}
-    <!-- Mobile: a full-screen overlay. Desktop: the right-hand column. -->
+    <!-- Mobile: a full-screen modal overlay (#342). Desktop: the right-hand column. -->
     <aside
-      class="fixed inset-0 z-30 overflow-y-auto bg-surface lg:relative lg:inset-auto lg:z-auto lg:overflow-visible"
+      class="fixed inset-0 z-30 overflow-y-auto bg-surface outline-none lg:relative lg:inset-auto lg:z-auto lg:overflow-visible"
       aria-label={m.transactions_detail_actions()}
+      {@attach phoneModal({ onCancel: () => (panel = { type: 'none' }), pending: () => actionPending })}
     >
       <div class="fixed inset-0 bg-background/50 lg:hidden" role="presentation" onclick={() => (panel = { type: 'none' })}></div>
 

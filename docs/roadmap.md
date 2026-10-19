@@ -201,8 +201,9 @@ below is execution order, not a chain of hard dependencies.
    both themes and in de/ru at 1280 and 390 px (five more are unreachable on
    the book, with reasons). #340 (Categories scrolled
    sideways at desktop) and #341 (hovered warning buttons under AA) are fixed.
-   #342 (phone-width side panels do not hold focus, P2) and #339 (account and
-   version dates checked against the UTC day, P2) remain open.
+   #342 is fixed: below `lg` the transaction and lot panels hold focus like a
+   dialog. #339 (account and version dates checked against the UTC day, P2)
+   remains open.
    The deployment audit #279 is complete
    ([evidence](reviews/deployment-audit-2026-10-18.md)): fresh native/Compose
    builds, candidate migration 14→18, verified-backup rollback and the focused

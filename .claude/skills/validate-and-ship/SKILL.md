@@ -613,7 +613,11 @@ non-trivial diff (yours or reviewed):
     `<body>` (#327). Use `ModalDialog`; a native `<dialog>` alone still lets
     Tab leave for the browser chrome, which the component wraps. A window
     `keydown` Escape handler also fires under a nested dialog — let the
-    dialog's `cancel` own Escape. Named check: `dialog-focus.spec.ts`.
+    dialog's `cancel` own Escape. A panel that covers the page only below
+    `lg` attaches `phoneModal` (`modal-focus.ts`) instead (#342); a row that
+    opens it on Enter must `preventDefault`, or the key activates the panel
+    control that just took focus. Named checks: `dialog-focus.spec.ts`,
+    `panel-focus.spec.ts`.
 
 55. **Layout and hover states no sweep looked at** — Categories scrolled
     118px sideways at 1280px once its `xl:` toolbar row applied, because the

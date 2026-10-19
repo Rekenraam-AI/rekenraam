@@ -800,7 +800,7 @@
   </ModalDialog>
 {/if}
 
-<form class="space-y-4" onsubmit={handleSubmit}>
+<form class="space-y-4" onsubmit={handleSubmit} aria-busy={pending}>
   <!-- Header -->
   <div class="flex items-start justify-between gap-3">
     <div class="min-w-0">

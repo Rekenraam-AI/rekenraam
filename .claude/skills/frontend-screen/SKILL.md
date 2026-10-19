@@ -41,7 +41,9 @@ description: SvelteKit frontend rules for Rekenraam - static adapter constraints
 - Every modal is `ModalDialog` (`#lib/components/modal-dialog.svelte`, #327):
   wrap it in `{#if}`, pass `onCancel` and `pending`, and keep Cancel before a
   destructive confirm. Never hand-roll a `fixed inset-0` + `aria-modal`
-  overlay — it leaves focus on the page behind it.
+  overlay — it leaves focus on the page behind it. A side panel that covers
+  the page only below `lg` attaches `phoneModal` from
+  `#lib/components/modal-focus.ts` (#342).
 
 ## i18n (every user-visible string, no exceptions)
 
