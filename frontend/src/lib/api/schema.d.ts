@@ -5607,6 +5607,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Defaults to today in the authenticated owner's saved time zone when omitted. */
                     as_of?: string;
                     status?: components["schemas"]["LedgerStatus"];
                     include_system?: boolean;
@@ -5666,6 +5667,7 @@ export interface paths {
             parameters: {
                 query?: {
                     after_date?: string;
+                    /** @description Defaults to today in the authenticated owner's saved time zone when omitted. */
                     before_date?: string;
                     status?: components["schemas"]["LedgerStatus"];
                     category_type?: components["schemas"]["CategoryType"];
@@ -5724,6 +5726,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Defaults to today in the authenticated owner's saved time zone when omitted. */
                     as_of?: string;
                     status?: components["schemas"]["LedgerStatus"];
                 };
@@ -28952,7 +28955,7 @@ export interface components {
             transaction_kind?: components["schemas"]["TransactionKind"];
             /**
              * Format: date
-             * @description User-facing register display date.
+             * @description User-facing register display date. When omitted, uses the first journal entry's date, or today in the authenticated owner's saved time zone if that date is also omitted.
              */
             transaction_date?: string;
             /** Format: int64 */

@@ -109,7 +109,8 @@ type netWorthSeriesResponse struct {
 
 func accountBalances(logger *slog.Logger, authService *app.AuthService, transactionService *app.TransactionService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := authenticatedOwner(w, r, logger, authService); !ok {
+		owner, ok := authenticatedOwner(w, r, logger, authService)
+		if !ok {
 			return
 		}
 		includeSystem, err := parseOptionalBool(r.URL.Query().Get("include_system"))
@@ -119,6 +120,7 @@ func accountBalances(logger *slog.Logger, authService *app.AuthService, transact
 		}
 
 		result, err := transactionService.AccountBalances(r.Context(), app.AccountBalancesInput{
+			OwnerUserID:   owner.ID,
 			AsOf:          r.URL.Query().Get("as_of"),
 			Status:        r.URL.Query().Get("status"),
 			IncludeSystem: includeSystem,
@@ -134,11 +136,13 @@ func accountBalances(logger *slog.Logger, authService *app.AuthService, transact
 
 func categoryTotals(logger *slog.Logger, authService *app.AuthService, transactionService *app.TransactionService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := authenticatedOwner(w, r, logger, authService); !ok {
+		owner, ok := authenticatedOwner(w, r, logger, authService)
+		if !ok {
 			return
 		}
 
 		result, err := transactionService.CategoryTotals(r.Context(), app.CategoryTotalsInput{
+			OwnerUserID:  owner.ID,
 			AfterDate:    r.URL.Query().Get("after_date"),
 			BeforeDate:   r.URL.Query().Get("before_date"),
 			Status:       r.URL.Query().Get("status"),
@@ -155,13 +159,15 @@ func categoryTotals(logger *slog.Logger, authService *app.AuthService, transacti
 
 func netWorth(logger *slog.Logger, authService *app.AuthService, transactionService *app.TransactionService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := authenticatedOwner(w, r, logger, authService); !ok {
+		owner, ok := authenticatedOwner(w, r, logger, authService)
+		if !ok {
 			return
 		}
 
 		result, err := transactionService.NetWorth(r.Context(), app.NetWorthInput{
-			AsOf:   r.URL.Query().Get("as_of"),
-			Status: r.URL.Query().Get("status"),
+			OwnerUserID: owner.ID,
+			AsOf:        r.URL.Query().Get("as_of"),
+			Status:      r.URL.Query().Get("status"),
 		})
 		if err != nil {
 			writeLedgerServiceError(w, r, logger, "read net worth", err)

@@ -51,7 +51,7 @@ func (s *TransactionService) SetPricingRepository(pricingRepository *db.PricingR
 	s.pricingRepository = pricingRepository
 }
 
-// SetSettings resolves owner-entered reconciliation dates from the owner's day (#339).
+// SetSettings resolves transaction, ledger and reconciliation defaults from the owner's day.
 func (s *TransactionService) SetSettings(settings *SettingsService) { s.settings = settings }
 
 func (s *TransactionService) ListTransactions(ctx context.Context, input ListTransactionsInput) (ListTransactionsResult, error) {

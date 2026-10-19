@@ -3,6 +3,7 @@ get:
   parameters:
     - in: query
       name: as_of
+      description: Defaults to today in the authenticated owner's saved time zone when omitted.
       schema:
         type: string
         format: date

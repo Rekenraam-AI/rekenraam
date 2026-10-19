@@ -28,6 +28,7 @@ func (s *TransactionService) investmentReconciliationImpactForCreate(ctx context
 		return ReconciliationImpact{}, ValidationError{Message: "owner user is required"}
 	}
 	spec, err := s.cleanTransactionSpec(ctx, input.Spec, cleanTransactionOptions{
+		OwnerUserID:                   input.OwnerUserID,
 		AllowSubledgerManagedPostings: true, DefaultStatus: "posted",
 	})
 	if err != nil {
@@ -47,6 +48,7 @@ func (s *TransactionService) reconciliationImpactForCreate(ctx context.Context, 
 	if input.OwnerUserID <= 0 {
 		return ReconciliationImpact{}, ValidationError{Message: "owner user is required"}
 	}
+	options.OwnerUserID = input.OwnerUserID
 	options.DefaultStatus = "posted"
 	spec, err := s.cleanTransactionSpec(ctx, input.Spec, options)
 	if err != nil {
@@ -91,6 +93,7 @@ func (s *TransactionService) ReconciliationImpactForUpdate(ctx context.Context, 
 	// UpdateTransaction does, so the balance-validation check here matches
 	// what the real update will enforce.
 	spec, err := s.cleanTransactionSpec(ctx, input.Spec, cleanTransactionOptions{
+		OwnerUserID:      input.OwnerUserID,
 		ForcedStatus:     current.Status,
 		ExistingLineKeys: lineKeySet(current),
 		ExistingPostings: existingPostingStateSet(current),
@@ -132,6 +135,7 @@ func (s *TransactionService) ReconciliationImpactForPost(ctx context.Context, ow
 		return ReconciliationImpact{}, err
 	}
 	_, err = s.cleanTransactionSpec(ctx, transactionInputFromTransaction(toTransaction(current)), cleanTransactionOptions{
+		OwnerUserID:  ownerID,
 		ForcedStatus: "posted", ExistingLineKeys: lineKeySet(current), ExistingPostings: existingPostingStateSet(current),
 	})
 	if err != nil {

@@ -236,6 +236,11 @@ When a feature introduces a durable new rule, update one of those documents in t
   closed dates, version effective dates, reconciliation cleared dates) by the
   same day through `SettingsService.OwnerTodayAt`, never
   `now.UTC().Format(time.DateOnly)` (#339).
+- Blank transaction dates use the first journal-entry date if provided,
+  otherwise the owner's day. Blank ledger `as_of` / category `before_date`
+  and undated FX refresh source-assignment lookups use that same owner day
+  (#343). Explicit dates retain their meaning, including historical FX
+  assignment selection. Refresh scheduling does not choose the lookup date.
 - Share the date through the app shell; missing/invalid authenticated date
   data is an error, never a browser-clock fallback. Session focus/minute refresh
   and preference saves update the shared date for newly opened forms.

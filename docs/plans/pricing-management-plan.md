@@ -47,6 +47,14 @@ a provider/trade quote produces explicitly manual evidence.
 
 ## Commands and review
 
+FX refresh source assignments are resolved at the explicitly requested
+valuation date, or the owner's day at refresh start when no valuation date is
+supplied (#343). The latter uses `SettingsService.OwnerTodayAt`, matching
+assignment-entry defaults, independently of the pricing schedule's firing
+time. Missing preferences retain the UTC default. Provider observations keep
+their actual valuation dates; this lookup default does not manufacture a
+historical request or redate returned observations.
+
 The [2026-10-18 audit](../reviews/pricing-durable-work-audit-2026-10-18.md)
 verified these management/selection workflows. Its publication-gap finding
 [#315](https://github.com/sergeyfarin/rekenraam/issues/315) is corrected by the

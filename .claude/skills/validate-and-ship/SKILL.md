@@ -463,6 +463,10 @@ non-trivial diff (yours or reviewed):
     The backend has the same trap: grep `UTC().Format(time.DateOnly)` and
     bound/default owner-entered dates through `SettingsService.OwnerTodayAt`
     (#339, `TestOwnerEnteredDatesFollowOwnerDay`).
+    Carry the authenticated owner into blank transaction and ledger-read
+    defaults too (#343); undated FX source assignments use the owner's day
+    at refresh start (`TestBlankTransactionAndLedgerDatesFollowOwnerDay`,
+    `TestUndatedFXRefreshSelectsAssignmentsOnOwnerDay`).
 
 40. **Checking a process lock without holding it through replacement** —
     `CheckAvailable` releases its lock immediately; it cannot protect a later

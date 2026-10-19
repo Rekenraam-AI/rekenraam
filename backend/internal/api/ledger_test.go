@@ -1,15 +1,54 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"rekenraam/backend/internal/app"
+	"rekenraam/backend/internal/db"
 )
+
+func TestBlankLedgerAPIDatesUseAuthenticatedOwner(t *testing.T) {
+	t.Parallel()
+	handler, database := newSetupTestHandler(t)
+	cookie, csrf, usdID := setupAccountAPITest(t, handler)
+	// Pick an owner day different from UTC, at least an hour from its
+	// boundary. Service-level tests pin exact instants on both sides.
+	now := time.Now().UTC()
+	zone := "Etc/GMT+12"
+	if now.Hour() >= 11 {
+		zone = "Pacific/Kiritimati"
+	}
+	location, err := time.LoadLocation(zone)
+	require.NoError(t, err)
+	today := now.In(location).Format(time.DateOnly)
+	require.NotEqual(t, now.Format(time.DateOnly), today)
+	_, err = app.NewSettingsService(db.NewSettingsRepository(database)).SavePreferences(context.Background(), app.SaveUserPreferencesInput{UserID: 1, TimeZone: zone})
+	require.NoError(t, err)
+	checking := createLedgerAccount(t, handler, cookie, csrf, "Owner day checking", "asset", "checking", usdID, 2)
+	income := createCategoryForSession(t, handler, cookie, csrf, `{"name":"Owner day income","category_type":"income"}`)
+	transaction := createTransactionForSession(t, handler, cookie, csrf, balancedBody("",
+		posting(checking.ID, 100, 2, usdID), posting(income.ID, -100, 2, usdID),
+	), http.StatusCreated)
+	assert.Equal(t, today, transaction.TransactionDate)
+	assert.Equal(t, today, transaction.JournalEntries[0].EntryDate)
+	balances := readAccountBalancesForSession(t, handler, cookie, "")
+	assert.Equal(t, today, balances.AsOf)
+	assertBalance(t, accountBalanceByID(t, balances.Accounts, checking.ID).DirectBalances, usdID, 100, 2, 100)
+	worth := readNetWorthForSession(t, handler, cookie, "")
+	assert.Equal(t, today, worth.AsOf)
+	assertBalance(t, worth.Totals, usdID, 100, 2, 100)
+	totals := readCategoryTotalsForSession(t, handler, cookie, "")
+	assert.Equal(t, today, totals.BeforeDate)
+	assertBalance(t, categoryTotalByID(t, totals.Categories, income.ID).DirectTotals, usdID, -100, 2, 100)
+}
 
 func TestLedgerReadModelBalancesTotalsAndRunningRegister(t *testing.T) {
 	t.Parallel()

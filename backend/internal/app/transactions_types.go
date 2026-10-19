@@ -393,6 +393,9 @@ type UpdateReconciliationImpactInput struct {
 }
 
 type cleanTransactionOptions struct {
+	// OwnerUserID resolves a blank transaction date; explicit transaction or
+	// journal-entry dates are independent of owner preferences.
+	OwnerUserID   int64
 	DefaultStatus string
 	// ForcedStatus, when non-empty, is the status that will actually be
 	// persisted regardless of what the request body's Status field says — used

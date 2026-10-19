@@ -47,6 +47,7 @@ type AccountBalance struct {
 }
 
 type AccountBalancesInput struct {
+	OwnerUserID   int64
 	AsOf          string
 	Status        string
 	IncludeSystem bool
@@ -72,6 +73,7 @@ type CategoryTotal struct {
 }
 
 type CategoryTotalsInput struct {
+	OwnerUserID  int64
 	AfterDate    string
 	BeforeDate   string
 	Status       string
@@ -86,8 +88,9 @@ type CategoryTotalsResult struct {
 }
 
 type NetWorthInput struct {
-	AsOf   string
-	Status string
+	OwnerUserID int64
+	AsOf        string
+	Status      string
 }
 
 type NetWorthResult struct {
@@ -139,7 +142,7 @@ type NetWorthSeriesResult struct {
 }
 
 func (s *TransactionService) AccountBalances(ctx context.Context, input AccountBalancesInput) (AccountBalancesResult, error) {
-	asOf, status, err := cleanLedgerAsOfAndStatus(input.AsOf, input.Status, s.now)
+	asOf, status, err := s.cleanLedgerAsOfAndStatus(ctx, input.OwnerUserID, input.AsOf, input.Status)
 	if err != nil {
 		return AccountBalancesResult{}, err
 	}
@@ -192,7 +195,10 @@ func (s *TransactionService) CategoryTotals(ctx context.Context, input CategoryT
 		return CategoryTotalsResult{}, err
 	}
 	if beforeDate == "" {
-		beforeDate = s.now().UTC().Format(time.DateOnly)
+		beforeDate, err = s.settings.OwnerTodayAt(ctx, input.OwnerUserID, s.now())
+		if err != nil {
+			return CategoryTotalsResult{}, err
+		}
 	}
 	if afterDate != "" && afterDate > beforeDate {
 		return CategoryTotalsResult{}, ValidationError{Message: "after date must be on or before before date"}
@@ -238,7 +244,7 @@ func (s *TransactionService) CategoryTotals(ctx context.Context, input CategoryT
 }
 
 func (s *TransactionService) NetWorth(ctx context.Context, input NetWorthInput) (NetWorthResult, error) {
-	asOf, status, err := cleanLedgerAsOfAndStatus(input.AsOf, input.Status, s.now)
+	asOf, status, err := s.cleanLedgerAsOfAndStatus(ctx, input.OwnerUserID, input.AsOf, input.Status)
 	if err != nil {
 		return NetWorthResult{}, err
 	}
@@ -662,10 +668,14 @@ func (s *TransactionService) accountRegisterRunningBalances(ctx context.Context,
 	return byPostingID, nil
 }
 
-func cleanLedgerAsOfAndStatus(asOfInput string, statusInput string, now func() time.Time) (string, string, error) {
+func (s *TransactionService) cleanLedgerAsOfAndStatus(ctx context.Context, ownerUserID int64, asOfInput string, statusInput string) (string, string, error) {
 	asOf := strings.TrimSpace(asOfInput)
 	if asOf == "" {
-		asOf = now().UTC().Format(time.DateOnly)
+		today, err := s.settings.OwnerTodayAt(ctx, ownerUserID, s.now())
+		if err != nil {
+			return "", "", err
+		}
+		asOf = today
 	}
 	cleanedAsOf, err := cleanRequiredDate(asOf, "as of date")
 	if err != nil {

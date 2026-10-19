@@ -153,6 +153,7 @@ func (s *TransactionService) prepareCreateTransaction(ctx context.Context, input
 	}
 
 	now := s.now().UTC()
+	options.OwnerUserID = input.OwnerUserID
 	options.DefaultStatus = "posted"
 	spec, err := s.cleanTransactionSpec(ctx, input.Spec, options)
 	if err != nil {
@@ -235,6 +236,7 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, input Update
 	}
 	dependencies := newAccountRuleDependencies()
 	spec, err := s.cleanTransactionSpec(ctx, input.Spec, cleanTransactionOptions{
+		OwnerUserID:             input.OwnerUserID,
 		ForcedStatus:            forcedStatus,
 		ExistingLineKeys:        lineKeySet(current),
 		ExistingPostings:        existingPostingStateSet(current),

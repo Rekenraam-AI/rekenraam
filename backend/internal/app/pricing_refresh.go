@@ -245,7 +245,7 @@ func (s *PricingService) refreshFXTarget(ctx context.Context, ownerUserID int64,
 }
 
 func (s *PricingService) fetchAndStoreDirectFX(ctx context.Context, ownerUserID int64, target fxRefreshTarget, policy PricingPolicy, overrideSourceID int64, valuationDate string, now time.Time) (fxRefreshOutcome, error) {
-	sources, err := s.sourcesForFXPair(ctx, target, policy, overrideSourceID, valuationDate)
+	sources, err := s.sourcesForFXPair(ctx, ownerUserID, target, policy, overrideSourceID, valuationDate, now)
 	if err != nil {
 		return fxRefreshOutcome{}, err
 	}
@@ -425,14 +425,18 @@ func searchFXPath(from db.PricingCurrencyRecord, quote db.PricingCurrencyRecord,
 	return nil
 }
 
-func (s *PricingService) sourcesForFXPair(ctx context.Context, target fxRefreshTarget, policy PricingPolicy, overrideSourceID int64, valuationDate string) ([]fxRefreshSource, error) {
+func (s *PricingService) sourcesForFXPair(ctx context.Context, ownerUserID int64, target fxRefreshTarget, policy PricingPolicy, overrideSourceID int64, valuationDate string, now time.Time) ([]fxRefreshSource, error) {
 	sourceIDs := []int64{}
 	if overrideSourceID > 0 {
 		sourceIDs = append(sourceIDs, overrideSourceID)
 	} else {
 		date := valuationDate
 		if date == "" {
-			date = s.now().UTC().Format(time.DateOnly)
+			today, err := s.settings.OwnerTodayAt(ctx, ownerUserID, now)
+			if err != nil {
+				return nil, err
+			}
+			date = today
 		}
 		if assignment, err := s.repository.SourceAssignmentForPair(ctx, BookID, target.Base.ID, target.Quote.ID, date); err == nil {
 			sourceIDs = append(sourceIDs, assignment.SourceID)

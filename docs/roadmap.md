@@ -203,9 +203,9 @@ below is execution order, not a chain of hard dependencies.
    sideways at desktop) and #341 (hovered warning buttons under AA) are fixed.
    #342 is fixed: below `lg` the transaction and lot panels hold focus like a
    dialog. #339 is fixed: account, version and reconciliation dates are
-   bounded and defaulted by the owner's day; the remaining UTC-day blank
-   defaults (transaction date, ledger read dates, FX refresh lookup) are #343
-   (P3).
+   bounded and defaulted by the owner's day. #343 is fixed: blank transaction
+   dates, ledger read dates and undated FX source-assignment lookups also
+   use the owner's day.
    #344 repairs the shared-book transaction lookup and import/lot overflow;
    explicit long-option and 24-place quantity fixtures pass before/after checks
    and the complete browser gate ([evidence](reviews/subview-shared-book-fixes-2026-10-19.md)).

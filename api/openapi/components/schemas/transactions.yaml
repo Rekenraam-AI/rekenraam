@@ -534,7 +534,7 @@ TransactionRequest:
     transaction_date:
       type: string
       format: date
-      description: User-facing register display date.
+      description: User-facing register display date. When omitted, uses the first journal entry's date, or today in the authenticated owner's saved time zone if that date is also omitted.
     payee_id:
       type: integer
       format: int64

@@ -8,6 +8,7 @@ get:
         format: date
     - in: query
       name: before_date
+      description: Defaults to today in the authenticated owner's saved time zone when omitted.
       schema:
         type: string
         format: date
