@@ -763,6 +763,12 @@ Workflow conventions:
   stays out of push CI and is run deliberately before a release; it also runs
   weekly and via `workflow_dispatch` in `.github/workflows/release-preflight.yml`,
   because unrun it drifted for months behind a stale selector (#306).
+  Bootstrap and observation-selection each have a dedicated Playwright project
+  and self-managed worker book: the former needs no owner and the latter needs
+  an otherwise empty built-in FX-pair history (#352). An explicit
+  `E2E_BASE_URL` still uses the supplied external book; project separation does
+  not reset or isolate that operator-selected database.
+
 - Use `pnpm install --frozen-lockfile` in CI.
 - Keep CI commands aligned with the local wrapper scripts in `scripts/`.
 - Use Node 24.

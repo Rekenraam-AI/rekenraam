@@ -26,9 +26,15 @@ export default defineConfig({
   // the dependency still orders bootstrap first there.
   projects: [
     { name: 'bootstrap', testMatch: /auth\.spec\.ts/ },
+    // This spec withdraws its own FX observations and then needs an otherwise
+    // empty built-in currency-pair history (#352). Other specs use that pair.
+    {
+      name: 'observation-selection', testMatch: /observation-selection\.spec\.ts/,
+      dependencies: externalApp ? ['bootstrap'] : []
+    },
     {
       name: 'app',
-      testIgnore: /auth\.spec\.ts/,
+      testIgnore: /(?:auth|observation-selection)\.spec\.ts/,
       dependencies: externalApp ? ['bootstrap'] : []
     }
   ],
