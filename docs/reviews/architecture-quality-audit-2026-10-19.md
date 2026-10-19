@@ -68,7 +68,7 @@ bounded candidate fixes; final executable evidence refers to the candidate above
 | Independent expectations | `fixtures/reference-book.json` has 62 public-API steps and a hand-derived register; `TestReferenceBookProducesItsRegister` checks balances, reconciliation, reports, budgets, lots, gains and knowledge. Review `exactValue`: expected decimal strings are reduced with standard-library `big.Rat`, not the application calculator. | Existing named consumer/oracle checks are reused; the performance probe asserts that register before timing. Conservation tests compare journals/immutable facts with projections, supplementing rather than replacing known figures. Some tests intentionally compare two projections to prove parity, and fixtures use production writers to create realistic evidence; these are not described as independent financial oracles. **Verified for reference register and sampled property tests**. |
 | Vacuous assertions / test oracle quality | An absent-control assertion needs evidence the intended view/data was reached. Swept `toHaveCount(0)`, expected-value helpers and screenshot overrides. | Reviewed zero-count assertions generally accompany visible tables, explicit record/transaction controls or before/after lifecycle assertions (`reports.spec.ts`, `transaction-row-actions.spec.ts`, reorder/short/provider tests). No mechanical claim that every negative assertion is independent. #344 exposes fixture targeting weakness; #348's real negative control confirms an unsound contrast exception. **Confirmed defects / explicit retained limits**, not blanket test certification. |
 | Race isolation / deterministic stubs | Real temp-file DBs; per-worker app instances; race gate on unchanged assertions; provider-free requests. | `internal/testdb` copies migrated templates, and app/db test parallelism is structurally checked. Worker DBs isolate processes, but specs within a worker share state (#344). Stubs key accounts by synthetic API key and unknown market-data paths return 404. Native SQLite's C code is outside Go race instrumentation. **Verified mechanisms and final gate below**, not proof against every logical SQL interleaving. Prior #267 evidence remains relevant. |
-| CI/local equivalence | Shared wrappers must be actual CI commands with the same tags/deadlines. Inspect `ci.yml`, `large-book.yml`, release-preflight and test scripts. | Backend race and separate coverage use the same wrapper; Node 24/frozen pnpm install, frontend wrapper and integrated build match. Push CI uses `test-e2e-smoke.sh`, deliberately excluding release-preflight; this audit runs **full** `test-e2e.sh`, including it. Large-book is weekly/manual. #346/#347 corrected tooling drift. No coverage percentage or old timing is presented as fresh evidence. **Verified configuration**, remote run disposition below. |
+| CI/local equivalence | Shared wrappers must be actual CI commands with the same tags/deadlines. Inspect `ci.yml`, `large-book.yml`, release-preflight and test scripts. | Backend race and separate coverage use the same wrapper; Node 24/frozen pnpm install, frontend wrapper and integrated build match. Push CI uses `test-e2e-smoke.sh`, deliberately excluding release-preflight; this audit runs **full** `test-e2e.sh`, including it. Large-book is weekly/manual. #346/#347 corrected tooling drift. No coverage percentage or old timing is presented as fresh evidence. **Verified configuration**; publication/remote-check disposition is recorded below and on #280. |
 | Performance | `scripts/measure-large-book.sh`; opt-in `TestReferenceBookReadPerformanceAudit` through the HTTP handler after independent register assertions. | Fresh measurements and machine context below. **Verified measured workloads**, not a latency SLA, browser-network benchmark, investment-heavy large-book test or owner-machine guarantee. |
 
 ## Performance evidence
@@ -205,6 +205,19 @@ stopped after its build, before tests, to select focused probes first; it is
 not counted as a gate pass. Exploratory performance requests that omitted
 `group_by=category` or invented `as_of_date` were rejected with 400; the final
 probe uses the declared API, as shown above.
+
+## Publication and remote checks
+
+The initial publication of the fixes/evidence is `4ab5ff18`, pushed directly to
+`main` as requested. GitHub accepted that normal fast-forward push and reported
+that the repository’s PR and required-status rules were bypassed through the
+existing owner permissions; no force push or rule-setting change was made.
+At that observation, the [Go vulnerability run](https://github.com/sergeyfarin/rekenraam/actions/runs/39206965747)
+passed, while [CI](https://github.com/sergeyfarin/rekenraam/actions/runs/39206965750)
+was in progress. These are publication-time observations, not a claim that
+remote CI is green. Current remote status is recorded in #280’s delivery
+comment. Later publication-note commits change documentation only; the failed
+shared-gate candidate remains `25a24f4e` and #344 still blocks closure.
 
 ## Maintainability notes
 
