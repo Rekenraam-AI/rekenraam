@@ -206,8 +206,10 @@ below is execution order, not a chain of hard dependencies.
    bounded and defaulted by the owner's day; the remaining UTC-day blank
    defaults (transaction date, ledger read dates, FX refresh lookup) are #343
    (P3).
-   #344 (P2): in full e2e runs the sub-view sweep fails on sideways overflow
-   and shared-book row lookups, so E2E Smoke is red on `main`.
+   #344 (P2) repairs the shared-book transaction lookup and import/lot overflow;
+   explicit long-option and 24-place quantity fixtures pass before/after checks
+   ([evidence](reviews/subview-shared-book-fixes-2026-10-19.md)). Its complete
+   browser gate and main-branch E2E Smoke acceptance are pending.
    The deployment audit #279 is complete
    ([evidence](reviews/deployment-audit-2026-10-18.md)): fresh native/Compose
    builds, candidate migration 14→18, verified-backup rollback and the focused

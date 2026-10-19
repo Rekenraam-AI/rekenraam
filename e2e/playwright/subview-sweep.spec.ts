@@ -53,6 +53,8 @@ type Fixture = {
   /** A position whose first sale reverses, and first buy corrects, into a gain review. */
   review: { firstBuy: number; firstSale: number };
   importConnection?: string;
+  /** An owned position with 24-place quantities, rather than the first shared row. */
+  lotInstrument: string;
 };
 
 type Context = { page: Page; t: (key: string, prefix?: boolean) => RegExp; fx: Fixture };
@@ -352,7 +354,7 @@ const subViews: SubView[] = [
   {
     name: 'lot panel', group: 'panel', path: () => '/app/investments',
     open: async (c) => {
-      await c.page.locator('tbody tr[role="button"]').first().click();
+      await c.page.locator('tbody tr[role="button"]').filter({ hasText: c.fx.lotInstrument }).click();
       const panel = c.page.getByRole('complementary', { name: c.t('investments_lots_detail_label') });
       await expect(panel).toBeVisible();
       await c.page.waitForLoadState('networkidle');
@@ -573,7 +575,7 @@ function describeViolations(violations: AxeViolation[]): string {
 
 /** Book fixtures beyond the reference book: a statement over a deleted transaction, and a provider import. */
 async function seedFixture(page: Page): Promise<Fixture> {
-  const { ids } = await seedReferenceBook(page);
+  const { ids, transactions } = await seedReferenceBook(page);
   const csrf = await csrfTokenFor(page);
   // The server's calendar day, not the browser's: they differ around midnight
   // when the owner's time zone is not the machine's.
@@ -615,21 +617,47 @@ async function seedFixture(page: Page): Promise<Fixture> {
   const blocked = deleted.transactions.find((row) => row.id === restoreSubject.id)?.restore_blocked_by_reconciliation;
   if (!blocked) throw new Error('the restore subject is not guarded by the new statement');
 
-  const listed = async (query: string) =>
-    (await apiJSON<{ transactions: Array<{ id: number; transaction_date: string; description?: string }> }>(
-      page, 'GET', `/api/v1/transactions?${query}&limit=200`)).transactions;
+  // The replay's write responses own these IDs. A shared register page can
+  // omit all our historical dates, or contain another replay on the same day.
   const investment = new Map<string, number[]>();
-  for (const tx of await listed('kind=investment')) {
+  for (const tx of transactions.investment) {
     investment.set(tx.transaction_date, [...(investment.get(tx.transaction_date) ?? []), tx.id]);
   }
   const ordinary = new Map<string, number>();
-  for (const tx of await listed(`account_id=${ids.get('checking')}`)) if (tx.description) ordinary.set(tx.description, tx.id);
-  for (const tx of await listed(`account_id=${ids.get('card')}`)) if (tx.description) ordinary.set(tx.description, tx.id);
+  for (const tx of transactions.ordinary) if (tx.description) ordinary.set(tx.description, tx.id);
+  const lotInstrument = await seedPreciseLot(page, csrf, ids);
+  // Long option text caused the bulk-assignment controls to outgrow their
+  // phone container (#344), even when the selected option was still blank.
+  await apiJSON(page, 'POST', '/api/v1/accounts', csrf, {
+    name: `Sweep long account for import assignment ${Date.now()}`,
+    account_class: 'asset', account_kind: 'cash', default_commodity_id: ids.get('EUR'),
+    allows_postings: true, opened_on: '2026-01-01', effective_from: '2026-01-01'
+  });
 
   let importConnection: string | undefined;
   if (trading212StubAvailable()) importConnection = await seedProviderImport(page, csrf, ids, today);
   const review = await seedReviewPosition(page, csrf, ids);
-  return { ids, today, investment, ordinary, review, importConnection };
+  return { ids, today, investment, ordinary, review, importConnection, lotInstrument };
+}
+
+/** Exact crypto quantities exposed the desktop lot card overflow (#344). */
+async function seedPreciseLot(page: Page, csrf: string, ids: Map<string, number>): Promise<string> {
+  const suffix = `SWC${Date.now()}`;
+  const name = `Sweep precise crypto ${suffix}`;
+  const opened = '2026-04-01';
+  const instrument = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrf, {
+    commodity_code: suffix, instrument_type: 'crypto', display_name: name, symbol: suffix,
+    quote_commodity_id: ids.get('USD'), quantity_scale: 24, price_scale: 6, effective_from: opened
+  });
+  const holding = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/holding-accounts', csrf, {
+    instrument_id: instrument.id, name: `Sweep precise holding ${suffix}`, opened_on: opened, effective_from: opened
+  });
+  await apiJSON(page, 'POST', '/api/v1/investments/buy', csrf, {
+    transaction_date: opened, commodity_id: instrument.commodity_id, holding_account_id: holding.id,
+    cash_account_id: ids.get('usd_checking'), quantity_value: '1000000000000000000000001', quantity_scale: 24,
+    cash_amount_value: '10000', cash_amount_scale: 2, cash_commodity_id: ids.get('USD'), cost_basis_method: 'fifo'
+  });
+  return name;
 }
 
 /**

@@ -60,11 +60,19 @@ export type ReferenceBook = {
   };
 };
 
+type CreatedTransaction = {
+  id: number;
+  transaction_date: string;
+  description?: string;
+};
+
 export type SeededReferenceBook = {
   book: ReferenceBook;
   /** Every key the book names, bound to the id this run created. */
   ids: Map<string, number>;
   suffix: string;
+  /** IDs returned by this replay's writes, independent of shared list pagination. */
+  transactions: { ordinary: CreatedTransaction[]; investment: CreatedTransaction[] };
 };
 
 export async function loadReferenceBook(): Promise<ReferenceBook> {
@@ -101,6 +109,7 @@ export async function seedReferenceBook(page: Page): Promise<SeededReferenceBook
   const { csrfToken } = await readyForLedger(page);
   const suffix = `X${Date.now().toString(36).toUpperCase()}`;
   const ids = new Map<string, number>();
+  const transactions: SeededReferenceBook['transactions'] = { ordinary: [], investment: [] };
   ids.set('EUR', await ensureCurrency(page, csrfToken, 'EUR', 'Euro'));
   ids.set('USD', await ensureCurrency(page, await csrfTokenFor(page), 'USD', 'US Dollar'));
   const balances = await apiJSON<{ accounts: Array<{ account_id: number; system_role?: string }> }>(
@@ -140,11 +149,19 @@ export async function seedReferenceBook(page: Page): Promise<SeededReferenceBook
     }
     const path = step.path!.split('/').map((segment) => (segment.startsWith('@') ? String(id(segment)) : segment)).join('/');
     const response = await call<Record<string, unknown>>(page, step.method!, path, resolve(step.body), step.status!, step.why);
+    if (path === '/api/v1/transactions' && step.method === 'POST') {
+      transactions.ordinary.push(response as CreatedTransaction);
+    } else if (path.startsWith('/api/v1/investments/')) {
+      // Dividend writes return the transaction directly; trades, transfers,
+      // splits and capital returns wrap it. Instrument/holding writes do neither.
+      const transaction = response.transaction ?? (typeof response.transaction_date === 'string' ? response : undefined);
+      if (transaction) transactions.investment.push(transaction as CreatedTransaction);
+    }
     for (const [key, field] of Object.entries(step.capture ?? {})) {
       const value = field.split('.').reduce<unknown>((object, name) => (object as Record<string, unknown>)?.[name], response);
       if (typeof value !== 'number') throw new Error(`${step.why}: ${field} is ${String(value)}, not a number`);
       ids.set(key, value);
     }
   }
-  return { book, ids, suffix };
+  return { book, ids, suffix, transactions };
 }

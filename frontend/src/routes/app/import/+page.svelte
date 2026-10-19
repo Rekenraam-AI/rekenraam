@@ -1565,13 +1565,13 @@
     <Panel>
       <p class="text-sm font-semibold text-foreground">{m.import_preview_apply_all()}</p>
       <div class="mt-3 flex flex-wrap gap-3">
-        <div class="flex flex-col gap-1">
+        <div class="flex min-w-0 max-w-full flex-col gap-1">
           <label class="text-xs font-medium text-muted" for="global-account">
             {m.import_preview_account_label()}
           </label>
           <select
             id="global-account"
-            class="rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground"
+            class="min-w-0 max-w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground"
             bind:value={globalAccountId}
           >
             <option value={undefined}>{m.import_preview_account_placeholder()}</option>
@@ -1581,13 +1581,13 @@
           </select>
         </div>
 
-        <div class="flex flex-col gap-1">
+        <div class="flex min-w-0 max-w-full flex-col gap-1">
           <label class="text-xs font-medium text-muted" for="global-currency">
             {m.import_preview_currency_label()}
           </label>
           <select
             id="global-currency"
-            class="rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground"
+            class="min-w-0 max-w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground"
             bind:value={globalCommodityId}
           >
             <option value={undefined}>{m.import_preview_currency_placeholder()}</option>
@@ -1597,13 +1597,13 @@
           </select>
         </div>
 
-        <div class="flex flex-col gap-1">
+        <div class="flex min-w-0 max-w-full flex-col gap-1">
           <label class="text-xs font-medium text-muted" for="global-category">
             {m.import_preview_category_label()}
           </label>
           <select
             id="global-category"
-            class="rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground"
+            class="min-w-0 max-w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground"
             bind:value={globalCategoryId}
           >
             <option value={undefined}>{m.import_preview_category_placeholder()}</option>
@@ -1613,13 +1613,13 @@
           </select>
         </div>
 
-        <div class="flex flex-col gap-1">
+        <div class="flex min-w-0 max-w-full flex-col gap-1">
           <label class="text-xs font-medium text-muted" for="global-transfer-account">
             {m.import_preview_transfer_account_label()}
           </label>
           <select
             id="global-transfer-account"
-            class="rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground"
+            class="min-w-0 max-w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground"
             bind:value={globalTransferAccountId}
           >
             <option value={undefined}>{m.import_preview_transfer_account_placeholder()}</option>

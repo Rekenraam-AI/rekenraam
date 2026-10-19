@@ -314,7 +314,7 @@
                             {lotStatusLabel(lot.status)}
                           </span>
                         </div>
-                        <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                        <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs wrap-anywhere">
                           <span class="text-muted">{m.investments_lot_remaining_qty()}</span>
                           <span class="text-right font-mono text-foreground">
                             {formatScaledValue(lot.remaining_quantity_value, lot.remaining_quantity_scale, locale)}
