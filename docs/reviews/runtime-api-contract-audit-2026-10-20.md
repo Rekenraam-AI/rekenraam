@@ -133,3 +133,16 @@ remain unverified. The runner records installed checkers for reproducibility.
 Binary content assertions are bounded to the named existing consumers. Full
 browser, large-book and release gates were not repeated for this bounded audit;
 the earlier #260 evidence retains its original SHA and limits.
+
+
+## Follow-up delivery — #370, 2026-10-20
+
+[#370 is fixed](mutation-response-enrichment-2026-10-20.md), including the
+producer inventory, canonical-GET comparisons, two-lookup batches, post-commit
+read-failure controls and internal import receipt isolation. Its expanded audit
+records 1,108 responses across 165 of 332 operations with eight schema controls.
+All fifteen original enrichment failures are repaired, and the #370 exception
+is removed from the runner. Small findings #371/#372 are fixed; only #350's
+known 413 status gap remains. The original 425-response matrix above remains
+historical evidence; the new report explicitly retains its 167 unverified
+operations, unobserved statuses and format limits.

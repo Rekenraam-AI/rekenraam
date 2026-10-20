@@ -252,8 +252,12 @@ below is execution order, not a chain of hard dependencies.
    425 real responses sample 80 of 332 declared operations, with eight schema
    sensitivity controls and all unverified operations/statuses inventoried.
    #367–#369 fix null unions, setup/exclusion disclosure and empty tag arrays.
-   #350 (P3 capped-JSON HTTP 413 declarations) and #370 (P3 mutation-response
-   posting enrichment) remain explicit findings; universal conformity is not claimed. The shared
+   #370 is fixed ([delivery and producer inventory](reviews/mutation-response-enrichment-2026-10-20.md)):
+   investment/correction/reconciliation transaction responses now use the shared
+   batch enrichment owner, with post-commit failure and internal-import receipt
+   controls. The expanded schema sample covers 1,108 responses / 165 operations;
+   #371/#372 are fixed. #350 (P3 capped-JSON HTTP 413 declarations) remains
+   explicit; universal conformity is not claimed. The shared
    reference register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); #281 is fixed.
    Fix confirmed integrity/security defects before affected feature slices.

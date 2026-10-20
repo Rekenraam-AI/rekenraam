@@ -113,7 +113,10 @@ starvation with durable scan progress and independent failed-date retries.
 
 The [runtime API contract audit](reviews/runtime-api-contract-audit-2026-10-20.md)
 records #349's bounded response/status matrix and schema sensitivity controls,
-small fixes #367–#369 and retained findings #350/#370. Its explicit unverified
+small fixes #367–#369 and the original retained findings #350/#370.
+[#370's delivery](reviews/mutation-response-enrichment-2026-10-20.md) repairs
+posting enrichment, fixes #371/#372 and expands the schema evidence to 165
+operations; #350 remains open. The audits' explicit unverified
 operations/statuses prevent treating the sample as universal conformity.
 
 Earlier strategic proposal:
