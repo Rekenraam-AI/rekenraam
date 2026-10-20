@@ -51,6 +51,8 @@ Commands, test scope, and environment settings are in the
 The [runtime-image audit](docs/reviews/runtime-image-advisory-audit-2026-10-20.md)
 and [bundled SQLite review](docs/reviews/native-sqlite-advisory-audit-2026-10-20.md)
 record advisory evidence, retained findings and release-disposition limits.
+The [SQLite upgrade prerequisite check](docs/reviews/sqlite-driver-upgrade-blocker-2026-10-20.md)
+records the fixed-engine diagnostic and the still-missing released driver.
 
 SQLite uses `github.com/mattn/go-sqlite3` with bundled C source (ADR 0014).
 Financial writes use WAL with FULL commit durability consistently in runtime

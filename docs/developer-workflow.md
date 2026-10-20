@@ -55,6 +55,10 @@ The [bundled native SQLite review (#354)](reviews/native-sqlite-advisory-audit-2
 authenticates source/compile options and exercises real search/JSON/verify/restore
 consumers. Its reproduction section includes the named native audit tests and
 the independent upstream-bug probe retained for driver-admission follow-up #356.
+The [#356 prerequisite recheck](reviews/sqlite-driver-upgrade-blocker-2026-10-20.md)
+adds an isolated C admission probe: it fails on official 3.53.4 and passes on
+official 3.54.1. A released Go driver carrying those fixes is still required;
+the production module pin remains unchanged.
 
 ### Install
 

@@ -221,7 +221,8 @@ below is execution order, not a chain of hard dependencies.
    disposition**; release is on hold. Additional audit #354 is complete
    ([evidence](reviews/native-sqlite-advisory-audit-2026-10-20.md)): #355's NUL
    search refusal is fixed; #356 retains two reproduced upstream engine
-   correctness defects, blocked on a released driver carrying their fixes.
+   correctness defects, blocked on a released driver carrying their fixes
+   ([prerequisite recheck](reviews/sqlite-driver-upgrade-blocker-2026-10-20.md)).
    No affected financial application consumer was reproduced. Owner
    deployment/household evidence is additional audit #336, blocked on actual
    owner evidence. Release gaps now have issues: signing #333 (owner decision),
