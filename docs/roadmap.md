@@ -215,7 +215,12 @@ below is execution order, not a chain of hard dependencies.
    builds, candidate migration 14→18, verified-backup rollback and the focused
    release preflight pass. #332's private build-context exposure and #338's
    stale upgrade-evidence references are fixed. Available Debian updates are
-   applied; residual image-advisory review is additional audit #337. Owner
+   applied; #337's residual image-advisory engineering review is complete
+   ([evidence](reviews/runtime-image-advisory-audit-2026-10-20.md)), with no
+   reproduced application exploit. #337 remains **blocked on owner release
+   disposition**; release is on hold. Additional audit #354 covers the bundled
+   native SQLite engine's advisory and parser/restore boundaries, which the
+   image's system-package inventory does not establish. Owner
    deployment/household evidence is additional audit #336, blocked on actual
    owner evidence. Release gaps now have issues: signing #333 (owner decision),
    PATs #334 and adoption assets #335. These remain release gates, not a claim

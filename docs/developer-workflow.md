@@ -46,6 +46,13 @@ candidate drill, not an installed-release compatibility claim. The
 [2026-10-18 report](reviews/deployment-audit-2026-10-18.md) records image builds,
 scan results and limits.
 
+The [2026-10-20 runtime-image review](reviews/runtime-image-advisory-audit-2026-10-20.md)
+records a fresh image/DB scan, actual ELF/process/health-check boundaries,
+the complete package/version/advisory matrix, a repeated Compose drill and
+the owner-disposition blocker on #337. Its reproduction section separates the
+networked database download from the network-disabled exported-tar scan.
+The bundled native SQLite engine requires its own advisory review (#354).
+
 ### Install
 
 ```sh

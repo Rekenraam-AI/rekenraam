@@ -632,8 +632,12 @@ converting coefficients to `Number`.
   output (#332); the runtime stage applies available Debian package updates.
   The [2026-10-18 deployment audit](reviews/deployment-audit-2026-10-18.md)
   verifies a fresh Compose install and candidate migration 14→18 with
-  verified-backup rollback. Residual advisory triage (#337), owner deployment
-  acceptance (#336) and release preparation (#333–#335) remain open.
+  verified-backup rollback. The [2026-10-20 image
+  review](reviews/runtime-image-advisory-audit-2026-10-20.md) classifies every
+  residual advisory row against artifact/consumer evidence; #337 remains
+  blocked on owner release disposition. Bundled native SQLite advisory coverage
+  is additional audit #354. Owner deployment acceptance (#336) and release
+  preparation (#333–#335) remain open; no release-readiness claim is made.
 - Backend-composed read models (no per-row frontend fan-out) per AGENTS.md.
 - Mobile-responsive core workflows including transaction entry.
 - Loading / empty / error / success states on shipped screens.

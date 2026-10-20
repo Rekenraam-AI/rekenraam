@@ -230,8 +230,15 @@ The Docker build context admits only the source inputs used by the Dockerfile.
 generated dependencies/output, so these do not reach a remote builder. The
 runtime stage applies available Debian package updates before installing its
 utilities. Rebuild regularly; this does not mean the image has no advisories.
-The [2026-10-18 audit](reviews/deployment-audit-2026-10-18.md) records the scan
-and the remaining advisory review in #337.
+The [2026-10-20 image review](reviews/runtime-image-advisory-audit-2026-10-20.md)
+classifies the current residual inventory against the actual app linkage and
+fixed loopback health check. No application exploit was reproduced; this is
+not a zero-advisory or blanket safety claim. **Release is on hold and #337
+is blocked on the owner's explicit disposition of the recorded inventory and
+limits.** The separate bundled SQLite engine review is #354; Debian-package
+and Go-module scans alone do not establish its native-code advisory status.
+The [2026-10-18 deployment audit](reviews/deployment-audit-2026-10-18.md)
+retains the original package-update evidence.
 
 ## Backups
 
