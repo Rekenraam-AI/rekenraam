@@ -461,6 +461,8 @@ runtime-image advisory triage remains #337. These are dated, bounded checks.
    ADR 0018. No write/export/settings/backup grant exists. Independent
    adversarial/proxy/restore audit #357 and actual owner deployment #336 retain
    their own evidence requirements; this delivery is not public-release sign-off.
+   [Dated delivery evidence](reviews/personal-access-tokens-delivery-2026-10-20.md)
+   records the 16 browser cases, shared gates and fixed selector finding #358.
 5. ◐ Produce signed release binaries with reproducibility notes (#333).
    **Reproducibility rechecked 2026-10-12** (#195): native SQLite uses
    `-trimpath`, CGO and a pinned bundled engine. Identical Go/C toolchain,
