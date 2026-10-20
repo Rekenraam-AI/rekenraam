@@ -18,6 +18,7 @@ The Python external client verifies Caddy's local CA, uses a literal ADR 0018
 grant oracle and enumerates every static route registration. It exercises all
 registered methods and GET/HEAD aliases with all three scope combinations,
 owner-cookie fallback, encoded/canonical paths, duplicate headers, proxy trust,
+with valid CSRF/Origin on fallback probes and token-specific refusal bodies,
 curl redirects, native backup/verify/restore and CLI recovery. Exact synthetic
 postings remain -2500/+2500 at scale 2 after refusals/restores/recovery. Native
 backups retain hash-only credentials; ledger CSV, bundle and QIF do not.

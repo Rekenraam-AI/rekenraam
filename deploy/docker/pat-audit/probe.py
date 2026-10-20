@@ -188,6 +188,9 @@ class Audit:
         check(len(registered) == source.count("mux.HandleFunc("), "every route registration is statically enumerated")
         check(set(GRANTS).issubset(registered), "all independently expected grants are registered")
         self.registry_count = len(registered)
+        session = self.owner.json("GET", "/api/v1/auth/session")
+        check(bool(session.get("csrf_token")), "fallback control has valid owner CSRF")
+        browser_headers = [("Origin", "https://rekenraam.test:8443"), ("X-CSRF-Token", session["csrf_token"])]
         for index, pattern in enumerate(registered):
             if index % 100 == 0:
                 print(f"route patterns: {index}/{len(registered)}", flush=True)
@@ -206,14 +209,23 @@ class Audit:
                     self.record(f"route:{grant}:{verb} {path}", response,
                                 (200, 404) if admitted else 403,
                                 pattern=pattern, grant=grant, admitted=admitted)
+                    if not admitted:
+                        self.scope_denial(response, verb)
                     if verb == "HEAD":
                         check(response["raw"] == b"", "real HEAD response has no body")
                     if not admitted:
                         # Even the owner cookie cannot broaden a Bearer grant.
                         mixed = self.owner.request(verb, concrete, data={} if verb not in ("GET", "HEAD") else None,
-                                                   token=token, owner=True)
+                                                   headers=browser_headers, token=token, owner=True)
                         self.record(f"cookie-fallback:{grant}:{verb} {path}", mixed, 403)
+                        self.scope_denial(mixed, verb)
         self.financial("all-route-refusals")
+
+    def scope_denial(self, response, method):
+        if method != "HEAD":
+            error = json.loads(response["raw"])["error"]
+            check(error["code"] == "FORBIDDEN" and error["message"] == "API credential does not grant this operation",
+                  "scope refusal is the Bearer boundary, not CSRF or a business guard")
 
     def paths_and_headers(self, token):
         variants = [
