@@ -52,6 +52,10 @@ or sequencing change.
 
 ## Initiative and design references
 
+[ADR 0018](adrs/0018-personal-access-token-boundary.md) and the
+[personal-access-token contract](plans/personal-access-tokens-plan.md) define
+#334's read-only owner API grants, credential lifecycle and security events.
+
 [ADR 0017](adrs/0017-provider-independent-features-and-incomplete-data.md) defines
 provider-independent features, explicit incomplete attribution and manual repair.
 The [2026-10-15 review](reviews/provider-independence-review-2026-10-15.md) audits

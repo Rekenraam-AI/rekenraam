@@ -171,6 +171,19 @@ factor: an approved device still has to present a code.
 
 ## Secrets and data files
 
+Personal-access tokens (#334) are managed at **Settings → Security**. Create a
+named token, choose its read permissions and lifetime, confirm your password,
+then save the plaintext when it is shown once. Default expiry is 30 days;
+the maximum is 365 days. Use `Authorization: Bearer <token>` over HTTPS with
+the [explicitly granted read endpoints](plans/personal-access-tokens-plan.md).
+No financial-write, backup, export, settings or token-management grant exists.
+Tokens store only SHA-256 hashes and do not need `REKENRAAM_SECRET_KEY`.
+Never put tokens in URLs or configure proxy logs to capture Authorization.
+Revoke unwanted tokens here; `recover-owner` revokes all tokens with sessions.
+Restoring an older backup restores its credential state, so revoke tokens after
+restoring an untrusted snapshot. [ADR 0018](adrs/0018-personal-access-token-boundary.md)
+records the exact authentication and event-bookkeeping boundary.
+
 `REKENRAAM_SECRET_KEY` encrypts stored online-provider credentials **and the
 MFA shared secret**. It is a
 base64 value for exactly 32 random bytes:

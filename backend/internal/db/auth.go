@@ -423,7 +423,7 @@ func (r *AuthRepository) DeleteAuthenticationEventsBefore(ctx context.Context, c
 	result, err := r.database.ExecContext(ctx, `
 		DELETE FROM authentication_events
 		WHERE occurred_at < ?
-		  AND event_type IN ('login_succeeded', 'login_failed', 'login_blocked', 'logout')
+		  AND event_type IN ('login_succeeded', 'login_failed', 'login_blocked', 'logout', 'token_authenticated', 'token_denied')
 	`, cutoff)
 	if err != nil {
 		return 0, fmt.Errorf("delete authentication events: %w", err)

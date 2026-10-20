@@ -225,9 +225,11 @@ below is execution order, not a chain of hard dependencies.
    ([prerequisite recheck](reviews/sqlite-driver-upgrade-blocker-2026-10-20.md)).
    No affected financial application consumer was reproduced. Owner
    deployment/household evidence is additional audit #336, blocked on actual
-   owner evidence. Release gaps now have issues: signing #333 (owner decision),
-   PATs #334 and adoption assets #335. These remain release gates, not a claim
-   that the synthetic deployment is ready to announce.
+   owner evidence. Release gaps now have issues: signing #333 (owner decision)
+   and adoption assets #335. PATs #334 now ship the bounded read-only
+   ledger/report credential contract (ADR 0018); independent adversarial,
+   proxy-leakage and restored-credential audit #357 is additional audit work.
+   The retained gates and owner evidence still govern public announcement.
    Architecture/quality #280 has been executed
    ([evidence](reviews/architecture-quality-audit-2026-10-19.md)); #344 resolves
    the initial browser failures. All four shared gates pass at `af233abb`:
@@ -451,12 +453,14 @@ runtime-image advisory triage remains #337. These are dated, bounded checks.
    #102 catalog parity and its regression gate are delivered. Assign native
    reviewers and record terminology sign-off before describing those catalogs
    as complete; see the [review packet](reviews/localization-native-review-2026-10-13.md).
-4. **Personal-access tokens — open, #334** (added 2026-08-05, review §3f). The
-   typed OpenAPI surface is the foundation for an ecosystem, but session
-   cookie + CSRF header auth supplies no dedicated scoped credential for
-   scripts, tools or community clients. Announcement is the moment of maximum developer attention.
-   Required shape: hashed at rest, scoped, expiring by default, revocable,
-   and emitting authentication events.
+4. ✅ **Personal-access tokens — #334** (delivered 2026-10-20). Dedicated
+   read-only `ledger:read` and `reports:read` credentials are hash-only,
+   scoped by exact route, expiring by default, revocable and emitting
+   attributed authentication events. Owner management includes password
+   confirmation and one-time disclosure. [Contract](plans/personal-access-tokens-plan.md),
+   ADR 0018. No write/export/settings/backup grant exists. Independent
+   adversarial/proxy/restore audit #357 and actual owner deployment #336 retain
+   their own evidence requirements; this delivery is not public-release sign-off.
 5. ◐ Produce signed release binaries with reproducibility notes (#333).
    **Reproducibility rechecked 2026-10-12** (#195): native SQLite uses
    `-trimpath`, CGO and a pinned bundled engine. Identical Go/C toolchain,

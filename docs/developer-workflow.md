@@ -610,6 +610,13 @@ The e2e database resets itself on every self-managed run and needs no manual res
   leaves every row count identical. Widen the seed before writing a migration
   that touches something it does not cover.
 
+Forward migration `0019_personal_access_tokens.sql` (#334) preserves the existing
+baseline and all authentication-event columns while adding hash-only API
+credentials and token event types. No reset is needed; bundle schema stays 15
+because credentials are excluded from ledger exports. Native backups retain
+hashes/lifecycle state. Downgrade refuses credential rows or token event history;
+use a verified pre-upgrade backup for rollback. The head schema is 19.
+
 ## Work Tracking
 
 Use GitHub issue numbers for active work and the

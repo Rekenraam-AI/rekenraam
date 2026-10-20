@@ -6,6 +6,11 @@ budgets, recurring transactions, investments, and backups. The Go backend serves
 a static SvelteKit frontend from one binary; SQLite is the primary database.
 Docker Compose runs the same app shape.
 
+Scripts and tools can use read-only personal access tokens created under
+Settings → Security. See the [token contract](docs/plans/personal-access-tokens-plan.md)
+for grants, expiry and revocation, and the [deployment guidance](docs/deployment-security.md)
+for HTTPS and credential handling.
+
 The app is still a pre-release candidate. Investment buy, sell, dividend,
 reinvestment, write-off, native correction, in-kind transfers, basis actions,
 and named short sale/cover workflows ship within R16's agreed scope. Provider
