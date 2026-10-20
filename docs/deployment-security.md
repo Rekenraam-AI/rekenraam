@@ -235,8 +235,12 @@ classifies the current residual inventory against the actual app linkage and
 fixed loopback health check. No application exploit was reproduced; this is
 not a zero-advisory or blanket safety claim. **Release is on hold and #337
 is blocked on the owner's explicit disposition of the recorded inventory and
-limits.** The separate bundled SQLite engine review is #354; Debian-package
-and Go-module scans alone do not establish its native-code advisory status.
+limits.** The separate [bundled SQLite review
+(#354)](reviews/native-sqlite-advisory-audit-2026-10-20.md) is complete: malformed
+search refusal #355 is fixed; two reproduced upstream correctness defects are
+retained in #356, blocked on a released driver carrying their fixes. No affected
+application financial consumer or native memory exploit was reproduced.
+Debian-package and Go-module scans alone do not establish native-engine status.
 The [2026-10-18 deployment audit](reviews/deployment-audit-2026-10-18.md)
 retains the original package-update evidence.
 

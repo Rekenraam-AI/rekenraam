@@ -51,7 +51,10 @@ records a fresh image/DB scan, actual ELF/process/health-check boundaries,
 the complete package/version/advisory matrix, a repeated Compose drill and
 the owner-disposition blocker on #337. Its reproduction section separates the
 networked database download from the network-disabled exported-tar scan.
-The bundled native SQLite engine requires its own advisory review (#354).
+The [bundled native SQLite review (#354)](reviews/native-sqlite-advisory-audit-2026-10-20.md)
+authenticates source/compile options and exercises real search/JSON/verify/restore
+consumers. Its reproduction section includes the named native audit tests and
+the independent upstream-bug probe retained for driver-admission follow-up #356.
 
 ### Install
 

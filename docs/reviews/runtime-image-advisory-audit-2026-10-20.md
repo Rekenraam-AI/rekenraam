@@ -1,5 +1,12 @@
 # Runtime-image advisory audit — 2026-10-20
 
+**#354 follow-up:** the [bundled native SQLite
+review](native-sqlite-advisory-audit-2026-10-20.md) is complete, with application
+search defect #355 fixed and two reproduced upstream correctness defects
+retained in #356 pending a released driver. No affected financial app consumer
+or native memory exploit was reproduced. #337's owner-disposition blocker
+below remains; the original image evidence is unchanged.
+
 **Engineering review complete; #337 remains BLOCKED on the owner's release
 disposition.** The fresh inventory is classified below. No application exploit
 was reproduced; no owner acceptance of the residual inventory is inferred.

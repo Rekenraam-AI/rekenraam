@@ -257,7 +257,7 @@ reauthentication budget that answers `429 RATE_LIMITED` with `Retry-After`
 | Per-commodity, scale-aware double-entry balancing | ✅ | `transactions_validate.go`. |
 | Lifecycle: post, void, unvoid, soft-delete, restore, correct, approve | ✅ | See `docs/plans/transaction-ledger-core-plan.md` taxonomy; investment-specific lifecycle restrictions are tracked below. |
 | Same-day ordering (global + per-account register) | ✅ | `transactions_move.go`, day-sequence migration. |
-| Cursor pagination + FTS5 search | ✅ | Sanitized FTS phrase quoting. |
+| Cursor pagination + FTS5 search | ✅ | Sanitized literal FTS phrase quoting; NUL search input returns HTTP 400 `VALIDATION_FAILED` before reaching the native parser (#355). Populated-index controls cover ordinary/quoted searches and operator/SQL injection. |
 | Categories as income/expense accounts | ✅ | `routes/app/categories`; built-in keys localized. |
 | Tags & payees: CRUD, archive/restore | ✅ | |
 | Transaction editor (splits, multi-commodity) | ✅ | `transaction-editor.svelte`. |
@@ -635,8 +635,12 @@ converting coefficients to `Number`.
   verified-backup rollback. The [2026-10-20 image
   review](reviews/runtime-image-advisory-audit-2026-10-20.md) classifies every
   residual advisory row against artifact/consumer evidence; #337 remains
-  blocked on owner release disposition. Bundled native SQLite advisory coverage
-  is additional audit #354. Owner deployment acceptance (#336) and release
+  blocked on owner release disposition. The [bundled native SQLite review
+  (#354)](reviews/native-sqlite-advisory-audit-2026-10-20.md) authenticates the
+  source, classifies the advisory inventory and verifies real parser/restore
+  boundaries. #355 is fixed; #356 retains two reproduced upstream correctness
+  defects pending a released driver, with no affected application consumer
+  reproduced. Owner deployment acceptance (#336) and release
   preparation (#333–#335) remain open; no release-readiness claim is made.
 - Backend-composed read models (no per-row frontend fan-out) per AGENTS.md.
 - Mobile-responsive core workflows including transaction entry.

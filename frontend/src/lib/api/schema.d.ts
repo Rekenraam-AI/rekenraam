@@ -8344,6 +8344,7 @@ export interface paths {
                     /** @description Filter to transactions with a posting in this commodity or a cash-dividend operation fact naming it as the paying instrument. Includes linked correction journals, gross income and withholding. */
                     commodity_id?: number;
                     payee_id?: number;
+                    /** @description Literal free-text phrase; FTS operators are not interpreted. NUL (U+0000) is rejected with HTTP 400 VALIDATION_FAILED. */
                     q?: string;
                     status?: components["schemas"]["TransactionStatus"];
                     kind?: components["schemas"]["TransactionKind"];

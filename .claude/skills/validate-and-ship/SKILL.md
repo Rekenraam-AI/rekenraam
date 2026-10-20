@@ -634,6 +634,13 @@ non-trivial diff (yours or reviewed):
     sub-views (dialogs, forms, panels, import review) are swept by
     `subview-sweep.spec.ts`; add new ones to its list.
 
+56. **Empty data bypassing a native parser negative control** — native text
+    parsers may treat embedded NUL as end-of-input even when Go strings and
+    SQL bindings retain it. Transaction search rejects NUL before quoting its
+    literal FTS phrase (#355). Exercise parser refusals against a **populated**
+    index: an empty FTS table returned 200 without reaching the failing parser.
+    Named regression: `TestNativeSQLiteAuditSearchRejectsNULBeforeFTS`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

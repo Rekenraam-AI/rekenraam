@@ -49,7 +49,8 @@ browser suite and `pnpm test:release-preflight` for the serial release journeys.
 Commands, test scope, and environment settings are in the
 [developer workflow](docs/developer-workflow.md).
 The [runtime-image audit](docs/reviews/runtime-image-advisory-audit-2026-10-20.md)
-records the current advisory inventory and release-disposition limits.
+and [bundled SQLite review](docs/reviews/native-sqlite-advisory-audit-2026-10-20.md)
+record advisory evidence, retained findings and release-disposition limits.
 
 SQLite uses `github.com/mattn/go-sqlite3` with bundled C source (ADR 0014).
 Financial writes use WAL with FULL commit durability consistently in runtime
