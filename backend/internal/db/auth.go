@@ -21,6 +21,7 @@ type AuthenticatedUserRecord struct {
 	SessionID int64
 	ID        int64
 	Username  string
+	ExpiresAt string
 }
 
 type CreateSessionParams struct {
@@ -144,13 +145,14 @@ type ThrottleScopeKey struct {
 // approved device to extend, or NewDevice the one to create; at most one is
 // set.
 type CompleteLoginParams struct {
-	Session         CreateSessionParams
-	ClearThrottles  []ThrottleScopeKey
-	RefundThrottles []ThrottleScopeKey
-	TouchDeviceID   int64
-	DeviceUsedAt    string
-	DeviceExpiresAt string
-	NewDevice       *CreateTrustedDeviceParams
+	Session          CreateSessionParams
+	ClearThrottles   []ThrottleScopeKey
+	RefundThrottles  []ThrottleScopeKey
+	TouchDeviceID    int64
+	DeviceUsedAt     string
+	DeviceExpiresAt  string
+	NewDevice        *CreateTrustedDeviceParams
+	MFAChallengeHash string
 }
 
 // CompleteLogin writes the session, settles the attempt's throttle places and
@@ -166,10 +168,20 @@ func (r *AuthRepository) CompleteLogin(ctx context.Context, params CompleteLogin
 
 	result, err := tx.ExecContext(ctx, `
 		INSERT INTO auth_sessions (user_id, token_hash, created_at, expires_at, revoked_at)
-		VALUES (?, ?, ?, ?, NULL)
-	`, params.Session.UserID, params.Session.TokenHash, params.Session.CreatedAt, params.Session.ExpiresAt)
+		SELECT ?, ?, ?, ?, NULL
+		WHERE ? = '' OR EXISTS (
+			SELECT 1 FROM login_mfa_challenges c JOIN user_mfa_totp m ON m.user_id=c.user_id
+			WHERE c.token_hash=? AND c.user_id=? AND c.consumed_at IS NOT NULL AND m.status='active'
+		)
+	`, params.Session.UserID, params.Session.TokenHash, params.Session.CreatedAt, params.Session.ExpiresAt,
+		params.MFAChallengeHash, params.MFAChallengeHash, params.Session.UserID)
 	if err != nil {
 		return 0, fmt.Errorf("insert auth session: %w", err)
+	}
+	if rows, err := result.RowsAffected(); err != nil {
+		return 0, fmt.Errorf("read inserted auth session rows: %w", err)
+	} else if rows != 1 {
+		return 0, ErrNotFound
 	}
 	sessionID, err := result.LastInsertId()
 	if err != nil {
@@ -211,13 +223,13 @@ func (r *AuthRepository) CompleteLogin(ctx context.Context, params CompleteLogin
 func (r *AuthRepository) ReadSessionUser(ctx context.Context, tokenHash string, now string) (AuthenticatedUserRecord, error) {
 	var record AuthenticatedUserRecord
 	if err := r.database.QueryRowContext(ctx, `
-		SELECT auth_sessions.id, users.id, users.username
+		SELECT auth_sessions.id, users.id, users.username, auth_sessions.expires_at
 		FROM auth_sessions
 		JOIN users ON users.id = auth_sessions.user_id
 		WHERE auth_sessions.token_hash = ?
 		  AND auth_sessions.revoked_at IS NULL
 		  AND auth_sessions.expires_at > ?
-	`, tokenHash, now).Scan(&record.SessionID, &record.ID, &record.Username); err != nil {
+	`, tokenHash, now).Scan(&record.SessionID, &record.ID, &record.Username, &record.ExpiresAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return AuthenticatedUserRecord{}, ErrNotFound
 		}
@@ -291,6 +303,11 @@ func (r *AuthRepository) UpdateLoginThrottle(ctx context.Context, scopeType stri
 	defer rollbackTx(ctx, tx)
 
 	var record LoginThrottleRecord
+	// A deferred transaction has not acquired SQLite's writer yet. Establish
+	// admission before reading the row or sampling a decision clock (#364).
+	if _, err := tx.ExecContext(ctx, `UPDATE login_throttles SET updated_at=updated_at WHERE 0`); err != nil {
+		return fmt.Errorf("acquire login throttle admission: %w", err)
+	}
 	found := true
 	if err := tx.QueryRowContext(ctx, `
 		SELECT scope_type, scope_key, failed_attempts, blocked_until, updated_at

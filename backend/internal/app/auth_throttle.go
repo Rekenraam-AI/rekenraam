@@ -50,9 +50,9 @@ func (s *AuthService) reserveAttempt(ctx context.Context, scopes []loginThrottle
 // reserveScope returns a positive wait when the scope cannot admit another
 // attempt.
 func (s *AuthService) reserveScope(ctx context.Context, scope loginThrottleScope) (time.Duration, error) {
-	now := s.now().UTC()
 	var retryAfter time.Duration
 	err := s.repository.UpdateLoginThrottle(ctx, scope.ScopeType, scope.ScopeKey, func(current db.LoginThrottleRecord, found bool) (*db.UpsertLoginThrottleParams, error) {
+		now := s.now().UTC()
 		attempts := 0
 		if found {
 			attempts = current.FailedAttempts
@@ -102,9 +102,9 @@ func (r *throttleReservation) fail(ctx context.Context) (time.Duration, error) {
 	r.settled = true
 	var longest time.Duration
 	for _, scope := range r.scopes {
-		now := r.service.now().UTC()
 		var retryAfter time.Duration
 		err := r.service.repository.UpdateLoginThrottle(ctx, scope.ScopeType, scope.ScopeKey, func(current db.LoginThrottleRecord, found bool) (*db.UpsertLoginThrottleParams, error) {
+			now := r.service.now().UTC()
 			// A missing row was cleared by a success while this attempt was
 			// in flight; the failure still counts.
 			attempts := 1

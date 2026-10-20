@@ -495,7 +495,29 @@ has actual installations, its migration files are immutable.
 - Any feature that changes the owner password must revoke all existing sessions
   and personal-access tokens atomically in the same database transaction. The
   `recover-owner` command demonstrates the required pattern.
-- Revocation cutoff (#267): a revoking change cuts off every attempt that has not yet committed its session. `recover-owner` holds the server's database lock and refuses while the server runs, so no request that verified the old password can insert a session after the reset (#286). Disabling MFA deletes outstanding challenges and regenerating recovery codes replaces the old set in one transaction, so an in-flight sign-in that already proved its password still fails on its second factor. A request already authenticated by a session before logout or device revocation may finish; the next request on that session is refused. Enabling MFA does not revoke existing sessions, so a password-only sign-in that read the inactive state just before activation may still finish.
+- Expiry admission (#360): browser sessions and approved-device throttle selection
+  check persisted deadlines against a fresh clock after their reads. These reads
+  remain read-only and usable alongside a WAL writer. An already admitted request
+  may finish after session expiry/logout, and an admitted device attempt retains
+  its selected throttle scopes while it finishes. MFA challenge consumption and
+  TOTP use/activation check deadlines after acquiring SQLite write admission;
+  deferred `BeginTx` alone is insufficient. Challenge expiry is exclusive at
+  consumption; a consumed challenge may finish after expiry. The matched TOTP
+  step must still lie within the configured skew window at its consuming write.
+  Throttle reservation and failure decisions sample their clocks after writer
+  admission too. Reservation settlement across window rollover remains the
+  separately tracked defect #366; fresh admission clocks do not fence old places.
+- Revocation cutoff (#267/#365): MFA disable deletes challenges, and the final
+  session insertion checks that its consumed challenge still exists with an active
+  enrollment. Disable therefore cuts off attempts whose session has not committed,
+  even after factor/challenge consumption. `recover-owner` holds the server's
+  database lock and refuses while the server runs (#286); recovery deletes the
+  enrollment/challenges and atomically revokes sessions and PATs. Regenerating
+  recovery codes invalidates the old unspent set; a factor already consumed before
+  regeneration remains proved. Logout/device revocation does not cancel a request
+  or device attempt already admitted, and revoked devices are never renewed.
+  Enabling MFA does not revoke sessions; a password-only sign-in that read the
+  inactive state just before activation may finish.
 - A sign-in writes its session, throttle settlement and device approval in one transaction; a rejected attempt leaves no session (#287). The authentication-event row is written afterwards and best-effort, so a failed log write never turns into a lockout.
 - Account-security changes are attributed authentication events (#288): MFA enrollment start, activation, disable, recovery-code regeneration, approved-device revocation and `recover-owner` each append one `authentication_events` row naming the user, the session, the proxy-aware client IP and the request id (the CLI has none of the last three and records `origin = cli_recovery`). They live there rather than in `audit_events`, which is book-scoped ledger provenance with no client address, so one timeline shows the sign-in that created a session next to the changes made from it. Each is written in the same transaction as the change: unlike a sign-in, a change that cannot be recorded is simply retried, and recovery's event shares the reset's database and commit, so it adds no lockout. A sign-in records the second factor that completed it (`totp` or `recovery_code`). Events never carry passwords, tokens, MFA secrets or recovery codes; non-secret context goes in `metadata_json`. Retention prunes sign-in attempts, logouts and token-use/refusal events after 90 days; account-security lifecycle events are kept. A new security-relevant transition adds an event type here, not a log line.
 - Login throttle scopes use `username` and `client_ip` as independent scope keys. The `username` throttle is cleared on successful login; the `client_ip` throttle is intentionally retained (a success only gives back its own place). Every throttle scope, including approved-device and `reauth_session`, admits each attempt atomically before any verifier runs and counts attempts still in flight against the budget, so verified guesses per window never exceed it under parallel requests (#285). Never check the counter and record the failure as separate statements. A failure keeps its place; a success or an attempt with no verdict (password correct but MFA owed, internal error) gives it back; a place never settled by a crashed process expires with the window. When multi-user support is added, confirm that throttle scope keys remain globally unique and cannot be confused across user classes.
