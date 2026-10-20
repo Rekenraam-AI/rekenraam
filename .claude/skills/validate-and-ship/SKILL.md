@@ -76,8 +76,13 @@ non-trivial diff (yours or reviewed):
    taking a writer lock (#362). MFA consumption and throttle decisions acquire
    SQLite write admission before sampling time (#363/#364); the final MFA session
    insert also pins the consumed challenge against disable (#365). Keep
-   `TestAuthExpiryAudit*` green. A reservation spanning an entire throttle window
-   needs generation-fenced settlement; that distinct gap is still open as #366.
+   `TestAuthExpiryAudit*` green. Reservations pin persisted generation identity
+   (#366): failure, refund and
+   success reset must never affect a replacement/missing generation, including
+   same-timestamp recreation. Keep `TestAuthExpiryAuditReservationRolloverProbe`,
+   `TestThrottleRollover*`, `TestThrottleReset*` and the migration-preservation
+   control green. Count verified guesses through real consumers, not just status
+   codes; an older generation may finish after rollover.
 4. **Split-transaction crash holes** — a row and its idempotency marker written
    in different transactions (T-06, T-26 — both closed; the pattern recurs).
 5. **Cursor boundaries** — `<=` vs `<`, resume token vs incremental boundary

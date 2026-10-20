@@ -11,11 +11,17 @@ The audit reproduced four bounded defects, repaired together in [e7628dbd](https
 [#363](https://github.com/sergeyfarin/rekenraam/issues/363),
 [#364](https://github.com/sergeyfarin/rekenraam/issues/364) and
 [#365](https://github.com/sergeyfarin/rekenraam/issues/365).
-**An additional confirmed reservation-lifecycle gap remains open as
-[#366](https://github.com/sergeyfarin/rekenraam/issues/366).** Completing this
+**At completion of this audit, an additional confirmed reservation-lifecycle
+gap remained open as [#366](https://github.com/sergeyfarin/rekenraam/issues/366).** Completing this
 bounded audit does not certify that every authentication concurrency concern
 is repaired. #366 owns the generation/settlement repair and its additional
-consumer audit. Owner deployment remains #336.
+consumer audit, now delivered in the follow-up below. Owner deployment remains #336.
+
+**Follow-up, #366:** the [reservation repair and consumer audit](throttle-reservation-audit-2026-10-20.md)
+supersedes the historical open status above and below. Migration 0020 persists
+generation identity and all settlements are fenced. The original probe now
+passes as a permanent regression; the retained failing output remains baseline
+evidence, not current behavior.
 
 ## Independent expectations and admission inventory
 
@@ -34,7 +40,7 @@ an expired credential and admits a scope whose block has ended.
 | Pending TOTP enrollment | No independent expiry in the current contract; pending is not an active sign-in factor. Activation pins the exact pending secret, and the activation plus recovery set and security event are atomic |
 | Recovery codes | No time deadline; single-use conditional update. Regeneration invalidates the old unspent set. A factor consumed before regeneration remains proved. Two concurrent distinct codes for one challenge may both be spent, but only one session is issued (retained #267 limit) |
 | Username, IP, device and reauthentication throttle blocks | Reserve before every verifier. After acquiring pool and SQLite writer admission, read the row and sample the decision clock. `blocked_until == now` admits; failure starts its block from a fresh settlement clock |
-| Unsettled throttle places | Five held places expire fifteen minutes after the last admission. Exact rollover admits a replacement window. Old settlements are **not generation-fenced**: #366 remains open |
+| Unsettled throttle places | Five held places expire fifteen minutes after the last admission. Exact rollover admits a replacement window. Original audit: old settlements were **not generation-fenced**; subsequently repaired in #366 (follow-up above) |
 | MFA disable / final session insertion | Session insertion atomically checks that the exact consumed challenge still exists with an active enrollment. Disable/recovery deleting it before insertion prevents a new session, device or success settlement, even after factor/challenge consumption (#365) |
 | Owner password reset / recovery | Production `recover-owner` must own the server lock; it cannot overlap a running server. Recovery atomically changes the password, removes MFA/challenges and revokes sessions/PATs. Direct service overlap controls do not establish that the CLI lock can be bypassed |
 | Cleanup and display timestamps | Daily session/device/challenge cleanup is retention, not admission. Device lists and event counts are informational snapshots. Logout's lookup is attribution; its unconditional revocation grants no access. Session/device/challenge creation and lifecycle-event timestamps remain issuance/recording timestamps, not a fresh admission guard |
@@ -103,7 +109,7 @@ Prior named controls retained in the shared backend gate include
 sign-in/reauthentication budgets, the recovery command lock tests, and all
 `TestPersonalAccessTokenAudit*` controls from #357.
 
-## Open finding: reservation window identity (#366)
+## Original finding: reservation window identity (#366)
 
 The direct reservation-component probe independently reserves five old places,
 advances exactly fifteen minutes, reserves all five replacement places, then
@@ -121,20 +127,17 @@ is required, and it exercises the reservation component directly.
 The [probe source](evidence/auth-expiry-2026-10-20/reservation-rollover_test.go.txt)
 and [expected-failure output](evidence/auth-expiry-2026-10-20/reservation-rollover.txt)
 are retained outside the passing suite so CI does not assert incorrect behavior
-or silently skip a regression. Reproduce from the repo root:
+or silently skip a regression. The original reproduction at `e484955e` is now retained permanently as
+`TestAuthExpiryAuditReservationRolloverProbe`. On the repaired tree run:
 
 ```sh
-set -euo pipefail
-probe=backend/internal/app/auth_expiry_rollover_probe_test.go
-test ! -e "$probe"
-trap 'rm -f "$probe"' EXIT
-cp docs/reviews/evidence/auth-expiry-2026-10-20/reservation-rollover_test.go.txt "$probe"
 ./scripts/go-backend.sh test ./internal/app -run '^TestAuthExpiryAuditReservationRolloverProbe$' -count=1
 ```
 
-The command is expected to exit 1 until #366 is repaired. The ordinary passing
-suite retains `TestReservedAttemptsHoldTheBudgetUntilSettled`; it proves aging
-and reuse but does not prove generation-fenced settlement.
+The command now passes. The archived source/output describe the earlier
+expected failure; do not copy the archived test into the current suite, where
+its name already exists. The #366 report adds failing-before real-consumer
+and passing-after generation, missing-row and migration controls.
 
 ## Validation and limits
 
@@ -161,5 +164,5 @@ Maintainability: read admission and consuming-write admission are deliberately
 different. Repository callbacks run under SQLite writer ownership and must
 not perform database I/O; service code owns TOTP policy. The final MFA guard
 must remain in the same statement that inserts its session. Reservation scope
-identity is the concrete lifecycle hotspot tracked by #366; no unrelated
+identity was the concrete lifecycle hotspot, subsequently repaired/audited by #366; no unrelated
 refactor is part of this audit.

@@ -555,8 +555,7 @@ downgrade so payer/tax evidence is not lost. Bundle schema 13 adds
 
 Forward migration `0015_closing_day_postings.sql` (#292, 2026-10-17)
 recreates the `posting_versions_account_version_valid` trigger so a closed
-account version accepts postings dated on its `closed_on`. No data changes;
-the head schema version is 15.
+account version accepts postings dated on its `closed_on`. No data changes.
 
 Forward migration `0014_authentication_security_events.sql` (#288, 2026-10-17)
 rebuilds `authentication_events` to accept account-security event types and
@@ -615,7 +614,16 @@ baseline and all authentication-event columns while adding hash-only API
 credentials and token event types. No reset is needed; bundle schema stays 15
 because credentials are excluded from ledger exports. Native backups retain
 hashes/lifecycle state. Downgrade refuses credential rows or token event history;
-use a verified pre-upgrade backup for rollback. The head schema is 19.
+use a verified pre-upgrade backup for rollback.
+
+Forward migration `0020_throttle_generations.sql` (#366) adds persisted random
+identities to throttle windows without resetting counters/deadlines. Reservations
+carry that identity through every failure, release and success reset, so an old
+attempt cannot affect a replacement or recreate a cleared budget. Upgrade and
+restart preserve identities; local down/up assigns fresh ones while preserving
+budgets. No reset is needed; ledger bundle schema stays 15. The head schema is
+20. Production rollback still restores the verified pre-upgrade backup and
+previous binary; a down migration is only a local development control.
 
 ## Work Tracking
 

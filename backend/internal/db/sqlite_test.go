@@ -133,7 +133,7 @@ func TestMigrateAppliesEmbeddedMigrations(t *testing.T) {
 	require.NoError(t, rows.Err())
 	assert.Equal(t, []string{"book", "categories", "currencies", "owner", "system_accounts"}, stepKeys)
 	assert.Equal(t, []string{"id", "user_id", "token_hash", "created_at", "expires_at", "revoked_at"}, readTableColumns(t, database, "auth_sessions"))
-	assert.Equal(t, []string{"scope_type", "scope_key", "failed_attempts", "blocked_until", "updated_at"}, readTableColumns(t, database, "login_throttles"))
+	assert.Equal(t, []string{"scope_type", "scope_key", "failed_attempts", "blocked_until", "updated_at", "generation"}, readTableColumns(t, database, "login_throttles"))
 	assert.Contains(t, readTableColumns(t, database, "setup_steps"), "completed_audit_event_id")
 	assert.Subset(t, readTableColumns(t, database, "audit_events"), []string{
 		"id",
@@ -1273,7 +1273,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(19), version, "the head adds hash-only owner API credentials")
+	assert.Equal(t, int64(20), version, "the head fences throttle window settlements")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))
