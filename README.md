@@ -45,12 +45,13 @@ Do not apply that reset to a database containing data you need to keep.
 ```sh
 ./scripts/test-backend.sh      # Go formatting, vet, race tests (2 packages, 5m/package)
 ./scripts/test-frontend.sh     # catalog parity, generated API types, Svelte checks, unit tests
-./scripts/test-e2e-smoke.sh    # integrated browser smoke suite
+./scripts/test-e2e-smoke.sh    # provider stub HTTP tests + integrated browser smoke suite
 pnpm build                     # static frontend + embedded Go binary
 ```
 
 The build writes `dist/rekenraam`. Use `./scripts/test-e2e.sh` for the full
 browser suite and `pnpm test:release-preflight` for the serial release journeys.
+Run `pnpm --dir e2e run test:stubs` for just the provider stub HTTP regressions.
 For the deliberate runtime OpenAPI audit, run
 `python3 scripts/audit-api-contract.py --output /tmp/rekenraam-api-audit`;
 [setup, sensitivity controls and retained findings](docs/developer-workflow.md#backend-validation)

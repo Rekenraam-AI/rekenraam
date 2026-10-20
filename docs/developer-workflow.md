@@ -445,6 +445,12 @@ suite. This is what CI runs on every push:
 ./scripts/test-e2e-smoke.sh
 ```
 
+Both E2E wrappers first run `pnpm --dir e2e run test:stubs`, which can also be
+run alone. These Node HTTP tests launch the provider stub on a temporary
+localhost port and verify that malformed input and provider transformations
+return a fixed generic 500 JSON response without exception diagnostics, with
+normal provider requests still working afterward (CodeQL alert #84).
+
 Run the release preflight when preparing a release:
 
 ```sh

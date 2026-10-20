@@ -683,6 +683,13 @@ non-trivial diff (yours or reviewed):
     exactly once. Internal import receipts need IDs, not display metadata;
     leave their commit outcome independent from optional enrichment reads.
 
+60. **Test harness exception disclosure** — a localhost provider stub returned
+    parser input excerpts and implementation diagnostics through `String(err)`
+    (#373, CodeQL alert #84). Keep caught exceptions out of HTTP responses,
+    including development helpers. `pnpm --dir e2e run test:stubs` exercises
+    malformed JSON, account encoding and provider transformation failures;
+    both shared E2E wrappers run it before browser journeys.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 
