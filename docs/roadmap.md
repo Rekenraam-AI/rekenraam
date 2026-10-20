@@ -230,7 +230,10 @@ below is execution order, not a chain of hard dependencies.
    ledger/report credential contract (ADR 0018); independent adversarial,
    proxy-leakage and restored-credential audit #357 is complete
    ([evidence](reviews/personal-access-token-audit-2026-10-20.md)); #359's
-   queued-expiry guard is fixed. Adjacent expiry-admission audit #360 is open.
+   queued-expiry guard is fixed. Adjacent expiry-admission audit #360 is complete
+   ([evidence](reviews/authentication-expiry-audit-2026-10-20.md)); #362–#365 are
+   fixed. Confirmed reservation-window settlement gap #366 retains its repair
+   and focused concurrency-audit acceptance.
    The retained gates and owner evidence still govern public announcement.
    Architecture/quality #280 has been executed
    ([evidence](reviews/architecture-quality-audit-2026-10-19.md)); #344 resolves
@@ -465,8 +468,10 @@ runtime-image advisory triage remains #337. These are dated, bounded checks.
    ADR 0018. No write/export/settings/backup grant exists. Independent
    adversarial/proxy/restore audit #357 is complete with #359 fixed
    ([evidence](reviews/personal-access-token-audit-2026-10-20.md)). Adjacent
-   expiry-clock audit #360 and actual owner deployment #336 retain their own
-   evidence requirements; this delivery is not public-release sign-off.
+   expiry-clock audit #360 is complete with #362–#365 fixed
+   ([evidence](reviews/authentication-expiry-audit-2026-10-20.md)); reservation
+   settlement repair #366 and actual owner deployment #336 retain their own
+   evidence requirements. This delivery is not public-release sign-off.
    [Dated delivery evidence](reviews/personal-access-tokens-delivery-2026-10-20.md)
    records the 16 browser cases, shared gates and fixed selector finding #358.
 5. ◐ Produce signed release binaries with reproducibility notes (#333).

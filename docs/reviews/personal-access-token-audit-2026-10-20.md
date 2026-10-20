@@ -199,3 +199,14 @@ with the disposable fixture. Final remote CI status is recorded on #357.
 - Signing, advisory/upstream-driver disposition, native-language review and
   human household use retain their existing issues; this audit does not
   change #336/#337/#356 or make a blanket release-readiness claim.
+
+
+## Adjacent expiry-admission audit completed
+
+The follow-up [#360 report](authentication-expiry-audit-2026-10-20.md) confirms
+and fixes queued session/device admission, MFA challenge/TOTP deadlines,
+throttle clocks and the final MFA-disable cutoff (#362–#365). Its open finding
+[#366](https://github.com/sergeyfarin/rekenraam/issues/366) concerns reservation
+settlement across throttle windows and has its own repair/audit scope. These
+results supersede this report's earlier source-pattern concern; the PAT grant,
+proxy and restore conclusions above keep their original bounded scope.
