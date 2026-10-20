@@ -56,7 +56,10 @@ or sequencing change.
 [personal-access-token contract](plans/personal-access-tokens-plan.md) define
 #334's read-only owner API grants, credential lifecycle and security events.
 The [2026-10-20 delivery evidence](reviews/personal-access-tokens-delivery-2026-10-20.md)
-records its service/API/browser acceptance and independent audit #357.
+records its service/API/browser acceptance. The [independent audit](reviews/personal-access-token-audit-2026-10-20.md)
+completes #357 with queued-expiry finding #359 fixed and reproducible
+HTTPS/client/native-restore/browser evidence; adjacent expiry audit #360 and
+actual owner deployment #336 remain separate.
 
 [ADR 0017](adrs/0017-provider-independent-features-and-incomplete-data.md) defines
 provider-independent features, explicit incomplete attribution and manual repair.

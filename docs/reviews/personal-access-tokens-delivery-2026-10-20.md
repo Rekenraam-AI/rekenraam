@@ -1,8 +1,10 @@
 # Personal-access-token delivery — 2026-10-20
 
 **Status:** #334's bounded implementation acceptance is complete. Small
-integration finding #358 is fixed. Independent audit #357 remains open; this
-delivery does not certify public deployment or replace #336's owner evidence.
+integration finding #358 is fixed. At delivery, independent audit #357 was
+open. The [subsequent audit](personal-access-token-audit-2026-10-20.md) is now
+complete with #359 fixed; adjacent expiry audit #360 remains separate. Neither
+report establishes actual owner deployment; #336 retains that acceptance.
 
 Starting baseline: `834e9c295a4641b70d47c1f6841d1657b558cfd0`.
 Implementation: [`15498153eae8b73586aa4e64f8959582fd4e8d5c`](https://github.com/sergeyfarin/rekenraam/commit/15498153eae8b73586aa4e64f8959582fd4e8d5c).
