@@ -111,6 +111,11 @@ records #274's real-worker recovery and browser evidence, corrected findings
 [follow-up delivery](reviews/fx-coverage-progress-fix-2026-10-18.md) corrects
 starvation with durable scan progress and independent failed-date retries.
 
+The [runtime API contract audit](reviews/runtime-api-contract-audit-2026-10-20.md)
+records #349's bounded response/status matrix and schema sensitivity controls,
+small fixes #367–#369 and retained findings #350/#370. Its explicit unverified
+operations/statuses prevent treating the sample as universal conformity.
+
 Earlier strategic proposal:
 [2026-09-09 product direction, AI and privacy](reviews/product-direction-ai-privacy-2026-09-09.md).
 It challenges the positioning and evaluates optional AI/MCP, data ownership,

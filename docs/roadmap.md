@@ -247,9 +247,13 @@ below is execution order, not a chain of hard dependencies.
    nested-dialog contrast fallback now measures rendered text against its own
    background, and a black border or icon can no longer hide low-contrast text.
    #361 fixes the helper's production-CSP coverage gap, with readable and
-   low-contrast controls under the unchanged policy. Additional audit #349 covers runtime API
-   response-schema conformance beyond verified route/client parity; #350 (P3)
-   records missing HTTP 413 responses on capped JSON operations. The shared
+   low-contrast controls under the unchanged policy. Additional audit #349 is
+   complete ([evidence](reviews/runtime-api-contract-audit-2026-10-20.md)):
+   425 real responses sample 80 of 332 declared operations, with eight schema
+   sensitivity controls and all unverified operations/statuses inventoried.
+   #367–#369 fix null unions, setup/exclusion disclosure and empty tag arrays.
+   #350 (P3 capped-JSON HTTP 413 declarations) and #370 (P3 mutation-response
+   posting enrichment) remain explicit findings; universal conformity is not claimed. The shared
    reference register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); #281 is fixed.
    Fix confirmed integrity/security defects before affected feature slices.

@@ -226,7 +226,7 @@ existing bank CSV journey.
 | `/api/v1` envelope, error codes, request IDs | ✅ | Error envelope and server-generated per-attempt UUIDs ship. Caller-supplied `X-Request-ID` values never replace audit/log identity (T-79). |
 | i18n boundary (Paraglide/Inlang) | ✅ | All UI copy and built-in labels keyed. |
 | Light/dark semantic theme tokens | ✅ | `settings/appearance`. |
-| OpenAPI-first contract + generated TS client | ✅ | `api/openapi/`, `frontend/src/lib/api/schema.d.ts`; #280 verified 329 method/path pairs and clean generation. #345 repairs the error-code enum. Operation-level HTTP 413 responses remain #350, and comprehensive runtime response-schema evidence is additional audit #349. |
+| OpenAPI-first contract + generated TS client | ✅ | `api/openapi/`, `frontend/src/lib/api/schema.d.ts`; #280 verified 329 method/path pairs and clean generation. #345 repairs the error-code enum. Bounded runtime audit #349 checks 425 responses across 80 of 332 current operations, with eight schema sensitivity controls and explicit unverified operations/statuses ([evidence](reviews/runtime-api-contract-audit-2026-10-20.md)). #367–#369 repair null unions, setup/exclusion disclosure and empty tag arrays. Capped-JSON HTTP 413 declarations (#350) and mutation posting enrichment (#370) remain open. |
 
 Identity audit (2026-10-17): [review and evidence](reviews/setup-auth-privacy-audit-2026-10-17.md).
 MFA enrollment and activation pin current state (#261). Password and completed-MFA
