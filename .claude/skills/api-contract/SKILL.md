@@ -63,6 +63,9 @@ are generated, never hand-written.
 - Page data is backend-composed: one request per page (or per shareable
   component), never per-row/per-card fan-out. If the UI needs a new shape,
   add a read model endpoint.
+- Transaction mutation responses use the shared posting enrichment owner,
+  including both journals of a correction and reconciliation batches (#370).
+  A pure DTO conversion does not supply account/commodity display fields.
 - `GET`/`HEAD`/`OPTIONS` never mutate durable financial or application state.
   ADR 0018's explicit exception is Bearer token security-event/last-use
   bookkeeping on authenticated or refused GET/HEAD requests (#334).

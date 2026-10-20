@@ -670,9 +670,18 @@ non-trivial diff (yours or reviewed):
     posting tags emitted null arrays, and spending disclosed stale role aliases
     (#367–#369). Use explicit null unions, normalize empty response collections,
     and check actual HTTP JSON against resolved schemas. The bounded
-    `scripts/audit-api-contract.py` audit retains #350/#370 discrepancies by
-    exact status/field, not by skipping their operations. Generation alone
+    `scripts/audit-api-contract.py` audit retains #350's exact status gap;
+    #370's enrichment exception is removed after its repair. Generation alone
     cannot prove requiredness, enum or nullability conformity.
+
+59. **Mutation journals bypassing display enrichment** — investment and
+    reconciliation responses converted raw records directly, losing account
+    class, names, commodity codes and symbols (#370). Use the shared owner for
+    singles and a two-lookup batch for compound results. Compare real HTTP
+    mutation postings with canonical GETs, including journal-free/null results.
+    Inject display read failures after COMMIT and preserve the saved operation
+    exactly once. Internal import receipts need IDs, not display metadata;
+    leave their commit outcome independent from optional enrichment reads.
 
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.

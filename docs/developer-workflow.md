@@ -104,7 +104,8 @@ Run the script with that environment's Python. CSV/JSON output lists all declare
 operations, sampled statuses, required root fields, actual response shapes,
 schema failures, exact consumer names and retained limits. Raw synthetic bodies
 are deleted with the private temporary directory. `--strict` also fails for
-known #350/#370 discrepancies; the default fails for new discrepancies and
+known #350 discrepancies; #370's exception is removed after its repair.
+The default fails for new discrepancies and
 failed sensitivity controls. This is a deliberate audit, not a new CI gate or
 complete endpoint certification. Format checks depend on installed optional
 format validators; `summary.json` records the asserted formats. In particular,

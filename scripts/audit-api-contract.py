@@ -58,6 +58,37 @@ TESTS = [
  'TestExportBundleChecksumsVerify',
  'TestInvestmentGainsRunReproducesBeforeSaleReversal',
  'TestInvestmentGainsRunCursorPagination',
+ 'TestMutationResponseEnrichmentBuyMatchesCanonicalRead',
+ 'TestMutationResponseEnrichmentReconciliationBatchMatchesCanonicalReads',
+ 'TestMutationResponseEnrichmentFailurePreservesCommittedBuyWithoutRetry',
+ 'TestMutationResponseEnrichmentFailurePreservesCompoundCorrection',
+ 'TestMutationResponseEnrichmentExternalOutReplacementAndReversal',
+ 'TestReverseManualSaleAPI',
+ 'TestReverseManualBuyAPI',
+ 'TestReplaceLatestManualSaleAPI',
+ 'TestReplaceOldManualBuyAPI',
+ 'TestShortSaleAndCoverAPI',
+ 'TestShortCorrectionAPI',
+ 'TestCreateReinvestedDividend_HTTP',
+ 'TestReplaceAndReverseReinvestedDividendAPI',
+ 'TestReplaceAndReverseDividendAPI',
+ 'TestPaymentInLieuEntryAndCorrectionAPI',
+ 'TestReplaceAndReverseWriteOffAPI',
+ 'TestCashInLieuAPICorrectReverseAndReleaseSplitFence',
+ 'TestSeparateWithholdingAPIAndBundle',
+ 'TestReverseInternalTransferAPI',
+ 'TestReplaceInternalTransferAPIPreviewMatchesCommit',
+ 'TestReplaceExternalTransferInAPI',
+ 'TestExternalTransferOutAPIPreviewMatchesCommitAndLabelsBridge',
+ 'TestResolveTransferBasisAPI',
+ 'TestCorrectTransferBasisResolutionAPI',
+ 'TestKnownZeroBasisResolutionAPI',
+ 'TestInvestmentSplitCorrectionAPIReplaceReverseAndLabels',
+ 'TestJournalFreeSplitOperationAPIAndActivityPagination',
+ 'TestCapitalReturnReplacementAPIPreviewMatchesCommitAndFencesKind',
+ 'TestShareExchangeCorrectionAPI',
+ 'TestSpinOffCorrectionAPI',
+ 'TestCashStockMergerCorrectionAPI',
 ]
 
 
@@ -202,20 +233,6 @@ def known_issue(key, status, error):
     """Narrow retained findings, never general operation-level exclusions."""
     if key == ('POST', '/api/v1/setup/owner') and status == 413 and error == 'undocumented status 413':
         return '#350'
-    investment_writes = {
-        '/api/v1/investments/buy', '/api/v1/investments/sell',
-        '/api/v1/investments/transfers/external/in',
-        '/api/v1/investments/return-of-capital',
-        '/api/v1/investments/short-sale', '/api/v1/investments/short-cover',
-        '/api/v1/investments/splits',
-        '/api/v1/investments/transactions/{transaction_id}/reverse-sale',
-    }
-    if key[0] == 'POST' and status == 201 and key[1] in investment_writes:
-        if re.fullmatch(r'/transaction/journal_entries/\d+/postings/\d+/account_class: enum', error):
-            return '#370'
-    if key == ('POST', '/api/v1/accounts/{account_id}/postings/reconciliation-status') and status == 200:
-        if re.fullmatch(r'/transactions/\d+/journal_entries/\d+/postings/\d+/account_class: enum', error):
-            return '#370'
     return ''
 
 

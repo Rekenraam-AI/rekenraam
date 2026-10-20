@@ -462,6 +462,13 @@ has actual installations, its migration files are immutable.
 
 - Real endpoints live under `/api/v1`.
 - DTOs stay near HTTP handlers.
+- Transaction-returning services enrich posting display fields through the
+  shared batch owner before DTO conversion, including inverse/replacement and
+  reconciliation batches. Use one account and one commodity lookup per batch.
+  Internal import receipts that consume only durable IDs do not fetch optional
+  response display data. A response lookup failure after commit returns the
+  sanitized internal error without replaying the write; refresh canonical reads
+  before deciding whether to submit another mutation (#370).
 - Business rules belong in application services.
 - Database access belongs behind repository-style functions or methods.
 - Error responses should be structured, consistent, and safe for user display.

@@ -21632,6 +21632,16 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Internal server error. A display lookup can fail after the correction commits; refresh the canonical transaction/correction-chain reads before deciding whether to submit another write. This status does not promise that the financial operation was rolled back. */
+                500: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         delete?: never;
