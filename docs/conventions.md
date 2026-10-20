@@ -484,6 +484,9 @@ has actual installations, its migration files are immutable.
   cookie fallback. The first grants are read-only `ledger:read` and
   `reports:read`; token administration is session-only. Creation shares MFA's
   password-confirmation budget and rechecks session/hash in its transaction.
+  Sample token/management-session expiry after acquiring the pool connection
+  and SQLite write admission; deferred `BeginTx` alone does not eliminate
+  writer-lock waits (#359).
   Recovery revokes tokens atomically with sessions. GET/HEAD token-use events
   and last-use timestamps are the explicit ADR 0018 security-bookkeeping
   exception to durable read purity. They never change financial data or grants.

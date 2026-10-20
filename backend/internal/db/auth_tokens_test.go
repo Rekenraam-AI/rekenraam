@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/testdb"
@@ -53,13 +54,14 @@ func TestPersonalAccessTokenManagementRechecksSessionAndPasswordAndConcurrentLim
 	repo := db.NewAuthRepository(database)
 	p := db.CreatePersonalAccessTokenParams{UserID: 1, SessionID: 1, PasswordHash: "hash", Name: "Synthetic client", TokenHash: fmt.Sprintf("%064d", 100), ScopesJSON: `["ledger:read"]`, CreatedAt: "2026-10-20T00:00:00Z", ExpiresAt: "2026-11-20T00:00:00Z"}
 	event := db.AuthenticationEventParams{OccurredAt: p.CreatedAt, EventType: "token_created", Outcome: "success", UserID: 1, AuthSessionID: 1}
+	clock := func() time.Time { return time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC) }
 	stale := p
 	stale.PasswordHash = "old-hash"
-	_, err = repo.CreatePersonalAccessToken(ctx, stale, event)
+	_, err = repo.CreatePersonalAccessToken(ctx, stale, event, clock)
 	require.ErrorIs(t, err, db.ErrNotFound, "a password changed after verification cannot mint a token")
 	_, err = database.Exec(`UPDATE auth_sessions SET revoked_at='2026-10-19T00:00:00Z' WHERE id=1`)
 	require.NoError(t, err)
-	_, err = repo.CreatePersonalAccessToken(ctx, p, event)
+	_, err = repo.CreatePersonalAccessToken(ctx, p, event, clock)
 	require.ErrorIs(t, err, db.ErrNotFound, "a session revoked after verification cannot mint a token")
 	_, err = database.Exec(`UPDATE auth_sessions SET revoked_at=NULL WHERE id=1`)
 	require.NoError(t, err)
@@ -77,7 +79,7 @@ func TestPersonalAccessTokenManagementRechecksSessionAndPasswordAndConcurrentLim
 			<-start
 			candidate := p
 			candidate.TokenHash = fmt.Sprintf("%064d", 100+i)
-			_, err := repo.CreatePersonalAccessToken(ctx, candidate, event)
+			_, err := repo.CreatePersonalAccessToken(ctx, candidate, event, clock)
 			results <- err
 		}(i)
 	}
@@ -103,10 +105,10 @@ func TestPersonalAccessTokenManagementRechecksSessionAndPasswordAndConcurrentLim
 	require.NoError(t, err)
 	// Deterministic interleaving: lookup passes, revocation commits, use must fail.
 	event.EventType = "token_revoked"
-	require.NoError(t, repo.RevokePersonalAccessToken(ctx, 1, 1, row.ID, p.CreatedAt, event))
+	require.NoError(t, repo.RevokePersonalAccessToken(ctx, 1, 1, row.ID, clock, event))
 	event.EventType = "token_authenticated"
 	event.Origin = "personal_access_token"
-	require.ErrorIs(t, repo.RecordPersonalAccessTokenUse(ctx, row.ID, p.CreatedAt, event), db.ErrNotFound)
+	require.ErrorIs(t, repo.RecordPersonalAccessTokenUse(ctx, row.ID, clock, event), db.ErrNotFound)
 	var uses int
 	require.NoError(t, database.QueryRow(`SELECT count(*) FROM authentication_events WHERE event_type='token_authenticated'`).Scan(&uses))
 	assert.Zero(t, uses)

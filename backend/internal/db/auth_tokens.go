@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 )
 
 var ErrTokenLimit = errors.New("active token limit reached")
@@ -32,6 +33,18 @@ type CreatePersonalAccessTokenParams struct {
 	ExpiresAt    string
 }
 
+// Own both the pool connection and SQLite write admission before sampling the
+// clock (#359). BEGIN is deferred, so sampling immediately after BeginTx still
+// freezes expiry during busy_timeout. This empty UPDATE obtains the write lock
+// without changing a row or running row triggers; all guards/events follow in
+// that same transaction.
+func tokenAdmissionTime(ctx context.Context, tx *sql.Tx, clock func() time.Time) (string, error) {
+	if _, err := tx.ExecContext(ctx, `UPDATE personal_access_tokens SET last_used_at=last_used_at WHERE 0`); err != nil {
+		return "", fmt.Errorf("acquire token write admission: %w", err)
+	}
+	return clock().UTC().Format(time.RFC3339), nil
+}
+
 // Token management rechecks the live session inside its write transaction.
 func tokenManagementSession(ctx context.Context, tx *sql.Tx, userID, sessionID int64, now, passwordHash string) error {
 	var id int64
@@ -48,18 +61,23 @@ func tokenManagementSession(ctx context.Context, tx *sql.Tx, userID, sessionID i
 	return nil
 }
 
-func (r *AuthRepository) CreatePersonalAccessToken(ctx context.Context, p CreatePersonalAccessTokenParams, event AuthenticationEventParams) (int64, error) {
+func (r *AuthRepository) CreatePersonalAccessToken(ctx context.Context, p CreatePersonalAccessTokenParams, event AuthenticationEventParams, now func() time.Time) (int64, error) {
 	tx, err := r.database.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin token creation: %w", err)
 	}
 	defer rollbackTx(ctx, tx)
-	if err := tokenManagementSession(ctx, tx, p.UserID, p.SessionID, p.CreatedAt, p.PasswordHash); err != nil {
+	checkedAt, err := tokenAdmissionTime(ctx, tx, now)
+	if err != nil {
+		return 0, err
+	}
+	event.OccurredAt = checkedAt
+	if err := tokenManagementSession(ctx, tx, p.UserID, p.SessionID, checkedAt, p.PasswordHash); err != nil {
 		return 0, err
 	}
 	var count int
 	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM personal_access_tokens
-		WHERE user_id = ? AND revoked_at IS NULL AND expires_at > ?`, p.UserID, p.CreatedAt).Scan(&count); err != nil {
+		WHERE user_id = ? AND revoked_at IS NULL AND expires_at > ?`, p.UserID, checkedAt).Scan(&count); err != nil {
 		return 0, fmt.Errorf("count active tokens: %w", err)
 	}
 	if count >= 50 {
@@ -123,12 +141,17 @@ func (r *AuthRepository) ReadPersonalAccessToken(ctx context.Context, hash, now 
 
 // The second check establishes the revocation cutoff. The token's scopes are
 // immutable; its lifecycle and the use event commit together before dispatch.
-func (r *AuthRepository) RecordPersonalAccessTokenUse(ctx context.Context, id int64, now string, event AuthenticationEventParams) error {
+func (r *AuthRepository) RecordPersonalAccessTokenUse(ctx context.Context, id int64, clock func() time.Time, event AuthenticationEventParams) error {
 	tx, err := r.database.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin token authentication: %w", err)
 	}
 	defer rollbackTx(ctx, tx)
+	now, err := tokenAdmissionTime(ctx, tx, clock)
+	if err != nil {
+		return err
+	}
+	event.OccurredAt = now
 	result, err := tx.ExecContext(ctx, `UPDATE personal_access_tokens SET last_used_at = CASE WHEN ? = 'success' THEN ? ELSE last_used_at END
 		WHERE id = ? AND revoked_at IS NULL AND expires_at > ?`, event.Outcome, now, id, now)
 	if err != nil {
@@ -150,12 +173,17 @@ func (r *AuthRepository) RecordPersonalAccessTokenUse(ctx context.Context, id in
 	return nil
 }
 
-func (r *AuthRepository) RevokePersonalAccessToken(ctx context.Context, userID, sessionID, id int64, now string, event AuthenticationEventParams) error {
+func (r *AuthRepository) RevokePersonalAccessToken(ctx context.Context, userID, sessionID, id int64, clock func() time.Time, event AuthenticationEventParams) error {
 	tx, err := r.database.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin token revocation: %w", err)
 	}
 	defer rollbackTx(ctx, tx)
+	now, err := tokenAdmissionTime(ctx, tx, clock)
+	if err != nil {
+		return err
+	}
+	event.OccurredAt = now
 	if err := tokenManagementSession(ctx, tx, userID, sessionID, now, ""); err != nil {
 		return err
 	}

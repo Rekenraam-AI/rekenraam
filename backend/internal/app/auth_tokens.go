@@ -99,7 +99,7 @@ func (s *AuthService) CreatePersonalAccessToken(ctx context.Context, input Creat
 	id, err := s.repository.CreatePersonalAccessToken(ctx, db.CreatePersonalAccessTokenParams{
 		UserID: input.UserID, SessionID: input.SessionID, PasswordHash: credentials.PasswordHash,
 		Name: name, ScopesJSON: string(scopes), TokenHash: hashSessionToken("pat:" + plaintext), CreatedAt: created, ExpiresAt: expires,
-	}, event)
+	}, event, s.now)
 	if errors.Is(err, db.ErrNotFound) {
 		return PersonalAccessToken{}, "", ErrInvalidCredentials
 	}
@@ -151,7 +151,7 @@ func (s *AuthService) ListPersonalAccessTokens(ctx context.Context, userID int64
 func (s *AuthService) RevokePersonalAccessToken(ctx context.Context, input MFAPasswordInput, id int64) error {
 	event := s.securityEvent("token_revoked", input.UserID, input.SessionID, input.ClientIP, input.RequestID)
 	event.MetadataJSON = fmt.Sprintf(`{"token_id":%d}`, id)
-	err := s.repository.RevokePersonalAccessToken(ctx, input.UserID, input.SessionID, id, event.OccurredAt, event)
+	err := s.repository.RevokePersonalAccessToken(ctx, input.UserID, input.SessionID, id, s.now, event)
 	if errors.Is(err, db.ErrNotFound) {
 		return ErrPersonalAccessTokenNotFound
 	}
@@ -164,7 +164,7 @@ func (s *AuthService) AuthenticatePersonalAccessToken(ctx context.Context, token
 	now := s.now().UTC().Format(time.RFC3339)
 	invalid := func() (Owner, error) {
 		err := s.repository.RecordAuthenticationEvent(ctx, db.AuthenticationEventParams{
-			OccurredAt: now, EventType: "token_denied", Outcome: "failure", Origin: "personal_access_token",
+			OccurredAt: s.now().UTC().Format(time.RFC3339), EventType: "token_denied", Outcome: "failure", Origin: "personal_access_token",
 			ClientIP: clientIP, RequestID: requestID, FailureReason: "invalid_token",
 		})
 		if err != nil {
@@ -206,7 +206,7 @@ func (s *AuthService) AuthenticatePersonalAccessToken(ctx context.Context, token
 	if !granted {
 		event.EventType, event.Outcome, event.FailureReason = "token_denied", "failure", "insufficient_scope"
 	}
-	if err := s.repository.RecordPersonalAccessTokenUse(ctx, row.ID, now, event); err != nil {
+	if err := s.repository.RecordPersonalAccessTokenUse(ctx, row.ID, s.now, event); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return invalid()
 		}

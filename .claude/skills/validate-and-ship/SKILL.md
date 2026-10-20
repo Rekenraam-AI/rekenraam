@@ -67,6 +67,11 @@ non-trivial diff (yours or reviewed):
    types end-to-end; a plain `bool` made every rename silently disable
    auto-refresh.
 3. **TOCTOU guard races** — check + insert in separate statements/transactions.
+   Expiry clocks sampled before pool/SQLite writer waits also go stale (#359):
+   acquire write admission before sampling final token/session guards. Keep
+   `TestPersonalAccessTokenAuditExpiryWhileWaitingForDatabase`,
+   `TestPersonalAccessTokenAuditExpiryWhileWaitingForSQLiteWriter` and
+   `TestPersonalAccessTokenAuditManagementSessionExpiresWhileQueued` green.
 4. **Split-transaction crash holes** — a row and its idempotency marker written
    in different transactions (T-06, T-26 — both closed; the pattern recurs).
 5. **Cursor boundaries** — `<=` vs `<`, resume token vs incremental boundary

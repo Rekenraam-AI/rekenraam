@@ -62,7 +62,11 @@ Ledger exports contain no credential rows.
 Revocation retains history and denies subsequent authentications, with no token
 cache. A request whose authentication transaction committed before revocation
 may finish, matching session revocation's existing in-flight cutoff. Expiry is
-absolute and checked on every request (`expires_at <= now` denies). Owner
+absolute and checked on every request (`expires_at <= now` denies). Management
+session and token expiry checks sample the clock after acquiring both the database
+connection and SQLite write admission; pool or writer-lock waits cannot extend
+a credential's lifetime (#359). The committed authentication remains the
+in-flight cutoff if expiry passes while its admitted consumer runs. Owner
 password recovery revokes all tokens atomically with sessions and records the
 count; browser logout ends only that session.
 
