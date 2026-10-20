@@ -1,7 +1,7 @@
 # Personal-access-token boundary audit — 2026-10-20
 
 **Status: complete.** #357's bounded engineering audit passed. Confirmed P2
-finding #359 is fixed; additional expiry-clock audit #360 is open for adjacent
+findings #359 and #361 are fixed; additional expiry-clock audit #360 is open for adjacent
 browser-session/MFA/trusted-device paths. Actual owner deployment and household
 acceptance remain #336; this is not release sign-off.
 
@@ -99,6 +99,47 @@ in `89951c9a`. #360 owns the additional audit of adjacent session, MFA and
 trusted-device deadline paths, identified by concrete pre-query timestamp
 patterns. Those paths need their own consumer evidence; no unproven MFA bypass
 is asserted and no broad auth refactor was folded into this fix.
+
+## CI follow-through — finding #361
+
+Reviewing the final push exposed a pre-existing main browser failure in
+[CI 39389846174](https://github.com/sergeyfarin/rekenraam/actions/runs/39389846174):
+`correct buy: reconciliation confirm` failed the dark-desktop and de-desktop
+sweep with a retained axe contrast finding and `no text pixels`. #348's
+replacement glyph-only helper injected an inline stylesheet, which the
+unchanged production `style-src 'self'` policy blocks. Its isolated controls
+had no such policy. The initial evidence push
+[CI 39419119037](https://github.com/sergeyfarin/rekenraam/actions/runs/39419119037)
+reproduced the same failure in light desktop; the other four CI jobs passed.
+
+Two new real-Chromium controls reproduce the missing measurement before the
+fix. With the same production policy, readable `#333` on white must measure 12.63:1
+and low-contrast `#999` on white must measure 2.85:1 despite a black border/icon.
+The fix uses permitted CSSOM property writes, retains each descendant's actual
+fill and restores original property values/priorities in `finally`, including
+on detached nodes. It keeps the 4.5:1 threshold, original axe diagnostics and
+production CSP. This fixes test instrumentation; it does not weaken policy or
+change the application's warning colours or financial behavior.
+
+Fix: [`06c29263`](https://github.com/sergeyfarin/rekenraam/commit/06c29263beacf233e6c30029aeb4216a00df11d7). The fresh single-binary build, all five contrast controls,
+all eight real subview configurations and the shared browser smoke suite
+(363 cases) pass. The new controls also check style restoration.
+[Retained control/matrix evidence](evidence/pat-audit-2026-10-20/csp-followthrough.json)
+and the [smoke result](evidence/pat-audit-2026-10-20/browser-smoke.txt) record the
+fix source and exact outcomes.
+The smoke command is:
+
+```sh
+pnpm build
+E2E_SKIP_BUILD=1 pnpm --dir e2e exec playwright test rendered-contrast.spec.ts subview-sweep.spec.ts --reporter=list
+E2E_SKIP_BUILD=1 E2E_WORKERS=3 ./scripts/test-e2e-smoke.sh
+```
+
+#361 is fixed within this task and tracked on #260/#348. #348's original
+maximum-pixel false-acceptance defect remains fixed. The independent PAT
+fixture at `c709b913` does not use this helper, and all Go/frontend production
+inputs are unchanged by the follow-through. Its 2,550 external cases and image
+identities remain valid. The final main CI status is recorded on #357.
 
 ## Reproduction and validation
 

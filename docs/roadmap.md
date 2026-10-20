@@ -242,7 +242,9 @@ below is execution order, not a chain of hard dependencies.
    are fixed. #352 (P2 full-suite FX test isolation) is fixed in its own
    worker project, and its full-suite acceptance now passes. #348 (P2) is fixed: the
    nested-dialog contrast fallback now measures rendered text against its own
-   background, and a black border or icon can no longer hide low-contrast text. Additional audit #349 covers runtime API
+   background, and a black border or icon can no longer hide low-contrast text.
+   #361 fixes the helper's production-CSP coverage gap, with readable and
+   low-contrast controls under the unchanged policy. Additional audit #349 covers runtime API
    response-schema conformance beyond verified route/client parity; #350 (P3)
    records missing HTTP 413 responses on capped JSON operations. The shared
    reference register #266 is delivered, with

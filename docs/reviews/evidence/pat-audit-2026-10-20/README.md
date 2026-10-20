@@ -29,3 +29,9 @@ the real application's backup service and verify/restore/recover-owner CLI.
 
 Published CSV/log text uses LF line endings and normalized whitespace;
 CSV fields and the filtered failure messages retain their observed values.
+
+`csp-followthrough.json`, `csp-negative-controls.txt` and `browser-smoke.txt`
+record #361's production-policy measurement fix, its failing/passing controls,
+all eight real subview configurations and the full 363-case shared smoke gate.
+This test-helper follow-through changes no Go/frontend production inputs; the
+independent PAT fixture/source and image identities above remain valid.
