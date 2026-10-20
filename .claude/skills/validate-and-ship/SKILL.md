@@ -646,6 +646,14 @@ non-trivial diff (yours or reviewed):
     index: an empty FTS table returned 200 without reaching the failing parser.
     Named regression: `TestNativeSQLiteAuditSearchRejectsNULBeforeFTS`.
 
+57. **CSP-blocked browser measurement** — a screenshot helper's inline
+    stylesheet passed isolated controls but production `style-src 'self'`
+    blocked it, leaving no measured glyphs (#361). Run readable and deliberate
+    low-contrast controls under the real policy. The rendered-contrast helper
+    uses CSSOM property writes and restores the original styles; keep its
+    4.5:1 threshold and text-only border/icon controls. Named cases:
+    `rendered-contrast.spec.ts` and the real `subview-sweep.spec.ts`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 
