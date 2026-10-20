@@ -27774,7 +27774,7 @@ export interface components {
             current_step?: "owner" | "book" | "currencies" | "system_accounts" | "categories";
             /** @enum {string} */
             install_state: "fresh" | "configured" | "recovery_required";
-            implemented_steps: ("owner" | "book" | "currencies")[];
+            implemented_steps: ("owner" | "book" | "currencies" | "system_accounts" | "categories")[];
             /** @enum {string} */
             blocking_step?: "owner";
             steps: components["schemas"]["SetupStep"][];

@@ -51,6 +51,10 @@ pnpm build                     # static frontend + embedded Go binary
 
 The build writes `dist/rekenraam`. Use `./scripts/test-e2e.sh` for the full
 browser suite and `pnpm test:release-preflight` for the serial release journeys.
+For the deliberate runtime OpenAPI audit, run
+`python3 scripts/audit-api-contract.py --output /tmp/rekenraam-api-audit`;
+[setup, sensitivity controls and retained findings](docs/developer-workflow.md#backend-validation)
+are documented separately from the shared gates.
 Commands, test scope, and environment settings are in the
 [developer workflow](docs/developer-workflow.md).
 The [runtime-image audit](docs/reviews/runtime-image-advisory-audit-2026-10-20.md)

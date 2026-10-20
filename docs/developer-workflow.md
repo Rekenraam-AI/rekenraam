@@ -89,6 +89,27 @@ HTTPS reverse proxy for direct access from phones or other LAN clients.
 
 ### Backend Validation
 
+The bounded runtime OpenAPI audit (#349) reuses named synthetic HTTP consumers:
+
+```sh
+python3 scripts/audit-api-contract.py --output /tmp/rekenraam-api-audit
+python3 scripts/audit-api-contract.py --output /tmp/rekenraam-api-controls --controls-only
+```
+
+It requires Python 3.10+, PyYAML and jsonschema (recorded versions: 6.0.1 and
+4.10.3). Use an isolated environment if these are not installed:
+`python3 -m venv /tmp/rekenraam-api-venv`, then
+`/tmp/rekenraam-api-venv/bin/pip install -r scripts/requirements-api-audit.txt`.
+Run the script with that environment's Python. CSV/JSON output lists all declared
+operations, sampled statuses, required root fields, actual response shapes,
+schema failures, exact consumer names and retained limits. Raw synthetic bodies
+are deleted with the private temporary directory. `--strict` also fails for
+known #350/#370 discrepancies; the default fails for new discrepancies and
+failed sensitivity controls. This is a deliberate audit, not a new CI gate or
+complete endpoint certification. Format checks depend on installed optional
+format validators; `summary.json` records the asserted formats. In particular,
+the recorded system environment has no RFC 3339 `date-time` checker.
+
 The minimum Go toolchain is 1.27.2, declared in `backend/go.mod`. This patch
 fixes the standard-library vulnerabilities reported by the 2026-10-09
 `govulncheck` run. GitHub Actions reads that same minimum with

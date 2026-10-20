@@ -52,6 +52,8 @@ are generated, never hand-written.
   uppercase string the frontend translation layer keys off.
 - Calendar dates: ISO 8601 `YYYY-MM-DD` strings. Timestamps: RFC 3339 UTC.
   Money/quantity coefficients: **strings** (see `ledger-invariants`).
+- OpenAPI 3.1 nullability uses `type: [string, 'null']` (or an explicit
+  object/null union), never `nullable: true`. Omission and null are distinct.
 - Large list endpoints use **cursor pagination** (stable under concurrent
   inserts), returning `next_cursor`; null/absent = last page. Never offset
   pagination. Frontend list views must consume the cursor (infinite query) or

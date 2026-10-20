@@ -665,6 +665,15 @@ non-trivial diff (yours or reviewed):
     4.5:1 threshold and text-only border/icon controls. Named cases:
     `rendered-contrast.spec.ts` and the real `subview-sweep.spec.ts`.
 
+58. **Generated types mistaken for runtime schema evidence** — OpenAPI 3.1
+    ignored `nullable: true`, setup omitted implemented-step enum members,
+    posting tags emitted null arrays, and spending disclosed stale role aliases
+    (#367–#369). Use explicit null unions, normalize empty response collections,
+    and check actual HTTP JSON against resolved schemas. The bounded
+    `scripts/audit-api-contract.py` audit retains #350/#370 discrepancies by
+    exact status/field, not by skipping their operations. Generation alone
+    cannot prove requiredness, enum or nullability conformity.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 
