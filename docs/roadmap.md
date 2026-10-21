@@ -256,9 +256,13 @@ below is execution order, not a chain of hard dependencies.
    investment/correction/reconciliation transaction responses now use the shared
    batch enrichment owner, with post-commit failure and internal-import receipt
    controls. The expanded schema sample covers 1,108 responses / 165 operations;
-   #371/#372 are fixed. #350 (P3 capped-JSON HTTP 413 declarations) remains
-   explicit; universal conformity is not claimed. The shared
-   reference register #266 is delivered, with
+   #371/#372 are fixed. #350 now documents every capped JSON operation's 413
+   ([delivery and 215-operation inventory](reviews/json-body-contract-2026-10-21.md));
+   small decoder findings #374/#375 and MFA fixture finding #376 are fixed.
+   Its final schema sample covers 1,582 responses / 251 of 332 operations,
+   with nine sensitivity controls and zero discrepancies. Unsampled operations
+   and unobserved statuses remain explicit; universal conformity is not claimed.
+   The shared reference register #266 is delivered, with
    [evidence](reviews/reference-book-audit-2026-10-17.md); #281 is fixed.
    Fix confirmed integrity/security defects before affected feature slices.
    This is a bounded review, not a recurring full-suite gate. Each open
