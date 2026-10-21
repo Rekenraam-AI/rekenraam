@@ -1,6 +1,6 @@
 # Maintainability audit — 2026-10-21
 
-**Status: slices 1–4 of [#284](https://github.com/sergeyfarin/rekenraam/issues/284),
+**Status: slices 1–5 of [#284](https://github.com/sergeyfarin/rekenraam/issues/284),
 partial.** This first-slice record reconciles the earlier proposals, inventories
 the audit inputs and records reproducible history measurements. The
 [second slice](maintainability-duplication-2026-10-21.md) adds runtime duplication
@@ -12,7 +12,10 @@ shared owners and opens the independent payment-density measurement
 [fourth slice](maintainability-layers-2026-10-21.md) reviews layer boundaries,
 frontend arithmetic/dates and request composition; it adds narrower leaf/total
 ownership candidates and files the confirmed forecast calendar defect as
-[#380](https://github.com/sergeyfarin/rekenraam/issues/380). The ranked shortlist
+[#380](https://github.com/sergeyfarin/rekenraam/issues/380). The
+[fifth slice](maintainability-reachability-2026-10-21.md) adds production/test
+reachability, frontend file/export triage and 25 named Go abstraction
+dispositions. It establishes no new defect or accepted refactor. The ranked shortlist
 below remains provisional, not final investment/reporting dispositions. These
 slices do not complete #284 or approve refactoring. No application, API, schema
 or financial behavior changes.
@@ -274,6 +277,16 @@ different contracts in slice 4; no numerical defect or accepted extraction is
 inferred from syntax alone. #380 is a separate P3 input-validation defect, not
 an accepted refactor or a blanket R13 blocker.
 
+Slice 5 rejects a blanket single-consumer-interface cleanup: the narrow SQL,
+backup and provider boundaries have no measured change-cost case for removal.
+Six unreachable runtime helpers, two unreachable test helpers, three unused
+interface declarations and the frontend export/type findings remain hygiene
+inventory, not automatically qualifying refactors. Of 61 Go functions flagged
+without test roots, 55 become reachable when tests are included. The source
+consumer count around `valuePositions` is not a count of independent production
+page readers: standalone current/alternative convenience wrappers are test-root
+surfaces, while production dated/snapshot composition keeps the shared owner live.
+
 ## Considered and rejected in this slice
 
 - Splitting files or introducing an operation registry merely because files
@@ -305,7 +318,9 @@ It is not an exhaustive receiver-resolved proof. The
 [fourth slice](maintainability-layers-2026-10-21.md) delivers fresh bounded
 handler/repository/frontend arithmetic/date and fan-out review, records policy
 in the native gains response builder and confirms #380's calendar mismatch.
-Still unverified: dead-code and single-caller analysis; a repository-wide
+The [fifth slice](maintainability-reachability-2026-10-21.md) delivers the bounded
+dead-code and named-interface/options analysis with separate production/test
+roots and export-visibility dispositions. Still unverified: a repository-wide
 test-fixture/oracle and test-duplication
 survey; and final
 investment/reporting dispositions. The provisional ranking can change with
@@ -322,4 +337,4 @@ and the roadmap resolve; Python syntax and `git diff --check` pass.
 These were audit-artifact checks; application suites were not rerun in slice 1 because
 runtime and test inputs are unchanged. No push, remote CI, release acceptance,
 household evidence or full #284 completion was claimed by that validation.
-Slices 2–4 retain their own validation records and limits in their reports.
+Slices 2–5 retain their own validation records and limits in their reports.

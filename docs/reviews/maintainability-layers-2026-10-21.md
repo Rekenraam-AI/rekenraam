@@ -180,3 +180,8 @@ confirmed forecast defect. The previously filed P3 #379 payment-density audit
 is unchanged. Neither follow-up is a blanket R13 prerequisite. R13 specification
 may proceed; implementation still needs its own calculation contract and #284's
 investment/reporting dispositions. Owner/release gates remain independent.
+
+Subsequent evidence: the [fifth slice](maintainability-reachability-2026-10-21.md)
+delivers the bounded reachability and named-interface/options review. Its
+separate test roots and frontend export-visibility view constrain future
+cleanup; this report's historical remaining-work list does not undo that delivery.

@@ -152,8 +152,11 @@ below is execution order, not a chain of hard dependencies.
    invariant groups and narrows consolidation around existing shared owners.
    The [fourth slice](reviews/maintainability-layers-2026-10-21.md) reviews layer,
    frontend arithmetic/date and request-composition boundaries, adding bounded
-   total/leaf ownership candidates. Complete dead-code/single-caller analysis,
-   test-ownership/duplication inventories and final investment/reporting
+   total/leaf ownership candidates. The
+   [fifth slice](reviews/maintainability-reachability-2026-10-21.md) delivers
+   Go production/test reachability, frontend file/export triage and 25 named
+   Go abstraction dispositions. Complete test-ownership/duplication inventories
+   and final investment/reporting
    dispositions. Use the
    measured duplication, change amplification and repeated invariant enforcement
    to publish a ranked list with

@@ -33,6 +33,13 @@ replace the existing valuation owner or merge FX/statement semantics. Any move
 must preserve mixed-scale totals, unavailable/null disclosures, range failures
 and immutable saved output. No incorrect total or accepted refactor is claimed.
 
+The [fifth slice](../reviews/maintainability-reachability-2026-10-21.md) separates
+standalone test-root wrappers from production consumers. Current reads resolve
+through a dated boundary; a production saved-run path also reaches the existing
+`valuePositions` owner. Unreachable convenience wrappers do not imply that
+valuation is unused or that snapshot/transaction boundaries can be removed.
+Their possible retirement belongs with the remaining fixture/oracle disposition.
+
 ## Live observation selection: `live_raw_v1`
 
 One SQL owner, `backend/internal/db/observation_selection.go`, supplies daily
