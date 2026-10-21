@@ -1,5 +1,6 @@
 import type { ReadonlyURLSearchParams } from '$app/state';
 import type { components } from '#lib/api/schema.js';
+import { isCalendarDate } from '#lib/dates/calendar-date.ts';
 
 export type ForecastSpendingModel = 'off' | 'adaptive_v1';
 export type ForecastLearningPattern = 'daily' | 'weekly' | 'monthly' | 'annual_seasonal';
@@ -128,7 +129,7 @@ function parseForecastLearningFilters(params: ReadonlyURLSearchParams): Forecast
     if (historyRaw !== undefined || categoryRaw.length > 0 || patternRaw.length > 0) return null;
     return { spendingModel: 'off', historyCompleteFrom: null, expenseCategoryIDs: [], expensePatterns: {} };
   }
-  if (historyRaw === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(historyRaw) || Number.isNaN(Date.parse(historyRaw))) return null;
+  if (historyRaw === undefined || !isCalendarDate(historyRaw)) return null;
 
   const expenseCategoryIDs: number[] = [];
   for (const raw of categoryRaw) {

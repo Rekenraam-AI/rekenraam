@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { adjacentCalendarDate } from './calendar-date';
+import { adjacentCalendarDate, isCalendarDate } from './calendar-date';
+
+describe('isCalendarDate', () => {
+  it.each(['2026-02-31', '2026-02-29', '2026-04-31', '2026-13-01', '2026-00-01'])(
+    'rejects impossible calendar dates: %s',
+    (date) => expect(isCalendarDate(date)).toBe(false)
+  );
+
+  it.each(['2026-02-28', '2024-02-29'])(
+    'accepts ordinary and leap calendar dates: %s',
+    (date) => expect(isCalendarDate(date)).toBe(true)
+  );
+});
 
 describe('adjacentCalendarDate', () => {
   it('steps one calendar day across month, year and leap edges', () => {

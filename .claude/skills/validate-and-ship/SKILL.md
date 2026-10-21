@@ -715,6 +715,10 @@ non-trivial diff (yours or reviewed):
     and exercise malformed links through the real list (`url-selection.spec.ts`).
     URL selection journeys also check reload, Back and sharing: SvelteKit 3
     exposes shallow URL changes through `page.shallow.url` (#326).
+    Forecast history URL/form checks also share `isCalendarDate` (#380):
+    regex plus `Date.parse` normalizes impossible dates. Keep ordinary/leap
+    round trips and the no-forecast-request invalid-link control in
+    `forecast-learning.spec.ts` green.
 
 64. **A generic heading certifying the wrong route fixture** — the frontend
     sweep passed an instrument ID to a commodity-addressed route (#378).

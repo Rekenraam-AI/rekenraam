@@ -168,9 +168,6 @@ below is execution order, not a chain of hard dependencies.
    [#379](https://github.com/sergeyfarin/rekenraam/issues/379) measures an
    untested investment-command workload; it is not an accepted optimization
    or a blanket R13 prerequisite.
-   [#380](https://github.com/sergeyfarin/rekenraam/issues/380), P3, separately
-   fixes confirmed forecast calendar-date admission; it is not a blanket
-   R13 prerequisite either.
 3. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
    Use the delivered R18 valuation contracts; resolve portfolio scope,
    external-flow classification, return equations, numerical failure states,

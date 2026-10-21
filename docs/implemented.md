@@ -661,7 +661,11 @@ R10's core forecast and opt-in learned-spending extension are accepted
 (2026-09-09). The shipped contracts are
 `docs/plans/projected-balances-plan.md` and `docs/plans/forecast-learning-plan.md`.
 They cover daily/weekly, monthly and annual seasonal spending. All eight core
-slices are accepted:
+slices are accepted. Forecast history URL parsing and form validity share
+`isCalendarDate` (#380, 2026-10-21): impossible dates show the existing invalid-link
+state without a forecast request; ordinary dates and valid leap days retain
+their text through URL round trips.
+
 `db.ForecastRepository` takes one `OpenReadOnly` snapshot and bulk-loads current
 posted selected-account legs, full account/commodity versions, relevant
 templates/occurrences, every counterpart of linked current drafts and optional

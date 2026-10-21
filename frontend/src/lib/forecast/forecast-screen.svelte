@@ -16,6 +16,7 @@
   import Panel from '#lib/components/panel.svelte';
   import StatePanel from '#lib/components/state-panel.svelte';
   import StatusBadge from '#lib/components/status-badge.svelte';
+  import { isCalendarDate } from '#lib/dates/calendar-date.ts';
   import { formatQuantity } from '#lib/money/format.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import { m } from '#lib/paraglide/messages.js';
@@ -109,7 +110,7 @@
   });
 
   const historyValid = $derived(
-    spendingModel === 'off' || (/^\d{4}-\d{2}-\d{2}$/.test(historyCompleteFrom) && !Number.isNaN(Date.parse(historyCompleteFrom)))
+    spendingModel === 'off' || isCalendarDate(historyCompleteFrom)
   );
   const formValid = $derived(Number.isInteger(horizonDays) && horizonDays >= 1 && horizonDays <= 366 && historyValid);
   const learned = $derived(data?.learned_spending ?? null);

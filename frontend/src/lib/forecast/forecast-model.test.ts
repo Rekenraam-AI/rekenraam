@@ -66,6 +66,27 @@ describe('forecast presentation model', () => {
 });
 
 describe('learned spending filters', () => {
+  it.each(['2026-02-31', '2026-02-29', '2026-04-31', '2026-13-01', '2026-00-01'])(
+    'rejects impossible history dates as invalid URL state: %s',
+    (date) => {
+      const result = parseForecastFilters(new URLSearchParams(`spending_model=adaptive_v1&history_complete_from=${date}`));
+      expect(result).toMatchObject({ valid: false, reason: 'invalid_url' });
+    }
+  );
+
+  it.each(['2026-02-28', '2024-02-29'])(
+    'preserves valid history dates through a URL round trip: %s',
+    (date) => {
+      const result = parseForecastFilters(new URLSearchParams(`spending_model=adaptive_v1&history_complete_from=${date}`));
+      expect(result.valid).toBe(true);
+      if (!result.valid) return;
+      expect(result.filters.historyCompleteFrom).toBe(date);
+      const written = writeForecastFilters(result.filters);
+      expect(written.get('history_complete_from')).toBe(date);
+      expect(parseForecastFilters(written)).toEqual(result);
+    }
+  );
+
   it('rejects a model parameter with the model off', () => {
     for (const search of ['history_complete_from=2024-01-01', 'expense_category_id=3', 'expense_pattern=3:weekly']) {
       const result = parseForecastFilters(new URLSearchParams(search));
@@ -94,6 +115,9 @@ describe('learned spending filters', () => {
       'spending_model=adaptive_v1&history_complete_from=2024-01-01&expense_pattern=3:weekly&expense_pattern=3:monthly',
       'spending_model=adaptive_v1&history_complete_from=2024-01-01&expense_category_id=3&expense_pattern=9:weekly',
       'spending_model=adaptive_v1&history_complete_from=not-a-date',
+      'spending_model=adaptive_v1&history_complete_from=2024-01-01&history_complete_from=2024-01-01',
+      'spending_model=adaptive_v1&spending_model=adaptive_v1&history_complete_from=2024-01-01',
+      'spending_model=off&history_complete_from=2024-01-01',
       'spending_model=adaptive_v1',
       'spending_model=neural_v9&history_complete_from=2024-01-01'
     ];

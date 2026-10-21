@@ -186,3 +186,47 @@ test('[acceptance] a malformed learned-spending URL is rejected, not ignored', a
   await page.goto('/app/forecast?horizon_days=30&history_complete_from=2024-01-01');
   await expect(page.getByText('These forecast filters are invalid', { exact: false })).toBeVisible();
 });
+
+test('[acceptance] impossible forecast history links never request a forecast; calendar dates retain their text', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const account = await createCashAccount(page, csrfToken, `Calendar history ${Date.now()}`, currencyID, '2024-01-01');
+  const forecastRequests: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.startsWith('/api/v1/forecasts/')) forecastRequests.push(request.url());
+  });
+  const historyLink = (date: string) => `/app/forecast?horizon_days=30&account_id=${account.id}&include_descendants=false`
+    + `&spending_model=adaptive_v1&history_complete_from=${date}`;
+
+  for (const date of ['2026-02-31', '2026-02-29', '2026-04-31', '2026-13-01']) {
+    await page.goto(historyLink(date));
+    await expect(page.getByText('These forecast filters are invalid', { exact: false })).toBeVisible();
+    expect(forecastRequests, date).toEqual([]);
+  }
+
+  for (const date of ['2026-02-28', '2024-02-29']) {
+    const response = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname === '/api/v1/forecasts/balances' && url.searchParams.get('history_complete_from') === date;
+    });
+    await page.goto(historyLink(date));
+    expect((await response).status()).toBe(200);
+    await expect(page.getByTestId('forecast-learning-status')).toBeVisible();
+    await expect(page.getByRole('table').first()).toBeVisible();
+    const history = page.getByTestId('forecast-learning-history');
+    await expect(history).toHaveAttribute('type', 'date');
+    await expect(history).toHaveValue(date);
+
+    // The native date field remains required while estimates are enabled.
+    const apply = page.getByRole('button', { name: 'Apply', exact: true });
+    await history.fill('');
+    await expect(apply).toBeDisabled();
+    await history.fill(date);
+    await expect(apply).toBeEnabled();
+    await apply.click();
+    await expect(page).toHaveURL(new RegExp(`history_complete_from=${date}(?:&|$)`));
+  }
+  expect(forecastRequests.length).toBeGreaterThanOrEqual(2);
+  for (const request of forecastRequests) {
+    expect(['2026-02-28', '2024-02-29']).toContain(new URL(request).searchParams.get('history_complete_from'));
+  }
+});
