@@ -471,6 +471,12 @@ has actual installations, its migration files are immutable.
   before deciding whether to submit another mutation (#370).
 - Business rules belong in application services.
 - Database access belongs behind repository-style functions or methods.
+- JSON request consumers use the shared strict decoder with a 1 MiB
+  (1,048,576-byte) body cap, including trailing whitespace; applicable operations
+  declare HTTP 413 / `REQUEST_TOO_LARGE` through the shared OpenAPI response.
+  Optional bodies use the optional decoder. Bodyless operations have no implied
+  JSON cap. Multipart imports retain their separate 50 MiB file / 51 MiB request
+  limits and `IMPORT_UPLOAD_TOO_LARGE`; `/imports` documents both branches.
 - Error responses should be structured, consistent, and safe for user display.
 - Error response shape is a JSON envelope: `{"error": {"code": "STABLE_CODE", "message": "human-readable detail"}}`. The `code` field is a stable uppercase string that the frontend translation layer keys off of. Never return raw Go error strings to the client.
 - Initial API error codes are `VALIDATION_FAILED`, `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `CSRF_INVALID`, `RATE_LIMITED`, `RESOURCE_BUSY`, `LEDGER_OVERFLOW`, `SETUP_REQUIRED`, `SETUP_ALREADY_COMPLETE`, and `INTERNAL_ERROR`.

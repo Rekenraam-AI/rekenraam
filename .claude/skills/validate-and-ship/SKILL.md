@@ -670,9 +670,9 @@ non-trivial diff (yours or reviewed):
     posting tags emitted null arrays, and spending disclosed stale role aliases
     (#367–#369). Use explicit null unions, normalize empty response collections,
     and check actual HTTP JSON against resolved schemas. The bounded
-    `scripts/audit-api-contract.py` audit retains #350's exact status gap;
-    #370's enrichment exception is removed after its repair. Generation alone
-    cannot prove requiredness, enum or nullability conformity.
+    `scripts/audit-api-contract.py` audit now rejects the repaired #350/#370
+    discrepancies without exceptions. Generation alone cannot prove
+    requiredness, enum, status or nullability conformity.
 
 59. **Mutation journals bypassing display enrichment** — investment and
     reconciliation responses converted raw records directly, losing account
@@ -689,6 +689,25 @@ non-trivial diff (yours or reviewed):
     including development helpers. `pnpm --dir e2e run test:stubs` exercises
     malformed JSON, account encoding and provider transformation failures;
     both shared E2E wrappers run it before browser journeys.
+
+61. **JSON decoder limits drifting from operations and EOF checks** — a raw
+    backup-policy decoder bypassed the 1 MiB cap and strictness (#375), and the
+    shared decoder mapped a trailing-whitespace size error to 400 (#374).
+    Use the shared required/optional readers, map size errors at both decode
+    steps, and document 413 only on operations that read capped JSON (#350).
+    Preserve multipart's distinct 50/51 MiB limits. Keep
+    `TestCappedJSONOperationsDeclare413`, `TestCappedJSONOperationRefusals`,
+    `TestJSONBodyLimitTrailingWhitespace`, `TestOptionalJSONBodyLimitBoundary`
+    and `TestBackupPolicyStrictJSONRefusals` green. Check exact limits and
+    unknown content lengths through real consumers, including no-write refusal.
+
+62. **Previous-step TOTP fixtures crossing a real clock boundary** — preserving
+    the current code for a later login means activation's previous-step code
+    can become two steps old while queued (#376). Refresh only after the
+    expected invalid-code refusal and an observed advancing step, with a bounded
+    retry. Never relax production skew or mask other failures. Keep the real
+    stale-clock-sample control `TestMFAEnrollmentFixtureRefreshesExpiredPreviousStep`
+    green; it uses no sleeps and retains the production auth clock.
 
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
