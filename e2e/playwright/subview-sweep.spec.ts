@@ -1,12 +1,24 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { expect, repoRoot, test, type Locator, type Page } from './support/fixtures';
+import { expect, repoRoot, test as base, type Locator, type Page } from './support/fixtures';
 import { seedReferenceBook } from './support/reference-book';
 import { accessibilityViolations, type AxeViolation } from './support/a11y';
 import { apiJSON, csrfTokenFor } from './support/api';
 import { withRenderedContrast } from './support/rendered-contrast';
 import { ensureBrowserSession } from './support/session';
+import { observePageRequests, waitForPageReady } from './support/page-readiness';
 import { setTrading212Dividends, setTrading212Fills, trading212StubAvailable } from './support/trading212';
+
+// The seed still belongs to one worker book. Without a beforeAll hook,
+// parallel configurations can be assigned individually as workers become free.
+const test = base.extend<object, { subviewBook: Fixture }>({
+  subviewBook: [async ({ browser, backend }, use) => {
+    const page = await browser.newPage({ baseURL: backend.url });
+    const fx = await seedFixture(page);
+    await page.close();
+    await use(fx);
+  }, { scope: 'worker', timeout: 240_000 }]
+});
 
 // #331 — the app's interactive sub-views, on the #266 reference book.
 //
@@ -80,7 +92,7 @@ async function clickAndDialog(c: Context, name: string, within?: Locator): Promi
   await (within ?? c.page).getByRole('button', { name: c.t(name) }).first().click();
   const dialog = openDialog(c.page);
   await expect(dialog).toBeVisible();
-  await c.page.waitForLoadState('networkidle');
+  await waitForPageReady(c.page);
   return dialog;
 }
 
@@ -88,7 +100,7 @@ async function clickAndDialog(c: Context, name: string, within?: Locator): Promi
 async function pricingPair(c: Context) {
   await c.page.locator('#pricing-history-base').selectOption(String(c.fx.ids.get('REF')));
   await c.page.locator('#pricing-history-quote').selectOption(String(c.fx.ids.get('USD')));
-  await c.page.waitForLoadState('networkidle');
+  await waitForPageReady(c.page);
 }
 
 /** The transaction detail panel of the first of `ids` that offers `action`. */
@@ -358,7 +370,7 @@ const subViews: SubView[] = [
       await c.page.locator('tbody tr[role="button"]').filter({ hasText: c.fx.lotInstrument }).click();
       const panel = c.page.getByRole('complementary', { name: c.t('investments_lots_detail_label') });
       await expect(panel).toBeVisible();
-      await c.page.waitForLoadState('networkidle');
+      await waitForPageReady(c.page);
       return panel;
     },
     close: async (c) => { await c.page.getByRole('button', { name: c.t('investments_lots_close') }).click(); }
@@ -499,7 +511,7 @@ async function uploadCSV(c: Context, payee: string, rejected?: string, secondPay
   if (await mappingName.isVisible()) await mappingName.fill(`Sweep ${Date.now()}`);
   await expect(button).toBeEnabled();
   await button.click();
-  await c.page.waitForLoadState('networkidle');
+  await waitForPageReady(c.page);
 }
 
 async function fetchProvider(c: Context) {
@@ -517,7 +529,7 @@ async function discardImport(c: Context) {
 
 async function settle(page: Page) {
   await expect(page.locator('main h1, main h2').first()).toBeVisible({ timeout: 15_000 });
-  await page.waitForLoadState('networkidle');
+  await waitForPageReady(page);
 }
 
 function describeViolations(violations: AxeViolation[]): string {
@@ -718,17 +730,10 @@ type Cell = { axe: string; fits: string; closes: string; note?: string };
 
 test.describe('sub-view sweep (#331)', () => {
   test.describe.configure({ mode: 'parallel' });
-  let fx: Fixture;
-
-  test.beforeAll(async ({ browser, backend }) => {
-    test.setTimeout(240_000);
-    const page = await browser.newPage({ baseURL: backend.url });
-    fx = await seedFixture(page);
-    await page.close();
-  });
+  test.beforeEach(async ({ page }) => { observePageRequests(page); });
 
   for (const config of configurations) {
-    test(`every sub-view passes axe, fits and closes: ${config.name}`, async ({ page }) => {
+    test(`every sub-view passes axe, fits and closes: ${config.name}`, async ({ page, subviewBook: fx }) => {
       test.setTimeout(1_200_000);
       const t = catalog(config.locale);
       // One stuck sub-view must not eat the whole run.
@@ -753,65 +758,67 @@ test.describe('sub-view sweep (#331)', () => {
       const only = process.env.SWEEP_ONLY ? new RegExp(process.env.SWEEP_ONLY) : undefined;
       for (const view of subViews.filter((v) => !only || only.test(v.name))) {
         if (view.unreachable) { matrix[view.name] = `not reachable: ${view.unreachable}`; continue; }
-        const cell: Cell = { axe: '—', fits: '—', closes: '—' };
-        matrix[view.name] = cell;
-        writes = view.writes;
-        try {
-          await page.goto(view.path(fx));
-          await settle(page);
-          const container = await view.open(c);
-          await expect(container).toBeVisible();
+        await test.step(`view: ${view.name}`, async () => {
+          const cell: Cell = { axe: '—', fits: '—', closes: '—' };
+          matrix[view.name] = cell;
+          writes = view.writes;
+          try {
+            await page.goto(view.path(fx));
+            await settle(page);
+            const container = await view.open(c);
+            await expect(container).toBeVisible();
 
-          const notes: string[] = [];
-          const violations = await withRenderedContrast(page, await accessibilityViolations(page), notes);
-          cell.axe = violations.length === 0 ? 'pass' : describeViolations(violations);
-          if (notes.length) cell.note = notes.join('; ');
-          const fit = await container.evaluate((element) => {
-            const box = element.getBoundingClientRect();
-            const width = document.documentElement.clientWidth;
-            // The innermost elements past the right edge name the cause.
-            const outside = [...document.body.querySelectorAll<HTMLElement>('*')].filter((node) =>
-              node.getBoundingClientRect().right > width + 1 &&
-              ![...node.children].some((child) => child.getBoundingClientRect().right > width + 1));
-            const culprits = outside.slice(0, 3).map((node) =>
-              `<${node.tagName.toLowerCase()} ${(node.getAttribute('class') ?? '').slice(0, 60)}> "${(node.textContent ?? '').trim().slice(0, 40)}"`);
-            return {
-              page: document.documentElement.scrollWidth - width,
-              own: element.scrollWidth - element.clientWidth,
-              left: box.left, right: box.right - width, culprits
-            };
-          });
-          const misfit = [
-            fit.page > 0 && `page scrolls ${fit.page}px sideways (${fit.culprits.join(', ')})`,
-            fit.own > 1 && `sub-view scrolls ${fit.own}px sideways`,
-            (fit.left < -1 || fit.right > 1) && `sub-view leaves the viewport (${Math.round(fit.left)}…${Math.round(fit.right)})`
-          ].filter(Boolean);
-          cell.fits = misfit.length === 0 ? 'pass' : misfit.join('; ');
+            const notes: string[] = [];
+            const violations = await withRenderedContrast(page, await accessibilityViolations(page), notes);
+            cell.axe = violations.length === 0 ? 'pass' : describeViolations(violations);
+            if (notes.length) cell.note = notes.join('; ');
+            const fit = await container.evaluate((element) => {
+              const box = element.getBoundingClientRect();
+              const width = document.documentElement.clientWidth;
+              // The innermost elements past the right edge name the cause.
+              const outside = [...document.body.querySelectorAll<HTMLElement>('*')].filter((node) =>
+                node.getBoundingClientRect().right > width + 1 &&
+                ![...node.children].some((child) => child.getBoundingClientRect().right > width + 1));
+              const culprits = outside.slice(0, 3).map((node) =>
+                `<${node.tagName.toLowerCase()} ${(node.getAttribute('class') ?? '').slice(0, 60)}> "${(node.textContent ?? '').trim().slice(0, 40)}"`);
+              return {
+                page: document.documentElement.scrollWidth - width,
+                own: element.scrollWidth - element.clientWidth,
+                left: box.left, right: box.right - width, culprits
+              };
+            });
+            const misfit = [
+              fit.page > 0 && `page scrolls ${fit.page}px sideways (${fit.culprits.join(', ')})`,
+              fit.own > 1 && `sub-view scrolls ${fit.own}px sideways`,
+              (fit.left < -1 || fit.right > 1) && `sub-view leaves the viewport (${Math.round(fit.left)}…${Math.round(fit.right)})`
+            ].filter(Boolean);
+            cell.fits = misfit.length === 0 ? 'pass' : misfit.join('; ');
 
-          if (view.close === null) cell.closes = 'n/a';
-          else {
-            // A nested review closes back into the dialog that opened it.
-            const isDialog = await container.evaluate((element) => element.tagName === 'DIALOG');
-            const expectedOpen = (await page.locator('dialog[open]').count()) - (isDialog ? 1 : 0);
-            if (view.close) await view.close(c, container);
-            else await page.keyboard.press('Escape');
-            // An import review closes into the next step of the same page; its close asserts that itself.
-            const gone = view.group === 'import review' ||
-              await container.waitFor({ state: 'hidden', timeout: 5_000 }).then(() => true, () => false);
-            const stray = await page.locator('dialog[open]').count();
-            cell.closes = gone && stray === expectedOpen
-              ? 'pass' : `still open (${stray} open dialog${stray === 1 ? '' : 's'}, expected ${expectedOpen})`;
+            if (view.close === null) cell.closes = 'n/a';
+            else {
+              // A nested review closes back into the dialog that opened it.
+              const isDialog = await container.evaluate((element) => element.tagName === 'DIALOG');
+              const expectedOpen = (await page.locator('dialog[open]').count()) - (isDialog ? 1 : 0);
+              if (view.close) await view.close(c, container);
+              else await page.keyboard.press('Escape');
+              // An import review closes into the next step of the same page; its close asserts that itself.
+              const gone = view.group === 'import review' ||
+                await container.waitFor({ state: 'hidden', timeout: 5_000 }).then(() => true, () => false);
+              const stray = await page.locator('dialog[open]').count();
+              cell.closes = gone && stray === expectedOpen
+                ? 'pass' : `still open (${stray} open dialog${stray === 1 ? '' : 's'}, expected ${expectedOpen})`;
+            }
+          } catch (error) {
+            const shown = await page.getByRole('alert').first().innerText({ timeout: 1_000 }).catch(() => '');
+            const message = (error instanceof Error ? error.message.split('\n')[0] : String(error)) +
+              (shown ? ` (alert: ${shown.replace(/\s+/g, ' ').slice(0, 160)})` : '');
+            if (cell.axe === '—') cell.axe = `could not open: ${message}`;
+            else cell.closes = `failed: ${message}`;
           }
-        } catch (error) {
-          const shown = await page.getByRole('alert').first().innerText({ timeout: 1_000 }).catch(() => '');
-          const message = (error instanceof Error ? error.message.split('\n')[0] : String(error)) +
-            (shown ? ` (alert: ${shown.replace(/\s+/g, ' ').slice(0, 160)})` : '');
-          if (cell.axe === '—') cell.axe = `could not open: ${message}`;
-          else cell.closes = `failed: ${message}`;
-        }
-        for (const [check, result] of Object.entries(cell)) {
-          if (check !== 'note' && result !== 'pass' && result !== 'n/a') failures.push(`${view.name} [${check}]: ${result}`);
-        }
+          for (const [check, result] of Object.entries(cell)) {
+            if (check !== 'note' && result !== 'pass' && result !== 'n/a') failures.push(`${view.name} [${check}]: ${result}`);
+          }
+        });
       }
       writes = undefined;
 

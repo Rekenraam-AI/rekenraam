@@ -654,6 +654,14 @@ converting coefficients to `Number`.
   latter runs in the weekly `large-book.yml` workflow, separately from push CI.
   Historical native-driver timings are measurements of their recorded inputs,
   not guarantees for every report or present-day large book.
+- Browser validation timing and scheduling (#381) retain successful/failed
+  run timings, use independent app/audit CI jobs and preserve the complete
+  smoke matrices and event frequency. Worker-scoped sweep seeds and explicit
+  request/font/render readiness shorten measured browser wall time. The
+  [delivery evidence](reviews/ci-browser-runtime-2026-10-21.md) records local
+  comparisons, runner cost and retained coverage; hosted CI verification is
+  pending publication of the local commit. Independent date-boundary findings
+  #385 (owner-local current reads) and #386 (dividend fixtures) remain open.
 
 ## Projected balances and learned spending (R10) — ✅ shipped
 

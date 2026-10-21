@@ -1,7 +1,19 @@
-import { expect, test, type Page } from './support/fixtures';
+import { expect, test as base, type Page } from './support/fixtures';
 import { seedReferenceBook } from './support/reference-book';
 import { accessibilityViolations, type AxeViolation } from './support/a11y';
 import { ensureBrowserSession } from './support/session';
+import { observePageRequests, waitForPageReady } from './support/page-readiness';
+
+// Worker scope preserves one seed per book while letting Playwright schedule
+// each parallel sweep test independently instead of bundling beforeAll groups.
+const test = base.extend<object, { routeBook: Map<string, number> }>({
+  routeBook: [async ({ browser, backend }, use) => {
+    const page = await browser.newPage({ baseURL: backend.url });
+    const { ids } = await seedReferenceBook(page);
+    await page.close();
+    await use(ids);
+  }, { scope: 'worker', timeout: 180_000 }]
+});
 
 // #278 — every route, both themes, phone width and 200% zoom.
 //
@@ -72,7 +84,7 @@ async function settle(page: Page, path: string) {
     await expect(page.getByRole('heading', { name: /Reference Corp/ })).toBeVisible();
     await expect(page.locator('main').getByRole('searchbox')).toBeVisible();
   }
-  await page.waitForLoadState('networkidle');
+  await waitForPageReady(page);
 }
 
 async function setTheme(page: Page, theme: 'light' | 'dark') {
@@ -92,19 +104,10 @@ test.describe('route sweep (#278)', () => {
   // Each check takes minutes; spread them over workers so the push smoke
   // suite does not wait on one file. Each worker seeds its own book.
   test.describe.configure({ mode: 'parallel' });
-  let ids = new Map<string, number>();
-
-  // Seeded once per worker; each check is its own test so one failing check
-  // does not hide the others.
-  test.beforeAll(async ({ browser, backend }) => {
-    test.setTimeout(180_000);
-    const page = await browser.newPage({ baseURL: backend.url });
-    ({ ids } = await seedReferenceBook(page));
-    await page.close();
-  });
+  test.beforeEach(async ({ page }) => { observePageRequests(page); });
 
   for (const theme of ['light', 'dark'] as const) {
-    test(`every route passes axe and fits the phone in the ${theme} theme`, async ({ page }) => {
+    test(`every route passes axe and fits the phone in the ${theme} theme`, async ({ page, routeBook: ids }) => {
       test.setTimeout(600_000);
       await ensureBrowserSession(page);
       await setTheme(page, theme);
@@ -112,17 +115,19 @@ test.describe('route sweep (#278)', () => {
 
       for (const route of routes) {
         for (const [size, viewport] of Object.entries(viewports)) {
-          await page.setViewportSize(viewport);
-          await page.goto(route.path(ids));
-          await settle(page, route.path(ids));
-          await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+          await test.step(`route: ${route.name} / ${size}`, async () => {
+            await page.setViewportSize(viewport);
+            await page.goto(route.path(ids));
+            await settle(page, route.path(ids));
+            await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
 
-          const violations = await accessibilityViolations(page);
-          if (violations.length > 0) failures.push(`${route.name} @ ${size}: ${describeViolations(violations)}`);
-          // Desktop too: the categories toolbar scrolled 118px sideways at
-          // 1280px once its row layout applied (#340).
-          const overflow = await horizontalOverflow(page);
-          if (overflow > 0) failures.push(`${route.name} @ ${size}: page scrolls ${overflow}px sideways`);
+            const violations = await accessibilityViolations(page);
+            if (violations.length > 0) failures.push(`${route.name} @ ${size}: ${describeViolations(violations)}`);
+            // Desktop too: the categories toolbar scrolled 118px sideways at
+            // 1280px once its row layout applied (#340).
+            const overflow = await horizontalOverflow(page);
+            if (overflow > 0) failures.push(`${route.name} @ ${size}: page scrolls ${overflow}px sideways`);
+          });
         }
       }
 
@@ -132,7 +137,7 @@ test.describe('route sweep (#278)', () => {
 
   // Longer German, French and Russian copy is what breaks a phone layout, and
   // the declared page language is what a screen reader reads it in.
-  test('every route fits the phone and declares its language in every locale', async ({ page }) => {
+  test('every route fits the phone and declares its language in every locale', async ({ page, routeBook: ids }) => {
     test.setTimeout(600_000);
     await ensureBrowserSession(page);
     await setTheme(page, 'light');
@@ -142,19 +147,21 @@ test.describe('route sweep (#278)', () => {
     for (const locale of ['es', 'fr', 'nl', 'de', 'ru']) {
       await page.evaluate((name) => window.localStorage.setItem('PARAGLIDE_LOCALE', name), locale);
       for (const route of routes) {
-        await page.goto(route.path(ids));
-        await settle(page, route.path(ids));
-        const lang = await page.locator('html').getAttribute('lang');
-        if (lang !== locale) failures.push(`${route.name} in ${locale}: html lang is ${lang}`);
-        const overflow = await horizontalOverflow(page);
-        if (overflow > 0) failures.push(`${route.name} in ${locale}: page scrolls ${overflow}px sideways`);
-        const violations = await accessibilityViolations(page);
-        if (violations.length > 0) failures.push(`${route.name} in ${locale}: ${describeViolations(violations)}`);
-        // Longer copy also widens desktop toolbars.
-        await page.setViewportSize(viewports.desktop);
-        const desktopOverflow = await horizontalOverflow(page);
-        if (desktopOverflow > 0) failures.push(`${route.name} in ${locale} @ desktop: page scrolls ${desktopOverflow}px sideways`);
-        await page.setViewportSize(viewports.phone);
+        await test.step(`route: ${route.name} / ${locale}`, async () => {
+          await page.goto(route.path(ids));
+          await settle(page, route.path(ids));
+          const lang = await page.locator('html').getAttribute('lang');
+          if (lang !== locale) failures.push(`${route.name} in ${locale}: html lang is ${lang}`);
+          const overflow = await horizontalOverflow(page);
+          if (overflow > 0) failures.push(`${route.name} in ${locale}: page scrolls ${overflow}px sideways`);
+          const violations = await accessibilityViolations(page);
+          if (violations.length > 0) failures.push(`${route.name} in ${locale}: ${describeViolations(violations)}`);
+          // Longer copy also widens desktop toolbars.
+          await page.setViewportSize(viewports.desktop);
+          const desktopOverflow = await horizontalOverflow(page);
+          if (desktopOverflow > 0) failures.push(`${route.name} in ${locale} @ desktop: page scrolls ${desktopOverflow}px sideways`);
+          await page.setViewportSize(viewports.phone);
+        });
       }
     }
     await page.evaluate(() => window.localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
@@ -162,7 +169,7 @@ test.describe('route sweep (#278)', () => {
     expect(failures, failures.join('\n')).toEqual([]);
   });
 
-  test('every data route shows an accessible error state when its data fails', async ({ page }) => {
+  test('every data route shows an accessible error state when its data fails', async ({ page, routeBook: ids }) => {
     test.setTimeout(600_000);
     await ensureBrowserSession(page);
     await setTheme(page, 'light');
@@ -179,22 +186,24 @@ test.describe('route sweep (#278)', () => {
     const failures: string[] = [];
 
     for (const route of routes.filter((r) => r.data && !r.inlineErrors)) {
-      await page.goto(route.path(ids));
-      await expect(page).toHaveURL((url) => url.pathname === new URL(route.path(ids), url).pathname);
-      const alert = page.getByRole('alert').first();
-      const shown = await alert.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true, () => false);
-      if (!shown) {
-        const shownText = (await page.locator('main').innerText()).replace(/\s+/g, ' ').split('AUTHENTICATED WORKSPACE').pop()!.slice(0, 700);
-        failures.push(`${route.name}: no error alert when its data fails; shows: ${shownText}`);
-        continue;
-      }
-      if (await page.getByText('route sweep failure').count()) {
-        failures.push(`${route.name}: shows the raw server message instead of translated copy`);
-      }
-      const violations = await accessibilityViolations(page);
-      if (violations.length > 0) failures.push(`${route.name} error state: ${describeViolations(violations)}`);
-      const overflow = await horizontalOverflow(page);
-      if (overflow > 0) failures.push(`${route.name} error state: page scrolls ${overflow}px sideways`);
+      await test.step(`route: ${route.name} / error`, async () => {
+        await page.goto(route.path(ids));
+        await expect(page).toHaveURL((url) => url.pathname === new URL(route.path(ids), url).pathname);
+        const alert = page.getByRole('alert').first();
+        const shown = await alert.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true, () => false);
+        if (!shown) {
+          const shownText = (await page.locator('main').innerText()).replace(/\s+/g, ' ').split('AUTHENTICATED WORKSPACE').pop()!.slice(0, 700);
+          failures.push(`${route.name}: no error alert when its data fails; shows: ${shownText}`);
+          return;
+        }
+        if (await page.getByText('route sweep failure').count()) {
+          failures.push(`${route.name}: shows the raw server message instead of translated copy`);
+        }
+        const violations = await accessibilityViolations(page);
+        if (violations.length > 0) failures.push(`${route.name} error state: ${describeViolations(violations)}`);
+        const overflow = await horizontalOverflow(page);
+        if (overflow > 0) failures.push(`${route.name} error state: page scrolls ${overflow}px sideways`);
+      });
     }
 
     expect(failures, failures.join('\n')).toEqual([]);

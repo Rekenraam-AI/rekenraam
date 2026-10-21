@@ -8,4 +8,5 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 pnpm --dir "$ROOT/e2e" run test:stubs
+pnpm --dir "$ROOT/e2e" run test:harness
 pnpm --dir "$ROOT/e2e" test

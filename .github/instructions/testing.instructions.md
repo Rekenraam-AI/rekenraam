@@ -13,5 +13,7 @@ description: "Use when editing automated tests, API test assets, Playwright conf
 - CI should reuse the repo's real commands rather than invent parallel scripts.
 - Keep CI commands aligned with the wrapper scripts in `scripts/`.
 - If automatic checks are introduced later, keep them simple, fast, and incremental.
-- Heavy workflows such as e2e should be separate from fast CI.
+- Browser smoke stays in CI with the shared wrapper; release preflight is a
+  separate weekly/manual workflow. Preserve assertion coverage and frequency
+  when optimizing runtime.
 - If CI changes introduce new durable workflow rules, update `docs/developer-workflow.md`.

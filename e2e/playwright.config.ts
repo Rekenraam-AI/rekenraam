@@ -18,6 +18,7 @@ export default defineConfig({
   testDir: './playwright',
   globalSetup: './global-setup.ts',
   workers,
+  reporter: [['dot'], ['./timing-reporter.ts']],
   fullyParallel: false,
   // auth.spec.ts is the bootstrap journey: it needs a database with no owner
   // account, and every other spec creates one on its way in. Its own project
@@ -32,9 +33,20 @@ export default defineConfig({
       name: 'observation-selection', testMatch: /observation-selection\.spec\.ts/,
       dependencies: externalApp ? ['bootstrap'] : []
     },
+    // Audit matrices have their own books. Running them before the ordinary
+    // journeys bounds the final long-test tail and keeps incidental data from
+    // hundreds of unrelated writes out of full-page accessibility scans.
+    {
+      name: 'route-sweep', testMatch: /route-sweep\.spec\.ts/,
+      dependencies: externalApp ? ['bootstrap'] : []
+    },
+    {
+      name: 'subview-sweep', testMatch: /subview-sweep\.spec\.ts/,
+      dependencies: externalApp ? ['bootstrap'] : []
+    },
     {
       name: 'app',
-      testIgnore: /(?:auth|observation-selection)\.spec\.ts/,
+      testIgnore: /(?:auth|observation-selection|route-sweep|subview-sweep)\.spec\.ts/,
       dependencies: externalApp ? ['bootstrap'] : []
     }
   ],

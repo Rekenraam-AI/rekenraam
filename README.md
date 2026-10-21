@@ -52,6 +52,11 @@ pnpm build                     # static frontend + embedded Go binary
 The build writes `dist/rekenraam`. Use `./scripts/test-e2e.sh` for the full
 browser suite and `pnpm test:release-preflight` for the serial release journeys.
 Run `pnpm --dir e2e run test:stubs` for just the provider stub HTTP regressions.
+Browser runs also write timing reports to `e2e/timing-results/`; CI retains
+them on successful and failed runs. CI runs disjoint app and audit groups
+on two runners; the local smoke wrapper defaults to all cases. See the E2E
+section of the developer workflow for phase timings and matched performance
+comparisons.
 For the deliberate runtime OpenAPI audit, run
 `python3 scripts/audit-api-contract.py --output /tmp/rekenraam-api-audit`;
 [setup, sensitivity controls and retained findings](docs/developer-workflow.md#backend-validation)

@@ -33,6 +33,13 @@ jobs:
         run: pnpm --dir e2e exec playwright install --with-deps chromium
       - name: Run release preflight journeys
         run: ./scripts/test-release-preflight.sh
+      - name: Upload browser timings
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-preflight-timings
+          path: e2e/timing-results/
+          retention-days: 7
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7

@@ -10,5 +10,16 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+# CI runs these disjoint selections on independent runners. The default stays
+# the complete smoke gate for local use; every original case belongs to one group.
+projects=()
+case "${E2E_SUITE:-all}" in
+  all) ;;
+  app) projects=(--project=bootstrap --project=observation-selection --project=app) ;;
+  audits) projects=(--project=route-sweep --project=subview-sweep) ;;
+  *) echo "E2E_SUITE must be all, app or audits" >&2; exit 2 ;;
+esac
+
 pnpm --dir "$ROOT/e2e" run test:stubs
-pnpm --dir "$ROOT/e2e" exec playwright test --grep-invert "release preflight"
+pnpm --dir "$ROOT/e2e" run test:harness
+pnpm --dir "$ROOT/e2e" exec playwright test --grep-invert "release preflight" "${projects[@]}"

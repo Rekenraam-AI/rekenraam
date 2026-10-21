@@ -72,8 +72,14 @@ jobs:
         run: ./scripts/test-frontend.sh
 
   e2e-smoke:
-    name: E2E Smoke
+    name: E2E Smoke (${{ matrix.suite }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [app, audits]
+    env:
+      E2E_SUITE: ${{ matrix.suite }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -96,11 +102,18 @@ jobs:
       # job and runs before a release.
       - name: Run browser smoke journeys
         run: ./scripts/test-e2e-smoke.sh
+      - name: Upload browser timings
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-timings-${{ matrix.suite }}
+          path: e2e/timing-results/
+          retention-days: 7
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.suite }}
           path: |
             e2e/playwright-report
             e2e/test-results

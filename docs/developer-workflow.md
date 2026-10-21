@@ -456,6 +456,51 @@ localhost port and verify that malformed input and provider transformations
 return a fixed generic 500 JSON response without exception diagnostics, with
 normal provider requests still working afterward (CodeQL alert #84).
 
+Both wrappers also run `pnpm --dir e2e run test:harness`, whose deliberate
+success/failure/skip and collection-failure controls verify the timing reporter.
+Its browser controls hold pending/chained requests and fonts, abort a request,
+and refuse late observation to check the sweep readiness helper independently.
+Every browser run writes `e2e/timing-results/summary.json` and incremental
+`attempts.ndjson`. Set `E2E_TIMING_DIR` to a separate directory for each
+measurement you want to retain. The report records the source revision, local app
+binary hash, worker/runner context, global setup and build time, all selected
+cases and every attempt's status, hooks, fixtures and named sweep steps.
+API timing totals omit locator arguments; request/response bodies, assertion
+values and browser stdout are not retained in these timing artifacts.
+Step durations can nest and overlap; do not add them together as wall time.
+CI uploads browser timings on successful and failed runs, separately from its
+failure-only debug artifacts.
+
+The route and sub-view sweeps run in separate projects before ordinary app
+journeys, with their own worker books. Their complete matrices and assertions
+remain selected. Worker-scoped seed fixtures retain one seed per worker book
+without `beforeAll` batches pinning several long tests to the same worker.
+Each sweep observes requests before navigation, then waits
+for current/chained requests, font loading and two rendered frames instead of
+repeating a fixed 500 ms network-idle delay. Route identity and explicit
+heading/control readiness assertions still run. This helper cannot predict
+future debounced work; keep state-specific assertions when reaching such views.
+An external app still shares one book and runs on one worker.
+
+CI runs the shared smoke wrapper twice on independent runners:
+`E2E_SUITE=app` selects bootstrap, FX observation isolation and app journeys;
+`E2E_SUITE=audits` selects the route/sub-view matrices. The selections are
+disjoint and their union is the complete smoke gate. Each job retains three
+workers, builds the integrated binary and runs the stub/harness controls.
+Both jobs run on every existing CI event, and a failed group does not cancel
+the other group. This uses two runners and repeats setup/build; compare the
+slower job's wall time and both jobs' combined runner minutes. Leaving
+`E2E_SUITE` unset (or `all`) runs the complete selection in one local command.
+
+For comparisons, hold source cohort, binary, browser, worker count and cache
+conditions constant and retain all repetitions, case/matrix inventories,
+setup cost and runner minutes. `E2E_SKIP_BUILD=1` measures execution with a
+previously validated binary; label that separately from the self-contained
+wrapper's full build/run wall time. A timing from a different revision or
+runner is an observation, not a controlled speedup claim.
+The [#381 delivery report](reviews/ci-browser-runtime-2026-10-21.md) retains
+the matched local comparison, complete inventories and extra runner cost.
+
 Run the release preflight when preparing a release:
 
 ```sh
@@ -817,10 +862,11 @@ Workflow conventions:
   Docker runtime image. The root npm entry updates `frontend/package.json`
   together with `pnpm-lock.yaml`; a separate `/frontend` entry creates PRs
   whose manifests fail CI's frozen install.
-- Browser journeys run in the `E2E Smoke` job of `ci.yml` on every push and pull
-  request: `./scripts/test-e2e-smoke.sh`, which builds the single binary, boots
-  a throwaway instance per worker (3 workers), and runs every spec except
-  `release-preflight.spec.ts`. The Playwright report and each worker's
+- Browser journeys run in the `E2E Smoke` job groups of `ci.yml` on every push
+  and pull request: `./scripts/test-e2e-smoke.sh`. Each app/audit job builds the
+  single binary and boots a throwaway instance per worker (3 workers per job).
+  Together they run every spec except `release-preflight.spec.ts`.
+  The Playwright report and each worker's
   `app.log` upload as an artifact on failure. The preflight suite
   stays out of push CI and is run deliberately before a release; it also runs
   weekly and via `workflow_dispatch` in `.github/workflows/release-preflight.yml`,
@@ -836,7 +882,7 @@ Workflow conventions:
 - Use Node 24.
 - Use the Go version declared in `backend/go.mod`.
 - Keep job structure simple and readable.
-- If workflows are reintroduced, start with manual triggers before considering automatic gates.
+- Keep validation frequency explicit; measure job cost before changing event selection.
 
 ## Documentation Update Rules
 
