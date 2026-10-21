@@ -1,14 +1,17 @@
 # Maintainability audit — 2026-10-21
 
-**Status: slices 1–2 of [#284](https://github.com/sergeyfarin/rekenraam/issues/284),
+**Status: slices 1–3 of [#284](https://github.com/sergeyfarin/rekenraam/issues/284),
 partial.** This first-slice record reconciles the earlier proposals, inventories
 the audit inputs and records reproducible history measurements. The
 [second slice](maintainability-duplication-2026-10-21.md) adds runtime duplication
 scans and bounded triage, narrows correction preparation and adds the frontend
-review-lifecycle candidate. The ranked shortlist below remains the first slice's
-provisional input, not final investment/reporting dispositions. Neither slice
-completes #284 or approves refactoring. No application, API, schema or financial
-behavior changes.
+review-lifecycle candidate. The [third slice](maintainability-invariants-2026-10-21.md)
+maps 34 named invariant groups, narrows policy consolidation around existing
+shared owners and opens the independent payment-density measurement
+[#379](https://github.com/sergeyfarin/rekenraam/issues/379). The ranked shortlist
+below remains provisional, not final investment/reporting dispositions. These
+slices do not complete #284 or approve refactoring. No application, API, schema
+or financial behavior changes.
 
 ## Baseline and method
 
@@ -192,7 +195,7 @@ source are the delivery evidence; old proposals do not reopen completed work.
 
 | July item | Disposition at this SHA |
 |---|---|
-| §5.1 Shared scaled-integer arithmetic | **Done**, `549b3814`; `internal/exact/scaled.go` owns `ScaledInt` |
+| §5.1 Shared scaled-integer arithmetic | **Done**, `549b3814`; `internal/exact/scaled.go` owns `ScaledInt`. Slice 3 records residual manual scale alignment in ledger balancing, not a missing shared arithmetic type |
 | §5.2 Split large investment files | **Rejected as stated**: size alone fails #284's criteria. Inspect named policy/correction seams instead |
 | §5.3 Flatten baseline/delete legacy pricing fallback | **Superseded in part**: baseline starts with declarative current tables under ADR 0013. **Candidate remains**: `db/pricing.go:ListPriceObservations` still performs one `PRAGMA table_info` query per call and has a legacy reader. Supported-schema/fixture reachability must be checked before deletion; no further schema rewrite is justified here |
 | §5.4 Consolidate error writers | **Candidate**, narrowly: four writers still repeat validation classification; transaction/ledger/investment repeat typed overflow handling. Pricing's exact-range mapping has distinct copy. Shared checkpoint-refusal formatting already exists |
@@ -234,8 +237,8 @@ the disposition before implementation; it does not pre-approve moving code.
 
 | Rank / candidate | Evidence | Criterion | Affected modules | Cost | Payoff tied to named work | Risk | Safety net | Consequence of doing nothing | Recommendation |
 |---|---|---|---|---|---|---|---|---|---|
-| 1. Corporate-action correction orchestration | #309/#310 sibling divergence; three current services, 3–4 `fix:` touches each | 1, 3 | Three `app/investment_*_correction.go` siblings above | M | #119 can rely on stable correction/source/gain semantics while adding return reads | A generic wrapper could erase distinct entitlement/no-op rules or gain acknowledgements | Part-2 independent register; each family’s replacement, late-refusal and source-evidence tests | Future corrections still require coordinated review of three pipelines | **Before R13**: inspect clone output and pin a minimal seam or explicitly retain siblings |
-| 2. Side/knowledge-aware projection policy ownership | #272 identifies sign treatment in cover preview, realized and unrealized reads; #280 identifies policy in persistence; current dated valuation adds another reader | 3 | `app/investment_short.go`, `db/investments.go`, `db/investment_dated_valuation.go`, transfer policy/writer admission | M | #119 needs an explicit reusable valuation/flow boundary; existing effective movements already have one bounded owner | Combining gross cash, signed basis and native/FX amounts could alter correct results; moving write admission could break atomicity | #266 hand figures, unknown-basis controls, named-short tests, R18 dated/FX tests | R13 authors must rediscover sign/knowledge/transaction boundaries | **Before R13**: complete invariant inventory; accept a helper only for genuinely identical policy |
+| 1. Corporate-action correction orchestration | #309/#310 sibling divergence; three current services, 3–4 `fix:` touches each; slice 2 narrows clone evidence to preparation | 1, 3 | Three `app/investment_*_correction.go` siblings above | M | #119 can rely on stable correction/source/gain semantics while adding return reads | A generic wrapper could erase distinct entitlement/no-op rules or gain acknowledgements | Part-2 independent register; each family’s replacement, late-refusal and source-evidence tests | Future corrections still require coordinated review of three pipelines | **Before R13**: final disposition of the bounded preparation seam; retain family financial effects and writer authority |
+| 2. Side/knowledge-aware projection policy ownership | #272 identifies signs across readers; slice 3 finds `valuePositions` already shared by current/dated/alternative gains and `InternalTransferAllocation` by three consumers; cover/realized/impact tuples differ | 3 | `app/investment_short.go`, `db/investments.go`, `db/investment_dated_valuation.go`, transfer policy/writer admission | M | #119 can reuse existing valuation owners; remaining flow/knowledge seams require semantic layer/test checks | Combining gross cash, signed basis and native/FX amounts could alter correct results; moving write admission could break atomicity | #266 hand figures, unknown-basis controls, named-short tests, R18 dated/FX tests | R13 authors must rediscover the documented sign/knowledge/transaction boundaries | **Before R13, narrowed**: reuse existing owners; reject a blanket policy move or universal reader; accept a smaller helper only for identical tuples |
 | 3. Owned browser fixtures and whole-run assertions | #344 shared-suite failures; shared-worker selection and three self-check assertion helpers are recorded and inspected | 5 | `e2e/playwright/support/`, `subview-sweep.spec.ts`, three app test helpers | M | #119 adds whole-portfolio scenarios that need deterministic book scope and honest incomplete outcomes | Shared builders can hide independent expectations or change seeded order | #266 literal register, existing owned fixture controls, complete/incomplete/damage cases | More suite-order assumptions and repeated assertion changes | **Before R13**: disposition test ownership; keep financial oracle independent |
 | 4. Checkpoint candidate traversal | Current two walkers copy the same four posting fields; early courtesy refusal also repeats (#270) | 3 | `app/transactions_reconciliation.go`, `transactions_write.go` | S | Protects later ledger producers and #119’s input trust without reworking checkpoint policy | Losing sequence/date fields or moving authoritative checks outside writer admission | Existing lifecycle/reorder/checkpoint-impact HTTP tests, #270 reference figures | A future candidate-field change must update both walkers | **Later** unless invariant inventory finds an active omission; no new defect found here |
 | 5. Common error classification leaves | July missing-overflow history; four current validation writers, three typed-overflow arms; #280/#345 contract inventory drift | 1 | `api/transactions_errors.go`, `ledger.go`, `investments.go`, `pricing.go` and error contract | S | Limits repeated mapping work when #119 defines numerical failure outcomes | Case precedence, domain-specific copy and checkpoint payloads are public behavior | Runtime response-schema audit, named API precision/refusal tests, generated error-code typing | New shared errors can still miss one writer | **Later**, pending clone/precedence inventory; retain domain extensions |
@@ -244,6 +247,13 @@ The residual legacy pricing probe is a separate **unranked investigation**:
 one schema query per list call is observed, but support/test reachability and
 change payoff are not yet established well enough to rank its removal.
 Other input notes remain in the table above rather than being silently rejected.
+
+Slice 3 also records residual manual balancing scale alignment as a later
+characterization candidate. The independent payment-density workload is now
+[#379](https://github.com/sergeyfarin/rekenraam/issues/379), P3: measure before
+proposing optimization. It is not an accepted refactor or a blanket R13 blocker.
+See the [ownership matrix](maintainability-invariants-2026-10-21.md) for why
+writer/storage checks, checkpoint binding and existing valuation owners stay.
 
 ## Considered and rejected in this slice
 
@@ -269,20 +279,24 @@ Other input notes remain in the table above rather than being silently rejected.
 
 #284 remains open. The input/history baseline and July reconciliation are
 delivered; the [second slice](maintainability-duplication-2026-10-21.md) delivers
-the runtime duplication passes and bounded triage. Still unverified: the
-exhaustive money/ledger/lot/security enforcement inventory; fresh
+the runtime duplication passes and bounded triage. The
+[third slice](maintainability-invariants-2026-10-21.md) delivers a bounded
+34-rule-group ownership matrix with selected-site indexes and 34 focused tests.
+It is not an exhaustive receiver-resolved proof; later semantic scans must add
+any uncovered enforcement sites. Still unverified: fresh
 handler/repository/frontend arithmetic and fan-out scans; dead-code and
 single-caller analysis; a repository-wide test-fixture/oracle and test-duplication
 survey; and final
 investment/reporting dispositions. The provisional ranking can change with
-that evidence. No refactor issues are accepted or created in this slice.
+that evidence. No refactor issues are accepted; #379 tracks measurement only.
 
-Validation **passed**: a second fixed-SHA run produced byte-identical CSV;
+First-slice validation **passed**: a second fixed-SHA run produced byte-identical CSV;
 all 1,402 rows agree with JSON output; an independent Git count confirms 308
 commits and direct numstats confirm the API investment/import-page totals.
 `./scripts/check-post-merge.sh HEAD` is clean, including generated-client
 stability and no test loss. All 57 relative links/anchors across this report
 and the roadmap resolve; Python syntax and `git diff --check` pass.
-These are audit-artifact checks; application suites were not rerun because
+These were audit-artifact checks; application suites were not rerun in slice 1 because
 runtime and test inputs are unchanged. No push, remote CI, release acceptance,
-household evidence or full #284 completion is claimed.
+household evidence or full #284 completion was claimed by that validation.
+Slices 2 and 3 retain their own validation records and limits in their reports.

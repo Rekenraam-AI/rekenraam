@@ -7,6 +7,11 @@ proposals and the provisional shortlist. This slice adds Go and frontend clone
 measurements, a disposition for every reported group/pair, and narrower candidate
 boundaries. No application, financial rule, API, schema or existing test changes.
 
+Subsequent evidence: the [third slice](maintainability-invariants-2026-10-21.md)
+maps selected rule owners and distinguishes deliberate writer/storage protection
+from consolidation candidates. It narrows the policy candidate around existing
+shared valuation/transfer owners; this report's raw clone results stay unchanged.
+
 ## Source and retained evidence
 
 Source remains `13d15eabd68ed2d3b6177512c9c8fe56c528bbf0`, the first slice's
@@ -244,9 +249,11 @@ byte-identical input manifest. Application suites were not rerun for these
 artifact-only changes, and earlier correctness evidence is not re-certified.
 
 The **runtime** duplication pass and its bounded triage are delivered. Still
-open under #284: the full money/ledger/lot/security enforcement inventory,
+open at the end of this slice: the money/ledger/lot/security enforcement inventory,
 fresh layer/frontend arithmetic/fan-out checks, dead-code and single-caller
 analysis, broader test-fixture/oracle and test-duplication work, and final ranked
 investment/reporting dispositions. This report neither creates accepted refactor
 issues nor clears R13 implementation. Owner review and the issue's remaining
 acceptance govern; separate owner/release gates remain unchanged.
+The linked third-slice report supersedes this historical remaining-work list
+for its bounded invariant matrix; the roadmap retains the current work order.

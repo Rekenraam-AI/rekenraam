@@ -12,6 +12,20 @@ owns the bounded observation-selection delivery. The delivered slices below
 add operational and alternative-method basis profiles and explicit immutable
 operational report runs; tax calculations remain outside them.
 
+## Maintainability handoff to R13 (#284)
+
+The [third #284 slice](../reviews/maintainability-invariants-2026-10-21.md)
+records existing reusable owners: current, dated and alternative gains already
+share `db/investments.go:valuePositions`; live quote admission uses
+`db/observation_selection.go`. R13 should start from those boundaries rather
+than presume independent valuation implementations need consolidation. Signed
+cover cash, released opening proceeds and disposed basis use different tuples;
+current effective history, live observation knowledge and immutable saved
+operational bytes also retain their documented contracts. This evidence neither
+defines return equations nor accepts a new generic reporting engine. Final
+investment/reporting dispositions remain in #284, the calculation contract in
+[#119](https://github.com/sergeyfarin/rekenraam/issues/119), and order in the roadmap.
+
 ## Live observation selection: `live_raw_v1`
 
 One SQL owner, `backend/internal/db/observation_selection.go`, supplies daily
