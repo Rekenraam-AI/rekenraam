@@ -1,4 +1,5 @@
 <script lang="ts" generics="R extends Record<string, any>">
+  import type { Attachment } from 'svelte/attachments';
   import { createTable, FlexRender, renderSnippet } from '@tanstack/svelte-table';
   import type { DisplayColumnDef } from '@tanstack/svelte-table';
   import StatePanel from '#lib/components/state-panel.svelte';
@@ -66,12 +67,10 @@
   });
 
   let container: HTMLDivElement | undefined = $state();
-  let sentinel: HTMLDivElement | undefined = $state();
   let focusedRowIndex = $state(-1);
 
   // IntersectionObserver for infinite scroll — never fires while a fetch is in flight.
-  $effect(() => {
-    if (!sentinel) return;
+  const loadMoreWhenVisible: Attachment<HTMLElement> = (sentinel) => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
@@ -82,7 +81,7 @@
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  });
+  };
 
   function handleRowKeydown(e: KeyboardEvent, index: number, row: R) {
     // Keys pressed on a control inside the row (row actions, reorder arrows)
@@ -215,7 +214,7 @@
     </div>
 
     <!-- Infinite scroll sentinel + fallback button -->
-    <div bind:this={sentinel} class="h-px w-full"></div>
+    <div {@attach loadMoreWhenVisible} class="h-px w-full"></div>
 
     {#if hasNextPage}
       <div class="flex justify-center py-4">

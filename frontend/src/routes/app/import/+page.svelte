@@ -105,8 +105,8 @@
   let textEncoding = $state('auto');
   let uploading = $state(false);
   let uploadError = $state<unknown>(undefined);
-  let csvHeaders = $state<string[]>([]);
-  let csvAnalysis = $state<AnalyzeCSVImportResponse | null>(null);
+  let csvHeaders = $state.raw<string[]>([]);
+  let csvAnalysis = $state.raw<AnalyzeCSVImportResponse | null>(null);
   let csvAnalysisError = $state<unknown>(undefined);
   let analyzingCSV = $state(false);
   let csvAnalysisRequest = 0;
@@ -140,7 +140,7 @@
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Preview step
-  let previewData = $state<StartImportResponse | null>(null);
+  let previewData = $state.raw<StartImportResponse | null>(null);
   let batchId = $state<number | null>(null);
   // Per-row resolution: accountId, commodityId, categoryId / transferAccountId
   let rowResolutions = $state<Map<number, ImportResolution>>(new Map());
@@ -152,13 +152,13 @@
   // Commit step
   let committing = $state(false);
   let commitError = $state<unknown>(undefined);
-  let commitResult = $state<CommitImportBatchResponse | null>(null);
+  let commitResult = $state.raw<CommitImportBatchResponse | null>(null);
   let reconciliationOverride = $state(false);
   // The batch override names the checkpoints shown beside it: the preview's
   // union over the pending rows. A row reaching any other checkpoint is held
   // at commit, not posted (#305).
   type BatchCheckpoint = PreviewCommitResponse['reconciliation_checkpoints'][number];
-  let reviewedCheckpoints = $state<BatchCheckpoint[] | null>(null);
+  let reviewedCheckpoints = $state.raw<BatchCheckpoint[] | null>(null);
   let reviewedCheckpointsChanged = $state(false);
   let reviewedCheckpointsPending = $state(false);
   let reviewedCheckpointsError = $state<unknown>(undefined);
@@ -167,7 +167,7 @@
   let shortLinkRowID = $state<number | null>(null);
   let sourceCorrectionReason = $state('');
   let sourceCorrectionOverride = $state(false);
-  let sourceCorrectionImpact = $state<ReconciliationImpactResponse | null>(null);
+  let sourceCorrectionImpact = $state.raw<ReconciliationImpactResponse | null>(null);
   let sourceCorrectionPending = $state(false);
   let sourceCorrectionError = $state<unknown>(undefined);
   let sourceCorrectionSuccessID = $state<number | null>(null);

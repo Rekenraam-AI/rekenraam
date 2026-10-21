@@ -91,7 +91,7 @@
   let instrumentSearchDebounced = $state('');
   let instrumentDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   let instrumentDropdownOpen = $state(false);
-  let selectedInstrument = $state<InvestmentInstrumentResponse | null>(null);
+  let selectedInstrument = $state.raw<InvestmentInstrumentResponse | null>(null);
 
   const instrumentSearchQuery = createQuery(() => ({
     queryKey: [...investmentInstrumentsQueryKey, 'search', instrumentSearchDebounced] as const,
@@ -145,7 +145,7 @@
     payload: InvestmentTradeRequest;
   } | null>(null);
 
-  let preview = $state<SellPreviewResponse | null>(null);
+  let preview = $state.raw<SellPreviewResponse | null>(null);
   let previewPending = $state(false);
   let previewError = $state<unknown>(undefined);
   let previewDebounceTimer: ReturnType<typeof setTimeout> | undefined;

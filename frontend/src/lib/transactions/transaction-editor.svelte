@@ -112,7 +112,7 @@
   // A save refused because the transaction changed elsewhere reloads it here,
   // so the form shows the newer version instead of re-sending a stale one
   // (#296). A newer version handed down by the parent wins.
-  let reloaded = $state<TransactionResponse | undefined>(undefined);
+  let reloaded = $state.raw<TransactionResponse | undefined>(undefined);
   const transaction = $derived(
     reloaded && transactionProp && reloaded.id === transactionProp.id && reloaded.version_seq > transactionProp.version_seq
       ? reloaded

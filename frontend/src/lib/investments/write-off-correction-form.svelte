@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { untrack } from 'svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -62,11 +63,7 @@
   let writeOffReason = $state(source.memo ?? '');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
-  let reasonInputElement: HTMLInputElement | undefined = $state();
 
-  $effect(() => {
-    reasonInputElement?.focus();
-  });
 
   let review = $state<{
     impacts: ReconciliationImpactResponse['affected_checkpoints'];
@@ -209,7 +206,7 @@
     <label for="write-off-correction-reason" class="mb-1 block text-sm font-medium text-foreground">
       {m.transactions_investment_replace_reason()}
     </label>
-    <input id="write-off-correction-reason" type="text" bind:this={reasonInputElement} bind:value={reason}
+    <input id="write-off-correction-reason" type="text" {@attach autofocus} bind:value={reason}
       maxlength="500" required
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
   </div>

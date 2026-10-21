@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { untrack } from 'svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
@@ -73,13 +74,11 @@
   let reference = $state(evidenceText(initialEvidence, 'reference'));
   let reason = $state('');
   let explicitEntitlement = $state(!!initial?.lot_entitlements?.length || !!initial?.entitled_lot_ids?.length);
-  let eligibleLots = $state<CapitalReturnEffect[]>([]);
+  let eligibleLots = $state.raw<CapitalReturnEffect[]>([]);
   let quantities = $state<Record<number, string>>(Object.fromEntries((initial?.lot_entitlements ?? []).map((e) => [e.lot_id, formatEditableAmount(e.quantity_value, e.quantity_scale)])));
   let memo = $state(initial?.memo ?? '');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
-  let firstInput = $state<HTMLSelectElement | HTMLInputElement | undefined>();
-  let didFocus = false;
   let preview = $state<{
     effects: CapitalReturnEffect[];
     impacts: ReconciliationImpactResponse['affected_checkpoints'];
@@ -117,12 +116,6 @@
   const modalGainRows = $derived(preview?.gainImpact
     ? gainImpactRows(preview.gainImpact.changes, gainImpactCurrency(currenciesByID), locale) : []);
 
-  $effect(() => {
-    if (!loading && !didFocus && firstInput) {
-      firstInput.focus();
-      didFocus = true;
-    }
-  });
 
   function discardPreview() {
     preview = null;
@@ -304,7 +297,7 @@
           · {(instrumentsQuery.data?.instruments ?? []).find((i) => i.commodity_id === initial.commodity_id)?.display_name}</p>
       {:else}
       <label for="capital-return-position" class="mb-1 block text-sm font-medium text-foreground">{m.investments_capital_return_position()}</label>
-      <select id="capital-return-position" aria-describedby="capital-return-position-hint" bind:this={firstInput} bind:value={positionKey} required onchange={() => { discardPreview(); eligibleLots = []; quantities = {}; }}
+      <select id="capital-return-position" aria-describedby="capital-return-position-hint" {@attach autofocus} bind:value={positionKey} required onchange={() => { discardPreview(); eligibleLots = []; quantities = {}; }}
         class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground">
         <option value="">{m.investments_transfer_internal_select_source()}</option>
         {#each positions as item (`${item.account_id}:${item.commodity_id}:${item.cost_commodity_id}`)}
@@ -360,7 +353,7 @@
     {#if correction}
       <div>
         <label for="capital-return-reason" class="mb-1 block text-sm font-medium text-foreground">{m.transactions_investment_replace_reason()}</label>
-        <input id="capital-return-reason" bind:this={firstInput} type="text" bind:value={reason} required maxlength="500" oninput={discardPreview}
+        <input id="capital-return-reason" {@attach autofocus} type="text" bind:value={reason} required maxlength="500" oninput={discardPreview}
           class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
       </div>
     {/if}

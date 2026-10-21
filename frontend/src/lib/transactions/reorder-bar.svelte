@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down';
   import { m } from '#lib/paraglide/messages.js';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -56,7 +57,7 @@
             class="rounded-(--radius-control) bg-foreground px-3 py-2 text-sm font-semibold text-background transition hover:opacity-90"
             disabled={mode.pending}
             onclick={() => mode.confirmDayMove()}
-            {@attach (node) => node.focus()}
+            {@attach autofocus}
           >
             {m.transactions_reorder_day_confirm_button({ date: mode.dayMove.date })}
           </button>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { formatEditableAmount } from '#lib/money/amount.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
@@ -69,7 +70,7 @@
   let instrumentSearchDebounced = $state('');
   let instrumentDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   let instrumentDropdownOpen = $state(false);
-  let selectedInstrument = $state<InvestmentInstrumentResponse | null>(null);
+  let selectedInstrument = $state.raw<InvestmentInstrumentResponse | null>(null);
   // A correction may move the trade to another instrument (T-116). Until the
   // user picks one, the recorded instrument stays selected.
   const commodityID = $derived(selectedInstrument?.commodity_id ??
@@ -112,13 +113,9 @@
   let charges = $state<TradeChargeDraft[]>(correctionDraft?.charges ?? []);
   let memo = $state(initialCorrection?.memo ?? '');
   let reason = $state('');
-  let reasonInputElement = $state<HTMLInputElement | undefined>();
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
 
-  $effect(() => {
-    if (correction) reasonInputElement?.focus();
-  });
 
   // A backdated buy can land inside a reconciled period. Rather than letting
   // the server refuse it with no way forward, preview the impact and let the
@@ -417,7 +414,7 @@
       <label for="buy-correction-reason" class="mb-1 block text-sm font-medium text-foreground">
         {m.transactions_investment_replace_reason()}
       </label>
-      <input id="buy-correction-reason" type="text" bind:this={reasonInputElement} bind:value={reason} maxlength="500" required
+      <input id="buy-correction-reason" type="text" {@attach autofocus} bind:value={reason} maxlength="500" required
         class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
     </div>
   {/if}

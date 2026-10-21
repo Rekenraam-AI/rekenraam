@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import BasisProvenanceSummary from '#lib/investments/basis-provenance-summary.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { parseISO } from 'date-fns';
@@ -200,7 +201,7 @@
   let reason = $state('');
   let pending = $state(false);
   let actionError = $state<unknown>(undefined);
-  let impacts = $state<ReconciliationImpactResponse['affected_checkpoints']>([]);
+  let impacts = $state.raw<ReconciliationImpactResponse['affected_checkpoints']>([]);
   // A reversal removes the reversed sale's gain and can revise later sales
   // (T-126). The review step lists those beside any checkpoints.
   let gainImpact = $state<GainImpact | null>(null);
@@ -210,13 +211,12 @@
     ? gainImpactRows(gainImpact.changes, gainImpactCurrency(new Map(
         (currenciesQuery.data?.currencies ?? []).map((c: CurrencyResponse) => [c.id, c]))), getLocale())
     : []);
-  let reasonInputElement: HTMLInputElement | undefined = $state();
   let cancelButtonElement: HTMLButtonElement | undefined = $state();
 
   // The dialog stays open from the reason step into the review step; the
-  // review keeps focus on Cancel, off the confirming button.
+  // review keeps focus on Cancel, off the confirming button. The reason
+  // input focuses itself as it mounts.
   $effect(() => {
-    if (modal === 'reason') reasonInputElement?.focus();
     if (modal === 'reconciliation') cancelButtonElement?.focus();
   });
 
@@ -1020,7 +1020,7 @@
         <label for="investment-reversal-reason" class="block text-xs font-semibold uppercase tracking-[0.12em] text-muted">
           {m.transactions_investment_reverse_reason()}
         </label>
-        <input id="investment-reversal-reason" type="text" bind:this={reasonInputElement} bind:value={reason} maxlength="500" required
+        <input id="investment-reversal-reason" type="text" {@attach autofocus} bind:value={reason} maxlength="500" required
           class="mt-1.5 h-10 w-full rounded-[var(--radius-control)] border border-border bg-control px-3 text-sm text-foreground outline-none focus:border-accent" />
       </div>
     {:else}

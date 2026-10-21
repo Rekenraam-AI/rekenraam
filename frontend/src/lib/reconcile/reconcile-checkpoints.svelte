@@ -70,7 +70,7 @@
   // Voiding is the recovery path for a wrongly finished statement: the
   // checkpoint stays as history and its postings are offered again, unless a
   // later active checkpoint chained from it still covers them.
-  let voidTarget = $state<ReconciliationCheckpointResponse | undefined>(undefined);
+  let voidTarget = $state.raw<ReconciliationCheckpointResponse | undefined>(undefined);
   let voidReason = $state('');
   let voidPending = $state(false);
   let voidError = $state<unknown>(undefined);

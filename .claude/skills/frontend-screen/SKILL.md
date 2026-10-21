@@ -18,6 +18,7 @@ description: SvelteKit frontend rules for Rekenraam - static adapter constraints
   Cross-component shared state = `$state` in `.svelte.ts` module files
   (example: `frontend/src/lib/theme.svelte.ts`). No Svelte 4 stores in new code.
   Type props by annotation (`let { ... }: Props = $props()`), not `$props<T>()`. An `$effect` that resets a form tracks only the edited record's identity; read query data inside it with `untrack`, or a refetch wipes unsaved input (see `docs/conventions.md`).
+  Focus-on-mount is `{@attach autofocus}` (`#lib/components/autofocus.ts`), not `bind:this` + `$effect`; never-mutated server snapshots use `$state.raw`; context uses `createContext`.
 - **SvelteKit 3 imports**: shared code is `#lib/...` with an explicit extension
   (`#lib/money/amount.ts`, `#lib/components/panel.svelte`; the generated
   `schema.d.ts` is `#lib/api/schema.js`). Use the repository's `#lib/*`

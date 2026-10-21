@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { formatEditableAmount } from '#lib/money/amount.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
@@ -78,7 +79,7 @@
   let instrumentSearchDebounced = $state('');
   let instrumentDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   let instrumentDropdownOpen = $state(false);
-  let selectedInstrument = $state<InvestmentInstrumentResponse | null>(null);
+  let selectedInstrument = $state.raw<InvestmentInstrumentResponse | null>(null);
   // A correction may move the trade to another instrument (T-116). Until the
   // user picks one, the recorded instrument stays selected.
   const commodityID = $derived(selectedInstrument?.commodity_id ??
@@ -124,13 +125,9 @@
   let lotChoices = $state<CorrectionLotDraft[]>(initialCorrection ? correctionLotDrafts(initialCorrection) : []);
   let memo = $state(initialCorrection?.memo ?? '');
   let reason = $state('');
-  let reasonInputElement = $state<HTMLInputElement | undefined>();
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
 
-  $effect(() => {
-    if (correction) reasonInputElement?.focus();
-  });
 
   // See buy-form: a backdated sell must be able to proceed deliberately rather
   // than being refused with no way forward (T-53).
@@ -145,7 +142,7 @@
   } | null>(null);
 
   // Sell preview state
-  let preview = $state<SellPreviewResponse | null>(null);
+  let preview = $state.raw<SellPreviewResponse | null>(null);
   let previewPending = $state(false);
   let previewError = $state<unknown>(undefined);
   let previewDebounceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -561,7 +558,7 @@
       <label for="sell-correction-reason" class="mb-1 block text-sm font-medium text-foreground">
         {m.transactions_investment_replace_reason()}
       </label>
-      <input id="sell-correction-reason" type="text" bind:this={reasonInputElement} bind:value={reason}
+      <input id="sell-correction-reason" type="text" {@attach autofocus} bind:value={reason}
         maxlength="500" required
         class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
     </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createInfiniteQuery, createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import { SvelteSet } from 'svelte/reactivity';
   import PageHeader from '#lib/components/page-header.svelte';
   import Panel from '#lib/components/panel.svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -25,9 +26,9 @@
   const loading = $derived(reviews.isPending || accounts.isPending || currencies.isPending || instruments.isPending);
   const loadError = $derived(reviews.error ?? accounts.error ?? currencies.error ?? instruments.error);
   let saved = $state<{ id: number; repaired: boolean } | null>(null);
-  let finished = $state(new Set<number>());
+  const finished = new SvelteSet<number>();
   async function onSaved(rowID: number, id: number, repaired: boolean) {
-    saved = { id, repaired }; finished = new Set([...finished, rowID]);
+    saved = { id, repaired }; finished.add(rowID);
     await invalidateInvestmentReads(client);
     await client.invalidateQueries({ queryKey: importDividendReviewsQueryKey });
   }

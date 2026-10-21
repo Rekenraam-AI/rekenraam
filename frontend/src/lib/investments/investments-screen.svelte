@@ -44,7 +44,7 @@
   const positionsQuery = createQuery(() => investmentPositionsQueryOptions());
   const instrumentsQuery = createQuery(() => investmentInstrumentsQueryOptions());
 
-  let selectedPosition = $state<InvestmentPositionResponse | null>(null);
+  let selectedPosition = $state.raw<InvestmentPositionResponse | null>(null);
 
   const lotsQuery = createQuery(() => ({
     ...investmentLotsQueryOptions(

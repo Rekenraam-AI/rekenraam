@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { untrack } from 'svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -67,11 +68,7 @@
   let reason = $state('');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
-  let basisInputElement: HTMLInputElement | undefined = $state();
 
-  $effect(() => {
-    basisInputElement?.focus();
-  });
 
   let review = $state<{
     impacts: ReconciliationImpactResponse['affected_checkpoints'];
@@ -189,7 +186,7 @@
     <label for="basis-resolution-amount" class="mb-1 block text-sm font-medium text-foreground">
       {m.investments_basis_resolution_amount({ currency: basisCurrency?.code ?? '' })}
     </label>
-    <input id="basis-resolution-amount" type="text" inputmode="decimal" bind:this={basisInputElement}
+    <input id="basis-resolution-amount" type="text" inputmode="decimal" {@attach autofocus}
       bind:value={basisStr} required aria-describedby="basis-resolution-amount-help"
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 font-mono text-sm text-foreground" />
     <p id="basis-resolution-amount-help" class="mt-1 text-xs text-muted">{m.investments_basis_resolution_amount_help()}</p>

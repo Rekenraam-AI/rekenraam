@@ -21,7 +21,7 @@
   let reason = $state('');
   let pending = $state(false);
   let error = $state<unknown>();
-  let impact = $state<ReconciliationImpactResponse | null>(null);
+  let impact = $state.raw<ReconciliationImpactResponse | null>(null);
   let fieldsRevision = $state(0);
   const repaired = $derived(review.state === 'repairable');
   const parsedCash = $derived(parseDecimalAmount(review.source_cash_amount, { locale: 'en' }));

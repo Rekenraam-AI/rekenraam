@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import { untrack } from 'svelte';
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
@@ -66,8 +67,6 @@
   let memo = $state('');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
-  let dateInput = $state<HTMLInputElement | undefined>();
-  let didFocus = false;
   // The reviewed preview. Editing any field discards it, so the user always
   // records exactly the carried basis they saw.
   let preview = $state<{
@@ -117,12 +116,6 @@
     ? gainImpactRows(preview.gainImpact.changes, gainImpactCurrency(currenciesByID), locale)
     : []);
 
-  $effect(() => {
-    if (!loading && !didFocus && dateInput) {
-      dateInput.focus();
-      didFocus = true;
-    }
-  });
 
   function discardPreview() {
     preview = null;
@@ -275,7 +268,7 @@
     {/if}
     <div>
       <label for="internal-transfer-date" class="mb-1 block text-sm font-medium text-foreground">{m.investments_transfer_effective_date()}</label>
-      <input id="internal-transfer-date" type="date" bind:this={dateInput} bind:value={effectiveOn} required oninput={discardPreview}
+      <input id="internal-transfer-date" type="date" {@attach autofocus} bind:value={effectiveOn} required oninput={discardPreview}
         class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
     </div>
     <div>

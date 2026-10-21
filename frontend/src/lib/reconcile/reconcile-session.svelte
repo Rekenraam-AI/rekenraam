@@ -42,7 +42,7 @@
 
   // Server-authoritative snapshot: the latest mutation response wins; otherwise the
   // query (seeded with initialData) provides it. Never compute the difference locally.
-  let mutated = $state<ReconciliationSessionResponse | undefined>(undefined);
+  let mutated = $state.raw<ReconciliationSessionResponse | undefined>(undefined);
   const session = $derived(mutated ?? sessionQuery.data ?? initialSession);
 
   let selectionPending = $state(false);

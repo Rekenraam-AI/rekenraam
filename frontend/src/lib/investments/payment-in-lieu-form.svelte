@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import { untrack } from 'svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { parseISO } from 'date-fns';
@@ -70,12 +71,8 @@
   let reason = $state('');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
-  let review = $state<{ impacts: ReconciliationImpactResponse['affected_checkpoints']; payload: PaymentInLieuRequest } | null>(null);
-  let firstInput = $state<HTMLInputElement | HTMLSelectElement>();
+  let review = $state.raw<{ impacts: ReconciliationImpactResponse['affected_checkpoints']; payload: PaymentInLieuRequest } | null>(null);
 
-  $effect(() => {
-    firstInput?.focus();
-  });
 
   const accounts = $derived(accountsQuery.data?.accounts ?? []);
   const instruments = $derived(instrumentsQuery.data?.instruments ?? []);
@@ -229,12 +226,12 @@
     </dl>
     <div>
       <label for="pil-reason" class="mb-1 block text-sm font-medium text-foreground">{m.transactions_investment_reverse_reason()}</label>
-      <input id="pil-reason" type="text" bind:this={firstInput} bind:value={reason} maxlength="500" required class={inputClass} />
+      <input id="pil-reason" type="text" {@attach autofocus} bind:value={reason} maxlength="500" required class={inputClass} />
     </div>
   {:else}
     <div>
       <label for="pil-holding" class="mb-1 block text-sm font-medium text-foreground">{m.investments_payment_in_lieu_holding()}</label>
-      <select id="pil-holding" bind:this={firstInput} bind:value={holdingAccountID} onchange={selectHolding} required class={inputClass}>
+      <select id="pil-holding" {@attach autofocus} bind:value={holdingAccountID} onchange={selectHolding} required class={inputClass}>
         <option value="">{m.investments_form_select_account()}</option>
         {#each holdingAccounts as account (account.id)}<option value={String(account.id)}>{account.name}</option>{/each}
       </select>

@@ -49,7 +49,7 @@
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
   let prefilled = $state(false);
-  let reconciliation = $state<{ impacts: ReconciliationImpactResponse['affected_checkpoints']; completion: EventSuggestionCompletion } | null>(null);
+  let reconciliation = $state.raw<{ impacts: ReconciliationImpactResponse['affected_checkpoints']; completion: EventSuggestionCompletion } | null>(null);
 
   const accounts = $derived(accountsQuery.data?.accounts ?? []);
   const cashAccounts = $derived(accounts.filter((a: AccountResponse) =>

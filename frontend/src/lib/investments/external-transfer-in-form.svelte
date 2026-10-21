@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { accountsQueryOptions } from '#lib/api/accounts.ts';
@@ -55,8 +56,6 @@
   let memo = $state('');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
-  let dateInput = $state<HTMLInputElement | undefined>();
-  let didFocus = false;
   // A transfer dated behind later sales replays them (T-117); checkpoint and
   // gain consequences are confirmed together.
   let reconciliationModal = $state<{
@@ -84,12 +83,6 @@
     !!holdingAccountID && !!quantityStr.trim() && (basisUnknown || !!carriedBasisStr.trim()) && !!costCommodityID
   );
 
-  $effect(() => {
-    if (!loading && !didFocus && dateInput) {
-      dateInput.focus();
-      didFocus = true;
-    }
-  });
 
   async function post(payload: ExternalTransferInRequest) {
     await recordExternalTransferIn(payload, csrfToken);
@@ -203,7 +196,7 @@
     {/if}
     <div>
       <label for="transfer-in-date" class="mb-1 block text-sm font-medium text-foreground">{m.investments_transfer_effective_date()}</label>
-      <input id="transfer-in-date" type="date" bind:this={dateInput} bind:value={effectiveOn} required
+      <input id="transfer-in-date" type="date" {@attach autofocus} bind:value={effectiveOn} required
         class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
     </div>
     <div>

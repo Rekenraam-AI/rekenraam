@@ -38,7 +38,7 @@
   let reason = $state('');
   let pending = $state(false);
   let error = $state<unknown>();
-  let impact = $state<ReconciliationImpactResponse | null>(null);
+  let impact = $state.raw<ReconciliationImpactResponse | null>(null);
   let reviewedReason = $state('');
   let gainRefreshed = $state(false);
   const gainRows = $derived(impact?.gain_impact ? gainImpactRows(impact.gain_impact.changes,gainImpactCurrency(currencyByID),locale) : []);

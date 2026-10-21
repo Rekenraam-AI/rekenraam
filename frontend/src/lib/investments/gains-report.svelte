@@ -59,7 +59,7 @@
   let fxMaxAge = $state(7);
   const fxInvalid = $derived(!Number.isInteger(fxMaxAge) || fxMaxAge < 1 || fxMaxAge > 365);
   const fx = $derived<GainsFXInput | undefined>(reportingCurrency && !fxInvalid ? { reporting_currency_id: Number(reportingCurrency), fx_method: fxMethod, fx_max_age_days: fxMaxAge } : undefined);
-  let currencyOptions = $state<InvestmentGainsResponse['currencies']>([]);
+  let currencyOptions = $state.raw<InvestmentGainsResponse['currencies']>([]);
   $effect(() => { if (gainsQuery.data) currencyOptions = gainsQuery.data.currencies; });
 
   let jurisdictionNote = $state('');

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import { tick, untrack } from 'svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { parseISO } from 'date-fns';
@@ -39,13 +40,11 @@
   let impact = $state<PriceImpact | null>(null);
   let error = $state<unknown>();
   let reviewButton = $state<HTMLButtonElement>();
-  let confirmButton = $state<HTMLButtonElement>();
   const locale = $derived(getLocale());
   const title = $derived(mode === 'create' ? m.pricing_add() : mode === 'correct' ? m.pricing_correct() : m.pricing_void());
   const parsedPrice = $derived(parsePriceAmount(price));
   const parsedQuantity = $derived(parsePriceAmount(quantity));
   const canReview = $derived(!!reason.trim() && (mode === 'void' || (base > 0 && quote > 0 && base !== quote && !!valuationDate && !!parsedPrice && !!parsedQuantity)));
-  $effect(() => { if (reviewing) void tick().then(() => confirmButton?.focus()); });
   function close() { if (pending) return; onCancel(); }
   function cancelReview() { reviewing = false; impact = null; void tick().then(() => reviewButton?.focus()); }
   async function review() {
@@ -127,7 +126,7 @@
       <p class="break-words text-sm">{reason}</p>
       {#if impact}<p class="font-semibold">{m.pricing_retire_list()}</p><ul class="space-y-3">{#each impact.prices as observation}<li class="min-w-0 border-t border-border pt-3"><PriceDetail price={observation} {workspace} /></li>{/each}</ul>{/if}
       <div class="flex flex-wrap gap-3">
-        <button bind:this={confirmButton} type="button" onclick={save} disabled={pending} class="min-h-11 rounded-(--radius-control) bg-foreground px-4 py-2 font-semibold text-background disabled:opacity-50">{pending ? m.pricing_saving() : m.pricing_confirm()}</button>
+        <button {@attach autofocus} type="button" onclick={save} disabled={pending} class="min-h-11 rounded-(--radius-control) bg-foreground px-4 py-2 font-semibold text-background disabled:opacity-50">{pending ? m.pricing_saving() : m.pricing_confirm()}</button>
         <button type="button" onclick={cancelReview} disabled={pending} class="min-h-11 rounded-(--radius-control) border border-border px-4 py-2">{m.pricing_back()}</button>
       </div>
     </section>

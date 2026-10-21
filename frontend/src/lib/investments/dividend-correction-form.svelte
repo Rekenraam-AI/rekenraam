@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { parseISO } from 'date-fns';
   import { untrack } from 'svelte';
@@ -82,11 +83,7 @@
   let payerID = $state(initialDividend?.commodity_id ? String(initialDividend.commodity_id) : '');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
-  let reasonInputElement: HTMLInputElement | undefined = $state();
 
-  $effect(() => {
-    reasonInputElement?.focus();
-  });
 
   type Pending =
     | { kind: 'cash'; payload: DividendRequest }
@@ -241,7 +238,7 @@
     <label for="dividend-correction-reason" class="mb-1 block text-sm font-medium text-foreground">
       {m.transactions_investment_replace_reason()}
     </label>
-    <input id="dividend-correction-reason" type="text" bind:this={reasonInputElement} bind:value={reason}
+    <input id="dividend-correction-reason" type="text" {@attach autofocus} bind:value={reason}
       maxlength="500" required
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
   </div>

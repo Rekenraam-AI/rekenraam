@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autofocus } from '#lib/components/autofocus.ts';
   import { untrack } from 'svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import APIFormError from '#lib/components/api-form-error.svelte';
@@ -42,9 +43,7 @@
   let quantities = $state<Record<number,string>>(Object.fromEntries((initial?.effective_elected_lots ?? []).map(e => [e.lot_id,formatEditableAmount(e.quantity_value,e.quantity_scale)])));
   let pending = $state(false);
   let formError = $state<unknown>();
-  let firstInput = $state<HTMLInputElement>();
-  let didFocus = false;
-  let preview = $state<{ result: CashInLieuPreviewResponse; payload: CashInLieuRequest } | null>(null);
+  let preview = $state.raw<{ result: CashInLieuPreviewResponse; payload: CashInLieuRequest } | null>(null);
   let reviewing = $state(false);
   let gainRefreshed = $state(false);
   const locale = $derived(getLocale());
@@ -66,7 +65,6 @@
     (!initial || !!reason.trim()) && (method !== 'specific_lot' || (!lotsQuery.isPending && !lotsQuery.isError && availableLots.length > 0)));
   const gainImpact = $derived(preview && hasGainChanges(preview.result.impact.gain_impact) ? preview.result.impact.gain_impact : null);
   const gainRows = $derived(gainImpact ? gainImpactRows(gainImpact.changes,gainImpactCurrency(currencyMap),locale) : []);
-  $effect(() => { if (!loading && firstInput && !didFocus) {firstInput.focus(); didFocus=true;} });
 
   function costBasisMethodLabel(value:string) {
     if (value==='fifo') return m.transactions_investment_replace_method_fifo();
@@ -142,7 +140,7 @@
       {#if initial}<div><label for="cil-reason" class="mb-1 block text-sm font-medium text-foreground">{m.transactions_investment_replace_reason()}</label>
         <input id="cil-reason" type="text" bind:value={reason} required maxlength="500" oninput={clearPreview} class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" /></div>{/if}
       <div><label for="cil-quantity" class="mb-1 block text-sm font-medium text-foreground">{m.investments_cash_in_lieu_quantity()}</label>
-        <input id="cil-quantity" bind:this={firstInput} type="text" inputmode="decimal" bind:value={quantity} required oninput={clearPreview} class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" /></div>
+        <input id="cil-quantity" {@attach autofocus} type="text" inputmode="decimal" bind:value={quantity} required oninput={clearPreview} class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" /></div>
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div><label for="cil-disposal" class="mb-1 block text-sm font-medium text-foreground">{m.investments_cash_in_lieu_disposal()}</label><input id="cil-disposal" type="date" bind:value={disposalOn} required oninput={clearPreview} class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" /></div>
         <div><label for="cil-payment" class="mb-1 block text-sm font-medium text-foreground">{m.investments_capital_return_payment_date()}</label><input id="cil-payment" type="date" bind:value={paymentOn} required oninput={clearPreview} class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" /></div>
