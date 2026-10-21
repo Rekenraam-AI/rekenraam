@@ -145,8 +145,10 @@ below is execution order, not a chain of hard dependencies.
 2. **Rank evidence-gated refactoring candidates in
    [#284](https://github.com/sergeyfarin/rekenraam/issues/284) — current.** The
    [first slice](reviews/maintainability-audit-2026-10-21.md) records the fixed-SHA
-   input reconciliation, history measurements and provisional shortlist. Complete
-   duplication/dead-code scans, the invariant and test-ownership inventories,
+   input reconciliation, history measurements and provisional shortlist. The
+   [second slice](reviews/maintainability-duplication-2026-10-21.md) delivers Go
+   and frontend runtime clone scans with bounded triage. Complete dead-code
+   analysis, the invariant and test-ownership/duplication inventories,
    layer/fan-out checks and final investment/reporting dispositions. Use the
    measured duplication, change amplification and repeated invariant enforcement
    to publish a ranked list with

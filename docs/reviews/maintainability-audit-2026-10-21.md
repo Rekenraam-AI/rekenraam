@@ -1,11 +1,14 @@
 # Maintainability audit — 2026-10-21
 
-**Status: first slice of [#284](https://github.com/sergeyfarin/rekenraam/issues/284),
-partial.** This slice reconciles the earlier proposals, inventories the audit
-inputs and records reproducible history measurements. The ranked shortlist is
-provisional. It does not complete #284, approve a refactor, or clear R13's
-investment/reporting disposition requirement. No application, API, schema or
-financial behavior changes in this slice.
+**Status: slices 1–2 of [#284](https://github.com/sergeyfarin/rekenraam/issues/284),
+partial.** This first-slice record reconciles the earlier proposals, inventories
+the audit inputs and records reproducible history measurements. The
+[second slice](maintainability-duplication-2026-10-21.md) adds runtime duplication
+scans and bounded triage, narrows correction preparation and adds the frontend
+review-lifecycle candidate. The ranked shortlist below remains the first slice's
+provisional input, not final investment/reporting dispositions. Neither slice
+completes #284 or approves refactoring. No application, API, schema or financial
+behavior changes.
 
 ## Baseline and method
 
@@ -264,11 +267,13 @@ Other input notes remain in the table above rather than being silently rejected.
 
 ## Remaining acceptance and validation
 
-#284 remains open. This slice completes the input/history baseline and July
-reconciliation. Still unverified: one duplication pass per language and manual
-triage; the exhaustive money/ledger/lot/security enforcement inventory; fresh
+#284 remains open. The input/history baseline and July reconciliation are
+delivered; the [second slice](maintainability-duplication-2026-10-21.md) delivers
+the runtime duplication passes and bounded triage. Still unverified: the
+exhaustive money/ledger/lot/security enforcement inventory; fresh
 handler/repository/frontend arithmetic and fan-out scans; dead-code and
-single-caller analysis; a repository-wide test-fixture/oracle survey; and final
+single-caller analysis; a repository-wide test-fixture/oracle and test-duplication
+survey; and final
 investment/reporting dispositions. The provisional ranking can change with
 that evidence. No refactor issues are accepted or created in this slice.
 
