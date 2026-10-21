@@ -1,0 +1,272 @@
+{
+  "date": "2026-10-21",
+  "local_source": "7a3521e0914c9235d4a47b71421751a563a6ef9b",
+  "latest_ci_source": "77c7b4400cfc99ca6768139b2fb937edaa9bdea6",
+  "notes": [
+    "Observational CI timings, not controlled performance benchmarks.",
+    "Playwright reported duration includes build/global setup; timestamp-derived execution excludes it.",
+    "Successful dot logs do not identify individual slow tests.",
+    "Local discovery selects 376 tests; latest remote CI selects 377."
+  ],
+  "e2e_runs": [
+    {
+      "run_id": 38259548269,
+      "job_id": 114846247919,
+      "url": "https://github.com/sergeyfarin/rekenraam/actions/runs/38259548269/job/114846247919",
+      "tests": 124,
+      "workers": 1,
+      "command_start": "2026-10-12T13:59:46.0155065Z",
+      "tests_start": "2026-10-12T14:01:31.6958744Z",
+      "tests_end": "2026-10-12T14:04:25.2724392Z",
+      "setup_build_seconds": 105.68,
+      "test_execution_seconds": 173.577,
+      "playwright_reported": "4.6m",
+      "evidence": [
+        "2026-10-12T13:59:46.0155065Z ##[group]Run ./scripts/test-e2e-smoke.sh",
+        "2026-10-12T14:01:31.6958744Z Running 124 tests using 1 worker",
+        "2026-10-12T14:04:25.2724392Z   124 passed (4.6m)"
+      ]
+    },
+    {
+      "run_id": 39549389877,
+      "job_id": 119054860967,
+      "url": "https://github.com/sergeyfarin/rekenraam/actions/runs/39549389877/job/119054860967",
+      "tests": 375,
+      "workers": 3,
+      "command_start": "2026-10-21T05:25:27.5398280Z",
+      "tests_start": "2026-10-21T05:26:52.7017660Z",
+      "tests_end": "2026-10-21T05:41:48.2445567Z",
+      "setup_build_seconds": 85.162,
+      "test_execution_seconds": 895.543,
+      "playwright_reported": "16.3m",
+      "evidence": [
+        "2026-10-21T05:25:27.5398280Z ##[group]Run ./scripts/test-e2e-smoke.sh",
+        "2026-10-21T05:26:52.7017660Z Running 375 tests using 3 workers",
+        "2026-10-21T05:41:48.2445567Z   375 passed (16.3m)"
+      ]
+    },
+    {
+      "run_id": 39592836719,
+      "job_id": 119197805869,
+      "url": "https://github.com/sergeyfarin/rekenraam/actions/runs/39592836719/job/119197805869",
+      "tests": 375,
+      "workers": 3,
+      "command_start": "2026-10-21T11:34:27.3598783Z",
+      "tests_start": "2026-10-21T11:35:58.9962517Z",
+      "tests_end": "2026-10-21T11:52:00.7070001Z",
+      "setup_build_seconds": 91.637,
+      "test_execution_seconds": 961.711,
+      "playwright_reported": "17.5m",
+      "evidence": [
+        "2026-10-21T11:34:27.3598783Z ##[group]Run ./scripts/test-e2e-smoke.sh",
+        "2026-10-21T11:35:58.9962517Z Running 375 tests using 3 workers",
+        "2026-10-21T11:52:00.7070001Z   375 passed (17.5m)"
+      ]
+    },
+    {
+      "run_id": 39604328433,
+      "job_id": 119236519782,
+      "url": "https://github.com/sergeyfarin/rekenraam/actions/runs/39604328433/job/119236519782",
+      "tests": 377,
+      "workers": 3,
+      "command_start": "2026-10-21T13:02:05.4923851Z",
+      "tests_start": "2026-10-21T13:03:35.0445030Z",
+      "tests_end": "2026-10-21T13:23:15.8950129Z",
+      "setup_build_seconds": 89.552,
+      "test_execution_seconds": 1180.851,
+      "playwright_reported": "21.2m",
+      "evidence": [
+        "2026-10-21T13:02:05.4923851Z ##[group]Run ./scripts/test-e2e-smoke.sh",
+        "2026-10-21T13:03:35.0445030Z Running 377 tests using 3 workers",
+        "2026-10-21T13:23:15.8950129Z   377 passed (21.2m)"
+      ]
+    },
+    {
+      "run_id": 39616676666,
+      "job_id": 119279503118,
+      "url": "https://github.com/sergeyfarin/rekenraam/actions/runs/39616676666/job/119279503118",
+      "tests": 377,
+      "workers": 3,
+      "command_start": "2026-10-21T14:26:27.9661089Z",
+      "tests_start": "2026-10-21T14:28:12.2847799Z",
+      "tests_end": "2026-10-21T14:45:19.8799255Z",
+      "setup_build_seconds": 104.318,
+      "test_execution_seconds": 1027.595,
+      "playwright_reported": "18.9m",
+      "evidence": [
+        "2026-10-21T14:26:27.9661089Z ##[group]Run ./scripts/test-e2e-smoke.sh",
+        "2026-10-21T14:28:12.2847799Z Running 377 tests using 3 workers",
+        "2026-10-21T14:45:19.8799255Z   377 passed (18.9m)"
+      ]
+    }
+  ],
+  "backend_runs": [
+    {
+      "run_id": 38259548269,
+      "job_id": 114846247735,
+      "evidence": [
+        "2026-10-12T13:59:10.5443475Z Cache hit for: setup-go-Linux-x64-ubuntu24-go-1.27.2-a706035ef8e0556d4210710dcac66c969e1691038302a7c1fc034e1ae4f77259",
+        "2026-10-12T13:59:12.3629346Z Cache Size: ~73 MB (76048342 B)",
+        "2026-10-12T13:59:13.0677025Z ##[group]Run ./scripts/test-backend.sh",
+        "2026-10-12T14:01:35.5933004Z ok  \trekenraam/backend/cmd/rekenraam\t8.589s",
+        "2026-10-12T14:02:42.2794762Z ok  \trekenraam/backend/internal/api\t59.486s",
+        "2026-10-12T14:03:28.7205176Z ok  \trekenraam/backend/internal/app\t105.893s",
+        "2026-10-12T14:03:28.7208383Z ok  \trekenraam/backend/internal/appruntime\t3.202s",
+        "2026-10-12T14:03:28.7209215Z ok  \trekenraam/backend/internal/config\t1.014s",
+        "2026-10-12T14:03:42.5222728Z ok  \trekenraam/backend/internal/db\t56.011s",
+        "2026-10-12T14:03:42.5223336Z ok  \trekenraam/backend/internal/exact\t1.022s",
+        "2026-10-12T14:03:42.5224188Z ok  \trekenraam/backend/internal/marketdata\t1.017s",
+        "2026-10-12T14:03:42.5224632Z ok  \trekenraam/backend/internal/onlinesource/trading212\t1.061s",
+        "2026-10-12T14:03:42.5225164Z ok  \trekenraam/backend/internal/recur\t1.022s",
+        "2026-10-12T14:03:42.5225538Z ok  \trekenraam/backend/internal/secretbox\t1.012s",
+        "2026-10-12T14:03:42.5225993Z ok  \trekenraam/backend/internal/testdb\t2.527s",
+        "2026-10-12T14:03:42.5226351Z ok  \trekenraam/backend/internal/totp\t1.014s",
+        "2026-10-12T14:03:42.5226769Z ok  \trekenraam/backend/internal/web\t1.065s",
+        "2026-10-12T14:03:42.5227206Z ok  \trekenraam/backend/migrations\t1.015s",
+        "2026-10-12T14:03:42.8374724Z Cache hit occurred on the primary key setup-go-Linux-x64-ubuntu24-go-1.27.2-a706035ef8e0556d4210710dcac66c969e1691038302a7c1fc034e1ae4f77259, not saving cache."
+      ]
+    },
+    {
+      "run_id": 39616676666,
+      "job_id": 119279502884,
+      "evidence": [
+        "2026-10-21T14:25:43.1163480Z Cache hit for: setup-go-Linux-x64-ubuntu24-go-1.27.3-83f37c915f856b9fcdad8ef280ce5427bedf5f4e37f9e549fba817d75af792dc",
+        "2026-10-21T14:25:44.1675550Z Cache Size: ~73 MB (76594373 B)",
+        "2026-10-21T14:25:44.8612949Z ##[group]Run ./scripts/test-backend.sh",
+        "2026-10-21T14:29:11.8796845Z ok  \trekenraam/backend/cmd/rekenraam\t59.237s",
+        "2026-10-21T14:30:42.7021221Z ok  \trekenraam/backend/internal/api\t126.961s",
+        "2026-10-21T14:32:33.7021498Z ok  \trekenraam/backend/internal/app\t197.696s",
+        "2026-10-21T14:32:33.7057674Z ok  \trekenraam/backend/internal/appruntime\t4.106s",
+        "2026-10-21T14:32:33.7059544Z ok  \trekenraam/backend/internal/config\t1.020s",
+        "2026-10-21T14:32:54.5157814Z ok  \trekenraam/backend/internal/db\t123.787s",
+        "2026-10-21T14:32:54.5158692Z ok  \trekenraam/backend/internal/exact\t1.037s",
+        "2026-10-21T14:32:54.5159972Z ok  \trekenraam/backend/internal/marketdata\t1.062s",
+        "2026-10-21T14:32:54.5160517Z ok  \trekenraam/backend/internal/onlinesource/trading212\t1.070s",
+        "2026-10-21T14:32:54.5161008Z ok  \trekenraam/backend/internal/recur\t1.025s",
+        "2026-10-21T14:32:54.5161426Z ok  \trekenraam/backend/internal/secretbox\t1.018s",
+        "2026-10-21T14:32:54.5161847Z ok  \trekenraam/backend/internal/testdb\t4.254s",
+        "2026-10-21T14:32:54.5162250Z ok  \trekenraam/backend/internal/totp\t1.021s",
+        "2026-10-21T14:32:54.5162716Z ok  \trekenraam/backend/internal/web\t1.035s",
+        "2026-10-21T14:32:54.5163100Z ok  \trekenraam/backend/migrations\t1.024s",
+        "2026-10-21T14:32:54.9005208Z Cache hit occurred on the primary key setup-go-Linux-x64-ubuntu24-go-1.27.3-83f37c915f856b9fcdad8ef280ce5427bedf5f4e37f9e549fba817d75af792dc, not saving cache."
+      ]
+    }
+  ],
+  "remote_source_files": [
+    {
+      "path": "e2e/global-setup.ts",
+      "git_blob_sha": "4ed0e0edc70e0db0103edd5c5d1aed0ed9fea6d0",
+      "url": "https://github.com/sergeyfarin/rekenraam/blob/77c7b4400cfc99ca6768139b2fb937edaa9bdea6/e2e/global-setup.ts",
+      "evidence": [
+        {
+          "line": 18,
+          "text": "    env: { ...process.env, GOCACHE: process.env.GOCACHE ?? '/tmp/rekenraam-go-build-cache' }"
+        }
+      ]
+    },
+    {
+      "path": "e2e/playwright.config.ts",
+      "git_blob_sha": "a41089383a61cb109a0322d13aff638a11aa4148",
+      "url": "https://github.com/sergeyfarin/rekenraam/blob/77c7b4400cfc99ca6768139b2fb937edaa9bdea6/e2e/playwright.config.ts",
+      "evidence": [
+        {
+          "line": 10,
+          "text": "const requestedWorkers = process.env.E2E_WORKERS ?? (process.env.CI ? '3' : '50%');"
+        },
+        {
+          "line": 11,
+          "text": "const workers = externalApp ? 1 : /^\\d+$/.test(requestedWorkers) ? Number(requestedWorkers) : requestedWorkers;"
+        },
+        {
+          "line": 21,
+          "text": "  fullyParallel: false,"
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "git_blob_sha": "8a1579d59d9420103639be35498be0b25e369d8f",
+      "url": "https://github.com/sergeyfarin/rekenraam/blob/77c7b4400cfc99ca6768139b2fb937edaa9bdea6/.github/workflows/ci.yml",
+      "evidence": [
+        {
+          "line": 5,
+          "text": "    branches: [\"**\"]"
+        },
+        {
+          "line": 6,
+          "text": "  pull_request:"
+        },
+        {
+          "line": 11,
+          "text": "  group: ${{ github.workflow }}-${{ github.ref }}"
+        },
+        {
+          "line": 30,
+          "text": "          cache-dependency-path: backend/go.sum"
+        },
+        {
+          "line": 44,
+          "text": "          cache-dependency-path: backend/go.sum"
+        },
+        {
+          "line": 82,
+          "text": "          cache-dependency-path: backend/go.sum"
+        },
+        {
+          "line": 100,
+          "text": "        if: failure()"
+        },
+        {
+          "line": 120,
+          "text": "          cache-dependency-path: backend/go.sum"
+        }
+      ]
+    },
+    {
+      "path": "e2e/playwright/subview-sweep.spec.ts",
+      "git_blob_sha": "6a9090e5a3031520c5851cbdac23a2d5f5a42e33",
+      "url": "https://github.com/sergeyfarin/rekenraam/blob/77c7b4400cfc99ca6768139b2fb937edaa9bdea6/e2e/playwright/subview-sweep.spec.ts",
+      "evidence": [
+        {
+          "line": 720,
+          "text": "  test.describe.configure({ mode: 'parallel' });"
+        },
+        {
+          "line": 724,
+          "text": "    test.setTimeout(240_000);"
+        },
+        {
+          "line": 732,
+          "text": "      test.setTimeout(1_200_000);"
+        }
+      ]
+    },
+    {
+      "path": "e2e/playwright/route-sweep.spec.ts",
+      "git_blob_sha": "4bd632e802988a640ce97f035ea5b9c706867d20",
+      "url": "https://github.com/sergeyfarin/rekenraam/blob/77c7b4400cfc99ca6768139b2fb937edaa9bdea6/e2e/playwright/route-sweep.spec.ts",
+      "evidence": [
+        {
+          "line": 94,
+          "text": "  test.describe.configure({ mode: 'parallel' });"
+        },
+        {
+          "line": 100,
+          "text": "    test.setTimeout(180_000);"
+        },
+        {
+          "line": 108,
+          "text": "      test.setTimeout(600_000);"
+        },
+        {
+          "line": 136,
+          "text": "    test.setTimeout(600_000);"
+        },
+        {
+          "line": 166,
+          "text": "    test.setTimeout(600_000);"
+        }
+      ]
+    }
+  ]
+}
