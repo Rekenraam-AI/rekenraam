@@ -709,6 +709,19 @@ non-trivial diff (yours or reviewed):
     stale-clock-sample control `TestMFAEnrollmentFixtureRefreshesExpiredPreviousStep`
     green; it uses no sleeps and retains the production auth clock.
 
+63. **Date-shaped URL values mistaken for calendar dates** — a YYYY-MM-DD
+    regex admitted February 31 and month 13, causing shared transaction links
+    to fail API validation (#377). Reuse `isCalendarDate`, keep valid leap days
+    and exercise malformed links through the real list (`url-selection.spec.ts`).
+    URL selection journeys also check reload, Back and sharing: SvelteKit 3
+    exposes shallow URL changes through `page.shallow.url` (#326).
+
+64. **A generic heading certifying the wrong route fixture** — the frontend
+    sweep passed an instrument ID to a commodity-addressed route (#378).
+    Use the route's actual identity and assert the seeded instrument heading
+    and activity controls; an unchanged pathname and any visible heading can
+    still be a not-found screen. Keep these assertions locale-independent.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

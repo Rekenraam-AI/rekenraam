@@ -655,6 +655,14 @@ has actual installations, its migration files are immutable.
 - All new frontend files must be **TypeScript** (`.ts`, `.svelte` with `<script lang="ts">`). No JavaScript-only files in `frontend/src`.
 - Component state uses **Svelte 5 runes** (`$state`, `$derived`, `$effect`, `$props`). Cross-component and cross-route shared state uses `$state` in `.svelte.ts` module files. No Svelte 4 stores (`writable`, `readable`, `derived` from `svelte/store`) in new code.
 - Frontend modules import shared code through the `#lib/*` subpath import (declared in `frontend/package.json` `imports`) with an explicit file extension: `#lib/money/amount.ts`, `#lib/components/panel.svelte`, `#lib/paraglide/messages.js`; the generated declaration-only `schema.d.ts` is imported as `#lib/api/schema.js`. Route state comes from `$app/state` (`page.url`, `page.params`), whose URL types are read-only — helpers that read query parameters take `ReadonlyURLSearchParams` and copy before writing. SvelteKit and adapter options live in the `sveltekit({...})` call in `frontend/vite.config.ts`; SvelteKit 3 refuses a `svelte.config.js`.
+- URL-backed selections updated through shallow navigation (`replaceState`)
+  read `page.shallow?.url ?? page.url`: SvelteKit 3 keeps the shallow URL
+  separate from the last full navigation. Replace the current history entry
+  when editing these selections, preserve unrelated query parameters, and
+  verify reload, browser Back and shared links through the real screen (#326).
+  Transaction lists share `transaction-url-filters.ts`; impossible calendar
+  dates are dropped using `isCalendarDate`, rather than checking shape alone
+  (#377). A route's account/category/instrument identity remains authoritative.
 
 ## Design Conventions
 
