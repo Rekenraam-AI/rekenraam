@@ -11,6 +11,25 @@ change to validation frequency. No tests, assertions, durability settings,
 timeouts or workflow triggers were changed. The roadmap continues to own
 work order. No new GitHub issue was created as part of this report.
 
+## Authorized follow-up
+
+After reviewing this investigation, the owner requested the recommended
+follow-up. The following bounded delivery issues were created:
+
+- [#381](https://github.com/sergeyfarin/rekenraam/issues/381) (P2): retain browser
+  timings and shorten the measured CI critical path while preserving coverage.
+- [#382](https://github.com/sergeyfarin/rekenraam/issues/382) (P2): align E2E Go
+  cache paths and retain refreshed caches for each CI workload.
+- [#383](https://github.com/sergeyfarin/rekenraam/issues/383) (P3): avoid
+  unnecessary branch-push and pull-request validation overlap.
+
+Fixture/oracle/test-duplication analysis remains with
+[#284](https://github.com/sergeyfarin/rekenraam/issues/284). These issues include
+published run/source evidence because the original report commit `ef353fbb`
+has not been pushed. Filing the follow-ups does not implement the optimizations
+or change the roadmap's work order; the original observations below remain dated
+investigation evidence.
+
 ## Evidence and revision boundaries
 
 Local source: `7a3521e0914c9235d4a47b71421751a563a6ef9b`, initially clean.
