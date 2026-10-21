@@ -30,6 +30,8 @@ unknown/duplicate/orphan parameter contract, model-off behavior, owner-local
 defaults and read-only backend calculation remain unchanged. This repairs the
 bounded frontend admission defect found in the
 [#284 layer/date review](../reviews/maintainability-layers-2026-10-21.md).
+[Delivery commit and validation](../reviews/maintainability-layers-2026-10-21.md#forecast-calendar-admission-repair)
+record the focused unit, browser and strict backend-date controls.
 
 Navigation: [decisions](#3-financial-and-date-decisions) ·
 [backend algorithm](#4-backend-read-model-and-algorithm) ·

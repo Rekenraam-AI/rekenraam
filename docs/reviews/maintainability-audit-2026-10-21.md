@@ -12,7 +12,8 @@ shared owners and opens the independent payment-density measurement
 [fourth slice](maintainability-layers-2026-10-21.md) reviews layer boundaries,
 frontend arithmetic/dates and request composition; it adds narrower leaf/total
 ownership candidates and files the confirmed forecast calendar defect as
-[#380](https://github.com/sergeyfarin/rekenraam/issues/380). The
+[#380](https://github.com/sergeyfarin/rekenraam/issues/380), subsequently repaired
+with [commit and validation evidence](maintainability-layers-2026-10-21.md#forecast-calendar-admission-repair). The
 [fifth slice](maintainability-reachability-2026-10-21.md) adds production/test
 reachability, frontend file/export triage and 25 named Go abstraction
 dispositions. It establishes no new defect or accepted refactor. The ranked shortlist

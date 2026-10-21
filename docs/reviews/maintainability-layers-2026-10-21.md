@@ -8,6 +8,10 @@ admission defect, tracked separately as
 [#380](https://github.com/sergeyfarin/rekenraam/issues/380). No runtime, API or
 schema changes or accepted refactors are included.
 
+Subsequent delivery: [#380's calendar admission repair](#forecast-calendar-admission-repair)
+is implemented and validated below. Original source measurements and retained
+controls still describe the audit baseline.
+
 Source remains `13d15eabd68ed2d3b6177512c9c8fe56c528bbf0`; working HEAD was
 `6cb8b044c19a2860397ce802a93b00ea0d58eb10`. The intervening three slices changed
 audit artifacts/docs only; runtime and test sources still match that baseline.
@@ -185,3 +189,33 @@ Subsequent evidence: the [fifth slice](maintainability-reachability-2026-10-21.m
 delivers the bounded reachability and named-interface/options review. Its
 separate test roots and frontend export-visibility view constrain future
 cleanup; this report's historical remaining-work list does not undo that delivery.
+
+## Forecast calendar admission repair
+
+Delivered 2026-10-21 for [#380](https://github.com/sergeyfarin/rekenraam/issues/380)
+in commit [`c74e4a04`](https://github.com/sergeyfarin/rekenraam/commit/c74e4a04),
+against working baseline `00811aa0`. Forecast URL parsing and form validity now
+reuse `isCalendarDate`; no forecast financial-date `Date.parse` admission check
+remains. Invalid February 31, non-leap February 29, April 31 and month 13 links
+show the existing invalid-link state without any forecast request. Ordinary
+`2026-02-28` and leap `2024-02-29` preserve their text, request real HTTP results
+and render the forecast. The native date field remains in use; clearing it
+disables Apply while restoring a valid date enables it.
+
+| Validation | Result |
+|---|---|
+| `pnpm --dir frontend run test src/lib/forecast/forecast-model.test.ts src/lib/dates/calendar-date.test.ts` | 31 cases pass. Three new parser cases failed before the repair: February 31, non-leap February 29 and April 31. Month 0/13 refusal, ordinary/leap round trips and existing model/option tests pass; duplicate scalar and explicit model-off orphan controls were added. |
+| `./scripts/test-frontend.sh` | Zero Svelte errors/warnings; 66 catalog cases and all 727 frontend unit cases pass. |
+| `GOCACHE=/tmp/rekenraam-go-build-cache ./scripts/go-backend.sh test -race -p 2 -timeout=5m ./internal/api ./internal/app -run '^TestForecast'` | Both packages pass, including orphan/model-option refusal, core-series identity and read-only ledger/report/export checks. |
+| Retained `maintainability-forecast-calendar-probe.go.txt`, copied into a disposable `git archive HEAD backend scripts fixtures` checkout | All six HTTP cases pass under race mode: four impossible dates return 400/`VALIDATION_FAILED`; ordinary and leap dates return 200. No backend source or date policy changed. Reproduction uses the retained probe command above. |
+| `pnpm --dir e2e run test:stubs` | All five provider-stub tests pass. |
+| `pnpm --dir e2e test forecast.spec.ts forecast-learning.spec.ts --workers=1` | All 13 provider-free browser journeys pass. Global setup builds the static frontend, passes the embedded-web test and compiles the Go binary. The new journey observes zero forecast requests for all four invalid links and successful results for both valid dates; existing loading/error, mobile/keyboard/theme, URL navigation and read-only journeys remain green. |
+| `rg -n 'Date\.parse\|isCalendarDate' frontend/src/lib/forecast` and `git diff --check` | Both admission sites use the shared validator, no `Date.parse` remains in forecast source, and the diff has no whitespace errors. |
+
+Local servers needed the execution environment's sandbox exception; no live
+provider, owner credentials or provider evidence were needed. All results above
+are local; push CI has not run because delivery is committed locally without a
+push. The original scanner controls retain the baseline mismatch as audit
+evidence, not a new CI gate. Strict unknown/duplicate/orphan options, model-off
+behavior, owner-local defaults and read-only calculation remain unchanged.
+This bounded repair does not complete #284 or introduce a new R13 prerequisite.
