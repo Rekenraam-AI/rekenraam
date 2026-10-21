@@ -150,8 +150,11 @@ below is execution order, not a chain of hard dependencies.
    and frontend runtime clone scans with bounded triage. The
    [third slice](reviews/maintainability-invariants-2026-10-21.md) maps 34 named
    invariant groups and narrows consolidation around existing shared owners.
-   Complete dead-code analysis, test-ownership/duplication inventories,
-   layer/fan-out checks and final investment/reporting dispositions. Use the
+   The [fourth slice](reviews/maintainability-layers-2026-10-21.md) reviews layer,
+   frontend arithmetic/date and request-composition boundaries, adding bounded
+   total/leaf ownership candidates. Complete dead-code/single-caller analysis,
+   test-ownership/duplication inventories and final investment/reporting
+   dispositions. Use the
    measured duplication, change amplification and repeated invariant enforcement
    to publish a ranked list with
    the rejected candidates; each accepted refactor gets its own issue and
@@ -162,6 +165,9 @@ below is execution order, not a chain of hard dependencies.
    [#379](https://github.com/sergeyfarin/rekenraam/issues/379) measures an
    untested investment-command workload; it is not an accepted optimization
    or a blanket R13 prerequisite.
+   [#380](https://github.com/sergeyfarin/rekenraam/issues/380), P3, separately
+   fixes confirmed forecast calendar-date admission; it is not a blanket
+   R13 prerequisite either.
 3. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
    Use the delivered R18 valuation contracts; resolve portfolio scope,
    external-flow classification, return equations, numerical failure states,

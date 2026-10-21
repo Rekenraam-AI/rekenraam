@@ -190,3 +190,10 @@ ranking/dispositions remain. Those passes must extend this map if they find
 additional enforcement sites or rules. R13 specification may proceed; its
 implementation still waits for #284's investment/reporting dispositions and its
 own calculation contract. No owner/release gate is cleared by this slice.
+
+Subsequent evidence: the [fourth slice](maintainability-layers-2026-10-21.md)
+delivers the bounded layer/arithmetic/date/fan-out sweep named above. It records
+native realized-total policy in the API response builder, residual frontend
+numeric leaves/adapters and the confirmed forecast-date admission issue #380.
+The matrix remains source evidence; its historical remaining-work list does
+not undo the later delivery. Final dispositions and test/dead-code work remain.

@@ -1,6 +1,6 @@
 # Maintainability audit — 2026-10-21
 
-**Status: slices 1–3 of [#284](https://github.com/sergeyfarin/rekenraam/issues/284),
+**Status: slices 1–4 of [#284](https://github.com/sergeyfarin/rekenraam/issues/284),
 partial.** This first-slice record reconciles the earlier proposals, inventories
 the audit inputs and records reproducible history measurements. The
 [second slice](maintainability-duplication-2026-10-21.md) adds runtime duplication
@@ -8,7 +8,11 @@ scans and bounded triage, narrows correction preparation and adds the frontend
 review-lifecycle candidate. The [third slice](maintainability-invariants-2026-10-21.md)
 maps 34 named invariant groups, narrows policy consolidation around existing
 shared owners and opens the independent payment-density measurement
-[#379](https://github.com/sergeyfarin/rekenraam/issues/379). The ranked shortlist
+[#379](https://github.com/sergeyfarin/rekenraam/issues/379). The
+[fourth slice](maintainability-layers-2026-10-21.md) reviews layer boundaries,
+frontend arithmetic/dates and request composition; it adds narrower leaf/total
+ownership candidates and files the confirmed forecast calendar defect as
+[#380](https://github.com/sergeyfarin/rekenraam/issues/380). The ranked shortlist
 below remains provisional, not final investment/reporting dispositions. These
 slices do not complete #284 or approve refactoring. No application, API, schema
 or financial behavior changes.
@@ -255,6 +259,21 @@ proposing optimization. It is not an accepted refactor or a blanket R13 blocker.
 See the [ownership matrix](maintainability-invariants-2026-10-21.md) for why
 writer/storage checks, checkpoint binding and existing valuation owners stay.
 
+The [fourth slice](maintainability-layers-2026-10-21.md) adds two qualified
+candidates awaiting the final ranking, rather than silently promoting every
+layer signal into a refactor:
+
+| Candidate | Evidence / criterion | Scope and payoff | Recommendation / safety net |
+|---|---|---|---|
+| Application-owned native realized totals | Criterion 3: `api/investments.go:gainsProjectionResponse` performs exact per-currency aggregation and unknown-count/complete-only policy; statement composition repeats that financial rule in `app` | M; gives future report consumers a native total read model without depending on an HTTP response builder. Preserve mixed scales, row ordering, null/count semantics, int64 errors and saved bytes; native/FX/statement contracts remain distinct | **Later**, final disposition before R13 implementation; existing HTTP gains property/large-string/unknown-basis and saved-output tests constrain a move. No incorrect figure was found |
+| Reuse exact frontend comparison/range leaves | Criterion 3: correction lot choice repeats shared scale comparison; pricing repeats int64/positive admission already owned by `money/amount.ts` | S; reduces future coordinated numeric-admission edits in `trade-economics.ts` and `pricing/form.ts`. Distinct election totals, price scale-18 limits and error precedence stay | **Later**; mixed-scale/large-coefficient lot-choice and pricing tests. This is not a new parser or a blanket chart/percentage consolidation |
+
+The browser review-lifecycle candidate from slice 2 also remains for final
+ranking. Residual string adapters and percentage parsers are recorded with their
+different contracts in slice 4; no numerical defect or accepted extraction is
+inferred from syntax alone. #380 is a separate P3 input-validation defect, not
+an accepted refactor or a blanket R13 blocker.
+
 ## Considered and rejected in this slice
 
 - Splitting files or introducing an operation registry merely because files
@@ -282,13 +301,17 @@ delivered; the [second slice](maintainability-duplication-2026-10-21.md) deliver
 the runtime duplication passes and bounded triage. The
 [third slice](maintainability-invariants-2026-10-21.md) delivers a bounded
 34-rule-group ownership matrix with selected-site indexes and 34 focused tests.
-It is not an exhaustive receiver-resolved proof; later semantic scans must add
-any uncovered enforcement sites. Still unverified: fresh
-handler/repository/frontend arithmetic and fan-out scans; dead-code and
-single-caller analysis; a repository-wide test-fixture/oracle and test-duplication
+It is not an exhaustive receiver-resolved proof. The
+[fourth slice](maintainability-layers-2026-10-21.md) delivers fresh bounded
+handler/repository/frontend arithmetic/date and fan-out review, records policy
+in the native gains response builder and confirms #380's calendar mismatch.
+Still unverified: dead-code and single-caller analysis; a repository-wide
+test-fixture/oracle and test-duplication
 survey; and final
 investment/reporting dispositions. The provisional ranking can change with
-that evidence. No refactor issues are accepted; #379 tracks measurement only.
+that evidence; later passes must extend the rule map for uncovered sites.
+No refactor issues are accepted; #379 tracks measurement and #380 a confirmed
+frontend admission defect.
 
 First-slice validation **passed**: a second fixed-SHA run produced byte-identical CSV;
 all 1,402 rows agree with JSON output; an independent Git count confirms 308
@@ -299,4 +322,4 @@ and the roadmap resolve; Python syntax and `git diff --check` pass.
 These were audit-artifact checks; application suites were not rerun in slice 1 because
 runtime and test inputs are unchanged. No push, remote CI, release acceptance,
 household evidence or full #284 completion was claimed by that validation.
-Slices 2 and 3 retain their own validation records and limits in their reports.
+Slices 2–4 retain their own validation records and limits in their reports.

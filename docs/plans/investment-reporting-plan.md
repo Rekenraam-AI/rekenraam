@@ -26,6 +26,13 @@ defines return equations nor accepts a new generic reporting engine. Final
 investment/reporting dispositions remain in #284, the calculation contract in
 [#119](https://github.com/sergeyfarin/rekenraam/issues/119), and order in the roadmap.
 
+The [fourth #284 slice](../reviews/maintainability-layers-2026-10-21.md) also
+records native realized-gain totals/unknown counts in the API response builder.
+That is a bounded candidate for application ownership, not a requirement to
+replace the existing valuation owner or merge FX/statement semantics. Any move
+must preserve mixed-scale totals, unavailable/null disclosures, range failures
+and immutable saved output. No incorrect total or accepted refactor is claimed.
+
 ## Live observation selection: `live_raw_v1`
 
 One SQL owner, `backend/internal/db/observation_selection.go`, supplies daily
