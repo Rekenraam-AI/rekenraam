@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Plus from '@lucide/svelte/icons/plus';
   import Save from '@lucide/svelte/icons/save';
   import X from '@lucide/svelte/icons/x';
@@ -183,29 +184,38 @@
         : m.accounts_form_create()
   );
 
+  // Reset the form only when the edited account or mode changes. Reference
+  // data (currencies, the book default) can refetch while the form is open;
+  // reading it tracked here would wipe the owner's unsaved input.
   $effect(() => {
-    accountID = account?.id;
-    name = account?.name ?? '';
-    code = account?.code ?? deriveRecordCode(account?.name ?? '');
-    codeEdited = mode === 'edit' && !!account?.code;
-    const nextAccountKind = managedAccountKind(account?.account_kind);
+    const nextAccount = account;
+    const nextMode = mode;
+    untrack(() => resetForm(nextAccount, nextMode));
+  });
+
+  function resetForm(source: AccountResponse | undefined, formMode: AccountEditorMode) {
+    accountID = source?.id;
+    name = source?.name ?? '';
+    code = source?.code ?? deriveRecordCode(source?.name ?? '');
+    codeEdited = formMode === 'edit' && !!source?.code;
+    const nextAccountKind = managedAccountKind(source?.account_kind);
     const nextAccountClass = accountKindClass(nextAccountKind);
     accountKind = nextAccountKind;
-    parentAccountID = account?.parent_account_id ? String(account.parent_account_id) : '';
-    institutionID = account?.institution_id ? String(account.institution_id) : '';
-    countryCode = account?.country_code ?? '';
-    defaultCommodityID = account?.default_commodity_id
-      ? String(account.default_commodity_id)
+    parentAccountID = source?.parent_account_id ? String(source.parent_account_id) : '';
+    institutionID = source?.institution_id ? String(source.institution_id) : '';
+    countryCode = source?.country_code ?? '';
+    defaultCommodityID = source?.default_commodity_id
+      ? String(source.default_commodity_id)
       : defaultCurrencyID(nextAccountClass, nextAccountKind, currencies, defaultCurrencyCommodityID);
     defaultCommodityCode = '';
-    allowsPostings = account?.allows_postings ?? true;
-    numberLast4 = account?.number_last4 ?? '';
-    openedOn = account?.opened_on ?? '';
-    effectiveFrom = mode === 'edit' ? '' : (account?.effective_from ?? '');
+    allowsPostings = source?.allows_postings ?? true;
+    numberLast4 = source?.number_last4 ?? '';
+    openedOn = source?.opened_on ?? '';
+    effectiveFrom = formMode === 'edit' ? '' : (source?.effective_from ?? '');
     changeReason = '';
-    commentMarkdown = account?.comment_markdown ?? '';
+    commentMarkdown = source?.comment_markdown ?? '';
     formError = undefined;
-  });
+  }
 
   $effect(() => {
     if (!selectableAccountKinds.includes(accountKind)) {

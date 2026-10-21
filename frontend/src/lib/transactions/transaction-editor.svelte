@@ -362,9 +362,12 @@
       }
       if (catLeg) {
         categoryID = catLeg.account_id;
-        const allCats = (categoriesQuery.data?.categories ?? []);
-        const cat = allCats.find((c: CategoryResponse) => c.id === catLeg.account_id);
-        categoryLabel = cat ? categoryDisplayName(cat) : String(catLeg.account_id);
+        // Untracked: a categories refetch must not reset an edit in progress.
+        // Until categories load the label stays empty for the label effect
+        // above to fill.
+        const allCats = untrack(() => categoriesQuery.data?.categories);
+        const cat = allCats?.find((c: CategoryResponse) => c.id === catLeg.account_id);
+        categoryLabel = cat ? categoryDisplayName(cat) : allCats ? String(catLeg.account_id) : '';
       }
     } else {
       tier = 'split';

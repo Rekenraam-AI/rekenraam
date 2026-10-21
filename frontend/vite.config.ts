@@ -20,6 +20,9 @@ export default defineConfig({
     }),
     sveltekit({
       preprocess: vitePreprocess(),
+      // Every component is runes-only; a file without runes must not fall
+      // back to legacy reactivity.
+      compilerOptions: { runes: true },
       adapter: adapter({
         pages: 'build',
         assets: 'build',
