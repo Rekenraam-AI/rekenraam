@@ -1,37 +1,34 @@
 # Rekenraam
 
-A personal finance app you run yourself. It keeps a proper double-entry ledger
-of your accounts, cards, savings and investments, in as many currencies as you
-actually use, and it lives on your own machine or server rather than someone
-else's cloud.
+Rekenraam is a self-hosted personal finance app for tracking accounts,
+transactions, budgets and investments across currencies. It runs on your own
+computer or server and is accessed through a web browser.
+
+It is a **pre-release, single-user project** maintained by one person, with
+substantial use of AI to generate code and documentation. Features and data
+structures are still changing. Read the limitations below before deciding
+whether to use it for your records.
 
 *Rekenraam* is Dutch for abacus.
 
-![Spending report in Rekenraam, showing ten months of categorized expenses](docs/images/reports-spending.png)
+![Spending report in Rekenraam, showing ten months of categorized expenses using sample data](docs/images/reports-spending.png)
 
-## Why you might want it
+## Reasons to use it
 
-If you miss Microsoft Money or Quicken, find GnuCash too much like bookkeeping
-software, or have outgrown budgeting apps that only think in one currency,
-Rekenraam is aimed at you.
+Rekenraam may be useful if you want to manage everyday finances and investments
+together and are comfortable running the software yourself.
 
-- **Your data stays with you.** One program and one SQLite file. No account to
-  sign up for, no bank-scraping middleman, no subscription. Run it on a laptop,
-  a home server or a small VPS.
-- **The numbers are exact.** Every amount is stored as an exact decimal, never a
-  floating-point approximation, and every transaction balances. Balances,
-  reports and gains are computed from the ledger, so they agree with each other.
-- **Multi-currency is built in, not bolted on.** Hold euros, dollars and pounds
-  side by side. Reports keep each currency separate by default and can restate
-  everything into one currency when you ask, using rates you can see and edit.
-- **Nothing is silently rewritten.** Posted transactions are versioned. Fixing a
-  mistake creates a correction you can trace, and reconciled history stays
-  reconciled.
-- **Investments are tracked properly.** Lots, cost basis, dividends, splits,
-  transfers between brokers, realized and unrealized gains, and period
-  statements you can save and reopen later.
-- **You can always leave.** Export your ledger to CSV or QIF, or take a full
-  archive that contains enough to recompute every balance, lot and gain.
+- The database and backups stay on storage you control. Core use requires no
+  external service account or subscription.
+- Accounts can hold different currencies. Reports keep original currencies
+  separate or convert them using exchange rates you can inspect and edit.
+- A double-entry ledger stores monetary values as exact decimals. Versioned
+  transactions and statement reconciliation help you trace changes and compare
+  the ledger with bank records.
+- Investment records include lots, cost basis, dividends, splits, transfers and
+  gains. You can save period statements to retain the figures from that run.
+- CSV, QIF and a structured archive export make records available for analysis
+  or migration. Backups provide a separate way to restore the installation.
 
 ## What it does today
 
@@ -45,18 +42,56 @@ Rekenraam is aimed at you.
 - Recurring transactions you review before they post
 - Projected balances from recurring items and your past spending
 - Investment holdings, prices and exchange rates, with optional quote providers
-- Nightly verified backups, one-command restore, and exports
+- Nightly verified backups, command-line restore, and exports
 - Two-factor sign-in and read-only API tokens for your own scripts
 - English, plus draft Dutch, German, French, Spanish and Russian translations
 
-Rekenraam is a single-user app: one owner per installation. It is still a
-**pre-release**. Expect rough edges, take backups, and check the
-[feature ledger](docs/implemented.md) for exactly what ships.
+The [feature ledger](docs/implemented.md) records what ships and the remaining
+gaps in each area.
+
+## Limitations and tradeoffs
+
+- **You operate it yourself.** Installation, updates, HTTPS for remote access,
+  backups and recovery are your responsibility. The database is not encrypted
+  at rest by the app; use storage encryption if you need it. Keep a copy of
+  backups off the machine running the app.
+- **Pre-release compatibility is limited.** Development schema changes may
+  require resetting a disposable database. There is no supported upgrade path
+  from every development revision; see the [upgrade policy](docs/upgrades.md).
+- **One owner per installation.** There are no shared household accounts or
+  multi-user permissions, and no native desktop or mobile app.
+- **Import and connection coverage is limited.** File imports support CSV and
+  QIF, not OFX or XLSX. Trading 212 is the current online import connection;
+  general bank sync is not available. Some provider events require manual
+  entry or linking. Optional providers receive requests when enabled and may
+  require API keys or paid plans.
+- **Investment reports have a defined scope.** Gains depend on the recorded
+  basis, prices and exchange rates; missing inputs can leave results
+  unavailable. Tax filing, jurisdiction-specific tax rules and time-weighted
+  or money-weighted return analytics are not implemented.
+- **Translations need review.** English is the initial implementation language.
+  Dutch, German, French, Spanish and Russian catalogs are drafts awaiting
+  native terminology review.
+
+## AI use and review
+
+AI-generated code and documentation are part of the development process.
+Changes go through repeated code reviews, regression tests and recorded audits
+of areas such as ledger calculations, reconciliation, authentication and
+backup/restore. The [review records](docs/reviews/) describe their scope,
+findings and validation; the [roadmap](docs/roadmap.md) retains release gates
+and follow-up work.
+
+As of 22 October 2026, the repository has more than 1,000 commits. That is a
+record of development activity, not a count of independent reviews or a
+guarantee of correctness. Bugs have been found through these reviews and may
+remain despite them.
 
 ## Try it
 
-The quickest route is Docker Compose. Pick a random setup token of at least
-32 characters first; you'll enter it in the browser to create the owner account.
+The Docker Compose example builds the app from source. Generate a random setup
+token of at least 32 characters; you'll enter it in the browser to create the
+owner account.
 
 ```sh
 export SETUP_TOKEN="$(openssl rand -hex 32)"
@@ -65,7 +100,7 @@ docker compose -f deploy/docker/compose.yaml up --build
 
 Then open <http://127.0.0.1:16888>. The example only listens on localhost.
 
-Before you put real money in it:
+Before storing financial data:
 
 - Set `REKENRAAM_SECRET_KEY` to a durable secret before connecting online
   providers or turning on two-factor sign-in, and keep it somewhere other than
@@ -76,22 +111,25 @@ Before you put real money in it:
 - Read the [upgrade and restore guide](docs/upgrades.md) before upgrading an
   installation you care about.
 
-Quote providers are optional and bring-your-own-key: set
+Quote providers are optional and require your own API key: set
 `COINGECKO_DEMO_API_KEY` or `TWELVE_DATA_API_KEY`, then assign them to
 instruments under Investments → Instruments. Details are in the
 [quote provider notes](docs/plans/quote-providers-crypto-plan.md).
 
 ## Backups and exports
 
-These are two different things, and only one of them gets your data back.
+Use a backup to restore Rekenraam. Exports are for use outside the app.
 
-- **Backups** (Settings → Data → Backups) are complete copies of everything:
+- **Backups** (Settings → Data → Backups) contain the database, including the
   ledger, investments, budgets, recurring items, reconciliations and settings.
   Rekenraam makes one every night and on request, and verifies each before
-  keeping it. Restore with `rekenraam restore --from <backup>`.
+  keeping it. The separate `REKENRAAM_SECRET_KEY` is not included; retain it
+  to recover encrypted connection and two-factor secrets. Stop the app before
+  restoring with `rekenraam restore --from <backup>`, following the
+  [restore guide](docs/upgrades.md).
 - **Exports** (Settings → Data → Export) are ledger CSV, QIF, or a full archive
   for spreadsheets and other finance tools. They are for reading elsewhere and
-  **cannot be imported back** into Rekenraam. Use a backup for that.
+  **cannot be imported back** into Rekenraam as a restore.
 
 ## Development
 
@@ -116,9 +154,9 @@ Checks and build:
 pnpm build                     # writes dist/rekenraam
 ```
 
-The full browser suite is `./scripts/test-e2e.sh`. Everything else — focused Go
-commands, Go cache settings, E2E timing, the API contract audit, resetting a
-disposable dev database, local password recovery — is in the
+The full browser suite is `./scripts/test-e2e.sh`. Focused Go commands, Go cache
+settings, E2E timing, the API contract audit, resetting a disposable dev
+database and local password recovery are documented in the
 [developer workflow](docs/developer-workflow.md).
 
 | Path | What's there |
