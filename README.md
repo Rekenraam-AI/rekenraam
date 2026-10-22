@@ -1,159 +1,144 @@
 # Rekenraam
 
-Rekenraam is a self-hosted, single-user personal finance app. It combines a
-versioned double-entry ledger with accounts, imports, reconciliation, reports,
-budgets, recurring transactions, investments, and backups. The Go backend serves
-a static SvelteKit frontend from one binary; SQLite is the primary database.
-Docker Compose runs the same app shape.
+A personal finance app you run yourself. It keeps a proper double-entry ledger
+of your accounts, cards, savings and investments, in as many currencies as you
+actually use, and it lives on your own machine or server rather than someone
+else's cloud.
 
-Scripts and tools can use read-only personal access tokens created under
-Settings → Security. See the [token contract](docs/plans/personal-access-tokens-plan.md)
-for grants, expiry and revocation, and the [deployment guidance](docs/deployment-security.md)
-for HTTPS and credential handling.
+*Rekenraam* is Dutch for abacus.
 
-The app is still a pre-release candidate. Investment buy, sell, dividend,
-reinvestment, write-off, native correction, in-kind transfers, basis actions,
-and named short sale/cover workflows ship within R16's agreed scope. Provider
-import for additional operation kinds and other extensions remain tracked;
-see the [R16 plan](docs/plans/investment-operation-refactor-plan.md) and the
-[feature ledger](docs/implemented.md) for the exact boundary.
-Gains and period statements can be saved as immutable operational reports and
-reopened after corrections or price withdrawals; the [reporting policy](docs/plans/investment-reporting-plan.md#immutable-operational-runs-234) defines their scope.
+![Spending report in Rekenraam, showing ten months of categorized expenses](docs/images/reports-spending.png)
 
-## Run locally
+## Why you might want it
 
-Use Go 1.27.3 or newer in the 1.27 series, Node 24, and the pinned pnpm version in `package.json`.
-From the repository root:
+If you miss Microsoft Money or Quicken, find GnuCash too much like bookkeeping
+software, or have outgrown budgeting apps that only think in one currency,
+Rekenraam is aimed at you.
 
-```sh
-pnpm install
-pnpm dev
-```
+- **Your data stays with you.** One program and one SQLite file. No account to
+  sign up for, no bank-scraping middleman, no subscription. Run it on a laptop,
+  a home server or a small VPS.
+- **The numbers are exact.** Every amount is stored as an exact decimal, never a
+  floating-point approximation, and every transaction balances. Balances,
+  reports and gains are computed from the ledger, so they agree with each other.
+- **Multi-currency is built in, not bolted on.** Hold euros, dollars and pounds
+  side by side. Reports keep each currency separate by default and can restate
+  everything into one currency when you ask, using rates you can see and edit.
+- **Nothing is silently rewritten.** Posted transactions are versioned. Fixing a
+  mistake creates a correction you can trace, and reconciled history stays
+  reconciled.
+- **Investments are tracked properly.** Lots, cost basis, dividends, splits,
+  transfers between brokers, realized and unrealized gains, and period
+  statements you can save and reopen later.
+- **You can always leave.** Export your ledger to CSV or QIF, or take a full
+  archive that contains enough to recompute every balance, lot and gain.
 
-Open <http://localhost:1888>. The frontend development server proxies `/api`
-to the backend on `127.0.0.1:16888`. The development server binds to localhost;
-for a browser on another machine, use the SSH forward described in the
-[developer workflow](docs/developer-workflow.md).
+## What it does today
 
-The unused v0.1 candidate schema has been redesigned for R16. If an older
-**disposable development** database reports a migration checksum mismatch,
-follow the [reset instructions](docs/developer-workflow.md#migrations-and-resetting-your-database).
-Do not apply that reset to a database containing data you need to keep.
+- Accounts, categories and payees, grouped by institution
+- Transaction entry with splits and transfers, on desktop and phone
+- CSV and QIF import with saved column profiles and duplicate detection
+- Optional Trading 212 connection for cash, trades and dividends
+- Statement reconciliation
+- Net worth, spending and cashflow reports with drill-down, charts and CSV
+- Monthly budgets per category and currency
+- Recurring transactions you review before they post
+- Projected balances from recurring items and your past spending
+- Investment holdings, prices and exchange rates, with optional quote providers
+- Nightly verified backups, one-command restore, and exports
+- Two-factor sign-in and read-only API tokens for your own scripts
+- English, plus draft Dutch, German, French, Spanish and Russian translations
 
-## Validate and build
+Rekenraam is a single-user app: one owner per installation. It is still a
+**pre-release**. Expect rough edges, take backups, and check the
+[feature ledger](docs/implemented.md) for exactly what ships.
 
-```sh
-./scripts/test-backend.sh      # Go formatting, vet, race tests (2 packages, 5m/package)
-./scripts/test-frontend.sh     # catalog parity, generated API types, Svelte checks, unit tests
-./scripts/test-e2e-smoke.sh    # provider stub HTTP tests + integrated browser smoke suite
-pnpm build                     # static frontend + embedded Go binary
-```
+## Try it
 
-The build writes `dist/rekenraam`. Use `./scripts/test-e2e.sh` for the full
-browser suite and `pnpm test:release-preflight` for the serial release journeys.
-App browser setup also compiles the fixed-clock test server once, including
-when `E2E_SKIP_BUILD=1` reuses the app; audit-only runs omit that helper.
-Run `pnpm --dir e2e run test:stubs` for just the provider stub HTTP regressions.
-Browser runs also write timing reports to `e2e/timing-results/`; CI retains
-them on successful and failed runs. CI runs disjoint app and audit groups
-on two runners; the local smoke wrapper defaults to all cases. See the E2E
-section of the developer workflow for phase timings and matched performance
-comparisons. Go commands, including E2E's child build, honor `GOCACHE` and
-`GOMODCACHE` (Go's defaults when unset). Set `GO_PHASE_TIMINGS=1` on the backend
-test or integrated build wrapper to separate module download, compile/vet and
-test timings; CI enables this with workload-specific source-refreshed caches.
-See [Go caches and measurements](docs/developer-workflow.md#go-caches-and-measurements).
-For the deliberate runtime OpenAPI audit, run
-`python3 scripts/audit-api-contract.py --output /tmp/rekenraam-api-audit`;
-[setup, sensitivity controls and retained findings](docs/developer-workflow.md#backend-validation)
-are documented separately from the shared gates.
-Commands, test scope, and environment settings are in the
-[developer workflow](docs/developer-workflow.md).
-The [runtime-image audit](docs/reviews/runtime-image-advisory-audit-2026-10-20.md)
-and [bundled SQLite review](docs/reviews/native-sqlite-advisory-audit-2026-10-20.md)
-record advisory evidence, retained findings and release-disposition limits.
-The [SQLite upgrade prerequisite check](docs/reviews/sqlite-driver-upgrade-blocker-2026-10-20.md)
-records the fixed-engine diagnostic and the still-missing released driver.
-
-SQLite uses `github.com/mattn/go-sqlite3` with bundled C source (ADR 0014).
-Financial writes use WAL with FULL commit durability consistently in runtime
-and tests ([ADR 0015](docs/adrs/0015-sqlite-commit-durability.md)).
-Backend commands require CGO and a C compiler with development headers:
-`sudo apt install build-essential` on Debian/Ubuntu. The shared wrappers enable
-FTS5, `netgo` and `osusergo`; use `./scripts/go-backend.sh test ...` for focused
-Go checks. Standalone binaries need a compatible libc; Docker supplies the
-Debian trixie runtime. See the [developer workflow](docs/developer-workflow.md).
-
-## Run the built app
-
-Set a random `SETUP_TOKEN` of at least 32 characters before first production
-startup. Set a durable
-`REKENRAAM_SECRET_KEY` before using online connections or enrolling in two-factor
-authentication; keep it outside the SQLite backup directory. The binary listens
-on port `16888` by default. The provided Compose example binds only to
-`127.0.0.1:16888`:
+The quickest route is Docker Compose. Pick a random setup token of at least
+32 characters first; you'll enter it in the browser to create the owner account.
 
 ```sh
+export SETUP_TOKEN="$(openssl rand -hex 32)"
 docker compose -f deploy/docker/compose.yaml up --build
 ```
 
-The build excludes local data and environment files and updates Debian runtime
-packages. Maintainers can check the build-context boundary with
-`bash scripts/test-docker-context.sh`; the disposable install/upgrade/rollback
-drill is documented in the [developer workflow](docs/developer-workflow.md#deployment-audit).
+Then open <http://127.0.0.1:16888>. The example only listens on localhost.
 
-Optional quote adapters use operator environment keys `COINGECKO_DEMO_API_KEY`
-and `TWELVE_DATA_API_KEY`. Configure instrument identifiers and quote assignments
-in Investments → Instruments; the [quote/crypto contract](docs/plans/quote-providers-crypto-plan.md)
-records provider entitlements, unofficial Yahoo limits and crypto CSV entry.
-With a Twelve Data plan that includes dividends, Investments → Suggestions →
-**Check provider dividends** stages held ex-dates for review; nothing posts until
-you complete or link each one ([contract](docs/plans/connections-plan.md#provider-dividend-producer-111-delivered-2026-10-17)).
+Before you put real money in it:
 
-For LAN or internet access, put the app behind HTTPS and follow the
-[deployment security guide](docs/deployment-security.md). Before exposing real
-financial data to the public internet, enrol the owner in two-factor
-authentication. Use the [upgrade and restore guide](docs/upgrades.md) before
-changing a populated installation. Local password recovery commands are in the
-[developer workflow](docs/developer-workflow.md#local-owner-recovery).
+- Set `REKENRAAM_SECRET_KEY` to a durable secret before connecting online
+  providers or turning on two-factor sign-in, and keep it somewhere other than
+  your backups.
+- For access from other devices, put it behind HTTPS. The
+  [deployment security guide](docs/deployment-security.md) walks through it.
+  Enrol in two-factor sign-in before exposing it to the internet.
+- Read the [upgrade and restore guide](docs/upgrades.md) before upgrading an
+  installation you care about.
+
+Quote providers are optional and bring-your-own-key: set
+`COINGECKO_DEMO_API_KEY` or `TWELVE_DATA_API_KEY`, then assign them to
+instruments under Investments → Instruments. Details are in the
+[quote provider notes](docs/plans/quote-providers-crypto-plan.md).
 
 ## Backups and exports
 
-Rekenraam keeps two different kinds of copy, and they are not interchangeable:
+These are two different things, and only one of them gets your data back.
 
-- **Backups** (Settings → Data → Backups) are the only complete copy of your
-  data: the ledger, investments, budgets, recurring transactions,
-  reconciliations, settings and history. The app takes one nightly and on
-  request. To recover, or to move to another server, restore one with
-  `rekenraam restore --from <backup>`, following the
-  [upgrade and restore guide](docs/upgrades.md). Keep `REKENRAAM_SECRET_KEY`
-  separately; it is deliberately not in the backup.
-- **Exports** (Settings → Data → Export: archive, ledger CSV or QIF) are plain
-  files for reading your figures in spreadsheets and other finance or
-  accounting tools. Every balance, lot and gain can be recomputed from the
-  archive, and its manifest lists what it leaves out. An export **cannot be
-  imported back** into Rekenraam, and it does not contain budgets, recurring
-  transactions, saved reconciliations or settings. Use a backup for that.
+- **Backups** (Settings → Data → Backups) are complete copies of everything:
+  ledger, investments, budgets, recurring items, reconciliations and settings.
+  Rekenraam makes one every night and on request, and verifies each before
+  keeping it. Restore with `rekenraam restore --from <backup>`.
+- **Exports** (Settings → Data → Export) are ledger CSV, QIF, or a full archive
+  for spreadsheets and other finance tools. They are for reading elsewhere and
+  **cannot be imported back** into Rekenraam. Use a backup for that.
 
-## Repository layout
+## Development
 
-| Path | Purpose |
+The backend is Go with SQLite, the frontend is SvelteKit, and production is a
+single Go binary that serves the built frontend.
+
+You'll need Go 1.27.3+ (with CGO and a C compiler, e.g.
+`sudo apt install build-essential`), Node 24 and the pnpm version pinned in
+`package.json`.
+
+```sh
+pnpm install
+pnpm dev          # http://localhost:1888, API proxied to 127.0.0.1:16888
+```
+
+Checks and build:
+
+```sh
+./scripts/test-backend.sh      # gofmt, vet, race tests
+./scripts/test-frontend.sh     # catalog parity, API types, Svelte checks, unit tests
+./scripts/test-e2e-smoke.sh    # provider stub tests + browser smoke suite
+pnpm build                     # writes dist/rekenraam
+```
+
+The full browser suite is `./scripts/test-e2e.sh`. Everything else — focused Go
+commands, Go cache settings, E2E timing, the API contract audit, resetting a
+disposable dev database, local password recovery — is in the
+[developer workflow](docs/developer-workflow.md).
+
+| Path | What's there |
 |---|---|
-| `backend/` | Go server, application services, SQLite migrations, tests |
-| `frontend/` | SvelteKit app compiled for Go embedding |
+| `backend/` | Go server, services, SQLite migrations, tests |
+| `frontend/` | SvelteKit app, compiled for embedding |
 | `api/` | OpenAPI contract and Bruno requests |
 | `e2e/` | Playwright browser journeys |
 | `deploy/` | Docker build and Compose example |
-| `scripts/` | Development, validation, and build commands |
-| `docs/` | Product rules, decisions, plans, and current status |
+| `scripts/` | Dev, validation and build commands |
+| `docs/` | Requirements, decisions, plans and status |
 
 Start with the [documentation map](docs/README.md). The
-[roadmap](docs/roadmap.md) gives the work order and current focus,
-[GitHub Issues](https://github.com/sergeyfarin/rekenraam/issues) tracks open
-work by GitHub number, [backlog](docs/backlog.md) maps historical aliases, and
-[implemented](docs/implemented.md) records what ships.
-Product and architecture decisions live in the
+[roadmap](docs/roadmap.md) sets the work order, open work is tracked in
+[GitHub Issues](https://github.com/sergeyfarin/rekenraam/issues), and product
+and architecture decisions live in the
 [requirements](docs/product-requirements.md),
-[conventions](docs/conventions.md), and [ADRs](docs/adrs/).
-The [tracking policy](docs/conventions.md#work-tracking) defines issue readiness,
-progress updates and closure; new work uses GitHub numbers without local IDs.
+[conventions](docs/conventions.md) and [ADRs](docs/adrs/). Security reports go
+through [SECURITY.md](SECURITY.md).
+
+## License
+
+[AGPL-3.0](LICENSE).
