@@ -36,6 +36,8 @@ export type Backend = { url: string; databasePath?: string };
 export const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 /** Every worker's database, backups and log sit under here; global setup clears it. */
 export const workerStateRoot = path.join(repoRoot, 'backend/var/e2e');
+/** Prepared once by global setup; cases launch it without invoking the Go compiler. */
+export const referenceDateServerPath = path.join(workerStateRoot, 'reference-date-server.test');
 /**
  * Workers listen on consecutive ports from here. It stays clear of the stub
  * (16890) and of the old single-instance port (16889).

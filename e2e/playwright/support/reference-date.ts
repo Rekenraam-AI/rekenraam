@@ -1,10 +1,10 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { setTimeout } from 'node:timers/promises';
-import { test as base, expect, repoRoot } from './fixtures';
+import { test as base, expect, referenceDateServerPath, repoRoot } from './fixtures';
 
 // The fixed clock exists only in a Go test executable; the production binary
 // keeps its real clock. Each case gets a real HTTP server and isolated SQLite
@@ -12,10 +12,11 @@ import { test as base, expect, repoRoot } from './fixtures';
 export const test = base.extend<{ referenceInstant: string; fixedReferenceURL: string }>({
   referenceInstant: ['2027-01-01T23:01:00Z', { option: true }],
   fixedReferenceURL: [async ({ referenceInstant }, use) => {
+    await access(referenceDateServerPath, constants.X_OK);
     const directory = await mkdtemp(path.join(tmpdir(), 'rekenraam-reference-date-'));
     const addressFile = path.join(directory, 'address');
-    const server = spawn(path.join(repoRoot, 'scripts/go-backend.sh'), [
-      'test', './internal/api', '-run', '^TestOwnerReferenceBrowserServer$', '-count=1', '-timeout=3m'
+    const server = spawn(referenceDateServerPath, [
+      '-test.run=^TestOwnerReferenceBrowserServer$', '-test.timeout=3m'
     ], {
       cwd: repoRoot,
       detached: true,
@@ -34,11 +35,13 @@ export const test = base.extend<{ referenceInstant: string; fixedReferenceURL: s
     try {
       let url = '';
       await expect.poll(async () => {
-        if (server.exitCode !== null) throw new Error(`fixed-date server exited: ${output}`);
+        if (server.exitCode !== null || server.signalCode !== null) throw new Error(`fixed-date server exited: ${output}`);
         try { url = await readFile(addressFile, 'utf8'); } catch { return false; }
         try { return (await fetch(`${url}/healthz`)).ok; } catch { return false; }
       }, { timeout: 45_000 }).toBe(true);
       await use(url);
+    } catch (error) {
+      throw new Error(`fixed-date server failed: ${output}`, { cause: error });
     } finally {
       if (server.pid && server.exitCode === null && server.signalCode === null) process.kill(-server.pid, 'SIGTERM');
       await closed;

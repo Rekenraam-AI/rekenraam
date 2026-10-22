@@ -741,6 +741,13 @@ non-trivial diff (yours or reviewed):
     and activity controls; an unchanged pathname and any visible heading can
     still be a not-found screen. Keep these assertions locale-independent.
 
+65. **Cold compilation inside a browser startup deadline** — the #385
+    fixed-clock fixture ran `go test` inside its readiness budget. A warm local
+    cache hid the compilation cost and both cases timed out on GitHub. Compile
+    test servers once in global setup, then launch their executables per case.
+    Retain startup limits and cache inheritance; verify with an empty `GOCACHE`.
+    Keep `global-setup.test.mjs` and `owner-current-reference.spec.ts` green.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

@@ -91,3 +91,32 @@ reset its shared worker directory. The accepted complete run uses a fresh
 worker directory and no concurrent browser invocation. The initial named
 account regression failed with `account not found` before the repair.
 No timeout was increased and no posted financial record or amount was changed.
+
+## Hosted CI follow-up
+
+[The first hosted CI run](https://github.com/sergeyfarin/rekenraam/actions/runs/39755395223)
+failed only the two fixed-instant browser cases: their fixture invoked `go test`
+inside its 45-second readiness budget, so cold test compilation consumed startup
+time. The other 366 app cases and every other CI job passed. The complete local
+run above used a warm Go cache and did not expose this setup defect.
+
+Global setup now compiles the native test executable once, after the integrated
+app build; each case launches it directly with its own clock and SQLite file.
+App-binary reuse and external-app runs still prepare the helper; audit-only
+runs omit it. Compilation inherits the same Go cache paths as the app build,
+fails setup on error, and is recorded as `reference_server_build_ms` within
+`build_ms`. The readiness and fixture deadlines and all browser assertions stay
+unchanged.
+
+- The new app-binary reuse setup regression fails against the prior setup.
+- `pnpm --dir e2e run test:harness` passes: six setup controls, two timing
+  reporter controls and four browser readiness controls. Setup controls execute
+  the prepared artifact and retain default/restored-cache, reused/external-app,
+  audit-only and compilation-failure coverage.
+- With a previously absent `GOCACHE=/tmp/rekenraam-385-ci-cold-1`, the focused
+  `owner-current-reference` and `locale-amounts` browser selection passes all
+  eight cases. Setup compilation took 80.334 seconds, outside the unchanged
+  45-second server readiness budget. The validated app binary was reused;
+  total local Playwright wall time was 93.403 seconds. Artifacts are under
+  `e2e/timing-results/385-ci-cold/`. This is a cold-compilation correctness
+  control, not a matched performance comparison.

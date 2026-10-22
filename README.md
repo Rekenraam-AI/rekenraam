@@ -51,6 +51,8 @@ pnpm build                     # static frontend + embedded Go binary
 
 The build writes `dist/rekenraam`. Use `./scripts/test-e2e.sh` for the full
 browser suite and `pnpm test:release-preflight` for the serial release journeys.
+App browser setup also compiles the fixed-clock test server once, including
+when `E2E_SKIP_BUILD=1` reuses the app; audit-only runs omit that helper.
 Run `pnpm --dir e2e run test:stubs` for just the provider stub HTTP regressions.
 Browser runs also write timing reports to `e2e/timing-results/`; CI retains
 them on successful and failed runs. CI runs disjoint app and audit groups

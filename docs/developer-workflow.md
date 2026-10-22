@@ -458,6 +458,8 @@ normal provider requests still working afterward (CodeQL alert #84).
 
 Both wrappers also run `pnpm --dir e2e run test:harness`, whose deliberate
 success/failure/skip and collection-failure controls verify the timing reporter.
+Setup controls execute a prepared server artifact and check inherited Go caches,
+app-binary reuse, external-app setup, audit-only omission and compilation failure.
 Its browser controls hold pending/chained requests and fonts, abort a request,
 and refuse late observation to check the sweep readiness helper independently.
 Every browser run writes `e2e/timing-results/summary.json` and incremental
@@ -465,6 +467,8 @@ Every browser run writes `e2e/timing-results/summary.json` and incremental
 measurement you want to retain. The report records the source revision, local app
 binary hash, worker/runner context, global setup and build time, all selected
 cases and every attempt's status, hooks, fixtures and named sweep steps.
+Setup's `reference_server_build_ms` records the test-server compilation within
+`build_ms`, including failed compilation; it is outside case startup budgets.
 API timing totals omit locator arguments; request/response bodies, assertion
 values and browser stdout are not retained in these timing artifacts.
 Step durations can nest and overlap; do not add them together as wall time.
@@ -513,8 +517,13 @@ pnpm test:release-preflight
 - `auth.spec.ts` needs an owner-less database. It runs in its own `bootstrap` project, which gets its own worker database, so nothing has to run before or after it.
 - `owner-current-reference.spec.ts` uses `support/reference-date.ts`: it starts
   an isolated test-only Go HTTP server with fixed financial clocks, real
-  auth/SQLite and the built frontend. Normal backend tests skip that server
-  test; no clock override is present in the production binary.
+  auth/SQLite and the built frontend. Global setup compiles its executable once
+  with the native Go wrapper before any case starts, including when
+  `E2E_SKIP_BUILD=1` reuses the app or `E2E_BASE_URL` selects an external app.
+  Audit-only setup omits it. Each case launches that executable directly, so
+  cold compilation cannot consume its unchanged 45-second readiness budget.
+  Normal backend tests skip that server test; no clock override is present in
+  the production binary.
 - Run browser invocations sequentially: global setup clears the shared worker
   directory even with `E2E_SKIP_BUILD=1`.
 - Set `E2E_SKIP_BUILD=1` to reuse the existing `dist/rekenraam` while iterating on specs, e.g. `E2E_SKIP_BUILD=1 pnpm --dir e2e exec playwright test investments-split`.
