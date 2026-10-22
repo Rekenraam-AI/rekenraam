@@ -669,8 +669,11 @@ converting coefficients to `Number`.
 - Go build-cache alignment ([#382](https://github.com/sergeyfarin/rekenraam/issues/382))
   gives each push/PR workload a source-refreshed native cache key. E2E inherits
   the restored Go paths, and shared wrappers can separate module, compile/vet
-  and execution timings. [Local validation and limits](reviews/go-cache-2026-10-22.md)
-  are recorded; hosted cold/warm and source-refresh acceptance remains pending.
+  and execution timings. [Local validation](reviews/go-cache-2026-10-22.md) and
+  [hosted evidence](reviews/go-cache-hosted-2026-10-22.md) cover cold/repeated-warm
+  compilation, effective child paths, transfer/storage costs and a source-only
+  refreshed save followed by useful restore. Runner-image comparisons and
+  browser/runtime limits are recorded separately.
 
 ## Projected balances and learned spending (R10) — ✅ shipped
 

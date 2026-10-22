@@ -956,7 +956,9 @@ separate cache steps. Then change only backend source (leave `go.sum` fixed),
 verify a fallback restore plus a new save key, and rerun that source to prove
 its artifacts restore usefully. Retain all five logical CI gates (six jobs
 with the browser matrix). Use logs to confirm every check passed; a local cache
-copy is not fresh-runner Actions evidence. See the [#382 validation record](reviews/go-cache-2026-10-22.md).
+copy is not fresh-runner Actions evidence. See the [#382 local validation](reviews/go-cache-2026-10-22.md)
+and [hosted measurements](reviews/go-cache-hosted-2026-10-22.md), which separate
+runner-image rollouts and cold workload variants from complete cache misses.
 
 ## Documentation Update Rules
 

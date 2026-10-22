@@ -1,0 +1,2337 @@
+{
+  "date": "2026-10-22",
+  "issue": 382,
+  "samples": [
+    {
+      "label": "cold",
+      "run_id": 39731690708,
+      "attempt": 1,
+      "url": "https://github.com/sergeyfarin/rekenraam/actions/runs/39731690708/attempts/1",
+      "head_sha": "7d5d3cdf1f7ca9ecc57a8c75ffcd93786712fbc6",
+      "jobs": [
+        {
+          "id": 119667952866,
+          "name": "Backend Coverage",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:04:28Z",
+          "completed_at": "2026-10-22T06:08:47Z",
+          "runner_name": "GitHub Actions 1000011941"
+        },
+        {
+          "id": 119667953105,
+          "name": "Backend Tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:04:33Z",
+          "completed_at": "2026-10-22T06:11:58Z",
+          "runner_name": "GitHub Actions 1000011943"
+        },
+        {
+          "id": 119667953116,
+          "name": "Integrated Build",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:04:28Z",
+          "completed_at": "2026-10-22T06:06:57Z",
+          "runner_name": "GitHub Actions 1000011942"
+        },
+        {
+          "id": 119667953206,
+          "name": "E2E Smoke (audits)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:04:28Z",
+          "completed_at": "2026-10-22T06:12:39Z",
+          "runner_name": "GitHub Actions 1000011944"
+        },
+        {
+          "id": 119667953224,
+          "name": "E2E Smoke (app)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:04:28Z",
+          "completed_at": "2026-10-22T06:12:56Z",
+          "runner_name": "GitHub Actions 1000011946"
+        },
+        {
+          "id": 119667953228,
+          "name": "Frontend Check",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:04:28Z",
+          "completed_at": "2026-10-22T06:05:38Z",
+          "runner_name": "GitHub Actions 1000011945"
+        }
+      ],
+      "metrics": [
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119667952866,
+          "name": "Backend Coverage",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011941",
+          "job_wall_s": 259,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "none",
+          "exact_hit": false,
+          "saved_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 0.337,
+          "save_step_s": 5,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 0.82,
+              "user_s": 0.86,
+              "sys_s": 0.21
+            },
+            "vet": {
+              "wall_s": 56.84,
+              "user_s": 124.11,
+              "sys_s": 5.79
+            },
+            "coverage-compile-vet": {
+              "wall_s": 26.03,
+              "user_s": 75.38,
+              "sys_s": 5.12
+            },
+            "coverage-tests": {
+              "wall_s": 148.5,
+              "user_s": 224.71,
+              "sys_s": 86.3
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119667953105,
+          "name": "Backend Tests",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011943",
+          "job_wall_s": 445,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "none",
+          "exact_hit": false,
+          "saved_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 0.365,
+          "save_step_s": 4,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 0.79,
+              "user_s": 1.16,
+              "sys_s": 0.26
+            },
+            "vet": {
+              "wall_s": 70.55,
+              "user_s": 159.18,
+              "sys_s": 6.95
+            },
+            "race-compile-vet": {
+              "wall_s": 91.09,
+              "user_s": 170.36,
+              "sys_s": 8.96
+            },
+            "race-tests": {
+              "wall_s": 258.83,
+              "user_s": 687.99,
+              "sys_s": 218.72
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119667953116,
+          "name": "Integrated Build",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011942",
+          "job_wall_s": 149,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "none",
+          "exact_hit": false,
+          "saved_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 0.25,
+          "save_step_s": 3,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 0.65,
+              "user_s": 1.13,
+              "sys_s": 0.25
+            },
+            "embed-compile-vet": {
+              "wall_s": 15.53,
+              "user_s": 50.64,
+              "sys_s": 3.85
+            },
+            "embed-test": {
+              "wall_s": 0.26,
+              "user_s": 0.34,
+              "sys_s": 0.13
+            },
+            "trimpath-build": {
+              "wall_s": 60.96,
+              "user_s": 108.9,
+              "sys_s": 4.72
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119667953206,
+          "name": "E2E Smoke (audits)",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011944",
+          "job_wall_s": 491,
+          "primary_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "none",
+          "exact_hit": false,
+          "saved_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261018.339.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 0.209,
+          "save_step_s": 3,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 1.02,
+              "user_s": 0.69,
+              "sys_s": 0.18
+            },
+            "embed-compile-vet": {
+              "wall_s": 10.62,
+              "user_s": 29.61,
+              "sys_s": 5.95
+            },
+            "embed-test": {
+              "wall_s": 0.17,
+              "user_s": 0.19,
+              "sys_s": 0.11
+            },
+            "trimpath-build": {
+              "wall_s": 41.31,
+              "user_s": 68.93,
+              "sys_s": 7.8
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119667953224,
+          "name": "E2E Smoke (app)",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011946",
+          "job_wall_s": 508,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "none",
+          "exact_hit": false,
+          "saved_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 0.25,
+          "save_step_s": 3,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 0.6,
+              "user_s": 1.1,
+              "sys_s": 0.18
+            },
+            "embed-compile-vet": {
+              "wall_s": 14.51,
+              "user_s": 47.29,
+              "sys_s": 3.93
+            },
+            "embed-test": {
+              "wall_s": 0.24,
+              "user_s": 0.33,
+              "sys_s": 0.09
+            },
+            "trimpath-build": {
+              "wall_s": 60.47,
+              "user_s": 105.86,
+              "sys_s": 4.99
+            }
+          }
+        }
+      ]
+    },
+    {
+      "label": "warm1",
+      "run_id": 39731690708,
+      "attempt": 2,
+      "url": "https://github.com/sergeyfarin/rekenraam/actions/runs/39731690708/attempts/2",
+      "head_sha": "7d5d3cdf1f7ca9ecc57a8c75ffcd93786712fbc6",
+      "jobs": [
+        {
+          "id": 119670843074,
+          "name": "Integrated Build",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:13:24Z",
+          "completed_at": "2026-10-22T06:14:41Z",
+          "runner_name": "GitHub Actions 1000011948"
+        },
+        {
+          "id": 119670843253,
+          "name": "E2E Smoke (app)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:13:24Z",
+          "completed_at": "2026-10-22T06:21:39Z",
+          "runner_name": "GitHub Actions 1000011947"
+        },
+        {
+          "id": 119670843325,
+          "name": "Backend Coverage",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:13:24Z",
+          "completed_at": "2026-10-22T06:17:48Z",
+          "runner_name": "GitHub Actions 1000011949"
+        },
+        {
+          "id": 119670843429,
+          "name": "E2E Smoke (audits)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:13:24Z",
+          "completed_at": "2026-10-22T06:24:13Z",
+          "runner_name": "GitHub Actions 1000011952"
+        },
+        {
+          "id": 119670843439,
+          "name": "Backend Tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:13:24Z",
+          "completed_at": "2026-10-22T06:16:36Z",
+          "runner_name": "GitHub Actions 1000011951"
+        },
+        {
+          "id": 119670843473,
+          "name": "Frontend Check",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:13:24Z",
+          "completed_at": "2026-10-22T06:14:18Z",
+          "runner_name": "GitHub Actions 1000011950"
+        }
+      ],
+      "metrics": [
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119670843074,
+          "name": "Integrated Build",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011948",
+          "job_wall_s": 77,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 3.103,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "embed-compile-vet": {
+              "wall_s": 0.39,
+              "user_s": 0.6,
+              "sys_s": 0.22
+            },
+            "embed-test": {
+              "wall_s": 0.54,
+              "user_s": 0.31,
+              "sys_s": 0.16
+            },
+            "trimpath-build": {
+              "wall_s": 1.9,
+              "user_s": 2.08,
+              "sys_s": 0.35
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119670843439,
+          "name": "Backend Tests",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011951",
+          "job_wall_s": 192,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 2.436,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "vet": {
+              "wall_s": 0.31,
+              "user_s": 0.37,
+              "sys_s": 0.19
+            },
+            "race-compile-vet": {
+              "wall_s": 4.2,
+              "user_s": 4.95,
+              "sys_s": 1.13
+            },
+            "race-tests": {
+              "wall_s": 169.98,
+              "user_s": 425.87,
+              "sys_s": 161.62
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119670843325,
+          "name": "Backend Coverage",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011949",
+          "job_wall_s": 264,
+          "primary_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": false,
+          "saved_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261018.339.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 2.623,
+          "save_step_s": 4,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "vet": {
+              "wall_s": 67.49,
+              "user_s": 129.26,
+              "sys_s": 11.59
+            },
+            "coverage-compile-vet": {
+              "wall_s": 35.05,
+              "user_s": 101.07,
+              "sys_s": 11.16
+            },
+            "coverage-tests": {
+              "wall_s": 133.01,
+              "user_s": 351.17,
+              "sys_s": 109.19
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119670843253,
+          "name": "E2E Smoke (app)",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011947",
+          "job_wall_s": 495,
+          "primary_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": false,
+          "saved_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261018.339.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 1.712,
+          "save_step_s": 4,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "embed-compile-vet": {
+              "wall_s": 0.44,
+              "user_s": 0.63,
+              "sys_s": 0.3
+            },
+            "embed-test": {
+              "wall_s": 0.29,
+              "user_s": 0.35,
+              "sys_s": 0.18
+            },
+            "trimpath-build": {
+              "wall_s": 2.1,
+              "user_s": 2.23,
+              "sys_s": 0.45
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119670843429,
+          "name": "E2E Smoke (audits)",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011952",
+          "job_wall_s": 649,
+          "primary_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261018.339.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 1.628,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "embed-compile-vet": {
+              "wall_s": 0.43,
+              "user_s": 0.6,
+              "sys_s": 0.31
+            },
+            "embed-test": {
+              "wall_s": 0.28,
+              "user_s": 0.33,
+              "sys_s": 0.17
+            },
+            "trimpath-build": {
+              "wall_s": 2.02,
+              "user_s": 2.13,
+              "sys_s": 0.46
+            }
+          }
+        }
+      ]
+    },
+    {
+      "label": "warm2",
+      "run_id": 39731690708,
+      "attempt": 3,
+      "url": "https://github.com/sergeyfarin/rekenraam/actions/runs/39731690708/attempts/3",
+      "head_sha": "7d5d3cdf1f7ca9ecc57a8c75ffcd93786712fbc6",
+      "jobs": [
+        {
+          "id": 119675114754,
+          "name": "Backend Tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:26:23Z",
+          "completed_at": "2026-10-22T06:30:55Z",
+          "runner_name": "GitHub Actions 1000011960"
+        },
+        {
+          "id": 119675114819,
+          "name": "E2E Smoke (audits)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:26:22Z",
+          "completed_at": "2026-10-22T06:36:22Z",
+          "runner_name": "GitHub Actions 1000011959"
+        },
+        {
+          "id": 119675114914,
+          "name": "Backend Coverage",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:26:23Z",
+          "completed_at": "2026-10-22T06:28:47Z",
+          "runner_name": "GitHub Actions 1000011961"
+        },
+        {
+          "id": 119675114965,
+          "name": "E2E Smoke (app)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:26:23Z",
+          "completed_at": "2026-10-22T06:34:12Z",
+          "runner_name": "GitHub Actions 1000011964"
+        },
+        {
+          "id": 119675114972,
+          "name": "Integrated Build",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:26:23Z",
+          "completed_at": "2026-10-22T06:27:45Z",
+          "runner_name": "GitHub Actions 1000011962"
+        },
+        {
+          "id": 119675114976,
+          "name": "Frontend Check",
+          "conclusion": "success",
+          "started_at": "2026-10-22T06:26:22Z",
+          "completed_at": "2026-10-22T06:27:36Z",
+          "runner_name": "GitHub Actions 1000011963"
+        }
+      ],
+      "metrics": [
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119675114914,
+          "name": "Backend Coverage",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011961",
+          "job_wall_s": 144,
+          "primary_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261018.339.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 4.557,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "vet": {
+              "wall_s": 0.4,
+              "user_s": 0.65,
+              "sys_s": 0.29
+            },
+            "coverage-compile-vet": {
+              "wall_s": 3.32,
+              "user_s": 5.59,
+              "sys_s": 1.99
+            },
+            "coverage-tests": {
+              "wall_s": 113.82,
+              "user_s": 314.11,
+              "sys_s": 97.29
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119675114972,
+          "name": "Integrated Build",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011962",
+          "job_wall_s": 82,
+          "primary_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": false,
+          "saved_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261018.339.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 3.154,
+          "save_step_s": 5,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "embed-compile-vet": {
+              "wall_s": 0.41,
+              "user_s": 0.6,
+              "sys_s": 0.29
+            },
+            "embed-test": {
+              "wall_s": 0.29,
+              "user_s": 0.35,
+              "sys_s": 0.16
+            },
+            "trimpath-build": {
+              "wall_s": 2.31,
+              "user_s": 2.18,
+              "sys_s": 0.44
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119675114754,
+          "name": "Backend Tests",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011960",
+          "job_wall_s": 272,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 3.917,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "vet": {
+              "wall_s": 0.3,
+              "user_s": 0.46,
+              "sys_s": 0.22
+            },
+            "race-compile-vet": {
+              "wall_s": 3.09,
+              "user_s": 5.56,
+              "sys_s": 1.29
+            },
+            "race-tests": {
+              "wall_s": 247.44,
+              "user_s": 483.6,
+              "sys_s": 176.64
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119675114819,
+          "name": "E2E Smoke (audits)",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011959",
+          "job_wall_s": 600,
+          "primary_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261018.339.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 2.304,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "embed-compile-vet": {
+              "wall_s": 0.35,
+              "user_s": 0.54,
+              "sys_s": 0.19
+            },
+            "embed-test": {
+              "wall_s": 0.24,
+              "user_s": 0.29,
+              "sys_s": 0.13
+            },
+            "trimpath-build": {
+              "wall_s": 1.85,
+              "user_s": 1.98,
+              "sys_s": 0.35
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119675114965,
+          "name": "E2E Smoke (app)",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011964",
+          "job_wall_s": 469,
+          "primary_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261018.339.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 2.478,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "embed-compile-vet": {
+              "wall_s": 0.42,
+              "user_s": 0.61,
+              "sys_s": 0.29
+            },
+            "embed-test": {
+              "wall_s": 0.27,
+              "user_s": 0.34,
+              "sys_s": 0.16
+            },
+            "trimpath-build": {
+              "wall_s": 2.01,
+              "user_s": 2.07,
+              "sys_s": 0.49
+            }
+          }
+        }
+      ]
+    },
+    {
+      "label": "coverage-extra1",
+      "run_id": 39731690708,
+      "attempt": 4,
+      "url": "https://github.com/sergeyfarin/rekenraam/actions/runs/39731690708/attempts/4",
+      "head_sha": "7d5d3cdf1f7ca9ecc57a8c75ffcd93786712fbc6",
+      "jobs": [
+        {
+          "id": 119703112636,
+          "name": "Backend Coverage",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:44:07Z",
+          "completed_at": "2026-10-22T07:46:26Z",
+          "runner_name": "GitHub Actions 1000011970"
+        }
+      ],
+      "metrics": [
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119703112636,
+          "name": "Backend Coverage",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011970",
+          "job_wall_s": 139,
+          "primary_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "restored_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "image_version": "20261018.339.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 2.463,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "vet": {
+              "wall_s": 0.42,
+              "user_s": 0.61,
+              "sys_s": 0.18
+            },
+            "coverage-compile-vet": {
+              "wall_s": 2.87,
+              "user_s": 5.08,
+              "sys_s": 1.36
+            },
+            "coverage-tests": {
+              "wall_s": 114.66,
+              "user_s": 283.03,
+              "sys_s": 87.98
+            }
+          }
+        }
+      ]
+    },
+    {
+      "label": "source-refresh",
+      "run_id": 39742965739,
+      "attempt": 1,
+      "url": "https://github.com/sergeyfarin/rekenraam/actions/runs/39742965739/attempts/1",
+      "head_sha": "18707b1866eb8d47d4036be9be54ee89f183a388",
+      "jobs": [
+        {
+          "id": 119704462163,
+          "name": "Backend Tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:47:25Z",
+          "completed_at": "2026-10-22T07:52:11Z",
+          "runner_name": "GitHub Actions 1000011971"
+        },
+        {
+          "id": 119704462530,
+          "name": "Frontend Check",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:47:25Z",
+          "completed_at": "2026-10-22T07:48:39Z",
+          "runner_name": "GitHub Actions 1000011973"
+        },
+        {
+          "id": 119704462575,
+          "name": "E2E Smoke (audits)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:47:25Z",
+          "completed_at": "2026-10-22T07:55:16Z",
+          "runner_name": "GitHub Actions 1000011972"
+        },
+        {
+          "id": 119704462605,
+          "name": "Backend Coverage",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:47:25Z",
+          "completed_at": "2026-10-22T07:50:02Z",
+          "runner_name": "GitHub Actions 1000011974"
+        },
+        {
+          "id": 119704462691,
+          "name": "Integrated Build",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:47:25Z",
+          "completed_at": "2026-10-22T07:48:44Z",
+          "runner_name": "GitHub Actions 1000011976"
+        },
+        {
+          "id": 119704462997,
+          "name": "E2E Smoke (app)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:47:25Z",
+          "completed_at": "2026-10-22T07:55:13Z",
+          "runner_name": "GitHub Actions 1000011975"
+        }
+      ],
+      "metrics": [
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119704462163,
+          "name": "Backend Tests",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011971",
+          "job_wall_s": 286,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "restored_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": false,
+          "saved_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 2.237,
+          "save_step_s": 4,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "vet": {
+              "wall_s": 0.59,
+              "user_s": 1.06,
+              "sys_s": 0.31
+            },
+            "race-compile-vet": {
+              "wall_s": 4.42,
+              "user_s": 8.07,
+              "sys_s": 1.66
+            },
+            "race-tests": {
+              "wall_s": 257.6,
+              "user_s": 692.17,
+              "sys_s": 217.97
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119704462575,
+          "name": "E2E Smoke (audits)",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011972",
+          "job_wall_s": 471,
+          "primary_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "restored_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": false,
+          "saved_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "image_version": "20261018.339.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 1.949,
+          "save_step_s": 4,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "embed-compile-vet": {
+              "wall_s": 0.33,
+              "user_s": 0.42,
+              "sys_s": 0.22
+            },
+            "embed-test": {
+              "wall_s": 0.23,
+              "user_s": 0.24,
+              "sys_s": 0.13
+            },
+            "trimpath-build": {
+              "wall_s": 1.76,
+              "user_s": 1.64,
+              "sys_s": 0.38
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119704462605,
+          "name": "Backend Coverage",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011974",
+          "job_wall_s": 157,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "restored_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": false,
+          "saved_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 1.93,
+          "save_step_s": 3,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "vet": {
+              "wall_s": 0.63,
+              "user_s": 1.1,
+              "sys_s": 0.34
+            },
+            "coverage-compile-vet": {
+              "wall_s": 3.96,
+              "user_s": 7.3,
+              "sys_s": 1.84
+            },
+            "coverage-tests": {
+              "wall_s": 127.9,
+              "user_s": 340.41,
+              "sys_s": 95.83
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119704462691,
+          "name": "Integrated Build",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011976",
+          "job_wall_s": 79,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "restored_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": false,
+          "saved_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 2.323,
+          "save_step_s": 3,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "embed-compile-vet": {
+              "wall_s": 0.47,
+              "user_s": 0.58,
+              "sys_s": 0.26
+            },
+            "embed-test": {
+              "wall_s": 0.25,
+              "user_s": 0.32,
+              "sys_s": 0.14
+            },
+            "trimpath-build": {
+              "wall_s": 1.98,
+              "user_s": 2.25,
+              "sys_s": 0.37
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119704462997,
+          "name": "E2E Smoke (app)",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011975",
+          "job_wall_s": 468,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "restored_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "exact_hit": false,
+          "saved_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 1.794,
+          "save_step_s": 3,
+          "save_conclusion": "success",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "embed-compile-vet": {
+              "wall_s": 0.37,
+              "user_s": 0.58,
+              "sys_s": 0.25
+            },
+            "embed-test": {
+              "wall_s": 0.24,
+              "user_s": 0.29,
+              "sys_s": 0.15
+            },
+            "trimpath-build": {
+              "wall_s": 1.96,
+              "user_s": 2.22,
+              "sys_s": 0.34
+            }
+          }
+        }
+      ]
+    },
+    {
+      "label": "source-refresh-warm",
+      "run_id": 39742965739,
+      "attempt": 2,
+      "url": "https://github.com/sergeyfarin/rekenraam/actions/runs/39742965739/attempts/2",
+      "head_sha": "18707b1866eb8d47d4036be9be54ee89f183a388",
+      "jobs": [
+        {
+          "id": 119707720574,
+          "name": "Integrated Build",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:55:40Z",
+          "completed_at": "2026-10-22T07:56:50Z",
+          "runner_name": "GitHub Actions 1000011980"
+        },
+        {
+          "id": 119707720619,
+          "name": "Frontend Check",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:55:40Z",
+          "completed_at": "2026-10-22T07:56:52Z",
+          "runner_name": "GitHub Actions 1000011977"
+        },
+        {
+          "id": 119707720737,
+          "name": "E2E Smoke (app)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:55:40Z",
+          "completed_at": "2026-10-22T08:03:27Z",
+          "runner_name": "GitHub Actions 1000011982"
+        },
+        {
+          "id": 119707720754,
+          "name": "Backend Coverage",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:55:41Z",
+          "completed_at": "2026-10-22T07:57:51Z",
+          "runner_name": "GitHub Actions 1000011981"
+        },
+        {
+          "id": 119707720772,
+          "name": "Backend Tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:55:40Z",
+          "completed_at": "2026-10-22T08:00:21Z",
+          "runner_name": "GitHub Actions 1000011979"
+        },
+        {
+          "id": 119707720868,
+          "name": "E2E Smoke (audits)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T07:55:41Z",
+          "completed_at": "2026-10-22T08:07:32Z",
+          "runner_name": "GitHub Actions 1000011978"
+        }
+      ],
+      "metrics": [
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119707720574,
+          "name": "Integrated Build",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011980",
+          "job_wall_s": 70,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "restored_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 1.501,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "embed-compile-vet": {
+              "wall_s": 0.37,
+              "user_s": 0.57,
+              "sys_s": 0.25
+            },
+            "embed-test": {
+              "wall_s": 0.25,
+              "user_s": 0.32,
+              "sys_s": 0.14
+            },
+            "trimpath-build": {
+              "wall_s": 1.92,
+              "user_s": 2.1,
+              "sys_s": 0.34
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119707720737,
+          "name": "E2E Smoke (app)",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011982",
+          "job_wall_s": 467,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "restored_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 1.584,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "embed-compile-vet": {
+              "wall_s": 0.39,
+              "user_s": 0.59,
+              "sys_s": 0.24
+            },
+            "embed-test": {
+              "wall_s": 0.24,
+              "user_s": 0.32,
+              "sys_s": 0.13
+            },
+            "trimpath-build": {
+              "wall_s": 2.34,
+              "user_s": 2.07,
+              "sys_s": 0.33
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119707720754,
+          "name": "Backend Coverage",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011981",
+          "job_wall_s": 130,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "restored_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 3.413,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "vet": {
+              "wall_s": 0.29,
+              "user_s": 0.48,
+              "sys_s": 0.2
+            },
+            "coverage-compile-vet": {
+              "wall_s": 2.83,
+              "user_s": 4.37,
+              "sys_s": 1.33
+            },
+            "coverage-tests": {
+              "wall_s": 103.11,
+              "user_s": 214.96,
+              "sys_s": 81.07
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119707720772,
+          "name": "Backend Tests",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011979",
+          "job_wall_s": 281,
+          "primary_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "restored_key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "image_version": "20261012.334.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 3.396,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "vet": {
+              "wall_s": 0.41,
+              "user_s": 0.69,
+              "sys_s": 0.26
+            },
+            "race-compile-vet": {
+              "wall_s": 4.28,
+              "user_s": 7.41,
+              "sys_s": 1.54
+            },
+            "race-tests": {
+              "wall_s": 254.48,
+              "user_s": 700.51,
+              "sys_s": 229.39
+            }
+          }
+        },
+        {
+          "native_environment": {
+            "CC": "gcc",
+            "CXX": "g++",
+            "CGO_CFLAGS": "-O2 -g",
+            "CGO_CPPFLAGS": "",
+            "CGO_CXXFLAGS": "-O2 -g",
+            "CGO_ENABLED": "1",
+            "CGO_LDFLAGS": "-O2 -g",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOEXPERIMENT": "",
+            "GOFLAGS": " -tags=fts5,netgo,osusergo",
+            "GOOS": "linux",
+            "GOVERSION": "go1.27.3"
+          },
+          "child_paths": {
+            "gocache": "/home/runner/.cache/go-build",
+            "gomodcache": "/home/runner/go/pkg/mod"
+          },
+          "job_id": 119707720868,
+          "name": "E2E Smoke (audits)",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000011978",
+          "job_wall_s": 711,
+          "primary_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "restored_key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "exact_hit": true,
+          "saved_key": null,
+          "gocache": "/home/runner/.cache/go-build",
+          "gomodcache": "/home/runner/go/pkg/mod",
+          "source_digest": "d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "image_version": "20261018.339.1",
+          "go_version": "go1.27.3",
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "libc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39",
+          "restore_wall_s": 3.294,
+          "save_step_s": 0,
+          "save_conclusion": "skipped",
+          "phases": {
+            "modules": {
+              "wall_s": 0,
+              "user_s": 0,
+              "sys_s": 0
+            },
+            "embed-compile-vet": {
+              "wall_s": 0.45,
+              "user_s": 0.63,
+              "sys_s": 0.3
+            },
+            "embed-test": {
+              "wall_s": 0.29,
+              "user_s": 0.35,
+              "sys_s": 0.18
+            },
+            "trimpath-build": {
+              "wall_s": 2.08,
+              "user_s": 2.2,
+              "sys_s": 0.45
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "cache_inventories": [
+    {
+      "after": "cold",
+      "count": 5,
+      "total_bytes": 615561942,
+      "entries": [
+        {
+          "id": 9322376528,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105105278,
+          "created_at": "2026-10-22T06:12:35.568133Z",
+          "last_accessed_at": "2026-10-22T06:13:40.446935Z"
+        },
+        {
+          "id": 9322172387,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105232117,
+          "created_at": "2026-10-22T06:06:53.930003Z",
+          "last_accessed_at": "2026-10-22T06:13:39.516848Z"
+        },
+        {
+          "id": 9322351570,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 167385080,
+          "created_at": "2026-10-22T06:11:54.416704Z",
+          "last_accessed_at": "2026-10-22T06:13:36.146939Z"
+        },
+        {
+          "id": 9322385967,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105214327,
+          "created_at": "2026-10-22T06:12:52.523783Z",
+          "last_accessed_at": "2026-10-22T06:12:52.523783Z"
+        },
+        {
+          "id": 9322239407,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 132625140,
+          "created_at": "2026-10-22T06:08:43.074816Z",
+          "last_accessed_at": "2026-10-22T06:08:43.074816Z"
+        }
+      ]
+    },
+    {
+      "after": "warm1",
+      "count": 7,
+      "total_bytes": 900248379,
+      "entries": [
+        {
+          "id": 9322376528,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105105278,
+          "created_at": "2026-10-22T06:12:35.568133Z",
+          "last_accessed_at": "2026-10-22T06:26:41.255278Z"
+        },
+        {
+          "id": 9322689818,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 106725867,
+          "created_at": "2026-10-22T06:21:35.101105Z",
+          "last_accessed_at": "2026-10-22T06:26:40.840019Z"
+        },
+        {
+          "id": 9322556556,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 177960570,
+          "created_at": "2026-10-22T06:17:45.805340Z",
+          "last_accessed_at": "2026-10-22T06:26:37.733643Z"
+        },
+        {
+          "id": 9322351570,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 167385080,
+          "created_at": "2026-10-22T06:11:54.416704Z",
+          "last_accessed_at": "2026-10-22T06:26:36.191126Z"
+        },
+        {
+          "id": 9322172387,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105232117,
+          "created_at": "2026-10-22T06:06:53.930003Z",
+          "last_accessed_at": "2026-10-22T06:13:39.516848Z"
+        },
+        {
+          "id": 9322385967,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105214327,
+          "created_at": "2026-10-22T06:12:52.523783Z",
+          "last_accessed_at": "2026-10-22T06:12:52.523783Z"
+        },
+        {
+          "id": 9322239407,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 132625140,
+          "created_at": "2026-10-22T06:08:43.074816Z",
+          "last_accessed_at": "2026-10-22T06:08:43.074816Z"
+        }
+      ]
+    },
+    {
+      "after": "warm2",
+      "count": 8,
+      "total_bytes": 1008676079,
+      "entries": [
+        {
+          "id": 9322556556,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 177960570,
+          "created_at": "2026-10-22T06:17:45.805340Z",
+          "last_accessed_at": "2026-10-22T07:44:19.688972Z"
+        },
+        {
+          "id": 9322912764,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 108427700,
+          "created_at": "2026-10-22T06:27:40.937441Z",
+          "last_accessed_at": "2026-10-22T06:27:40.937441Z"
+        },
+        {
+          "id": 9322376528,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105105278,
+          "created_at": "2026-10-22T06:12:35.568133Z",
+          "last_accessed_at": "2026-10-22T06:26:41.255278Z"
+        },
+        {
+          "id": 9322689818,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 106725867,
+          "created_at": "2026-10-22T06:21:35.101105Z",
+          "last_accessed_at": "2026-10-22T06:26:40.840019Z"
+        },
+        {
+          "id": 9322351570,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 167385080,
+          "created_at": "2026-10-22T06:11:54.416704Z",
+          "last_accessed_at": "2026-10-22T06:26:36.191126Z"
+        },
+        {
+          "id": 9322172387,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105232117,
+          "created_at": "2026-10-22T06:06:53.930003Z",
+          "last_accessed_at": "2026-10-22T06:13:39.516848Z"
+        },
+        {
+          "id": 9322385967,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105214327,
+          "created_at": "2026-10-22T06:12:52.523783Z",
+          "last_accessed_at": "2026-10-22T06:12:52.523783Z"
+        },
+        {
+          "id": 9322239407,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 132625140,
+          "created_at": "2026-10-22T06:08:43.074816Z",
+          "last_accessed_at": "2026-10-22T06:08:43.074816Z"
+        }
+      ]
+    },
+    {
+      "after": "source-refresh",
+      "count": 13,
+      "total_bytes": 1635308448,
+      "entries": [
+        {
+          "id": 9326408328,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 106875688,
+          "created_at": "2026-10-22T07:55:11.966427Z",
+          "last_accessed_at": "2026-10-22T07:55:11.966427Z"
+        },
+        {
+          "id": 9326406590,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 107022405,
+          "created_at": "2026-10-22T07:55:09.424990Z",
+          "last_accessed_at": "2026-10-22T07:55:09.424990Z"
+        },
+        {
+          "id": 9326270273,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 168547841,
+          "created_at": "2026-10-22T07:52:09.072931Z",
+          "last_accessed_at": "2026-10-22T07:52:09.072931Z"
+        },
+        {
+          "id": 9326174186,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 137239255,
+          "created_at": "2026-10-22T07:50:00.033947Z",
+          "last_accessed_at": "2026-10-22T07:50:00.033947Z"
+        },
+        {
+          "id": 9326113234,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 106947180,
+          "created_at": "2026-10-22T07:48:41.536246Z",
+          "last_accessed_at": "2026-10-22T07:48:41.536246Z"
+        },
+        {
+          "id": 9322172387,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105232117,
+          "created_at": "2026-10-22T06:06:53.930003Z",
+          "last_accessed_at": "2026-10-22T07:47:40.960663Z"
+        },
+        {
+          "id": 9322239407,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 132625140,
+          "created_at": "2026-10-22T06:08:43.074816Z",
+          "last_accessed_at": "2026-10-22T07:47:40.493109Z"
+        },
+        {
+          "id": 9322351570,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 167385080,
+          "created_at": "2026-10-22T06:11:54.416704Z",
+          "last_accessed_at": "2026-10-22T07:47:40.039067Z"
+        },
+        {
+          "id": 9322385967,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105214327,
+          "created_at": "2026-10-22T06:12:52.523783Z",
+          "last_accessed_at": "2026-10-22T07:47:39.846143Z"
+        },
+        {
+          "id": 9322376528,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105105278,
+          "created_at": "2026-10-22T06:12:35.568133Z",
+          "last_accessed_at": "2026-10-22T07:47:37.025484Z"
+        },
+        {
+          "id": 9322556556,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 177960570,
+          "created_at": "2026-10-22T06:17:45.805340Z",
+          "last_accessed_at": "2026-10-22T07:44:19.688972Z"
+        },
+        {
+          "id": 9322912764,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 108427700,
+          "created_at": "2026-10-22T06:27:40.937441Z",
+          "last_accessed_at": "2026-10-22T06:27:40.937441Z"
+        },
+        {
+          "id": 9322689818,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 106725867,
+          "created_at": "2026-10-22T06:21:35.101105Z",
+          "last_accessed_at": "2026-10-22T06:26:40.840019Z"
+        }
+      ]
+    },
+    {
+      "after": "source-refresh-warm",
+      "count": 13,
+      "total_bytes": 1635308448,
+      "entries": [
+        {
+          "id": 9326270273,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 168547841,
+          "created_at": "2026-10-22T07:52:09.072931Z",
+          "last_accessed_at": "2026-10-22T07:55:55.872323Z"
+        },
+        {
+          "id": 9326113234,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 106947180,
+          "created_at": "2026-10-22T07:48:41.536246Z",
+          "last_accessed_at": "2026-10-22T07:55:55.536402Z"
+        },
+        {
+          "id": 9326408328,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 106875688,
+          "created_at": "2026-10-22T07:55:11.966427Z",
+          "last_accessed_at": "2026-10-22T07:55:55.357656Z"
+        },
+        {
+          "id": 9326174186,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 137239255,
+          "created_at": "2026-10-22T07:50:00.033947Z",
+          "last_accessed_at": "2026-10-22T07:55:54.767627Z"
+        },
+        {
+          "id": 9326406590,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-d6e214b496e0f6076cbeb47f1ebb89f43df2bd275d3915ead2b34661f5c29b2d",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 107022405,
+          "created_at": "2026-10-22T07:55:09.424990Z",
+          "last_accessed_at": "2026-10-22T07:55:54.368950Z"
+        },
+        {
+          "id": 9322172387,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105232117,
+          "created_at": "2026-10-22T06:06:53.930003Z",
+          "last_accessed_at": "2026-10-22T07:47:40.960663Z"
+        },
+        {
+          "id": 9322239407,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 132625140,
+          "created_at": "2026-10-22T06:08:43.074816Z",
+          "last_accessed_at": "2026-10-22T07:47:40.493109Z"
+        },
+        {
+          "id": 9322351570,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-race-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 167385080,
+          "created_at": "2026-10-22T06:11:54.416704Z",
+          "last_accessed_at": "2026-10-22T07:47:40.039067Z"
+        },
+        {
+          "id": 9322385967,
+          "key": "go-v1-846f5e461e97f03441697bdd5d53b16a7817cc6e679adf36c65e161211383909-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105214327,
+          "created_at": "2026-10-22T06:12:52.523783Z",
+          "last_accessed_at": "2026-10-22T07:47:39.846143Z"
+        },
+        {
+          "id": 9322376528,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-audits-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 105105278,
+          "created_at": "2026-10-22T06:12:35.568133Z",
+          "last_accessed_at": "2026-10-22T07:47:37.025484Z"
+        },
+        {
+          "id": 9322556556,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-coverage-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 177960570,
+          "created_at": "2026-10-22T06:17:45.805340Z",
+          "last_accessed_at": "2026-10-22T07:44:19.688972Z"
+        },
+        {
+          "id": 9322912764,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-build-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 108427700,
+          "created_at": "2026-10-22T06:27:40.937441Z",
+          "last_accessed_at": "2026-10-22T06:27:40.937441Z"
+        },
+        {
+          "id": 9322689818,
+          "key": "go-v1-d50c165fc0aab1aa55dd6741a45d2bb7216406e972bf3fedede1a042c5b2b85c-6947d5845a3d03145716cc3021c5fc38b6ed2dc9861e0eacc6079fd4bcc89366-e2e-app-1ecafd43dce867a81a639dd6d8c053405fc6bb931f3fb5260c4c7adbcecf55db",
+          "ref": "refs/heads/codex/issue-382-go-cache",
+          "size_in_bytes": 106725867,
+          "created_at": "2026-10-22T06:21:35.101105Z",
+          "last_accessed_at": "2026-10-22T06:26:40.840019Z"
+        }
+      ]
+    }
+  ]
+}
