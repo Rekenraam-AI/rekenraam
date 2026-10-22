@@ -659,8 +659,11 @@ converting coefficients to `Number`.
   smoke matrices and event frequency. Worker-scoped sweep seeds and explicit
   request/font/render readiness shorten measured browser wall time. The
   [delivery evidence](reviews/ci-browser-runtime-2026-10-21.md) records local
-  comparisons, runner cost and retained coverage; hosted CI verification is
-  pending publication of the local commit. Independent date-boundary findings
+  comparisons, runner cost and retained coverage. [Hosted verification](reviews/ci-browser-runtime-publication-2026-10-22.md)
+  passes at `b10e8f9c`: 378 smoke cases, five release-preflight cases, all six
+  CI jobs and CodeQL; successful timing artifacts are inspected. The observed
+  browser critical path is 9m45s; the controlled local 3+3 median improves 36.8%
+  with 11.1% higher median runner time. Independent date-boundary findings
   #385 (owner-local current reads) and #386 (dividend fixtures) remain open.
 
 ## Projected balances and learned spending (R10) — ✅ shipped

@@ -1,5 +1,9 @@
 # Browser CI runtime delivery — 2026-10-21
 
+Publication follow-through: [hosted CI verification on 2026-10-22](ci-browser-runtime-publication-2026-10-22.md).
+The pending-publication statements below describe the original local delivery;
+the follow-through records the rebased SHA, current coverage and successful runs.
+
 Implementation for [#381](https://github.com/sergeyfarin/rekenraam/issues/381),
 following the [initial investigation](ci-runtime-investigation-2026-10-21.md).
 The controlled local full smoke command's median critical path falls from
