@@ -55,6 +55,12 @@ measurements. CI's integrated build runs independently, and every check remains.
 Never invent parallel validation commands; if a command must change, change
 the script and CI together and update `docs/developer-workflow.md`.
 
+CI's workload cache exports `GOCACHE`/`GOMODCACHE`; E2E's child build inherits
+them. `GO_PHASE_TIMINGS=1` separates module download, compile/vet and execution
+in the shared backend/build wrappers (extra compile-only passes, all real
+tests retained). See `docs/developer-workflow.md` → Go caches and measurements
+for key refresh rules and the hosted cold/warm comparison procedure.
+
 ## Review checklist — this repo's recurring bug classes
 
 Every one of these shipped as a real bug here at least once. Check them on any

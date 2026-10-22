@@ -884,6 +884,80 @@ Workflow conventions:
 - Keep job structure simple and readable.
 - Keep validation frequency explicit; measure job cost before changing event selection.
 
+### Go caches and measurements
+
+The push/PR CI uses `.github/actions/setup-go-cache` after checkout. It disables
+setup-go's automatic cache, resolves `go env GOCACHE GOMODCACHE`, exports both
+paths to subsequent steps and restores those exact directories. Playwright's
+`pnpm build` inherits them without a private `/tmp` override. Local commands
+likewise honor explicit overrides or Go's defaults; no CI-only build path is
+required. Weekly/manual workflows retain setup-go's default caching and now
+also share their effective path with E2E builds.
+
+Each of `race`, `coverage`, `build`, `e2e-app` and `e2e-audits` owns a separate
+primary key:
+
+```text
+go-v1-<native-config>-<go.sum>-<workload>-<source-inputs>
+```
+
+The native fingerprint covers the selected Go version, platform/architecture,
+CGO/compiler/flags, runner image, OS and libc/compiler versions, including the
+shared FTS5/netgo/osusergo tags. Restore falls back first to the same workload,
+then another workload with the same dependencies, then older dependencies with
+the same native configuration. Go validates individual artifact hashes, so
+ordinary, race, coverage and embedded-web/trimpath artifacts can coexist. A
+fallback is saved under the new workload/source key only after its checks pass.
+Successful exact hits skip saving. Save and restore steps log actual keys,
+paths, source commit, cache sizes and transfer durations; the job summary also
+records the primary and matched restore keys.
+
+The source digest includes backend, frontend, API, shared scripts, workspace
+manifests/lockfile and CI cache configuration, before installs/generated output.
+A source-only change refreshes the key without changing `go.sum`; unchanged
+source reruns reuse it. There are no timestamp or run-ID keys. One writer per
+workload (including one per E2E suite), branch-scoped caches and the existing
+per-ref workflow cancellation avoid competing job writers. Storage is bounded
+by GitHub's configured repository cache quota and inactivity eviction; this
+change grants no cache-deletion permission and does not retain a cache per run.
+Monitor cache sizes/evictions when evaluating whether the workload copies fit
+the repository quota. See [GitHub's cache reference](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
+and [parallel-build guidance](https://github.com/actions/setup-go/blob/main/docs/advanced-usage.md#parallel-builds).
+
+`GO_PHASE_TIMINGS=1` enables diagnostic phases in the existing wrappers
+(Linux/GNU `/usr/bin/time`, as on CI):
+
+```sh
+GO_PHASE_TIMINGS=1 ./scripts/test-backend.sh
+GO_PHASE_TIMINGS=1 COVERAGE=1 ./scripts/test-backend.sh
+GO_PHASE_TIMINGS=1 pnpm build
+GO_PHASE_TIMINGS=1 ./scripts/test-e2e-smoke.sh
+python3 scripts/test-ci-go-cache.py
+node --test e2e/global-setup.test.mjs
+```
+
+Module downloads are timed before Go compilation. Backend vet is timed
+separately, then an instrumented compile/link/default-vet pass uses
+`go test -exec /bin/true -count=1`: no TestMain or test body runs, and synthetic
+successes are not cached as test results. The original complete race/coverage
+command follows, with its two-package schedule and five-minute deadline intact.
+Its time still includes Go driver/cached build/link overhead and may use valid
+Go test-result cache hits; it is not pure test-body CPU time. The build wrapper
+separates embed compilation/vet, the real embedded-output test and the trimpath
+production build. Frontend compilation and browser execution remain separate
+costs; the entire E2E setup duration is never treated as recoverable Go work.
+Normal local commands omit the extra precompile passes unless opted in.
+
+For the hosted comparison, use one source/toolchain/runner image and fresh
+runners: one cold run under the new namespace, then at least two exact-hit
+warm runs. Record Actions run URLs, source SHA, configuration, keys, paths,
+module/vet/compile/test timings, and cache restore/save duration/size from the
+separate cache steps. Then change only backend source (leave `go.sum` fixed),
+verify a fallback restore plus a new save key, and rerun that source to prove
+its artifacts restore usefully. Retain all five logical CI gates (six jobs
+with the browser matrix). Use logs to confirm every check passed; a local cache
+copy is not fresh-runner Actions evidence. See the [#382 validation record](reviews/go-cache-2026-10-22.md).
+
 ## Documentation Update Rules
 
 - Update `docs/product-requirements.md` when scope or durable product behavior changes.

@@ -56,7 +56,11 @@ Browser runs also write timing reports to `e2e/timing-results/`; CI retains
 them on successful and failed runs. CI runs disjoint app and audit groups
 on two runners; the local smoke wrapper defaults to all cases. See the E2E
 section of the developer workflow for phase timings and matched performance
-comparisons.
+comparisons. Go commands, including E2E's child build, honor `GOCACHE` and
+`GOMODCACHE` (Go's defaults when unset). Set `GO_PHASE_TIMINGS=1` on the backend
+test or integrated build wrapper to separate module download, compile/vet and
+test timings; CI enables this with workload-specific source-refreshed caches.
+See [Go caches and measurements](docs/developer-workflow.md#go-caches-and-measurements).
 For the deliberate runtime OpenAPI audit, run
 `python3 scripts/audit-api-contract.py --output /tmp/rekenraam-api-audit`;
 [setup, sensitivity controls and retained findings](docs/developer-workflow.md#backend-validation)

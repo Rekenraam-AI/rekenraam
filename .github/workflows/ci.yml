@@ -24,24 +24,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: ./.github/actions/setup-go-cache
+        id: go-cache
         with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          workload: race
+      - name: Check Go cache configuration
+        run: python3 scripts/test-ci-go-cache.py
       - name: Run backend tests
         # Shared local/CI gate: race detector, parallel tests inside each
         # package, two packages concurrently, 5m per package (ADR 0016, #164).
         run: ./scripts/test-backend.sh
+      - name: Save refreshed Go cache
+        if: steps.go-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          key: ${{ steps.go-cache.outputs.key }}
+          path: |
+            ${{ steps.go-cache.outputs.gocache }}
+            ${{ steps.go-cache.outputs.gomodcache }}
 
   backend-coverage:
     name: Backend Coverage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: ./.github/actions/setup-go-cache
+        id: go-cache
         with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          workload: coverage
       - name: Run backend tests with coverage
         # pipefail: without it, tee's exit status would hide a failing suite.
         run: |
@@ -54,6 +64,14 @@ jobs:
           path: backend/coverage.out
       - name: Report and enforce the coverage floor
         run: ./scripts/check-coverage-floor.sh coverage-summary.txt
+      - name: Save refreshed Go cache
+        if: steps.go-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          key: ${{ steps.go-cache.outputs.key }}
+          path: |
+            ${{ steps.go-cache.outputs.gocache }}
+            ${{ steps.go-cache.outputs.gomodcache }}
 
   frontend-check:
     name: Frontend Check
@@ -82,10 +100,10 @@ jobs:
       E2E_SUITE: ${{ matrix.suite }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: ./.github/actions/setup-go-cache
+        id: go-cache
         with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          workload: e2e-${{ matrix.suite }}
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -102,6 +120,14 @@ jobs:
       # job and runs before a release.
       - name: Run browser smoke journeys
         run: ./scripts/test-e2e-smoke.sh
+      - name: Save refreshed Go cache
+        if: steps.go-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          key: ${{ steps.go-cache.outputs.key }}
+          path: |
+            ${{ steps.go-cache.outputs.gocache }}
+            ${{ steps.go-cache.outputs.gomodcache }}
       - name: Upload browser timings
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
@@ -127,10 +153,10 @@ jobs:
     # Every CI job remains required for the overall workflow to pass.
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: ./.github/actions/setup-go-cache
+        id: go-cache
         with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          workload: build
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -141,3 +167,11 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build single binary
         run: pnpm build
+      - name: Save refreshed Go cache
+        if: steps.go-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          key: ${{ steps.go-cache.outputs.key }}
+          path: |
+            ${{ steps.go-cache.outputs.gocache }}
+            ${{ steps.go-cache.outputs.gomodcache }}

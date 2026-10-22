@@ -25,7 +25,7 @@ export default function globalSetup(): void {
     execSync('pnpm build', {
       cwd: repoRoot,
       stdio: 'inherit',
-      env: { ...process.env, GOCACHE: process.env.GOCACHE ?? '/tmp/rekenraam-go-build-cache' }
+      env: process.env
     });
   } finally {
     record(performance.now() - buildStart);

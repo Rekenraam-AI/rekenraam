@@ -168,6 +168,9 @@ below is execution order, not a chain of hard dependencies.
    [#379](https://github.com/sergeyfarin/rekenraam/issues/379) measures an
    untested investment-command workload; it is not an accepted optimization
    or a blanket R13 prerequisite.
+   Independent Go-cache alignment [#382](https://github.com/sergeyfarin/rekenraam/issues/382)
+   has a local implementation and [validation record](reviews/go-cache-2026-10-22.md);
+   its hosted fresh-runner evidence remains outstanding and does not gate #284.
 3. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
    Use the delivered R18 valuation contracts; resolve portfolio scope,
    external-flow classification, return equations, numerical failure states,

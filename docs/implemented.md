@@ -666,6 +666,12 @@ converting coefficients to `Number`.
   with 11.1% higher median runner time. Independent date-boundary findings
   #385 (owner-local current reads) and #386 (dividend fixtures) remain open.
 
+- Go build-cache alignment ([#382](https://github.com/sergeyfarin/rekenraam/issues/382))
+  gives each push/PR workload a source-refreshed native cache key. E2E inherits
+  the restored Go paths, and shared wrappers can separate module, compile/vet
+  and execution timings. [Local validation and limits](reviews/go-cache-2026-10-22.md)
+  are recorded; hosted cold/warm and source-refresh acceptance remains pending.
+
 ## Projected balances and learned spending (R10) — ✅ shipped
 
 R10's core forecast and opt-in learned-spending extension are accepted

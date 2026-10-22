@@ -9,6 +9,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 cd "$ROOT/backend"
 source "$ROOT/scripts/native-sqlite-env.sh"
+source "$ROOT/scripts/go-phase-timing.sh"
+go_download_phase
 
 pnpm --dir "$ROOT/frontend" run build
 
@@ -17,7 +19,10 @@ find backend/internal/web/dist -mindepth 1 ! -name README.md -exec rm -rf {} +
 cp -R frontend/build/. backend/internal/web/dist/
 
 cd "$ROOT/backend"
-REKENRAAM_RUN_EMBEDDED_WEB_TESTS=1 go test ./internal/web -run TestHandlerServesEmbeddedBuildOutput
+if [ "${GO_PHASE_TIMINGS:-0}" = "1" ]; then
+  go_phase embed-compile-vet go test -exec /bin/true -count=1 ./internal/web -run TestHandlerServesEmbeddedBuildOutput
+fi
+REKENRAAM_RUN_EMBEDDED_WEB_TESTS=1 go_phase embed-test go test ./internal/web -run TestHandlerServesEmbeddedBuildOutput
 
 # -trimpath keeps the builder's absolute paths out of the artifact: without it
 # the binary carries ~1200 references to whatever home directory built it,
@@ -26,4 +31,4 @@ REKENRAAM_RUN_EMBEDDED_WEB_TESTS=1 go test ./internal/web -run TestHandlerServes
 #
 # Bundled native SQLite uses CGO. The container supplies the target libc;
 # standalone artifacts require a compatible libc on the target machine.
-go build -trimpath -o "$ROOT/dist/rekenraam" ./cmd/rekenraam
+go_phase trimpath-build go build -trimpath -o "$ROOT/dist/rekenraam" ./cmd/rekenraam

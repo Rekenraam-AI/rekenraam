@@ -1,0 +1,55 @@
+name: Set up Go with workload cache
+description: Restore native Go artifacts and retain source changes per CI workload
+inputs:
+  workload:
+    description: Unique writer within the workflow (race, coverage, build, e2e-app, e2e-audits)
+    required: true
+outputs:
+  key:
+    description: Primary key for a successful workload's save step
+    value: ${{ steps.config.outputs.key }}
+  gocache:
+    description: Effective Go build cache directory
+    value: ${{ steps.config.outputs.gocache }}
+  gomodcache:
+    description: Effective module cache directory
+    value: ${{ steps.config.outputs.gomodcache }}
+  cache-hit:
+    description: Whether the primary key was restored exactly
+    value: ${{ steps.cache.outputs.cache-hit }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v7
+      with:
+        go-version-file: backend/go.mod
+        cache: false
+    - name: Identify Go cache configuration
+      id: config
+      shell: bash
+      env:
+        GO_CACHE_WORKLOAD: ${{ inputs.workload }}
+        # Computed before generated frontend/embed output or dependencies exist.
+        GO_CACHE_SOURCE: ${{ hashFiles('backend/**', 'frontend/**', 'api/**', 'scripts/**', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', '.github/actions/setup-go-cache/**', '.github/workflows/ci.yml') }}
+      run: ./scripts/ci-go-cache.sh
+    - name: Restore Go cache
+      id: cache
+      uses: actions/cache/restore@v6
+      with:
+        path: |
+          ${{ steps.config.outputs.gocache }}
+          ${{ steps.config.outputs.gomodcache }}
+        key: ${{ steps.config.outputs.key }}
+        restore-keys: |
+          ${{ steps.config.outputs.workload-prefix }}
+          ${{ steps.config.outputs.dependency-prefix }}
+          ${{ steps.config.outputs.native-prefix }}
+    - name: Record Go cache restore
+      shell: bash
+      env:
+        PRIMARY_KEY: ${{ steps.config.outputs.key }}
+        RESTORED_KEY: ${{ steps.cache.outputs.cache-matched-key }}
+        EXACT_HIT: ${{ steps.cache.outputs.cache-hit }}
+      run: |
+        printf 'Go cache primary/save key: %s\nRestored key: %s\nExact hit: %s\n' "$PRIMARY_KEY" "${RESTORED_KEY:-none}" "$EXACT_HIT"
+        printf 'Go cache primary/save key: `%s`\n\nRestored key: `%s` (exact: %s)\n\n' "$PRIMARY_KEY" "${RESTORED_KEY:-none}" "$EXACT_HIT" >> "$GITHUB_STEP_SUMMARY"
