@@ -1,81 +1,86 @@
 # Rekenraam
 
 Rekenraam is a self-hosted personal finance app for tracking accounts,
-transactions, budgets and investments across currencies. It runs on your own
-computer or server and is accessed through a web browser.
+transactions, budgets and investments across currencies. It is intended
+primarily for a home lab or private network, and can also run on a local
+computer or a VPS. You use it through a web browser on desktop or phone.
+
+Your financial records live on the host you choose. You control the database,
+backups and access to them, with no required external account or cloud storage.
+Core bookkeeping works without bank or market-data connections. Optional
+integrations make requests to the providers you configure.
 
 It is a **pre-release, single-user project** maintained by one person, with
 substantial use of AI to generate code and documentation. Features and data
-structures are still changing. Read the limitations below before deciding
-whether to use it for your records.
+structures are still changing.
 
 *Rekenraam* is Dutch for abacus.
 
 ![Spending report in Rekenraam, showing ten months of categorized expenses using sample data](docs/images/reports-spending.png)
 
-## Reasons to use it
+## What it does
 
-Rekenraam may be useful if you want to manage everyday finances and investments
-together and are comfortable running the software yourself.
-
-- The database and backups stay on storage you control. Core use requires no
-  external service account or subscription.
-- Accounts can hold different currencies. Reports keep original currencies
-  separate or convert them using exchange rates you can inspect and edit.
-- A double-entry ledger stores monetary values as exact decimals. Versioned
-  transactions and statement reconciliation help you trace changes and compare
-  the ledger with bank records.
-- Investment records include lots, cost basis, dividends, splits, transfers and
-  gains. You can save period statements to retain the figures from that run.
-- CSV, QIF and a structured archive export make records available for analysis
-  or migration. Backups provide a separate way to restore the installation.
-
-## What it does today
-
-- Accounts, categories and payees, grouped by institution
-- Transaction entry with splits and transfers, on desktop and phone
-- CSV and QIF import with saved column profiles and duplicate detection
-- Optional Trading 212 connection for cash, trades and dividends
-- Statement reconciliation
-- Net worth, spending and cashflow reports with drill-down, charts and CSV
-- Monthly budgets per category and currency
-- Recurring transactions you review before they post
-- Projected balances from recurring items and your past spending
-- Investment holdings, prices and exchange rates, with optional quote providers
-- Nightly verified backups, command-line restore, and exports
-- Two-factor sign-in and read-only API tokens for your own scripts
-- English, plus draft Dutch, German, French, Spanish and Russian translations
+- **Everyday bookkeeping:** accounts grouped by institution, categories,
+  payees, split transactions and transfers. A double-entry ledger stores money
+  as exact decimals; version history and statement reconciliation help you
+  trace changes and compare balances with bank records.
+- **Reports across currencies:** net worth, spending and cashflow with
+  drill-down, charts and CSV downloads. Keep original currencies separate or
+  convert reports using exchange rates you can inspect and edit.
+- **Planning:** monthly budgets by category and currency, recurring
+  transactions you review before posting, and projected balances based on
+  recurring items and past spending.
+- **Imports:** CSV with saved column profiles, QIF, duplicate detection and an
+  optional Trading 212 connection for cash, trades and dividends.
+- **Investments:** long and short positions, lots, dividends and reinvestment,
+  transfers, splits, mergers, spin-offs and return of capital. Track realized
+  and unrealized gains, compare FIFO, LIFO, average-cost and person-pooled
+  methods, convert operational gains into a reporting currency, and save
+  original-currency gains reports and period statements. Prices and exchange
+  rates can be entered manually or fetched from optional providers.
+- **Data portability and recovery:** ledger CSV, QIF and structured archive
+  exports for analysis or migration; nightly verified backups and command-line
+  restore for recovering the installation.
+- **Access:** local sign-in with optional two-factor authentication and
+  read-only API tokens for your scripts. The interface supports English and
+  draft Dutch, German, French, Spanish and Russian translations.
 
 The [feature ledger](docs/implemented.md) records what ships and the remaining
 gaps in each area.
 
 ## Limitations and tradeoffs
 
-- **You operate it yourself.** Installation, updates, HTTPS for remote access,
-  backups and recovery are your responsibility. The database is not encrypted
-  at rest by the app; use storage encryption if you need it. Keep a copy of
-  backups off the machine running the app.
-- **Pre-release compatibility is limited.** Development schema changes may
-  require resetting a disposable database. There is no supported upgrade path
-  from every development revision; see the [upgrade policy](docs/upgrades.md).
-- **One owner per installation.** There are no shared household accounts or
-  multi-user permissions, and no native desktop or mobile app.
-- **Import and connection coverage is limited.** File imports support CSV and
-  QIF, not OFX or XLSX. Trading 212 is the current online import connection;
-  general bank sync is not available. Some provider events require manual
-  entry or linking. Optional providers receive requests when enabled and may
-  require API keys or paid plans.
-- **Investment reports have a defined scope.** Gains depend on the recorded
-  basis, prices and exchange rates; missing inputs can leave results
-  unavailable. Tax filing, jurisdiction-specific tax rules and time-weighted
-  or money-weighted return analytics are not implemented.
-- **Translations need review.** English is the initial implementation language.
-  Dutch, German, French, Spanish and Russian catalogs are drafts awaiting
-  native terminology review.
+- **Hosting takes maintenance.** You manage updates, HTTPS, storage protection
+  and recovery. The app schedules and verifies backups, but you need to keep a
+  copy on separate storage. Whole-database encryption is left to the host;
+  connection credentials and two-factor secrets are encrypted by the app.
+- **Still pre-release.** Updates apply migrations on startup, but there is no
+  guaranteed upgrade path from every development revision. Some pre-release
+  schema redesigns may require a development database reset; see the
+  [upgrade policy](docs/upgrades.md).
+- **One owner login.** You can track household finances, but there are no
+  separate user logins or permissions for sharing the installation.
+- **Connections cover specific providers.** Trading 212 is currently the only
+  online bank/broker import connection; general bank sync is not available.
+  Some events need manual entry or linking even though the corresponding
+  investment operations are supported. Provider API keys or paid plans may be
+  needed. OFX/QFX and XLSX file imports are not implemented.
+- **Return analytics and tax automation are not included.** Cost-basis and
+  gains reporting are available, but time-weighted and money-weighted returns
+  are not yet implemented. Reports do not apply jurisdiction-specific tax
+  rules or prepare tax filings.
+- **No attachments.** Statement PDF and receipt storage are outside the current
+  scope.
+- **Translations need native review.** The five non-English catalogs are
+  glossary-based drafts; financial terminology has not yet been signed off by
+  native reviewers.
 
 ## AI use and review
 
 AI-generated code and documentation are part of the development process.
+Using the app does not require an AI account or sending your records to an AI
+service.
+
 Changes go through repeated code reviews, regression tests and recorded audits
 of areas such as ledger calculations, reconciliation, authentication and
 backup/restore. The [review records](docs/reviews/) describe their scope,
