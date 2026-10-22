@@ -46,6 +46,7 @@ type Config struct {
 	MarketDataBaseURL string
 }
 
+// Load reads and validates environment settings, applying the application defaults.
 func Load() (Config, error) {
 	appEnv := env("APP_ENV", "production")
 	if appEnv != "development" && appEnv != "production" {
