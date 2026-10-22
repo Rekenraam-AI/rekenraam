@@ -665,8 +665,13 @@ converting coefficients to `Number`.
   CI jobs and CodeQL; successful timing artifacts are inspected. The observed
   browser critical path is 9m45s; the controlled local 3+3 median improves 36.8%
   with 11.1% higher median runner time. Independent date-boundary finding
-  #385 is [delivered](reviews/owner-current-reference-2026-10-22.md);
-  #386 (dividend fixtures) remains separate.
+  #385 is [delivered](reviews/owner-current-reference-2026-10-22.md).
+  Synthetic provider-dividend fixtures (#386) register explicit per-symbol
+  ex-dates from one scenario calendar reference. Frozen-clock HTTP controls
+  cover UTC/east/west midnight and DST arithmetic; the native completion,
+  revised-announcement and short payment-in-lieu browser cases retain exact
+  date assertions. Product date rules and opposite browser/owner timezone
+  controls remain unchanged.
 
 - Go build-cache alignment ([#382](https://github.com/sergeyfarin/rekenraam/issues/382))
   gives each push/PR workload a source-refreshed native cache key. E2E inherits

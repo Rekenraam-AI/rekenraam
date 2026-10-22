@@ -1012,6 +1012,15 @@ work. The e2e harness sets a placeholder `TWELVE_DATA_API_KEY` that only ever
 reaches the `MARKET_DATA_BASE_URL` stub; that stub announces 0.50 per share
 for `E2EDIV*` symbols and revises `E2EDIVREV*` ones to 0.55 from their second
 fetch, so the revision disclosure (#254) has a browser case.
+Each provider-dividend scenario captures one host-calendar reference and derives
+its opened, acquisition, ex-date and payment dates from it. Before fetching,
+`support/provider-dividends.ts` registers the explicit ex-date per symbol with
+`PUT /__control/dividends/{symbol}`; unregistered symbols return 404. Registering
+again resets only that symbol's revision sequence. The stub never chooses dates
+from its own clock. `pnpm --dir e2e run test:stubs` checks exact independent dates
+with frozen UTC, Amsterdam and Los Angeles clocks at midnight and DST boundaries
+(#386). The three existing dividend browser journeys retain exact ex-date,
+native posting, revision and payment-in-lieu linking assertions.
 For provider evidence, failure recovery and the fixed crypto CSV columns, see the
 [quote/crypto contract](plans/quote-providers-crypto-plan.md).
 

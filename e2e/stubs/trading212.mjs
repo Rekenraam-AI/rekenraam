@@ -22,6 +22,7 @@ const apiPrefix = '/api/v0';
 /** @type {Map<string, { orders: any[], dividends: any[], transactions: any[] }>} */
 const accounts = new Map();
 const dividendFetches = new Map();
+const dividendDates = new Map();
 
 function send(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -58,6 +59,22 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://stub');
     if (url.pathname === '/healthz') return send(res, 200, { ok: true });
 
+    // Synthetic market-data dates are explicit calendar facts supplied by the
+    // spec, never recalculated from this process's clock or timezone (#386).
+    const dividendControl = url.pathname.match(/^\/__control\/dividends\/([^/]+)$/);
+    if (dividendControl && req.method === 'PUT') {
+      const symbol = decodeURIComponent(dividendControl[1]);
+      const { ex_date: exDate } = await readJSON(req);
+      const parsedDate = new Date(`${exDate}T00:00:00Z`);
+      if (!symbol.startsWith('E2EDIV') || typeof exDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(exDate)
+        || !Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== exDate) {
+        return send(res, 400, { error: 'invalid dividend fixture' });
+      }
+      dividendDates.set(symbol, exDate);
+      dividendFetches.delete(symbol);
+      return send(res, 204);
+    }
+
     const control = url.pathname.match(/^\/__control\/accounts\/([^/]+)$/);
     if (control && req.method === 'PUT') {
       const body = await readJSON(req);
@@ -67,16 +84,16 @@ const server = createServer(async (req, res) => {
       return send(res, 204);
     }
 
-    // Twelve Data GET /dividends (#111): a symbol starting E2EDIV went ex
-    // ten days ago at 0.50 per share. One starting E2EDIVREV is revised to
+    // Twelve Data GET /dividends (#111): a registered E2EDIV symbol pays
+    // 0.50 per share on its explicit ex-date. E2EDIVREV is revised to
     // 0.55 from its second fetch on (#254). Every other market-data path
     // stays 404.
     if (req.method === 'GET' && url.pathname === '/market-data/dividends') {
       const symbol = url.searchParams.get('symbol') ?? '';
-      if (!symbol.startsWith('E2EDIV') || url.searchParams.get('adjust') !== 'false') return send(res, 404, { error: 'not found' });
+      if (!dividendDates.has(symbol) || url.searchParams.get('adjust') !== 'false') return send(res, 404, { error: 'not found' });
       const fetches = (dividendFetches.get(symbol) ?? 0) + 1;
       dividendFetches.set(symbol, fetches);
-      const exDate = new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10);
+      const exDate = dividendDates.get(symbol);
       const amount = symbol.startsWith('E2EDIVREV') && fetches > 1 ? 0.55 : 0.5;
       return send(res, 200, {
         meta: { symbol, currency: 'USD', mic_code: url.searchParams.get('mic_code') ?? '', exchange_timezone: 'America/New_York' },

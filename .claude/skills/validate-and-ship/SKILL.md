@@ -535,6 +535,11 @@ non-trivial diff (yours or reviewed):
     the app recorded, not a `run-now` counter. Named regressions: `TestDefaultRegistryAtSendsEveryProviderToTheOverrideHost`,
     `TestLoadRefusesMarketDataBaseURLOutsideDevelopment`,
     `TestRuntimeRefusesMarketDataBaseURLOutsideDevelopment`.
+    Synthetic provider dates must also be explicit scenario facts (#386):
+    capture one calendar reference and register its ex-date with the stub,
+    rather than letting the stub subtract elapsed UTC days independently.
+    Keep midnight/DST stub controls and exact provider-dividend browser dates;
+    do not align deliberately opposite browser/owner timezone controls.
 
 43. **One response assembled from different effective histories** — a shared
     price `knowledge_cutoff` does not freeze ledger corrections or observation

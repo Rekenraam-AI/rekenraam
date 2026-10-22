@@ -1,10 +1,12 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './support/fixtures';
 import process from 'node:process';
+import { randomUUID } from 'node:crypto';
 import { apiJSON } from './support/api';
 import { readyForLedger, createCashAccount } from './support/ledger';
 import { daysFromTodayISO } from './support/dates';
 import { expectNoAccessibilityViolations } from './support/a11y';
+import { setProviderDividendDate } from './support/provider-dividends';
 
 // #111: a provider dividend announcement is staged through the durable queue
 // and posts only after the owner completes it from the statement, on a phone.
@@ -13,14 +15,20 @@ test.skip(Boolean(process.env.E2E_BASE_URL), 'needs the local market-data stub f
 
 async function heldProviderListing(page: Page, prefix: string, side: 'long' | 'short' = 'long') {
   const { csrfToken, currencyID } = await readyForLedger(page);
-  const suffix = `${Date.now()}`;
-  const openedOn = daysFromTodayISO(-60);
+  // Capture one host-calendar reference for every date in this scenario. The
+  // stub gets the chosen ex-date explicitly, even across midnight/DST (#386).
+  const referenceDate = new Date();
+  const suffix = randomUUID().replaceAll('-', '').slice(0, 13);
+  const openedOn = daysFromTodayISO(-60, referenceDate);
+  const exDate = daysFromTodayISO(-10, referenceDate);
+  const paymentDate = daysFromTodayISO(-3, referenceDate);
   const cash = await createCashAccount(page, csrfToken, `Provider cash ${suffix}`, currencyID, openedOn);
   const income = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
     name: `Provider income ${suffix}`, account_class: 'income', account_kind: 'income',
     default_commodity_id: currencyID, allows_postings: true, opened_on: openedOn, effective_from: openedOn
   });
   const symbol = `${prefix}${suffix}`;
+  await setProviderDividendDate(symbol, exDate);
   const name = `Provider payer ${suffix}`;
   const instrument = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
     commodity_code: symbol, instrument_type: 'stock', display_name: name, symbol, mic: 'XNYS',
@@ -31,7 +39,7 @@ async function heldProviderListing(page: Page, prefix: string, side: 'long' | 's
     instrument_id: instrument.id, name: `Provider holding ${suffix}`, opened_on: openedOn, effective_from: openedOn
   });
   await apiJSON(page, 'POST', side === 'long' ? '/api/v1/investments/buy' : '/api/v1/investments/short-sale', csrfToken, {
-    transaction_date: daysFromTodayISO(-30), commodity_id: instrument.commodity_id, holding_account_id: holding.id,
+    transaction_date: daysFromTodayISO(-30, referenceDate), commodity_id: instrument.commodity_id, holding_account_id: holding.id,
     cash_account_id: cash.id, quantity_value: '10', quantity_scale: 0, cash_amount_value: '100000',
     cash_amount_scale: 2, cash_commodity_id: currencyID
   });
@@ -42,17 +50,16 @@ async function heldProviderListing(page: Page, prefix: string, side: 'long' | 's
     commodity_id: instrument.commodity_id, quote_commodity_id: currencyID, source_id: twelveData.id, effective_from: openedOn
   });
 
-  return { csrfToken, currencyID, cash, income, instrument, holding, name };
+  return { csrfToken, currencyID, cash, income, instrument, holding, name, openedOn, exDate, paymentDate };
 }
 
 test('[acceptance] a provider dividend is reviewed, completed and posted through the native command', async ({ page }) => {
-  const { cash, income, instrument, name } = await heldProviderListing(page, 'E2EDIV');
+  const { cash, income, instrument, name, exDate, paymentDate } = await heldProviderListing(page, 'E2EDIV');
   await page.goto('/app/investments');
   await page.getByRole('button', { name: /^Suggestions/ }).click();
   await page.getByRole('button', { name: 'Check provider dividends', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Dividend check queued for listings:');
 
-  const exDate = daysFromTodayISO(-10);
   const card = page.getByTestId('event-suggestion').filter({ hasText: name });
   await expect(card).toBeVisible({ timeout: 30_000 });
   await expect(card.getByText(`Ex-date ${exDate}`, { exact: true })).toBeVisible();
@@ -67,7 +74,7 @@ test('[acceptance] a provider dividend is reviewed, completed and posted through
   await card.getByRole('button', { name: 'Complete and post', exact: true }).click();
   const form = card.getByRole('form', { name: 'Dividend from your statement' });
   await expect(form.getByLabel('Payment date')).toHaveValue(exDate);
-  await form.getByLabel('Payment date').fill(daysFromTodayISO(-3));
+  await form.getByLabel('Payment date').fill(paymentDate);
   await form.getByLabel('Cash account').selectOption(String(cash.id));
   await form.getByLabel(/^Income account/).selectOption(String(income.id));
   // 10 units × 0.50 in the cash currency pre-fills the gross for confirmation.
@@ -87,13 +94,14 @@ test('[acceptance] a provider dividend is reviewed, completed and posted through
 
 test('a provider revision of a staged dividend is disclosed without reopening the decision', async ({ page }) => {
   // #254: the stub revises E2EDIVREV listings from 0.50 to 0.55 on the second fetch.
-  const { name } = await heldProviderListing(page, 'E2EDIVREV');
+  const { name, exDate } = await heldProviderListing(page, 'E2EDIVREV');
   await page.goto('/app/investments');
   await page.getByRole('button', { name: /^Suggestions/ }).click();
   const check = page.getByRole('button', { name: 'Check provider dividends', exact: true });
   await check.click();
   const card = page.getByTestId('event-suggestion').filter({ hasText: name });
   await expect(card).toBeVisible({ timeout: 30_000 });
+  await expect(card.getByText(`Ex-date ${exDate}`, { exact: true })).toBeVisible();
   await expect(card.getByTestId('event-suggestion-revisions')).toHaveCount(0);
 
   await check.click();
@@ -115,15 +123,14 @@ test('a provider revision of a staged dividend is disclosed without reopening th
 test('a short-only provider dividend links the payment in lieu the owner already recorded', async ({ page }) => {
   // #258: the book is short at the ex-date, so the suggestion is a payment in
   // lieu; the owner recorded it by hand and links it instead of posting twice.
-  const { csrfToken, currencyID, cash, instrument, holding, name } = await heldProviderListing(page, 'E2EDIVPIL', 'short');
-  const openedOn = daysFromTodayISO(-60);
+  const { csrfToken, currencyID, cash, instrument, holding, name, openedOn, exDate, paymentDate } = await heldProviderListing(page, 'E2EDIVPIL', 'short');
   const expense = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
     name: `Borrow costs ${name}`, account_class: 'expense', account_kind: 'expense',
     default_commodity_id: currencyID, allows_postings: true, opened_on: openedOn, effective_from: openedOn
   });
   const payment = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/payment-in-lieu', csrfToken, {
-    holding_account_id: holding.id, commodity_id: instrument.commodity_id, ex_date: daysFromTodayISO(-10),
-    transaction_date: daysFromTodayISO(-3), cash_account_id: cash.id, cash_commodity_id: currencyID,
+    holding_account_id: holding.id, commodity_id: instrument.commodity_id, ex_date: exDate,
+    transaction_date: paymentDate, cash_account_id: cash.id, cash_commodity_id: currencyID,
     expense_account_id: expense.id, amount_value: '500', amount_scale: 2
   });
 
@@ -132,10 +139,11 @@ test('a short-only provider dividend links the payment in lieu the owner already
   await page.getByRole('button', { name: 'Check provider dividends', exact: true }).click();
   const card = page.getByTestId('event-suggestion').filter({ hasText: name });
   await expect(card).toBeVisible({ timeout: 30_000 });
+  await expect(card.getByText(`Ex-date ${exDate}`, { exact: true })).toBeVisible();
   await expect(card.getByRole('note')).toContainText('payment in lieu');
   const candidate = card.getByTestId('event-suggestion-link-candidate');
   await expect(candidate).toHaveCount(1);
-  await expect(candidate).toContainText(daysFromTodayISO(-3));
+  await expect(candidate).toContainText(paymentDate);
   await expect(candidate).toContainText('5');
   await expect(candidate).toContainText(`Provider holding`);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
