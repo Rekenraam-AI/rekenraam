@@ -95,6 +95,7 @@ type SetDefaultCurrencyResult struct {
 }
 
 type CurrencyService struct {
+	settings     *SettingsService
 	repository   *db.CommodityRepository
 	setupService *SetupService
 	now          func() time.Time
@@ -130,6 +131,11 @@ func (s *CurrencyService) Catalog() []CurrencyCatalogEntry {
 }
 
 func (s *CurrencyService) ListCurrencies(ctx context.Context) ([]Currency, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	records, err := s.repository.ListCurrencies(ctx, BookID)
 	if err != nil {
 		return nil, fmt.Errorf("list currencies: %w", err)
@@ -139,6 +145,11 @@ func (s *CurrencyService) ListCurrencies(ctx context.Context) ([]Currency, error
 }
 
 func (s *CurrencyService) CreateCurrency(ctx context.Context, input CreateCurrencyInput) (Currency, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Currency{}, referenceErr
+	}
+
 	spec, err := s.currencySpec(input.Code, input.Name)
 	if err != nil {
 		return Currency{}, err
@@ -170,6 +181,11 @@ func (s *CurrencyService) CreateCurrency(ctx context.Context, input CreateCurren
 }
 
 func (s *CurrencyService) CompleteCurrencySetup(ctx context.Context, input CompleteCurrencySetupInput) (CompleteCurrencySetupResult, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return CompleteCurrencySetupResult{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return CompleteCurrencySetupResult{}, ValidationError{Message: "owner user is required"}
 	}
@@ -222,6 +238,11 @@ func (s *CurrencyService) CompleteCurrencySetup(ctx context.Context, input Compl
 }
 
 func (s *CurrencyService) SetDefaultCurrency(ctx context.Context, input SetDefaultCurrencyInput) (SetDefaultCurrencyResult, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return SetDefaultCurrencyResult{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return SetDefaultCurrencyResult{}, ValidationError{Message: "owner user is required"}
 	}
@@ -316,3 +337,5 @@ func toCurrencies(records []db.CommodityRecord) []Currency {
 	}
 	return currencies
 }
+
+func (s *CurrencyService) SetSettings(settings *SettingsService) { s.settings = settings }

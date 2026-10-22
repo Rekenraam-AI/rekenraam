@@ -351,6 +351,11 @@ func (s *TransactionService) resolveCheckpointRefs(ctx context.Context, candidat
 // enrichCheckpointRefs populates AccountLabel and CommodityCode on each ref
 // using one bulk account lookup and one bulk commodity lookup.
 func (s *TransactionService) enrichCheckpointRefs(ctx context.Context, refs []db.CheckpointInvalidationRef) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	if len(refs) == 0 {
 		return nil
 	}

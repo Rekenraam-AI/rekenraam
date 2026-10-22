@@ -131,6 +131,11 @@ func (s *ImportService) importDividendContext(ctx context.Context, ownerID, batc
 }
 
 func (s *ImportService) dividendReviewDefaults(ctx context.Context, c importDividendContext, res ImportRowResolution) (ImportRowResolution, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return ImportRowResolution{}, referenceErr
+	}
+
 	if c.original != nil {
 		// Historical settlement is pinned by the original import effect, not a
 		// connection that may have since been edited or removed.
@@ -236,6 +241,11 @@ func (s *ImportService) ListImportDividends(ctx context.Context, input ListImpor
 }
 
 func (s *ImportService) reviewedDividendInput(ctx context.Context, c importDividendContext, resolution ImportRowResolution, ownerID, sessionID int64, requestID string) (DividendInput, ImportRowResolution, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return DividendInput{}, ImportRowResolution{}, referenceErr
+	}
+
 	refuse := func() (DividendInput, ImportRowResolution, error) {
 		return DividendInput{}, resolution, ErrImportDividendReviewRequired
 	}

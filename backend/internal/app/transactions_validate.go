@@ -60,6 +60,11 @@ var reconciliationStatuses = map[string]bool{
 }
 
 func (s *TransactionService) listParams(ctx context.Context, input ListTransactionsInput, filterEntryDate bool) (db.ListTransactionsParams, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return db.ListTransactionsParams{}, referenceErr
+	}
+
 	status := strings.TrimSpace(input.Status)
 	if status != "" && !transactionStatuses[status] {
 		return db.ListTransactionsParams{}, ValidationError{Message: "transaction status is invalid"}
@@ -148,6 +153,11 @@ func (s *TransactionService) listParams(ctx context.Context, input ListTransacti
 }
 
 func (s *TransactionService) cleanTransactionSpec(ctx context.Context, input TransactionInput, options cleanTransactionOptions) (db.TransactionSpec, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return db.TransactionSpec{}, referenceErr
+	}
+
 	status := strings.TrimSpace(input.Status)
 	if status != "" && (!transactionStatuses[status] || status == "voided") {
 		return db.TransactionSpec{}, ValidationError{Message: "transaction status is invalid"}

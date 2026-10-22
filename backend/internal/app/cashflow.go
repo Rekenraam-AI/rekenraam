@@ -153,6 +153,11 @@ func (t *cashflowTotals) addConverted(target *ConvertedTotal, posting db.ReportC
 // "first counterpart wins", and a transaction with many counterparts needs no
 // allocation rule (reports-plan.md, cashflow rule 5).
 func (s *TransactionService) Cashflow(ctx context.Context, input CashflowInput) (CashflowResult, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return CashflowResult{}, referenceErr
+	}
+
 	startDate, endDate, err := cleanReportDateRange(input.StartDate, input.EndDate)
 	if err != nil {
 		return CashflowResult{}, err

@@ -140,6 +140,11 @@ func classifyQIFAccounts(accounts []db.ExportAccountRecord, paths map[int64]stri
 // without writing it. The preview and the download share it, so the list a
 // reader confirms is the list the download honours.
 func (s *ExportService) ResolveQIFSelection(ctx context.Context, filter ExportFilter, layout string) (QIFSelection, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return QIFSelection{}, referenceErr
+	}
+
 	snapshot, err := s.repository.Snapshot(ctx)
 	if err != nil {
 		return QIFSelection{}, err
@@ -198,6 +203,11 @@ func (s *ExportService) WriteQIF(
 	allowPartial bool,
 	onDecided func(QIFExportResult),
 ) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	snapshot, err := s.repository.Snapshot(ctx)
 	if err != nil {
 		return err
@@ -388,6 +398,11 @@ func (s *ExportService) writeQIFAccount(
 	layout QIFDateLayout,
 	accounts []db.ExportAccountRecord,
 ) (qifFileStats, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return qifFileStats{}, referenceErr
+	}
+
 	classByAccount := map[int64]string{}
 	systemAccounts := map[int64]bool{}
 	for _, record := range accounts {

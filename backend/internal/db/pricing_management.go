@@ -49,7 +49,7 @@ func (r *PricingRepository) PriceManagementSnapshot(ctx context.Context, bookID 
 	rows, err := tx.QueryContext(ctx, `
 		SELECT c.id, c.code, cv.name, c.kind, cv.status
 		FROM commodities c
-		JOIN current_commodity_versions cv ON cv.commodity_id = c.id
+		JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id = c.id
 		WHERE c.book_id = ?
 		ORDER BY c.code, c.id
 	`, bookID)
@@ -75,7 +75,7 @@ func (r *PricingRepository) PriceManagementSnapshot(ctx context.Context, bookID 
 		UNION
 		SELECT ii.commodity_id, iiv.quote_commodity_id
 		FROM investment_instruments ii
-		JOIN current_investment_instrument_versions iiv ON iiv.instrument_id = ii.id
+		JOIN `+CurrentReferenceVersions(ctx, "investment_instrument")+` iiv ON iiv.instrument_id = ii.id
 		WHERE ii.book_id = ? AND iiv.status = 'active' AND iiv.quote_commodity_id IS NOT NULL
 		UNION
 		SELECT lot.commodity_id, lot.cost_commodity_id
@@ -84,7 +84,7 @@ func (r *PricingRepository) PriceManagementSnapshot(ctx context.Context, bookID 
 		UNION
 		SELECT av.default_commodity_id, ?
 		FROM accounts a
-		JOIN current_account_versions av ON av.account_id = a.id
+		JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = a.id
 		JOIN commodities c ON c.id = av.default_commodity_id
 		WHERE a.book_id = ? AND av.status = 'active' AND av.allows_postings = 1
 			AND c.kind = 'currency' AND ? > 0 AND av.default_commodity_id <> ?

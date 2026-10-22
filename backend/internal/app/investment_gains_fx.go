@@ -329,6 +329,11 @@ func (s *InvestmentService) ConvertGains(ctx context.Context, profile GainsProfi
 // ConvertGainsStatement is a composition stage. Live callers use
 // ReadGainsStatement to capture the native statement and reporting inputs once.
 func (s *InvestmentService) ConvertGainsStatement(ctx context.Context, statement GainsStatement, input GainsFXInput) (GainsFXStatement, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return GainsFXStatement{}, referenceErr
+	}
+
 	project := func(date string) (GainsFXProjection, error) {
 		profile := statement.Profile
 		profile.ValuationAsOf = date

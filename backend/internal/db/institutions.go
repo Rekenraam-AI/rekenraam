@@ -115,7 +115,7 @@ func (r *InstitutionRepository) ListInstitutions(ctx context.Context, params Lis
 
 	args = append(args, params.Limit)
 
-	rows, err := r.database.QueryContext(ctx, currentInstitutionSelect("AND "+strings.Join(where, " AND ")+`
+	rows, err := r.database.QueryContext(ctx, currentInstitutionSelect(ctx, "AND "+strings.Join(where, " AND ")+`
 		ORDER BY iv.status, iv.name COLLATE NOCASE, i.id
 		LIMIT ?
 	`), args...)
@@ -129,7 +129,7 @@ func (r *InstitutionRepository) ListInstitutions(ctx context.Context, params Lis
 
 func (r *InstitutionRepository) CurrentInstitutionByID(ctx context.Context, bookID int64, institutionID int64) (InstitutionRecord, error) {
 	var record InstitutionRecord
-	if err := scanInstitutionRecord(r.database.QueryRowContext(ctx, currentInstitutionSelect(`
+	if err := scanInstitutionRecord(r.database.QueryRowContext(ctx, currentInstitutionSelect(ctx, `
 		AND i.book_id = ? AND i.id = ?
 	`), bookID, institutionID), &record); err != nil {
 		return InstitutionRecord{}, err
@@ -258,7 +258,7 @@ func (r *InstitutionRepository) UpdateInstitution(ctx context.Context, params Up
 		if err := tx.QueryRowContext(ctx, `
 			SELECT COUNT(1)
 			FROM accounts a
-			JOIN current_account_versions av ON av.account_id = a.id
+			JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = a.id
 			WHERE a.book_id = ? AND av.institution_id = ? AND av.status <> 'archived'
 		`, params.BookID, params.InstitutionID).Scan(&accounts); err != nil {
 			return InstitutionRecord{}, fmt.Errorf("check institution accounts: %w", err)
@@ -462,7 +462,7 @@ func readBookForUpdate(ctx context.Context, tx *sql.Tx, bookID int64) (int64, er
 
 func currentInstitutionByID(ctx context.Context, tx *sql.Tx, bookID int64, institutionID int64) (InstitutionRecord, error) {
 	var record InstitutionRecord
-	if err := scanInstitutionRecord(tx.QueryRowContext(ctx, currentInstitutionSelect(`
+	if err := scanInstitutionRecord(tx.QueryRowContext(ctx, currentInstitutionSelect(ctx, `
 		AND i.book_id = ? AND i.id = ?
 	`), bookID, institutionID), &record); err != nil {
 		return InstitutionRecord{}, err
@@ -471,8 +471,8 @@ func currentInstitutionByID(ctx context.Context, tx *sql.Tx, bookID int64, insti
 	return record, nil
 }
 
-func currentInstitutionSelect(whereClause string) string {
-	return institutionSelect("current_institution_versions", `
+func currentInstitutionSelect(ctx context.Context, whereClause string) string {
+	return institutionSelect(CurrentReferenceVersions(ctx, "institution"), `
 		WHERE 1 = 1
 	`+whereClause)
 }

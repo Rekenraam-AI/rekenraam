@@ -320,6 +320,7 @@ func newSetupTestHandlerWithInvestment(t *testing.T, options HandlerOptions) (ht
 // testInstance is one app wired over one database file, as `serve` would wire
 // it. The restore drill (#277) builds a second instance over the restored file.
 type testInstance struct {
+	services   Services
 	handler    http.Handler
 	investment *app.InvestmentService
 	backup     *app.BackupService
@@ -369,7 +370,7 @@ func newTestInstanceOnDatabase(t *testing.T, database *sql.DB, databaseURL strin
 	transactionService.SetPricingRepository(db.NewPricingRepository(database))
 	investmentService := app.NewInvestmentService(db.NewInvestmentRepository(database), accountService, transactionService, pricingService)
 	for _, service := range []interface{ SetSettings(*app.SettingsService) }{
-		institutionService, accountService, categoryService, payeeService, transactionService, pricingService, investmentService,
+		currencyService, institutionService, accountService, categoryService, payeeService, transactionService, pricingService, investmentService,
 	} {
 		service.SetSettings(settingsService)
 	}
@@ -393,7 +394,7 @@ func newTestInstanceOnDatabase(t *testing.T, database *sql.DB, databaseURL strin
 	)
 	backupService.SetSelfCheck(selfCheckService)
 
-	handler := NewHandler(logger, http.NotFoundHandler(), Services{
+	services := Services{
 		Setup:       setupService,
 		Auth:        authService,
 		Settings:    settingsService,
@@ -414,8 +415,12 @@ func newTestInstanceOnDatabase(t *testing.T, database *sql.DB, databaseURL strin
 		SelfCheck:   selfCheckService,
 		Forecast:    forecastService,
 		Budget:      budgetService,
-	}, options)
-	return testInstance{handler: captureContractAudit(t, handler), investment: investmentService, backup: backupService}
+	}
+	for _, service := range []interface{ SetSettings(*app.SettingsService) }{importService, exportService, selfCheckService} {
+		service.SetSettings(settingsService)
+	}
+	handler := NewHandler(logger, http.NotFoundHandler(), services, options)
+	return testInstance{services: services, handler: captureContractAudit(t, handler), investment: investmentService, backup: backupService}
 }
 
 func setSameOrigin(req *http.Request) {

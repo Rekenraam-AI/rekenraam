@@ -294,7 +294,7 @@ func (r *PricingRepository) FXCoverageStartDates(ctx context.Context, bookID int
 	rows, err := r.database.QueryContext(ctx, `
 		WITH required_dates AS (
 			SELECT av.default_commodity_id AS commodity_id, av.opened_on AS required_date
-			FROM current_account_versions av
+			FROM `+CurrentReferenceVersions(ctx, "account")+` av
 			JOIN accounts a ON a.id = av.account_id
 			JOIN commodities c ON c.id = av.default_commodity_id
 			WHERE a.book_id = ? AND av.status = 'active' AND c.kind = 'currency'
@@ -402,7 +402,7 @@ func (r *PricingRepository) DefaultCurrency(ctx context.Context, bookID int64) (
 		SELECT c.id, c.code
 		FROM books b
 		JOIN commodities c ON c.id = b.default_currency_commodity_id
-		JOIN current_commodity_versions cv ON cv.commodity_id = c.id
+		JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id = c.id
 		WHERE b.id = ?
 			AND c.kind = 'currency'
 			AND cv.status = 'active'
@@ -419,9 +419,9 @@ func (r *PricingRepository) ActiveAccountCurrencies(ctx context.Context, bookID 
 	rows, err := r.database.QueryContext(ctx, `
 		SELECT DISTINCT c.id, c.code
 		FROM accounts a
-		JOIN current_account_versions av ON av.account_id = a.id
+		JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = a.id
 		JOIN commodities c ON c.id = av.default_commodity_id
-		JOIN current_commodity_versions cv ON cv.commodity_id = c.id
+		JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id = c.id
 		WHERE a.book_id = ?
 			AND av.status = 'active'
 			AND av.allows_postings = 1
@@ -453,7 +453,7 @@ func (r *PricingRepository) CurrencyByID(ctx context.Context, bookID int64, comm
 	if err := r.database.QueryRowContext(ctx, `
 		SELECT c.id, c.code
 		FROM commodities c
-		JOIN current_commodity_versions cv ON cv.commodity_id = c.id
+		JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id = c.id
 		WHERE c.book_id = ?
 			AND c.id = ?
 			AND c.kind = 'currency'
@@ -1568,7 +1568,7 @@ func (r *PricingRepository) ReportingCurrency(ctx context.Context, bookID int64,
 	err := r.database.QueryRowContext(ctx, `
 		SELECT c.id, c.code, c.kind, cv.standard_scale
 		FROM commodities c
-		JOIN current_commodity_versions cv ON cv.commodity_id = c.id
+		JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id = c.id
 		WHERE c.book_id = ? AND c.id = ?
 	`, bookID, commodityID).Scan(&record.ID, &record.Code, &record.Kind, &record.StandardScale)
 	if errors.Is(err, sql.ErrNoRows) {

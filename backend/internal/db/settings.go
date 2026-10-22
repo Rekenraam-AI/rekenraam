@@ -114,3 +114,19 @@ func userPreferencesByUserIDTx(ctx context.Context, tx *sql.Tx, userID int64) (U
 	}
 	return record, nil
 }
+
+// OwnerTimeZone reads the single owner's preference for undated current reads.
+// Before owner setup, and when no preference is saved, the default is UTC.
+func (r *SettingsRepository) OwnerTimeZone(ctx context.Context) (string, error) {
+	var zone string
+	err := r.database.QueryRowContext(ctx, `SELECT COALESCE(p.time_zone, 'UTC')
+		FROM users u LEFT JOIN user_preferences p ON p.user_id = u.id
+		WHERE u.is_owner = 1`).Scan(&zone)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "UTC", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("read owner time zone: %w", err)
+	}
+	return zone, nil
+}

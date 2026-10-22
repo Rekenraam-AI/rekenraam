@@ -246,6 +246,11 @@ func (s *TransactionService) enrichRecords(ctx context.Context, records ...db.Tr
 // on each Posting in memory. It must be called before any response path returns
 // transaction data to callers. A missing account or commodity is an internal error.
 func (s *TransactionService) enrichPostings(ctx context.Context, transactions []Transaction) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	accountIDs := make(map[int64]struct{})
 	commodityIDs := make(map[int64]struct{})
 	for i := range transactions {
@@ -320,6 +325,11 @@ func (s *TransactionService) enrichPostings(ctx context.Context, transactions []
 
 // enrichRegisterPostings is the AccountRegisterEntry equivalent of enrichPostings.
 func (s *TransactionService) enrichRegisterPostings(ctx context.Context, entries []AccountRegisterEntry) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	accountIDs := make(map[int64]struct{})
 	commodityIDs := make(map[int64]struct{})
 	for i := range entries {
@@ -505,3 +515,5 @@ func toTransaction(record db.TransactionRecord) Transaction {
 		InvalidatedCheckpointIDs:  record.InvalidatedCheckpointIDs,
 	}
 }
+
+func (s *TransactionService) SetNowForTest(now func() time.Time) { s.now = now }

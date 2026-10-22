@@ -291,7 +291,7 @@ func (r *SelfCheckRepository) StreamPostedInvestmentPostings(ctx context.Context
 		JOIN transactions t ON t.id = tv.transaction_id
 		JOIN journal_entries je ON je.transaction_version_id = tv.id
 		JOIN posting_versions pv ON pv.journal_entry_id = je.id
-		JOIN current_account_versions av ON av.account_id = pv.account_id
+		JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = pv.account_id
 		JOIN commodities c ON c.id = pv.commodity_id
 		WHERE tv.book_id = ? AND tv.status = 'posted' AND t.deleted_at IS NULL
 			AND av.account_kind = 'security_holding' AND c.kind IN ('security', 'crypto')

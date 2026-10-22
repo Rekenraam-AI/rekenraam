@@ -50,10 +50,10 @@ func (r *InvestmentRepository) SplitActivity(ctx context.Context, bookID, before
  FROM page JOIN investment_operations o ON o.id = page.id
  JOIN investment_split_facts f ON f.operation_id = o.id
  JOIN audit_events a ON a.id = o.created_audit_event_id
- JOIN current_account_versions av ON av.account_id = f.account_id
+ JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = f.account_id
  JOIN commodities c ON c.id = f.commodity_id
  LEFT JOIN investment_instruments i ON i.commodity_id = f.commodity_id
- LEFT JOIN current_investment_instrument_versions iv ON iv.instrument_id = i.id
+ LEFT JOIN `+CurrentReferenceVersions(ctx, "investment_instrument")+` iv ON iv.instrument_id = i.id
  LEFT JOIN investment_operations successor ON successor.correction_of_operation_id = o.id
  LEFT JOIN investment_operation_journal_links primary_link ON primary_link.operation_id = o.id AND primary_link.role = 'primary'
  LEFT JOIN transaction_versions v ON v.id = primary_link.transaction_version_id

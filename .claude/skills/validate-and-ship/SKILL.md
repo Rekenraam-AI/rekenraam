@@ -484,7 +484,16 @@ non-trivial diff (yours or reviewed):
     `TestInvestmentGainsDefaultTodayKeepsFutureSaleOutOfValuation`.
     The backend has the same trap: grep `UTC().Format(time.DateOnly)` and
     bound/default owner-entered dates through `SettingsService.OwnerTodayAt`
-    (#339, `TestOwnerEnteredDatesFollowOwnerDay`).
+    (#339, `TestOwnerEnteredDatesFollowOwnerDay`). Current reference reads
+    must use that owner day too (#385): pass the application's reference-date
+    context before repository transactions, preserve explicit historical dates,
+    and date schema guards by source effective date. The UTC current-version
+    views can hide a valid owner-today write or expose tomorrow's version.
+    Keep `TestCurrentReference*`,
+    `TestReferenceDateRefreshesPreferencesWithoutLeakingAcrossOperations`,
+    `TestReferenceDateMigrationPreservesHistoryAndUsesSourceDates`,
+    `TestOwnerCurrentReferenceHTTPCreateListAndFutureExclusion` and
+    `owner-current-reference.spec.ts` green.
     Carry the authenticated owner into blank transaction and ledger-read
     defaults too (#343); undated FX source assignments use the owner's day
     at refresh start (`TestBlankTransactionAndLedgerDatesFollowOwnerDay`,

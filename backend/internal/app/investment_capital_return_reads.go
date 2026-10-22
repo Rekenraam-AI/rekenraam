@@ -23,6 +23,11 @@ func (s *InvestmentService) ListCapitalReturns(ctx context.Context, params Gains
 }
 
 func (s *InvestmentService) capitalReturnReads(ctx context.Context, currentOnly bool, params GainsReportParams, operationIDs []int64) ([]CapitalReturnRead, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	records, err := s.repository.ListCapitalReturnReads(ctx, BookID, currentOnly, params.From, params.To, operationIDs)
 	if err != nil {
 		return nil, err

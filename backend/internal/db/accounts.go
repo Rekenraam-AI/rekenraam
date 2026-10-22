@@ -249,7 +249,7 @@ func (r *AccountRepository) ListAccounts(ctx context.Context, params ListAccount
 
 	args = append(args, params.Limit)
 
-	rows, err := r.database.QueryContext(ctx, currentAccountSelect("AND "+strings.Join(where, " AND ")+`
+	rows, err := r.database.QueryContext(ctx, currentAccountSelect(ctx, "AND "+strings.Join(where, " AND ")+`
 		ORDER BY
 			CASE av.account_class
 				WHEN 'asset' THEN 1
@@ -309,7 +309,7 @@ func (r *AccountRepository) AccountsByIDs(ctx context.Context, bookID int64, ids
 			ak.base_kind,
 			json_extract(av.metadata_json, '$.category.builtin_key')
 		FROM accounts a
-		JOIN current_account_versions av ON av.account_id = a.id
+		JOIN ` + CurrentReferenceVersions(ctx, "account") + ` av ON av.account_id = a.id
 		JOIN account_kinds ak ON ak.code = av.account_kind AND ak.account_class = av.account_class
 		WHERE a.book_id = ?
 			AND a.id IN (` + strings.Join(placeholders, ", ") + `)`
@@ -337,7 +337,7 @@ func (r *AccountRepository) AccountsByIDs(ctx context.Context, bookID int64, ids
 
 func (r *AccountRepository) CurrentAccountByID(ctx context.Context, bookID int64, accountID int64) (AccountRecord, error) {
 	var record AccountRecord
-	if err := scanAccountRecord(r.database.QueryRowContext(ctx, currentAccountSelect(`
+	if err := scanAccountRecord(r.database.QueryRowContext(ctx, currentAccountSelect(ctx, `
 		AND a.book_id = ? AND a.id = ?
 	`), bookID, accountID), &record); err != nil {
 		return AccountRecord{}, err
@@ -586,7 +586,7 @@ func requireArchiveConsistencyTx(ctx context.Context, tx *sql.Tx, bookID int64, 
 		if err := tx.QueryRowContext(ctx, `
 			SELECT COUNT(1)
 			FROM accounts a
-			JOIN current_account_versions av ON av.account_id = a.id
+			JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = a.id
 			WHERE a.book_id = ? AND av.parent_account_id = ? AND av.status <> 'archived'
 		`, bookID, accountID).Scan(&children); err != nil {
 			return fmt.Errorf("check account children: %w", err)
@@ -605,7 +605,7 @@ func requireArchiveConsistencyTx(ctx context.Context, tx *sql.Tx, bookID int64, 
 					AND av.account_kind = av.account_class
 					AND COALESCE(json_extract(av.metadata_json, '$.category.type'), '') = av.account_class
 			FROM accounts a
-			JOIN current_account_versions av ON av.account_id = a.id
+			JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = a.id
 			WHERE a.book_id = ? AND a.id = ?
 		`, bookID, spec.ParentAccountID.Int64).Scan(&parentStatus, &parentClass, &parentIsSystem, &parentIsCategory)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -628,7 +628,7 @@ func requireArchiveConsistencyTx(ctx context.Context, tx *sql.Tx, bookID int64, 
 		if err := tx.QueryRowContext(ctx, `
 			SELECT iv.status
 			FROM institutions i
-			JOIN current_institution_versions iv ON iv.institution_id = i.id
+			JOIN `+CurrentReferenceVersions(ctx, "institution")+` iv ON iv.institution_id = i.id
 			WHERE i.book_id = ? AND i.id = ?
 		`, bookID, spec.InstitutionID.Int64).Scan(&institutionStatus); err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("check account institution status: %w", err)
@@ -1011,13 +1011,13 @@ func (r *AccountRepository) WouldCreateCycle(ctx context.Context, bookID int64, 
 		WITH RECURSIVE ancestors(id, parent_id) AS (
 			SELECT a.id, av.parent_account_id
 			FROM accounts a
-			JOIN current_account_versions av ON av.account_id = a.id
+			JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = a.id
 			WHERE a.book_id = ?
 				AND a.id = ?
 			UNION ALL
 			SELECT parent.id, parent_version.parent_account_id
 			FROM accounts parent
-			JOIN current_account_versions parent_version ON parent_version.account_id = parent.id
+			JOIN `+CurrentReferenceVersions(ctx, "account")+` parent_version ON parent_version.account_id = parent.id
 			JOIN ancestors ON ancestors.parent_id = parent.id
 			WHERE parent.book_id = ?
 		)
@@ -1050,7 +1050,7 @@ func (r *AccountRepository) CurrentCommodityByID(ctx context.Context, bookID int
 	if err := r.database.QueryRowContext(ctx, `
 		SELECT c.id, c.book_id, c.code, c.kind, cv.status, cv.max_quantity_scale
 		FROM commodities c
-		JOIN current_commodity_versions cv ON cv.commodity_id = c.id
+		JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id = c.id
 		WHERE 1 = 1
 			AND c.book_id = ?
 			AND c.id = ?
@@ -1069,7 +1069,7 @@ func (r *AccountRepository) CurrentCurrencyByCode(ctx context.Context, bookID in
 	if err := r.database.QueryRowContext(ctx, `
 		SELECT c.id, c.book_id, c.code, c.kind, cv.status, cv.max_quantity_scale
 		FROM commodities c
-		JOIN current_commodity_versions cv ON cv.commodity_id = c.id
+		JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id = c.id
 		WHERE 1 = 1
 			AND c.book_id = ?
 			AND c.kind = 'currency'
@@ -1149,7 +1149,7 @@ func (r *AccountRepository) ListActiveCurrencyStarterSpecs(ctx context.Context, 
 	rows, err := r.database.QueryContext(ctx, `
 		SELECT c.id, c.code
 		FROM commodities c
-		JOIN current_commodity_versions cv ON cv.commodity_id = c.id
+		JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id = c.id
 		WHERE c.book_id = ?
 			AND c.kind = 'currency'
 			AND cv.status = 'active'
@@ -1372,7 +1372,7 @@ func accountVersionByVersionID(ctx context.Context, tx *sql.Tx, bookID int64, ve
 
 func currentAccountByID(ctx context.Context, tx *sql.Tx, bookID int64, accountID int64) (AccountRecord, error) {
 	var record AccountRecord
-	if err := scanAccountRecord(tx.QueryRowContext(ctx, currentAccountSelect(`
+	if err := scanAccountRecord(tx.QueryRowContext(ctx, currentAccountSelect(ctx, `
 		AND a.book_id = ? AND a.id = ?
 	`), bookID, accountID), &record); err != nil {
 		return AccountRecord{}, err
@@ -1383,7 +1383,7 @@ func currentAccountByID(ctx context.Context, tx *sql.Tx, bookID int64, accountID
 
 func currentSystemAccountByRole(ctx context.Context, tx *sql.Tx, bookID int64, role string) (AccountRecord, error) {
 	var record AccountRecord
-	if err := scanAccountRecord(tx.QueryRowContext(ctx, currentAccountSelect(`
+	if err := scanAccountRecord(tx.QueryRowContext(ctx, currentAccountSelect(ctx, `
 		AND a.book_id = ? AND a.system_role = ?
 	`), bookID, role), &record); err != nil {
 		return AccountRecord{}, err
@@ -1394,7 +1394,7 @@ func currentSystemAccountByRole(ctx context.Context, tx *sql.Tx, bookID int64, r
 
 func currentStarterCashAccountByCommodityID(ctx context.Context, tx *sql.Tx, bookID int64, commodityID int64) (AccountRecord, error) {
 	var record AccountRecord
-	if err := scanAccountRecord(tx.QueryRowContext(ctx, currentAccountSelect(`
+	if err := scanAccountRecord(tx.QueryRowContext(ctx, currentAccountSelect(ctx, `
 		AND a.book_id = ?
 		AND a.system_role IS NULL
 		AND av.default_commodity_id = ?
@@ -1407,8 +1407,8 @@ func currentStarterCashAccountByCommodityID(ctx context.Context, tx *sql.Tx, boo
 	return record, nil
 }
 
-func currentAccountSelect(extraConditions string) string {
-	return accountSelect("current_account_versions", `
+func currentAccountSelect(ctx context.Context, extraConditions string) string {
+	return accountSelect(CurrentReferenceVersions(ctx, "account"), `
 		WHERE 1 = 1
 	`+extraConditions)
 }

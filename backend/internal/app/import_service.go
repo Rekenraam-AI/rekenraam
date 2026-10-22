@@ -22,6 +22,7 @@ import (
 // ImportService orchestrates the import pipeline:
 // parse → normalize → dedupe → stage (preview) → commit
 type ImportService struct {
+	settings           *SettingsService
 	repository         *db.ImportRepository
 	transactionService *TransactionService
 	accountRepository  *db.AccountRepository
@@ -302,6 +303,11 @@ const (
 )
 
 func (s *ImportService) ListImportRules(ctx context.Context) ([]ImportRule, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	records, err := s.repository.ListImportRules(ctx, BookID)
 	if err != nil {
 		return nil, fmt.Errorf("list import rules: %w", err)
@@ -310,6 +316,11 @@ func (s *ImportService) ListImportRules(ctx context.Context) ([]ImportRule, erro
 }
 
 func (s *ImportService) CreateImportRule(ctx context.Context, input CreateImportRuleInput) (ImportRule, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return ImportRule{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return ImportRule{}, ValidationError{Message: "owner user is required"}
 	}
@@ -333,6 +344,11 @@ func (s *ImportService) CreateImportRule(ctx context.Context, input CreateImport
 }
 
 func (s *ImportService) UpdateImportRule(ctx context.Context, input UpdateImportRuleInput) (ImportRule, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return ImportRule{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 || input.RuleID <= 0 {
 		return ImportRule{}, ValidationError{Message: "import rule id is invalid"}
 	}
@@ -413,6 +429,11 @@ func (s *ImportService) DeleteImportRule(ctx context.Context, input DeleteImport
 }
 
 func (s *ImportService) cleanImportRuleSpec(ctx context.Context, spec db.ImportRuleSpec) (db.ImportRuleSpec, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return db.ImportRuleSpec{}, referenceErr
+	}
+
 	spec.Name = strings.TrimSpace(spec.Name)
 	spec.MatchField = strings.TrimSpace(spec.MatchField)
 	spec.ContainsText = strings.TrimSpace(spec.ContainsText)
@@ -484,6 +505,11 @@ func toImportRules(records []db.ImportRuleRecord) []ImportRule {
 // warnings) can translate a ParseResult-local RowIndex into a batch-global
 // one.
 func (s *ImportService) stageParseResult(ctx context.Context, batchID int64, parseResult ParseResult) ([]db.ImportStagedRowRecord, int, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, 0, referenceErr
+	}
+
 	existingRows, err := s.repository.ListAllImportStagedRows(ctx, batchID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list existing staged rows: %w", err)
@@ -2056,3 +2082,5 @@ func toImportStagedRows(records []db.ImportStagedRowRecord) []ImportStagedRow {
 	}
 	return out
 }
+
+func (s *ImportService) SetSettings(settings *SettingsService) { s.settings = settings }

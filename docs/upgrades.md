@@ -80,12 +80,20 @@ records an actual candidate-image upgrade from migrations 14 to 18 and rollback
 by verified pre-upgrade backup. That synthetic drill does not establish support
 for an earlier installed release or for every intermediate development schema.
 
-Candidate head migration 20 ([#366 evidence](reviews/throttle-reservation-audit-2026-10-20.md))
+Migration 20 ([#366 evidence](reviews/throttle-reservation-audit-2026-10-20.md))
 adds throttle-generation identities. Existing failed-attempt counters and block
 deadlines are preserved; no owner/password/session reset is required. The named
 19→20 native SQLite control also verifies persisted identities across restart.
 Financial schema/data and the ledger bundle format are unchanged by migration
-20. Use the same verified-backup rollback path below.
+20.
+
+Candidate head migration 21 ([#385 evidence](reviews/owner-current-reference-2026-10-22.md))
+replaces two reference-data triggers so their checks use the inserted version's
+effective date. It preserves all source versions, queued work, financial
+amounts and bundle columns. Application current-reference reads now use the
+owner-local day; explicit historical dates keep their meaning. The native
+20→21 regression retains source rows and verifies both trigger behaviors.
+Use the same verified-backup rollback path below.
 
 ## Failed upgrade or rollback
 

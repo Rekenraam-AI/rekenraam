@@ -19,10 +19,10 @@ func (r *PricingRepository) QuoteRefreshTargets(ctx context.Context, bookID int6
  iiv.instrument_type,iiv.identifiers_json,COALESCE(iiv.mic,''),COALESCE(s.provider_key,s.code),b.code,q.code
  FROM pricing_source_assignments a
  JOIN investment_instruments ii ON ii.book_id=a.book_id AND ii.commodity_id=a.base_commodity_id
- JOIN current_investment_instrument_versions iiv ON iiv.instrument_id=ii.id AND iiv.status='active'
+ JOIN `+CurrentReferenceVersions(ctx, "investment_instrument")+` iiv ON iiv.instrument_id=ii.id AND iiv.status='active'
  JOIN commodities b ON b.id=a.base_commodity_id
  JOIN commodities q ON q.id=a.quote_commodity_id AND q.kind='currency'
- JOIN current_commodity_versions qv ON qv.commodity_id=q.id AND qv.status='active'
+ JOIN `+CurrentReferenceVersions(ctx, "commodity")+` qv ON qv.commodity_id=q.id AND qv.status='active'
  JOIN market_data_sources s ON s.id=a.source_id AND s.status='active'
  WHERE a.book_id=? AND a.status='active' AND a.effective_from<=? AND (a.effective_to IS NULL OR a.effective_to>=?)
  AND (?=0 OR a.source_id=?)

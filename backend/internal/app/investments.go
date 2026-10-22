@@ -801,6 +801,11 @@ func (s *InvestmentService) SetNowForTest(now func() time.Time) {
 }
 
 func (s *InvestmentService) Search(ctx context.Context, query string) ([]InvestmentInstrument, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return []InvestmentInstrument{}, nil
@@ -813,6 +818,11 @@ func (s *InvestmentService) Search(ctx context.Context, query string) ([]Investm
 }
 
 func (s *InvestmentService) ListInstruments(ctx context.Context) ([]InvestmentInstrument, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	records, err := s.repository.ListInstruments(ctx, BookID)
 	if err != nil {
 		return nil, fmt.Errorf("list investment instruments: %w", err)
@@ -821,6 +831,11 @@ func (s *InvestmentService) ListInstruments(ctx context.Context) ([]InvestmentIn
 }
 
 func (s *InvestmentService) Instrument(ctx context.Context, instrumentID int64) (InvestmentInstrument, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return InvestmentInstrument{}, referenceErr
+	}
+
 	if instrumentID <= 0 {
 		return InvestmentInstrument{}, ValidationError{Message: "instrument id is required"}
 	}
@@ -835,6 +850,11 @@ func (s *InvestmentService) Instrument(ctx context.Context, instrumentID int64) 
 }
 
 func (s *InvestmentService) CreateInstrument(ctx context.Context, input InvestmentInstrumentInput) (InvestmentInstrument, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return InvestmentInstrument{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return InvestmentInstrument{}, ValidationError{Message: "owner user is required"}
 	}
@@ -896,6 +916,11 @@ func (s *InvestmentService) CreateInstrument(ctx context.Context, input Investme
 // ResolveOrCreateInstrumentForImport: ISIN first, then ticker. Previews use it
 // so they never create an instrument.
 func (s *InvestmentService) FindInstrumentForImport(ctx context.Context, isin string, ticker string) (instrumentID int64, commodityID int64, found bool, err error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return 0, 0, false, referenceErr
+	}
+
 	isin = strings.TrimSpace(isin)
 	ticker = strings.TrimSpace(ticker)
 	if isin != "" {
@@ -983,6 +1008,11 @@ func (s *InvestmentService) DeleteUnusedHoldingAccountForImport(ctx context.Cont
 }
 
 func (s *InvestmentService) UpdateInstrument(ctx context.Context, input InvestmentInstrumentInput) (InvestmentInstrument, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return InvestmentInstrument{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return InvestmentInstrument{}, ValidationError{Message: "owner user is required"}
 	}
@@ -2158,6 +2188,11 @@ func (s *InvestmentService) ListProviderEvents(ctx context.Context) ([]Investmen
 }
 
 func (s *InvestmentService) ListEventSuggestions(ctx context.Context) ([]InvestmentEventSuggestion, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	records, err := s.repository.ListEventSuggestions(ctx, BookID)
 	if err != nil {
 		return nil, fmt.Errorf("list investment event suggestions: %w", err)
@@ -2312,6 +2347,11 @@ func (s *InvestmentService) AcceptSuggestionWithCompletion(ctx context.Context, 
 // short-only suggestion an owner-recorded payment in lieu (#258), is this
 // provider dividend, so nothing posts and later fetches stay duplicates.
 func (s *InvestmentService) LinkSuggestion(ctx context.Context, ownerUserID int64, authSessionID int64, requestID string, suggestionID int64, transactionID int64) (InvestmentEventSuggestion, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return InvestmentEventSuggestion{}, referenceErr
+	}
+
 	if ownerUserID <= 0 {
 		return InvestmentEventSuggestion{}, ValidationError{Message: "owner user is required"}
 	}
@@ -3492,6 +3532,11 @@ func normalizedKnowledge(knowledge string) string {
 }
 
 func (s *InvestmentService) validateInstrumentCommodity(ctx context.Context, commodityID int64, spec db.InvestmentInstrumentSpec) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	kind, scale, err := s.repository.InstrumentCommodity(ctx, BookID, commodityID)
 	if errors.Is(err, db.ErrNotFound) {
 		return ValidationError{Message: "instrument commodity is unavailable"}

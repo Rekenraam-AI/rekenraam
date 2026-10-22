@@ -122,6 +122,7 @@ func openWith(ctx context.Context, cfg config.Config, logger *slog.Logger, deps 
 	transactionService.SetPricingRepository(db.NewPricingRepository(database))
 	investmentService := app.NewInvestmentService(db.NewInvestmentRepository(database), accountService, transactionService, pricingService)
 	// Owner-entered dates are bounded and defaulted by the owner's day (#339).
+	currencyService.SetSettings(settingsService)
 	institutionService.SetSettings(settingsService)
 	accountService.SetSettings(settingsService)
 	categoryService.SetSettings(settingsService)
@@ -131,12 +132,15 @@ func openWith(ctx context.Context, cfg config.Config, logger *slog.Logger, deps 
 	investmentService.SetSettings(settingsService)
 	importConnectionService := app.NewImportConnectionService(db.NewImportConnectionRepository(database), accountService, cfg.SecretKey, app.NewTrading212Prober(nil, cfg.Trading212BaseURL))
 	importService := app.NewImportService(db.NewImportRepository(database), transactionService, accountRepository, importConnectionService, db.NewBackgroundWorkRepository(database), investmentService)
+	importService.SetSettings(settingsService)
 	importService.SetTrading212BaseURL(cfg.Trading212BaseURL)
 	exportService := app.NewExportService(db.NewExportRepository(readOnlyDatabase))
 	forecastService := app.NewForecastService(db.NewForecastRepository(readOnlyDatabase))
+	exportService.SetSettings(settingsService)
 	budgetService := app.NewBudgetService(db.NewBudgetRepository(database), settingsService)
 	backupService := app.NewBackupService(db.NewBackupRepository(database), db.NewBackgroundWorkRepository(database), readOnlyDatabase, cfg.DatabaseURL, cfg.BackupDir)
 	selfCheckService := app.NewSelfCheckService(db.NewSelfCheckRepository(database, readOnlyDatabase))
+	selfCheckService.SetSettings(settingsService)
 	// A running self-check from a previous process cannot still be active.
 	if recovered, recoverErr := selfCheckService.RecoverInterruptedRuns(ctx); recoverErr != nil {
 		logger.Error("recover interrupted self-check runs", slog.Any("err", recoverErr))

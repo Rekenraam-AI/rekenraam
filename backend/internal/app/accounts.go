@@ -217,6 +217,11 @@ func NewAccountService(repository *db.AccountRepository, institutionRepository *
 func (s *AccountService) SetSettings(settings *SettingsService) { s.settings = settings }
 
 func (s *AccountService) ListAccounts(ctx context.Context, input ListAccountsInput) ([]Account, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	status := strings.TrimSpace(input.Status)
 	if status != "" && status != "active" && status != "closed" && status != "archived" {
 		return nil, ValidationError{Message: "account status is invalid"}
@@ -244,6 +249,11 @@ func (s *AccountService) ListAccounts(ctx context.Context, input ListAccountsInp
 }
 
 func (s *AccountService) Account(ctx context.Context, accountID int64) (Account, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Account{}, referenceErr
+	}
+
 	if accountID <= 0 {
 		return Account{}, ValidationError{Message: "account id is required"}
 	}
@@ -276,6 +286,11 @@ func (s *AccountService) AccountVersions(ctx context.Context, accountID int64) (
 }
 
 func (s *AccountService) CreateAccount(ctx context.Context, input CreateAccountInput) (Account, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Account{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return Account{}, ValidationError{Message: "owner user is required"}
 	}
@@ -350,6 +365,11 @@ func (s *AccountService) CreateAccount(ctx context.Context, input CreateAccountI
 }
 
 func (s *AccountService) UpdateAccount(ctx context.Context, input UpdateAccountInput) (Account, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Account{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return Account{}, ValidationError{Message: "owner user is required"}
 	}
@@ -489,6 +509,11 @@ func (s *AccountService) RestoreAccount(ctx context.Context, input AccountLifecy
 }
 
 func (s *AccountService) DeleteUnusedAccount(ctx context.Context, input DeleteAccountInput) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return ValidationError{Message: "owner user is required"}
 	}
@@ -525,6 +550,11 @@ func (s *AccountService) DeleteUnusedAccount(ctx context.Context, input DeleteAc
 }
 
 func (s *AccountService) EnsureSystemAccounts(ctx context.Context, input EnsureSystemAccountsInput) (EnsureSystemAccountsResult, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return EnsureSystemAccountsResult{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return EnsureSystemAccountsResult{}, ValidationError{Message: "owner user is required"}
 	}
@@ -575,6 +605,11 @@ func (s *AccountService) EnsureSystemAccounts(ctx context.Context, input EnsureS
 }
 
 func (s *AccountService) changeAccountStatus(ctx context.Context, input AccountLifecycleInput, status string, reason string, operation string, allowedCurrentStatuses ...string) (Account, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Account{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return Account{}, ValidationError{Message: "owner user is required"}
 	}
@@ -723,6 +758,11 @@ type accountSpecInput struct {
 }
 
 func (s *AccountService) accountSpec(ctx context.Context, input accountSpecInput) (db.AccountSpec, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return db.AccountSpec{}, referenceErr
+	}
+
 	code := strings.TrimSpace(input.Code)
 	if len(code) > accountCodeMaxBytes {
 		return db.AccountSpec{}, ValidationError{Message: fmt.Sprintf("account code must be at most %d bytes", accountCodeMaxBytes)}
@@ -958,6 +998,11 @@ func accountKindRequiresDefaultCommodity(accountClass string, accountKind string
 }
 
 func (s *AccountService) defaultCommodityChanged(ctx context.Context, current Account, spec db.AccountSpec, defaultCommodityCode string) (bool, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return false, referenceErr
+	}
+
 	if strings.TrimSpace(defaultCommodityCode) != "" {
 		record, err := s.repository.CurrentCurrencyByCode(ctx, BookID, normalizeCurrencyCode(defaultCommodityCode))
 		if err != nil {
@@ -1155,3 +1200,5 @@ func toAccounts(records []db.AccountRecord) []Account {
 
 	return accounts
 }
+
+func (s *AccountService) SetNowForTest(now func() time.Time) { s.now = now }

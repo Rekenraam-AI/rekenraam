@@ -483,7 +483,7 @@ func (r *ImportRepository) ImportRuleTargetState(ctx context.Context, bookID int
 			SELECT EXISTS (
 				SELECT 1
 				FROM accounts account
-				JOIN current_account_versions version ON version.account_id = account.id
+				JOIN `+CurrentReferenceVersions(ctx, "account")+` version ON version.account_id = account.id
 				WHERE account.book_id = ?
 				  AND account.id = ?
 				  AND account.system_role IS NULL
@@ -501,7 +501,7 @@ func (r *ImportRepository) ImportRuleTargetState(ctx context.Context, bookID int
 			SELECT EXISTS (
 				SELECT 1
 				FROM payees payee
-				JOIN current_payee_versions version ON version.payee_id = payee.id
+				JOIN `+CurrentReferenceVersions(ctx, "payee")+` version ON version.payee_id = payee.id
 				WHERE payee.book_id = ? AND payee.id = ? AND version.status = 'active'
 			)
 		`, bookID, payeeID.Int64).Scan(&state.PayeeActive)
@@ -655,7 +655,7 @@ func listImportRules(ctx context.Context, queryer queryer, bookID int64, applica
 			AND (
 				rule.category_id IS NULL OR EXISTS (
 					SELECT 1 FROM accounts account
-					JOIN current_account_versions version ON version.account_id = account.id
+					JOIN ` + CurrentReferenceVersions(ctx, "account") + ` version ON version.account_id = account.id
 					WHERE account.id = rule.category_id
 					  AND account.book_id = rule.book_id
 					  AND account.system_role IS NULL
@@ -677,7 +677,7 @@ func listImportRules(ctx context.Context, queryer queryer, bookID int64, applica
 		       payee_version.name, rule.created_at, rule.updated_at
 		FROM import_rules rule
 		LEFT JOIN payees payee ON payee.id = rule.payee_id AND payee.book_id = rule.book_id
-		LEFT JOIN current_payee_versions payee_version ON payee_version.payee_id = payee.id
+		LEFT JOIN `+CurrentReferenceVersions(ctx, "payee")+` payee_version ON payee_version.payee_id = payee.id
 		WHERE `+where+`
 		ORDER BY rule.priority ASC, rule.id ASC
 	`, bookID)

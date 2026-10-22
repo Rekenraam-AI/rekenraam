@@ -152,3 +152,40 @@ func TestOwnerEnteredDatesFollowOwnerDay(t *testing.T) {
 		})
 	}
 }
+
+// #385: a write and a current read must use the same owner-local day.
+func TestCurrentReferenceReadsFollowOwnerDay(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, instant, zone, today string }{
+		{"east just after local midnight", "2027-01-01T23:01:00Z", "Europe/Amsterdam", "2027-01-02"},
+		{"west while UTC is tomorrow", "2027-01-02T03:00:00Z", "America/Los_Angeles", "2027-01-01"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			f := newInvestmentsTestFixture(t)
+			now, err := time.Parse(time.RFC3339, tc.instant)
+			require.NoError(t, err)
+			settings := NewSettingsService(db.NewSettingsRepository(f.database))
+			settings.now = func() time.Time { return now }
+			_, err = settings.SavePreferences(ctx, SaveUserPreferencesInput{UserID: f.ownerUserID, TimeZone: tc.zone})
+			require.NoError(t, err)
+			accounts := f.accountService
+			accounts.SetSettings(settings)
+			accounts.now = settings.now
+			created, err := accounts.CreateAccount(ctx, CreateAccountInput{
+				OwnerUserID: f.ownerUserID, OriginType: "browser_api", Operation: "account.create", Name: "Owner today",
+				AccountClass: "asset", AccountKind: "checking", DefaultCommodityID: &f.eurCommodityID,
+			})
+			require.NoError(t, err)
+			require.Equal(t, tc.today, created.EffectiveFrom)
+			read, err := accounts.Account(ctx, created.ID)
+			require.NoError(t, err)
+			assert.Equal(t, created.VersionID, read.VersionID)
+			listed, err := accounts.ListAccounts(ctx, ListAccountsInput{Query: "Owner today"})
+			require.NoError(t, err)
+			require.Len(t, listed, 1)
+			assert.Equal(t, created.ID, listed[0].ID)
+		})
+	}
+}

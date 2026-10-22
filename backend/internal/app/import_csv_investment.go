@@ -98,6 +98,11 @@ func parseCSVInvestmentRow(record []string, headers map[string]int, m *CSVInvest
 
 // One catalog read for the file. Codes are stable unique identities, not symbols.
 func (s *ImportService) prepareCSVInvestmentRows(ctx context.Context, parsed *ParseResult) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	var first *CSVInvestmentRow
 	for _, row := range parsed.Rows {
 		if row.Investment != nil {
@@ -149,6 +154,11 @@ func isCSVInvestmentRow(batch db.ImportBatchRecord, row db.ImportStagedRowRecord
 }
 
 func (s *ImportService) csvInvestmentDividend(ctx context.Context, row db.ImportStagedRowRecord, ownerID, sessionID int64, requestID string) (DividendInput, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return DividendInput{}, referenceErr
+	}
+
 	refuse := func() (DividendInput, error) {
 		return DividendInput{}, ValidationError{Message: "CSV investment row requires review: choose instrument, kind and accounts; gross minus withholding must equal signed cash"}
 	}

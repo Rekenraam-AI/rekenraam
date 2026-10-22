@@ -58,12 +58,12 @@ func (r *InvestmentRepository) ListCapitalReturnReads(ctx context.Context, bookI
  FROM sets s JOIN investment_capital_return_facts f ON f.operation_id = s.operation_id
  JOIN investment_operation_journal_links jl ON jl.operation_id = f.operation_id AND jl.role = 'primary'
  JOIN transaction_versions tv ON tv.id = jl.transaction_version_id
- JOIN current_account_versions av ON av.account_id = f.account_id
+ JOIN ` + CurrentReferenceVersions(ctx, "account") + ` av ON av.account_id = f.account_id
  JOIN commodities security ON security.id = f.commodity_id
  LEFT JOIN investment_instruments i ON i.commodity_id = f.commodity_id
- LEFT JOIN current_investment_instrument_versions iv ON iv.instrument_id = i.id
+ LEFT JOIN ` + CurrentReferenceVersions(ctx, "investment_instrument") + ` iv ON iv.instrument_id = i.id
  JOIN commodities c ON c.id = f.cost_commodity_id
- JOIN current_commodity_versions cv ON cv.commodity_id = c.id
+ JOIN ` + CurrentReferenceVersions(ctx, "commodity") + ` cv ON cv.commodity_id = c.id
  LEFT JOIN effective_investment_operations eo ON eo.id = f.operation_id
  LEFT JOIN latest_investment_capital_return_revisions latest ON latest.operation_id = f.operation_id
  LEFT JOIN effects e ON e.operation_id = s.operation_id AND e.revision_id = s.revision_id

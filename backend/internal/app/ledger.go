@@ -142,6 +142,11 @@ type NetWorthSeriesResult struct {
 }
 
 func (s *TransactionService) AccountBalances(ctx context.Context, input AccountBalancesInput) (AccountBalancesResult, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return AccountBalancesResult{}, referenceErr
+	}
+
 	asOf, status, err := s.cleanLedgerAsOfAndStatus(ctx, input.OwnerUserID, input.AsOf, input.Status)
 	if err != nil {
 		return AccountBalancesResult{}, err
@@ -244,6 +249,11 @@ func (s *TransactionService) CategoryTotals(ctx context.Context, input CategoryT
 }
 
 func (s *TransactionService) NetWorth(ctx context.Context, input NetWorthInput) (NetWorthResult, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return NetWorthResult{}, referenceErr
+	}
+
 	asOf, status, err := s.cleanLedgerAsOfAndStatus(ctx, input.OwnerUserID, input.AsOf, input.Status)
 	if err != nil {
 		return NetWorthResult{}, err
@@ -266,6 +276,11 @@ func (s *TransactionService) NetWorth(ctx context.Context, input NetWorthInput) 
 // end. Reports deliberately include posted records only: drafts, voided
 // transactions, and soft-deleted transactions are not part of financial truth.
 func (s *TransactionService) NetWorthSeries(ctx context.Context, input NetWorthSeriesInput) (NetWorthSeriesResult, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return NetWorthSeriesResult{}, referenceErr
+	}
+
 	startDate, endDate, bucket, err := cleanNetWorthSeriesInput(input)
 	if err != nil {
 		return NetWorthSeriesResult{}, err

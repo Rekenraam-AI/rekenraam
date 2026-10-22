@@ -141,7 +141,7 @@ func (r *CommodityRepository) CommoditiesByIDs(ctx context.Context, bookID int64
 			COALESCE(NULLIF(cv.display_symbol, ''), NULLIF(cv.symbol, '')),
 			c.kind
 		FROM commodities c
-		JOIN current_commodity_versions cv ON cv.commodity_id = c.id
+		JOIN ` + CurrentReferenceVersions(ctx, "commodity") + ` cv ON cv.commodity_id = c.id
 		WHERE c.book_id = ?
 			AND c.id IN (` + strings.Join(placeholders, ", ") + `)`
 
@@ -171,7 +171,7 @@ func (r *CommodityRepository) CommoditiesByIDs(ctx context.Context, bookID int64
 }
 
 func (r *CommodityRepository) ListCurrencies(ctx context.Context, bookID int64) ([]CommodityRecord, error) {
-	rows, err := r.database.QueryContext(ctx, currentCurrencySelect(`
+	rows, err := r.database.QueryContext(ctx, currentCurrencySelect(ctx, `
 		AND c.book_id = ? AND c.kind = 'currency'
 		ORDER BY c.code
 	`), bookID)
@@ -185,7 +185,7 @@ func (r *CommodityRepository) ListCurrencies(ctx context.Context, bookID int64) 
 
 func (r *CommodityRepository) CurrentCurrencyByID(ctx context.Context, bookID int64, commodityID int64) (CommodityRecord, error) {
 	var record CommodityRecord
-	if err := scanCommodityRecord(r.database.QueryRowContext(ctx, currentCurrencySelect(`
+	if err := scanCommodityRecord(r.database.QueryRowContext(ctx, currentCurrencySelect(ctx, `
 		AND c.book_id = ? AND c.kind = 'currency' AND c.id = ?
 	`), bookID, commodityID), &record); err != nil {
 		return CommodityRecord{}, err
@@ -490,7 +490,7 @@ func createCurrency(ctx context.Context, tx *sql.Tx, params CreateCurrencyParams
 
 func (r *CommodityRepository) currentCurrencyByID(ctx context.Context, tx *sql.Tx, bookID int64, commodityID int64) (CommodityRecord, error) {
 	var record CommodityRecord
-	if err := scanCommodityRecord(tx.QueryRowContext(ctx, currentCurrencySelect(`
+	if err := scanCommodityRecord(tx.QueryRowContext(ctx, currentCurrencySelect(ctx, `
 		AND c.book_id = ? AND c.kind = 'currency' AND c.id = ?
 	`), bookID, commodityID), &record); err != nil {
 		return CommodityRecord{}, err
@@ -501,7 +501,7 @@ func (r *CommodityRepository) currentCurrencyByID(ctx context.Context, tx *sql.T
 
 func currentCurrencyByCode(ctx context.Context, tx *sql.Tx, bookID int64, code string) (CommodityRecord, error) {
 	var record CommodityRecord
-	if err := scanCommodityRecord(tx.QueryRowContext(ctx, currentCurrencySelect(`
+	if err := scanCommodityRecord(tx.QueryRowContext(ctx, currentCurrencySelect(ctx, `
 		AND c.book_id = ? AND c.kind = 'currency' AND c.code = ?
 	`), bookID, code), &record); err != nil {
 		return CommodityRecord{}, err
@@ -510,7 +510,7 @@ func currentCurrencyByCode(ctx context.Context, tx *sql.Tx, bookID int64, code s
 	return record, nil
 }
 
-func currentCurrencySelect(whereClause string) string {
+func currentCurrencySelect(ctx context.Context, whereClause string) string {
 	return `
 		SELECT
 			c.id,
@@ -534,7 +534,7 @@ func currentCurrencySelect(whereClause string) string {
 			cv.max_quantity_scale,
 			cv.metadata_json
 		FROM commodities c
-		JOIN current_commodity_versions cv ON cv.commodity_id = c.id
+		JOIN ` + CurrentReferenceVersions(ctx, "commodity") + ` cv ON cv.commodity_id = c.id
 		WHERE 1 = 1
 	` + whereClause
 }

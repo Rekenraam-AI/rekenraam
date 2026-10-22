@@ -165,16 +165,8 @@ func (r *PayeeRepository) ReportPayeeNames(ctx context.Context, bookID int64, pa
 	rows, err := r.database.QueryContext(ctx, `
 		SELECT p.id, pv.name
 		FROM payees p
-		JOIN payee_versions pv ON pv.payee_id = p.id
-		WHERE p.book_id = ?
-			AND `+clause+`
-			AND pv.id = (
-				SELECT current_pv.id
-				FROM payee_versions current_pv
-				WHERE current_pv.payee_id = p.id
-				ORDER BY current_pv.effective_from DESC, current_pv.version_seq DESC
-				LIMIT 1
-			)
+		JOIN `+CurrentReferenceVersions(ctx, "payee")+` pv ON pv.payee_id = p.id
+		WHERE p.book_id = ? AND `+clause+`
 	`, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("read report payee names: %w", err)

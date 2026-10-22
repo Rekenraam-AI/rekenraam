@@ -270,14 +270,15 @@ type EventLinkCandidate struct {
 	HoldingAccountName string
 }
 
-// eventLinkCandidatesSQL offers each suggestion only its own kind of payment.
+// eventLinkCandidatesSQL(ctx) offers each suggestion only its own kind of payment.
 // A dividend suggestion takes a cash dividend of the instrument dated within
 // the link window; a payment-in-lieu suggestion takes a payment in lieu of the
 // instrument, for one of the proposal's short holdings, with the event's
 // ex-date. Neither is ever offered for the other, and a transaction another
 // suggestion generated or linked is never offered again (the migration 0011
 // unique index backs this once-per-payment rule).
-const eventLinkCandidatesSQL = `
+func eventLinkCandidatesSQL(ctx context.Context) string {
+	return `
 	SELECT suggestion_id, transaction_id, transaction_date, cash_code, amount_value, amount_scale, holding_account_id, holding_account_name
 	FROM (
 		SELECT s.id AS suggestion_id, tv.transaction_id AS transaction_id, o.event_date AS transaction_date, cash.code AS cash_code,
@@ -308,7 +309,7 @@ const eventLinkCandidatesSQL = `
 		JOIN investment_instruments ii ON ii.id = s.instrument_id
 		JOIN investment_payment_in_lieu_facts facts ON facts.commodity_id = ii.commodity_id AND facts.book_id = s.book_id
 			AND facts.ex_date = e.event_date
-		LEFT JOIN current_account_versions holding ON holding.account_id = facts.holding_account_id
+		LEFT JOIN ` + CurrentReferenceVersions(ctx, "account") + ` holding ON holding.account_id = facts.holding_account_id
 		JOIN effective_investment_operations o ON o.id = facts.operation_id AND o.operation_kind = 'payment_in_lieu'
 		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
 		JOIN transaction_versions linked ON linked.id = link.transaction_version_id
@@ -323,6 +324,7 @@ const eventLinkCandidatesSQL = `
 			AND NOT EXISTS (SELECT 1 FROM investment_event_suggestions other
 				WHERE other.generated_transaction_id = t.id OR other.linked_transaction_id = t.id)
 	)`
+}
 
 func eventLinkCandidatesArgs(bookID int64) []any {
 	return []any{bookID, DividendEventLinkWindowDays, bookID}
@@ -331,7 +333,7 @@ func eventLinkCandidatesArgs(bookID int64) []any {
 // EventLinkCandidates composes every pending suggestion's candidates in one
 // read so the review screen needs one request.
 func (r *InvestmentRepository) EventLinkCandidates(ctx context.Context, bookID int64) ([]EventLinkCandidate, error) {
-	rows, err := r.database.QueryContext(ctx, eventLinkCandidatesSQL+` ORDER BY suggestion_id, transaction_date, transaction_id, component_seq`, eventLinkCandidatesArgs(bookID)...)
+	rows, err := r.database.QueryContext(ctx, eventLinkCandidatesSQL(ctx)+` ORDER BY suggestion_id, transaction_date, transaction_id, component_seq`, eventLinkCandidatesArgs(bookID)...)
 	if err != nil {
 		return nil, fmt.Errorf("read event link candidates: %w", err)
 	}
@@ -397,7 +399,7 @@ func (r *InvestmentRepository) LinkSuggestion(ctx context.Context, params LinkSu
 		return EventSuggestionRecord{}, ErrEventSuggestionNotPending
 	}
 	var found int64
-	err = tx.QueryRowContext(ctx, eventLinkCandidatesSQL+` WHERE suggestion_id = ? AND transaction_id = ? LIMIT 1`,
+	err = tx.QueryRowContext(ctx, eventLinkCandidatesSQL(ctx)+` WHERE suggestion_id = ? AND transaction_id = ? LIMIT 1`,
 		append(eventLinkCandidatesArgs(params.BookID), params.SuggestionID, params.TransactionID)...).Scan(&found, new(int64), new(string), new(string),
 		new(exact.Coefficient), new(int), new(sql.NullInt64), new(string))
 	if errors.Is(err, sql.ErrNoRows) {

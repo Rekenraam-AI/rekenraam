@@ -125,6 +125,11 @@ type SpendingResult struct {
 // postings only, and an asset-to-asset transfer has none. That is the plan's
 // deliberate choice over inferring a bank-statement classification.
 func (s *TransactionService) Spending(ctx context.Context, input SpendingInput) (SpendingResult, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return SpendingResult{}, referenceErr
+	}
+
 	startDate, endDate, err := cleanReportDateRange(input.StartDate, input.EndDate)
 	if err != nil {
 		return SpendingResult{}, err
@@ -599,6 +604,11 @@ func normalizeReportFilters(filters ReportFilters) ReportFilters {
 // re-expand per reporting date (net-worth series) feeds the echo back in rather
 // than re-deriving the selection from raw input.
 func (s *TransactionService) resolveReportFilters(ctx context.Context, filters ReportFilters, asOf string) (ReportFiltersEcho, []int64, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return ReportFiltersEcho{}, nil, referenceErr
+	}
+
 	normalized := normalizeReportFilters(filters)
 
 	for _, accountID := range normalized.AccountIDs {
@@ -831,6 +841,11 @@ func (s *TransactionService) ensureCategoriesExist(ctx context.Context, category
 }
 
 func (s *TransactionService) ensurePayeesExist(ctx context.Context, payeeIDs []int64) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	for _, payeeID := range payeeIDs {
 		if _, err := s.payeeRepository.PayeeByID(ctx, BookID, payeeID); err != nil {
 			if errors.Is(err, db.ErrNotFound) {

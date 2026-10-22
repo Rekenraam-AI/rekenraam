@@ -32,6 +32,11 @@ const importHoldingAccountGenesisDate = systemAccountDate
 // commit time, never at fetch time — see the discard-orphan concern in
 // docs/plans/import-connection-accounts-plan.md.
 func (s *ImportService) commitTrading212InvestmentRow(ctx context.Context, row db.ImportStagedRowRecord, batch db.ImportBatchRecord, input CommitImportBatchInput, nowStr string) (handled bool, transactionID int64, identityAccountID int64, err error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return false, 0, 0, referenceErr
+	}
+
 	if isTrading212DividendRow(batch, row) {
 		return s.commitReviewedTrading212DividendRow(ctx, row, batch, input, nowStr)
 	}
@@ -361,6 +366,11 @@ func parsePositiveDecimalAmount(raw string) (int64, int, error) {
 // a row the preview understated is held for another review, never posted.
 // handled is false for a row that is not a postable order fill.
 func (s *ImportService) previewTrading212OrderFillCheckpoints(ctx context.Context, row db.ImportStagedRowRecord, batch db.ImportBatchRecord, ownerUserID int64) (refs []db.CheckpointInvalidationRef, handled bool, err error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, false, referenceErr
+	}
+
 	if s.investmentService == nil || s.connectionService == nil || !batch.ConnectionID.Valid {
 		return nil, false, nil
 	}
@@ -431,6 +441,11 @@ func (s *ImportService) previewTrading212OrderFillCheckpoints(ctx context.Contex
 // the instrument and holding read-only: a fill with no existing instrument or
 // holding has no history to replay, so it cannot change committed gains.
 func (s *ImportService) previewTrading212BuyGainImpact(ctx context.Context, row db.ImportStagedRowRecord, batch db.ImportBatchRecord, ownerUserID int64) (*db.InvestmentGainImpact, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	if s.investmentService == nil || s.connectionService == nil || !batch.ConnectionID.Valid {
 		return nil, nil
 	}

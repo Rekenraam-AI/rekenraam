@@ -146,6 +146,11 @@ func (s *TransactionService) NewRateTable(
 	fromDate string,
 	toDate string,
 ) (*RateTable, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	if s.pricingRepository == nil {
 		return nil, fmt.Errorf("reporting currency requires pricing data")
 	}

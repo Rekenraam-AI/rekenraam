@@ -41,6 +41,11 @@ type recurringDueCursor struct {
 }
 
 func (s *RecurringService) Due(ctx context.Context, ownerID int64, cursor string, limit int) (RecurringDuePage, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return RecurringDuePage{}, referenceErr
+	}
+
 	if ownerID <= 0 {
 		return RecurringDuePage{}, ValidationError{Message: "owner user is required"}
 	}

@@ -101,7 +101,7 @@ func (r *PayeeRepository) ListPayees(ctx context.Context, params ListPayeesParam
 
 	args = append(args, params.Limit)
 
-	rows, err := r.database.QueryContext(ctx, currentPayeeSelect("AND "+strings.Join(where, " AND ")+`
+	rows, err := r.database.QueryContext(ctx, currentPayeeSelect(ctx, "AND "+strings.Join(where, " AND ")+`
 		ORDER BY pv.name COLLATE NOCASE, p.id
 		LIMIT ?
 	`), args...)
@@ -136,7 +136,7 @@ func (r *PayeeRepository) PayeeNamesByID(ctx context.Context, bookID int64, paye
 		args = append(args, payeeID)
 	}
 
-	rows, err := r.database.QueryContext(ctx, currentPayeeSelect(`
+	rows, err := r.database.QueryContext(ctx, currentPayeeSelect(ctx, `
 		AND p.book_id = ? AND p.id IN (`+placeholders+`)
 	`), args...)
 	if err != nil {
@@ -156,7 +156,7 @@ func (r *PayeeRepository) PayeeNamesByID(ctx context.Context, bookID int64, paye
 
 func (r *PayeeRepository) PayeeByID(ctx context.Context, bookID int64, payeeID int64) (PayeeRecord, error) {
 	var record PayeeRecord
-	if err := scanPayeeRecord(r.database.QueryRowContext(ctx, currentPayeeSelect(`
+	if err := scanPayeeRecord(r.database.QueryRowContext(ctx, currentPayeeSelect(ctx, `
 		AND p.book_id = ? AND p.id = ?
 	`), bookID, payeeID), &record); err != nil {
 		return PayeeRecord{}, err
@@ -359,7 +359,7 @@ func ensurePayeeNameAvailable(ctx context.Context, tx *sql.Tx, bookID int64, nor
 	err := tx.QueryRowContext(ctx, `
 		SELECT p.id
 		FROM payees p
-		JOIN current_payee_versions pv ON pv.payee_id = p.id
+		JOIN `+CurrentReferenceVersions(ctx, "payee")+` pv ON pv.payee_id = p.id
 		WHERE p.book_id = ?
 			AND pv.status = 'active'
 			AND pv.normalized_name = ?
@@ -378,7 +378,7 @@ func ensurePayeeNameAvailable(ctx context.Context, tx *sql.Tx, bookID int64, nor
 
 func payeeByID(ctx context.Context, tx *sql.Tx, bookID int64, payeeID int64) (PayeeRecord, error) {
 	var record PayeeRecord
-	if err := scanPayeeRecord(tx.QueryRowContext(ctx, currentPayeeSelect(`
+	if err := scanPayeeRecord(tx.QueryRowContext(ctx, currentPayeeSelect(ctx, `
 		AND p.book_id = ? AND p.id = ?
 	`), bookID, payeeID), &record); err != nil {
 		return PayeeRecord{}, err
@@ -387,8 +387,8 @@ func payeeByID(ctx context.Context, tx *sql.Tx, bookID int64, payeeID int64) (Pa
 	return record, nil
 }
 
-func currentPayeeSelect(extraConditions string) string {
-	return payeeSelect("current_payee_versions", `
+func currentPayeeSelect(ctx context.Context, extraConditions string) string {
+	return payeeSelect(CurrentReferenceVersions(ctx, "payee"), `
 		WHERE 1 = 1
 	`+extraConditions)
 }
@@ -477,7 +477,7 @@ func (r *PayeeRepository) PayeeByNormalizedName(ctx context.Context, bookID int6
 	err := r.database.QueryRowContext(ctx, `
 		SELECT p.id, pv.name
 		FROM payees p
-		JOIN current_payee_versions pv ON pv.payee_id = p.id
+		JOIN `+CurrentReferenceVersions(ctx, "payee")+` pv ON pv.payee_id = p.id
 		WHERE p.book_id = ?
 			AND pv.status = 'active'
 			AND pv.normalized_name = ?

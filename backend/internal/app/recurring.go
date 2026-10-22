@@ -96,6 +96,11 @@ func (s *RecurringService) localToday(ctx context.Context, ownerID int64) (strin
 }
 
 func (s *RecurringService) ListTemplates(ctx context.Context, ownerID int64, includeArchived bool) ([]RecurringTemplate, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	if ownerID <= 0 {
 		return nil, ValidationError{Message: "owner user is required"}
 	}
@@ -115,6 +120,11 @@ func (s *RecurringService) ListTemplates(ctx context.Context, ownerID int64, inc
 }
 
 func (s *RecurringService) Template(ctx context.Context, ownerID, templateID int64) (RecurringTemplate, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return RecurringTemplate{}, referenceErr
+	}
+
 	if ownerID <= 0 {
 		return RecurringTemplate{}, ValidationError{Message: "owner user is required"}
 	}
@@ -129,6 +139,11 @@ func (s *RecurringService) Template(ctx context.Context, ownerID, templateID int
 }
 
 func (s *RecurringService) CreateTemplate(ctx context.Context, input WriteRecurringTemplateInput) (RecurringTemplate, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return RecurringTemplate{}, referenceErr
+	}
+
 	today, err := s.localToday(ctx, input.OwnerUserID)
 	if err != nil {
 		return RecurringTemplate{}, err
@@ -151,6 +166,11 @@ func (s *RecurringService) CreateTemplate(ctx context.Context, input WriteRecurr
 }
 
 func (s *RecurringService) UpdateTemplate(ctx context.Context, input WriteRecurringTemplateInput) (RecurringTemplate, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return RecurringTemplate{}, referenceErr
+	}
+
 	current, err := s.Template(ctx, input.OwnerUserID, input.TemplateID)
 	if err != nil {
 		return RecurringTemplate{}, err
@@ -198,6 +218,11 @@ func (s *RecurringService) UpdateTemplate(ctx context.Context, input WriteRecurr
 }
 
 func (s *RecurringService) ArchiveTemplate(ctx context.Context, input WriteRecurringTemplateInput) (RecurringTemplate, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return RecurringTemplate{}, referenceErr
+	}
+
 	current, err := s.Template(ctx, input.OwnerUserID, input.TemplateID)
 	if err != nil {
 		return RecurringTemplate{}, err
@@ -309,6 +334,11 @@ func cleanRecurringTemplateName(name string) (string, error) {
 }
 
 func (s *RecurringService) cleanTemplate(ctx context.Context, spec db.RecurringTemplateSpec, today string) (db.RecurringTemplateSpec, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return db.RecurringTemplateSpec{}, referenceErr
+	}
+
 	var err error
 	spec.Name, err = cleanRecurringTemplateName(spec.Name)
 	if err != nil {

@@ -7,6 +7,11 @@ import (
 )
 
 func (s *InvestmentService) SplitActivity(ctx context.Context, ownerUserID, beforeID int64, limit int) ([]db.SplitActivityRecord, int64, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, 0, referenceErr
+	}
+
 	if ownerUserID <= 0 || beforeID < 0 || limit < 1 || limit > 100 {
 		return nil, 0, ValidationError{Message: "owner and valid split page are required"}
 	}
@@ -23,6 +28,11 @@ func (s *InvestmentService) SplitActivity(ctx context.Context, ownerUserID, befo
 }
 
 func (s *InvestmentService) SplitActivityForOperation(ctx context.Context, ownerUserID, operationID int64) ([]db.SplitActivityRecord, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	if ownerUserID <= 0 || operationID <= 0 {
 		return nil, ValidationError{Message: "owner and split operation are required"}
 	}

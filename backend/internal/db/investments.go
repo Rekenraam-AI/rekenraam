@@ -528,7 +528,7 @@ func NewInvestmentRepository(database *sql.DB) *InvestmentRepository {
 }
 
 func (r *InvestmentRepository) ListInstruments(ctx context.Context, bookID int64) ([]InvestmentInstrumentRecord, error) {
-	rows, err := r.database.QueryContext(ctx, investmentInstrumentSelect(`
+	rows, err := r.database.QueryContext(ctx, investmentInstrumentSelect(ctx, `
 		WHERE ii.book_id = ?
 		ORDER BY COALESCE(iiv.symbol, ''), iiv.display_name COLLATE NOCASE, ii.id
 	`), bookID)
@@ -542,7 +542,7 @@ func (r *InvestmentRepository) ListInstruments(ctx context.Context, bookID int64
 
 func (r *InvestmentRepository) SearchInstruments(ctx context.Context, bookID int64, query string, limit int) ([]InvestmentInstrumentRecord, error) {
 	like := "%" + strings.TrimSpace(query) + "%"
-	rows, err := r.database.QueryContext(ctx, investmentInstrumentSelect(`
+	rows, err := r.database.QueryContext(ctx, investmentInstrumentSelect(ctx, `
 		WHERE ii.book_id = ?
 			AND (
 				iiv.display_name LIKE ?
@@ -562,7 +562,7 @@ func (r *InvestmentRepository) SearchInstruments(ctx context.Context, bookID int
 
 func (r *InvestmentRepository) InstrumentByID(ctx context.Context, bookID int64, instrumentID int64) (InvestmentInstrumentRecord, error) {
 	var record InvestmentInstrumentRecord
-	if err := scanInvestmentInstrumentRecord(r.database.QueryRowContext(ctx, investmentInstrumentSelect(`
+	if err := scanInvestmentInstrumentRecord(r.database.QueryRowContext(ctx, investmentInstrumentSelect(ctx, `
 		WHERE ii.book_id = ? AND ii.id = ?
 	`), bookID, instrumentID), &record); err != nil {
 		return InvestmentInstrumentRecord{}, err
@@ -572,7 +572,7 @@ func (r *InvestmentRepository) InstrumentByID(ctx context.Context, bookID int64,
 
 func (r *InvestmentRepository) InstrumentByCommodityID(ctx context.Context, bookID int64, commodityID int64) (InvestmentInstrumentRecord, error) {
 	var record InvestmentInstrumentRecord
-	if err := scanInvestmentInstrumentRecord(r.database.QueryRowContext(ctx, investmentInstrumentSelect(`
+	if err := scanInvestmentInstrumentRecord(r.database.QueryRowContext(ctx, investmentInstrumentSelect(ctx, `
 		WHERE ii.book_id = ? AND ii.commodity_id = ?
 	`), bookID, commodityID), &record); err != nil {
 		return InvestmentInstrumentRecord{}, err
@@ -589,7 +589,7 @@ func (r *InvestmentRepository) InstrumentByCommodityID(ctx context.Context, book
 // instrument has a matching ISIN.
 func (r *InvestmentRepository) InstrumentByISIN(ctx context.Context, bookID int64, isin string) (InvestmentInstrumentRecord, error) {
 	var record InvestmentInstrumentRecord
-	if err := scanInvestmentInstrumentRecord(r.database.QueryRowContext(ctx, investmentInstrumentSelect(`
+	if err := scanInvestmentInstrumentRecord(r.database.QueryRowContext(ctx, investmentInstrumentSelect(ctx, `
 		WHERE ii.book_id = ? AND iiv.status = 'active'
 		  AND upper(json_extract(iiv.identifiers_json, '$.isin')) = upper(?)
 	`), bookID, isin), &record); err != nil {
@@ -605,7 +605,7 @@ func (r *InvestmentRepository) InstrumentByISIN(ctx context.Context, bookID int6
 // more than one does (ambiguous — the caller should treat that the same as
 // not found rather than guessing).
 func (r *InvestmentRepository) InstrumentBySymbol(ctx context.Context, bookID int64, symbol string) (InvestmentInstrumentRecord, error) {
-	rows, err := r.database.QueryContext(ctx, investmentInstrumentSelect(`
+	rows, err := r.database.QueryContext(ctx, investmentInstrumentSelect(ctx, `
 		WHERE ii.book_id = ? AND iiv.status = 'active' AND iiv.symbol = ? COLLATE NOCASE
 	`), bookID, symbol)
 	if err != nil {
@@ -2831,7 +2831,7 @@ func insertInvestmentInstrumentVersion(ctx context.Context, tx *sql.Tx, instrume
 
 func investmentInstrumentByIDTx(ctx context.Context, tx *sql.Tx, bookID int64, instrumentID int64) (InvestmentInstrumentRecord, error) {
 	var record InvestmentInstrumentRecord
-	if err := scanInvestmentInstrumentRecord(tx.QueryRowContext(ctx, investmentInstrumentSelect(`
+	if err := scanInvestmentInstrumentRecord(tx.QueryRowContext(ctx, investmentInstrumentSelect(ctx, `
 		WHERE ii.book_id = ? AND ii.id = ?
 	`), bookID, instrumentID), &record); err != nil {
 		return InvestmentInstrumentRecord{}, err
@@ -2839,7 +2839,7 @@ func investmentInstrumentByIDTx(ctx context.Context, tx *sql.Tx, bookID int64, i
 	return record, nil
 }
 
-func investmentInstrumentSelect(whereClause string) string {
+func investmentInstrumentSelect(ctx context.Context, whereClause string) string {
 	return `
 		SELECT
 			ii.id, ii.book_id, ii.commodity_id, c.code, c.is_builtin, ii.created_at, ii.created_by_user_id,
@@ -2849,7 +2849,7 @@ func investmentInstrumentSelect(whereClause string) string {
 			iiv.trading_commodity_id, iiv.quantity_scale, iiv.price_scale, iiv.identifiers_json, iiv.metadata_json
 		FROM investment_instruments ii
 		JOIN commodities c ON c.id = ii.commodity_id
-		JOIN current_investment_instrument_versions iiv ON iiv.instrument_id = ii.id
+		JOIN ` + CurrentReferenceVersions(ctx, "investment_instrument") + ` iiv ON iiv.instrument_id = ii.id
 	` + whereClause
 }
 
@@ -3814,7 +3814,7 @@ func investmentCommodityKind(instrumentType string) string {
 func (r *InvestmentRepository) InstrumentCommodity(ctx context.Context, bookID, commodityID int64) (string, int, error) {
 	var kind string
 	var scale int
-	err := r.database.QueryRowContext(ctx, `SELECT c.kind, cv.max_quantity_scale FROM commodities c JOIN current_commodity_versions cv ON cv.commodity_id = c.id WHERE c.book_id = ? AND c.id = ? AND cv.status = 'active'`, bookID, commodityID).Scan(&kind, &scale)
+	err := r.database.QueryRowContext(ctx, `SELECT c.kind, cv.max_quantity_scale FROM commodities c JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id = c.id WHERE c.book_id = ? AND c.id = ? AND cv.status = 'active'`, bookID, commodityID).Scan(&kind, &scale)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", 0, ErrNotFound
 	}

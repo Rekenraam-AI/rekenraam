@@ -30,7 +30,7 @@ func (r *InvestmentRepository) InvestmentIncome(ctx context.Context, bookID int6
 		JOIN transaction_versions linked ON linked.id = link.transaction_version_id
 		JOIN current_transaction_versions tv ON tv.transaction_id = linked.transaction_id
 		JOIN posting_versions pv ON pv.transaction_version_id = tv.id
-		JOIN current_account_versions av ON av.account_id = pv.account_id
+		JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = pv.account_id
 		WHERE o.book_id = ? AND o.operation_kind IN ('dividend', 'reinvested_dividend')
 			AND o.event_date BETWEEN ? AND ?
 			AND tv.status = 'posted' AND av.account_class = 'income'

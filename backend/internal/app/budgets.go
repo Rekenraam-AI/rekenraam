@@ -113,6 +113,11 @@ func validDate(raw, field string) (string, error) {
 }
 
 func (s *BudgetService) Month(ctx context.Context, periodStart string) (BudgetMonth, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return BudgetMonth{}, referenceErr
+	}
+
 	start, end, err := budgetPeriod(periodStart)
 	if err != nil {
 		return BudgetMonth{}, err
@@ -269,6 +274,11 @@ func cleanBudgetMutation(m BudgetMutationContext) error {
 	return nil
 }
 func (s *BudgetService) SetTarget(ctx context.Context, in SetBudgetTargetInput) (BudgetMonth, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return BudgetMonth{}, referenceErr
+	}
+
 	if err := cleanBudgetMutation(in.BudgetMutationContext); err != nil {
 		return BudgetMonth{}, err
 	}
@@ -300,6 +310,11 @@ func (s *BudgetService) SetTarget(ctx context.Context, in SetBudgetTargetInput) 
 	return s.Month(ctx, start)
 }
 func (s *BudgetService) SetTreatment(ctx context.Context, in SetBudgetTreatmentInput) (BudgetMonth, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return BudgetMonth{}, referenceErr
+	}
+
 	if err := cleanBudgetMutation(in.BudgetMutationContext); err != nil {
 		return BudgetMonth{}, err
 	}

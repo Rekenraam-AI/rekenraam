@@ -511,6 +511,12 @@ pnpm test:release-preflight
 - `./scripts/test-e2e.sh` builds the integrated app once (Playwright global setup), then every worker starts its own instance of `dist/rekenraam` on its own port (consecutive from `127.0.0.1:16900`; move the base with `E2E_PORT`) against its own SQLite file and backup directory under `backend/var/e2e/<project>-<index>/`, where its `app.log` also lands. The fixture lives in `e2e/playwright/support/fixtures.ts`; specs import `test` and `expect` from there, not from `@playwright/test`, or they would reach no app at all.
 - Workers run side by side because no two share a book: 50% of the cores locally, 3 under `CI` (the 4-vCPU GitHub runner). Override with `E2E_WORKERS` or `--workers`. Files still run serially inside a worker, and a worker restarted after a failure reuses its database, so a spec may rely on its own file's earlier tests but never on another file's data — which file runs in which worker is not fixed.
 - `auth.spec.ts` needs an owner-less database. It runs in its own `bootstrap` project, which gets its own worker database, so nothing has to run before or after it.
+- `owner-current-reference.spec.ts` uses `support/reference-date.ts`: it starts
+  an isolated test-only Go HTTP server with fixed financial clocks, real
+  auth/SQLite and the built frontend. Normal backend tests skip that server
+  test; no clock override is present in the production binary.
+- Run browser invocations sequentially: global setup clears the shared worker
+  directory even with `E2E_SKIP_BUILD=1`.
 - Set `E2E_SKIP_BUILD=1` to reuse the existing `dist/rekenraam` while iterating on specs, e.g. `E2E_SKIP_BUILD=1 pnpm --dir e2e exec playwright test investments-split`.
 - Set `E2E_BASE_URL` when you want Playwright to target an already-running app instead of booting its own. That app has one book, so the run drops to one worker and orders `bootstrap` first.
 - The harness also boots the Trading 212 provider stub on `127.0.0.1:16890` (move it with `TRADING212_STUB_PORT`) and starts the app with `TRADING212_BASE_URL` pointing at it, so import journeys can create connections and fetch fills without the real provider. `MARKET_DATA_BASE_URL` points every built-in quote/FX provider at the same stub, whose 404s keep background FX coverage from importing live rates into the shared e2e book (#226); both overrides are refused outside `APP_ENV=development`. Specs that need it call `requireTrading212Stub()`; against an external `E2E_BASE_URL` they skip unless `E2E_TRADING212_STUB_URL` names a stub that app is configured to use.
@@ -702,6 +708,12 @@ restart preserve identities; local down/up assigns fresh ones while preserving
 budgets. No reset is needed; ledger bundle schema stays 15. The head schema is
 20. Production rollback still restores the verified pre-upgrade backup and
 previous binary; a down migration is only a local development control.
+
+Forward migration `0021_reference_data_guard_dates.sql` (#385) replaces the
+FX activation and instrument precision guards' UTC-current reads with source
+version effective dates. Source history, work items and financial amounts stay
+intact. `TestReferenceDateMigrationPreservesHistoryAndUsesSourceDates` covers
+20→21, both guard behaviors and a development down/up round trip.
 
 ## Work Tracking
 

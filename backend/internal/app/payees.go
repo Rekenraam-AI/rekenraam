@@ -103,6 +103,11 @@ func NewPayeeService(repository *db.PayeeRepository, accountRepository *db.Accou
 }
 
 func (s *PayeeService) ListPayees(ctx context.Context, input ListPayeesInput) ([]Payee, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	status := strings.TrimSpace(input.Status)
 	if status != "" && status != "active" && status != "archived" {
 		return nil, ValidationError{Message: "payee status is invalid"}
@@ -123,6 +128,11 @@ func (s *PayeeService) ListPayees(ctx context.Context, input ListPayeesInput) ([
 }
 
 func (s *PayeeService) Payee(ctx context.Context, payeeID int64) (Payee, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Payee{}, referenceErr
+	}
+
 	if payeeID <= 0 {
 		return Payee{}, ValidationError{Message: "payee id is required"}
 	}
@@ -139,6 +149,11 @@ func (s *PayeeService) Payee(ctx context.Context, payeeID int64) (Payee, error) 
 }
 
 func (s *PayeeService) CreatePayee(ctx context.Context, input CreatePayeeInput) (Payee, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Payee{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return Payee{}, ValidationError{Message: "owner user is required"}
 	}
@@ -191,6 +206,11 @@ func (s *PayeeService) CreatePayee(ctx context.Context, input CreatePayeeInput) 
 }
 
 func (s *PayeeService) UpdatePayee(ctx context.Context, input UpdatePayeeInput) (Payee, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Payee{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return Payee{}, ValidationError{Message: "owner user is required"}
 	}
@@ -284,6 +304,11 @@ func (s *PayeeService) RestorePayee(ctx context.Context, input PayeeLifecycleInp
 }
 
 func (s *PayeeService) changePayeeStatus(ctx context.Context, input PayeeLifecycleInput, status string, operation string, fallbackReason string) (Payee, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Payee{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return Payee{}, ValidationError{Message: "owner user is required"}
 	}
@@ -348,6 +373,11 @@ type payeeSpecInput struct {
 }
 
 func (s *PayeeService) payeeSpec(ctx context.Context, input payeeSpecInput) (db.PayeeSpec, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return db.PayeeSpec{}, referenceErr
+	}
+
 	name, normalizedName, err := cleanPayeeName(input.Name)
 	if err != nil {
 		return db.PayeeSpec{}, err
@@ -460,3 +490,5 @@ func nullableInt64FromSQL(value sql.NullInt64) *int64 {
 func normalizePayeeNameForMatch(value string) string {
 	return strings.ToLower(strings.Join(strings.Fields(strings.TrimSpace(value)), " "))
 }
+
+func (s *PayeeService) SetNowForTest(now func() time.Time) { s.now = now }

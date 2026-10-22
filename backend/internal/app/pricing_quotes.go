@@ -22,6 +22,11 @@ type quoteRefreshPayload struct {
 }
 
 func (s *PricingService) currentQuoteTargets(ctx context.Context, sourceID int64) ([]db.QuoteRefreshTarget, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	zone, err := s.repository.BookOwnerTimeZone(ctx, BookID)
 	if err != nil {
 		return nil, err

@@ -133,6 +133,11 @@ func NewInstitutionService(repository *db.InstitutionRepository) *InstitutionSer
 }
 
 func (s *InstitutionService) ListInstitutions(ctx context.Context, input ListInstitutionsInput) ([]Institution, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	status := strings.TrimSpace(input.Status)
 	if status != "" && status != "active" && status != "archived" {
 		return nil, ValidationError{Message: "institution status is invalid"}
@@ -153,6 +158,11 @@ func (s *InstitutionService) ListInstitutions(ctx context.Context, input ListIns
 }
 
 func (s *InstitutionService) Institution(ctx context.Context, institutionID int64) (Institution, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Institution{}, referenceErr
+	}
+
 	if institutionID <= 0 {
 		return Institution{}, ValidationError{Message: "institution id is required"}
 	}
@@ -238,6 +248,11 @@ func (s *InstitutionService) CreateInstitution(ctx context.Context, input Create
 }
 
 func (s *InstitutionService) UpdateInstitution(ctx context.Context, input UpdateInstitutionInput) (Institution, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Institution{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return Institution{}, ValidationError{Message: "owner user is required"}
 	}
@@ -303,6 +318,11 @@ func (s *InstitutionService) RestoreInstitution(ctx context.Context, input Insti
 }
 
 func (s *InstitutionService) DeleteUnusedInstitution(ctx context.Context, input DeleteInstitutionInput) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return ValidationError{Message: "owner user is required"}
 	}
@@ -332,6 +352,11 @@ func (s *InstitutionService) DeleteUnusedInstitution(ctx context.Context, input 
 }
 
 func (s *InstitutionService) changeInstitutionStatus(ctx context.Context, input InstitutionLifecycleInput, status string, reason string, operation string) (Institution, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Institution{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return Institution{}, ValidationError{Message: "owner user is required"}
 	}
@@ -545,3 +570,5 @@ func nullableString(value sql.NullString) string {
 
 	return value.String
 }
+
+func (s *InstitutionService) SetNowForTest(now func() time.Time) { s.now = now }

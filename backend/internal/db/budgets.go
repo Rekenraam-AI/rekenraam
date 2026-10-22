@@ -49,7 +49,7 @@ func (r *BudgetRepository) Snapshot(ctx context.Context, bookID int64, start, en
 	var out BudgetSnapshotRecord
 	rows, err := r.database.QueryContext(ctx, `
 		SELECT a.id, COALESCE(av.code,''), COALESCE(av.name,''), av.account_class, av.status, av.allows_postings
-		FROM accounts a JOIN current_account_versions av ON av.account_id=a.id
+		FROM accounts a JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id=a.id
 		WHERE a.book_id=? AND a.system_role IS NULL
 		  AND av.account_class IN ('income','expense')
 		ORDER BY av.account_class, COALESCE(av.name,av.code), a.id`, bookID)
@@ -75,7 +75,7 @@ func (r *BudgetRepository) Snapshot(ctx context.Context, bookID int64, start, en
 		 ORDER BY btv.effective_from DESC, btv.version_seq DESC LIMIT 1),
 		 CASE WHEN av.account_kind IN ('cash','checking','savings','credit_card','line_of_credit')
 		      THEN 'on_budget' ELSE 'off_budget' END)
-		FROM accounts a JOIN current_account_versions av ON av.account_id=a.id
+		FROM accounts a JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id=a.id
 		WHERE a.book_id=? AND a.system_role IS NULL AND av.status!='archived'
 		  AND av.account_class IN ('asset','liability')
 		ORDER BY av.account_class, COALESCE(av.name,av.code), a.id`, end, bookID)
@@ -95,7 +95,7 @@ func (r *BudgetRepository) Snapshot(ctx context.Context, bookID int64, start, en
 	}
 
 	rows, err = r.database.QueryContext(ctx, `SELECT c.id,c.code,COALESCE(NULLIF(cv.display_symbol,''),cv.symbol),cv.standard_scale
-		FROM commodities c JOIN current_commodity_versions cv ON cv.commodity_id=c.id
+		FROM commodities c JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id=c.id
 		WHERE c.book_id=? AND c.kind='currency' AND cv.status='active' ORDER BY c.code`, bookID)
 	if err != nil {
 		return out, fmt.Errorf("read budget currencies: %w", err)
@@ -209,8 +209,8 @@ func (r *BudgetRepository) SetTarget(ctx context.Context, p SetBudgetTargetParam
 		}
 	}()
 	var categoryOK, commodityOK int
-	err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM accounts a JOIN current_account_versions av ON av.account_id=a.id WHERE a.id=? AND a.book_id=? AND a.system_role IS NULL AND av.status='active' AND av.allows_postings=1 AND av.account_class IN ('income','expense')),
-	 EXISTS(SELECT 1 FROM commodities c JOIN current_commodity_versions cv ON cv.commodity_id=c.id WHERE c.id=? AND c.book_id=? AND c.kind='currency' AND cv.status='active')`, p.CategoryID, p.BookID, p.CommodityID, p.BookID).Scan(&categoryOK, &commodityOK)
+	err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM accounts a JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id=a.id WHERE a.id=? AND a.book_id=? AND a.system_role IS NULL AND av.status='active' AND av.allows_postings=1 AND av.account_class IN ('income','expense')),
+	 EXISTS(SELECT 1 FROM commodities c JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id=c.id WHERE c.id=? AND c.book_id=? AND c.kind='currency' AND cv.status='active')`, p.CategoryID, p.BookID, p.CommodityID, p.BookID).Scan(&categoryOK, &commodityOK)
 	if err != nil {
 		return err
 	}
@@ -253,7 +253,7 @@ func (r *BudgetRepository) SetTreatment(ctx context.Context, p SetBudgetTreatmen
 		}
 	}()
 	var ok int
-	if err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM accounts a JOIN current_account_versions av ON av.account_id=a.id WHERE a.id=? AND a.book_id=? AND a.system_role IS NULL AND av.account_class IN ('asset','liability'))`, p.AccountID, p.BookID).Scan(&ok); err != nil {
+	if err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM accounts a JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id=a.id WHERE a.id=? AND a.book_id=? AND a.system_role IS NULL AND av.account_class IN ('asset','liability'))`, p.AccountID, p.BookID).Scan(&ok); err != nil {
 		return err
 	}
 	if ok == 0 {

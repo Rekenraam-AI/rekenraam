@@ -103,3 +103,5 @@ func toUserPreferences(record db.UserPreferencesRecord) UserPreferences {
 		UpdatedAt: record.UpdatedAt,
 	}
 }
+
+func (s *SettingsService) SetNowForTest(now func() time.Time) { s.now = now }

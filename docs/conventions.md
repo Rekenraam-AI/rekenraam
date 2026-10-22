@@ -241,6 +241,14 @@ When a feature introduces a durable new rule, update one of those documents in t
   and undated FX refresh source-assignment lookups use that same owner day
   (#343). Explicit dates retain their meaning, including historical FX
   assignment selection. Refresh scheduling does not choose the lookup date.
+- Effective current account/category, institution, commodity, payee and
+  instrument reads use the owner-local day too (#385). Application services
+  pin `db.WithReferenceDate` on the operation context before repository
+  transactions; composed reads and mutation guards inherit it. Forecast pins
+  its application-resolved day inside its existing read snapshot. Do not add
+  runtime queries against SQLite's UTC `current_*_versions` views. Explicit
+  historical predicates keep their supplied date; schema guards use the
+  inserted source version's effective date.
 - Share the date through the app shell; missing/invalid authenticated date
   data is an error, never a browser-clock fallback. Session focus/minute refresh
   and preference saves update the shared date for newly opened forms.

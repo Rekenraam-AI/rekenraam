@@ -140,7 +140,7 @@ func (r *CategoryRepository) ListCategories(ctx context.Context, params ListCate
 
 	args = append(args, params.Limit)
 
-	rows, err := r.database.QueryContext(ctx, currentAccountSelect("AND "+strings.Join(where, " AND ")+`
+	rows, err := r.database.QueryContext(ctx, currentAccountSelect(ctx, "AND "+strings.Join(where, " AND ")+`
 		ORDER BY
 			CASE av.account_class WHEN 'income' THEN 1 WHEN 'expense' THEN 2 ELSE 9 END,
 			COALESCE(av.parent_account_id, 0),
@@ -158,7 +158,7 @@ func (r *CategoryRepository) ListCategories(ctx context.Context, params ListCate
 
 func (r *CategoryRepository) CategoryByID(ctx context.Context, bookID int64, categoryID int64) (AccountRecord, error) {
 	var record AccountRecord
-	if err := scanAccountRecord(r.database.QueryRowContext(ctx, currentAccountSelect(`
+	if err := scanAccountRecord(r.database.QueryRowContext(ctx, currentAccountSelect(ctx, `
 		AND a.book_id = ?
 		AND a.id = ?
 		AND a.system_role IS NULL
@@ -179,14 +179,14 @@ func (r *CategoryRepository) WouldCreateCycle(ctx context.Context, bookID int64,
 		WITH RECURSIVE ancestors(id, parent_id) AS (
 			SELECT a.id, av.parent_account_id
 			FROM accounts a
-			JOIN current_account_versions av ON av.account_id = a.id
+			JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = a.id
 			WHERE a.book_id = ?
 				AND a.id = ?
 				AND `+categoryAccountPredicate("av")+`
 			UNION ALL
 			SELECT parent.id, parent_version.parent_account_id
 			FROM accounts parent
-			JOIN current_account_versions parent_version ON parent_version.account_id = parent.id
+			JOIN `+CurrentReferenceVersions(ctx, "account")+` parent_version ON parent_version.account_id = parent.id
 			JOIN ancestors ON ancestors.parent_id = parent.id
 			WHERE parent.book_id = ?
 				AND `+categoryAccountPredicate("parent_version")+`
@@ -673,7 +673,7 @@ func ensureBuiltinCategory(ctx context.Context, tx *sql.Tx, params EnsureCategor
 
 func currentCategoryByID(ctx context.Context, tx *sql.Tx, bookID int64, categoryID int64) (AccountRecord, error) {
 	var record AccountRecord
-	if err := scanAccountRecord(tx.QueryRowContext(ctx, currentAccountSelect(`
+	if err := scanAccountRecord(tx.QueryRowContext(ctx, currentAccountSelect(ctx, `
 		AND a.book_id = ?
 		AND a.id = ?
 		AND a.system_role IS NULL
@@ -687,7 +687,7 @@ func currentCategoryByID(ctx context.Context, tx *sql.Tx, bookID int64, category
 
 func currentCategoryByCode(ctx context.Context, tx *sql.Tx, bookID int64, code string) (AccountRecord, error) {
 	var record AccountRecord
-	if err := scanAccountRecord(tx.QueryRowContext(ctx, currentAccountSelect(`
+	if err := scanAccountRecord(tx.QueryRowContext(ctx, currentAccountSelect(ctx, `
 		AND a.book_id = ?
 		AND av.code = ?
 		AND a.system_role IS NULL
@@ -703,7 +703,7 @@ func ensureActiveCategoryNameAvailable(ctx context.Context, tx *sql.Tx, bookID i
 	query := `
 		SELECT a.id
 		FROM accounts a
-		JOIN current_account_versions av ON av.account_id = a.id
+		JOIN ` + CurrentReferenceVersions(ctx, "account") + ` av ON av.account_id = a.id
 		WHERE a.book_id = ?
 			AND a.id != ?
 			AND a.system_role IS NULL
@@ -737,7 +737,7 @@ func categoryHasActiveChildren(ctx context.Context, tx *sql.Tx, bookID int64, ca
 	err := tx.QueryRowContext(ctx, `
 		SELECT child.id
 		FROM accounts child
-		JOIN current_account_versions child_av ON child_av.account_id = child.id
+		JOIN `+CurrentReferenceVersions(ctx, "account")+` child_av ON child_av.account_id = child.id
 		WHERE child.book_id = ?
 			AND child_av.parent_account_id = ?
 			AND child.system_role IS NULL

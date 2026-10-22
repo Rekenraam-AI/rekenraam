@@ -407,7 +407,7 @@ func listRecurringTemplates(ctx context.Context, queryer queryer, params ListRec
 		       template.created_at, template.updated_at
 		FROM recurring_templates template
 		LEFT JOIN payees payee ON payee.id = template.payee_id AND payee.book_id = template.book_id
-		LEFT JOIN current_payee_versions payee_version ON payee_version.payee_id = payee.id
+		LEFT JOIN `+CurrentReferenceVersions(ctx, "payee")+` payee_version ON payee_version.payee_id = payee.id
 		WHERE `+where+`
 		ORDER BY template.name ASC, template.id ASC
 	`, arguments...)

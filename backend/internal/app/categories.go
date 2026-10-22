@@ -156,6 +156,11 @@ func (s *CategoryService) SetNowForTest(now func() time.Time) {
 }
 
 func (s *CategoryService) ListCategories(ctx context.Context, input ListCategoriesInput) ([]Category, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	status := strings.TrimSpace(input.Status)
 	if status != "" && status != "active" && status != "archived" {
 		return nil, ValidationError{Message: "category status is invalid"}
@@ -181,6 +186,11 @@ func (s *CategoryService) ListCategories(ctx context.Context, input ListCategori
 }
 
 func (s *CategoryService) Category(ctx context.Context, categoryID int64) (Category, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Category{}, referenceErr
+	}
+
 	if categoryID <= 0 {
 		return Category{}, ValidationError{Message: "category id is required"}
 	}
@@ -197,6 +207,11 @@ func (s *CategoryService) Category(ctx context.Context, categoryID int64) (Categ
 }
 
 func (s *CategoryService) CreateCategory(ctx context.Context, input CreateCategoryInput) (Category, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Category{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return Category{}, ValidationError{Message: "owner user is required"}
 	}
@@ -239,6 +254,11 @@ func (s *CategoryService) CreateCategory(ctx context.Context, input CreateCatego
 }
 
 func (s *CategoryService) UpdateCategory(ctx context.Context, input UpdateCategoryInput) (Category, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Category{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return Category{}, ValidationError{Message: "owner user is required"}
 	}
@@ -338,6 +358,11 @@ func (s *CategoryService) RestoreCategory(ctx context.Context, input CategoryLif
 }
 
 func (s *CategoryService) DeleteCategory(ctx context.Context, input CategoryLifecycleInput) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return ValidationError{Message: "owner user is required"}
 	}
@@ -363,6 +388,11 @@ func (s *CategoryService) DeleteCategory(ctx context.Context, input CategoryLife
 }
 
 func (s *CategoryService) EnsureCategories(ctx context.Context, input EnsureCategoriesInput) (EnsureCategoriesResult, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return EnsureCategoriesResult{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return EnsureCategoriesResult{}, ValidationError{Message: "owner user is required"}
 	}
@@ -402,6 +432,11 @@ func (s *CategoryService) EnsureCategories(ctx context.Context, input EnsureCate
 }
 
 func (s *CategoryService) changeCategoryStatus(ctx context.Context, input CategoryLifecycleInput, status string, reason string, operation string) (Category, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return Category{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 {
 		return Category{}, ValidationError{Message: "owner user is required"}
 	}
@@ -470,6 +505,11 @@ type categorySpecInput struct {
 }
 
 func (s *CategoryService) newCategorySpec(ctx context.Context, input categorySpecInput) (db.AccountSpec, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return db.AccountSpec{}, referenceErr
+	}
+
 	code := strings.TrimSpace(input.Code)
 	if len(code) > categoryCodeMaxBytes {
 		return db.AccountSpec{}, ValidationError{Message: fmt.Sprintf("category code must be at most %d bytes", categoryCodeMaxBytes)}

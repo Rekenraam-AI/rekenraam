@@ -89,6 +89,11 @@ func (w *countingHashWriter) checksum() string { return hex.EncodeToString(w.dig
 // filtered request that arrives here comes back with its own description of
 // what the filter resolved to and what it therefore contains.
 func (s *ExportService) WriteBundle(ctx context.Context, out io.Writer, filter ExportFilter) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	snapshot, err := s.repository.Snapshot(ctx)
 	if err != nil {
 		return err
@@ -459,6 +464,11 @@ func writeCategoriesCSV(out io.Writer, accounts []db.ExportAccountRecord, paths 
 }
 
 func (s *ExportService) writePayeesCSV(ctx context.Context, out io.Writer, snapshot *sql.Tx) (int64, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return 0, referenceErr
+	}
+
 	payees, err := s.repository.ExportPayees(ctx, snapshot, BookID)
 	if err != nil {
 		return 0, err
@@ -480,6 +490,11 @@ func (s *ExportService) writePayeesCSV(ctx context.Context, out io.Writer, snaps
 }
 
 func (s *ExportService) writeCommoditiesCSV(ctx context.Context, out io.Writer, snapshot *sql.Tx) (int64, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return 0, referenceErr
+	}
+
 	commodities, err := s.repository.ExportCommodities(ctx, snapshot, BookID)
 	if err != nil {
 		return 0, err

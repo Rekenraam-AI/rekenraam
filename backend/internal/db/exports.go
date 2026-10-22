@@ -346,7 +346,7 @@ func transactionCompleteExpression(selection LedgerExportSelection) (string, []a
 	)`, args
 }
 
-// exportPostingSelection is the one policy the export reads by: the current
+// exportPostingSelection(ctx) is the one policy the export reads by: the current
 // version of every posted, non-deleted transaction. Drafts, voided versions,
 // superseded versions, and soft-deleted transactions never leave the app
 // through this door — the SQLite backup is the audit-complete artifact.
@@ -367,7 +367,8 @@ func transactionCompleteExpression(selection LedgerExportSelection) (string, []a
 // patched database. A fallback that never announces itself would turn such data
 // into a plausible-looking number, so the self-check counts it as
 // account_version_coverage: docs/plans/data-portability-plan.md, slice 6.
-const exportPostingSelection = `
+func exportPostingSelection(ctx context.Context) string {
+	return `
 	FROM current_transaction_versions tv
 	JOIN transactions t ON t.id = tv.transaction_id
 	JOIN journal_entries je ON je.transaction_version_id = tv.id
@@ -375,7 +376,7 @@ const exportPostingSelection = `
 	JOIN posting_lines pl ON pl.id = pv.posting_line_id
 	JOIN commodities c ON c.id = pv.commodity_id
 	LEFT JOIN payees payee_record ON payee_record.id = tv.payee_id
-	LEFT JOIN current_payee_versions payee ON payee.payee_id = payee_record.id
+	LEFT JOIN ` + CurrentReferenceVersions(ctx, "payee") + ` payee ON payee.payee_id = payee_record.id
 	LEFT JOIN account_versions av ON av.id = COALESCE(
 		(
 			SELECT asof_av.id
@@ -396,6 +397,7 @@ const exportPostingSelection = `
 	WHERE tv.book_id = ?
 		AND tv.status = 'posted'
 		AND t.deleted_at IS NULL`
+}
 
 // Snapshot begins the read transaction an export reads through. In WAL mode a
 // deferred read sees one stable state for its lifetime, which is what makes a
@@ -478,7 +480,7 @@ func (r *ExportRepository) StreamLedgerPostings(ctx context.Context, transaction
 					WHERE pt.posting_line_id = pv.posting_line_id
 					ORDER BY tag.name
 				)
-			)`+exportPostingSelection+`
+			)`+exportPostingSelection(ctx)+`
 			AND `+selectionClause+`
 		ORDER BY je.entry_date, t.id, je.entry_seq, pv.line_seq, pv.id
 	`, args...)
@@ -563,16 +565,10 @@ func (r *ExportRepository) ExportAccounts(ctx context.Context, transaction *sql.
 			json_extract(av.metadata_json, '$.category.is_starter'),
 			json_extract(av.metadata_json, '$.category.builtin_key')
 		FROM accounts a
-		JOIN current_account_versions av ON av.account_id = a.id
+		JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = a.id
 		LEFT JOIN account_kinds kind ON kind.code = av.account_kind AND kind.account_class = av.account_class
 		LEFT JOIN institutions institution ON institution.id = av.institution_id
-		LEFT JOIN institution_versions institution_v ON institution_v.id = (
-			SELECT current_iv.id
-			FROM institution_versions current_iv
-			WHERE current_iv.institution_id = institution.id
-			ORDER BY current_iv.effective_from DESC, current_iv.version_seq DESC
-			LIMIT 1
-		)
+		LEFT JOIN `+CurrentReferenceVersions(ctx, "institution")+` institution_v ON institution_v.institution_id = institution.id
 		LEFT JOIN commodities commodity ON commodity.id = av.default_commodity_id
 		WHERE a.book_id = ?
 		ORDER BY a.id
@@ -638,7 +634,7 @@ func (r *ExportRepository) LedgerExportTotals(ctx context.Context, transaction *
 			COUNT(DISTINCT pv.commodity_id),
 			MIN(je.entry_date),
 			MAX(je.entry_date),
-			COUNT(DISTINCT CASE WHEN NOT `+completeExpression+` THEN t.id END)`+exportPostingSelection+`
+			COUNT(DISTINCT CASE WHEN NOT `+completeExpression+` THEN t.id END)`+exportPostingSelection(ctx)+`
 			AND `+selectionClause+`
 	`, args...).Scan(
 		&totals.PostingCount,
@@ -733,7 +729,7 @@ func (r *ExportRepository) ExportPayees(ctx context.Context, transaction *sql.Tx
 	rows, err := transaction.QueryContext(ctx, `
 		SELECT p.id, pv.name, pv.status
 		FROM payees p
-		JOIN current_payee_versions pv ON pv.payee_id = p.id
+		JOIN `+CurrentReferenceVersions(ctx, "payee")+` pv ON pv.payee_id = p.id
 		WHERE p.book_id = ?
 		ORDER BY p.id
 	`, bookID)
@@ -764,7 +760,7 @@ func (r *ExportRepository) ExportCommodities(ctx context.Context, transaction *s
 	rows, err := transaction.QueryContext(ctx, `
 		SELECT c.id, c.code, c.kind, cv.name, cv.display_symbol, cv.standard_scale, cv.max_quantity_scale, cv.status
 		FROM commodities c
-		JOIN current_commodity_versions cv ON cv.commodity_id = c.id
+		JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id = c.id
 		WHERE c.book_id = ?
 		ORDER BY c.id
 	`, bookID)

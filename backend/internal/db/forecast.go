@@ -296,7 +296,7 @@ func (r *ForecastRepository) LoadResolvedSnapshot(ctx context.Context, request F
 		if err != nil {
 			return err
 		}
-		result.PayeeNames, err = reader.payeeNames(ctx, request.BookID, result.PostedPostings, result.Templates, result.DraftPostings)
+		result.PayeeNames, err = reader.payeeNames(WithReferenceDate(ctx, resolution.AsOfDate), request.BookID, result.PostedPostings, result.Templates, result.DraftPostings)
 		if err != nil {
 			return err
 		}
@@ -726,7 +726,7 @@ func (r *ForecastSnapshotReader) payeeNames(ctx context.Context, bookID int64, p
 		return map[int64]string{}, nil
 	}
 	args = append([]any{bookID}, args...)
-	rows, err := r.transaction.QueryContext(ctx, `SELECT p.id, pv.name FROM payees p JOIN current_payee_versions pv ON pv.payee_id = p.id WHERE p.book_id = ? AND `+clause, args...)
+	rows, err := r.transaction.QueryContext(ctx, `SELECT p.id, pv.name FROM payees p JOIN `+CurrentReferenceVersions(ctx, "payee")+` pv ON pv.payee_id = p.id WHERE p.book_id = ? AND `+clause, args...)
 	if err != nil {
 		return nil, fmt.Errorf("read forecast payee names: %w", err)
 	}

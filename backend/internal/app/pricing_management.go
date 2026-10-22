@@ -39,6 +39,11 @@ type PricingWorkspace struct {
 }
 
 func (s *PricingService) Workspace(ctx context.Context, asOf string) (PricingWorkspace, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return PricingWorkspace{}, referenceErr
+	}
+
 	result := PricingWorkspace{Coverage: []PricingCoverage{}}
 	if asOf == "" {
 		zone, err := s.repository.BookOwnerTimeZone(ctx, BookID)

@@ -40,7 +40,7 @@ func (r *RecurringRepository) RecurringDue(ctx context.Context, bookID int64, af
  JOIN recurring_templates template ON template.id = o.template_id AND template.book_id = o.book_id
  LEFT JOIN transactions t ON t.id = o.transaction_id AND t.book_id = o.book_id
  LEFT JOIN current_transaction_versions tv ON tv.transaction_id = t.id
- LEFT JOIN current_payee_versions pv ON pv.payee_id = CASE WHEN o.status = 'generated' THEN tv.payee_id ELSE template.payee_id END
+ LEFT JOIN `+CurrentReferenceVersions(ctx, "payee")+` pv ON pv.payee_id = CASE WHEN o.status = 'generated' THEN tv.payee_id ELSE template.payee_id END
  WHERE o.book_id = ? AND (o.status = 'blocked' OR (o.status = 'generated' AND tv.status = 'draft' AND t.deleted_at IS NULL))
  AND (o.occurrence_date > ? OR (o.occurrence_date = ? AND o.id > ?))
  ORDER BY o.occurrence_date, o.id LIMIT ?

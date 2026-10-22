@@ -98,6 +98,11 @@ func (*CryptoCSVAdapter) Parse(_ context.Context, input RawInput, _ *ImportProfi
 }
 
 func (s *ImportService) prepareCryptoCSV(ctx context.Context, input StartImportInput, result *ParseResult) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	if s.investmentService == nil {
 		return ValidationError{Message: "investments are unavailable"}
 	}

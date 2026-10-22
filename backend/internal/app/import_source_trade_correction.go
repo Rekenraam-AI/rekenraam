@@ -18,6 +18,11 @@ type preparedSourceCorrection struct {
 }
 
 func (s *ImportService) prepareTrading212SourceCorrection(ctx context.Context, input CorrectTrading212SourceInput, kind string) (preparedSourceCorrection, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return preparedSourceCorrection{}, referenceErr
+	}
+
 	if input.OwnerUserID <= 0 || input.BatchID <= 0 || input.RowID <= 0 {
 		return preparedSourceCorrection{}, ValidationError{Message: "owner, batch and row ids are required"}
 	}

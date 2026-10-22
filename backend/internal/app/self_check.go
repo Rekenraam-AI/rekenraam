@@ -92,6 +92,7 @@ type SelfCheckRun struct {
 }
 
 type SelfCheckService struct {
+	settings   *SettingsService
 	repository *db.SelfCheckRepository
 	now        func() time.Time
 }
@@ -168,6 +169,11 @@ var checkNarratives = map[string]checkNarrative{
 // RunSelfCheck executes every check against one snapshot and records the
 // outcome. The run record is the only thing it writes.
 func (s *SelfCheckService) RunSelfCheck(ctx context.Context, trigger string) (SelfCheckRun, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return SelfCheckRun{}, referenceErr
+	}
+
 	if trigger != "manual" && trigger != "scheduled" {
 		return SelfCheckRun{}, ValidationError{Message: "self-check trigger must be manual or scheduled"}
 	}
@@ -479,7 +485,7 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 		{"completed setup missing transfer equity account", `
 			SELECT b.id FROM books b JOIN setup_steps step ON step.step_key = 'system_accounts'
 			WHERE b.id = ? AND step.completed_at IS NOT NULL AND NOT EXISTS (
-				SELECT 1 FROM accounts a JOIN current_account_versions av ON av.account_id = a.id
+				SELECT 1 FROM accounts a JOIN ` + db.CurrentReferenceVersions(ctx, "account") + ` av ON av.account_id = a.id
 				WHERE a.book_id = b.id AND a.system_role = 'external_investment_transfer_equity'
 				  AND av.account_class = 'equity' AND av.account_kind = 'equity')`},
 		{"completed setup missing commission default", `
@@ -2112,3 +2118,5 @@ func joinSummaries(summaries []string) string {
 		return joined
 	}
 }
+
+func (s *SelfCheckService) SetSettings(settings *SettingsService) { s.settings = settings }

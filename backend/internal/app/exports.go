@@ -26,6 +26,7 @@ import (
 //  2. Amounts are rendered from the stored coefficient and scale through
 //     exact.Decimal. No float, no locale, no display formatter.
 type ExportService struct {
+	settings   *SettingsService
 	repository *db.ExportRepository
 	now        func() time.Time
 }
@@ -322,6 +323,11 @@ func emptyAttachments() ExportAttachments {
 // envelope is still possible, without relying on the unstated promise that
 // WriteBundle happens to validate before its first byte.
 func (s *ExportService) ValidateFilter(ctx context.Context, filter ExportFilter) error {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return referenceErr
+	}
+
 	snapshot, err := s.repository.Snapshot(ctx)
 	if err != nil {
 		return err
@@ -337,6 +343,11 @@ func (s *ExportService) ValidateFilter(ctx context.Context, filter ExportFilter)
 }
 
 func (s *ExportService) Preview(ctx context.Context, filter ExportFilter) (LedgerExportPreview, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return LedgerExportPreview{}, referenceErr
+	}
+
 	snapshot, err := s.repository.Snapshot(ctx)
 	if err != nil {
 		return LedgerExportPreview{}, err
@@ -389,6 +400,11 @@ func (s *ExportService) Preview(ctx context.Context, filter ExportFilter) (Ledge
 // (ADR 0011). Rows are written as they are read — nothing is buffered — and the
 // read runs in one snapshot, so a save landing mid-export cannot tear it.
 func (s *ExportService) WriteLedgerCSV(ctx context.Context, out io.Writer) (int64, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return 0, referenceErr
+	}
+
 	snapshot, err := s.repository.Snapshot(ctx)
 	if err != nil {
 		return 0, err
@@ -551,3 +567,5 @@ func boolToken(value bool) string {
 	}
 	return "false"
 }
+
+func (s *ExportService) SetSettings(settings *SettingsService) { s.settings = settings }

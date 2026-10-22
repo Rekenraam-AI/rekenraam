@@ -191,6 +191,11 @@ func (s *PricingService) refreshRunSourceID(ctx context.Context, policy PricingP
 }
 
 func (s *PricingService) fxRefreshTargets(ctx context.Context, policy PricingPolicy) ([]fxRefreshTarget, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	defaultCurrency, err := s.repository.DefaultCurrency(ctx, BookID)
 	if err != nil {
 		return nil, fmt.Errorf("default currency is required before FX refresh")
@@ -329,6 +334,11 @@ func (s *PricingService) fetchAndStoreDerivedFX(ctx context.Context, ownerUserID
 // through: every currency an active account uses, plus the book default,
 // minus the pair's own endpoints.
 func (s *PricingService) triangulationCandidates(ctx context.Context, target fxRefreshTarget) ([]db.PricingCurrencyRecord, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+
 	currencies, err := s.repository.ActiveAccountCurrencies(ctx, BookID)
 	if err != nil {
 		return nil, err
