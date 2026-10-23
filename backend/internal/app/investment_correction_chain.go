@@ -322,6 +322,13 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 				return InvestmentCorrectionChain{}, mapPaymentInLieuError(err)
 			}
 			chain.EffectivePaymentInLieu, chain.CanCorrectPaymentInLieu = paymentInLieuCorrectionTerms(transaction, operation.Fact)
+			if chain.EffectivePaymentInLieu != nil {
+				diagnostic, err := s.repository.PaymentInLieuAttribution(ctx, BookID, transaction.ID)
+				if err != nil {
+					return InvestmentCorrectionChain{}, err
+				}
+				chain.EffectivePaymentInLieu.Attribution = investmentAttributionDiagnostic(diagnostic)
+			}
 		}
 		if correctable && record.OperationKind == "reinvested_dividend" && !importedLineage {
 			transaction, err := s.transactionService.Transaction(ctx, record.TransactionID.Int64)

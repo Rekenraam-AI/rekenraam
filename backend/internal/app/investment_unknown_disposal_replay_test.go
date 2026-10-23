@@ -103,7 +103,7 @@ func lotStateByID(t *testing.T, f *investmentsTestFixture, lotID int64) (quantit
 func requireHealthyUnresolvedBook(t *testing.T, f *investmentsTestFixture) {
 	t.Helper()
 	check := mustRunInvestmentSelfCheck(t, f)
-	require.Len(t, check.Results, 13)
+	require.Len(t, check.Results, 14)
 	for _, result := range check.Results {
 		require.Zero(t, result.FindingCount, "%s: %s", result.CheckID, result.Summary)
 		switch result.CheckID {

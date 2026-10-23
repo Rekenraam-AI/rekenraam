@@ -1709,5 +1709,17 @@
   "security_tokens_more": "Показать ещё токены",
   "security_tokens_confirm": "Отозвать «{name}»? Следующий запрос к API будет отклонён.",
   "security_tokens_cancel": "Отмена",
-  "security_tokens_revoked_success": "Токен отозван."
+  "security_tokens_revoked_success": "Токен отозван.",
+  "settings_data_status_warning": "Предупреждение",
+  "settings_data_selfcheck_warning": "Проверок с предупреждениями об отнесении: {count}.",
+  "settings_data_selfcheck_warnings": "Предупреждений об отнесении: {count}.",
+  "settings_data_selfcheck_historical": "Сохранённый результат; повторите проверку после исправлений.",
+  "settings_data_selfcheck_attribution_title": "Отнесение компенсации дивиденда",
+  "settings_data_selfcheck_attribution_explanation": "Проверяет действующее количество коротких позиций перед экс-дивидендной датой отдельно по валюте стоимости. Проверяется историческое основание, а не сумма списания.",
+  "settings_data_selfcheck_attribution_next": "Откройте платёж и сравните его отнесение с отчётом брокера. Проверка не меняет суммы или исходные данные.",
+  "investments_attribution_no_short": "На закрытие перед экс-дивидендной датой нет коротких позиций, подтверждающих это отнесение.",
+  "investments_attribution_ex_date_after_payment": "Экс-дивидендная дата позже записанной даты платежа.",
+  "investments_attribution_unavailable": "Часть данных отнесения отсутствует; историческое основание проверить нельзя.",
+  "investments_attribution_payment_link": "Открыть платёж № {id}",
+  "investments_attribution_review": "Проверьте отнесение. Записанная сумма не изменилась."
 }

@@ -25,6 +25,7 @@
   import { getAPIClientErrorMessage } from '#lib/api-error-messages.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
+  import { attributionReason } from '#lib/investments/attribution-reason.ts';
 
   type ExportFormat = 'bundle' | 'csv' | 'qif';
 
@@ -152,6 +153,8 @@
         return m.settings_data_status_failed();
       case 'incomplete':
         return m.settings_data_status_incomplete();
+      case 'warning':
+        return m.settings_data_status_warning();
       case 'errored':
         return m.settings_data_status_errored();
       case 'not_applicable':
@@ -171,7 +174,7 @@
     if (status === 'passed' || status === 'completed') return 'positive';
     if (status === 'failed' || status === 'errored') return 'danger';
     // Incomplete is neither a pass nor damage: some information is unknown.
-    if (status === 'incomplete') return 'warning';
+    if (status === 'incomplete' || status === 'warning') return 'warning';
     return 'neutral';
   }
 
@@ -563,6 +566,7 @@
           {#if latestSelfCheck}
             <span class="text-sm text-muted">
               {m.settings_data_selfcheck_last_run({ when: formatDateTime(latestSelfCheck.finished_at) })}
+              {m.settings_data_selfcheck_historical()}
             </span>
           {/if}
         </div>
@@ -584,6 +588,11 @@
               {m.settings_data_selfcheck_errored({ reason: latestSelfCheck.error_summary })}
             {:else if latestSelfCheck.status === 'incomplete'}
               {m.settings_data_selfcheck_incomplete({ count: latestSelfCheck.incomplete_check_count })}
+            {:else if latestSelfCheck.status === 'warning'}
+              {m.settings_data_selfcheck_warning({ count: latestSelfCheck.warning_check_count })}
+              {#if latestSelfCheck.incomplete_check_count > 0}
+                {m.settings_data_selfcheck_failed_unavailable({ count: latestSelfCheck.incomplete_check_count })}
+              {/if}
             {:else}
               {m.settings_data_selfcheck_failed({ count: latestSelfCheck.failed_check_count })}
               {#if latestSelfCheck.incomplete_check_count > 0}
@@ -591,6 +600,9 @@
                   count: latestSelfCheck.incomplete_check_count
                 })}
               {/if}
+            {/if}
+            {#if latestSelfCheck.warning_check_count > 0 && latestSelfCheck.status !== 'warning'}
+              {m.settings_data_selfcheck_warning({ count: latestSelfCheck.warning_check_count })}
             {/if}
           </p>
           {#if latestSelfCheck.results.length > 0}
@@ -605,17 +617,41 @@
                 {#each latestSelfCheck.results as result (result.check_id)}
                   <tr class="border-t border-border align-top" data-testid="selfcheck-result">
                     <td class="py-2 pr-3">
-                      <span class="block font-medium text-foreground">{result.summary}</span>
-                      <span class="mt-0.5 block text-xs leading-5 text-muted">{result.explanation}</span>
+                      <span class="block font-medium text-foreground">{result.check_id === 'investment_attribution' ? m.settings_data_selfcheck_attribution_title() : result.summary}</span>
+                      <span class="mt-0.5 block text-xs leading-5 text-muted">{result.check_id === 'investment_attribution' ? m.settings_data_selfcheck_attribution_explanation() : result.explanation}</span>
+                      {#if result.warning_count > 0}
+                        <p class="mt-1 text-xs leading-5 text-warning" data-testid="selfcheck-warnings">
+                          {m.settings_data_selfcheck_warnings({ count: result.warning_count })}
+                        </p>
+                        <ul class="mt-1 space-y-1 text-xs leading-5">
+                          {#each result.warning_sample as warning (`${warning.transaction_id}:${warning.reason}`)}
+                            <li>
+                              <a class="text-accent underline" href={`/app/transactions?transaction_id=${warning.transaction_id}`}>
+                                {m.investments_attribution_payment_link({ id: warning.transaction_id })}
+                              </a>
+                              {attributionReason(warning.reason)}
+                            </li>
+                          {/each}
+                        </ul>
+                      {/if}
                       {#if result.unavailable_count > 0}
                         <span class="mt-1 block text-xs leading-5 text-warning" data-testid="selfcheck-unavailable">
                           {m.settings_data_selfcheck_unavailable({ count: result.unavailable_count })}
                         </span>
+                        {#if result.check_id === 'investment_attribution'}
+                          <ul class="mt-1 space-y-1 text-xs leading-5">
+                            {#each result.unavailable_sample as transactionID (transactionID)}
+                              <li><a class="text-accent underline" href={`/app/transactions?transaction_id=${transactionID}`}>
+                                {m.investments_attribution_payment_link({ id: transactionID })}
+                              </a></li>
+                            {/each}
+                          </ul>
+                        {/if}
                       {/if}
                       {#if result.status === 'failed'}
                         <span class="mt-1 block text-xs leading-5 text-danger">{result.next_step}</span>
-                      {:else if result.status === 'incomplete'}
-                        <span class="mt-1 block text-xs leading-5 text-muted">{result.next_step}</span>
+                      {:else if result.status === 'incomplete' || result.status === 'warning'}
+                        <span class="mt-1 block text-xs leading-5 text-muted">{result.check_id === 'investment_attribution' ? m.settings_data_selfcheck_attribution_next() : result.next_step}</span>
                       {/if}
                     </td>
                     <td class="py-2 pr-3">

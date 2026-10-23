@@ -1709,5 +1709,17 @@
   "security_tokens_more": "Afficher plus de jetons",
   "security_tokens_confirm": "Révoquer « {name} » ? Sa prochaine requête API sera refusée.",
   "security_tokens_cancel": "Annuler",
-  "security_tokens_revoked_success": "Jeton révoqué."
+  "security_tokens_revoked_success": "Jeton révoqué.",
+  "settings_data_status_warning": "Avertissement",
+  "settings_data_selfcheck_warning": "{count} contrôles présentent des avertissements d’attribution.",
+  "settings_data_selfcheck_warnings": "{count} avertissements d’attribution.",
+  "settings_data_selfcheck_historical": "Résultat enregistré ; relancez le contrôle après les corrections.",
+  "settings_data_selfcheck_attribution_title": "Attribution du paiement compensatoire de dividende",
+  "settings_data_selfcheck_attribution_explanation": "Vérifie les quantités effectives vendues à découvert avant la date de détachement, par devise de coût. Cela vérifie le fondement historique, pas le montant débité.",
+  "settings_data_selfcheck_attribution_next": "Ouvrez le paiement et comparez son attribution au relevé du courtier. Le contrôle ne modifie ni les montants ni les données sources.",
+  "investments_attribution_no_short": "Aucune quantité vendue à découvert ne justifie cette attribution à la clôture précédant le détachement.",
+  "investments_attribution_ex_date_after_payment": "La date de détachement est postérieure à la date de paiement enregistrée.",
+  "investments_attribution_unavailable": "Certaines données d’attribution manquent ; le fondement historique ne peut pas être vérifié.",
+  "investments_attribution_payment_link": "Ouvrir le paiement nº {id}",
+  "investments_attribution_review": "Attribution à vérifier. Le montant enregistré reste inchangé."
 }

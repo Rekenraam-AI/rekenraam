@@ -67,6 +67,8 @@ func TestRunSelfCheckPassesOnALiveBookAndExplainsEachCheck(t *testing.T) {
 		assert.NotEmptyf(t, result.Explanation, "%s must explain what it checks", result.CheckID)
 		assert.NotEmptyf(t, result.NextStep, "%s must say what to do about a failure", result.CheckID)
 		assert.NotNil(t, result.Sample, "an absent sample is [] rather than null")
+		assert.NotNil(t, result.WarningSample, "an absent warning sample is [] rather than null")
+		assert.Zero(t, result.WarningCount)
 	}
 
 	for _, expected := range []string{

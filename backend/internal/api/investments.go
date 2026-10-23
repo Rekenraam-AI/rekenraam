@@ -3184,27 +3184,38 @@ func toInvestmentCorrectionDividendTerms(terms *app.InvestmentCorrectionDividend
 }
 
 type investmentCorrectionPaymentInLieuTerms struct {
-	HoldingAccountID  int64              `json:"holding_account_id"`
-	CommodityID       int64              `json:"commodity_id"`
-	ExDate            string             `json:"ex_date"`
-	EventDate         string             `json:"event_date"`
-	CashAccountID     int64              `json:"cash_account_id"`
-	CashCommodityID   int64              `json:"cash_commodity_id"`
-	ExpenseAccountID  int64              `json:"expense_account_id"`
-	AmountValue       exact.Coefficient  `json:"amount_value"`
-	AmountScale       int                `json:"amount_scale"`
-	RecoveryAccountID *int64             `json:"recovery_account_id,omitempty"`
-	RecoveryValue     *exact.Coefficient `json:"recovery_value,omitempty"`
-	RecoveryScale     *int               `json:"recovery_scale,omitempty"`
-	Memo              string             `json:"memo,omitempty"`
-	PayeeID           *int64             `json:"payee_id,omitempty"`
+	Attribution       investmentAttributionResponse `json:"attribution"`
+	HoldingAccountID  int64                         `json:"holding_account_id"`
+	CommodityID       int64                         `json:"commodity_id"`
+	ExDate            string                        `json:"ex_date"`
+	EventDate         string                        `json:"event_date"`
+	CashAccountID     int64                         `json:"cash_account_id"`
+	CashCommodityID   int64                         `json:"cash_commodity_id"`
+	ExpenseAccountID  int64                         `json:"expense_account_id"`
+	AmountValue       exact.Coefficient             `json:"amount_value"`
+	AmountScale       int                           `json:"amount_scale"`
+	RecoveryAccountID *int64                        `json:"recovery_account_id,omitempty"`
+	RecoveryValue     *exact.Coefficient            `json:"recovery_value,omitempty"`
+	RecoveryScale     *int                          `json:"recovery_scale,omitempty"`
+	Memo              string                        `json:"memo,omitempty"`
+	PayeeID           *int64                        `json:"payee_id,omitempty"`
+}
+
+type investmentAttributionResponse struct {
+	Status      string   `json:"status"`
+	Reasons     []string `json:"reasons"`
+	Unavailable bool     `json:"unavailable"`
 }
 
 func toInvestmentCorrectionPaymentInLieuTerms(terms *app.InvestmentCorrectionPaymentInLieuTerms) *investmentCorrectionPaymentInLieuTerms {
 	if terms == nil {
 		return nil
 	}
-	return &investmentCorrectionPaymentInLieuTerms{HoldingAccountID: terms.HoldingAccountID, CommodityID: terms.CommodityID,
+	reasons := terms.Attribution.Reasons
+	if reasons == nil {
+		reasons = []string{}
+	}
+	return &investmentCorrectionPaymentInLieuTerms{Attribution: investmentAttributionResponse{Status: terms.Attribution.Status, Reasons: reasons, Unavailable: terms.Attribution.Unavailable}, HoldingAccountID: terms.HoldingAccountID, CommodityID: terms.CommodityID,
 		ExDate: terms.ExDate, EventDate: terms.EventDate, CashAccountID: terms.CashAccountID, CashCommodityID: terms.CashCommodityID,
 		ExpenseAccountID: terms.ExpenseAccountID, AmountValue: terms.AmountValue, AmountScale: terms.AmountScale,
 		RecoveryAccountID: terms.RecoveryAccountID, RecoveryValue: terms.RecoveryValue, RecoveryScale: terms.RecoveryScale,

@@ -269,8 +269,7 @@ func TestPaymentInLieuReplacementRollsBackLateFailure(t *testing.T) {
 	requireInvestmentSelfCheckPasses(t, f)
 }
 
-// A short later reversed away leaves an orphaned charge; the foundation
-// self-check names it rather than letting it pass silently.
+// Unsupported attribution is advisory; recorded cash remains valid.
 // damagePaymentInLieuHolding points every payment in lieu at the cash
 // account, which was never short, bypassing the immutability trigger.
 func damagePaymentInLieuHolding(t *testing.T, f *investmentsTestFixture) {
@@ -293,9 +292,9 @@ func TestSelfCheckNamesPaymentInLieuWithoutAShortLot(t *testing.T) {
 	// Short corrections refuse to strand the payment (#257), so the backstop
 	// is exercised on damaged facts.
 	damagePaymentInLieuHolding(t, f)
-	result := resultFor(t, mustRunInvestmentSelfCheck(t, f), CheckInvestmentFoundation)
-	require.Equal(t, SelfCheckFailed, result.Status)
-	require.Contains(t, result.Summary, "payment in lieu without a short lot")
+	result := resultFor(t, mustRunInvestmentSelfCheck(t, f), CheckInvestmentAttribution)
+	require.Equal(t, SelfCheckWarning, result.Status)
+	require.Equal(t, db.AttributionNoShort, result.WarningSample[0].Reason)
 }
 
 func TestPaymentInLieuCorrectionsExportTheirEntitlement(t *testing.T) {

@@ -69,7 +69,7 @@ func TestSelfCheckPassesOnHealthyBook(t *testing.T) {
 
 	expected := []string{
 		CheckEntryBalance, CheckTransactionBalance, CheckBookBalance, CheckVersionIntegrity,
-		CheckLotReconciliation, CheckCommodityPositionSign, CheckCheckpointIntegrity, CheckAccountVersionCoverage, CheckInvestmentFoundation, CheckInvestmentReplay,
+		CheckLotReconciliation, CheckCommodityPositionSign, CheckCheckpointIntegrity, CheckAccountVersionCoverage, CheckInvestmentFoundation, CheckInvestmentAttribution, CheckInvestmentReplay,
 		CheckPriceDependencies, CheckSQLiteIntegrity, CheckAttachments,
 	}
 	require.Len(t, run.Results, len(expected))

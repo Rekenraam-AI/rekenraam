@@ -325,6 +325,19 @@ with a new measurement here.
 
 #### Payment-in-lieu density measurement
 
+#389's read-only diagnostic has a separate bounded measurement using the
+same fixtures, with construction excluded from the timed read:
+
+```sh
+REKENRAAM_PIL_DENSITY=1 REKENRAAM_PIL_DENSITIES=0,10,100 \
+  ./scripts/go-backend.sh test -count=1 -timeout=15m -v \
+  -run '^TestPaymentInLieuAttributionCostByDensity$' ./internal/app
+```
+
+It checks the constructed supported/unsupported payments, including the
+superseded control, and reports three wall/allocation/heap samples per shape.
+The admission measurement below remains separate while #388 is pending.
+
 `./scripts/measure-payment-in-lieu-density.sh`
 (`pnpm measure:payment-in-lieu-density`) characterizes the #257 admission. That
 admission re-checks every effective payment in lieu before and after each
@@ -336,7 +349,7 @@ rollback controls but sets no latency ceiling. `REKENRAAM_PIL_DENSITIES`,
 matrix takes hours, because each recorded payment runs the same admission. It
 is neither on push nor scheduled. Figures and disposition:
 [payment-in-lieu-density-2026-10-23.md](reviews/payment-in-lieu-density-2026-10-23.md);
-optimization is tracked in
+replacement of the write-time policy is tracked in
 [#388](https://github.com/sergeyfarin/rekenraam/issues/388).
 
 ### Local Owner Recovery

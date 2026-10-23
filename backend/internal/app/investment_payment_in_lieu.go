@@ -467,6 +467,7 @@ func (s *InvestmentService) paymentInLieuCorrectionPlan(ctx context.Context, own
 // InvestmentCorrectionPaymentInLieuTerms are an effective payment in lieu's
 // posted facts, which pre-fill its replacement.
 type InvestmentCorrectionPaymentInLieuTerms struct {
+	Attribution       InvestmentAttributionDiagnostic
 	HoldingAccountID  int64
 	CommodityID       int64
 	ExDate            string

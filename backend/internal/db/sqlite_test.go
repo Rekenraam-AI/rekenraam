@@ -1273,7 +1273,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(21), version, "the head dates reference-data guards by source effective date")
+	assert.Equal(t, int64(22), version, "the head preserves distinct attribution warning outcomes")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))

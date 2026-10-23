@@ -230,7 +230,10 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
 - A short holder's payment in lieu of a dividend (#255) is the lot-free
   `payment_in_lieu` operation: cash to an expense account (optional
   recovery back), never folded into the short lot's opening proceeds. Its
-  short holding/instrument/ex-date facts are immutable, and the short
+  short holding/instrument/ex-date facts are immutable. #389 diagnoses their
+  historical support through effective dated short quantities (including
+  covers), with warnings separate from integrity failures. #388 still owns
+  optional entry/clearing/repair and retiring the gates below. Currently the short
   entitlement at the close before the ex-date is re-checked inside the write.
   The shared investment writer also re-checks, after every command's
   effects, each payment entitled before it (#257): a short correction or

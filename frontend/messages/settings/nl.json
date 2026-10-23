@@ -1709,5 +1709,17 @@
   "security_tokens_more": "Meer tokens tonen",
   "security_tokens_confirm": "‘{name}’ intrekken? Het volgende API-verzoek wordt geweigerd.",
   "security_tokens_cancel": "Annuleren",
-  "security_tokens_revoked_success": "Token ingetrokken."
+  "security_tokens_revoked_success": "Token ingetrokken.",
+  "settings_data_status_warning": "Waarschuwing",
+  "settings_data_selfcheck_warning": "{count} controles hebben toewijzingswaarschuwingen.",
+  "settings_data_selfcheck_warnings": "{count} toewijzingswaarschuwingen.",
+  "settings_data_selfcheck_historical": "Opgeslagen resultaat; voer de controle na correcties opnieuw uit.",
+  "settings_data_selfcheck_attribution_title": "Toewijzing van dividendvervangende betaling",
+  "settings_data_selfcheck_attribution_explanation": "Controleert effectieve shortaantallen vóór de ex-datum, afzonderlijk per kostprijsvaluta. Dit controleert historische onderbouwing, niet het afgeschreven bedrag.",
+  "settings_data_selfcheck_attribution_next": "Open de betaling en vergelijk de toewijzing met uw brokeroverzicht. De controle wijzigt geen geldbedragen of brongegevens.",
+  "investments_attribution_no_short": "Geen shortaantallen onderbouwen deze toewijzing bij sluiting vóór de ex-datum.",
+  "investments_attribution_ex_date_after_payment": "De ex-datum ligt na de vastgelegde betaaldatum.",
+  "investments_attribution_unavailable": "Een deel van de toewijzingsgegevens ontbreekt; de historische onderbouwing kan niet worden gecontroleerd.",
+  "investments_attribution_payment_link": "Open betaling #{id}",
+  "investments_attribution_review": "Controleer de toewijzing. Het vastgelegde geldbedrag is ongewijzigd."
 }

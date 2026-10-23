@@ -202,6 +202,22 @@ historical support are accepted only alongside this visibility. #392 and #393
 are separate bounded changes with their own negative controls. The wider
 family inventory remains in #391; this slice does not complete that issue.
 
+### Read-Side Delivery (#389, 2026-10-23)
+
+The first runtime slice implements the shared dated-short diagnostic, saved
+warning outcomes (migration `0022`), API/generated types and translated Data
+settings/detail visibility. It removes historical eligibility from the
+foundation integrity check while retaining structural facts validation.
+Effective covers and corrections are read through `EffectiveLotMovements`;
+one dated sweep serves the book's payments. The reader uses no savepoint or
+write admission and is not called by investment commands.
+
+This is the explicitly permitted diagnostic-first boundary. #388 still owns
+nullable entry, omission versus clearing, audited attribution repair and
+removal of the global and local write blockers. Unsupported histories are
+constructed through explicit integration fixtures until that slice ships.
+The broader #390/#391 inventory and #392/#393 remain open.
+
 ## Whole-Application Complexity Review
 
 #390 maps all capability families from the feature ledger and existing entry

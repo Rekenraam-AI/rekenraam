@@ -2549,8 +2549,24 @@ InvestmentCorrectionPaymentInLieuTerms:
     The effective payment in lieu's posted facts, for pre-filling a
     replacement. The short holding, instrument, ex-date, payment date, cash
     account and currency are fixed for a replacement.
-  required: [holding_account_id, commodity_id, ex_date, event_date, cash_account_id, cash_commodity_id, expense_account_id, amount_value, amount_scale]
+  required: [attribution, holding_account_id, commodity_id, ex_date, event_date, cash_account_id, cash_commodity_id, expense_account_id, amount_value, amount_scale]
   properties:
+    attribution:
+      type: object
+      description: Read-only historical support using the same evaluator as investment_attribution. Never authorizes a write or verifies the amount.
+      required: [status, reasons, unavailable]
+      properties:
+        unavailable:
+          type: boolean
+          description: Missing context is disclosed even alongside a chronology warning.
+        status:
+          type: string
+          enum: [passed, warning, incomplete]
+        reasons:
+          type: array
+          items:
+            type: string
+            enum: [no_short_at_entitlement_close, ex_date_after_payment]
     holding_account_id: { type: integer, format: int64 }
     commodity_id: { type: integer, format: int64 }
     ex_date: { type: string, format: date }

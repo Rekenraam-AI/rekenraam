@@ -1,0 +1,12 @@
+import { m } from '#lib/paraglide/messages.js';
+
+export function attributionReason(reason: string): string {
+  switch (reason) {
+    case 'no_short_at_entitlement_close':
+      return m.investments_attribution_no_short();
+    case 'ex_date_after_payment':
+      return m.investments_attribution_ex_date_after_payment();
+    default:
+      return m.investments_attribution_review();
+  }
+}

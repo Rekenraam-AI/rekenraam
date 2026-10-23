@@ -13,11 +13,13 @@ type selfCheckResultResponse struct {
 	FindingCount int64   `json:"finding_count"`
 	Sample       []int64 `json:"sample"`
 	// Unavailable coverage, separate from integrity findings (#313).
-	UnavailableCount  int64   `json:"unavailable_count"`
-	UnavailableSample []int64 `json:"unavailable_sample"`
-	Summary           string  `json:"summary"`
-	Explanation       string  `json:"explanation"`
-	NextStep          string  `json:"next_step"`
+	UnavailableCount  int64                        `json:"unavailable_count"`
+	UnavailableSample []int64                      `json:"unavailable_sample"`
+	WarningCount      int64                        `json:"warning_count"`
+	WarningSample     []app.SelfCheckWarningSample `json:"warning_sample"`
+	Summary           string                       `json:"summary"`
+	Explanation       string                       `json:"explanation"`
+	NextStep          string                       `json:"next_step"`
 }
 
 type selfCheckRunResponse struct {
@@ -26,6 +28,7 @@ type selfCheckRunResponse struct {
 	Status               string                    `json:"status"`
 	FailedCheckCount     int64                     `json:"failed_check_count"`
 	IncompleteCheckCount int64                     `json:"incomplete_check_count"`
+	WarningCheckCount    int64                     `json:"warning_check_count"`
 	ErrorSummary         string                    `json:"error_summary"`
 	StartedAt            string                    `json:"started_at"`
 	FinishedAt           string                    `json:"finished_at,omitempty"`
@@ -52,6 +55,10 @@ func toSelfCheckRunResponse(run app.SelfCheckRun) selfCheckRunResponse {
 		if unavailableSample == nil {
 			unavailableSample = []int64{}
 		}
+		warningSample := result.WarningSample
+		if warningSample == nil {
+			warningSample = []app.SelfCheckWarningSample{}
+		}
 		results = append(results, selfCheckResultResponse{
 			CheckID:           result.CheckID,
 			Status:            result.Status,
@@ -59,6 +66,8 @@ func toSelfCheckRunResponse(run app.SelfCheckRun) selfCheckRunResponse {
 			Sample:            sample,
 			UnavailableCount:  result.UnavailableCount,
 			UnavailableSample: unavailableSample,
+			WarningCount:      result.WarningCount,
+			WarningSample:     warningSample,
 			Summary:           result.Summary,
 			Explanation:       result.Explanation,
 			NextStep:          result.NextStep,
@@ -71,6 +80,7 @@ func toSelfCheckRunResponse(run app.SelfCheckRun) selfCheckRunResponse {
 		Status:               run.Status,
 		FailedCheckCount:     run.FailedCheckCount,
 		IncompleteCheckCount: run.IncompleteCheckCount,
+		WarningCheckCount:    run.WarningCheckCount,
 		ErrorSummary:         run.ErrorSummary,
 		StartedAt:            run.StartedAt,
 		FinishedAt:           run.FinishedAt,

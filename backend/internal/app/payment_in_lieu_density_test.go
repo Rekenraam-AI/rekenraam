@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"rekenraam/backend/internal/db"
 )
 
 // #379: every investment command enumerates the book's effective payments in
@@ -28,6 +30,37 @@ func paymentDensityEnabled(tb testing.TB) {
 	tb.Helper()
 	if os.Getenv("REKENRAAM_PIL_DENSITY") != "1" {
 		tb.Skip("payment-in-lieu density measurement runs only with REKENRAAM_PIL_DENSITY=1 (scripts/measure-payment-in-lieu-density.sh)")
+	}
+}
+
+// serial: opt-in wall/allocation measurement must run without other tests.
+func TestPaymentInLieuAttributionCostByDensity(t *testing.T) {
+	paymentDensityEnabled(t)
+	ctx := context.Background()
+	for _, shape := range []string{paymentShapeUnrelated, paymentShapeConcentrated} {
+		for _, density := range paymentDensityInts(t, "REKENRAAM_PIL_DENSITIES", []int{0, 10, 100}) {
+			t.Run(fmt.Sprintf("%s/%d", shape, density), func(t *testing.T) {
+				book := buildPaymentDensityBook(t, shape, density)
+				repo := db.NewSelfCheckRepository(book.f.database, book.f.database)
+				for sample := range 3 {
+					probe := startResourceProbe()
+					snapshot, err := repo.Snapshot(ctx)
+					require.NoError(t, err)
+					records, err := repo.PaymentInLieuAttributions(ctx, snapshot, BookID)
+					require.NoError(t, err)
+					require.NoError(t, snapshot.Rollback())
+					usage := probe.finish()
+					require.Len(t, records, density)
+					for _, record := range records {
+						entitled, exists := book.entitled[record.TransactionID]
+						require.True(t, exists)
+						require.False(t, record.Unavailable)
+						require.Equal(t, !entitled, len(record.WarningReasons) > 0)
+					}
+					t.Logf("attribution shape=%s density=%d sample=%d wall=%s allocated=%d peak_heap=%d fixture_build=%s", shape, density, sample, usage.Wall, usage.Allocated, usage.PeakHeap, book.build)
+				}
+			})
+		}
 	}
 }
 
@@ -227,12 +260,12 @@ func (b *paymentDensityBook) requireEntitlementsAsConstructed(t *testing.T) {
 	slices.Sort(expected)
 	require.Equal(t, expected, effective, "effective payments are exactly the constructed ones")
 
-	result := resultFor(t, mustRunInvestmentSelfCheck(t, b.f), CheckInvestmentFoundation)
+	result := resultFor(t, mustRunInvestmentSelfCheck(t, b.f), CheckInvestmentAttribution)
 	if unentitled == 0 {
 		require.Equal(t, SelfCheckPassed, result.Status, result.Summary)
 	} else {
-		require.Equal(t, SelfCheckFailed, result.Status)
-		require.Contains(t, result.Summary, "payment in lieu without a short lot")
+		require.Equal(t, SelfCheckWarning, result.Status)
+		require.EqualValues(t, unentitled, result.WarningCount)
 	}
 }
 

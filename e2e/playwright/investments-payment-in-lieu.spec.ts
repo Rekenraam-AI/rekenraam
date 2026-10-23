@@ -3,6 +3,7 @@ import { apiJSON } from './support/api';
 import { readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
 import { expectNoAccessibilityViolations } from './support/a11y';
+import { readFileSync } from 'node:fs';
 
 /**
  * #255: a short holder's payment in lieu of a dividend is recorded, corrected
@@ -43,7 +44,7 @@ async function setup(page: Page) {
     cash_account_id: cash.id, quantity_value: '10', quantity_scale: 0, cash_amount_value: '100000',
     cash_amount_scale: 2, cash_commodity_id: currencyID
   });
-  return { name, cashID: cash.id, expenseID: expense.id, holdingID: holding.id, commodityID: instrument.commodity_id };
+  return { csrfToken, currencyID, name, cashID: cash.id, expenseID: expense.id, holdingID: holding.id, commodityID: instrument.commodity_id };
 }
 
 async function expenseBalance(page: Page, accountID: number): Promise<string> {
@@ -114,3 +115,56 @@ test('a holding that was not short refuses a payment in lieu with a translated r
   await form.getByRole('button', { name: 'Record payment' }).click();
   await expect(form.getByRole('alert')).toContainText('was not short this instrument');
 });
+
+// #389 read-side-first: Go integration tests construct unsupported historical
+// attribution through the real writer. Here explicit saved-response fixtures
+// exercise translated mixed severities and navigation until #388 admits the
+// same history through ordinary browser commands.
+for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
+  test(`attribution warnings and unavailable coverage stay visible in ${locale}`, async ({ page }) => {
+    const s = await setup(page);
+    const payment = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/payment-in-lieu', s.csrfToken, {
+      holding_account_id: s.holdingID, commodity_id: s.commodityID,
+      ex_date: daysFromTodayISO(-20), transaction_date: daysFromTodayISO(-18),
+      cash_account_id: s.cashID, cash_commodity_id: s.currencyID, expense_account_id: s.expenseID,
+      amount_value: '5000', amount_scale: 2
+    });
+    const copy = JSON.parse(readFileSync(new URL(`../../frontend/messages/settings/${locale}.json`, import.meta.url), 'utf8')) as Record<string, string>;
+    const warning = { transaction_id: payment.id, reason: 'no_short_at_entitlement_close' };
+    const failed = locale !== 'en';
+    await page.route('**/api/v1/maintenance/self-check', async route => {
+      await route.fulfill({ json: { has_run: true, read_only: true, latest_run: {
+        id: 1, trigger: 'manual', status: failed ? 'failed' : 'warning',
+        failed_check_count: failed ? 1 : 0, warning_check_count: 1, incomplete_check_count: 1,
+        error_summary: '', started_at: '2026-10-23T00:00:00Z', finished_at: '2026-10-23T00:00:01Z',
+        results: [{ check_id: 'investment_attribution', status: 'warning', finding_count: 0,
+          sample: [], warning_count: 1, warning_sample: [warning], unavailable_count: 1,
+          unavailable_sample: [payment.id], summary: '', explanation: '', next_step: '' },
+          ...(failed ? [{ check_id: 'entry_balance', status: 'failed', finding_count: 1,
+            sample: [payment.id], warning_count: 0, warning_sample: [], unavailable_count: 0,
+            unavailable_sample: [], summary: 'Entry balance', explanation: '', next_step: '' }] : [])]
+      } } });
+    });
+    await page.route(`**/api/v1/investments/transactions/${payment.id}/correction-chain`, async route => {
+      const response = await route.fetch();
+      const chain = await response.json();
+      chain.effective_payment_in_lieu.attribution = { status: 'warning', reasons: [warning.reason], unavailable: false };
+      await route.fulfill({ response, json: chain });
+    });
+    await page.evaluate(value => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
+    await page.goto('/app/settings/data');
+    const summary = page.getByTestId('selfcheck-summary');
+    await expect(summary).toContainText(copy.settings_data_selfcheck_warning.replace('{count}', '1'));
+    await expect(summary).toContainText(copy.settings_data_selfcheck_failed_unavailable.replace('{count}', '1'));
+    await expect(page.getByTestId('selfcheck-warnings')).toHaveText(copy.settings_data_selfcheck_warnings.replace('{count}', '1'));
+    await expect(page.getByTestId('selfcheck-unavailable')).toHaveText(copy.settings_data_selfcheck_unavailable.replace('{count}', '1'));
+    const link = page.locator(`a[href="/app/transactions?transaction_id=${payment.id}"]`).first();
+    await expect(link).toHaveAccessibleName(copy.investments_attribution_payment_link.replace('{id}', String(payment.id)));
+    await expectNoAccessibilityViolations(page);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await link.click();
+    await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText(copy.investments_attribution_no_short);
+    await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText(copy.investments_attribution_review);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+}

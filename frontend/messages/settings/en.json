@@ -1709,5 +1709,17 @@
   "security_tokens_more": "Show more tokens",
   "security_tokens_confirm": "Revoke “{name}”? Its next API request will be refused.",
   "security_tokens_cancel": "Cancel",
-  "security_tokens_revoked_success": "Token revoked."
+  "security_tokens_revoked_success": "Token revoked.",
+  "settings_data_status_warning": "Warning",
+  "settings_data_selfcheck_warning": "{count} checks have attribution warnings.",
+  "settings_data_selfcheck_warnings": "{count} attribution warnings.",
+  "settings_data_selfcheck_historical": "Saved result; rerun after corrections.",
+  "settings_data_selfcheck_attribution_title": "Payment-in-lieu attribution",
+  "settings_data_selfcheck_attribution_explanation": "Checks effective short units before the ex-date, separately by cost currency. This checks historical support, not the amount charged.",
+  "settings_data_selfcheck_attribution_next": "Open the payment and compare its attribution with your broker statement. The check never changes cash or source evidence.",
+  "investments_attribution_no_short": "No short units support this attribution at the close before the ex-date.",
+  "investments_attribution_ex_date_after_payment": "The ex-date follows the recorded payment date.",
+  "investments_attribution_unavailable": "Some attribution context is missing; historical support cannot be verified.",
+  "investments_attribution_payment_link": "Open payment #{id}",
+  "investments_attribution_review": "Attribution needs review. Recorded cash is unchanged."
 }

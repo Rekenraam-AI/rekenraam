@@ -103,7 +103,7 @@ func TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore(t *testing.T) {
 					}
 					before := exportedBundle(t, current)
 					run := mustRunInvestmentSelfCheck(t, current)
-					require.Len(t, run.Results, 13)
+					require.Len(t, run.Results, 14)
 					require.Equal(t, before, exportedBundle(t, current), "self-check does not rewrite financial/exported evidence")
 					for _, result := range run.Results {
 						expected := SelfCheckPassed
@@ -297,7 +297,7 @@ func TestInvestmentDiagnosticAuditDamageBesideUnknownBasis(t *testing.T) {
 			case "superseded_capital_return":
 				expectedFailures[CheckInvestmentFoundation] = 1
 			}
-			require.Len(t, run.Results, 13)
+			require.Len(t, run.Results, 14)
 			require.EqualValues(t, len(expectedFailures), run.FailedCheckCount)
 			require.EqualValues(t, 1, run.IncompleteCheckCount)
 			for _, check := range run.Results {

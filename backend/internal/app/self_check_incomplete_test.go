@@ -44,7 +44,8 @@ func TestSelfCheckOutcomePrecedence(t *testing.T) {
 			for index := range tc.results {
 				tc.results[index].Status = resultStatus(tc.results[index])
 			}
-			status, failed, incomplete := aggregateSelfCheck(tc.results)
+			status, failed, warning, incomplete := aggregateSelfCheck(tc.results)
+			require.Zero(t, warning)
 			require.Equal(t, tc.status, status)
 			require.Equal(t, tc.failed, failed)
 			require.Equal(t, tc.incomplete, incomplete)

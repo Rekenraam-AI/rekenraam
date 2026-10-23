@@ -1709,5 +1709,17 @@
   "security_tokens_more": "Weitere Token anzeigen",
   "security_tokens_confirm": "„{name}“ widerrufen? Die nächste API-Anfrage wird abgelehnt.",
   "security_tokens_cancel": "Abbrechen",
-  "security_tokens_revoked_success": "Token widerrufen."
+  "security_tokens_revoked_success": "Token widerrufen.",
+  "settings_data_status_warning": "Warnung",
+  "settings_data_selfcheck_warning": "{count} Prüfungen enthalten Zuordnungswarnungen.",
+  "settings_data_selfcheck_warnings": "{count} Zuordnungswarnungen.",
+  "settings_data_selfcheck_historical": "Gespeichertes Ergebnis; nach Korrekturen erneut prüfen.",
+  "settings_data_selfcheck_attribution_title": "Zuordnung der Dividendenersatzzahlung",
+  "settings_data_selfcheck_attribution_explanation": "Prüft effektive Short-Mengen vor dem Ex-Tag, getrennt nach Anschaffungswährung. Geprüft wird die historische Grundlage, nicht der belastete Betrag.",
+  "settings_data_selfcheck_attribution_next": "Öffnen Sie die Zahlung und vergleichen Sie die Zuordnung mit der Brokerabrechnung. Die Prüfung ändert weder Geldbeträge noch Quelldaten.",
+  "investments_attribution_no_short": "Zum Handelsschluss vor dem Ex-Tag stützen keine Short-Mengen diese Zuordnung.",
+  "investments_attribution_ex_date_after_payment": "Der Ex-Tag liegt nach dem erfassten Zahlungstag.",
+  "investments_attribution_unavailable": "Einige Zuordnungsangaben fehlen; die historische Grundlage kann nicht geprüft werden.",
+  "investments_attribution_payment_link": "Zahlung #{id} öffnen",
+  "investments_attribution_review": "Zuordnung prüfen. Der erfasste Geldbetrag bleibt unverändert."
 }

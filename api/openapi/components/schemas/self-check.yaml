@@ -11,6 +11,8 @@ SelfCheckResult:
     - sample
     - unavailable_count
     - unavailable_sample
+    - warning_count
+    - warning_sample
     - summary
     - explanation
     - next_step
@@ -27,6 +29,7 @@ SelfCheckResult:
         - checkpoint_integrity
         - account_version_coverage
         - investment_foundation
+        - investment_attribution
         - investment_replay_equivalence
         - price_dependency_integrity
         - sqlite_integrity
@@ -34,14 +37,15 @@ SelfCheckResult:
     status:
       type: string
       description: >
-        failed means at least one integrity finding. incomplete means no
-        finding, but some coverage could not be verified because the
+        failed means at least one integrity finding. warning means advisory
+        contradictions without integrity findings. incomplete means no
+        finding or warning, but some coverage could not be verified because the
         information is unknown (unavailable_count > 0) — neither passed nor
         corrupted. A failed check may also carry unavailable coverage; it is
         never downgraded by it. not_applicable is reserved for a check that
         cannot run yet — attachments until R14a. It never passes by default:
         passing a check nobody ran is how a coverage claim gets made by accident.
-      enum: [passed, incomplete, failed, not_applicable]
+      enum: [passed, warning, incomplete, failed, not_applicable]
     finding_count:
       type: integer
       format: int64
@@ -65,6 +69,23 @@ SelfCheckResult:
       items:
         type: integer
         format: int64
+    warning_count:
+      type: integer
+      format: int64
+      description: Advisory attribution contradictions, counted by reason, separate from integrity findings and unavailable coverage. Zero on older runs.
+    warning_sample:
+      type: array
+      description: Capped sample of named payment warnings. Each reason may name the same transaction.
+      items:
+        type: object
+        required: [transaction_id, reason]
+        properties:
+          transaction_id:
+            type: integer
+            format: int64
+          reason:
+            type: string
+            enum: [no_short_at_entitlement_close, ex_date_after_payment]
     summary:
       type: string
     explanation:
@@ -81,6 +102,7 @@ SelfCheckRun:
     - status
     - failed_check_count
     - incomplete_check_count
+    - warning_check_count
     - error_summary
     - started_at
     - results
@@ -96,10 +118,10 @@ SelfCheckRun:
       type: string
       description: >
         Precedence over completed results: failed if any result failed, else
-        incomplete if any result has unavailable coverage, else passed. errored
+        warning if any result has warnings, else incomplete if any result has unavailable coverage, else passed. errored
         means the check could not complete; it is not a ledger-failure verdict.
         Recorded verdicts are history and are never restated.
-      enum: [passed, incomplete, failed, errored]
+      enum: [passed, warning, incomplete, failed, errored]
     failed_check_count:
       type: integer
       format: int64
@@ -109,6 +131,10 @@ SelfCheckRun:
       description: >
         Results with unavailable coverage, including failed results that also
         have some. Lets a failed run disclose what it could not verify.
+    warning_check_count:
+      type: integer
+      format: int64
+      description: Results with advisory warnings, including failed results that also have warnings.
     error_summary:
       type: string
       description: Diagnostic reason when status is errored; otherwise empty.

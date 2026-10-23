@@ -39,7 +39,7 @@ func requireReferenceBookIncomplete(t *testing.T, run selfCheckRunResponse) {
 	require.Equal(t, "incomplete", run.Status)
 	require.EqualValues(t, 0, run.FailedCheckCount)
 	require.EqualValues(t, 1, run.IncompleteCheckCount)
-	require.Len(t, run.Results, 13)
+	require.Len(t, run.Results, 14)
 	for _, result := range run.Results {
 		switch result.CheckID {
 		case "lot_reconciliation":

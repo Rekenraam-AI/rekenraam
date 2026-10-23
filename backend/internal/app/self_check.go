@@ -37,20 +37,20 @@ const (
 	CheckCheckpointIntegrity    = "checkpoint_integrity"
 	CheckAccountVersionCoverage = "account_version_coverage"
 	CheckInvestmentFoundation   = "investment_foundation"
+	CheckInvestmentAttribution  = "investment_attribution"
 	CheckInvestmentReplay       = "investment_replay_equivalence"
 	CheckPriceDependencies      = "price_dependency_integrity"
 	CheckSQLiteIntegrity        = "sqlite_integrity"
 	CheckAttachments            = "attachments"
 )
 
-// Result and run statuses (#313; data-portability-plan.md, "Self-check
-// outcomes"). A result is failed when it has any integrity finding, incomplete
-// when it has none but some coverage is unavailable, and passed otherwise. A
-// run takes the worst completed result — failed over incomplete over passed —
-// and errored only when execution itself did not finish. Unavailable coverage
-// never downgrades a failure; a failed result still reports it separately.
+// Result and run statuses (#313, #389; data-portability-plan.md, "Self-check
+// outcomes"). Completed results/runs take failed over warning over incomplete
+// over passed; errored means execution itself did not finish. Warning and
+// unavailable counts stay visible even alongside an integrity failure.
 const (
 	SelfCheckPassed        = "passed"
+	SelfCheckWarning       = "warning"
 	SelfCheckIncomplete    = "incomplete"
 	SelfCheckFailed        = "failed"
 	SelfCheckErrored       = "errored"
@@ -68,12 +68,21 @@ type SelfCheckResult struct {
 	// verify because the information is unknown — never counted as findings.
 	UnavailableCount  int64
 	UnavailableSample []int64
+	WarningCount      int64
+	WarningSample     []SelfCheckWarningSample
 	Summary           string
 	// Explanation and NextStep are not stored: they belong to the check, not to
 	// a particular run, and freezing them into old rows would let history
 	// contradict the current wording.
 	Explanation string
 	NextStep    string
+}
+
+// Warning samples identify advisory attribution contradictions, never
+// integrity findings. Reason codes are stable; the UI translates their copy.
+type SelfCheckWarningSample struct {
+	TransactionID int64  `json:"transaction_id"`
+	Reason        string `json:"reason"`
 }
 
 // SelfCheckRun is a whole run.
@@ -85,6 +94,7 @@ type SelfCheckRun struct {
 	// IncompleteCheckCount counts results with unavailable coverage, including
 	// failed ones, so a failed run still discloses what it could not verify.
 	IncompleteCheckCount int64
+	WarningCheckCount    int64
 	ErrorSummary         string
 	StartedAt            string
 	FinishedAt           string
@@ -148,6 +158,10 @@ var checkNarratives = map[string]checkNarrative{
 		explanation: "Named investment operations must link their posted versions, source lots, effects and journal-backed cash components. Disposal decisions and each shared cost-currency clearing posting must independently conserve their attributed proceeds. Saved gains runs must retain their original input/output digests and matching descriptors; they are checked as documents, never recomputed against current history. A completed setup also needs its external investment transfer equity account and commission default.",
 		nextStep:    "Review the named operation, disposal decision, journal, lot or saved gains run and the setup accounts. Preserve the original rows before correcting any mismatch or missing link.",
 	},
+	CheckInvestmentAttribution: {
+		explanation: "Payment-in-lieu attribution is checked against effective short openings minus covers at the close before its ex-date, separately in each cost currency. This establishes historical support, not whether the amount charged is correct. Unsupported attribution is a warning; missing context is unavailable coverage. Neither is financial corruption.",
+		nextStep:    "Open the named payment and compare its attribution with the broker statement. The diagnostic never changes cash or source evidence. A saved self-check describes its recorded snapshot; rerun after a correction.",
+	},
 	CheckInvestmentReplay: {
 		explanation: "Commands replay only the investment positions they affect. This check replays every long and short position from its effective trades, transfers, splits and elections in a rolled-back simulation and compares lot balances, each disposal's allocations, split effects, carried transfer basis and the method lock with what is stored, exactly and per cost currency. A stored result that history no longer produces means a command skipped a replay it needed.",
 		nextStep:    "Note the named lots, disposal decisions or operations and keep a backup. Do not edit the projection by hand: re-entering a correction through the app replays the position, and a refused replay names the operation history no longer supports.",
@@ -201,6 +215,14 @@ func (s *SelfCheckService) RunSelfCheck(ctx context.Context, trigger string) (Se
 		if marshalErr != nil {
 			return SelfCheckRun{}, s.recordRunError(ctx, runRecord.ID, fmt.Errorf("encode self-check unavailable sample: %w", marshalErr))
 		}
+		warnings := result.WarningSample
+		if warnings == nil {
+			warnings = []SelfCheckWarningSample{}
+		}
+		warningSample, marshalErr := json.Marshal(warnings)
+		if marshalErr != nil {
+			return SelfCheckRun{}, s.recordRunError(ctx, runRecord.ID, marshalErr)
+		}
 		stored = append(stored, db.SelfCheckResultRecord{
 			RunID:                 runRecord.ID,
 			CheckID:               result.CheckID,
@@ -209,11 +231,13 @@ func (s *SelfCheckService) RunSelfCheck(ctx context.Context, trigger string) (Se
 			SampleJSON:            string(sample),
 			UnavailableCount:      result.UnavailableCount,
 			UnavailableSampleJSON: string(unavailableSample),
+			WarningCount:          result.WarningCount,
+			WarningSampleJSON:     string(warningSample),
 			Summary:               result.Summary,
 		})
 	}
 
-	status, failed, incomplete := aggregateSelfCheck(results)
+	status, failed, warning, incomplete := aggregateSelfCheck(results)
 	finishedAt := s.now().UTC().Format(time.RFC3339)
 	if err := s.repository.SaveSelfCheckResults(ctx, runRecord.ID, status, failed, incomplete, finishedAt, stored); err != nil {
 		return SelfCheckRun{}, s.recordRunError(ctx, runRecord.ID, err)
@@ -225,6 +249,7 @@ func (s *SelfCheckService) RunSelfCheck(ctx context.Context, trigger string) (Se
 		Status:               status,
 		FailedCheckCount:     failed,
 		IncompleteCheckCount: incomplete,
+		WarningCheckCount:    warning,
 		StartedAt:            startedAt,
 		FinishedAt:           finishedAt,
 		Results:              results,
@@ -240,6 +265,8 @@ func resultStatus(result SelfCheckResult) string {
 		return SelfCheckNotApplicable
 	case result.Status == SelfCheckFailed || result.FindingCount > 0:
 		return SelfCheckFailed
+	case result.WarningCount > 0:
+		return SelfCheckWarning
 	case result.UnavailableCount > 0:
 		return SelfCheckIncomplete
 	default:
@@ -248,10 +275,10 @@ func resultStatus(result SelfCheckResult) string {
 }
 
 // aggregateSelfCheck applies the run precedence: any failed result fails the
-// run, otherwise any incomplete result makes it incomplete. The incomplete
+// run, otherwise warnings precede incomplete coverage. The incomplete
 // count includes failed results that also have unavailable coverage.
-func aggregateSelfCheck(results []SelfCheckResult) (string, int64, int64) {
-	var failed, incomplete int64
+func aggregateSelfCheck(results []SelfCheckResult) (string, int64, int64, int64) {
+	var failed, warning, incomplete int64
 	for _, result := range results {
 		if result.Status == SelfCheckFailed {
 			failed++
@@ -259,14 +286,19 @@ func aggregateSelfCheck(results []SelfCheckResult) (string, int64, int64) {
 		if result.UnavailableCount > 0 {
 			incomplete++
 		}
+		if result.WarningCount > 0 {
+			warning++
+		}
 	}
 	switch {
 	case failed > 0:
-		return SelfCheckFailed, failed, incomplete
+		return SelfCheckFailed, failed, warning, incomplete
+	case warning > 0:
+		return SelfCheckWarning, failed, warning, incomplete
 	case incomplete > 0:
-		return SelfCheckIncomplete, failed, incomplete
+		return SelfCheckIncomplete, failed, warning, incomplete
 	default:
-		return SelfCheckPassed, failed, incomplete
+		return SelfCheckPassed, failed, warning, incomplete
 	}
 }
 
@@ -315,14 +347,17 @@ func (s *SelfCheckService) LatestSelfCheck(ctx context.Context) (SelfCheckRun, b
 		Status:               runRecord.Status,
 		FailedCheckCount:     runRecord.FailedCheckCount,
 		IncompleteCheckCount: runRecord.IncompleteCheckCount,
+		WarningCheckCount:    runRecord.WarningCheckCount,
 		ErrorSummary:         runRecord.ErrorSummary,
 		StartedAt:            runRecord.StartedAt,
 		FinishedAt:           runRecord.FinishedAt.String,
 	}
 	for _, record := range resultRecords {
 		var sample, unavailableSample []int64
+		var warningSample []SelfCheckWarningSample
 		_ = json.Unmarshal([]byte(record.SampleJSON), &sample)
 		_ = json.Unmarshal([]byte(record.UnavailableSampleJSON), &unavailableSample)
+		_ = json.Unmarshal([]byte(record.WarningSampleJSON), &warningSample)
 		narrative := checkNarratives[record.CheckID]
 		run.Results = append(run.Results, SelfCheckResult{
 			CheckID:           record.CheckID,
@@ -331,6 +366,8 @@ func (s *SelfCheckService) LatestSelfCheck(ctx context.Context) (SelfCheckRun, b
 			Sample:            sample,
 			UnavailableCount:  record.UnavailableCount,
 			UnavailableSample: unavailableSample,
+			WarningCount:      record.WarningCount,
+			WarningSample:     warningSample,
 			Summary:           record.Summary,
 			Explanation:       narrative.explanation,
 			NextStep:          narrative.nextStep,
@@ -362,6 +399,10 @@ func (s *SelfCheckService) executeChecks(ctx context.Context) ([]SelfCheckResult
 		return nil, err
 	}
 	investmentFoundation, err := s.investmentFoundationCheck(ctx, snapshot)
+	if err != nil {
+		return nil, err
+	}
+	attribution, err := s.investmentAttributionCheck(ctx, snapshot)
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +440,7 @@ func (s *SelfCheckService) executeChecks(ctx context.Context) ([]SelfCheckResult
 		return nil, err
 	}
 
-	results := append(balances, structural, lots, positions, checkpoints, coverage, investmentFoundation, replay, prices, integrity, s.attachmentsCheck())
+	results := append(balances, structural, lots, positions, checkpoints, coverage, investmentFoundation, attribution, replay, prices, integrity, s.attachmentsCheck())
 	for index := range results {
 		narrative := checkNarratives[results[index].CheckID]
 		results[index].Explanation = narrative.explanation
@@ -541,18 +582,18 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 			AND NOT EXISTS (SELECT 1 FROM investment_payment_in_lieu_facts f
 				JOIN investment_operation_dates d ON d.operation_id = f.operation_id AND d.date_role = 'ex' AND d.event_date = f.ex_date
 				WHERE f.operation_id = o.id AND f.book_id = o.book_id)`},
-		// #255: an effective payment in lieu is owed only by a holding that had
-		// a short lot open by its entitlement close. Reversing or replacing
-		// that short later does not retire the payment, so this names it.
-		{"effective payment in lieu without a short lot opened by its ex-date", `
-			SELECT o.id FROM effective_investment_operations o
-			JOIN investment_payment_in_lieu_facts f ON f.operation_id = o.id AND f.book_id = o.book_id
-			WHERE o.book_id = ? AND o.operation_kind = 'payment_in_lieu'
-			AND NOT EXISTS (SELECT 1 FROM investment_lots l
-				JOIN effective_investment_operations opening ON opening.id = l.operation_id
-				WHERE l.book_id = f.book_id AND l.account_id = f.holding_account_id
-				AND l.commodity_id = f.commodity_id AND l.position_side = 'short'
-				AND l.opened_on < f.ex_date)`},
+		{"payment in lieu has malformed or cross-book attribution facts", `
+			SELECT f.operation_id FROM investment_payment_in_lieu_facts f
+			JOIN investment_operations o ON o.id = f.operation_id
+			WHERE f.book_id = ? AND (o.book_id <> f.book_id
+				OR o.created_audit_event_id <> f.created_audit_event_id
+				OR (f.ex_date IS NOT NULL AND (length(f.ex_date) <> 10
+					OR f.ex_date NOT GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'
+					OR date(f.ex_date, '+0 days') IS NOT f.ex_date))
+				OR (f.holding_account_id IS NOT NULL AND NOT EXISTS (
+					SELECT 1 FROM accounts a WHERE a.id = f.holding_account_id AND a.book_id = f.book_id))
+				OR (f.commodity_id IS NOT NULL AND NOT EXISTS (
+					SELECT 1 FROM commodities c WHERE c.id = f.commodity_id AND c.book_id = f.book_id AND c.kind IN ('security', 'crypto'))))`},
 		{"operation journal link is not posted in its book", `
 			SELECT l.id FROM investment_operation_journal_links l
 			JOIN transaction_versions v ON v.id = l.transaction_version_id

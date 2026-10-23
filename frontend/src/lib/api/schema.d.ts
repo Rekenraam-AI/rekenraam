@@ -28755,12 +28755,12 @@ export interface components {
         /** @description One check's verdict, in the terms a person needs: what was checked, what was found, where to look, and what to do about it. A failure a reader cannot act on is only half reported. */
         SelfCheckResult: {
             /** @enum {string} */
-            check_id: "entry_balance" | "transaction_balance" | "book_balance" | "version_integrity" | "lot_reconciliation" | "commodity_position_sign" | "checkpoint_integrity" | "account_version_coverage" | "investment_foundation" | "investment_replay_equivalence" | "price_dependency_integrity" | "sqlite_integrity" | "attachments";
+            check_id: "entry_balance" | "transaction_balance" | "book_balance" | "version_integrity" | "lot_reconciliation" | "commodity_position_sign" | "checkpoint_integrity" | "account_version_coverage" | "investment_foundation" | "investment_attribution" | "investment_replay_equivalence" | "price_dependency_integrity" | "sqlite_integrity" | "attachments";
             /**
-             * @description failed means at least one integrity finding. incomplete means no finding, but some coverage could not be verified because the information is unknown (unavailable_count > 0) — neither passed nor corrupted. A failed check may also carry unavailable coverage; it is never downgraded by it. not_applicable is reserved for a check that cannot run yet — attachments until R14a. It never passes by default: passing a check nobody ran is how a coverage claim gets made by accident.
+             * @description failed means at least one integrity finding. warning means advisory contradictions without integrity findings. incomplete means no finding or warning, but some coverage could not be verified because the information is unknown (unavailable_count > 0) — neither passed nor corrupted. A failed check may also carry unavailable coverage; it is never downgraded by it. not_applicable is reserved for a check that cannot run yet — attachments until R14a. It never passes by default: passing a check nobody ran is how a coverage claim gets made by accident.
              * @enum {string}
              */
-            status: "passed" | "incomplete" | "failed" | "not_applicable";
+            status: "passed" | "warning" | "incomplete" | "failed" | "not_applicable";
             /**
              * Format: int64
              * @description Integrity findings only. Unavailable coverage is counted separately.
@@ -28775,6 +28775,18 @@ export interface components {
             unavailable_count: number;
             /** @description A capped sample of the identifiers behind unavailable_count. Diagnostic display only. */
             unavailable_sample: number[];
+            /**
+             * Format: int64
+             * @description Advisory attribution contradictions, counted by reason, separate from integrity findings and unavailable coverage. Zero on older runs.
+             */
+            warning_count: number;
+            /** @description Capped sample of named payment warnings. Each reason may name the same transaction. */
+            warning_sample: {
+                /** Format: int64 */
+                transaction_id: number;
+                /** @enum {string} */
+                reason: "no_short_at_entitlement_close" | "ex_date_after_payment";
+            }[];
             summary: string;
             /** @description What this check verifies and why it matters. */
             explanation: string;
@@ -28790,10 +28802,10 @@ export interface components {
              */
             trigger: "manual" | "scheduled";
             /**
-             * @description Precedence over completed results: failed if any result failed, else incomplete if any result has unavailable coverage, else passed. errored means the check could not complete; it is not a ledger-failure verdict. Recorded verdicts are history and are never restated.
+             * @description Precedence over completed results: failed if any result failed, else warning if any result has warnings, else incomplete if any result has unavailable coverage, else passed. errored means the check could not complete; it is not a ledger-failure verdict. Recorded verdicts are history and are never restated.
              * @enum {string}
              */
-            status: "passed" | "incomplete" | "failed" | "errored";
+            status: "passed" | "warning" | "incomplete" | "failed" | "errored";
             /** Format: int64 */
             failed_check_count: number;
             /**
@@ -28801,6 +28813,11 @@ export interface components {
              * @description Results with unavailable coverage, including failed results that also have some. Lets a failed run disclose what it could not verify.
              */
             incomplete_check_count: number;
+            /**
+             * Format: int64
+             * @description Results with advisory warnings, including failed results that also have warnings.
+             */
+            warning_check_count: number;
             /** @description Diagnostic reason when status is errored; otherwise empty. */
             error_summary: string;
             /** Format: date-time */
@@ -32274,6 +32291,14 @@ export interface components {
         };
         /** @description The effective payment in lieu's posted facts, for pre-filling a replacement. The short holding, instrument, ex-date, payment date, cash account and currency are fixed for a replacement. */
         InvestmentCorrectionPaymentInLieuTerms: {
+            /** @description Read-only historical support using the same evaluator as investment_attribution. Never authorizes a write or verifies the amount. */
+            attribution: {
+                /** @description Missing context is disclosed even alongside a chronology warning. */
+                unavailable: boolean;
+                /** @enum {string} */
+                status: "passed" | "warning" | "incomplete";
+                reasons: ("no_short_at_entitlement_close" | "ex_date_after_payment")[];
+            };
             /** Format: int64 */
             holding_account_id: number;
             /** Format: int64 */

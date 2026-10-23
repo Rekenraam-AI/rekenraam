@@ -11,7 +11,7 @@ import (
 // #257: a correction or backdated cover that would leave an effective payment
 // in lieu without the short it was owed on is refused inside the write with
 // the payment named, and nothing is written. The owner reverses the payment
-// first; the foundation self-check row stays as a backstop.
+// first; #389 separately diagnoses unsupported attribution.
 
 func requirePaymentInLieuDependency(t *testing.T, err error, payment Transaction) {
 	t.Helper()
@@ -145,7 +145,7 @@ func TestShortSaleReversalRechecksPaymentInLieuDependencyInsideTheWrite(t *testi
 	requireInvestmentSelfCheckPasses(t, f)
 }
 
-// A payment that already lacks its short (damage only the self-check names)
+// A payment that already lacks its short (named by an attribution warning)
 // does not block an unrelated command.
 func TestUnentitledPaymentInLieuDoesNotBlockUnrelatedCommands(t *testing.T) {
 	t.Parallel()

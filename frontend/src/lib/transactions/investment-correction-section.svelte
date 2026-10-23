@@ -16,6 +16,7 @@
   import SplitForm from '#lib/investments/split-form.svelte';
   import DividendCorrectionForm from '#lib/investments/dividend-correction-form.svelte';
   import PaymentInLieuForm from '#lib/investments/payment-in-lieu-form.svelte';
+  import AttributionDiagnostic from '#lib/investments/attribution-diagnostic.svelte';
   import WriteOffCorrectionForm from '#lib/investments/write-off-correction-form.svelte';
   import TransferCorrectionForm from '#lib/investments/transfer-correction-form.svelte';
   import TransferInCorrectionForm from '#lib/investments/transfer-in-correction-form.svelte';
@@ -665,6 +666,9 @@
       </div>
     {/if}
     {#if paymentInLieuCorrectable}
+      {#if chainQuery.data?.effective_payment_in_lieu?.attribution}
+        <AttributionDiagnostic diagnostic={chainQuery.data.effective_payment_in_lieu.attribution} />
+      {/if}
       <div class="flex flex-wrap gap-2">
         <button
           type="button"

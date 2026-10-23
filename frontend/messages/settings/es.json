@@ -1709,5 +1709,17 @@
   "security_tokens_more": "Mostrar más tokens",
   "security_tokens_confirm": "¿Revocar «{name}»? Se rechazará su próxima solicitud a la API.",
   "security_tokens_cancel": "Cancelar",
-  "security_tokens_revoked_success": "Token revocado."
+  "security_tokens_revoked_success": "Token revocado.",
+  "settings_data_status_warning": "Advertencia",
+  "settings_data_selfcheck_warning": "{count} comprobaciones tienen advertencias de atribución.",
+  "settings_data_selfcheck_warnings": "{count} advertencias de atribución.",
+  "settings_data_selfcheck_historical": "Resultado guardado; repita la comprobación después de las correcciones.",
+  "settings_data_selfcheck_attribution_title": "Atribución del pago sustitutivo de dividendo",
+  "settings_data_selfcheck_attribution_explanation": "Comprueba las cantidades efectivas en corto antes de la fecha exdividendo, por divisa de coste. Verifica el respaldo histórico, no el importe cobrado.",
+  "settings_data_selfcheck_attribution_next": "Abra el pago y compare su atribución con el extracto del bróker. La comprobación no cambia importes ni datos de origen.",
+  "investments_attribution_no_short": "No hay unidades en corto que respalden esta atribución al cierre anterior a la fecha exdividendo.",
+  "investments_attribution_ex_date_after_payment": "La fecha exdividendo es posterior a la fecha de pago registrada.",
+  "investments_attribution_unavailable": "Faltan algunos datos de atribución; no se puede verificar el respaldo histórico.",
+  "investments_attribution_payment_link": "Abrir pago n.º {id}",
+  "investments_attribution_review": "Revise la atribución. El importe registrado no ha cambiado."
 }

@@ -820,44 +820,51 @@ ceiling, it moves onto the work queue as a follow-up, not a redesign.
 
 ### Self-check outcomes (#313)
 
-The section below describes shipped #313 behavior. The later
-[four-case dependency contract](financial-dependency-simplification-plan.md#diagnostic-contract-for-389)
-specifies a pending #389 extension: a distinct attribution-warning outcome,
-separate warning counts and transaction repair links. It preserves genuine
-integrity findings, unavailable coverage and saved historical runs. Those new
-enums/storage/API/UI changes are not implemented by the design slice.
-
-A completed check measures two things and keeps them apart:
+The #313 outcomes now include #389's attribution warnings, as specified by
+[the dependency contract](financial-dependency-simplification-plan.md#diagnostic-contract-for-389).
+A completed check keeps three measurements apart:
 
 - **Integrity findings** (`finding_count`, `sample`): something is wrong — a
   quantity, allocation, basis, link, bridge, provenance, replay, structural or
   file violation.
 - **Unavailable coverage** (`unavailable_count`, `unavailable_sample`):
   something could not be verified because the book supportedly does not know
-  it. Today exactly one source exists: `lot_reconciliation` counts every lot,
+  it. `investment_attribution` counts payments missing instrument/holding/ex-date
+  context (the nullable entry/repair path follows in #388). For basis,
+  `lot_reconciliation` counts every lot,
   open or closed, whose projected basis is supported unknown (not missing,
   not inconsistent knowledge/amounts — those are findings). Its summary names
   the scope: `N lots have unknown projected basis; basis reconciliation is
   unavailable`.
+- **Attribution warnings** (`warning_count`, `warning_sample`): known
+  contradictions, separate from corruption and unknown information. Samples
+  are `{transaction_id, reason}`, with `no_short_at_entitlement_close` and
+  `ex_date_after_payment` stable reasons. A payment may have both reasons;
+  the count measures reasons. The check uses effective short openings minus
+  covers before the ex-date, separately by cost currency. Any positive group
+  supports attribution; it does not validate the amount charged.
 
 **Result status**, derived from the counts so a check cannot contradict them:
 
 | Status | Meaning |
 |---|---|
-| `passed` | Every applicable invariant was verified; no finding, nothing unavailable. |
-| `incomplete` | No finding, but `unavailable_count > 0`. Neither passed nor corrupted. |
+| `passed` | Every applicable invariant was verified; no finding, no warning, nothing unavailable. |
+| `warning` | No integrity finding, but `warning_count > 0`. Unavailable context remains visible beside it. |
+| `incomplete` | No finding or warning, but `unavailable_count > 0`. Neither passed nor corrupted. |
 | `failed` | At least one finding. Unavailable coverage is still reported beside it and never downgrades it. |
 | `not_applicable` | Reserved slot that cannot run yet (attachments, until R14a). Unchanged. |
 
 **Run status and counts.** `failed_check_count` counts failed results.
 `incomplete_check_count` counts results with unavailable coverage, *including*
-failed ones, so a failed run still discloses what it could not verify.
+failed or warning ones, so a run still discloses what it could not verify.
+`warning_check_count` counts results carrying warnings, including failed results.
 Precedence over completed results: **failed** if any result failed, else
-**incomplete** if any result has unavailable coverage, else **passed**.
+**warning** if any has warnings, else **incomplete** if any has unavailable
+coverage, else **passed**.
 `errored` keeps its meaning — execution did not complete, with no verdict —
 and `running` is internal. Schema CHECKs enforce the combinations
-(`incomplete` ⇒ no finding/failed check and some unavailable coverage;
-`passed` ⇒ neither), so storage, API and screen cannot disagree.
+(`incomplete` ⇒ no finding, warning or failed check and some unavailable coverage;
+`passed` ⇒ no findings, warnings or unavailable coverage), so storage, API and screen cannot disagree.
 
 | Example | Lot result | Run | Failed / incomplete counts |
 |---|---|---|---|
@@ -878,7 +885,9 @@ copying every row. A run recorded before #313 keeps its verdict: an old
 unknown-basis run stays `failed` with `finding_count = 1` and zero unavailable
 counts, because that run did not measure them separately. Downgrading past
 `0017` is refused while any incomplete verdict exists, rather than rewriting
-it. Native backup/restore carries runs and results as they are.
+it. Migration `0022` adds warning states/counts/samples with the same history
+preservation and refuses downgrade while measured warnings exist. Native
+backup/restore carries runs and results as they are.
 
 **Owner surface.** `Settings → Data` says *No problems found, but N checks
 could not be fully verified because some information is unknown*, never
@@ -887,6 +896,14 @@ disclosure after its failure count. Each result with unavailable coverage
 shows its unavailable count, an **Incomplete** (warning) badge when it has no
 finding, and its next step. The nightly run chained onto a backup records the
 same verdicts, and the screen reads the latest one the same way.
+
+**Attribution visibility (#389).** Data settings shows translated warning and
+unavailable counts, even beside an integrity failure, with links to the named
+payment's transaction detail. Detail uses the same evaluator on demand. The
+saved self-check is labelled historical; rerun after corrections. No review
+queue or acknowledgement is added. #388 still owns optional attribution entry,
+clearing, audited repair and retirement of the existing write blockers; this
+read-side slice does not claim those workflows have changed.
 
 ### Unresolved investment basis diagnostic acceptance (#308)
 

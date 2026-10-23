@@ -675,6 +675,7 @@ type SelfCheckRunRecord struct {
 	// IncompleteCheckCount counts checks with unavailable coverage, whether or
 	// not they also failed (#313).
 	IncompleteCheckCount int64
+	WarningCheckCount    int64
 	ErrorSummary         string
 	StartedAt            string
 	FinishedAt           sql.NullString
@@ -732,6 +733,8 @@ type SelfCheckResultRecord struct {
 	// its integrity findings; zero on runs recorded before #313.
 	UnavailableCount      int64
 	UnavailableSampleJSON string
+	WarningCount          int64
+	WarningSampleJSON     string
 	Summary               string
 }
 
@@ -760,24 +763,33 @@ func (r *SelfCheckRepository) SaveSelfCheckResults(ctx context.Context, runID in
 	for _, result := range results {
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO self_check_results (run_id, check_id, status, finding_count, sample_json,
-				unavailable_count, unavailable_sample_json, summary)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+				unavailable_count, unavailable_sample_json, warning_count, warning_sample_json, summary)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(run_id, check_id) DO UPDATE SET
 				status = excluded.status,
 				finding_count = excluded.finding_count,
 				sample_json = excluded.sample_json,
 				unavailable_count = excluded.unavailable_count,
 				unavailable_sample_json = excluded.unavailable_sample_json,
+				warning_count = excluded.warning_count,
+				warning_sample_json = excluded.warning_sample_json,
 				summary = excluded.summary
 		`, runID, result.CheckID, result.Status, result.FindingCount, result.SampleJSON,
-			result.UnavailableCount, unavailableSampleJSON(result.UnavailableSampleJSON), result.Summary); err != nil {
+			result.UnavailableCount, unavailableSampleJSON(result.UnavailableSampleJSON),
+			result.WarningCount, unavailableSampleJSON(result.WarningSampleJSON), result.Summary); err != nil {
 			return fmt.Errorf("save self-check result: %w", err)
 		}
 	}
 
+	var warningChecks int64
+	for _, result := range results {
+		if result.WarningCount > 0 {
+			warningChecks++
+		}
+	}
 	if _, err := tx.ExecContext(ctx, `
-		UPDATE self_check_runs SET status = ?, failed_check_count = ?, incomplete_check_count = ?, finished_at = ? WHERE id = ?
-	`, status, failedCount, incompleteCount, finishedAt, runID); err != nil {
+		UPDATE self_check_runs SET status = ?, failed_check_count = ?, incomplete_check_count = ?, warning_check_count = ?, finished_at = ? WHERE id = ?
+	`, status, failedCount, incompleteCount, warningChecks, finishedAt, runID); err != nil {
 		return fmt.Errorf("finish self-check run: %w", err)
 	}
 
@@ -797,9 +809,9 @@ func unavailableSampleJSON(sample string) string {
 func (r *SelfCheckRepository) SelfCheckRunByID(ctx context.Context, id int64) (SelfCheckRunRecord, error) {
 	var run SelfCheckRunRecord
 	err := r.database.QueryRowContext(ctx, `
-		SELECT id, book_id, trigger, status, failed_check_count, incomplete_check_count, error_summary, started_at, finished_at, created_at
+		SELECT id, book_id, trigger, status, failed_check_count, incomplete_check_count, warning_check_count, error_summary, started_at, finished_at, created_at
 		FROM self_check_runs WHERE id = ?
-	`, id).Scan(&run.ID, &run.BookID, &run.Trigger, &run.Status, &run.FailedCheckCount, &run.IncompleteCheckCount, &run.ErrorSummary,
+	`, id).Scan(&run.ID, &run.BookID, &run.Trigger, &run.Status, &run.FailedCheckCount, &run.IncompleteCheckCount, &run.WarningCheckCount, &run.ErrorSummary,
 		&run.StartedAt, &run.FinishedAt, &run.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return SelfCheckRunRecord{}, ErrNotFound
@@ -815,12 +827,12 @@ func (r *SelfCheckRepository) SelfCheckRunByID(ctx context.Context, id int64) (S
 func (r *SelfCheckRepository) LatestSelfCheckRun(ctx context.Context, bookID int64) (SelfCheckRunRecord, []SelfCheckResultRecord, error) {
 	var run SelfCheckRunRecord
 	err := r.database.QueryRowContext(ctx, `
-		SELECT id, book_id, trigger, status, failed_check_count, incomplete_check_count, error_summary, started_at, finished_at, created_at
+		SELECT id, book_id, trigger, status, failed_check_count, incomplete_check_count, warning_check_count, error_summary, started_at, finished_at, created_at
 		FROM self_check_runs
-		WHERE book_id = ? AND status IN ('passed', 'incomplete', 'failed', 'errored')
+		WHERE book_id = ? AND status IN ('passed', 'warning', 'incomplete', 'failed', 'errored')
 		ORDER BY started_at DESC, id DESC
 		LIMIT 1
-	`, bookID).Scan(&run.ID, &run.BookID, &run.Trigger, &run.Status, &run.FailedCheckCount, &run.IncompleteCheckCount, &run.ErrorSummary,
+	`, bookID).Scan(&run.ID, &run.BookID, &run.Trigger, &run.Status, &run.FailedCheckCount, &run.IncompleteCheckCount, &run.WarningCheckCount, &run.ErrorSummary,
 		&run.StartedAt, &run.FinishedAt, &run.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return SelfCheckRunRecord{}, nil, ErrNotFound
@@ -838,7 +850,7 @@ func (r *SelfCheckRepository) LatestSelfCheckRun(ctx context.Context, bookID int
 
 func (r *SelfCheckRepository) SelfCheckResults(ctx context.Context, runID int64) ([]SelfCheckResultRecord, error) {
 	rows, err := r.database.QueryContext(ctx, `
-		SELECT run_id, check_id, status, finding_count, sample_json, unavailable_count, unavailable_sample_json, summary
+		SELECT run_id, check_id, status, finding_count, sample_json, unavailable_count, unavailable_sample_json, warning_count, warning_sample_json, summary
 		FROM self_check_results
 		WHERE run_id = ?
 		ORDER BY id
@@ -852,7 +864,7 @@ func (r *SelfCheckRepository) SelfCheckResults(ctx context.Context, runID int64)
 	for rows.Next() {
 		var result SelfCheckResultRecord
 		if err := rows.Scan(&result.RunID, &result.CheckID, &result.Status, &result.FindingCount,
-			&result.SampleJSON, &result.UnavailableCount, &result.UnavailableSampleJSON, &result.Summary); err != nil {
+			&result.SampleJSON, &result.UnavailableCount, &result.UnavailableSampleJSON, &result.WarningCount, &result.WarningSampleJSON, &result.Summary); err != nil {
 			return nil, fmt.Errorf("scan self-check result: %w", err)
 		}
 		results = append(results, result)

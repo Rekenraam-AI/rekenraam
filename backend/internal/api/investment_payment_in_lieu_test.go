@@ -48,6 +48,9 @@ func TestPaymentInLieuEntryAndCorrectionAPI(t *testing.T) {
 	require.NotNil(t, chain.EffectivePaymentInLieu)
 	assert.Equal(t, "2026-03-01", chain.EffectivePaymentInLieu.ExDate)
 	assert.Equal(t, holding.ID, chain.EffectivePaymentInLieu.HoldingAccountID)
+	assert.Equal(t, "passed", chain.EffectivePaymentInLieu.Attribution.Status)
+	assert.Equal(t, []string{}, chain.EffectivePaymentInLieu.Attribution.Reasons)
+	assert.False(t, chain.EffectivePaymentInLieu.Attribution.Unavailable)
 
 	replace := investmentPaymentInLieuReplacementRequest{Reason: "broker charged 6.00", Replacement: request(600)}
 	post(base+"/replace-payment-in-lieu/reconciliation-impact", replace, http.StatusOK)
