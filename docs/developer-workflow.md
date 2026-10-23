@@ -323,6 +323,22 @@ balances — stay per-account rather than per-posting. Ceilings: 60 s and
 256 MiB each, in `backend/internal/app/large_book_test.go`. Raise them only
 with a new measurement here.
 
+#### Payment-in-lieu density measurement
+
+`./scripts/measure-payment-in-lieu-density.sh`
+(`pnpm measure:payment-in-lieu-density`) characterizes the #257 admission. That
+admission re-checks every effective payment in lieu before and after each
+investment command (#379). It builds books with 0/10/100/300/1,000 payments in
+two history shapes and measures accepted and refused short corrections, an
+unrelated short sale and their previews. It asserts entitlement, refusal and
+rollback controls but sets no latency ceiling. `REKENRAAM_PIL_DENSITIES`,
+`REKENRAAM_PIL_SHAPES` and `REKENRAAM_PIL_REPEATS` narrow a run. The full
+matrix takes hours, because each recorded payment runs the same admission. It
+is neither on push nor scheduled. Figures and disposition:
+[payment-in-lieu-density-2026-10-23.md](reviews/payment-in-lieu-density-2026-10-23.md);
+optimization is tracked in
+[#388](https://github.com/sergeyfarin/rekenraam/issues/388).
+
 ### Local Owner Recovery
 
 Stop the server first: the command holds the same database lock as the

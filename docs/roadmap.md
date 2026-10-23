@@ -165,9 +165,12 @@ below is execution order, not a chain of hard dependencies.
    out of scope. R13 specification can proceed in parallel, but R13
    implementation waits for #284's investment/reporting dispositions.
    The separate P3 payment-density audit
-   [#379](https://github.com/sergeyfarin/rekenraam/issues/379) measures an
-   untested investment-command workload; it is not an accepted optimization
-   or a blanket R13 prerequisite.
+   [#379](https://github.com/sergeyfarin/rekenraam/issues/379) measured the
+   payment-density workload
+   ([report](reviews/payment-in-lieu-density-2026-10-23.md)). Its P3
+   optimization [#388](https://github.com/sergeyfarin/rekenraam/issues/388)
+   and self-check backstop [#389](https://github.com/sergeyfarin/rekenraam/issues/389)
+   are independent; neither is a blanket R13 prerequisite.
 3. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
    Use the delivered R18 valuation contracts; resolve portfolio scope,
    external-flow classification, return equations, numerical failure states,

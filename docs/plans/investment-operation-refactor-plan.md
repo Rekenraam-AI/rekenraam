@@ -701,9 +701,11 @@ correction, reversal and backdating; #176 provider import.
   why it is expensed rather than folded into opening proceeds.
   The [#284 ownership inventory](../reviews/maintainability-invariants-2026-10-21.md)
   confirms that the shared writer checks effective payments before and after
-  command effects. [#379](https://github.com/sergeyfarin/rekenraam/issues/379)
-  separately measures payment-dense admission cost with entitlement and rollback
-  controls before proposing any optimization; it changes no financial contract.
+  command effects. The [#379 density audit](../reviews/payment-in-lieu-density-2026-10-23.md)
+  measured that cost with entitlement and rollback controls. It grows with
+  book-wide payment density for every investment command (17 s at 1,000
+  payments). [#388](https://github.com/sergeyfarin/rekenraam/issues/388)
+  makes the check read-only without changing the contract.
 - **Classification.** Net worth and self-check classify a negative countable
   balance as a named short only up to the quantity of short lots open on that
   date in that account; any further negative quantity remains an

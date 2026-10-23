@@ -107,7 +107,7 @@ func buyReplacementPreviewSnapshot(t *testing.T, database *sql.DB) map[string][]
 		"investment_disposal_revisions", "investment_disposal_revision_allocations", "investment_transfer_facts", "investment_transfer_lot_links",
 		"investment_transfer_link_revisions", "investment_transfer_link_revision_depletions", "investment_basis_resolutions", "investment_basis_resolution_provenance",
 		"investment_cash_in_lieu_facts", "investment_capital_return_facts", "investment_capital_return_effects", "investment_capital_return_entitlements",
-		"investment_capital_return_revisions", "investment_capital_return_revision_effects",
+		"investment_capital_return_revisions", "investment_capital_return_revision_effects", "investment_payment_in_lieu_facts",
 		"price_series", "price_observations", "reconciliation_checkpoints", "reconciliation_checkpoint_postings",
 		"background_work_items", "import_batches", "import_staged_rows", "import_commit_identities", "import_commit_identity_effects", "import_source_revisions",
 	} {
