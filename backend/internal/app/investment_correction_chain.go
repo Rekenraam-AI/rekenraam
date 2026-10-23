@@ -52,8 +52,9 @@ type InvestmentCorrectionChain struct {
 	EffectiveReinvestment        *InvestmentCorrectionReinvestmentTerms
 	// CanCorrectWriteOff allows native write-off reversal and replacement
 	// (T-118); the trade correction context pre-fills the replacement.
-	CanCorrectWriteOff   bool
-	CanCorrectCashInLieu bool
+	CanCorrectWriteOff    bool
+	CanCorrectCashInLieu  bool
+	CashInLieuAttribution *InvestmentAttributionDiagnostic
 	// CanReverseTransfer allows native reversal of an internal or
 	// external-in transfer (T-119).
 	CanReverseTransfer bool
@@ -357,6 +358,12 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 		}
 		if correctable && record.OperationKind == "cash_in_lieu" {
 			chain.CanCorrectCashInLieu = true
+			diagnostic, err := s.repository.CashInLieuAttribution(ctx, BookID, record.TransactionID.Int64)
+			if err != nil {
+				return InvestmentCorrectionChain{}, err
+			}
+			attribution := investmentAttributionDiagnostic(diagnostic)
+			chain.CashInLieuAttribution = &attribution
 		}
 		if correctable && record.OperationKind == "write_off" {
 			chain.CanCorrectWriteOff = true

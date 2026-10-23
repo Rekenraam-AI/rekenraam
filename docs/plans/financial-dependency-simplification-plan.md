@@ -107,7 +107,7 @@ their linked implementation ships.
 | Cash dividend | Exact gross, recorded withholding, cash/currency/date and posting accounts; gross is never inferred from net alone | Payer is optional, set/change/clear is audited, and holdings are not permanent authorization. Preserve the cash-only correction shape and existing coverage. | #393 closes the clear/unassigned gaps; no new holding/ex-date fields. |
 | Embedded/separate withholding | Exact known tax and correct posting shape; a separate tax payment creates no gross income | Instrument is optional in both forms. Separate-withholding knowledge must survive without a payer-facts row carrying a non-null instrument. No historical lot or mandatory dividend-payment link. | #393 changes the facts representation with its migration. |
 | Payment in lieu of dividend | Exact owed cash/expense, optional recorded recovery, payment date/currency/accounts; no lot effect | Instrument, holding and ex-date are optional owner attribution. Remove entry/replacement entitlement authorization and the shared writer's global before/after scan. Unsupported attribution is diagnostic; allow audited repairs preserving cash. | Delivered by #388/#389; other families remain separate. |
-| Fractional-share cash in lieu | Actual fractional disposal quantity, account/instrument, basis/election, proceeds and disposal/payment dates | Keep immutable parent provenance; validate parent edits by actual replay. Resolve correction ancestry for current context. A retired parent alone is an attribution warning, while impossible disposals still refuse. | #392 characterizes and adapts all four parent families. |
+| Fractional-share cash in lieu | Actual fractional disposal quantity, account/instrument, basis/election, proceeds and disposal/payment dates | Keep immutable parent provenance; validate parent edits by actual replay. Resolve correction ancestry for current context. A retired parent alone is an attribution warning, while impossible disposals still refuse. | Delivered by #392 across all four parent families; original evidence and real disposal guards remain. |
 
 ### Required Facts And Repair Semantics
 
@@ -217,7 +217,8 @@ At this first diagnostic delivery, nullable entry, omission versus clearing,
 audited attribution repair and removal of write blockers remained with #388.
 The cash-attribution delivery below completes that boundary; unsupported
 histories now use ordinary owner commands in integration fixtures.
-The broader #390/#391 inventory and #392/#393 remain open.
+At that diagnostic-first checkpoint, the broader #390/#391 inventory and
+#392/#393 remained open. The subsequent delivery sections record runtime completion.
 
 ### Cash-Attribution Delivery (#388, 2026-10-23)
 
@@ -250,6 +251,30 @@ records policy-test dispositions, retained financial controls and bounded
 measurements. This does not complete #390/#391 or relax #392's real disposal
 constraints. #393 still owns the dividend/separate-withholding nullable payer
 representation and clear workflow.
+
+### Cash-In-Lieu Parent Delivery (#392, 2026-10-23)
+
+Split, share-exchange, spin-off and cash-and-stock-merger reversal/replacement
+now use existing typed disposal replay, without `requireNoCashInLieuSettlesTx`.
+Original `settled_operation_id` stays immutable and exportable; replacement
+ancestry supplies current explanatory context. New entry requires a current
+matching parent. Existing disposal correction/dated lot selection remains
+usable after parent replacement or reversal and keeps the original reference.
+
+Current parent missing after reversal is `cash_in_lieu_parent_unresolved`;
+current holding/instrument/date mismatch is `cash_in_lieu_parent_mismatch`.
+Both use the existing investment-attribution self-check/detail warning surface.
+Historical malformed/missing/cross-book facts remain integrity failures.
+No attribution scan is added to ordinary writes. No new workflow, generic
+relationship table or dependency engine is introduced. Schema migration 24
+updates the fact guard and typed read views without changing financial rows;
+bundle schema 16 and all CSV columns remain compatible.
+
+The independent €36 / 7.5 × 0.5 = €2.40 example, 0.3 < 0.5 refusal,
+all-family replacement/reversal, specific-lot/later-sale, same-day root order,
+gain/checkpoint binding, rollback, migration and owner-surface controls are
+recorded in [delivery evidence](../reviews/cash-in-lieu-parent-replay-2026-10-23.md).
+#393 and the remaining #391/#390 inventory stay open.
 
 ## Whole-Application Complexity Review
 

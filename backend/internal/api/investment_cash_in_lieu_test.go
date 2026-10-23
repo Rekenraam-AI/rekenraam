@@ -47,7 +47,7 @@ func TestCashInLieuAPIDisposesFractionAndNamesUnavailableSplit(t *testing.T) {
 	assert.Contains(t, refused.Body.String(), "INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE", "a non-split transaction is not a split")
 }
 
-func TestCashInLieuAPICorrectReverseAndReleaseSplitFence(t *testing.T) {
+func TestCashInLieuAPICorrectReverseAndPreviewValidParentReversal(t *testing.T) {
 	t.Parallel()
 	handler, _ := newSetupTestHandler(t)
 	f := bootstrapInvestmentAPITest(t, handler)
@@ -93,10 +93,10 @@ func TestCashInLieuAPICorrectReverseAndReleaseSplitFence(t *testing.T) {
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&corrected))
 	require.Equal(t, preview.Allocations, corrected.Replacement.Allocations)
 	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, correctionPath, replacement, http.StatusConflict)
-	// Effective successor retains the split fence; reversing it releases it.
+	// A valid parent reversal previews through the effective successor disposal.
 	splitReversePath := fmt.Sprintf("/api/v1/investments/transactions/%d/reverse-split/reconciliation-impact", split.Transaction.ID)
 	reason := investmentSaleReversalRequest{Reason: "withdrawn"}
-	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, splitReversePath, reason, http.StatusConflict)
+	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, splitReversePath, reason, http.StatusOK)
 	chainPath := fmt.Sprintf("/api/v1/investments/transactions/%d/correction-chain", corrected.Replacement.Transaction.ID)
 	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, chainPath, nil, http.StatusOK)
 	var chain investmentCorrectionChainResponse

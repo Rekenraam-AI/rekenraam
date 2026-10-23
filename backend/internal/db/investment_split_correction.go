@@ -137,9 +137,6 @@ func checkSplitOperationForCorrectionTx(ctx context.Context, tx *sql.Tx, bookID 
 	if current != expected {
 		return SplitOperationRecord{}, ErrSplitPositionChanged
 	}
-	if err := requireNoCashInLieuSettlesTx(ctx, tx, bookID, current.OperationID); err != nil {
-		return SplitOperationRecord{}, err
-	}
 	if current.TransactionID == 0 {
 		return current, nil
 	}

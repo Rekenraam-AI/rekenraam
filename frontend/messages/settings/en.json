@@ -1312,7 +1312,7 @@
   "investments_split_open_journal": "Open transaction",
   "investments_split_corrects": "Corrects split #{id}",
   "investments_split_successor": "Replaced or reversed by entry #{id}",
-  "investments_split_settled_hint": "Correct or reverse its cash in lieu before changing this split.",
+  "investments_split_settled_hint": "This split has recorded cash in lieu. Corrections validate the disposal and disclose gain changes.",
   "investments_split_help": "Every lot held on the split date is multiplied by the ratio. Each lot keeps its total cost basis; no cash or gain is recorded.",
   "investments_split_holding": "Holding",
   "investments_split_select_holding": "Select a holding",
@@ -1712,8 +1712,8 @@
   "settings_data_selfcheck_warning": "{count} checks have attribution warnings.",
   "settings_data_selfcheck_warnings": "{count} attribution warnings.",
   "settings_data_selfcheck_historical": "Saved result; rerun after corrections.",
-  "settings_data_selfcheck_attribution_title": "Payment-in-lieu attribution",
-  "settings_data_selfcheck_attribution_explanation": "Checks effective short units before the ex-date, separately by cost currency. This checks historical support, not the amount charged.",
+  "settings_data_selfcheck_attribution_title": "Investment attribution",
+  "settings_data_selfcheck_attribution_explanation": "Checks historical short support for payments in lieu and the current parent explanation for fractional-share disposals. Financial validity is checked separately.",
   "settings_data_selfcheck_attribution_next": "Open the payment and compare its attribution with your broker statement. The check never changes cash or source evidence.",
   "investments_attribution_no_short": "No short units support this attribution at the close before the ex-date.",
   "investments_attribution_ex_date_after_payment": "The ex-date follows the recorded payment date.",
@@ -1724,5 +1724,8 @@
   "investments_attribution_unassigned": "Unassigned",
   "investments_attribution_repair_hint": "Leave unknown details blank. Changing only these details preserves recorded cash and keeps the original in history.",
   "investments_attribution_provider_mismatch": "These details differ from the linked provider evidence. The original evidence is preserved.",
-  "investments_payment_in_lieu_correction_reason": "Reason for correction"
+  "investments_payment_in_lieu_correction_reason": "Reason for correction",
+  "investments_attribution_cash_parent_unresolved": "The original corporate action was reversed. The disposal remains recorded; its financial validity is checked separately.",
+  "investments_attribution_cash_parent_mismatch": "The current corporate action no longer matches this disposal’s holding, instrument or date. The original reference is preserved.",
+  "investments_cash_in_lieu_current_parent": "Current action #{id}"
 }

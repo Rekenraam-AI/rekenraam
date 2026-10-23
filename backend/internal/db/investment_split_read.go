@@ -46,7 +46,8 @@ func (r *InvestmentRepository) SplitActivity(ctx context.Context, bookID, before
  COALESCE(v.description,json_extract(a.metadata_json,'$.memo'),''), COALESCE(o.correction_reason,a.reason,''),o.created_at,
  CASE WHEN successor.correction_mode = 'reverse' THEN 'reversed' WHEN successor.id IS NOT NULL THEN 'superseded' ELSE 'effective' END,
  EXISTS(SELECT 1 FROM investment_cash_in_lieu_facts cash JOIN effective_investment_operations active ON active.id = cash.operation_id
- WHERE cash.settled_operation_id = o.id), pv.quantity_value,pv.quantity_scale
+ LEFT JOIN cash_in_lieu_parent_context context ON context.original_operation_id = cash.settled_operation_id AND context.book_id = cash.book_id
+ WHERE cash.settled_operation_id = o.id OR context.effective_operation_id = o.id), pv.quantity_value,pv.quantity_scale
  FROM page JOIN investment_operations o ON o.id = page.id
  JOIN investment_split_facts f ON f.operation_id = o.id
  JOIN audit_events a ON a.id = o.created_audit_event_id

@@ -182,7 +182,8 @@ below is execution order, not a chain of hard dependencies.
    parent corrections and dividend/withholding payer attribution. The wider
    #391 inventory remains open. #388/#389 now deliver optional payment
    attribution, audited repair and diagnostics, removing the cash-only write
-   blockers. The remaining bounded family slices are #392/#393. These do not expand #284's closure checklist, reorder
+   blockers. #392 now delivers parent replay for all four cash-in-lieu families.
+   The remaining ready attribution slice is #393. These do not expand #284's closure checklist, reorder
    initiatives or introduce a blanket R13 prerequisite.
 3. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
    Use the delivered R18 valuation contracts; resolve portfolio scope,

@@ -11,36 +11,38 @@ import (
 // preparing a full buy or sale replacement. A command always rechecks the
 // source under its write transaction; this read is never an authorization.
 type InvestmentTradeCorrectionContext struct {
-	SettledTransactionID int64
-	SettledOperationID   int64
-	OperationID          int64
-	TransactionID        int64
-	OperationKind        string
-	EventDate            string
-	HoldingAccountID     int64
-	CommodityID          int64
-	CommodityCode        string
-	CostCommodityID      int64
-	QuantityValue        string
-	QuantityScale        int
-	CostBasisMethod      string
-	CashAccountID        int64
-	NetValue             string
-	NetScale             int
-	SettlementDate       string
-	Memo                 string
-	PayeeID              *int64
-	GrossValue           *string
-	GrossScale           *int
-	Imported             bool
-	SourceIdentityID     int64
-	SourceKind           string
-	AlreadyCorrected     bool
-	Charges              []InvestmentTradeCorrectionCharge
-	ElectedLots          []InvestmentTradeCorrectionLotChoice
-	CanReplaceSale       bool
-	AvailableLots        []InvestmentTradeCorrectionAvailableLot
-	EffectiveElectedLots []InvestmentTradeCorrectionLotChoice
+	SettledTransactionID          int64
+	SettledOperationID            int64
+	EffectiveSettledOperationID   int64
+	EffectiveSettledTransactionID int64
+	OperationID                   int64
+	TransactionID                 int64
+	OperationKind                 string
+	EventDate                     string
+	HoldingAccountID              int64
+	CommodityID                   int64
+	CommodityCode                 string
+	CostCommodityID               int64
+	QuantityValue                 string
+	QuantityScale                 int
+	CostBasisMethod               string
+	CashAccountID                 int64
+	NetValue                      string
+	NetScale                      int
+	SettlementDate                string
+	Memo                          string
+	PayeeID                       *int64
+	GrossValue                    *string
+	GrossScale                    *int
+	Imported                      bool
+	SourceIdentityID              int64
+	SourceKind                    string
+	AlreadyCorrected              bool
+	Charges                       []InvestmentTradeCorrectionCharge
+	ElectedLots                   []InvestmentTradeCorrectionLotChoice
+	CanReplaceSale                bool
+	AvailableLots                 []InvestmentTradeCorrectionAvailableLot
+	EffectiveElectedLots          []InvestmentTradeCorrectionLotChoice
 }
 
 type InvestmentTradeCorrectionAvailableLot struct {
@@ -254,9 +256,10 @@ func (r *InvestmentRepository) TradeCorrectionContext(ctx context.Context, bookI
 		}
 	}
 	if record.OperationKind == "cash_in_lieu" {
-		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(v.transaction_id, 0), f.settled_operation_id FROM investment_cash_in_lieu_facts f
+		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(v.transaction_id, 0), f.settled_operation_id, COALESCE(parent.effective_operation_id,0), COALESCE(parent.transaction_id,0) FROM investment_cash_in_lieu_facts f
+ LEFT JOIN cash_in_lieu_parent_context parent ON parent.original_operation_id = f.settled_operation_id AND parent.book_id = f.book_id
             LEFT JOIN investment_operation_journal_links l ON l.operation_id = f.settled_operation_id AND l.role = 'primary'
-            LEFT JOIN transaction_versions v ON v.id = l.transaction_version_id WHERE f.operation_id = ? AND f.book_id = ?`, record.OperationID, bookID).Scan(&record.SettledTransactionID, &record.SettledOperationID); err != nil {
+            LEFT JOIN transaction_versions v ON v.id = l.transaction_version_id WHERE f.operation_id = ? AND f.book_id = ?`, record.OperationID, bookID).Scan(&record.SettledTransactionID, &record.SettledOperationID, &record.EffectiveSettledOperationID, &record.EffectiveSettledTransactionID); err != nil {
 			return InvestmentTradeCorrectionContext{}, err
 		}
 	}

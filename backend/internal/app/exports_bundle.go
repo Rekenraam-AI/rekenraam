@@ -1116,7 +1116,11 @@ carries the rest.
 investment-operation-dates.csv numbers several dates of one role with
 date_seq, from 1. investment-cash-in-lieu-facts.csv names the operation a
 cash in lieu settles in settled_operation_id: a split, an exchange or a
-spin-off; split_operation_id repeats it only for a split.`,
+spin-off or cash-and-stock merger; split_operation_id repeats it only for a split.
+The settled_operation_id is immutable original provenance. Follow replacement
+ancestry in investment-operations.csv for current explanatory context. A reversed
+parent alone does not invalidate a disposal whose quantities and elections remain
+valid. Schema 16 is unchanged: no column or representation changes in #392.`,
 	}
 
 	if filter.From != "" || filter.To != "" || len(filter.AccountIDs) > 0 || len(filter.CommodityIDs) > 0 {

@@ -163,7 +163,7 @@ func TestPaymentAttributionTwoCostCurrencies(t *testing.T) {
 
 func TestSelfCheckWarningsRemainVisibleAlongsideFailureAndUnavailable(t *testing.T) {
 	t.Parallel()
-	result := paymentInLieuAttributionResult([]db.PaymentInLieuAttributionDiagnostic{
+	result := investmentAttributionResult([]db.InvestmentAttributionDiagnostic{
 		{TransactionID: 1, WarningReasons: []string{db.AttributionNoShort}},
 		{TransactionID: 2, Unavailable: true},
 	})

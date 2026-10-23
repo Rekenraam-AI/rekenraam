@@ -160,9 +160,8 @@ func TestCashStockMergerReversalNamesAnOnwardTransfer(t *testing.T) {
 	assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 }
 
-// A cash in lieu settles the fraction the merger left; correcting the merger
-// first would leave it settling nothing, so it is named.
-func TestCashStockMergerCorrectionNamesASettlingCashInLieu(t *testing.T) {
+// A real missing-unit reversal still names the disposal; basis repair uses reviewed replay.
+func TestCashStockMergerSettledDisposalGuardsUnitsAndReviewsBasisCorrection(t *testing.T) {
 	t.Parallel()
 	f := newInvestmentsTestFixture(t)
 	ctx := context.Background()
@@ -178,10 +177,14 @@ func TestCashStockMergerCorrectionNamesASettlingCashInLieu(t *testing.T) {
 	var dependency InvestmentTransferDependencyError
 	require.ErrorAs(t, err, &dependency)
 	assert.Equal(t, transferOperationID(t, f, settled.Transaction.ID), dependency.OperationID)
-	_, err = f.investmentService.ReplaceCashStockMerger(ctx, replaceCashStockMergerInput(f, merged.Transaction.ID, newID,
-		"2026-06-01", "2026-06-05", 3, 2, 900, "3", 1))
-	require.ErrorAs(t, err, &dependency)
-	assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	input := replaceCashStockMergerInput(f, merged.Transaction.ID, newID, "2026-06-01", "2026-06-05", 3, 2, 900, "3", 1)
+	preview, err := f.investmentService.PreviewCashStockMergerReplacement(ctx, input)
+	require.NoError(t, err)
+	input.GainImpactAcknowledgement = preview.Impact.GainImpact.Acknowledgement
+	_, err = f.investmentService.ReplaceCashStockMerger(ctx, input)
+	require.NoError(t, err)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A replacement with another election, cash, ratio and instrument restates

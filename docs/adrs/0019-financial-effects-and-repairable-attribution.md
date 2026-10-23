@@ -9,7 +9,8 @@ and [#391](https://github.com/sergeyfarin/rekenraam/issues/391) before implement
 #388/#389 now deliver optional payment-in-lieu attribution, audited repair
 and read-only warning visibility. Payment entitlement no longer gates entry,
 replacement or later position corrections; the global payment replay is gone.
-Cash-in-lieu parent guards remain for #392.
+#392 now validates all four cash-in-lieu parent families through actual
+disposal replay, retaining original provenance and advisory current context.
 
 The first [four-case comparative contract](../plans/financial-dependency-simplification-plan.md#four-case-contract-2026-10-23)
 now specifies nullable cash attribution, explicit clearing, audited net-zero
@@ -17,8 +18,8 @@ repair and warning versus unavailable/integrity outcomes. Its
 [source-pinned experiment](../reviews/financial-dependency-comparison-2026-10-23.md)
 supports relaxing the permanent cash-only and blanket parent fences while
 retaining real disposal admission. #388/#389 implement their targeted contract;
-#392 covers cash-in-lieu implementation and #393 cash-dividend/withholding
-attribution. The remaining #391 families, including #392/#393 delivery, stay open.
+#392 implements cash-in-lieu parent corrections; #393 still owns cash-dividend/
+withholding attribution. The remaining #391 family inventory stays open.
 
 Refines ADR 0013's cash/payment-in-lieu dependency policy and extends ADR 0017's
 separation of financial effects, owner attribution and provider evidence. ADR

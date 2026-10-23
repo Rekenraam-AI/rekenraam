@@ -17,10 +17,10 @@ const (
 	AttributionProviderMismatch   = "provider_attribution_mismatch"
 )
 
-// PaymentInLieuAttributionDiagnostic describes historical support for the
+// InvestmentAttributionDiagnostic describes historical support for the
 // owner's attribution. It does not verify the charged amount or authorize a
 // write. Structural damage belongs to the foundation/ledger checks.
-type PaymentInLieuAttributionDiagnostic struct {
+type InvestmentAttributionDiagnostic struct {
 	TransactionID  int64
 	Unavailable    bool
 	WarningReasons []string
@@ -33,29 +33,29 @@ type paymentInLieuAttributionRecord struct {
 	SourceMismatch bool
 }
 
-func (r *SelfCheckRepository) PaymentInLieuAttributions(ctx context.Context, snapshot *sql.Tx, bookID int64) ([]PaymentInLieuAttributionDiagnostic, error) {
+func (r *SelfCheckRepository) PaymentInLieuAttributions(ctx context.Context, snapshot *sql.Tx, bookID int64) ([]InvestmentAttributionDiagnostic, error) {
 	return paymentInLieuAttributions(ctx, snapshot, bookID, 0)
 }
 
 // PaymentInLieuAttribution uses the same evaluator as the whole-book check,
 // against a single read snapshot. Ordinary investment commands never call it.
-func (r *InvestmentRepository) PaymentInLieuAttribution(ctx context.Context, bookID, transactionID int64) (PaymentInLieuAttributionDiagnostic, error) {
+func (r *InvestmentRepository) PaymentInLieuAttribution(ctx context.Context, bookID, transactionID int64) (InvestmentAttributionDiagnostic, error) {
 	tx, err := r.database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
-		return PaymentInLieuAttributionDiagnostic{}, err
+		return InvestmentAttributionDiagnostic{}, err
 	}
 	defer rollbackTx(ctx, tx)
 	results, err := paymentInLieuAttributions(ctx, tx, bookID, transactionID)
 	if err != nil {
-		return PaymentInLieuAttributionDiagnostic{}, err
+		return InvestmentAttributionDiagnostic{}, err
 	}
 	if len(results) != 1 {
-		return PaymentInLieuAttributionDiagnostic{}, ErrNotFound
+		return InvestmentAttributionDiagnostic{}, ErrNotFound
 	}
 	return results[0], nil
 }
 
-func paymentInLieuAttributions(ctx context.Context, source queryer, bookID, transactionID int64) ([]PaymentInLieuAttributionDiagnostic, error) {
+func paymentInLieuAttributions(ctx context.Context, source queryer, bookID, transactionID int64) ([]InvestmentAttributionDiagnostic, error) {
 	rows, err := source.QueryContext(ctx, `SELECT v.transaction_id, o.event_date,
 		f.holding_account_id, f.commodity_id, f.ex_date,
 		EXISTS (SELECT 1 FROM investment_payment_in_lieu_ancestry ancestry
@@ -97,7 +97,7 @@ func paymentInLieuAttributions(ctx context.Context, source queryer, bookID, tran
 		return nil, err
 	}
 	if len(payments) == 0 {
-		return []PaymentInLieuAttributionDiagnostic{}, nil
+		return []InvestmentAttributionDiagnostic{}, nil
 	}
 	movements, err := EffectiveLotMovements(ctx, source, bookID, EffectiveMovementFilter{PositionSide: PositionSideShort})
 	if err != nil {
@@ -111,7 +111,7 @@ func paymentInLieuAttributions(ctx context.Context, source queryer, bookID, tran
 // separate: a positive group establishes support even if another is zero or
 // negative. No SQL coefficient sums, current-state shortcuts or savepoint
 // replay; the reader works on a query-only SQLite connection.
-func evaluatePaymentInLieuAttributions(payments []paymentInLieuAttributionRecord, movements []EffectiveLotMovement) []PaymentInLieuAttributionDiagnostic {
+func evaluatePaymentInLieuAttributions(payments []paymentInLieuAttributionRecord, movements []EffectiveLotMovement) []InvestmentAttributionDiagnostic {
 	order := make([]int, len(payments))
 	for i := range order {
 		order[i] = i
@@ -119,12 +119,12 @@ func evaluatePaymentInLieuAttributions(payments []paymentInLieuAttributionRecord
 	slices.SortFunc(order, func(a, b int) int { return cmp.Compare(payments[a].Fact.ExDate, payments[b].Fact.ExDate) })
 	type position struct{ account, commodity int64 }
 	quantities := map[position]map[int64]*exact.ScaledInt{}
-	results := make([]PaymentInLieuAttributionDiagnostic, len(payments))
+	results := make([]InvestmentAttributionDiagnostic, len(payments))
 	next := 0
 	for _, i := range order {
 		payment := payments[i]
 		fact := payment.Fact
-		result := PaymentInLieuAttributionDiagnostic{TransactionID: payment.TransactionID, WarningReasons: []string{}}
+		result := InvestmentAttributionDiagnostic{TransactionID: payment.TransactionID, WarningReasons: []string{}}
 		if payment.SourceMismatch {
 			result.WarningReasons = append(result.WarningReasons, AttributionProviderMismatch)
 		}

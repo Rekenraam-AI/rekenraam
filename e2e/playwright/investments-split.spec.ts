@@ -198,7 +198,7 @@ test('a journal-free split is inspected, corrected, settled and reversed by oper
   const posted = page.waitForResponse(r => r.url().endsWith('/api/v1/investments/cash-in-lieu') && r.request().method() === 'POST');
   await settlement.getByRole('button', { name: 'Record cash in lieu', exact: true }).click();
   await expect(settlement).toBeHidden();
-  await expect(active.getByRole('button', { name: 'Reverse split…' })).toBeDisabled();
+  await expect(active.getByRole('button', { name: 'Reverse split…' })).toBeEnabled();
   const cash = await (await posted).json();
   await page.goto(`/app/transactions?transaction_id=${cash.transaction.id}`);
   await page.getByRole('button', {name:'Correct cash in lieu',exact:true}).click();

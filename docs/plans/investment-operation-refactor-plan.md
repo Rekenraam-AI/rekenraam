@@ -711,8 +711,8 @@ correction, reversal and backdating; #176 provider import.
   entitlement rule; [delivery and measurements](../reviews/payment-attribution-repair-2026-10-23.md)
   follow the [historical #379 baseline](../reviews/payment-in-lieu-density-2026-10-23.md).
   The cross-family [dependency contract](financial-dependency-simplification-plan.md)
-  continues under #391; fractional-share cash in lieu (#392) and
-  dividend/withholding payer attribution (#393) remain separate deliveries.
+  continues under #391; #392 delivers fractional-share parent replay and
+  #393 retains dividend/withholding payer attribution.
 - **Classification.** Net worth and self-check classify a negative countable
   balance as a named short only up to the quantity of short lots open on that
   date in that account; any further negative quantity remains an
@@ -1016,7 +1016,8 @@ settles: a split, an exchange of either kind, or a spin-off.
 
 - **Representation.** `investment_cash_in_lieu_facts.settled_operation_id`
   (formerly `split_operation_id`) names that operation. The trigger requires
-  it to be effective at insert, and the disposal's holding and instrument to
+  a current parent for new entry; native correction retains the original
+  reference even after parent correction/reversal (#392). The disposal's holding and instrument must
   be the split's, or the destination holding and new instrument of the
   exchange or spin-off, on or after its effective date.
 - **Disposal.** The fraction is strictly less than one unit of the new
@@ -1026,9 +1027,12 @@ settles: a split, an exchange of either kind, or a spin-off.
   exactly the fractional new units with the ordinary sale legs. It is never a
   dividend.
 - **Correction.** The cash in lieu keeps its own reversal and replacement
-  (T-150); a replacement keeps the operation it settles. Correcting a split,
-  exchange or spin-off that an effective cash in lieu settles is refused
-  with the cash in lieu named, as for a split today.
+  (T-150); a replacement keeps its original source operation. Under #392,
+  all four parent families validate actual downstream disposal replay. A
+  still-valid disposal survives parent replacement/reversal; impossible
+  quantities or invalid elections name the downstream operation and refuse
+  atomically. Current parent ancestry is explanatory context, with advisory
+  warnings for reversed or mismatched terms.
 - **Limit.** A per-lot product the new instrument's quantity scale cannot
   represent still refuses the exchange. An issuer's decimal ratio always
   terminates, so a scale deep enough records it. A ratio such as 1/3 needs
@@ -1134,8 +1138,9 @@ records it as an explicit election. The app does not choose it.
   shows the restated result as replaced. Unchanged terms are refused, with
   equivalent ratios, elections and cash amounts counting as unchanged.
   Every fence of the exchange applies: already corrected, imported lineage,
-  a moved journal, and an effective cash in lieu that settles the merger,
-  which is named. The chain explains an effective merger: its dates,
+  a moved journal and actual impossible downstream operations. A settling
+  cash-in-lieu disposal uses replay and gain review (#392); parent standing
+  alone does not block correction. The chain explains an effective merger: its dates,
   holdings, cash account and currency, the cash, and each link's current
   realized basis (the decision's latest revision, allocation `n` being link
   `n`), carried basis and cash share, with per-currency totals and result.

@@ -66,6 +66,9 @@ The [diagnostic delivery evidence](reviews/payment-attribution-diagnostics-2026-
 records #389's first read-side boundary, retained controls and measurements.
 The [repair delivery evidence](reviews/payment-attribution-repair-2026-10-23.md)
 records #388's completed workflow and removal of the global write checks.
+The [cash-in-lieu delivery evidence](reviews/cash-in-lieu-parent-replay-2026-10-23.md)
+records #392's all-four-parent replay, retained financial controls and current
+provenance diagnostics. #393 and the wider #391/#390 inventory remain open.
 
 [ADR 0018](adrs/0018-personal-access-token-boundary.md) and the
 [personal-access-token contract](plans/personal-access-tokens-plan.md) define

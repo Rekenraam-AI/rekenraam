@@ -158,22 +158,20 @@ func TestCashInLieuRefusesDisposalBeforeItsSplit(t *testing.T) {
 	require.ErrorAs(t, err, &validation)
 }
 
-// Reversing the split it settles would leave the cash in lieu settling
-// nothing: the split correction is refused with the cash in lieu named.
-func TestSplitReversalRefusedWhileCashInLieuSettlesIt(t *testing.T) {
+// #392: the original three units still support a half-unit disposal.
+func TestSplitReversalKeepsValidCashInLieuAndRevisesItsBasis(t *testing.T) {
 	t.Parallel()
 	f, split := cashInLieuSetup(t)
 	ctx := context.Background()
 	cil, err := f.investmentService.CashInLieu(ctx, cashInLieuInput(f, split.Transaction.ID))
 	require.NoError(t, err)
-	before := f.transactionCount(t)
-	_, err = acknowledgedReverseSplit(ctx, f.investmentService, ReverseInvestmentSplitInput{
-		OwnerUserID: f.ownerUserID, TransactionID: split.Transaction.ID, Reason: "entered in error"})
-	require.ErrorIs(t, err, ErrInvestmentSplitDependency)
-	var dependency InvestmentSplitDependencyError
-	require.ErrorAs(t, err, &dependency)
-	assert.Equal(t, transferOperationID(t, f, cil.Transaction.ID), dependency.OperationID)
-	assert.Equal(t, before, f.transactionCount(t))
+	_, err = acknowledgedReverseSplit(ctx, f.investmentService, ReverseInvestmentSplitInput{OwnerUserID: f.ownerUserID, TransactionID: split.Transaction.ID, Reason: "Entered in error"})
+	require.NoError(t, err)
+	quantity, basis := openPositionBasis(t, f, f.holdingAccountID)
+	requireScaled(t, 25, 1, quantity, "3 original units less the half-share")
+	requireScaled(t, 2500, 2, basis, "30 less the revised disposal basis 5")
+	requireScaled(t, 500, 2, saleEffectiveBasis(t, f, cil.Transaction.ID), "original units set the half-share basis")
+	require.Equal(t, int64(-2200), accountBalance(t, f, f.cashAccountID))
 }
 
 func TestCashInLieuOfReversedSplitIsRefused(t *testing.T) {

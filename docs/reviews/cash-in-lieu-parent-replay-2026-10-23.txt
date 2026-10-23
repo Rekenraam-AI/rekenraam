@@ -1,0 +1,70 @@
+#392 cash-in-lieu parent replay — 2026-10-23
+Native SQLite; sequential resource runs after backend/browser/build gates.
+
+Commands:
+./scripts/measure-large-book.sh
+REKENRAAM_PIL_DENSITIES=0,10,100 REKENRAAM_PIL_REPEATS=3 ./scripts/measure-payment-in-lieu-density.sh
+
+250k-posting resource gate
+=== RUN   TestLargeBookExportAndSelfCheckStayBounded
+=== PAUSE TestLargeBookExportAndSelfCheckStayBounded
+=== CONT  TestLargeBookExportAndSelfCheckStayBounded
+    large_book_test.go:245: bundle export: wall=11.677s allocated=433MiB peak-heap=20MiB
+    large_book_test.go:277: self-check: wall=12.367s allocated=137MiB peak-heap=39MiB
+--- PASS: TestLargeBookExportAndSelfCheckStayBounded (39.05s)
+PASS
+ok  	rekenraam/backend/internal/app	39.064s
+
+Bounded unchanged admission regression
+=== RUN   TestPaymentInLieuAdmissionCostByDensity
+=== RUN   TestPaymentInLieuAdmissionCostByDensity/unrelated/0
+    payment_in_lieu_density_test.go:332: BUILD shape=unrelated payments=0 wall=581ms last_payment_writes=[]
+    payment_in_lieu_density_test.go:363: RESULT shape=unrelated payments=0 op=short_replacement_preview runs=3 wall_min=14.35ms wall_median=16.03ms wall_max=16.38ms alloc_mean_KiB=270 writer_wait_max=12.63ms
+    payment_in_lieu_density_test.go:364: RESULT shape=unrelated payments=0 op=short_replacement runs=3 wall_min=19.29ms wall_median=21.16ms wall_max=22.29ms alloc_mean_KiB=255 writer_wait_max=17.18ms
+    payment_in_lieu_density_test.go:387: RESULT shape=unrelated payments=0 op=unrelated_short_sale_preview runs=3 wall_min=7.36ms wall_median=7.6ms wall_max=8.2ms alloc_mean_KiB=112 writer_wait_max=6.62ms
+    payment_in_lieu_density_test.go:388: RESULT shape=unrelated payments=0 op=unrelated_short_sale runs=3 wall_min=12.52ms wall_median=12.76ms wall_max=13.74ms alloc_mean_KiB=122 writer_wait_max=11.68ms
+    payment_in_lieu_density_test.go:412: RESULT shape=unrelated payments=0 op=short_reversal_preview runs=3 wall_min=8.89ms wall_median=9.77ms wall_max=9.97ms alloc_mean_KiB=148 writer_wait_max=7.77ms
+    payment_in_lieu_density_test.go:413: RESULT shape=unrelated payments=0 op=short_reversal runs=3 wall_min=13.8ms wall_median=14.33ms wall_max=14.36ms alloc_mean_KiB=158 writer_wait_max=12.04ms
+=== RUN   TestPaymentInLieuAdmissionCostByDensity/unrelated/10
+    payment_in_lieu_density_test.go:332: BUILD shape=unrelated payments=10 wall=488ms last_payment_writes=[9.2228ms 9.358541ms 14.125878ms 8.702635ms 8.414612ms]
+    payment_in_lieu_density_test.go:363: RESULT shape=unrelated payments=10 op=short_replacement_preview runs=3 wall_min=14.67ms wall_median=15.57ms wall_max=15.87ms alloc_mean_KiB=241 writer_wait_max=12.46ms
+    payment_in_lieu_density_test.go:364: RESULT shape=unrelated payments=10 op=short_replacement runs=3 wall_min=19.33ms wall_median=19.78ms wall_max=21.33ms alloc_mean_KiB=253 writer_wait_max=17.67ms
+    payment_in_lieu_density_test.go:387: RESULT shape=unrelated payments=10 op=unrelated_short_sale_preview runs=3 wall_min=8ms wall_median=8.05ms wall_max=8.06ms alloc_mean_KiB=122 writer_wait_max=6.51ms
+    payment_in_lieu_density_test.go:388: RESULT shape=unrelated payments=10 op=unrelated_short_sale runs=3 wall_min=14.22ms wall_median=14.33ms wall_max=14.65ms alloc_mean_KiB=131 writer_wait_max=12.52ms
+    payment_in_lieu_density_test.go:412: RESULT shape=unrelated payments=10 op=short_reversal_preview runs=3 wall_min=8.82ms wall_median=9.32ms wall_max=10.14ms alloc_mean_KiB=161 writer_wait_max=7.73ms
+    payment_in_lieu_density_test.go:413: RESULT shape=unrelated payments=10 op=short_reversal runs=3 wall_min=14.06ms wall_median=14.92ms wall_max=15.94ms alloc_mean_KiB=170 writer_wait_max=13.1ms
+=== RUN   TestPaymentInLieuAdmissionCostByDensity/unrelated/100
+    payment_in_lieu_density_test.go:332: BUILD shape=unrelated payments=100 wall=3.458s last_payment_writes=[13.341529ms 8.2235ms 8.970078ms 9.15861ms 9.16944ms]
+    payment_in_lieu_density_test.go:363: RESULT shape=unrelated payments=100 op=short_replacement_preview runs=3 wall_min=16.77ms wall_median=18.45ms wall_max=19.27ms alloc_mean_KiB=322 writer_wait_max=16.06ms
+    payment_in_lieu_density_test.go:364: RESULT shape=unrelated payments=100 op=short_replacement runs=3 wall_min=22.87ms wall_median=23.63ms wall_max=24.81ms alloc_mean_KiB=335 writer_wait_max=20.78ms
+    payment_in_lieu_density_test.go:387: RESULT shape=unrelated payments=100 op=unrelated_short_sale_preview runs=3 wall_min=9.57ms wall_median=9.91ms wall_max=13.18ms alloc_mean_KiB=190 writer_wait_max=11.31ms
+    payment_in_lieu_density_test.go:388: RESULT shape=unrelated payments=100 op=unrelated_short_sale runs=3 wall_min=14.72ms wall_median=15.07ms wall_max=17ms alloc_mean_KiB=200 writer_wait_max=14.77ms
+    payment_in_lieu_density_test.go:412: RESULT shape=unrelated payments=100 op=short_reversal_preview runs=3 wall_min=10.9ms wall_median=12.19ms wall_max=15.31ms alloc_mean_KiB=251 writer_wait_max=11.82ms
+    payment_in_lieu_density_test.go:413: RESULT shape=unrelated payments=100 op=short_reversal runs=3 wall_min=18.1ms wall_median=21.78ms wall_max=22.26ms alloc_mean_KiB=259 writer_wait_max=19.32ms
+=== RUN   TestPaymentInLieuAdmissionCostByDensity/concentrated/0
+    payment_in_lieu_density_test.go:332: BUILD shape=concentrated payments=0 wall=120ms last_payment_writes=[]
+    payment_in_lieu_density_test.go:363: RESULT shape=concentrated payments=0 op=short_replacement_preview runs=3 wall_min=14.55ms wall_median=16.19ms wall_max=16.81ms alloc_mean_KiB=233 writer_wait_max=13.53ms
+    payment_in_lieu_density_test.go:364: RESULT shape=concentrated payments=0 op=short_replacement runs=3 wall_min=19.51ms wall_median=21.01ms wall_max=22.19ms alloc_mean_KiB=244 writer_wait_max=17.96ms
+    payment_in_lieu_density_test.go:387: RESULT shape=concentrated payments=0 op=unrelated_short_sale_preview runs=3 wall_min=8.09ms wall_median=8.6ms wall_max=9.22ms alloc_mean_KiB=111 writer_wait_max=7.57ms
+    payment_in_lieu_density_test.go:388: RESULT shape=concentrated payments=0 op=unrelated_short_sale runs=3 wall_min=14.79ms wall_median=14.81ms wall_max=17.96ms alloc_mean_KiB=121 writer_wait_max=15.12ms
+    payment_in_lieu_density_test.go:412: RESULT shape=concentrated payments=0 op=short_reversal_preview runs=3 wall_min=9.36ms wall_median=10.3ms wall_max=10.63ms alloc_mean_KiB=149 writer_wait_max=8.36ms
+    payment_in_lieu_density_test.go:413: RESULT shape=concentrated payments=0 op=short_reversal runs=3 wall_min=14.71ms wall_median=15.51ms wall_max=16.31ms alloc_mean_KiB=158 writer_wait_max=13.7ms
+=== RUN   TestPaymentInLieuAdmissionCostByDensity/concentrated/10
+    payment_in_lieu_density_test.go:332: BUILD shape=concentrated payments=10 wall=379ms last_payment_writes=[9.000587ms 9.115909ms 9.104998ms 15.427869ms 7.625634ms]
+    payment_in_lieu_density_test.go:363: RESULT shape=concentrated payments=10 op=short_replacement_preview runs=3 wall_min=14.37ms wall_median=14.59ms wall_max=15.37ms alloc_mean_KiB=236 writer_wait_max=11.75ms
+    payment_in_lieu_density_test.go:364: RESULT shape=concentrated payments=10 op=short_replacement runs=3 wall_min=19.62ms wall_median=19.89ms wall_max=22.27ms alloc_mean_KiB=248 writer_wait_max=18.26ms
+    payment_in_lieu_density_test.go:387: RESULT shape=concentrated payments=10 op=unrelated_short_sale_preview runs=3 wall_min=7.86ms wall_median=7.97ms wall_max=8.42ms alloc_mean_KiB=114 writer_wait_max=7.11ms
+    payment_in_lieu_density_test.go:388: RESULT shape=concentrated payments=10 op=unrelated_short_sale runs=3 wall_min=12.77ms wall_median=12.85ms wall_max=14.04ms alloc_mean_KiB=124 writer_wait_max=11.93ms
+    payment_in_lieu_density_test.go:412: RESULT shape=concentrated payments=10 op=short_reversal_preview runs=3 wall_min=8.93ms wall_median=9.1ms wall_max=9.19ms alloc_mean_KiB=155 writer_wait_max=7.28ms
+    payment_in_lieu_density_test.go:413: RESULT shape=concentrated payments=10 op=short_reversal runs=3 wall_min=13.9ms wall_median=14.25ms wall_max=14.62ms alloc_mean_KiB=165 writer_wait_max=11.92ms
+=== RUN   TestPaymentInLieuAdmissionCostByDensity/concentrated/100
+    payment_in_lieu_density_test.go:332: BUILD shape=concentrated payments=100 wall=2.444s last_payment_writes=[9.304271ms 9.589213ms 9.188749ms 8.37891ms 8.196219ms]
+    payment_in_lieu_density_test.go:363: RESULT shape=concentrated payments=100 op=short_replacement_preview runs=3 wall_min=15.53ms wall_median=15.91ms wall_max=16.83ms alloc_mean_KiB=271 writer_wait_max=13.41ms
+    payment_in_lieu_density_test.go:364: RESULT shape=concentrated payments=100 op=short_replacement runs=3 wall_min=21.57ms wall_median=22.04ms wall_max=22.44ms alloc_mean_KiB=283 writer_wait_max=18.27ms
+    payment_in_lieu_density_test.go:387: RESULT shape=concentrated payments=100 op=unrelated_short_sale_preview runs=3 wall_min=8.41ms wall_median=8.73ms wall_max=9.19ms alloc_mean_KiB=136 writer_wait_max=7.6ms
+    payment_in_lieu_density_test.go:388: RESULT shape=concentrated payments=100 op=unrelated_short_sale runs=3 wall_min=13.57ms wall_median=14.68ms wall_max=14.79ms alloc_mean_KiB=147 writer_wait_max=12.47ms
+    payment_in_lieu_density_test.go:412: RESULT shape=concentrated payments=100 op=short_reversal_preview runs=3 wall_min=10.13ms wall_median=11.43ms wall_max=11.88ms alloc_mean_KiB=186 writer_wait_max=9.91ms
+    payment_in_lieu_density_test.go:413: RESULT shape=concentrated payments=100 op=short_reversal runs=3 wall_min=15.44ms wall_median=16.21ms wall_max=16.55ms alloc_mean_KiB=196 writer_wait_max=13.9ms
+--- PASS: TestPaymentInLieuAdmissionCostByDensity (15.07s)
+PASS
+ok  	rekenraam/backend/internal/app	15.085s

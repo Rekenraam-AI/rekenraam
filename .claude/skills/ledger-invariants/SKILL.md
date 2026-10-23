@@ -214,6 +214,12 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   still retires the source, and every nonzero inverse remains journal-linked.
   Cash-in-lieu and import identities pin the split operation without inventing
   a primary transaction.
+  #392 keeps that original parent as provenance across all four corporate-action
+  families. Validate corrections through actual disposal replay, gain review and
+  checkpoint commitments; parent standing alone never vetoes them. New entry
+  requires a current matching parent; existing correction retains its original
+  reference. Current ancestry/mismatch is read-only attribution; missing/broken
+  facts remain integrity failures. Never drop quantity or specific-lot guards.
   Return-of-capital cash/entitlement stay exact; unknown reduction and excess
   remain NULL. Known explicit entitlement beside independent unknown lots is
   supported; an established unknown average pool never supplies a known rate

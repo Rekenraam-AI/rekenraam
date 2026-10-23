@@ -438,6 +438,14 @@ no supported installed database exists. Export columns are unchanged.
 
 ## Cash In Lieu Completion Refinement (2026-10-07, T-150)
 
+**Refined by ADR 0019 and #392 (2026-10-23):** the original parent reference
+remains immutable provenance. All four parent families now use actual disposal
+replay rather than the blanket parent-effectiveness fence described below.
+Valid disposals survive parent corrections/reversals, with gain/checkpoint
+review and current explanatory attribution warnings. Genuine quantity and
+election dependencies still refuse atomically. See the
+[delivery evidence](../reviews/cash-in-lieu-parent-replay-2026-10-23.md).
+
 Cash-in-lieu reversal and replacement reuse native long-disposal corrections.
 Replacement retains the original split link and its correction-root same-day
 slot; it may change fraction, proceeds, dates and election. The split's holding

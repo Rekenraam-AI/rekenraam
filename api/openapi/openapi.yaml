@@ -1452,6 +1452,8 @@ components:
       $ref: "./components/schemas/investments.yaml#/InvestmentCorrectionSplitTerms"
     InvestmentCorrectionDividendTerms:
       $ref: "./components/schemas/investments.yaml#/InvestmentCorrectionDividendTerms"
+    InvestmentAttributionDiagnostic:
+      $ref: "./components/schemas/investments.yaml#/InvestmentAttributionDiagnostic"
     InvestmentCorrectionPaymentInLieuTerms:
       $ref: "./components/schemas/investments.yaml#/InvestmentCorrectionPaymentInLieuTerms"
     InvestmentCorrectionReinvestmentTerms:

@@ -195,6 +195,14 @@ func TestJournalFreeSplitOperationCashInLieuAPI(t *testing.T) {
 	cash := cashInLieuRequest{SettledOperationID: split.OperationID, DisposalOn: "2026-03-01", PaymentOn: "2026-03-05", QuantityValue: "5", QuantityScale: 1, CashAccountID: f.cashAccount.ID, CurrencyID: f.commodityID, ProceedsValue: 800, ProceedsScale: 2}
 	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, "/api/v1/investments/cash-in-lieu/preview", cash, http.StatusOK)
 	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/cash-in-lieu", cash, http.StatusCreated)
-	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, path+"/reverse-split/reconciliation-impact", investmentSaleReversalRequest{Reason: "wrong action"}, http.StatusConflict)
-	require.Contains(t, res.Body.String(), "INVESTMENT_SPLIT_DEPENDENCY")
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, path+"/reverse-split/reconciliation-impact", investmentSaleReversalRequest{Reason: "wrong action"}, http.StatusOK)
+	var impact reconciliationImpactResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&impact))
+	require.NotNil(t, impact.GainImpact)
+	require.Len(t, impact.GainImpact.Changes, 1)
+	require.Equal(t, "cash_in_lieu", impact.GainImpact.Changes[0].OperationKind)
+	require.NotEmpty(t, impact.GainImpact.Acknowledgement)
+	// Actual original units support the fraction; commit requires the reviewed gain.
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, path+"/reverse-split", investmentSaleReversalRequest{Reason: "wrong action"}, http.StatusConflict)
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, path+"/reverse-split", investmentSaleReversalRequest{Reason: "wrong action", GainImpactAcknowledgement: impact.GainImpact.Acknowledgement}, http.StatusCreated)
 }

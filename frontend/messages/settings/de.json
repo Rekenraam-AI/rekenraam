@@ -1283,7 +1283,7 @@
   "investments_split_open_journal": "Transaktion öffnen",
   "investments_split_corrects": "Korrigiert Split #{id}",
   "investments_split_successor": "Ersetzt oder storniert durch Eintrag #{id}",
-  "investments_split_settled_hint": "Korrigieren oder stornieren Sie den Spitzenausgleich, bevor Sie diesen Split ändern.",
+  "investments_split_settled_hint": "Für diesen Split ist eine Bruchstückabgeltung erfasst. Korrekturen prüfen den Verkauf und zeigen Gewinnänderungen an.",
   "investments_split_help": "Jedes am Stichtag gehaltene Lot wird mit dem Verhältnis multipliziert. Jedes Lot behält seine gesamten Anschaffungskosten; es wird weder Geld noch ein Ergebnis gebucht.",
   "investments_split_holding": "Bestand",
   "investments_split_select_holding": "Bestand auswählen",
@@ -1712,8 +1712,8 @@
   "settings_data_selfcheck_warning": "{count} Prüfungen enthalten Zuordnungswarnungen.",
   "settings_data_selfcheck_warnings": "{count} Zuordnungswarnungen.",
   "settings_data_selfcheck_historical": "Gespeichertes Ergebnis; nach Korrekturen erneut prüfen.",
-  "settings_data_selfcheck_attribution_title": "Zuordnung der Dividendenersatzzahlung",
-  "settings_data_selfcheck_attribution_explanation": "Prüft effektive Short-Mengen vor dem Ex-Tag, getrennt nach Anschaffungswährung. Geprüft wird die historische Grundlage, nicht der belastete Betrag.",
+  "settings_data_selfcheck_attribution_title": "Zuordnung von Anlagen",
+  "settings_data_selfcheck_attribution_explanation": "Prüft historische Shortbestände für Ausgleichszahlungen und die aktuelle zugeordnete Kapitalmaßnahme bei Bruchstückverkäufen. Die finanzielle Gültigkeit wird getrennt geprüft.",
   "settings_data_selfcheck_attribution_next": "Öffnen Sie die Zahlung und vergleichen Sie die Zuordnung mit der Brokerabrechnung. Die Prüfung ändert weder Geldbeträge noch Quelldaten.",
   "investments_attribution_no_short": "Zum Handelsschluss vor dem Ex-Tag stützen keine Short-Mengen diese Zuordnung.",
   "investments_attribution_ex_date_after_payment": "Der Ex-Tag liegt nach dem erfassten Zahlungstag.",
@@ -1724,5 +1724,8 @@
   "investments_attribution_unassigned": "Nicht zugeordnet",
   "investments_attribution_repair_hint": "Lassen Sie unbekannte Angaben leer. Wenn Sie nur diese Angaben ändern, bleibt der erfasste Geldbetrag unverändert und das Original im Verlauf erhalten.",
   "investments_attribution_provider_mismatch": "Diese Angaben weichen von den verknüpften Anbieterdaten ab. Die ursprünglichen Quelldaten bleiben erhalten.",
-  "investments_payment_in_lieu_correction_reason": "Grund der Korrektur"
+  "investments_payment_in_lieu_correction_reason": "Grund der Korrektur",
+  "investments_attribution_cash_parent_unresolved": "Die ursprüngliche Kapitalmaßnahme wurde storniert. Der Verkauf bleibt erfasst; seine finanzielle Gültigkeit wird getrennt geprüft.",
+  "investments_attribution_cash_parent_mismatch": "Die aktuelle Kapitalmaßnahme passt nicht mehr zu Konto, Wertpapier oder Datum dieses Verkaufs. Der ursprüngliche Verweis bleibt erhalten.",
+  "investments_cash_in_lieu_current_parent": "Aktuelle Maßnahme Nr. {id}"
 }

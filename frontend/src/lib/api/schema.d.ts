@@ -17763,7 +17763,7 @@ export interface paths {
         };
         /**
          * Read lots available at a cash-in-lieu disposal slot
-         * @description Composed dated lot quantities for specific-lot entry. With replacing_transaction_id, exclude that cash in lieu and retain its correction-root slot. This is a read-only rolled-back replay, never an authorization for a later write.
+         * @description Composed dated lot quantities for specific-lot entry. With replacing_transaction_id, exclude that cash in lieu and retain its correction-root slot, even after its original parent was corrected or reversed. This is a read-only rolled-back replay, never an authorization for a later write.
          */
         get: {
             parameters: {
@@ -18033,7 +18033,7 @@ export interface paths {
         put?: never;
         /**
          * Correct a cash in lieu
-         * @description Runs the native disposal replacement, retaining the same settlement link and correction-root slot. Fraction, proceeds, dates and election may change. Original facts remain evidence. Split linkage, replay, checkpoint impact and gain acknowledgement are validated atomically. The preview rolls back and returns the corrected allocation, disposed basis and realized result.
+         * @description Runs the native disposal replacement, retaining the same settlement link and correction-root slot. Fraction, proceeds, dates and election may change. Original facts remain evidence even after a parent correction or reversal. Original reference integrity, actual disposal replay, checkpoint impact and gain acknowledgement are validated atomically. The preview rolls back and returns the corrected allocation, disposed basis and realized result.
          */
         post: {
             parameters: {
@@ -20428,7 +20428,7 @@ export interface paths {
         put?: never;
         /**
          * Reverse a posted cash-and-stock merger
-         * @description Posts the exact inverse of the whole merger journal (the security legs on the effective date, the cash leg on the payable date), removes the merger and its cash decision from effective history and replays the old holding (whose lots return with their basis) and then the new one (which loses the lots the merger opened), in one audited database transaction (#184). The original merger stays posted history. A later sale or onward transfer of the removed new units, or an effective cash in lieu settling the merger, refuses with INVESTMENT_TRANSFER_DEPENDENCY naming it, and nothing is written. The removed cash result counts as a gain change: a non-empty gain change set requires the preview's exact gain_impact_acknowledgement.
+         * @description Posts the exact inverse of the whole merger journal (the security legs on the effective date, the cash leg on the payable date), removes the merger and its cash decision from effective history and replays the old holding (whose lots return with their basis) and then the new one (which loses the lots the merger opened), in one audited database transaction (#184). The original merger stays posted history. An impossible later sale, transfer or cash-in-lieu disposal refuses with INVESTMENT_TRANSFER_DEPENDENCY naming the affected operation, with nothing written. A valid disposal retains its original parent provenance and gains are reviewed; a reversed parent alone is an advisory attribution warning. The removed cash result counts as a gain change: a non-empty gain change set requires the preview's exact gain_impact_acknowledgement.
          */
         post: {
             parameters: {
@@ -20603,7 +20603,7 @@ export interface paths {
         put?: never;
         /**
          * Correct a posted cash-and-stock merger
-         * @description Posts the exact inverse of the whole merger journal (security legs and cash leg) and a replacement merger with corrected terms (dates, ratio, election, cash, new instrument, receiving holding or evidence) for the same merged holding and old instrument, in one audited database transaction (#184). The replacement takes the replaced merger's correction-root same-day slot and realizes and takes every lot open there; the old and every new holding replay, so later decisions are revised or named. Unchanged terms are refused; omitted evidence keeps the recorded evidence. The merger's own cash result counts as a gain change: a non-empty gain change set requires the preview's exact gain_impact_acknowledgement. An effective cash in lieu settling the merger refuses with INVESTMENT_TRANSFER_DEPENDENCY naming it.
+         * @description Posts the exact inverse of the whole merger journal (security legs and cash leg) and a replacement merger with corrected terms (dates, ratio, election, cash, new instrument, receiving holding or evidence) for the same merged holding and old instrument, in one audited database transaction (#184). The replacement takes the replaced merger's correction-root same-day slot and realizes and takes every lot open there; the old and every new holding replay, so later decisions are revised or named. Unchanged terms are refused; omitted evidence keeps the recorded evidence. The merger's own cash result counts as a gain change: a non-empty gain change set requires the preview's exact gain_impact_acknowledgement. A settling cash-in-lieu disposal is replayed; an impossible quantity or election refuses with INVESTMENT_TRANSFER_DEPENDENCY naming the affected operation.
          */
         post: {
             parameters: {
@@ -27185,7 +27185,7 @@ export interface paths {
         };
         /**
          * Read lots available at a cash-in-lieu disposal slot
-         * @description Composed dated lot quantities for specific-lot entry. With replacing_transaction_id, exclude that cash in lieu and retain its correction-root slot. This is a read-only rolled-back replay, never an authorization for a later write.
+         * @description Composed dated lot quantities for specific-lot entry. With replacing_transaction_id, exclude that cash in lieu and retain its correction-root slot, even after its original parent was corrected or reversed. This is a read-only rolled-back replay, never an authorization for a later write.
          */
         get: {
             parameters: {
@@ -28785,7 +28785,7 @@ export interface components {
                 /** Format: int64 */
                 transaction_id: number;
                 /** @enum {string} */
-                reason: "no_short_at_entitlement_close" | "ex_date_after_payment" | "provider_attribution_mismatch";
+                reason: "no_short_at_entitlement_close" | "ex_date_after_payment" | "provider_attribution_mismatch" | "cash_in_lieu_parent_unresolved" | "cash_in_lieu_parent_mismatch";
             }[];
             summary: string;
             /** @description What this check verifies and why it matters. */
@@ -32289,16 +32289,17 @@ export interface components {
             /** Format: int64 */
             payee_id?: number;
         };
+        /** @description Read-only historical support using the same evaluator as investment_attribution. Never authorizes a write or verifies the amount. */
+        InvestmentAttributionDiagnostic: {
+            /** @description Missing context is disclosed even alongside a chronology warning. */
+            unavailable: boolean;
+            /** @enum {string} */
+            status: "passed" | "warning" | "incomplete";
+            reasons: ("no_short_at_entitlement_close" | "ex_date_after_payment" | "provider_attribution_mismatch" | "cash_in_lieu_parent_unresolved" | "cash_in_lieu_parent_mismatch")[];
+        };
         /** @description The effective payment in lieu's posted facts, for pre-filling a replacement. Attribution is nullable and repairable; payment date, cash account and currency remain fixed. */
         InvestmentCorrectionPaymentInLieuTerms: {
-            /** @description Read-only historical support using the same evaluator as investment_attribution. Never authorizes a write or verifies the amount. */
-            attribution: {
-                /** @description Missing context is disclosed even alongside a chronology warning. */
-                unavailable: boolean;
-                /** @enum {string} */
-                status: "passed" | "warning" | "incomplete";
-                reasons: ("no_short_at_entitlement_close" | "ex_date_after_payment" | "provider_attribution_mismatch")[];
-            };
+            attribution: components["schemas"]["InvestmentAttributionDiagnostic"];
             /** Format: int64 */
             holding_account_id: number | null;
             /** Format: int64 */
@@ -32606,6 +32607,7 @@ export interface components {
             /** @description Whether the effective posted split can be reversed or replaced (T-129). Dependent replay may still refuse the command. */
             can_correct_split: boolean;
             effective_split?: components["schemas"]["InvestmentCorrectionSplitTerms"];
+            cash_in_lieu_attribution?: components["schemas"]["InvestmentAttributionDiagnostic"];
             /** @description Effective cash in lieu may attempt native reversal or replacement; dependent replay remains guarded. */
             can_correct_cash_in_lieu: boolean;
             /** @description The effective operation is a named short sale that may be reversed or replaced (#175). */
@@ -32656,6 +32658,16 @@ export interface components {
         };
         /** @description Immutable buy or sale source facts for pre-filling a full replacement. The write command rechecks eligibility. */
         InvestmentTradeCorrectionContextResponse: {
+            /**
+             * Format: int64
+             * @description Current replacement descendant of the original parent; absent after reversal. Advisory context only.
+             */
+            effective_settled_operation_id?: number;
+            /**
+             * Format: int64
+             * @description Optional primary transaction of the current parent descendant.
+             */
+            effective_settled_transaction_id?: number;
             /**
              * Format: int64
              * @description Immutable settled operation identity for a cash in lieu.

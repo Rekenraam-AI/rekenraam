@@ -85,7 +85,7 @@ SelfCheckResult:
             format: int64
           reason:
             type: string
-            enum: [no_short_at_entitlement_close, ex_date_after_payment, provider_attribution_mismatch]
+            enum: [no_short_at_entitlement_close, ex_date_after_payment, provider_attribution_mismatch, cash_in_lieu_parent_unresolved, cash_in_lieu_parent_mismatch]
     summary:
       type: string
     explanation:

@@ -2,6 +2,8 @@ import { expect, test, type Page } from './support/fixtures';
 import { apiJSON } from './support/api';
 import { readyForLedger, ensureCurrency } from './support/ledger';
 import { todayISO } from './support/dates';
+import { expectNoAccessibilityViolations } from './support/a11y';
+import { readFileSync } from 'node:fs';
 
 test.use({ viewport: { width: 390, height: 844 } });
 function ago(days:number) { const date=new Date();date.setDate(date.getDate()-days);return todayISO(date); }
@@ -32,7 +34,7 @@ async function entry(page:Page,p:Awaited<ReturnType<typeof setup>>,days=30) {
   return form;
 }
 
-test('mobile cash in lieu is entered with specific lots, corrected, reversed, and releases its split',async({page})=>{
+test('mobile cash in lieu is entered with specific lots, corrected, reversed, and previews a valid parent reversal',async({page})=>{
   const p=await setup(page);
   const form=await entry(page,p);
   await form.getByLabel('Cost-basis method').selectOption('specific_lot');
@@ -63,7 +65,7 @@ test('mobile cash in lieu is entered with specific lots, corrected, reversed, an
   await page.getByRole('button',{name:'Reverse split…',exact:true}).click();
   await page.getByLabel('Reason for reversal').fill('withdraw split');
   await page.getByRole('button',{name:'Review and reverse'}).click();
-  await expect(page.getByRole('alertdialog')).toContainText('later');
+  await expect(page.getByRole('alertdialog').getByRole('button',{name:'Accept changed gains'})).toBeVisible();
   await page.keyboard.press('Escape');
   await page.goto(`/app/transactions?transaction_id=${replacement.replacement.transaction.id}`);
   await page.getByRole('button',{name:'Reverse cash in lieu…',exact:true}).click();
@@ -143,3 +145,58 @@ test('a specific-lot cash-in-lieu correction changes currency without hidden old
     await detail.getByRole('button',{name:'Close lot detail'}).click();
   }
 });
+
+for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
+  test(`cash-in-lieu parent lineage, warning and correction remain usable in ${locale}`, async ({ page }) => {
+    const p = await setup(page);
+    const copy = JSON.parse(readFileSync(new URL(`../../frontend/messages/settings/${locale}.json`, import.meta.url), 'utf8')) as Record<string, string>;
+    const cash = await apiJSON<{transaction:{id:number}}>(page,'POST','/api/v1/investments/cash-in-lieu',p.csrfToken,{
+      settled_transaction_id:p.splitID,disposal_on:ago(30),payment_on:ago(25),quantity_value:'5',quantity_scale:1,
+      cash_account_id:p.cash.id,currency_id:p.currencyID,proceeds_value:'800',proceeds_scale:2,cost_basis_method:'fifo'
+    });
+    // The split-activity surface must not disable a financially valid correction.
+    await page.evaluate(value => localStorage.setItem('PARAGLIDE_LOCALE',value),locale);
+    // Read the source operation through the existing correction-root identity.
+    const root = await apiJSON<{root_operation_id:number}>(page,'GET',`/api/v1/investments/transactions/${p.splitID}/correction-chain`);
+    await page.goto(`/app/investments?tab=splits&split_operation_id=${root.root_operation_id}`);
+    await expect(page.getByRole('button',{name:copy.transactions_investment_replace_split_action,exact:true})).toBeEnabled();
+    await expect(page.getByText(copy.investments_split_settled_hint,{exact:true})).toBeVisible();
+    const replacePath=`/api/v1/investments/transactions/${p.splitID}/replace-split`;
+    const payload={reason:'Issuer ratio correction',effective_on:ago(30),ratio_numerator:5,ratio_denominator:2};
+    const preview=await apiJSON<{impact:{gain_impact:{acknowledgement:string}}}>(page,'POST',`${replacePath}/preview`,p.csrfToken,payload);
+    const replaced=await apiJSON<{replacement:{id:number};operation_id:number}>(page,'POST',replacePath,p.csrfToken,{...payload,gain_impact_acknowledgement:preview.impact.gain_impact.acknowledgement});
+    const context=await apiJSON<{settled_operation_id:number;effective_settled_operation_id:number}>(page,'GET',`/api/v1/investments/transactions/${cash.transaction.id}/trade-correction-context`);
+    expect(context.settled_operation_id).toBe(root.root_operation_id);
+    expect(context.effective_settled_operation_id).toBe(replaced.operation_id);
+    await page.goto(`/app/transactions?transaction_id=${cash.transaction.id}`);
+    await page.getByRole('button',{name:copy.investments_cash_in_lieu_correct,exact:true}).click();
+    const form=page.getByRole('dialog',{name:copy.investments_cash_in_lieu_correct,exact:true});
+    await expect(form.getByRole('link',{name:copy.investments_cash_in_lieu_current_parent.replace('{id}',String(replaced.operation_id))})).toHaveAttribute('href',`/app/transactions?transaction_id=${replaced.replacement.id}`);
+    await page.keyboard.press('Escape');
+    const reversePath=`/api/v1/investments/transactions/${replaced.replacement.id}/reverse-split`;
+    const reverse=await apiJSON<{gain_impact:{acknowledgement:string}}>(page,'POST',`${reversePath}/reconciliation-impact`,p.csrfToken,{reason:'Withdraw action'});
+    await apiJSON(page,'POST',reversePath,p.csrfToken,{reason:'Withdraw action',gain_impact_acknowledgement:reverse.gain_impact.acknowledgement});
+    await page.goto(`/app/transactions?transaction_id=${cash.transaction.id}`);
+    await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText(copy.investments_attribution_cash_parent_unresolved);
+    await expectNoAccessibilityViolations(page,'cash-in-lieu parent diagnostic');
+    await page.getByRole('button',{name:copy.investments_cash_in_lieu_correct,exact:true}).click();
+    const repair=page.getByRole('dialog',{name:copy.investments_cash_in_lieu_correct,exact:true});
+    await repair.locator('#cil-method').selectOption('specific_lot');
+    await expect(repair.locator('input[id^="cil-lot-"]')).toHaveCount(1);
+    await repair.locator('input[id^="cil-lot-"]').fill(new Intl.NumberFormat(locale).format(0.5));
+    // Exact parsing respects the locale; the unchanged fraction remains optional to edit.
+    await repair.getByLabel(copy.transactions_investment_replace_reason,{exact:true}).fill('Correct recorded proceeds');
+    await repair.locator('#cil-proceeds').fill(new Intl.NumberFormat(locale,{minimumFractionDigits:2}).format(8.5));
+    await repair.getByRole('button',{name:copy.investments_cash_in_lieu_preview,exact:true}).click();
+    const saved=page.waitForResponse(response=>response.url().endsWith('/replace-cash-in-lieu')&&response.request().method()==='POST');
+    await repair.getByRole('button',{name:copy.investments_cash_in_lieu_correct_submit,exact:true}).click();
+    await page.getByRole('alertdialog').getByRole('button',{name:copy.investments_gain_impact_confirm,exact:true}).click();
+    const corrected=await(await saved).json() as {replacement:{transaction:{id:number}}};
+    await expect(page.locator('aside[aria-label]')).toBeHidden();
+    await page.goto(`/app/transactions?transaction_id=${corrected.replacement.transaction.id}`);
+    await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText(copy.investments_attribution_cash_parent_unresolved);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    const run=await apiJSON<{results:Array<{check_id:string;warning_sample:Array<{transaction_id:number;reason:string}>}>}>(page,'POST','/api/v1/maintenance/self-check',p.csrfToken,{});
+    expect(run.results.find(result=>result.check_id==='investment_attribution')?.warning_sample).toContainEqual({transaction_id:corrected.replacement.transaction.id,reason:'cash_in_lieu_parent_unresolved'});
+  });
+}

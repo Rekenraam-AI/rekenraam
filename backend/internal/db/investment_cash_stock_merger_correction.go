@@ -119,9 +119,6 @@ func checkCashStockMergerForCorrectionTx(ctx context.Context, tx *sql.Tx, bookID
 	if current != expected {
 		return ErrCashStockMergerOperationChanged
 	}
-	if err := requireNoCashInLieuSettlesTx(ctx, tx, bookID, current.OperationID); err != nil {
-		return err
-	}
 	if err := checkInvestmentSourceJournalTx(ctx, tx, bookID, current.TransactionID,
 		current.EventDate, current.TransactionVersionID, current.CurrentVersionID); err != nil {
 		if errors.Is(err, ErrInvestmentSaleChanged) {

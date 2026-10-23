@@ -907,6 +907,15 @@ and discloses provider/owner differences as `provider_attribution_mismatch`.
 Unknown fact fields export empty in bundle schema 16; source evidence and
 original correction facts stay intact. See the [repair delivery evidence](../reviews/payment-attribution-repair-2026-10-23.md).
 
+**Cash-in-lieu context (#392).** The same attribution slot also checks current
+corporate-action ancestry. `cash_in_lieu_parent_unresolved` warns after parent
+reversal; `cash_in_lieu_parent_mismatch` warns when current holding/instrument/
+date no longer explains the disposal. Original fact integrity is checked
+separately. Native parent/disposal corrections still validate actual quantities,
+elections, basis, gains and checkpoints; no attribution permission scan runs on
+ordinary writes. Original parent references and correction ancestry remain in
+schema-16 CSV without new columns. See [delivery evidence](../reviews/cash-in-lieu-parent-replay-2026-10-23.md).
+
 ### Unresolved investment basis diagnostic acceptance (#308)
 
 **Delivered by #313 (2026-10-18).** The contract above replaces the retained

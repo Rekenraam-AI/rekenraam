@@ -1283,7 +1283,7 @@
   "investments_split_open_journal": "Открыть операцию",
   "investments_split_corrects": "Исправляет дробление № {id}",
   "investments_split_successor": "Заменено или отменено записью № {id}",
-  "investments_split_settled_hint": "Исправьте или отмените денежную компенсацию за дробные акции, прежде чем менять это дробление.",
+  "investments_split_settled_hint": "Для этого дробления учтена выплата за дробную долю. Исправления проверяют продажу и показывают изменения результата.",
   "investments_split_help": "Каждый лот, удерживаемый на дату сплита, умножается на коэффициент. Каждый лот сохраняет общую себестоимость; денежные средства и результат не отражаются.",
   "investments_split_holding": "Позиция",
   "investments_split_select_holding": "Выберите позицию",
@@ -1712,8 +1712,8 @@
   "settings_data_selfcheck_warning": "Проверок с предупреждениями об отнесении: {count}.",
   "settings_data_selfcheck_warnings": "Предупреждений об отнесении: {count}.",
   "settings_data_selfcheck_historical": "Сохранённый результат; повторите проверку после исправлений.",
-  "settings_data_selfcheck_attribution_title": "Отнесение компенсации дивиденда",
-  "settings_data_selfcheck_attribution_explanation": "Проверяет действующее количество коротких позиций перед экс-дивидендной датой отдельно по валюте стоимости. Проверяется историческое основание, а не сумма списания.",
+  "settings_data_selfcheck_attribution_title": "Привязка инвестиций",
+  "settings_data_selfcheck_attribution_explanation": "Проверяет исторические короткие позиции для компенсационных выплат и текущую корпоративную операцию для продажи дробных долей. Финансовая корректность проверяется отдельно.",
   "settings_data_selfcheck_attribution_next": "Откройте платёж и сравните его отнесение с отчётом брокера. Проверка не меняет суммы или исходные данные.",
   "investments_attribution_no_short": "На закрытие перед экс-дивидендной датой нет коротких позиций, подтверждающих это отнесение.",
   "investments_attribution_ex_date_after_payment": "Экс-дивидендная дата позже записанной даты платежа.",
@@ -1724,5 +1724,8 @@
   "investments_attribution_unassigned": "Не назначено",
   "investments_attribution_repair_hint": "Оставьте неизвестные данные пустыми. Изменение только этих данных сохраняет записанную сумму и исходную запись в истории.",
   "investments_attribution_provider_mismatch": "Эти данные отличаются от связанных данных поставщика. Исходные данные сохраняются.",
-  "investments_payment_in_lieu_correction_reason": "Причина исправления"
+  "investments_payment_in_lieu_correction_reason": "Причина исправления",
+  "investments_attribution_cash_parent_unresolved": "Исходная корпоративная операция отменена. Продажа остаётся в учёте; её финансовая корректность проверяется отдельно.",
+  "investments_attribution_cash_parent_mismatch": "Текущая корпоративная операция больше не соответствует счёту, инструменту или дате этой продажи. Исходная ссылка сохранена.",
+  "investments_cash_in_lieu_current_parent": "Текущая операция № {id}"
 }

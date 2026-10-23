@@ -112,8 +112,8 @@
         {#if row.standing === 'effective'}
           {#if row.settled}<p class="text-sm text-muted">{m.investments_split_settled_hint()}</p>{/if}
           <div class="flex flex-wrap gap-2">
-            <button type="button" disabled={row.settled || !csrfToken} onclick={()=>open(row,'replace')} class="rounded-(--radius-control) border border-border px-3 py-2 text-sm text-foreground disabled:opacity-60">{m.transactions_investment_replace_split_action()}</button>
-            <button type="button" disabled={row.settled || !csrfToken} onclick={()=>open(row,'reverse')} class="rounded-(--radius-control) border border-border px-3 py-2 text-sm text-danger disabled:opacity-60">{m.transactions_investment_reverse_split_action()}</button>
+            <button type="button" disabled={!csrfToken} onclick={()=>open(row,'replace')} class="rounded-(--radius-control) border border-border px-3 py-2 text-sm text-foreground disabled:opacity-60">{m.transactions_investment_replace_split_action()}</button>
+            <button type="button" disabled={!csrfToken} onclick={()=>open(row,'reverse')} class="rounded-(--radius-control) border border-border px-3 py-2 text-sm text-danger disabled:opacity-60">{m.transactions_investment_reverse_split_action()}</button>
             <button type="button" disabled={!csrfToken} onclick={()=>open(row,'settle')} class="rounded-(--radius-control) border border-border px-3 py-2 text-sm text-foreground disabled:opacity-60">{m.investments_cash_in_lieu_title()}</button>
           </div>
         {/if}

@@ -1283,7 +1283,7 @@
   "investments_split_open_journal": "Transactie openen",
   "investments_split_corrects": "Corrigeert splitsing #{id}",
   "investments_split_successor": "Vervangen of teruggedraaid door boeking #{id}",
-  "investments_split_settled_hint": "Corrigeer of draai de vergoeding voor fracties terug voordat u deze splitsing wijzigt.",
+  "investments_split_settled_hint": "Voor deze splitsing is een fractiebetaling vastgelegd. Correcties toetsen de verkoop en tonen wijzigingen in het resultaat.",
   "investments_split_help": "Elk lot dat op de splitsingsdatum wordt aangehouden, wordt met de verhouding vermenigvuldigd. Elk lot houdt zijn totale kostprijs; er wordt geen geld of resultaat geboekt.",
   "investments_split_holding": "Positie",
   "investments_split_select_holding": "Kies een positie",
@@ -1712,8 +1712,8 @@
   "settings_data_selfcheck_warning": "{count} controles hebben toewijzingswaarschuwingen.",
   "settings_data_selfcheck_warnings": "{count} toewijzingswaarschuwingen.",
   "settings_data_selfcheck_historical": "Opgeslagen resultaat; voer de controle na correcties opnieuw uit.",
-  "settings_data_selfcheck_attribution_title": "Toewijzing van dividendvervangende betaling",
-  "settings_data_selfcheck_attribution_explanation": "Controleert effectieve shortaantallen vóór de ex-datum, afzonderlijk per kostprijsvaluta. Dit controleert historische onderbouwing, niet het afgeschreven bedrag.",
+  "settings_data_selfcheck_attribution_title": "Toerekening van beleggingen",
+  "settings_data_selfcheck_attribution_explanation": "Controleert historische shortposities voor vervangende betalingen en de huidige gekoppelde actie bij fractieverkopen. Financiële geldigheid wordt apart gecontroleerd.",
   "settings_data_selfcheck_attribution_next": "Open de betaling en vergelijk de toewijzing met uw brokeroverzicht. De controle wijzigt geen geldbedragen of brongegevens.",
   "investments_attribution_no_short": "Geen shortaantallen onderbouwen deze toewijzing bij sluiting vóór de ex-datum.",
   "investments_attribution_ex_date_after_payment": "De ex-datum ligt na de vastgelegde betaaldatum.",
@@ -1724,5 +1724,8 @@
   "investments_attribution_unassigned": "Niet toegewezen",
   "investments_attribution_repair_hint": "Laat onbekende gegevens leeg. Als u alleen deze gegevens wijzigt, blijven het vastgelegde geldbedrag en de oorspronkelijke gegevens in de geschiedenis behouden.",
   "investments_attribution_provider_mismatch": "Deze gegevens wijken af van de gekoppelde providergegevens. De oorspronkelijke brongegevens blijven behouden.",
-  "investments_payment_in_lieu_correction_reason": "Reden voor correctie"
+  "investments_payment_in_lieu_correction_reason": "Reden voor correctie",
+  "investments_attribution_cash_parent_unresolved": "De oorspronkelijke bedrijfshandeling is teruggedraaid. De verkoop blijft vastgelegd; de financiële geldigheid wordt apart gecontroleerd.",
+  "investments_attribution_cash_parent_mismatch": "De huidige bedrijfshandeling past niet meer bij de rekening, het instrument of de datum van deze verkoop. De oorspronkelijke verwijzing blijft behouden.",
+  "investments_cash_in_lieu_current_parent": "Huidige actie #{id}"
 }

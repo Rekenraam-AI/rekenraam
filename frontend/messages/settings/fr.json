@@ -1283,7 +1283,7 @@
   "investments_split_open_journal": "Ouvrir la transaction",
   "investments_split_corrects": "Corrige la division nº {id}",
   "investments_split_successor": "Remplacée ou annulée par l’écriture nº {id}",
-  "investments_split_settled_hint": "Corrigez ou annulez le paiement des fractions avant de modifier cette division.",
+  "investments_split_settled_hint": "Un règlement de rompus est enregistré pour cette division. Les corrections valident la cession et présentent les variations de gains.",
   "investments_split_help": "Chaque lot détenu à la date de la division est multiplié par le rapport. Chaque lot conserve son coût total ; aucun mouvement de trésorerie ni résultat n'est enregistré.",
   "investments_split_holding": "Position",
   "investments_split_select_holding": "Choisir une position",
@@ -1712,8 +1712,8 @@
   "settings_data_selfcheck_warning": "{count} contrôles présentent des avertissements d’attribution.",
   "settings_data_selfcheck_warnings": "{count} avertissements d’attribution.",
   "settings_data_selfcheck_historical": "Résultat enregistré ; relancez le contrôle après les corrections.",
-  "settings_data_selfcheck_attribution_title": "Attribution du paiement compensatoire de dividende",
-  "settings_data_selfcheck_attribution_explanation": "Vérifie les quantités effectives vendues à découvert avant la date de détachement, par devise de coût. Cela vérifie le fondement historique, pas le montant débité.",
+  "settings_data_selfcheck_attribution_title": "Attribution des investissements",
+  "settings_data_selfcheck_attribution_explanation": "Vérifie les positions courtes historiques des paiements compensatoires et l’opération actuelle associée aux cessions fractionnaires. La validité financière est vérifiée séparément.",
   "settings_data_selfcheck_attribution_next": "Ouvrez le paiement et comparez son attribution au relevé du courtier. Le contrôle ne modifie ni les montants ni les données sources.",
   "investments_attribution_no_short": "Aucune quantité vendue à découvert ne justifie cette attribution à la clôture précédant le détachement.",
   "investments_attribution_ex_date_after_payment": "La date de détachement est postérieure à la date de paiement enregistrée.",
@@ -1724,5 +1724,8 @@
   "investments_attribution_unassigned": "Non attribué",
   "investments_attribution_repair_hint": "Laissez les informations inconnues vides. Modifier uniquement ces informations conserve le montant enregistré et garde l’original dans l’historique.",
   "investments_attribution_provider_mismatch": "Ces informations diffèrent des données du fournisseur associées. Les données sources d’origine sont conservées.",
-  "investments_payment_in_lieu_correction_reason": "Motif de la correction"
+  "investments_payment_in_lieu_correction_reason": "Motif de la correction",
+  "investments_attribution_cash_parent_unresolved": "L’opération sur titres d’origine a été contrepassée. La cession reste enregistrée ; sa validité financière est vérifiée séparément.",
+  "investments_attribution_cash_parent_mismatch": "L’opération sur titres actuelle ne correspond plus au compte, à l’instrument ou à la date de cette cession. La référence d’origine est conservée.",
+  "investments_cash_in_lieu_current_parent": "Opération actuelle nº {id}"
 }

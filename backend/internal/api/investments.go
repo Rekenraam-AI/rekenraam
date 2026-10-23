@@ -310,6 +310,7 @@ type investmentCorrectionNodeResponse struct {
 }
 
 type investmentCorrectionChainResponse struct {
+	CashInLieuAttribution   *investmentAttributionResponse          `json:"cash_in_lieu_attribution,omitempty"`
 	CapitalReturns          []capitalReturnReadResponse             `json:"capital_returns"`
 	RootOperationID         int64                                   `json:"root_operation_id"`
 	EffectiveTransactionID  *int64                                  `json:"effective_transaction_id"`
@@ -381,36 +382,38 @@ type investmentTradeCorrectionAvailableLotResponse struct {
 }
 
 type investmentTradeCorrectionContextResponse struct {
-	SettledOperationID   int64                                           `json:"settled_operation_id,omitempty"`
-	SettledTransactionID int64                                           `json:"settled_transaction_id,omitempty"`
-	OperationID          int64                                           `json:"operation_id"`
-	TransactionID        int64                                           `json:"transaction_id"`
-	OperationKind        string                                          `json:"operation_kind"`
-	EventDate            string                                          `json:"event_date"`
-	HoldingAccountID     int64                                           `json:"holding_account_id"`
-	CommodityID          int64                                           `json:"commodity_id"`
-	CommodityCode        string                                          `json:"commodity_code"`
-	CostCommodityID      int64                                           `json:"cost_commodity_id"`
-	QuantityValue        string                                          `json:"quantity_value"`
-	QuantityScale        int                                             `json:"quantity_scale"`
-	CostBasisMethod      string                                          `json:"cost_basis_method"`
-	CashAccountID        int64                                           `json:"cash_account_id"`
-	NetValue             string                                          `json:"net_value"`
-	NetScale             int                                             `json:"net_scale"`
-	SettlementDate       string                                          `json:"settlement_date"`
-	Memo                 string                                          `json:"memo"`
-	PayeeID              *int64                                          `json:"payee_id,omitempty"`
-	GrossValue           *string                                         `json:"gross_value,omitempty"`
-	GrossScale           *int                                            `json:"gross_scale,omitempty"`
-	Imported             bool                                            `json:"imported"`
-	SourceIdentityID     int64                                           `json:"source_identity_id"`
-	SourceKind           string                                          `json:"source_kind"`
-	AlreadyCorrected     bool                                            `json:"already_corrected"`
-	Charges              []investmentTradeCorrectionChargeResponse       `json:"charges"`
-	ElectedLots          []investmentTradeCorrectionLotChoiceResponse    `json:"elected_lots"`
-	CanReplaceSale       bool                                            `json:"can_replace_sale"`
-	AvailableLots        []investmentTradeCorrectionAvailableLotResponse `json:"available_lots"`
-	EffectiveElectedLots []investmentTradeCorrectionLotChoiceResponse    `json:"effective_elected_lots"`
+	EffectiveSettledOperationID   int64                                           `json:"effective_settled_operation_id,omitempty"`
+	EffectiveSettledTransactionID int64                                           `json:"effective_settled_transaction_id,omitempty"`
+	SettledOperationID            int64                                           `json:"settled_operation_id,omitempty"`
+	SettledTransactionID          int64                                           `json:"settled_transaction_id,omitempty"`
+	OperationID                   int64                                           `json:"operation_id"`
+	TransactionID                 int64                                           `json:"transaction_id"`
+	OperationKind                 string                                          `json:"operation_kind"`
+	EventDate                     string                                          `json:"event_date"`
+	HoldingAccountID              int64                                           `json:"holding_account_id"`
+	CommodityID                   int64                                           `json:"commodity_id"`
+	CommodityCode                 string                                          `json:"commodity_code"`
+	CostCommodityID               int64                                           `json:"cost_commodity_id"`
+	QuantityValue                 string                                          `json:"quantity_value"`
+	QuantityScale                 int                                             `json:"quantity_scale"`
+	CostBasisMethod               string                                          `json:"cost_basis_method"`
+	CashAccountID                 int64                                           `json:"cash_account_id"`
+	NetValue                      string                                          `json:"net_value"`
+	NetScale                      int                                             `json:"net_scale"`
+	SettlementDate                string                                          `json:"settlement_date"`
+	Memo                          string                                          `json:"memo"`
+	PayeeID                       *int64                                          `json:"payee_id,omitempty"`
+	GrossValue                    *string                                         `json:"gross_value,omitempty"`
+	GrossScale                    *int                                            `json:"gross_scale,omitempty"`
+	Imported                      bool                                            `json:"imported"`
+	SourceIdentityID              int64                                           `json:"source_identity_id"`
+	SourceKind                    string                                          `json:"source_kind"`
+	AlreadyCorrected              bool                                            `json:"already_corrected"`
+	Charges                       []investmentTradeCorrectionChargeResponse       `json:"charges"`
+	ElectedLots                   []investmentTradeCorrectionLotChoiceResponse    `json:"elected_lots"`
+	CanReplaceSale                bool                                            `json:"can_replace_sale"`
+	AvailableLots                 []investmentTradeCorrectionAvailableLotResponse `json:"available_lots"`
+	EffectiveElectedLots          []investmentTradeCorrectionLotChoiceResponse    `json:"effective_elected_lots"`
 }
 
 func toInvestmentTradeCorrectionContextResponse(record db.InvestmentTradeCorrectionContext) investmentTradeCorrectionContextResponse {
@@ -443,7 +446,7 @@ func toInvestmentTradeCorrectionContextResponse(record db.InvestmentTradeCorrect
 		})
 	}
 	return investmentTradeCorrectionContextResponse{
-		OperationID: record.OperationID, TransactionID: record.TransactionID, SettledTransactionID: record.SettledTransactionID, SettledOperationID: record.SettledOperationID,
+		OperationID: record.OperationID, TransactionID: record.TransactionID, SettledTransactionID: record.SettledTransactionID, SettledOperationID: record.SettledOperationID, EffectiveSettledOperationID: record.EffectiveSettledOperationID, EffectiveSettledTransactionID: record.EffectiveSettledTransactionID,
 		OperationKind: record.OperationKind, EventDate: record.EventDate,
 		HoldingAccountID: record.HoldingAccountID, CommodityID: record.CommodityID,
 		CommodityCode: record.CommodityCode, CostCommodityID: record.CostCommodityID,
@@ -1272,7 +1275,7 @@ func investmentCorrectionChain(logger *slog.Logger, authService *app.AuthService
 			CanCorrectDividend: chain.CanCorrectDividend, CanReverseCapitalReturn: chain.CanReverseCapitalReturn, CanReplaceCapitalReturn: chain.CanReplaceCapitalReturn, EffectiveCapitalReturn: toCapitalReturnTerms(chain.EffectiveCapitalReturn), EffectiveDividend: toInvestmentCorrectionDividendTerms(chain.EffectiveDividend),
 			CanCorrectPaymentInLieu: chain.CanCorrectPaymentInLieu, EffectivePaymentInLieu: toInvestmentCorrectionPaymentInLieuTerms(chain.EffectivePaymentInLieu),
 			CanCorrectReinvested: chain.CanCorrectReinvestedDividend, EffectiveReinvestment: toInvestmentCorrectionReinvestTerms(chain.EffectiveReinvestment),
-			CanCorrectWriteOff: chain.CanCorrectWriteOff, CanCorrectCashInLieu: chain.CanCorrectCashInLieu,
+			CanCorrectWriteOff: chain.CanCorrectWriteOff, CanCorrectCashInLieu: chain.CanCorrectCashInLieu, CashInLieuAttribution: toInvestmentAttributionResponse(chain.CashInLieuAttribution),
 			CanCorrectShortSale: chain.CanCorrectShortSale, CanCorrectShortCover: chain.CanCorrectShortCover,
 			CanCorrectShareExchange: chain.CanCorrectShareExchange, CanCorrectSpinOff: chain.CanCorrectSpinOff,
 			CanReverseTransfer: chain.CanReverseTransfer,
@@ -3609,4 +3612,15 @@ func sourceEvidenceEditsText(raw json.RawMessage) string {
 		return ""
 	}
 	return edits
+}
+
+func toInvestmentAttributionResponse(diagnostic *app.InvestmentAttributionDiagnostic) *investmentAttributionResponse {
+	if diagnostic == nil {
+		return nil
+	}
+	reasons := diagnostic.Reasons
+	if reasons == nil {
+		reasons = []string{}
+	}
+	return &investmentAttributionResponse{Status: diagnostic.Status, Reasons: reasons, Unavailable: diagnostic.Unavailable}
 }

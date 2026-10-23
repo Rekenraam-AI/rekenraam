@@ -668,6 +668,9 @@
     {#if chainQuery.data?.effective_payment_in_lieu?.attribution}
       <AttributionDiagnostic diagnostic={chainQuery.data.effective_payment_in_lieu.attribution} />
     {/if}
+    {#if chainQuery.data?.cash_in_lieu_attribution}
+      <AttributionDiagnostic diagnostic={chainQuery.data.cash_in_lieu_attribution} />
+    {/if}
     {#if paymentInLieuCorrectable}
       <div class="flex flex-wrap gap-2">
         <button

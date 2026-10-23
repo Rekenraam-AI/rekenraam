@@ -2,7 +2,8 @@ get:
   summary: Read lots available at a cash-in-lieu disposal slot
   description: >-
     Composed dated lot quantities for specific-lot entry. With replacing_transaction_id,
-    exclude that cash in lieu and retain its correction-root slot. This is a read-only
+    exclude that cash in lieu and retain its correction-root slot, even after
+    its original parent was corrected or reversed. This is a read-only
     rolled-back replay, never an authorization for a later write.
   parameters:
     - in: path

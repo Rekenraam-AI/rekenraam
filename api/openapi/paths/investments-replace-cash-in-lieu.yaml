@@ -3,7 +3,8 @@ post:
   description: >-
     Runs the native disposal replacement, retaining the same settlement link and
     correction-root slot. Fraction, proceeds, dates and election may change.
-    Original facts remain evidence. Split linkage, replay, checkpoint impact
+    Original facts remain evidence even after a parent correction or reversal.
+    Original reference integrity, actual disposal replay, checkpoint impact
     and gain acknowledgement are validated atomically. The preview rolls back
     and returns the corrected allocation, disposed basis and realized result.
   parameters:

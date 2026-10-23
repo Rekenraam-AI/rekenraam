@@ -159,7 +159,7 @@ var checkNarratives = map[string]checkNarrative{
 		nextStep:    "Review the named operation, disposal decision, journal, lot or saved gains run and the setup accounts. Preserve the original rows before correcting any mismatch or missing link.",
 	},
 	CheckInvestmentAttribution: {
-		explanation: "Payment-in-lieu attribution is checked against effective short openings minus covers at the close before its ex-date, separately in each cost currency. This establishes historical support, not whether the amount charged is correct. Unsupported attribution is a warning; missing context is unavailable coverage. Neither is financial corruption.",
+		explanation: "Payment-in-lieu attribution is checked against effective short openings minus covers at the close before its ex-date, separately in each cost currency. This establishes historical support, not whether the amount charged is correct. Cash-in-lieu parent ancestry is checked for current explanatory support independently of its disposal. Unsupported attribution is a warning; missing context is unavailable coverage. Neither is financial corruption.",
 		nextStep:    "Open the named payment and compare its attribution with the broker statement. The diagnostic never changes cash or source evidence. A saved self-check describes its recorded snapshot; rerun after a correction.",
 	},
 	CheckInvestmentReplay: {
@@ -951,13 +951,9 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 				JOIN investment_lot_events ev ON ev.id = x.lot_event_id
 				WHERE x.operation_id = o.id AND NOT EXISTS (SELECT 1 FROM investment_capital_return_effects e
 					WHERE e.operation_id = o.id AND e.lot_event_id = ev.id)))`},
-		{"cash in lieu missing its link to an effective split, exchange or spin-off", `
-			SELECT o.id FROM effective_investment_operations o WHERE o.book_id = ?
-			AND o.operation_kind = 'cash_in_lieu'
-			AND NOT EXISTS (SELECT 1 FROM investment_cash_in_lieu_facts f
-				JOIN effective_investment_operations settled ON settled.id = f.settled_operation_id
-					AND settled.operation_kind IN ('split', 'share_exchange', 'cash_and_stock_merger', 'spin_off')
-				WHERE f.operation_id = o.id)`},
+		{"cash in lieu has missing, malformed or cross-book parent facts", `
+            SELECT o.id FROM effective_investment_operations o WHERE o.book_id = ? AND o.operation_kind = 'cash_in_lieu'
+            AND NOT EXISTS (SELECT 1 FROM valid_investment_cash_in_lieu_facts f WHERE f.operation_id = o.id AND f.book_id = o.book_id)`},
 		{"split missing its sourced ratio or lot effects", `
 			SELECT o.id FROM investment_operations o WHERE o.book_id = ?
 			AND o.operation_kind = 'split'

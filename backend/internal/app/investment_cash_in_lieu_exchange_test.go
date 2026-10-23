@@ -105,37 +105,24 @@ func TestCashInLieuOfSpinOffFractionDisposesDistributedUnits(t *testing.T) {
 	requireInvestmentSelfCheckPasses(t, f)
 }
 
-// The split, exchange or spin-off a cash in lieu settles cannot be corrected
-// first: the cash in lieu would settle nothing. It is named.
-func TestCorrectingExchangeSettledByCashInLieuNamesIt(t *testing.T) {
+// The missing destination units still prevent reversal; ratio repair uses replay.
+func TestExchangeSettledByCashInLieuReplaysReplacementAndRefusesImpossibleReversal(t *testing.T) {
 	t.Parallel()
 	f, newID, exchange := exchangeCashInLieuSetup(t)
 	ctx := context.Background()
 	cil, err := f.investmentService.CashInLieu(ctx, cashInLieuInput(f, exchange.Transaction.ID))
 	require.NoError(t, err)
-
-	_, err = f.investmentService.ReverseShareExchange(ctx, ReverseShareExchangeInput{OwnerUserID: f.ownerUserID,
-		TransactionID: exchange.Transaction.ID, Reason: "wrong ratio"})
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	_, err = f.investmentService.ReverseShareExchange(ctx, reverseShareExchangeInput(f, exchange.Transaction.ID))
 	var dependency InvestmentTransferDependencyError
 	require.ErrorAs(t, err, &dependency)
-	assert.Equal(t, transferOperationID(t, f, cil.Transaction.ID), dependency.OperationID)
-
-	_, err = f.investmentService.ReplaceShareExchange(ctx, ReplaceShareExchangeInput{OwnerUserID: f.ownerUserID,
-		TransactionID: exchange.Transaction.ID, Reason: "wrong ratio", EffectiveOn: "2026-06-01",
-		DestinationCommodityID: newID, RatioNumerator: 2, RatioDenominator: 1})
-	require.ErrorAs(t, err, &dependency)
-
-	// Reversing the cash in lieu first frees the exchange.
-	reverse := ReverseInvestmentSaleInput{OwnerUserID: f.ownerUserID, TransactionID: cil.Transaction.ID, Reason: "issuer correction"}
-	impact, err := f.investmentService.ReverseCashInLieuReconciliationImpact(ctx, reverse)
+	require.Equal(t, transferOperationID(t, f, cil.Transaction.ID), dependency.OperationID)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	input := replaceShareExchangeInput(f, exchange.Transaction.ID, newID, "2026-06-01", 2, 1)
+	preview, err := f.investmentService.PreviewShareExchangeReplacement(ctx, input)
 	require.NoError(t, err)
-	if impact.GainImpact != nil {
-		reverse.GainImpactAcknowledgement = impact.GainImpact.Acknowledgement
-	}
-	_, err = f.investmentService.ReverseCashInLieu(ctx, reverse)
-	require.NoError(t, err)
-	_, err = f.investmentService.ReverseShareExchange(ctx, ReverseShareExchangeInput{OwnerUserID: f.ownerUserID,
-		TransactionID: exchange.Transaction.ID, Reason: "wrong ratio"})
+	input.GainImpactAcknowledgement = preview.Impact.GainImpact.Acknowledgement
+	_, err = f.investmentService.ReplaceShareExchange(ctx, input)
 	require.NoError(t, err)
 	requireInvestmentSelfCheckPasses(t, f)
 }

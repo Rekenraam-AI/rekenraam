@@ -1283,7 +1283,7 @@
   "investments_split_open_journal": "Abrir transacción",
   "investments_split_corrects": "Corrige el desdoblamiento n.º {id}",
   "investments_split_successor": "Sustituido o anulado por el asiento n.º {id}",
-  "investments_split_settled_hint": "Corrija o anule el efectivo por fracciones antes de cambiar este desdoblamiento.",
+  "investments_split_settled_hint": "Este desdoblamiento tiene efectivo por fracciones registrado. Las correcciones validan la disposición y muestran los cambios de ganancias.",
   "investments_split_help": "Cada lote mantenido en la fecha del desdoblamiento se multiplica por la proporción. Cada lote conserva su coste total; no se registra efectivo ni resultado.",
   "investments_split_holding": "Posición",
   "investments_split_select_holding": "Selecciona una posición",
@@ -1712,8 +1712,8 @@
   "settings_data_selfcheck_warning": "{count} comprobaciones tienen advertencias de atribución.",
   "settings_data_selfcheck_warnings": "{count} advertencias de atribución.",
   "settings_data_selfcheck_historical": "Resultado guardado; repita la comprobación después de las correcciones.",
-  "settings_data_selfcheck_attribution_title": "Atribución del pago sustitutivo de dividendo",
-  "settings_data_selfcheck_attribution_explanation": "Comprueba las cantidades efectivas en corto antes de la fecha exdividendo, por divisa de coste. Verifica el respaldo histórico, no el importe cobrado.",
+  "settings_data_selfcheck_attribution_title": "Atribución de inversiones",
+  "settings_data_selfcheck_attribution_explanation": "Comprueba el respaldo histórico de pagos sustitutivos y la operación actual asociada a disposiciones fraccionarias. La validez financiera se comprueba por separado.",
   "settings_data_selfcheck_attribution_next": "Abra el pago y compare su atribución con el extracto del bróker. La comprobación no cambia importes ni datos de origen.",
   "investments_attribution_no_short": "No hay unidades en corto que respalden esta atribución al cierre anterior a la fecha exdividendo.",
   "investments_attribution_ex_date_after_payment": "La fecha exdividendo es posterior a la fecha de pago registrada.",
@@ -1724,5 +1724,8 @@
   "investments_attribution_unassigned": "Sin asignar",
   "investments_attribution_repair_hint": "Deje en blanco los datos desconocidos. Si cambia solo estos datos, se conserva el importe registrado y el original permanece en el historial.",
   "investments_attribution_provider_mismatch": "Estos datos difieren de la información del proveedor vinculada. Se conservan los datos de origen.",
-  "investments_payment_in_lieu_correction_reason": "Motivo de la corrección"
+  "investments_payment_in_lieu_correction_reason": "Motivo de la corrección",
+  "investments_attribution_cash_parent_unresolved": "La operación corporativa original se revirtió. La disposición sigue registrada; su validez financiera se comprueba por separado.",
+  "investments_attribution_cash_parent_mismatch": "La operación corporativa actual ya no coincide con la cuenta, el instrumento o la fecha de esta disposición. Se conserva la referencia original.",
+  "investments_cash_in_lieu_current_parent": "Operación actual #{id}"
 }

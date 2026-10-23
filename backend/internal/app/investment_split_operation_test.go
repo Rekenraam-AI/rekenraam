@@ -78,7 +78,7 @@ func TestSplitOperationReplacementCrossesZeroBothWays(t *testing.T) {
 	require.Equal(t, "corrected source memo", activity[0].Memo)
 }
 
-func TestJournalFreeSplitCashInLieuSettlementAndCorrectionFence(t *testing.T) {
+func TestJournalFreeSplitCashInLieuRetainsIdentityAndReviewsReversal(t *testing.T) {
 	t.Parallel()
 	f := newInvestmentsTestFixture(t)
 	ctx := context.Background()
@@ -94,11 +94,11 @@ func TestJournalFreeSplitCashInLieuSettlementAndCorrectionFence(t *testing.T) {
 	cash, err := f.investmentService.CashInLieu(ctx, input)
 	require.NoError(t, err)
 	_, err = f.investmentService.ReverseSplit(ctx, ReverseInvestmentSplitInput{OwnerUserID: f.ownerUserID, OperationID: split.OperationID, Reason: "wrong ratio"})
-	var dependency InvestmentSplitDependencyError
-	require.ErrorAs(t, err, &dependency)
-	var cashID int64
-	require.NoError(t, f.database.QueryRow(`SELECT operation_id FROM investment_disposal_decisions WHERE transaction_id = ?`, cash.Transaction.ID).Scan(&cashID))
-	require.Equal(t, cashID, dependency.OperationID)
+	require.ErrorIs(t, err, ErrGainImpactAcknowledgementRequired)
+	preview, err := f.investmentService.ReverseSplitReconciliationImpact(ctx, ReverseInvestmentSplitInput{OwnerUserID: f.ownerUserID, OperationID: split.OperationID, Reason: "wrong ratio"})
+	require.NoError(t, err)
+	require.NotNil(t, preview.GainImpact)
+	require.Len(t, preview.GainImpact.Changes, 1)
 	context, err := f.investmentService.TradeCorrectionContext(ctx, f.ownerUserID, cash.Transaction.ID)
 	require.NoError(t, err)
 	require.Equal(t, split.OperationID, context.SettledOperationID)

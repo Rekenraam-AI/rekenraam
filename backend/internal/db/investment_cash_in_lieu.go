@@ -14,7 +14,7 @@ import (
 // the payment date (the trade's settlement date). Its link to the operation
 // it settles (a split, or since #181 a share exchange, cash-and-stock merger
 // or spin-off) is written inside the same transaction, after the disposal,
-// where the facts trigger rechecks that the operation is still effective.
+// where the facts trigger validates provenance and the typed correction chain.
 
 var ErrCashInLieuSplitUnavailable = errors.New("the operation this cash in lieu settles is no longer effective or does not match the holding")
 
@@ -63,25 +63,6 @@ func (r *InvestmentRepository) cashInLieuSettledOperation(ctx context.Context, b
 		return CashInLieuSettledRecord{}, fmt.Errorf("read operation a cash in lieu settles: %w", err)
 	}
 	return record, nil
-}
-
-// requireNoCashInLieuSettlesTx names an effective cash in lieu that settles
-// operationID's fraction. Correcting the split, exchange or spin-off first
-// would leave it settling nothing (T-147, #181).
-func requireNoCashInLieuSettlesTx(ctx context.Context, tx *sql.Tx, bookID, operationID int64) error {
-	var settledBy int64
-	err := tx.QueryRowContext(ctx, `SELECT f.operation_id FROM investment_cash_in_lieu_facts f
-		JOIN effective_investment_operations o ON o.id = f.operation_id
-		WHERE f.book_id = ? AND f.settled_operation_id = ? ORDER BY f.operation_id LIMIT 1`,
-		bookID, operationID).Scan(&settledBy)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("read settling cash in lieu: %w", err)
-	}
-	return &InvestmentReplayDependencyError{OperationID: settledBy,
-		Cause: fmt.Errorf("%w: a cash in lieu settles this operation's fraction", ErrInvestmentCorrectionDependency)}
 }
 
 // CashInLieuFactWriter returns the post-write step that links a committed
