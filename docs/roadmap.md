@@ -179,11 +179,17 @@ below is execution order, not a chain of hard dependencies.
    as its diagnostic. The owner-directed
    [four-case comparative slice](reviews/financial-dependency-comparison-2026-10-23.md)
    specifies their targeted contract, with #392/#393 covering cash-in-lieu
-   parent corrections and dividend/withholding payer attribution. The wider
-   #391 inventory remains open. #388/#389 now deliver optional payment
-   attribution, audited repair and diagnostics, removing the cash-only write
+   parent corrections and dividend/withholding payer attribution. The completed
+   [#391 family inventory](reviews/financial-dependency-inventory-2026-10-23.md)
+   records cross-family contracts and the concrete reasons for retained
+   allocation/source/reconciliation dependencies. #388/#389 now deliver optional
+   payment attribution, audited repair and diagnostics, removing the cash-only write
    blockers. #392 now delivers parent replay for all four cash-in-lieu families.
-   The remaining ready attribution slice is #393. These do not expand #284's closure checklist, reorder
+   #393 remains the ready payer/shape slice, including the demonstrated dividend
+   source-ancestry gap. Accepted follow-ups #394/#395 cover historical-parent
+   fractional entry and typed cash/reinvestment field correction through
+   existing replay.
+   These do not expand #284's closure checklist, reorder
    initiatives or introduce a blanket R13 prerequisite.
 3. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
    Use the delivered R18 valuation contracts; resolve portfolio scope,

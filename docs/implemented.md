@@ -629,6 +629,14 @@ converting coefficients to `Number`.
 
 ## Cross-cutting — ✅ foundations in place; audit coverage is bounded
 
+- Financial relationship design review (#391), 2026-10-23:
+  [source-pinned family inventory](reviews/financial-dependency-inventory-2026-10-23.md)
+  covers cash attribution, real allocations, source identity, prices/reports,
+  reconciliation and ordinary loan-payment composition, with retained accounting
+  controls and isolated counterfactuals. This delivers audit/contracts;
+  payer/source consistency (#393), historical-parent entry (#394) and typed
+  financial field corrections (#395) remain runtime follow-ups. Existing feature
+  rows describe shipped behavior; no loan subsystem or generic dependency engine.
 - Hybrid audit model: version/lifecycle tables record *what*; `audit_events`
   records *who/when/how/why* (request + session attribution).
 - Docker build inputs exclude local data, environment secrets and generated

@@ -1,0 +1,457 @@
+#391 financial relationship inventory validation — 2026-10-23
+Source: 4ad8373f772eb02b40126f5e9d746f0eb50c9e79
+Documentation/contracts/probes only; production behavior unchanged.
+13 provider-free leaf scenarios in each baseline and isolated ablation;
+51 existing named production accounting/trust controls under race mode.
+No frontend/build/browser/resource rerun claimed.
+
+REPRODUCIBLE COUNTERFACTUALS
+python3 docs/reviews/fixtures/financial-dependency-inventory-2026-10-23.py
+
+Source: 4ad8373f772eb02b40126f5e9d746f0eb50c9e79
+Probe SHA-256: cc23f084b7d28c89cba3a1b4440acaa79385b806862ddeacf7081e5468d5184d
+go version go1.27.3 linux/amd64
+BASELINE: runtime unchanged
+=== RUN   TestDependencyInventoryHistoricalParentEntry
+=== PAUSE TestDependencyInventoryHistoricalParentEntry
+=== RUN   TestDependencyInventoryReinvestmentDate
+=== PAUSE TestDependencyInventoryReinvestmentDate
+=== RUN   TestDependencyInventoryDividendProviderIdentity
+=== PAUSE TestDependencyInventoryDividendProviderIdentity
+=== RUN   TestDependencyInventoryLoanComposition
+=== PAUSE TestDependencyInventoryLoanComposition
+=== RUN   TestDependencyInventoryReinvestmentPositionFields
+=== RUN   TestDependencyInventoryReinvestmentPositionFields/holding
+=== PAUSE TestDependencyInventoryReinvestmentPositionFields/holding
+=== RUN   TestDependencyInventoryReinvestmentPositionFields/instrument
+=== PAUSE TestDependencyInventoryReinvestmentPositionFields/instrument
+=== RUN   TestDependencyInventoryReinvestmentPositionFields/currency
+=== PAUSE TestDependencyInventoryReinvestmentPositionFields/currency
+=== CONT  TestDependencyInventoryReinvestmentPositionFields/holding
+=== CONT  TestDependencyInventoryReinvestmentPositionFields/currency
+=== CONT  TestDependencyInventoryReinvestmentPositionFields/instrument
+--- PASS: TestDependencyInventoryReinvestmentPositionFields (0.00s)
+    --- PASS: TestDependencyInventoryReinvestmentPositionFields/currency (1.37s)
+    --- PASS: TestDependencyInventoryReinvestmentPositionFields/holding (1.40s)
+    --- PASS: TestDependencyInventoryReinvestmentPositionFields/instrument (1.40s)
+=== RUN   TestDependencyInventoryCashPaymentFields
+=== RUN   TestDependencyInventoryCashPaymentFields/dividend/date
+=== PAUSE TestDependencyInventoryCashPaymentFields/dividend/date
+=== RUN   TestDependencyInventoryCashPaymentFields/dividend/account
+=== PAUSE TestDependencyInventoryCashPaymentFields/dividend/account
+=== RUN   TestDependencyInventoryCashPaymentFields/dividend/currency
+=== PAUSE TestDependencyInventoryCashPaymentFields/dividend/currency
+=== RUN   TestDependencyInventoryCashPaymentFields/payment_in_lieu/date
+=== PAUSE TestDependencyInventoryCashPaymentFields/payment_in_lieu/date
+=== RUN   TestDependencyInventoryCashPaymentFields/payment_in_lieu/account
+=== PAUSE TestDependencyInventoryCashPaymentFields/payment_in_lieu/account
+=== RUN   TestDependencyInventoryCashPaymentFields/payment_in_lieu/currency
+=== PAUSE TestDependencyInventoryCashPaymentFields/payment_in_lieu/currency
+=== CONT  TestDependencyInventoryCashPaymentFields/dividend/date
+=== CONT  TestDependencyInventoryCashPaymentFields/payment_in_lieu/account
+=== CONT  TestDependencyInventoryCashPaymentFields/payment_in_lieu/date
+=== CONT  TestDependencyInventoryCashPaymentFields/dividend/account
+=== CONT  TestDependencyInventoryCashPaymentFields/dividend/currency
+=== CONT  TestDependencyInventoryCashPaymentFields/payment_in_lieu/currency
+--- PASS: TestDependencyInventoryCashPaymentFields (0.00s)
+    --- PASS: TestDependencyInventoryCashPaymentFields/dividend/account (0.28s)
+    --- PASS: TestDependencyInventoryCashPaymentFields/payment_in_lieu/date (0.30s)
+    --- PASS: TestDependencyInventoryCashPaymentFields/dividend/date (0.32s)
+    --- PASS: TestDependencyInventoryCashPaymentFields/payment_in_lieu/account (0.33s)
+    --- PASS: TestDependencyInventoryCashPaymentFields/payment_in_lieu/currency (0.33s)
+    --- PASS: TestDependencyInventoryCashPaymentFields/dividend/currency (0.34s)
+=== CONT  TestDependencyInventoryHistoricalParentEntry
+=== CONT  TestDependencyInventoryDividendProviderIdentity
+=== CONT  TestDependencyInventoryReinvestmentDate
+=== CONT  TestDependencyInventoryLoanComposition
+    dependency_inventory_test.go:165: cash=-1000 liability debit=800 interest=200; no origination/schedule link; unbalanced split refuses atomically
+=== NAME  TestDependencyInventoryReinvestmentDate
+    dependency_inventory_test.go:79: baseline: date-only correction refuses without any later operation or checkpoint
+--- PASS: TestDependencyInventoryLoanComposition (0.28s)
+--- PASS: TestDependencyInventoryReinvestmentDate (0.29s)
+=== NAME  TestDependencyInventoryHistoricalParentEntry
+    dependency_inventory_test.go:31: baseline: entry/preview refuse retired parent; 3 units/EUR 30 remain available
+--- PASS: TestDependencyInventoryHistoricalParentEntry (0.33s)
+=== NAME  TestDependencyInventoryDividendProviderIdentity
+    dependency_inventory_test.go:140: baseline and ablation: two provider events can claim two versions of one dividend; no new journal, but once-per-payment identity violated
+--- PASS: TestDependencyInventoryDividendProviderIdentity (0.35s)
+PASS
+ok  	rekenraam/backend/internal/app	3.126s
+ABLATION: only CIL entry standing and dividend/payment/reinvestment fixed-field checks removed
+=== RUN   TestDependencyInventoryHistoricalParentEntry
+=== PAUSE TestDependencyInventoryHistoricalParentEntry
+=== RUN   TestDependencyInventoryReinvestmentDate
+=== PAUSE TestDependencyInventoryReinvestmentDate
+=== RUN   TestDependencyInventoryDividendProviderIdentity
+=== PAUSE TestDependencyInventoryDividendProviderIdentity
+=== RUN   TestDependencyInventoryLoanComposition
+=== PAUSE TestDependencyInventoryLoanComposition
+=== RUN   TestDependencyInventoryReinvestmentPositionFields
+=== RUN   TestDependencyInventoryReinvestmentPositionFields/holding
+=== PAUSE TestDependencyInventoryReinvestmentPositionFields/holding
+=== RUN   TestDependencyInventoryReinvestmentPositionFields/instrument
+=== PAUSE TestDependencyInventoryReinvestmentPositionFields/instrument
+=== RUN   TestDependencyInventoryReinvestmentPositionFields/currency
+=== PAUSE TestDependencyInventoryReinvestmentPositionFields/currency
+=== CONT  TestDependencyInventoryReinvestmentPositionFields/holding
+=== CONT  TestDependencyInventoryReinvestmentPositionFields/currency
+=== CONT  TestDependencyInventoryReinvestmentPositionFields/instrument
+=== NAME  TestDependencyInventoryReinvestmentPositionFields/currency
+    dependency_inventory_test.go:211: ablated currency correction: quantity=10 basis=20 selected currency; typed accounting checks pass
+=== NAME  TestDependencyInventoryReinvestmentPositionFields/instrument
+    dependency_inventory_test.go:211: ablated instrument correction: quantity=10 basis=20 selected currency; typed accounting checks pass
+=== NAME  TestDependencyInventoryReinvestmentPositionFields/holding
+    dependency_inventory_test.go:211: ablated holding correction: quantity=10 basis=20 selected currency; typed accounting checks pass
+--- PASS: TestDependencyInventoryReinvestmentPositionFields (0.00s)
+    --- PASS: TestDependencyInventoryReinvestmentPositionFields/currency (1.61s)
+    --- PASS: TestDependencyInventoryReinvestmentPositionFields/instrument (1.61s)
+    --- PASS: TestDependencyInventoryReinvestmentPositionFields/holding (1.62s)
+=== RUN   TestDependencyInventoryCashPaymentFields
+=== RUN   TestDependencyInventoryCashPaymentFields/dividend/date
+=== PAUSE TestDependencyInventoryCashPaymentFields/dividend/date
+=== RUN   TestDependencyInventoryCashPaymentFields/dividend/account
+=== PAUSE TestDependencyInventoryCashPaymentFields/dividend/account
+=== RUN   TestDependencyInventoryCashPaymentFields/dividend/currency
+=== PAUSE TestDependencyInventoryCashPaymentFields/dividend/currency
+=== RUN   TestDependencyInventoryCashPaymentFields/payment_in_lieu/date
+=== PAUSE TestDependencyInventoryCashPaymentFields/payment_in_lieu/date
+=== RUN   TestDependencyInventoryCashPaymentFields/payment_in_lieu/account
+=== PAUSE TestDependencyInventoryCashPaymentFields/payment_in_lieu/account
+=== RUN   TestDependencyInventoryCashPaymentFields/payment_in_lieu/currency
+=== PAUSE TestDependencyInventoryCashPaymentFields/payment_in_lieu/currency
+=== CONT  TestDependencyInventoryCashPaymentFields/dividend/date
+=== CONT  TestDependencyInventoryCashPaymentFields/dividend/currency
+=== CONT  TestDependencyInventoryCashPaymentFields/payment_in_lieu/currency
+=== CONT  TestDependencyInventoryCashPaymentFields/payment_in_lieu/account
+=== CONT  TestDependencyInventoryCashPaymentFields/dividend/account
+=== CONT  TestDependencyInventoryCashPaymentFields/payment_in_lieu/date
+=== NAME  TestDependencyInventoryCashPaymentFields/dividend/currency
+    dependency_inventory_test.go:289: ablated dividend currency correction: exact typed cash effect and financial checks pass
+=== NAME  TestDependencyInventoryCashPaymentFields/payment_in_lieu/date
+    dependency_inventory_test.go:289: ablated payment_in_lieu date correction: exact typed cash effect and financial checks pass
+=== NAME  TestDependencyInventoryCashPaymentFields/payment_in_lieu/account
+    dependency_inventory_test.go:289: ablated payment_in_lieu account correction: exact typed cash effect and financial checks pass
+=== NAME  TestDependencyInventoryCashPaymentFields/dividend/account
+    dependency_inventory_test.go:289: ablated dividend account correction: exact typed cash effect and financial checks pass
+=== NAME  TestDependencyInventoryCashPaymentFields/payment_in_lieu/currency
+    dependency_inventory_test.go:289: ablated payment_in_lieu currency correction: exact typed cash effect and financial checks pass
+=== NAME  TestDependencyInventoryCashPaymentFields/dividend/date
+    dependency_inventory_test.go:289: ablated dividend date correction: exact typed cash effect and financial checks pass
+--- PASS: TestDependencyInventoryCashPaymentFields (0.00s)
+    --- PASS: TestDependencyInventoryCashPaymentFields/dividend/currency (0.52s)
+    --- PASS: TestDependencyInventoryCashPaymentFields/payment_in_lieu/date (0.58s)
+    --- PASS: TestDependencyInventoryCashPaymentFields/payment_in_lieu/account (0.59s)
+    --- PASS: TestDependencyInventoryCashPaymentFields/dividend/account (0.60s)
+    --- PASS: TestDependencyInventoryCashPaymentFields/dividend/date (0.61s)
+    --- PASS: TestDependencyInventoryCashPaymentFields/payment_in_lieu/currency (0.61s)
+=== CONT  TestDependencyInventoryLoanComposition
+=== CONT  TestDependencyInventoryReinvestmentDate
+=== CONT  TestDependencyInventoryHistoricalParentEntry
+=== CONT  TestDependencyInventoryDividendProviderIdentity
+=== NAME  TestDependencyInventoryLoanComposition
+    dependency_inventory_test.go:165: cash=-1000 liability debit=800 interest=200; no origination/schedule link; unbalanced split refuses atomically
+--- PASS: TestDependencyInventoryLoanComposition (0.72s)
+=== NAME  TestDependencyInventoryDividendProviderIdentity
+    dependency_inventory_test.go:140: baseline and ablation: two provider events can claim two versions of one dividend; no new journal, but once-per-payment identity violated
+--- PASS: TestDependencyInventoryDividendProviderIdentity (0.87s)
+=== NAME  TestDependencyInventoryHistoricalParentEntry
+    dependency_inventory_test.go:62: ablated: preview=commit; cash=-22 quantity=2.5 basis=25 disposed basis=5 gain=3; financial checks pass; whole-share control refuses
+--- PASS: TestDependencyInventoryHistoricalParentEntry (0.97s)
+=== NAME  TestDependencyInventoryReinvestmentDate
+    dependency_inventory_test.go:103: ablated: cash=0 quantity=10 basis=20 income=-20; date-only correction passes; moving acquisition after dependent sale refuses atomically
+--- PASS: TestDependencyInventoryReinvestmentDate (1.05s)
+PASS
+ok  	rekenraam/backend/internal/app	4.314s
+
+EXISTING ACCOUNTING/TRUST CONTROLS
+Focused existing accounting/trust controls at 4ad8373f; 46 named tests
+=== RUN   TestCorrectTrading212SalePreviewAndSourceAcceptanceRollback
+=== PAUSE TestCorrectTrading212SalePreviewAndSourceAcceptanceRollback
+=== RUN   TestCorrectTrading212SalePreservesSpecificElectionWithoutGuessingQuantityChanges
+=== PAUSE TestCorrectTrading212SalePreservesSpecificElectionWithoutGuessingQuantityChanges
+=== RUN   TestReplacingResolutionRevisesPartialSaleAndKeepsEvidence
+=== PAUSE TestReplacingResolutionRevisesPartialSaleAndKeepsEvidence
+=== RUN   TestTransferCorrectionAfterResolutionReversal
+=== PAUSE TestTransferCorrectionAfterResolutionReversal
+=== RUN   TestResolvingUnknownInboundReachesInternalTransferDestination
+=== PAUSE TestResolvingUnknownInboundReachesInternalTransferDestination
+=== RUN   TestCapitalReturnBeyondBasisReducesToZeroAndRecordsExcess
+=== PAUSE TestCapitalReturnBeyondBasisReducesToZeroAndRecordsExcess
+=== RUN   TestCapitalReturnAllocatesPerShareWithExactRemainder
+=== PAUSE TestCapitalReturnAllocatesPerShareWithExactRemainder
+=== RUN   TestBuyCorrectionRevisesCapitalReturnReductionAndExcess
+=== PAUSE TestBuyCorrectionRevisesCapitalReturnReductionAndExcess
+=== RUN   TestExplicitEntitlementRefusesLotNotOpenOnEffectiveDate
+=== PAUSE TestExplicitEntitlementRefusesLotNotOpenOnEffectiveDate
+=== RUN   TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance
+=== PAUSE TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance
+=== RUN   TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting
+=== PAUSE TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting
+=== RUN   TestCashInLieuAllParentsReverseWhenOtherUnitsSupportDisposal
+=== PAUSE TestCashInLieuAllParentsReverseWhenOtherUnitsSupportDisposal
+=== RUN   TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies
+=== PAUSE TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies
+=== RUN   TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder
+=== PAUSE TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder
+=== RUN   TestCashInLieuOfReversedSplitIsRefused
+=== PAUSE TestCashInLieuOfReversedSplitIsRefused
+=== RUN   TestCashStockMergerConservesBasisPerLotAndSharesCashByUnits
+=== PAUSE TestCashStockMergerConservesBasisPerLotAndSharesCashByUnits
+=== RUN   TestBuyCorrectionBeforeCashStockMergerRevisesRealizedAndCarriedBasis
+=== PAUSE TestBuyCorrectionBeforeCashStockMergerRevisesRealizedAndCarriedBasis
+=== RUN   TestBackdatedPurchaseBeforeCashStockMergerIsRefusedWithMergerNamed
+=== PAUSE TestBackdatedPurchaseBeforeCashStockMergerIsRefusedWithMergerNamed
+=== RUN   TestDividendCoverageSeparatesKnownUnassignedAndCashOnlyIncome
+=== PAUSE TestDividendCoverageSeparatesKnownUnassignedAndCashOnlyIncome
+=== RUN   TestDividendProducerRefetchKeepsOwnerDecisionsAndNeverDuplicates
+=== PAUSE TestDividendProducerRefetchKeepsOwnerDecisionsAndNeverDuplicates
+=== RUN   TestProviderDividendRevisionAfterLinkLeavesLinkAndPayment
+=== PAUSE TestProviderDividendRevisionAfterLinkLeavesLinkAndPayment
+=== RUN   TestGainsRunSnapshotFailureLeavesEveryFinancialRowUnchanged
+=== PAUSE TestGainsRunSnapshotFailureLeavesEveryFinancialRowUnchanged
+=== RUN   TestGainsRunSnapshotIgnoresWritesBeforePersistence
+=== PAUSE TestGainsRunSnapshotIgnoresWritesBeforePersistence
+=== RUN   TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts
+=== PAUSE TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts
+=== RUN   TestPaymentAttributionRepairPreservesProviderEvidenceAndPaymentIdentity
+=== PAUSE TestPaymentAttributionRepairPreservesProviderEvidenceAndPaymentIdentity
+=== RUN   TestReplaceReinvestedDividendAmountAndQuantityReplaysDependentSale
+=== PAUSE TestReplaceReinvestedDividendAmountAndQuantityReplaysDependentSale
+=== RUN   TestReverseReinvestedDividendImpossibleThroughLaterDisposalRollsBack
+=== PAUSE TestReverseReinvestedDividendImpossibleThroughLaterDisposalRollsBack
+=== RUN   TestShareExchangeReversalNamesADestinationSaleWithoutWriting
+=== PAUSE TestShareExchangeReversalNamesADestinationSaleWithoutWriting
+=== RUN   TestTradeComponentLinksToItsOwnClearingLegWhenAmountsCollide
+=== PAUSE TestTradeComponentLinksToItsOwnClearingLegWhenAmountsCollide
+=== RUN   TestExactTradeEconomicsFeeTreatmentAndGrossPrice
+=== PAUSE TestExactTradeEconomicsFeeTreatmentAndGrossPrice
+=== RUN   TestForeignTradeFeeKeepsCostCurrencyBasisAndPostsOwnCashLegs
+=== PAUSE TestForeignTradeFeeKeepsCostCurrencyBasisAndPostsOwnCashLegs
+=== RUN   TestReplaceBuyDateAfterDependentSaleNamesSale
+=== PAUSE TestReplaceBuyDateAfterDependentSaleNamesSale
+=== RUN   TestReplaceBuyRefusesInvalidatedSpecificLotElection
+=== PAUSE TestReplaceBuyRefusesInvalidatedSpecificLotElection
+=== RUN   TestReplaceImportedBuyDatePreservesDedupeIdentity
+=== PAUSE TestReplaceImportedBuyDatePreservesDedupeIdentity
+=== RUN   TestReverseTransferChainRefusesUpstreamUntilOnwardTransferReversed
+=== PAUSE TestReverseTransferChainRefusesUpstreamUntilOnwardTransferReversed
+=== RUN   TestBuyCorrectionCarriesChangedBasisToLinkedInternalTransfer
+=== PAUSE TestBuyCorrectionCarriesChangedBasisToLinkedInternalTransfer
+=== RUN   TestCorrectionMovingSettlementAcrossBoundaryInvalidates
+=== PAUSE TestCorrectionMovingSettlementAcrossBoundaryInvalidates
+=== RUN   TestEqualCorrectionAmountsAcrossSameDayBoundaryDoNotCancel
+=== PAUSE TestEqualCorrectionAmountsAcrossSameDayBoundaryDoNotCancel
+=== RUN   TestChainedCashNeutralCorrectionsPreserveCashCheckpoint
+=== PAUSE TestChainedCashNeutralCorrectionsPreserveCashCheckpoint
+=== RUN   TestCorrectionMovingSeparatelyPaidFeeNetsPerBoundary
+=== PAUSE TestCorrectionMovingSeparatelyPaidFeeNetsPerBoundary
+=== RUN   TestSalePreviewReportsEveryCheckpointCommitInvalidates
+=== PAUSE TestSalePreviewReportsEveryCheckpointCommitInvalidates
+=== RUN   TestCreateTransactionRejectsPostingsToSubledgerManagedAccounts
+=== PAUSE TestCreateTransactionRejectsPostingsToSubledgerManagedAccounts
+=== CONT  TestCorrectTrading212SalePreviewAndSourceAcceptanceRollback
+=== CONT  TestReverseTransferChainRefusesUpstreamUntilOnwardTransferReversed
+=== CONT  TestProviderDividendRevisionAfterLinkLeavesLinkAndPayment
+=== CONT  TestCreateTransactionRejectsPostingsToSubledgerManagedAccounts
+=== RUN   TestCreateTransactionRejectsPostingsToSubledgerManagedAccounts/security_holding
+=== CONT  TestSalePreviewReportsEveryCheckpointCommitInvalidates
+=== CONT  TestCorrectionMovingSeparatelyPaidFeeNetsPerBoundary
+=== CONT  TestChainedCashNeutralCorrectionsPreserveCashCheckpoint
+=== CONT  TestEqualCorrectionAmountsAcrossSameDayBoundaryDoNotCancel
+=== CONT  TestBuyCorrectionCarriesChangedBasisToLinkedInternalTransfer
+=== CONT  TestCorrectionMovingSettlementAcrossBoundaryInvalidates
+=== RUN   TestCreateTransactionRejectsPostingsToSubledgerManagedAccounts/fund_holding
+--- PASS: TestProviderDividendRevisionAfterLinkLeavesLinkAndPayment (2.46s)
+=== CONT  TestReplaceBuyRefusesInvalidatedSpecificLotElection
+=== CONT  TestReplaceBuyDateAfterDependentSaleNamesSale
+--- PASS: TestCreateTransactionRejectsPostingsToSubledgerManagedAccounts (2.63s)
+    --- PASS: TestCreateTransactionRejectsPostingsToSubledgerManagedAccounts/security_holding (2.32s)
+    --- PASS: TestCreateTransactionRejectsPostingsToSubledgerManagedAccounts/fund_holding (0.31s)
+--- PASS: TestEqualCorrectionAmountsAcrossSameDayBoundaryDoNotCancel (2.85s)
+=== CONT  TestReplaceImportedBuyDatePreservesDedupeIdentity
+--- PASS: TestSalePreviewReportsEveryCheckpointCommitInvalidates (2.92s)
+=== CONT  TestExactTradeEconomicsFeeTreatmentAndGrossPrice
+=== RUN   TestExactTradeEconomicsFeeTreatmentAndGrossPrice/capitalized
+--- PASS: TestCorrectionMovingSettlementAcrossBoundaryInvalidates (3.03s)
+=== CONT  TestForeignTradeFeeKeepsCostCurrencyBasisAndPostsOwnCashLegs
+--- PASS: TestReplaceBuyDateAfterDependentSaleNamesSale (0.70s)
+=== CONT  TestTradeComponentLinksToItsOwnClearingLegWhenAmountsCollide
+--- PASS: TestBuyCorrectionCarriesChangedBasisToLinkedInternalTransfer (3.36s)
+=== CONT  TestShareExchangeReversalNamesADestinationSaleWithoutWriting
+--- PASS: TestChainedCashNeutralCorrectionsPreserveCashCheckpoint (3.43s)
+=== CONT  TestReplaceReinvestedDividendAmountAndQuantityReplaysDependentSale
+--- PASS: TestReplaceBuyRefusesInvalidatedSpecificLotElection (1.00s)
+=== CONT  TestReverseReinvestedDividendImpossibleThroughLaterDisposalRollsBack
+--- PASS: TestReverseTransferChainRefusesUpstreamUntilOnwardTransferReversed (3.53s)
+=== CONT  TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts
+--- PASS: TestCorrectionMovingSeparatelyPaidFeeNetsPerBoundary (3.57s)
+=== CONT  TestGainsRunSnapshotIgnoresWritesBeforePersistence
+--- PASS: TestForeignTradeFeeKeepsCostCurrencyBasisAndPostsOwnCashLegs (0.68s)
+=== CONT  TestGainsRunSnapshotFailureLeavesEveryFinancialRowUnchanged
+--- PASS: TestReplaceImportedBuyDatePreservesDedupeIdentity (0.87s)
+=== CONT  TestCashInLieuAllParentsReverseWhenOtherUnitsSupportDisposal
+=== RUN   TestCashInLieuAllParentsReverseWhenOtherUnitsSupportDisposal/split
+=== RUN   TestExactTradeEconomicsFeeTreatmentAndGrossPrice/expensed
+=== RUN   TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/omission_preserves
+--- PASS: TestShareExchangeReversalNamesADestinationSaleWithoutWriting (0.72s)
+=== CONT  TestPaymentAttributionRepairPreservesProviderEvidenceAndPaymentIdentity
+=== RUN   TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/value_repairs
+=== CONT  TestDividendProducerRefetchKeepsOwnerDecisionsAndNeverDuplicates
+--- PASS: TestReverseReinvestedDividendImpossibleThroughLaterDisposalRollsBack (0.76s)
+=== RUN   TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/null_clears
+--- PASS: TestGainsRunSnapshotIgnoresWritesBeforePersistence (0.90s)
+=== CONT  TestBackdatedPurchaseBeforeCashStockMergerIsRefusedWithMergerNamed
+--- PASS: TestTradeComponentLinksToItsOwnClearingLegWhenAmountsCollide (1.15s)
+=== CONT  TestBuyCorrectionBeforeCashStockMergerRevisesRealizedAndCarriedBasis
+=== RUN   TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/partial_stays_partial
+--- PASS: TestCorrectTrading212SalePreviewAndSourceAcceptanceRollback (4.57s)
+=== CONT  TestCashStockMergerConservesBasisPerLotAndSharesCashByUnits
+=== RUN   TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/assign_supported
+--- PASS: TestExactTradeEconomicsFeeTreatmentAndGrossPrice (1.78s)
+    --- PASS: TestExactTradeEconomicsFeeTreatmentAndGrossPrice/capitalized (0.81s)
+    --- PASS: TestExactTradeEconomicsFeeTreatmentAndGrossPrice/expensed (0.97s)
+=== CONT  TestDividendCoverageSeparatesKnownUnassignedAndCashOnlyIncome
+--- PASS: TestDividendProducerRefetchKeepsOwnerDecisionsAndNeverDuplicates (0.62s)
+=== CONT  TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder
+=== RUN   TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder/split
+--- PASS: TestGainsRunSnapshotFailureLeavesEveryFinancialRowUnchanged (1.26s)
+=== CONT  TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies
+=== RUN   TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies/split
+=== RUN   TestCashInLieuAllParentsReverseWhenOtherUnitsSupportDisposal/share_exchange
+--- PASS: TestReplaceReinvestedDividendAmountAndQuantityReplaysDependentSale (1.56s)
+=== CONT  TestCashInLieuOfReversedSplitIsRefused
+--- PASS: TestBackdatedPurchaseBeforeCashStockMergerIsRefusedWithMergerNamed (0.56s)
+=== CONT  TestCapitalReturnAllocatesPerShareWithExactRemainder
+--- PASS: TestPaymentAttributionRepairPreservesProviderEvidenceAndPaymentIdentity (1.14s)
+=== CONT  TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting
+=== RUN   TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting/split
+--- PASS: TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts (1.68s)
+    --- PASS: TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/omission_preserves (0.18s)
+    --- PASS: TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/value_repairs (0.18s)
+    --- PASS: TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/null_clears (0.19s)
+    --- PASS: TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/partial_stays_partial (0.15s)
+    --- PASS: TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/assign_supported (0.12s)
+=== CONT  TestExplicitEntitlementRefusesLotNotOpenOnEffectiveDate
+--- PASS: TestDividendCoverageSeparatesKnownUnassignedAndCashOnlyIncome (0.71s)
+=== CONT  TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance
+=== RUN   TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance/split
+--- PASS: TestCashStockMergerConservesBasisPerLotAndSharesCashByUnits (0.95s)
+=== CONT  TestBuyCorrectionRevisesCapitalReturnReductionAndExcess
+--- PASS: TestCashInLieuOfReversedSplitIsRefused (0.58s)
+=== CONT  TestResolvingUnknownInboundReachesInternalTransferDestination
+--- PASS: TestExplicitEntitlementRefusesLotNotOpenOnEffectiveDate (0.47s)
+=== CONT  TestCapitalReturnBeyondBasisReducesToZeroAndRecordsExcess
+=== RUN   TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies/share_exchange
+=== RUN   TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting/share_exchange
+--- PASS: TestBuyCorrectionBeforeCashStockMergerRevisesRealizedAndCarriedBasis (1.39s)
+=== CONT  TestTransferCorrectionAfterResolutionReversal
+=== CONT  TestReplacingResolutionRevisesPartialSaleAndKeepsEvidence
+--- PASS: TestCapitalReturnAllocatesPerShareWithExactRemainder (0.93s)
+=== RUN   TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder/share_exchange
+=== CONT  TestCorrectTrading212SalePreservesSpecificElectionWithoutGuessingQuantityChanges
+--- PASS: TestCapitalReturnBeyondBasisReducesToZeroAndRecordsExcess (0.86s)
+=== RUN   TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies/spin_off
+=== RUN   TestCashInLieuAllParentsReverseWhenOtherUnitsSupportDisposal/spin_off
+--- PASS: TestBuyCorrectionRevisesCapitalReturnReductionAndExcess (1.18s)
+--- PASS: TestResolvingUnknownInboundReachesInternalTransferDestination (1.20s)
+=== RUN   TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting/spin_off
+--- PASS: TestTransferCorrectionAfterResolutionReversal (0.99s)
+--- PASS: TestReplacingResolutionRevisesPartialSaleAndKeepsEvidence (1.11s)
+=== RUN   TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance/share_exchange
+=== RUN   TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies/cash_and_stock_merger
+=== RUN   TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder/spin_off
+=== RUN   TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting/cash_and_stock_merger
+=== RUN   TestCashInLieuAllParentsReverseWhenOtherUnitsSupportDisposal/cash_and_stock_merger
+--- PASS: TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies (2.73s)
+    --- PASS: TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies/split (0.74s)
+    --- PASS: TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies/share_exchange (0.88s)
+    --- PASS: TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies/spin_off (0.60s)
+    --- PASS: TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies/cash_and_stock_merger (0.51s)
+--- PASS: TestCorrectTrading212SalePreservesSpecificElectionWithoutGuessingQuantityChanges (1.28s)
+--- PASS: TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting (2.69s)
+    --- PASS: TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting/split (0.58s)
+    --- PASS: TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting/share_exchange (1.01s)
+    --- PASS: TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting/spin_off (0.54s)
+    --- PASS: TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting/cash_and_stock_merger (0.56s)
+=== RUN   TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder/cash_and_stock_merger
+--- PASS: TestCashInLieuAllParentsReverseWhenOtherUnitsSupportDisposal (4.42s)
+    --- PASS: TestCashInLieuAllParentsReverseWhenOtherUnitsSupportDisposal/split (1.26s)
+    --- PASS: TestCashInLieuAllParentsReverseWhenOtherUnitsSupportDisposal/share_exchange (1.63s)
+    --- PASS: TestCashInLieuAllParentsReverseWhenOtherUnitsSupportDisposal/spin_off (0.87s)
+    --- PASS: TestCashInLieuAllParentsReverseWhenOtherUnitsSupportDisposal/cash_and_stock_merger (0.65s)
+=== RUN   TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance/spin_off
+--- PASS: TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder (3.63s)
+    --- PASS: TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder/split (1.26s)
+    --- PASS: TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder/share_exchange (1.16s)
+    --- PASS: TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder/spin_off (0.72s)
+    --- PASS: TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder/cash_and_stock_merger (0.49s)
+=== RUN   TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance/cash_and_stock_merger
+--- PASS: TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance (4.27s)
+    --- PASS: TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance/split (1.76s)
+    --- PASS: TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance/share_exchange (1.14s)
+    --- PASS: TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance/spin_off (0.65s)
+    --- PASS: TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance/cash_and_stock_merger (0.72s)
+PASS
+ok  	rekenraam/backend/internal/app	10.958s
+=== RUN   TestPriceDependenciesAreImmutable
+=== PAUSE TestPriceDependenciesAreImmutable
+=== RUN   TestVoidPriceObservationRefusesAChainBeyondTheDepthLimit
+=== PAUSE TestVoidPriceObservationRefusesAChainBeyondTheDepthLimit
+=== RUN   TestPriceDependencyIndexCannotFormACycle
+=== PAUSE TestPriceDependencyIndexCannotFormACycle
+=== RUN   TestVoidPriceObservationCascadesAcrossBranches
+=== PAUSE TestVoidPriceObservationCascadesAcrossBranches
+=== CONT  TestPriceDependenciesAreImmutable
+=== CONT  TestPriceDependencyIndexCannotFormACycle
+=== CONT  TestVoidPriceObservationRefusesAChainBeyondTheDepthLimit
+=== CONT  TestVoidPriceObservationCascadesAcrossBranches
+--- PASS: TestVoidPriceObservationRefusesAChainBeyondTheDepthLimit (3.35s)
+--- PASS: TestPriceDependenciesAreImmutable (3.41s)
+--- PASS: TestPriceDependencyIndexCannotFormACycle (3.47s)
+--- PASS: TestVoidPriceObservationCascadesAcrossBranches (3.48s)
+PASS
+ok  	rekenraam/backend/internal/db	4.541s
+
+ADDITIONAL CASH CORRECTION CONTROLS
+=== RUN   TestReverseDividendRequiresReconciliationOverride
+=== PAUSE TestReverseDividendRequiresReconciliationOverride
+=== RUN   TestDividendReplacementRollsBackLateFailure
+=== PAUSE TestDividendReplacementRollsBackLateFailure
+=== RUN   TestImportedDividendCorrectionPreservesCommittedIdentity
+=== PAUSE TestImportedDividendCorrectionPreservesCommittedIdentity
+=== RUN   TestReversePaymentInLieuRequiresReconciliationOverride
+=== PAUSE TestReversePaymentInLieuRequiresReconciliationOverride
+=== RUN   TestPaymentInLieuReplacementRollsBackLateFailure
+=== PAUSE TestPaymentInLieuReplacementRollsBackLateFailure
+=== CONT  TestReverseDividendRequiresReconciliationOverride
+=== CONT  TestDividendReplacementRollsBackLateFailure
+=== CONT  TestReversePaymentInLieuRequiresReconciliationOverride
+=== CONT  TestPaymentInLieuReplacementRollsBackLateFailure
+=== CONT  TestImportedDividendCorrectionPreservesCommittedIdentity
+--- PASS: TestImportedDividendCorrectionPreservesCommittedIdentity (1.65s)
+--- PASS: TestReverseDividendRequiresReconciliationOverride (1.66s)
+--- PASS: TestDividendReplacementRollsBackLateFailure (1.69s)
+--- PASS: TestReversePaymentInLieuRequiresReconciliationOverride (1.73s)
+--- PASS: TestPaymentInLieuReplacementRollsBackLateFailure (1.75s)
+PASS
+ok  	rekenraam/backend/internal/app	2.802s
+
+STRUCTURAL AUDIT
+SKIP_OPENAPI=1 ./scripts/check-post-merge.sh HEAD
+
+== numbered-file collisions (migrations, ADRs)
+
+== generated OpenAPI client drift
+  skipped (SKIP_OPENAPI=1)
+
+== duplicate paragraphs in Markdown docs
+
+== duplicate GitHub workflows
+
+== colliding work-item IDs
+
+== tests lost relative to the merged sides
+
+post-merge audit: clean
+
+Document/source/test references and git diff --check: passed.

@@ -2,9 +2,10 @@
 
 Owner direction: 2026-10-23, governed by
 [ADR 0019](../adrs/0019-financial-effects-and-repairable-attribution.md).
-This is a design and delivery-boundary plan. The first four-case comparative
-contract below is complete; the wider family inventory and runtime delivery
-remain open. Runtime baseline: `8549045a4484f01e6e9b28e4f0a5fd6aa8213985`.
+This is a design and delivery-boundary plan. #391's cross-family inventory and
+contracts are complete at `4ad8373f772eb02b40126f5e9d746f0eb50c9e79`;
+runtime follow-ups #393/#394/#395 remain open. #388/#389/#392 are delivered.
+The earlier comparative baseline is `8549045a4484f01e6e9b28e4f0a5fd6aa8213985`.
 
 Delivery acceptance and progress live in
 [#391](https://github.com/sergeyfarin/rekenraam/issues/391). The broader
@@ -28,11 +29,68 @@ identity are also examined. A field used only for explanation is a candidate
 for versioned attribution, not an automatic veto. Security and operational
 protections are assessed against their own threat/recovery contracts.
 
-## Family Coverage And Starting Hypotheses
+## Completed Family Dispositions (2026-10-23)
 
-The entries below guide the inventory; they are not completed dispositions.
-The identified current mechanisms come from the baseline code and active
-contracts. Keep or reject is a valid result for any unproven simplification.
+The [source-pinned inventory](../reviews/financial-dependency-inventory-2026-10-23.md)
+records entry/preview/correction/link consumers, authoritative versus explanatory
+facts, falsifiable retained dependencies, named controls, independent figures,
+consumer consequences and reproducible counterfactuals for every #391 family.
+Its sampled probes do not claim all-path runtime acceptance. These decisions
+complete the design review; open implementation issues own their own validation.
+
+| Family | Accepted dependency and correction policy | Delivery disposition |
+|---|---|---|
+| Cash dividend, embedded/separate withholding | Exact cash/gross/tax and payment shape remain required; payer is optional/clearable, without historical share authorization. Preserve known tax independently of payer and unknown imported economics. | #393 implements payer/shape consistency. #395 owns actual date/account/currency correction, distinct from neutral attribution repair. |
+| Dividend payment in lieu | Cash/expense/recovery is authoritative; holding/instrument/ex-date are optional audited explanation, with warning/unavailable support rather than write permission. | #388/#389 delivered; retain diagnostics/source controls. #395 owns remaining financial date/account/currency correction. |
+| Fractional cash in lieu, all four parents | Real dated disposal/elections remain required. Original typed parent is immutable provenance; its current standing is advisory on both entry and correction. | #392 delivered correction replay. **Accept #394** for remaining entry/lot-lookup/insert standing gates; probes show valid entry after reversal, impossible quantity still refuses. Keep historical reference/type/book integrity, no nullable-parent redesign. |
+| Reinvested dividend | Retain real income-funded acquisition and required position/date/currency facts. Their values can change through typed old/new-position replay; required presence does not justify permanently fixed values. | **Accept #395**, consistently across cash dividend/payment and reinvestment fixed fields; valid isolated field-change probes pass, dependent-sale date control refuses. Keep typed identity and actual source/election/checkpoint constraints. |
+| Ordinary fees/interest and trade charges | Ordinary postings need no trade/loan link. Retain a trade charge's actual settlement, treatment, dated cash and clearing-component identity; recompute affected allocations. | Keep existing typed policy; no new issue or common related-payment mechanism. |
+| Capital return | Receipt, dated entitlement cohort, exact per-lot reduction/excess and basis knowledge are real calculation inputs. Preserve explicit elections; replay supported changes. | Keep allocation lineage. No optional-lot reinterpretation or invented zero basis. |
+| Splits/exchanges/spin-offs/cash-stock mergers | Ratios, source/destination quantity/basis, elected fractions/cohorts and root order remain actual effects. Replay supported changes; refuse lost units or owner elections that cannot be reproduced. | Keep actual typed allocations; blanket fraction-parent veto already removed by #392. |
+| Transfers, inbound basis resolution and disposal/cover elections | Keep actual quantity/cost movement, chosen lots and bridge journals. Recompute supported basis changes; withdraw effective resolution before transfer reversal. Never silently choose another specific lot. | Keep current dependency and resolution-reversal workflow; a composed command has no demonstrated need here. |
+| Provider/import evidence and correction identity | Raw evidence and settled owner decisions remain immutable; owner attribution can change. One payment identity spans its correction ancestry. Mismatch is visible without rewriting evidence or re-authorizing duplicate effects. | **Extend #393** with observed dividend duplicate-link ancestry defect and source/payer mismatch disclosure. Payment-in-lieu already has the required ancestry control. No separate ticket per check. |
+| Prices/derivations | Keep derivation legs and atomic bounded retirement when input is voided; recompute live valuation. Quotes do not authorize journals. | Keep current cascade controls; no cash-correction veto. |
+| Saved reports | Keep snapshot/profile/input/output bytes and hashes; later corrections produce a different live report or a new saved run. | Keep immutable evidence; reject freezing the ledger because a saved report refers to it. |
+| Reconciliation/order | Review actual changed boundary balances/sets and gain allocations, with stale-plan protection. Net compound effects per account/commodity/checkpoint; preserve neutral checkpoints and root order. | Keep current commitment controls; reject per-leg review of neutral attribution repair. |
+| Mortgage/loan comparison | Compose owner-known cash, liability principal and interest as ordinary exact balanced postings. An origination/schedule is not required authorization. | No new loan engine, inferred amortization, special correction family or mandatory schedule. Positive/negative ordinary-payment probe retained. |
+
+### Common Consumer Contract
+
+Use the existing typed command lifecycle, shared writer and audited history.
+Services plan; commit revalidates current versions/source identity, runs affected
+replay and writes journal/subledger/observations/audit atomically. Preview uses
+the same writer with rollback. Bind review only to actual gain/checkpoint
+consequences; stale/late failure writes nothing. Attribution-only repair keeps
+recorded financial effects and neutral checkpoints.
+
+Cash explanation follows the nullable/omission contract below; supplied typed
+identities must still exist in the book. Unknown/unassigned support is unavailable,
+known contradictory explanation is a scoped warning, and broken conservation,
+malformed facts or missing journals remain integrity failures. Reuse existing
+detail/history/self-check and coverage discovery; no new queue or repeated
+acknowledgement. #393 must show source/payer disagreement or unassigned attribution
+without erasing the historical source claim. A dividend does not assert dated
+entitlement, so no new holdings diagnostic is added.
+
+Exact original-currency cash/gross/tax/basis and coverage survive repair and export.
+Known unassigned tax is not zero; imported unknown gross/tax and unknown basis
+remain unavailable in dependent totals. Preserve immutable original/source/parent
+facts and correction ancestry in bundles; version schema meaning compatibly.
+Saved reports retain their bytes while live reports recompute. Each runtime
+follow-up owns forward migration/downgrade, API presence decoding, localized
+mobile repair/discovery, actual preview/commit and failure controls where affected.
+
+The original policy test `TestCashInLieuOfReversedSplitIsRefused` stays until
+#394 changes that policy with all-four-parent accounting controls. #395 adds
+field-change controls without removing family/election safeguards. #393 turns
+the audit's observed duplicate-provider-link characterization into a refusal
+regression across replacement ancestry. This audit changes no production tests.
+#379's historical evidence stays intact; #390 and #284 keep their separate scope.
+
+## Family Coverage And Starting Hypotheses (Historical Baseline)
+
+The entries below record the starting hypotheses at the earlier baseline.
+The completed dispositions above supersede them; they are not a live checklist.
 
 | Family | Starting boundary and required examination |
 |---|---|
@@ -196,12 +254,11 @@ warning can use this same surface once its source-resolution contract ships.
 
 ### Implementation Boundaries
 
-#388 and #389 now have their targeted contract; neither waits for every other
-#391 family or #390. They may ship together, or #389's read/visibility first
-against explicit fixtures. Missing attribution fields and contradictory
-historical support are accepted only alongside this visibility. #392 and #393
-are separate bounded changes with their own negative controls. The wider
-family inventory remains in #391; this slice does not complete that issue.
+At the four-case checkpoint, #388/#389 had their targeted contract without
+waiting for every other #391 family or #390; #392/#393 were separate bounded
+changes. Missing attribution fields and contradictory historical support were
+accepted only alongside visibility. The completed inventory above and runtime
+delivery sections below record the subsequent dispositions and shipped scope.
 
 ### Read-Side Delivery (#389, 2026-10-23)
 
@@ -274,7 +331,8 @@ The independent €36 / 7.5 × 0.5 = €2.40 example, 0.3 < 0.5 refusal,
 all-family replacement/reversal, specific-lot/later-sale, same-day root order,
 gain/checkpoint binding, rollback, migration and owner-surface controls are
 recorded in [delivery evidence](../reviews/cash-in-lieu-parent-replay-2026-10-23.md).
-#393 and the remaining #391/#390 inventory stay open.
+At this delivery checkpoint #393 and the remaining #391/#390 inventory stayed
+open. The completed #391 inventory above records the subsequent design review.
 
 ## Whole-Application Complexity Review
 

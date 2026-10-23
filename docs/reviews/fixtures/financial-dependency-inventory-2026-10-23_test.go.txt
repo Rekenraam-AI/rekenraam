@@ -1,0 +1,293 @@
+package app
+
+import (
+	"context"
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"rekenraam/backend/internal/db"
+	"rekenraam/backend/internal/exact"
+)
+
+// #391 characterization only: compiled in a disposable pinned source copy.
+func inventoryAblated() bool { return os.Getenv("REKENRAAM_INVENTORY_ABLATION") == "1" }
+
+func TestDependencyInventoryHistoricalParentEntry(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f, split := cashInLieuSetup(t) // 3 units, EUR 30; split 3:2.
+	_, err := acknowledgedReverseSplit(ctx, f.investmentService, ReverseInvestmentSplitInput{
+		OwnerUserID: f.ownerUserID, TransactionID: split.Transaction.ID, Reason: "incorrect split"})
+	require.NoError(t, err)
+	input := cashInLieuInput(f, split.Transaction.ID) // sell 0.5 for EUR 8.
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	preview, _, err := f.investmentService.PreviewCashInLieu(ctx, input)
+	if !inventoryAblated() {
+		require.ErrorIs(t, err, ErrCashInLieuSplitNotFound)
+		_, err = f.investmentService.CashInLieu(ctx, input)
+		require.ErrorIs(t, err, ErrCashInLieuSplitNotFound)
+		require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+		t.Log("baseline: entry/preview refuse retired parent; 3 units/EUR 30 remain available")
+		return
+	}
+	require.NoError(t, err)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	result, err := f.investmentService.CashInLieu(ctx, input)
+	require.NoError(t, err)
+	require.Equal(t, preview.Allocations, result.Allocations)
+	quantity, basis := openPositionBasis(t, f, f.holdingAccountID)
+	requireScaled(t, 25, 1, quantity, "3 - 0.5")
+	requireScaled(t, 2500, 2, basis, "30 - (30 / 3 * 0.5)")
+	requireScaled(t, 500, 2, saleEffectiveBasis(t, f, result.Transaction.ID), "disposed basis 5")
+	require.Equal(t, int64(-2200), accountBalance(t, f, f.cashAccountID))
+	checks := mustRunInvestmentSelfCheck(t, f)
+	for _, id := range []string{CheckEntryBalance, CheckTransactionBalance, CheckBookBalance,
+		CheckLotReconciliation, CheckInvestmentReplay, CheckCheckpointIntegrity, CheckSQLiteIntegrity, CheckInvestmentFoundation} {
+		require.Equal(t, SelfCheckPassed, resultFor(t, checks, id).Status, id)
+	}
+	// Removing parent standing must not remove the fraction admission rule.
+	input.QuantityValue = exact.New(10)
+	before = buyReplacementPreviewSnapshot(t, f.database)
+	_, err = f.investmentService.CashInLieu(ctx, input)
+	require.ErrorIs(t, err, ErrCashInLieuNotFraction)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	_, err = f.investmentService.Sell(ctx, sellInput(f, "2026-06-02", 2))
+	require.NoError(t, err)
+	input.DisposalOn, input.QuantityValue, input.QuantityScale = "2026-06-03", exact.New(75), 2
+	before = buyReplacementPreviewSnapshot(t, f.database)
+	_, err = f.investmentService.CashInLieu(ctx, input)
+	require.Error(t, err, "only 0.5 units remain; 0.75 is a valid fraction but an impossible disposal")
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	t.Log("ablated: preview=commit; cash=-22 quantity=2.5 basis=25 disposed basis=5 gain=3; financial checks pass; whole-share control refuses")
+}
+
+func TestDependencyInventoryReinvestmentDate(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newInvestmentsTestFixture(t)
+	opening := reinvestOn(t, f, "2026-01-01", 10, 2000)
+	input := ReplaceReinvestedDividendInput{OwnerUserID: f.ownerUserID, TransactionID: opening.Transaction.ID,
+		Reason: "correct statement date", Replacement: reinvestmentInput(f, "2026-01-02", 10, 2000)}
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	_, err := f.investmentService.ReplaceReinvestedDividendReconciliationImpact(ctx, input)
+	if !inventoryAblated() {
+		var validation ValidationError
+		require.ErrorAs(t, err, &validation)
+		require.Contains(t, err.Error(), "must keep")
+		require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+		t.Log("baseline: date-only correction refuses without any later operation or checkpoint")
+		return
+	}
+	require.NoError(t, err)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	_, err = f.investmentService.ReplaceReinvestedDividend(ctx, input)
+	require.NoError(t, err)
+	quantity, basis := openPositionBasis(t, f, f.holdingAccountID)
+	requireScaled(t, 10, 0, quantity, "10 shares")
+	requireScaled(t, 2000, 2, basis, "20 income-funded acquisition")
+	require.Equal(t, int64(0), accountBalance(t, f, f.cashAccountID))
+	require.Equal(t, int64(-2000), incomeBalance(t, f))
+	requireInvestmentSelfCheckPasses(t, f)
+	// A real date dependency: no other acquisition can fund the intervening sale.
+	g := newInvestmentsTestFixture(t)
+	original := reinvestOn(t, g, "2026-01-01", 10, 2000)
+	_, err = g.investmentService.Sell(ctx, sellInput(g, "2026-01-03", 5))
+	require.NoError(t, err)
+	input = ReplaceReinvestedDividendInput{OwnerUserID: g.ownerUserID, TransactionID: original.Transaction.ID,
+		Reason: "move after sale", Replacement: reinvestmentInput(g, "2026-01-04", 10, 2000)}
+	before = buyReplacementPreviewSnapshot(t, g.database)
+	_, err = g.investmentService.ReplaceReinvestedDividend(ctx, input)
+	require.Error(t, err)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, g.database))
+	t.Log("ablated: cash=0 quantity=10 basis=20 income=-20; date-only correction passes; moving acquisition after dependent sale refuses atomically")
+}
+
+func TestDependencyInventoryDividendProviderIdentity(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newDividendEventFixture(t)
+	input := DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: &f.instrument.CommodityID,
+		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID, AmountValue: 1600, AmountScale: 2}
+	payment, err := f.investmentSvc.Dividend(ctx, input)
+	require.NoError(t, err)
+	f.fetch(t)
+	july := suggestionForExDate(t, f.suggestions(t), "2026-07-29")
+	_, err = f.investmentSvc.LinkSuggestion(ctx, 1, 0, "link", july.ID, payment.ID)
+	require.NoError(t, err)
+	repaired, err := f.investmentSvc.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{OwnerUserID: 1,
+		TransactionID: payment.ID, Reason: "same payment corrected", Replacement: input})
+	require.NoError(t, err)
+	var sourceID int64
+	var raw, normalized string
+	require.NoError(t, f.database.QueryRow(`SELECT source_id,raw_json,normalized_json FROM investment_provider_events WHERE id = ?`, july.ProviderEventID).Scan(&sourceID, &raw, &normalized))
+	_, err = f.pricing.repository.StageProviderEvent(ctx, db.StageProviderEventParams{BookID: BookID, ActorUserID: 1,
+		SourceID: sourceID, ProviderEventID: "second-claim", InstrumentID: f.instrument.ID, EventFamily: "dividend",
+		EventDate: "2026-07-29", NormalizedJSON: normalized, RawJSON: `{"id":"second"}`, ConfidenceBPS: 8000,
+		ProposedJSON: july.ProposedTransactionJSON, RecordedAt: "2026-08-20T00:00:00Z"})
+	require.NoError(t, err)
+	var suggestionID int64
+	require.NoError(t, f.database.QueryRow(`SELECT s.id FROM investment_event_suggestions s JOIN investment_provider_events e ON e.id=s.provider_event_id WHERE e.provider_event_id='second-claim'`).Scan(&suggestionID))
+	count := countTransactions(t, f.database)
+	linked, err := f.investmentSvc.LinkSuggestion(ctx, 1, 0, "duplicate", suggestionID, repaired.Replacement.ID)
+	// Characterize the current defect; this is NOT the desired regression assertion.
+	require.NoError(t, err)
+	require.Equal(t, "linked", linked.Status)
+	require.Equal(t, count, countTransactions(t, f.database), "link itself adds no cash")
+	var newRaw string
+	require.NoError(t, f.database.QueryRow(`SELECT raw_json FROM investment_provider_events WHERE id=?`, july.ProviderEventID).Scan(&newRaw))
+	require.Equal(t, raw, newRaw)
+	t.Log("baseline and ablation: two provider events can claim two versions of one dividend; no new journal, but once-per-payment identity violated")
+}
+
+func TestDependencyInventoryLoanComposition(t *testing.T) {
+	t.Parallel()
+	f := newInvestmentsTestFixture(t)
+	liability := seedTestAccountWithClass(t, f.database, "active", true, "liability", "loan")
+	interest := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
+	spec := TransactionInput{TransactionDate: "2026-01-01", JournalEntries: []JournalEntryInput{{Postings: []PostingInput{
+		{AccountID: f.cashAccountID, CommodityID: f.eurCommodityID, QuantityValue: exact.New(-1000)},
+		{AccountID: liability, CommodityID: f.eurCommodityID, QuantityValue: exact.New(800)},
+		{AccountID: interest, CommodityID: f.eurCommodityID, QuantityValue: exact.New(200)},
+	}}}}
+	_, err := f.transactionService.CreateTransaction(context.Background(), CreateTransactionInput{
+		OwnerUserID: f.ownerUserID, OriginType: "browser_api", Spec: spec})
+	require.NoError(t, err)
+	require.Equal(t, int64(-100000), accountBalance(t, f, f.cashAccountID))
+	require.Equal(t, int64(80000), accountBalance(t, f, liability))
+	require.Equal(t, int64(20000), accountBalance(t, f, interest))
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	spec.JournalEntries[0].Postings[1].QuantityValue = exact.New(900)
+	_, err = f.transactionService.CreateTransaction(context.Background(), CreateTransactionInput{
+		OwnerUserID: f.ownerUserID, OriginType: "browser_api", Spec: spec})
+	require.Error(t, err, "1000 cash cannot fund 900 principal plus 200 interest")
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	t.Log("cash=-1000 liability debit=800 interest=200; no origination/schedule link; unbalanced split refuses atomically")
+}
+
+func TestDependencyInventoryReinvestmentPositionFields(t *testing.T) {
+	for _, field := range []string{"holding", "instrument", "currency"} {
+		t.Run(field, func(t *testing.T) {
+			t.Parallel()
+			f := newInvestmentsTestFixture(t)
+			opening := reinvestOn(t, f, "2026-01-01", 10, 2000)
+			replacement := reinvestmentInput(f, "2026-01-01", 10, 2000)
+			switch field {
+			case "holding":
+				replacement.HoldingAccountID = seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
+			case "instrument":
+				replacement.CommodityID = seedTestSecurityCommodity(t, f, "RIGHT")
+			case "currency":
+				replacement.CashCommodityID = seedTestCurrencyCommodity(t, f.database, "USD")
+			}
+			input := ReplaceReinvestedDividendInput{OwnerUserID: f.ownerUserID, TransactionID: opening.Transaction.ID,
+				Reason: "correct acquisition field", Replacement: replacement}
+			before := buyReplacementPreviewSnapshot(t, f.database)
+			_, err := f.investmentService.ReplaceReinvestedDividend(context.Background(), input)
+			if !inventoryAblated() {
+				var validation ValidationError
+				require.ErrorAs(t, err, &validation)
+				require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, "10", positionQuantity(t, f, replacement.HoldingAccountID, replacement.CommodityID))
+			var basis string
+			var scale int
+			var currency int64
+			require.NoError(t, f.database.QueryRow(`SELECT s.remaining_cost_basis_value,s.remaining_cost_basis_scale,l.cost_commodity_id
+				FROM investment_lots l JOIN investment_lot_state s ON s.lot_id=l.id
+				JOIN effective_investment_operations o ON o.id=l.operation_id WHERE o.operation_kind='reinvested_dividend'`).Scan(&basis, &scale, &currency))
+			requireScaled(t, 2000, 2, exact.ScaledIntFromCoefficient(exact.MustParse(basis), scale), "20 in the selected cost currency")
+			require.Equal(t, replacement.CashCommodityID, currency)
+			if field != "currency" {
+				requireInvestmentSelfCheckPasses(t, f)
+			} else {
+				check := mustRunInvestmentSelfCheck(t, f)
+				for _, id := range []string{CheckEntryBalance, CheckTransactionBalance, CheckBookBalance, CheckLotReconciliation, CheckInvestmentReplay, CheckInvestmentFoundation} {
+					require.Equal(t, SelfCheckPassed, resultFor(t, check, id).Status, id)
+				}
+			}
+			t.Logf("ablated %s correction: quantity=10 basis=20 selected currency; typed accounting checks pass", field)
+		})
+	}
+}
+
+func TestDependencyInventoryCashPaymentFields(t *testing.T) {
+	for _, family := range []string{"dividend", "payment_in_lieu"} {
+		for _, field := range []string{"date", "account", "currency"} {
+			t.Run(family+"/"+field, func(t *testing.T) {
+				t.Parallel()
+				ctx := context.Background()
+				f := newInvestmentsTestFixture(t)
+				expense := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
+				dividend := cashDividendInput(f, expense, 10000, 1500)
+				payment := paymentInLieuInput(f, expense, 5000)
+				var originalID int64
+				if family == "dividend" {
+					original, err := f.investmentService.Dividend(ctx, dividend)
+					require.NoError(t, err)
+					originalID = original.ID
+				} else {
+					original, err := f.investmentService.PaymentInLieu(ctx, payment)
+					require.NoError(t, err)
+					originalID = original.ID
+				}
+				switch field {
+				case "date":
+					dividend.TransactionDate, payment.TransactionDate = "2026-09-01", "2026-09-01"
+				case "account":
+					other := seedTestAccount(t, f.database, "active", true)
+					dividend.CashAccountID, payment.CashAccountID = other, other
+				case "currency":
+					other := seedTestCurrencyCommodity(t, f.database, "USD")
+					dividend.CashCommodityID, payment.CashCommodityID = other, other
+				}
+				before := buyReplacementPreviewSnapshot(t, f.database)
+				var replacement Transaction
+				var err error
+				if family == "dividend" {
+					result, e := f.investmentService.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{OwnerUserID: f.ownerUserID,
+						TransactionID: originalID, Reason: "correct financial input", Replacement: dividend})
+					replacement, err = result.Replacement, e
+				} else {
+					result, e := f.investmentService.ReplacePaymentInLieu(ctx, ReplaceInvestmentPaymentInLieuInput{OwnerUserID: f.ownerUserID,
+						TransactionID: originalID, Reason: "correct financial input", Replacement: payment})
+					replacement, err = result.Replacement, e
+				}
+				if !inventoryAblated() {
+					var validation ValidationError
+					require.ErrorAs(t, err, &validation)
+					require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+					return
+				}
+				require.NoError(t, err)
+				cash := replacement.JournalEntries[0].Postings[0]
+				if family == "dividend" {
+					require.Equal(t, dividend.TransactionDate, replacement.TransactionDate)
+					require.Equal(t, dividend.CashAccountID, cash.AccountID)
+					require.Equal(t, dividend.CashCommodityID, cash.CommodityID)
+					net := exact.NewScaledInt()
+					for _, entry := range replacement.JournalEntries {
+						for _, posting := range entry.Postings {
+							if posting.AccountID == dividend.CashAccountID && posting.CommodityID == dividend.CashCommodityID {
+								net.AddScaled(exact.ScaledIntFromCoefficient(posting.QuantityValue, posting.QuantityScale))
+							}
+						}
+					}
+					requireScaled(t, 8500, 2, net, "100 gross minus 15 tax")
+				} else {
+					require.Equal(t, payment.TransactionDate, replacement.TransactionDate)
+					require.Equal(t, payment.CashAccountID, cash.AccountID)
+					require.Equal(t, payment.CashCommodityID, cash.CommodityID)
+					requireScaled(t, -5000, 2, exact.ScaledIntFromCoefficient(cash.QuantityValue, cash.QuantityScale), "50 expense cash outflow")
+				}
+				check := mustRunInvestmentSelfCheck(t, f)
+				for _, id := range []string{CheckEntryBalance, CheckTransactionBalance, CheckBookBalance, CheckLotReconciliation, CheckInvestmentReplay, CheckInvestmentFoundation} {
+					require.Equal(t, SelfCheckPassed, resultFor(t, check, id).Status, id)
+				}
+				t.Logf("ablated %s %s correction: exact typed cash effect and financial checks pass", family, field)
+			})
+		}
+	}
+}

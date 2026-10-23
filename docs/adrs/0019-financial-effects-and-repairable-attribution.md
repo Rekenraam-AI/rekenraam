@@ -19,7 +19,17 @@ repair and warning versus unavailable/integrity outcomes. Its
 supports relaxing the permanent cash-only and blanket parent fences while
 retaining real disposal admission. #388/#389 implement their targeted contract;
 #392 implements cash-in-lieu parent corrections; #393 still owns cash-dividend/
-withholding attribution. The remaining #391 family inventory stays open.
+withholding attribution. The completed
+[family inventory](../reviews/financial-dependency-inventory-2026-10-23.md)
+and [plan dispositions](../plans/financial-dependency-simplification-plan.md#completed-family-dispositions-2026-10-23)
+cover every #391 family. #394 accepts historical-parent fractional-disposal
+entry through actual replay; #395 accepts typed cash/reinvestment field
+corrections through the existing writer and acquisition replay. #393 also owns
+dividend source identity across correction ancestry and visible source/payer
+mismatch. These are accepted
+contracts, not shipped runtime changes. Other typed allocation, source,
+derivation, snapshot and reconciliation dependencies are retained with concrete
+counterexamples; the review adds no relationship engine or loan subsystem.
 
 Refines ADR 0013's cash/payment-in-lieu dependency policy and extends ADR 0017's
 separation of financial effects, owner attribution and provider evidence. ADR

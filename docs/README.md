@@ -68,7 +68,12 @@ The [repair delivery evidence](reviews/payment-attribution-repair-2026-10-23.md)
 records #388's completed workflow and removal of the global write checks.
 The [cash-in-lieu delivery evidence](reviews/cash-in-lieu-parent-replay-2026-10-23.md)
 records #392's all-four-parent replay, retained financial controls and current
-provenance diagnostics. #393 and the wider #391/#390 inventory remain open.
+provenance diagnostics. The completed
+[cross-family inventory](reviews/financial-dependency-inventory-2026-10-23.md)
+records #391's dispositions, independent figures and reproducible counterfactuals.
+#393 retains payer/shape consistency and dividend source ancestry; #394/#395
+own historical-parent entry and typed cash/reinvestment field corrections.
+Their runtime changes and the wider #390 product/workflow audit remain open.
 
 [ADR 0018](adrs/0018-personal-access-token-boundary.md) and the
 [personal-access-token contract](plans/personal-access-tokens-plan.md) define
