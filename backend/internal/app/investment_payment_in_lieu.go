@@ -21,24 +21,15 @@ import (
 // expense account (+gross), plus an optional recovery credited back (cash
 // +r against a recovery account −r). The app does not capitalize it into
 // the short's opening proceeds, because whether and when that applies is a
-// jurisdiction's rule. The short holding, instrument and ex-date are
-// immutable facts; the holding must be short at the close before the
-// ex-date, re-checked inside the write transaction.
+// jurisdiction's rule. Holding, instrument and ex-date are optional owner
+// attribution, repaired through immutable correction facts (ADR 0019, #388).
+// Historical short support is diagnostic, never cash authorization.
 
 var (
 	ErrInvestmentPaymentInLieuNotFound         = errors.New("payment in lieu operation not found")
 	ErrInvestmentPaymentInLieuAlreadyCorrected = errors.New("payment in lieu already corrected")
 	ErrInvestmentPaymentInLieuChanged          = errors.New("payment in lieu changed")
-	// ErrInvestmentPaymentInLieuNotShort is the repository's refusal under
-	// this package's name.
-	ErrInvestmentPaymentInLieuNotShort = db.ErrPaymentInLieuNotShort
-	// ErrInvestmentPaymentInLieuDependency refuses any investment command
-	// that would leave an effective payment in lieu without its short (#257);
-	// InvestmentPaymentInLieuDependencyError names the payment.
-	ErrInvestmentPaymentInLieuDependency = db.ErrPaymentInLieuDependency
 )
-
-type InvestmentPaymentInLieuDependencyError = db.PaymentInLieuDependencyError
 
 var (
 	paymentInLieuExpenseRole = accountRoleForInvestment{
@@ -58,9 +49,9 @@ type PaymentInLieuInput struct {
 	OwnerUserID       int64
 	AuthSessionID     int64
 	RequestID         string
-	HoldingAccountID  int64
-	CommodityID       int64
-	ExDate            string
+	HoldingAccountID  NullablePatch[int64]
+	CommodityID       NullablePatch[int64]
+	ExDate            NullablePatch[string]
 	TransactionDate   string
 	CashAccountID     int64
 	CashCommodityID   int64
@@ -103,8 +94,7 @@ func (s *InvestmentService) paymentInLieu(ctx context.Context, input PaymentInLi
 	return s.transactionService.enrichOne(ctx, toTransaction(record))
 }
 
-// PaymentInLieuReconciliationImpact runs the complete writer, entitlement
-// check included, and rolls it back.
+// PaymentInLieuReconciliationImpact runs the complete cash writer and rolls it back.
 func (s *InvestmentService) PaymentInLieuReconciliationImpact(ctx context.Context, input PaymentInLieuInput) (ReconciliationImpact, error) {
 	input.ReconciliationOverride = unboundOverride
 	params, err := s.preparePaymentInLieuWrite(ctx, input)
@@ -122,10 +112,10 @@ func validatePaymentInLieuInput(input PaymentInLieuInput) (exDate, date string, 
 	switch {
 	case input.OwnerUserID <= 0:
 		return "", "", ValidationError{Message: "owner user is required"}
-	case input.HoldingAccountID <= 0:
-		return "", "", ValidationError{Message: "short holding account is required"}
-	case input.CommodityID <= 0:
-		return "", "", ValidationError{Message: "instrument is required"}
+	case input.HoldingAccountID.Value != nil && input.HoldingAccountID.OrZero() <= 0:
+		return "", "", ValidationError{Message: "holding attribution must name an account"}
+	case input.CommodityID.Value != nil && input.CommodityID.OrZero() <= 0:
+		return "", "", ValidationError{Message: "instrument attribution must name an instrument"}
 	case input.CashAccountID <= 0:
 		return "", "", ValidationError{Message: "cash account is required"}
 	case input.CashCommodityID <= 0:
@@ -138,11 +128,10 @@ func validatePaymentInLieuInput(input PaymentInLieuInput) (exDate, date string, 
 	if date, err = cleanRequiredDate(input.TransactionDate, "payment date"); err != nil {
 		return "", "", err
 	}
-	if exDate, err = cleanRequiredDate(input.ExDate, "ex-date"); err != nil {
-		return "", "", err
-	}
-	if exDate > date {
-		return "", "", ValidationError{Message: "payment date must be on or after the ex-date"}
+	if input.ExDate.Value != nil {
+		if exDate, err = cleanRequiredDate(input.ExDate.OrZero(), "ex-date"); err != nil {
+			return "", "", err
+		}
 	}
 	if input.RecoveryValue == nil {
 		if input.RecoveryScale != nil || input.RecoveryAccountID != nil {
@@ -172,8 +161,10 @@ func (s *InvestmentService) paymentInLieuPlan(ctx context.Context, input Payment
 		return investmentTransactionPlan{}, "", err
 	}
 	dependencies := newAccountRuleDependencies()
-	if _, err := s.accountInRole(ctx, input.HoldingAccountID, exDate, holdingRole, dependencies); err != nil {
-		return investmentTransactionPlan{}, "", err
+	if err := s.repository.ValidatePaymentInLieuAttribution(ctx, BookID, db.PaymentInLieuFact{
+		HoldingAccountID: input.HoldingAccountID.OrZero(), CommodityID: input.CommodityID.OrZero(), ExDate: exDate,
+	}); err != nil {
+		return investmentTransactionPlan{}, "", mapPaymentInLieuError(err)
 	}
 	if _, err := s.accountInRole(ctx, input.CashAccountID, date, settlementRole, dependencies); err != nil {
 		return investmentTransactionPlan{}, "", err
@@ -185,9 +176,6 @@ func (s *InvestmentService) paymentInLieuPlan(ctx context.Context, input Payment
 		if _, err := s.accountInRole(ctx, *input.RecoveryAccountID, date, paymentInLieuRecoveryRole, dependencies); err != nil {
 			return investmentTransactionPlan{}, "", err
 		}
-	}
-	if err := s.requireCommodityKind(ctx, input.CommodityID, exDate, "traded commodity", false); err != nil {
-		return investmentTransactionPlan{}, "", err
 	}
 	if err := s.requireCommodityKind(ctx, input.CashCommodityID, date, "settlement commodity", true); err != nil {
 		return investmentTransactionPlan{}, "", err
@@ -242,7 +230,7 @@ func (s *InvestmentService) paymentInLieuPlan(ctx context.Context, input Payment
 }
 
 // preparePaymentInLieuWrite freezes the journal, its owed and recovered
-// components and the entitlement facts. Entry, preview and replacement
+// components and the optional attribution facts. Entry, preview and replacement
 // share it.
 func (s *InvestmentService) preparePaymentInLieuWrite(ctx context.Context, input PaymentInLieuInput) (db.CreateTransactionParams, error) {
 	plan, exDate, err := s.paymentInLieuPlan(ctx, input)
@@ -253,7 +241,7 @@ func (s *InvestmentService) preparePaymentInLieuWrite(ctx context.Context, input
 	if err != nil {
 		return db.CreateTransactionParams{}, err
 	}
-	params.PaymentInLieu = &db.PaymentInLieuFact{HoldingAccountID: input.HoldingAccountID, CommodityID: input.CommodityID, ExDate: exDate}
+	params.PaymentInLieu = &db.PaymentInLieuFact{HoldingAccountID: input.HoldingAccountID.OrZero(), CommodityID: input.CommodityID.OrZero(), ExDate: exDate}
 	// Components carry the owner's cash flow: the charge negative, the
 	// recovery positive.
 	params.InvestmentComponents = []db.InvestmentComponentSpec{{
@@ -372,9 +360,9 @@ func (s *InvestmentService) ReplacePaymentInLieuReconciliationImpact(ctx context
 	return s.simulatedReconciliationImpact(ctx, simulated)
 }
 
-// The replacement keeps the entitlement (holding, instrument, ex-date), the
-// payment date, cash account and currency; the amount, expense account and
-// recovery are what a correction changes.
+// Replacement preserves omitted attribution, clears explicit nulls and
+// accepts supplied values. Payment date, cash account and currency stay fixed;
+// the command nets its financial effects at each reconciliation boundary.
 func (s *InvestmentService) preparePaymentInLieuReplacementWrite(ctx context.Context, input ReplaceInvestmentPaymentInLieuInput) (db.PaymentInLieuOperationRecord, db.CreateTransactionParams, db.CreateTransactionParams, error) {
 	const operationCode = "investment.payment_in_lieu.replace"
 	operation, original, inversePlan, err := s.paymentInLieuCorrectionPlan(ctx, input.OwnerUserID, input.AuthSessionID, input.RequestID,
@@ -384,20 +372,28 @@ func (s *InvestmentService) preparePaymentInLieuReplacementWrite(ctx context.Con
 	}
 	replacement := input.Replacement
 	cash := original.JournalEntries[0].Postings[0]
-	if replacement.HoldingAccountID == 0 {
-		replacement.HoldingAccountID = operation.Fact.HoldingAccountID
+	if !replacement.HoldingAccountID.Set {
+		replacement.HoldingAccountID = NullableValue(operation.Fact.HoldingAccountID)
+		if operation.Fact.HoldingAccountID == 0 {
+			replacement.HoldingAccountID.Value = nil
+		}
 	}
-	if replacement.CommodityID == 0 {
-		replacement.CommodityID = operation.Fact.CommodityID
+	if !replacement.CommodityID.Set {
+		replacement.CommodityID = NullableValue(operation.Fact.CommodityID)
+		if operation.Fact.CommodityID == 0 {
+			replacement.CommodityID.Value = nil
+		}
 	}
-	if replacement.ExDate == "" {
-		replacement.ExDate = operation.Fact.ExDate
+	if !replacement.ExDate.Set {
+		replacement.ExDate = NullableValue(operation.Fact.ExDate)
+		if operation.Fact.ExDate == "" {
+			replacement.ExDate.Value = nil
+		}
 	}
-	if replacement.HoldingAccountID != operation.Fact.HoldingAccountID || replacement.CommodityID != operation.Fact.CommodityID ||
-		replacement.ExDate != operation.Fact.ExDate || replacement.TransactionDate != operation.EventDate ||
+	if replacement.TransactionDate != operation.EventDate ||
 		replacement.CashAccountID != cash.AccountID || replacement.CashCommodityID != cash.CommodityID {
 		return db.PaymentInLieuOperationRecord{}, db.CreateTransactionParams{}, db.CreateTransactionParams{},
-			ValidationError{Message: "replacement must keep the short holding, instrument, ex-date, payment date, cash account and currency"}
+			ValidationError{Message: "replacement must keep the payment date, cash account and currency"}
 	}
 	replacement.OwnerUserID = input.OwnerUserID
 	replacement.AuthSessionID = input.AuthSessionID
@@ -521,8 +517,6 @@ func paymentInLieuCorrectionTerms(transaction Transaction, fact db.PaymentInLieu
 
 func mapPaymentInLieuError(err error) error {
 	switch {
-	case errors.Is(err, db.ErrPaymentInLieuNotShort):
-		return ErrInvestmentPaymentInLieuNotShort
 	case errors.Is(err, db.ErrNotFound):
 		return ErrInvestmentPaymentInLieuNotFound
 	case errors.Is(err, db.ErrInvestmentOperationAlreadyCorrected):
@@ -590,7 +584,7 @@ func (s *InvestmentService) acceptPaymentInLieuSuggestion(ctx context.Context, r
 	}
 	_, err := s.paymentInLieuWithPostWrite(ctx, PaymentInLieuInput{
 		OwnerUserID: ownerUserID, AuthSessionID: authSessionID, RequestID: requestID,
-		HoldingAccountID: holdingAccountID, CommodityID: proposal.CommodityID, ExDate: proposal.ExDate,
+		HoldingAccountID: NullableValue(holdingAccountID), CommodityID: NullableValue(proposal.CommodityID), ExDate: NullableValue(proposal.ExDate),
 		TransactionDate: completion.TransactionDate, CashAccountID: completion.CashAccountID,
 		CashCommodityID: completion.CashCommodityID, ExpenseAccountID: expenseAccountID,
 		AmountValue: completion.AmountValue, AmountScale: completion.AmountScale,

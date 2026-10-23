@@ -2,7 +2,8 @@
 
 Status: **shipped R16 design contract**, reconciled 2026-10-17. The agreed
 lifecycle gates, including named shorts and compound actions, are delivered;
-#255 adds payment in lieu. ADRs 0012, 0013 and 0017 govern. Provider mappings
+#255 adds payment in lieu; #388/#389 refine its attribution on 2026-10-23.
+ADRs 0012, 0013, 0017 and 0019 govern. Provider mappings
 #136/#145/#176/#256 remain separately evidence-gated. This contract records
 both admitted behavior and retained limits; the capability ledger distinguishes
 actual delivery from proposed extensions.
@@ -690,28 +691,28 @@ correction, reversal and backdating; #176 provider import.
   write-off select long lots only, so a short-only holding has no eligible
   units and refuses. Borrow fees, margin interest and collateral are separate
   named cash operations outside this family.
-- **Payment in lieu (#255).** A dividend owed on borrowed units is the
-  lot-free `payment_in_lieu` operation: cash −owed to an expense account, an
-  optional recovery credited back, and immutable facts naming the short
-  holding, instrument and ex-date. The holding must be short at the close
-  before the ex-date, checked inside the write. It never changes the short
-  lot or a cover's result. A later short correction or cover that would
-  strand it is refused with the payment named
-  (`INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY`, #257). ADR 0013's *Payment-In-Lieu Refinement* records
-  why it is expensed rather than folded into opening proceeds.
-  The [#284 ownership inventory](../reviews/maintainability-invariants-2026-10-21.md)
-  confirms that the shared writer checks effective payments before and after
-  command effects. The [#379 density audit](../reviews/payment-in-lieu-density-2026-10-23.md)
-  measured that cost with entitlement and rollback controls. It grows with
-  book-wide payment density for every investment command (17 s at 1,000
-  payments). Owner direction on 2026-10-23 in [ADR 0019](../adrs/0019-financial-effects-and-repairable-attribution.md)
-  now questions the necessity of permanent cash-only entitlement blocking.
-  [#391](https://github.com/sergeyfarin/rekenraam/issues/391) specifies the
-  cross-family [dependency contract](financial-dependency-simplification-plan.md),
-  including fractional-share cash in lieu and other financial relationships;
-  [#388](https://github.com/sergeyfarin/rekenraam/issues/388) retires the payment
-  blocker under that contract and #389 supplies its non-blocking diagnostic.
-  The description above remains current runtime behavior until delivery.
+- **Payment in lieu (#255, refined by #388/#389).** A dividend owed on
+  borrowed units is the lot-free `payment_in_lieu` operation: cash −owed to
+  an expense account, with optional recovery credited back. Holding,
+  instrument and ex-date are optional owner attribution. They remain in
+  immutable original/reversal/replacement facts; correction omission
+  preserves, null clears and a supplied value replaces. Attribution repair
+  uses one audited inverse plus replacement with unchanged financial legs,
+  fixed payment date/cash account/currency and zero checkpoint delta.
+  Supplied references retain same-book/object-kind validation and supplied
+  dates must be calendar dates; historical eligibility does not authorize cash.
+  It never changes the short lot or a cover's result. Later financially valid
+  short corrections/covers leave the cash effective. The read-only diagnostic
+  names unsupported or missing attribution, and differences from preserved
+  provider evidence; original provider identity prevents relinking corrected
+  versions to a second event. No whole-book entitlement scan runs in ordinary
+  writes/previews. Real quantity, posting-role, reconciliation/gain binding
+  and atomic rollback controls remain. ADR 0019 supersedes ADR 0013's old
+  entitlement rule; [delivery and measurements](../reviews/payment-attribution-repair-2026-10-23.md)
+  follow the [historical #379 baseline](../reviews/payment-in-lieu-density-2026-10-23.md).
+  The cross-family [dependency contract](financial-dependency-simplification-plan.md)
+  continues under #391; fractional-share cash in lieu (#392) and
+  dividend/withholding payer attribution (#393) remain separate deliveries.
 - **Classification.** Net worth and self-check classify a negative countable
   balance as a named short only up to the quantity of short lots open on that
   date in that account; any further negative quantity remains an

@@ -1660,7 +1660,7 @@
   "investments_payment_in_lieu_copy": "Quien vende en corto debe al prestamista el dividendo de las acciones prestadas. Se paga desde efectivo a una cuenta de gastos y no cambia la posición corta.",
   "investments_payment_in_lieu_holding": "Posición corta",
   "investments_payment_in_lieu_ex_date": "Fecha ex-dividendo",
-  "investments_payment_in_lieu_ex_date_hint": "La posición debía estar en corto al cierre anterior a esta fecha.",
+  "investments_payment_in_lieu_ex_date_hint": "Se usa para comprobar las cantidades en corto antes de esta fecha. Déjela en blanco si se desconoce.",
   "investments_payment_in_lieu_payment_date": "Fecha de pago",
   "investments_payment_in_lieu_amount": "Importe adeudado",
   "investments_payment_in_lieu_expense_account": "Cuenta de gastos",
@@ -1684,8 +1684,6 @@
   "investments_suggestion_long_and_short_position": "Largo en una posición y corto en otra antes de la fecha ex: no encaja ni un dividendo ni un único pago compensatorio. Registra cada uno a mano o ignora este evento.",
   "api_error_investment_payment_in_lieu_already_corrected": "Este pago compensatorio ya se corrigió. Actualiza para ver el registro actual.",
   "api_error_investment_payment_in_lieu_changed": "Este pago compensatorio cambió desde que se cargó. Actualiza e inténtalo de nuevo.",
-  "api_error_investment_payment_in_lieu_not_short": "Esa posición no estaba en corto en este instrumento al cierre anterior a la fecha ex, así que no se debe pago compensatorio.",
-  "api_error_investment_payment_in_lieu_dependency": "Un pago compensatorio depende de esta posición en corto. Revierte primero ese pago compensatorio y luego corrige el corto.",
   "api_error_request_too_large": "La solicitud es demasiado grande. Reduce su tamaño e inténtalo de nuevo.",
   "security_tokens_title": "Tokens de acceso personal",
   "security_tokens_hint": "Crea credenciales de solo lectura para scripts y herramientas. Cada token solo puede leer los datos seleccionados. Se excluyen los ajustes, las copias de seguridad y los cambios en los registros financieros.",
@@ -1721,5 +1719,10 @@
   "investments_attribution_ex_date_after_payment": "La fecha exdividendo es posterior a la fecha de pago registrada.",
   "investments_attribution_unavailable": "Faltan algunos datos de atribución; no se puede verificar el respaldo histórico.",
   "investments_attribution_payment_link": "Abrir pago n.º {id}",
-  "investments_attribution_review": "Revise la atribución. El importe registrado no ha cambiado."
+  "investments_attribution_review": "Revise la atribución. El importe registrado no ha cambiado.",
+  "investments_attribution_optional": "Atribución (opcional)",
+  "investments_attribution_unassigned": "Sin asignar",
+  "investments_attribution_repair_hint": "Deje en blanco los datos desconocidos. Si cambia solo estos datos, se conserva el importe registrado y el original permanece en el historial.",
+  "investments_attribution_provider_mismatch": "Estos datos difieren de la información del proveedor vinculada. Se conservan los datos de origen.",
+  "investments_payment_in_lieu_correction_reason": "Motivo de la corrección"
 }

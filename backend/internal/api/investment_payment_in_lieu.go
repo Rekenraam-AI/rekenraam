@@ -12,21 +12,21 @@ import (
 // trade-reversal request and response shapes.
 
 type paymentInLieuRequest struct {
-	HoldingAccountID  int64             `json:"holding_account_id"`
-	CommodityID       int64             `json:"commodity_id"`
-	ExDate            string            `json:"ex_date"`
-	TransactionDate   string            `json:"transaction_date"`
-	CashAccountID     int64             `json:"cash_account_id"`
-	CashCommodityID   int64             `json:"cash_commodity_id"`
-	ExpenseAccountID  int64             `json:"expense_account_id"`
-	AmountValue       moneyCoefficient  `json:"amount_value"`
-	AmountScale       int               `json:"amount_scale"`
-	RecoveryValue     *moneyCoefficient `json:"recovery_value"`
-	RecoveryScale     *int              `json:"recovery_scale"`
-	RecoveryAccountID *int64            `json:"recovery_account_id"`
-	Memo              string            `json:"memo"`
-	PayeeID           *int64            `json:"payee_id"`
-	ChangeReason      string            `json:"change_reason"`
+	HoldingAccountID  nullableField[int64]  `json:"holding_account_id,omitzero"`
+	CommodityID       nullableField[int64]  `json:"commodity_id,omitzero"`
+	ExDate            nullableField[string] `json:"ex_date,omitzero"`
+	TransactionDate   string                `json:"transaction_date"`
+	CashAccountID     int64                 `json:"cash_account_id"`
+	CashCommodityID   int64                 `json:"cash_commodity_id"`
+	ExpenseAccountID  int64                 `json:"expense_account_id"`
+	AmountValue       moneyCoefficient      `json:"amount_value"`
+	AmountScale       int                   `json:"amount_scale"`
+	RecoveryValue     *moneyCoefficient     `json:"recovery_value"`
+	RecoveryScale     *int                  `json:"recovery_scale"`
+	RecoveryAccountID *int64                `json:"recovery_account_id"`
+	Memo              string                `json:"memo"`
+	PayeeID           *int64                `json:"payee_id"`
+	ChangeReason      string                `json:"change_reason"`
 	reconciliationOverrideFields
 }
 
@@ -39,7 +39,7 @@ type investmentPaymentInLieuReplacementRequest struct {
 func toPaymentInLieuInput(owner app.Owner, r *http.Request, request paymentInLieuRequest) app.PaymentInLieuInput {
 	return app.PaymentInLieuInput{
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-		HoldingAccountID: request.HoldingAccountID, CommodityID: request.CommodityID, ExDate: request.ExDate,
+		HoldingAccountID: request.HoldingAccountID.NullablePatch, CommodityID: request.CommodityID.NullablePatch, ExDate: request.ExDate.NullablePatch,
 		TransactionDate: request.TransactionDate, CashAccountID: request.CashAccountID, CashCommodityID: request.CashCommodityID,
 		ExpenseAccountID: request.ExpenseAccountID, AmountValue: int64(request.AmountValue), AmountScale: request.AmountScale,
 		RecoveryValue: moneyInt64Pointer(request.RecoveryValue), RecoveryScale: request.RecoveryScale,

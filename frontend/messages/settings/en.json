@@ -1660,7 +1660,7 @@
   "investments_payment_in_lieu_copy": "A short seller owes the lender the dividend on borrowed shares. It is paid from cash to an expense account and does not change the short position.",
   "investments_payment_in_lieu_holding": "Short holding",
   "investments_payment_in_lieu_ex_date": "Ex-dividend date",
-  "investments_payment_in_lieu_ex_date_hint": "The holding must have been short at the close before this date.",
+  "investments_payment_in_lieu_ex_date_hint": "Used to check short quantities before this date. Leave blank if unknown.",
   "investments_payment_in_lieu_payment_date": "Payment date",
   "investments_payment_in_lieu_amount": "Amount owed",
   "investments_payment_in_lieu_expense_account": "Expense account",
@@ -1684,8 +1684,6 @@
   "investments_suggestion_long_and_short_position": "Long in one holding and short in another before the ex-date: neither a dividend nor a single payment in lieu fits. Record each by hand or ignore this event.",
   "api_error_investment_payment_in_lieu_already_corrected": "This payment in lieu was already corrected. Refresh to see the current entry.",
   "api_error_investment_payment_in_lieu_changed": "This payment in lieu changed since it was loaded. Refresh and try again.",
-  "api_error_investment_payment_in_lieu_not_short": "That holding was not short this instrument at the close before the ex-date, so no payment in lieu is owed.",
-  "api_error_investment_payment_in_lieu_dependency": "A payment in lieu depends on this short position. Reverse that payment in lieu first, then correct the short.",
   "api_error_request_too_large": "The request is too large. Reduce its size and try again.",
   "security_tokens_title": "Personal access tokens",
   "security_tokens_hint": "Create read-only credentials for scripts and tools. Each token can read only its selected data. Settings, backups and changes to financial records are excluded.",
@@ -1721,5 +1719,10 @@
   "investments_attribution_ex_date_after_payment": "The ex-date follows the recorded payment date.",
   "investments_attribution_unavailable": "Some attribution context is missing; historical support cannot be verified.",
   "investments_attribution_payment_link": "Open payment #{id}",
-  "investments_attribution_review": "Attribution needs review. Recorded cash is unchanged."
+  "investments_attribution_review": "Attribution needs review. Recorded cash is unchanged.",
+  "investments_attribution_optional": "Attribution (optional)",
+  "investments_attribution_unassigned": "Unassigned",
+  "investments_attribution_repair_hint": "Leave unknown details blank. Changing only these details preserves recorded cash and keeps the original in history.",
+  "investments_attribution_provider_mismatch": "These details differ from the linked provider evidence. The original evidence is preserved.",
+  "investments_payment_in_lieu_correction_reason": "Reason for correction"
 }

@@ -2547,8 +2547,8 @@ InvestmentCorrectionPaymentInLieuTerms:
   type: object
   description: >-
     The effective payment in lieu's posted facts, for pre-filling a
-    replacement. The short holding, instrument, ex-date, payment date, cash
-    account and currency are fixed for a replacement.
+    replacement. Attribution is nullable and repairable; payment date, cash
+    account and currency remain fixed.
   required: [attribution, holding_account_id, commodity_id, ex_date, event_date, cash_account_id, cash_commodity_id, expense_account_id, amount_value, amount_scale]
   properties:
     attribution:
@@ -2566,10 +2566,10 @@ InvestmentCorrectionPaymentInLieuTerms:
           type: array
           items:
             type: string
-            enum: [no_short_at_entitlement_close, ex_date_after_payment]
-    holding_account_id: { type: integer, format: int64 }
-    commodity_id: { type: integer, format: int64 }
-    ex_date: { type: string, format: date }
+            enum: [no_short_at_entitlement_close, ex_date_after_payment, provider_attribution_mismatch]
+    holding_account_id: { type: [integer, 'null'], format: int64 }
+    commodity_id: { type: [integer, 'null'], format: int64 }
+    ex_date: { type: [string, 'null'], format: date }
     event_date: { type: string, format: date }
     cash_account_id: { type: integer, format: int64 }
     cash_commodity_id: { type: integer, format: int64 }
@@ -3319,17 +3319,19 @@ PaymentInLieuRequest:
     A payment in lieu of a dividend owed by a short holder (#255). Posts cash
     −amount against the expense account, and optionally cash +recovery against
     the recovery account. It never touches the short lot or its opening
-    proceeds. The holding must hold open short units of the instrument at the
-    close before ex_date, checked inside the write.
-  required: [holding_account_id, commodity_id, ex_date, transaction_date, cash_account_id, cash_commodity_id, expense_account_id, amount_value, amount_scale]
+    proceeds. Holding, instrument and ex-date are optional owner attribution,
+    diagnosed independently of cash authorization. Entry omission/null leaves
+    attribution unassigned. In replacement, omission preserves, null clears
+    and a value replaces. A holding without an instrument stays partial.
+  required: [transaction_date, cash_account_id, cash_commodity_id, expense_account_id, amount_value, amount_scale]
   properties:
-    holding_account_id: { type: integer, format: int64 }
-    commodity_id: { type: integer, format: int64 }
-    ex_date: { type: string, format: date }
+    holding_account_id: { type: [integer, 'null'], format: int64, minimum: 1 }
+    commodity_id: { type: [integer, 'null'], format: int64, minimum: 1 }
+    ex_date: { type: [string, 'null'], format: date }
     transaction_date:
       type: string
       format: date
-      description: Payment date, on or after ex_date.
+      description: Recorded cash payment date; ex-date chronology is advisory.
     cash_account_id: { type: integer, format: int64 }
     cash_commodity_id: { type: integer, format: int64 }
     expense_account_id: { type: integer, format: int64 }

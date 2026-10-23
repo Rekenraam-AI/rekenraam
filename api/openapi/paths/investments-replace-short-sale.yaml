@@ -51,7 +51,7 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "409":
-      description: Buy already corrected, imported without source identity, changed, dependent sale impossible, or reconciliation override required; or committed-disposal gain changes not acknowledged (INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED / _STALE); or the change would leave an effective payment in lieu without the short it was owed on, which is named (INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY)
+      description: Buy already corrected, imported without source identity, changed, dependent sale impossible, or reconciliation override required; or committed-disposal gain changes not acknowledged (INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED / _STALE)
       content:
         application/json:
           schema:

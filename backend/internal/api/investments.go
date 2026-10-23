@@ -2081,8 +2081,6 @@ func writeInvestmentServiceError(w http.ResponseWriter, r *http.Request, logger 
 		writeAPIError(w, http.StatusConflict, "INVESTMENT_PAYMENT_IN_LIEU_ALREADY_CORRECTED", err.Error())
 	case errors.Is(err, app.ErrInvestmentPaymentInLieuChanged):
 		writeAPIError(w, http.StatusConflict, "INVESTMENT_PAYMENT_IN_LIEU_CHANGED", err.Error())
-	case errors.Is(err, app.ErrInvestmentPaymentInLieuNotShort):
-		writeAPIError(w, http.StatusUnprocessableEntity, "INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT", err.Error())
 	case errors.Is(err, app.ErrInvestmentReinvestmentNotFound):
 		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "reinvested dividend operation not found")
 	case errors.Is(err, app.ErrInvestmentReinvestmentAlreadyCorrected):
@@ -2165,8 +2163,6 @@ func writeInvestmentServiceError(w http.ResponseWriter, r *http.Request, logger 
 		writeAPIError(w, http.StatusConflict, "INVESTMENT_BASIS_RESOLUTION_CHANGED", err.Error())
 	case errors.Is(err, app.ErrInvestmentEventOutOfOrder):
 		writeAPIError(w, http.StatusConflict, "INVESTMENT_EVENT_OUT_OF_ORDER", err.Error())
-	case errors.Is(err, app.ErrInvestmentPaymentInLieuDependency):
-		writeAPIError(w, http.StatusConflict, "INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY", err.Error())
 	case errors.Is(err, app.ErrInvestmentShortDependency):
 		writeAPIError(w, http.StatusConflict, "INVESTMENT_SHORT_DEPENDENCY", err.Error())
 	case errors.Is(err, app.ErrInvestmentShortNotFound):
@@ -3185,9 +3181,9 @@ func toInvestmentCorrectionDividendTerms(terms *app.InvestmentCorrectionDividend
 
 type investmentCorrectionPaymentInLieuTerms struct {
 	Attribution       investmentAttributionResponse `json:"attribution"`
-	HoldingAccountID  int64                         `json:"holding_account_id"`
-	CommodityID       int64                         `json:"commodity_id"`
-	ExDate            string                        `json:"ex_date"`
+	HoldingAccountID  *int64                        `json:"holding_account_id"`
+	CommodityID       *int64                        `json:"commodity_id"`
+	ExDate            *string                       `json:"ex_date"`
 	EventDate         string                        `json:"event_date"`
 	CashAccountID     int64                         `json:"cash_account_id"`
 	CashCommodityID   int64                         `json:"cash_commodity_id"`
@@ -3215,8 +3211,8 @@ func toInvestmentCorrectionPaymentInLieuTerms(terms *app.InvestmentCorrectionPay
 	if reasons == nil {
 		reasons = []string{}
 	}
-	return &investmentCorrectionPaymentInLieuTerms{Attribution: investmentAttributionResponse{Status: terms.Attribution.Status, Reasons: reasons, Unavailable: terms.Attribution.Unavailable}, HoldingAccountID: terms.HoldingAccountID, CommodityID: terms.CommodityID,
-		ExDate: terms.ExDate, EventDate: terms.EventDate, CashAccountID: terms.CashAccountID, CashCommodityID: terms.CashCommodityID,
+	return &investmentCorrectionPaymentInLieuTerms{Attribution: investmentAttributionResponse{Status: terms.Attribution.Status, Reasons: reasons, Unavailable: terms.Attribution.Unavailable}, HoldingAccountID: optionalInt64(terms.HoldingAccountID), CommodityID: optionalInt64(terms.CommodityID),
+		ExDate: optionalString(terms.ExDate), EventDate: terms.EventDate, CashAccountID: terms.CashAccountID, CashCommodityID: terms.CashCommodityID,
 		ExpenseAccountID: terms.ExpenseAccountID, AmountValue: terms.AmountValue, AmountScale: terms.AmountScale,
 		RecoveryAccountID: terms.RecoveryAccountID, RecoveryValue: terms.RecoveryValue, RecoveryScale: terms.RecoveryScale,
 		Memo: terms.Memo, PayeeID: terms.PayeeID}

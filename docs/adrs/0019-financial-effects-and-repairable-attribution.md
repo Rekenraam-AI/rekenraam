@@ -6,18 +6,19 @@ Accepted direction, 2026-10-23, at the owner's request. The necessity test and
 delivery boundary below are adopted; individual relationship contracts are
 recorded in [the dependency plan](../plans/financial-dependency-simplification-plan.md)
 and [#391](https://github.com/sergeyfarin/rekenraam/issues/391) before implementation.
-The first runtime slice (#389) adds read-only attribution diagnostics and
-warning outcomes; cash-in-lieu and payment-in-lieu write guards remain until
-their replacement slices ship.
+#388/#389 now deliver optional payment-in-lieu attribution, audited repair
+and read-only warning visibility. Payment entitlement no longer gates entry,
+replacement or later position corrections; the global payment replay is gone.
+Cash-in-lieu parent guards remain for #392.
 
 The first [four-case comparative contract](../plans/financial-dependency-simplification-plan.md#four-case-contract-2026-10-23)
 now specifies nullable cash attribution, explicit clearing, audited net-zero
 repair and warning versus unavailable/integrity outcomes. Its
 [source-pinned experiment](../reviews/financial-dependency-comparison-2026-10-23.md)
 supports relaxing the permanent cash-only and blanket parent fences while
-retaining real disposal admission. #388/#389 have their targeted design;
+retaining real disposal admission. #388/#389 implement their targeted contract;
 #392 covers cash-in-lieu implementation and #393 cash-dividend/withholding
-attribution. Remaining #391 families and write/repair delivery are still open.
+attribution. The remaining #391 families, including #392/#393 delivery, stay open.
 
 Refines ADR 0013's cash/payment-in-lieu dependency policy and extends ADR 0017's
 separation of financial effects, owner attribution and provider evidence. ADR

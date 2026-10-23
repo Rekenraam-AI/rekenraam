@@ -67,7 +67,7 @@ test('a payment in lieu is recorded, corrected and reversed on mobile', async ({
   await page.getByRole('button', { name: 'Record payment in lieu' }).click();
   const form = page.getByRole('dialog', { name: 'Payment in lieu of dividend' });
   await form.getByLabel('Short holding').selectOption(String(s.holdingID));
-  await expect(form.getByLabel('Instrument')).toHaveValue(String(s.commodityID));
+  await form.getByLabel('Instrument').selectOption(String(s.commodityID));
   await form.getByLabel('Ex-dividend date').fill(daysFromTodayISO(-10));
   await form.getByLabel('Payment date').fill(daysFromTodayISO(-8));
   await form.getByLabel('Cash account').selectOption(String(s.cashID));
@@ -85,7 +85,7 @@ test('a payment in lieu is recorded, corrected and reversed on mobile', async ({
   await page.getByRole('button', { name: 'Correct payment in lieu…' }).click();
   const correction = page.getByRole('dialog', { name: 'Correct payment in lieu' });
   await expect(correction.getByLabel(/Amount owed/)).toHaveValue('5.00');
-  await correction.getByLabel('Reason for reversal').fill('broker charged 6.00');
+  await correction.getByLabel('Reason for correction').fill('broker charged 6.00');
   await correction.getByLabel(/Amount owed/).fill('6.00');
   await correction.getByRole('button', { name: 'Save correction' }).click();
   await expect(correction).toBeHidden();
@@ -100,26 +100,29 @@ test('a payment in lieu is recorded, corrected and reversed on mobile', async ({
   await expect.poll(() => expenseBalance(page, s.expenseID)).toBe('0');
 });
 
-test('a holding that was not short refuses a payment in lieu with a translated reason', async ({ page }) => {
+test('unsupported short attribution leaves recorded cash effective with a warning', async ({ page }) => {
   const s = await setup(page);
   await page.goto('/app/investments');
   await page.getByRole('button', { name: 'Record payment in lieu' }).click();
   const form = page.getByRole('dialog', { name: 'Payment in lieu of dividend' });
   await form.getByLabel('Short holding').selectOption(String(s.holdingID));
-  // Before the short sale: nothing was owed.
+  await form.getByLabel('Instrument').selectOption(String(s.commodityID));
+  // The owner knows the cash charge; historical short support is advisory.
   await form.getByLabel('Ex-dividend date').fill(daysFromTodayISO(-40));
   await form.getByLabel('Payment date').fill(daysFromTodayISO(-38));
   await form.getByLabel('Cash account').selectOption(String(s.cashID));
   await form.getByLabel(/Amount owed/).fill('5.00');
   await form.getByLabel('Expense account').selectOption(String(s.expenseID));
   await form.getByRole('button', { name: 'Record payment' }).click();
-  await expect(form.getByRole('alert')).toContainText('was not short this instrument');
+  await expect(form).toBeHidden();
+  await expect.poll(() => expenseBalance(page, s.expenseID)).toBe('500');
+  const ledger = await apiJSON<{ transactions: Array<{ id: number }> }>(page, 'GET', `/api/v1/transactions?account_id=${s.expenseID}`);
+  await page.goto(`/app/transactions?transaction_id=${ledger.transactions[0].id}`);
+  await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText('No short units');
 });
 
-// #389 read-side-first: Go integration tests construct unsupported historical
-// attribution through the real writer. Here explicit saved-response fixtures
-// exercise translated mixed severities and navigation until #388 admits the
-// same history through ordinary browser commands.
+// #389's mixed-severity rendering uses explicit response fixtures. Real owner
+// entry/repair/clearing is exercised separately below under #388.
 for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
   test(`attribution warnings and unavailable coverage stay visible in ${locale}`, async ({ page }) => {
     const s = await setup(page);
@@ -166,5 +169,57 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText(copy.investments_attribution_no_short);
     await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText(copy.investments_attribution_review);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+}
+
+for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
+  test(`optional payment attribution is recorded, repaired and cleared in ${locale}`, async ({ page }) => {
+    const s = await setup(page);
+    const copy = JSON.parse(readFileSync(new URL(`../../frontend/messages/settings/${locale}.json`, import.meta.url), 'utf8')) as Record<string, string>;
+    await page.evaluate(value => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
+    await page.goto('/app/investments');
+    await page.getByRole('button', { name: copy.investments_record_payment_in_lieu, exact: true }).click();
+    const entry = page.getByRole('dialog', { name: copy.investments_payment_in_lieu_title, exact: true });
+    await expect(entry.locator('#pil-ex-date')).toHaveValue('');
+    await entry.locator('#pil-cash').selectOption(String(s.cashID));
+    await entry.locator('#pil-expense').selectOption(String(s.expenseID));
+    await entry.locator('#pil-amount').fill('5');
+    const createdResponse = page.waitForResponse(response => response.url().endsWith('/api/v1/investments/payment-in-lieu') && response.request().method() === 'POST');
+    await entry.getByRole('button', { name: copy.investments_payment_in_lieu_submit, exact: true }).click();
+    const created = await (await createdResponse).json() as { id: number };
+    await expect(entry).toBeHidden();
+    await page.goto(`/app/transactions?transaction_id=${created.id}`);
+    await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText(copy.investments_attribution_unavailable);
+    const replace = async (clear: boolean) => {
+      await page.getByRole('button', { name: copy.investments_payment_in_lieu_correct_action, exact: true }).click();
+      const form = page.getByRole('dialog', { name: copy.investments_payment_in_lieu_correct_title, exact: true });
+      await form.locator('#pil-holding').selectOption(clear ? '' : String(s.holdingID));
+      if (!clear) await expect(form.locator('#pil-instrument')).toHaveValue('');
+      await form.locator('#pil-instrument').selectOption(clear ? '' : String(s.commodityID));
+      await form.locator('#pil-ex-date').fill(clear ? '' : daysFromTodayISO(-10));
+      await form.getByLabel(copy.investments_payment_in_lieu_correction_reason, { exact: true }).fill(clear ? 'Details unknown' : 'Statement attribution');
+      await expectNoAccessibilityViolations(page, 'payment attribution correction');
+      const saved = page.waitForResponse(response => response.url().endsWith('/replace-payment-in-lieu') && response.request().method() === 'POST');
+      await form.getByRole('button', { name: copy.investments_payment_in_lieu_correct_submit, exact: true }).click();
+      const replacement = await (await saved).json() as { replacement_transaction: { id: number } };
+      // The workspace closes the detail after its list refresh completes.
+      await expect(page.locator('aside[aria-label]')).toBeHidden();
+      return replacement.replacement_transaction.id;
+    };
+    const supported = await replace(false);
+    await page.goto(`/app/transactions?transaction_id=${supported}`);
+    await expect(page.getByRole('button', { name: copy.investments_payment_in_lieu_correct_action, exact: true })).toBeVisible();
+    await expect(page.getByTestId('investment-attribution-diagnostic')).toBeHidden();
+    const cleared = await replace(true);
+    await page.goto(`/app/transactions?transaction_id=${cleared}`);
+    await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText(copy.investments_attribution_unavailable);
+    await expect.poll(() => expenseBalance(page, s.expenseID)).toBe('500');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await page.goto('/app/settings/data');
+    const ran = page.waitForResponse(response => response.url().endsWith('/api/v1/maintenance/self-check') && response.request().method() === 'POST');
+    await page.getByTestId('selfcheck-run').click();
+    const run = await (await ran).json() as { results: Array<{ check_id: string; unavailable_sample: number[] }> };
+    expect(run.results.find(row => row.check_id === 'investment_attribution')?.unavailable_sample).toContain(cleared);
+    await expect(page.locator(`a[href="/app/transactions?transaction_id=${cleared}"]`)).toBeVisible();
   });
 }

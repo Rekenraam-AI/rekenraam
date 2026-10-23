@@ -665,10 +665,10 @@
         {/if}
       </div>
     {/if}
+    {#if chainQuery.data?.effective_payment_in_lieu?.attribution}
+      <AttributionDiagnostic diagnostic={chainQuery.data.effective_payment_in_lieu.attribution} />
+    {/if}
     {#if paymentInLieuCorrectable}
-      {#if chainQuery.data?.effective_payment_in_lieu?.attribution}
-        <AttributionDiagnostic diagnostic={chainQuery.data.effective_payment_in_lieu.attribution} />
-      {/if}
       <div class="flex flex-wrap gap-2">
         <button
           type="button"

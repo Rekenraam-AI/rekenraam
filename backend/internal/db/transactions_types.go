@@ -220,7 +220,8 @@ type DeletedTransactionRecord struct {
 	DeletedAt    string
 }
 
-// PaymentInLieuFact is a payment in lieu's immutable entitlement (#255).
+// PaymentInLieuFact is one immutable version of owner attribution (#388).
+// Zero IDs/empty ex-date represent unassigned fields; storage uses SQL NULL.
 type PaymentInLieuFact struct {
 	HoldingAccountID int64
 	CommodityID      int64

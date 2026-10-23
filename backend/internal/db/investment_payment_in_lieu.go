@@ -5,173 +5,43 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 )
 
-// ErrPaymentInLieuNotShort refuses a payment in lieu whose holding was not
-// short the instrument at the close before the ex-date (#255).
-var ErrPaymentInLieuNotShort = errors.New("holding was not short the instrument at the close before the ex-date")
-
-// A payment in lieu of a dividend is owed by a short holder (#255, ADR 0013
-// §3). It is a cash charge against an expense account with an optional
-// recovery credited back; it opens and consumes no lot and replays nothing.
-// The short holding and ex-date are immutable operation facts, and the
-// entitlement is re-checked inside the write transaction, never trusted from
-// a read before it.
-
-// paymentInLieuEntitlementDate is the close before the ex-date: the holder
-// at that close owes the payment, as the provider producer reads it.
-func paymentInLieuEntitlementDate(exDate string) (string, error) {
-	date, err := time.Parse(time.DateOnly, exDate)
-	if err != nil || date.Format(time.DateOnly) != exDate {
-		return "", fmt.Errorf("%w: payment in lieu ex-date is not a calendar date", ErrInvalidDisposalParams)
-	}
-	return date.AddDate(0, 0, -1).Format(time.DateOnly), nil
-}
-
-// checkPaymentInLieuEntitlementTx requires open short units of the
-// instrument in the holding at the close before the ex-date.
-func checkPaymentInLieuEntitlementTx(ctx context.Context, tx *sql.Tx, bookID int64, fact PaymentInLieuFact) error {
-	asOf, err := paymentInLieuEntitlementDate(fact.ExDate)
+// ValidatePaymentInLieuAttribution validates references, not dated posting
+// eligibility: archived/future-opened holdings and instruments still identify
+// real objects. The insertion trigger repeats these storage constraints at
+// commit. Cash posting roles and dates are validated by their normal owners.
+func (r *InvestmentRepository) ValidatePaymentInLieuAttribution(ctx context.Context, bookID int64, fact PaymentInLieuFact) error {
+	var valid bool
+	err := r.database.QueryRowContext(ctx, `SELECT
+		(? = 0 OR EXISTS (SELECT 1 FROM accounts a JOIN account_versions av ON av.account_id = a.id
+			JOIN account_kinds k ON k.code = av.account_kind AND k.account_class = av.account_class
+			WHERE a.book_id = ? AND a.id = ? AND a.system_role IS NULL AND av.account_class = 'asset' AND k.base_kind = 'security_holding'
+			AND av.version_seq = (SELECT MAX(version_seq) FROM account_versions WHERE account_id = a.id)))
+		AND (? = 0 OR EXISTS (SELECT 1 FROM commodities c WHERE c.book_id = ? AND c.id = ? AND c.kind IN ('security', 'crypto')))`,
+		fact.HoldingAccountID, bookID, fact.HoldingAccountID, fact.CommodityID, bookID, fact.CommodityID).Scan(&valid)
 	if err != nil {
-		return err
+		return fmt.Errorf("read payment attribution references: %w", err)
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT DISTINCT cost_commodity_id FROM investment_lots
-		WHERE book_id = ? AND account_id = ? AND commodity_id = ? AND position_side = ? AND opened_on <= ?
-		ORDER BY cost_commodity_id`, bookID, fact.HoldingAccountID, fact.CommodityID, PositionSideShort, asOf)
-	if err != nil {
-		return fmt.Errorf("read payment in lieu short positions: %w", err)
-	}
-	var costCommodities []int64
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			return fmt.Errorf("scan payment in lieu short position: %w", err)
-		}
-		costCommodities = append(costCommodities, id)
-	}
-	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
-		return fmt.Errorf("iterate payment in lieu short positions: %w", err)
-	}
-	for _, costCommodityID := range costCommodities {
-		key := investmentReplayPositionKey{accountID: fact.HoldingAccountID, commodityID: fact.CommodityID, costCommodityID: costCommodityID}
-		_, held, err := datedHoldingTx(ctx, tx, bookID, key, PositionSideShort, asOf)
-		if err != nil {
-			return err
-		}
-		if held {
-			return nil
-		}
-	}
-	return ErrPaymentInLieuNotShort
-}
-
-// ErrPaymentInLieuDependency refuses a command that would leave an
-// effective payment in lieu without the short it was owed on (#257): a short
-// sale reversed or replaced away, or a cover dated before the ex-date. The
-// owner reverses the payment first.
-var ErrPaymentInLieuDependency = errors.New("an effective payment in lieu depends on this short position")
-
-type PaymentInLieuDependencyError struct {
-	OperationID   int64
-	TransactionID int64
-}
-
-func (e PaymentInLieuDependencyError) Error() string {
-	return fmt.Sprintf("%s: payment in lieu operation %d transaction %d", ErrPaymentInLieuDependency, e.OperationID, e.TransactionID)
-}
-
-func (e PaymentInLieuDependencyError) Unwrap() error { return ErrPaymentInLieuDependency }
-
-type paymentInLieuEntitlement struct {
-	OperationID   int64
-	TransactionID int64
-	Fact          PaymentInLieuFact
-}
-
-// entitledPaymentsInLieuTx lists the effective payments in lieu whose short
-// entitlement holds in tx. A payment already without one (a self-check
-// finding) is left out, so it never blocks an unrelated command.
-func entitledPaymentsInLieuTx(ctx context.Context, tx *sql.Tx, bookID int64) ([]paymentInLieuEntitlement, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT o.id, v.transaction_id, f.holding_account_id, f.commodity_id, f.ex_date
-		FROM effective_investment_operations o
-		JOIN investment_payment_in_lieu_facts f ON f.operation_id = o.id AND f.book_id = o.book_id
-		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
-		JOIN transaction_versions v ON v.id = link.transaction_version_id
-		WHERE o.book_id = ? AND o.operation_kind = 'payment_in_lieu'
-		ORDER BY o.id`, bookID)
-	if err != nil {
-		return nil, fmt.Errorf("read effective payments in lieu: %w", err)
-	}
-	var payments []paymentInLieuEntitlement
-	for rows.Next() {
-		var payment paymentInLieuEntitlement
-		if err := rows.Scan(&payment.OperationID, &payment.TransactionID, &payment.Fact.HoldingAccountID,
-			&payment.Fact.CommodityID, &payment.Fact.ExDate); err != nil {
-			rows.Close()
-			return nil, fmt.Errorf("scan effective payment in lieu: %w", err)
-		}
-		payments = append(payments, payment)
-	}
-	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
-		return nil, fmt.Errorf("iterate effective payments in lieu: %w", err)
-	}
-	entitled := payments[:0]
-	for _, payment := range payments {
-		err := checkPaymentInLieuEntitlementTx(ctx, tx, bookID, payment.Fact)
-		if errors.Is(err, ErrPaymentInLieuNotShort) {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		entitled = append(entitled, payment)
-	}
-	return entitled, nil
-}
-
-// requirePaymentsInLieuStillEntitledTx re-checks, after a command's effects,
-// every payment entitled before it that is still effective; the first that
-// lost its short is named and the command rolls back.
-func requirePaymentsInLieuStillEntitledTx(ctx context.Context, tx *sql.Tx, bookID int64, before []paymentInLieuEntitlement) error {
-	for _, payment := range before {
-		var effective bool
-		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM effective_investment_operations
-			WHERE book_id = ? AND id = ?)`, bookID, payment.OperationID).Scan(&effective); err != nil {
-			return fmt.Errorf("read payment in lieu effectiveness: %w", err)
-		}
-		if !effective {
-			continue
-		}
-		err := checkPaymentInLieuEntitlementTx(ctx, tx, bookID, payment.Fact)
-		if errors.Is(err, ErrPaymentInLieuNotShort) {
-			return PaymentInLieuDependencyError{OperationID: payment.OperationID, TransactionID: payment.TransactionID}
-		}
-		if err != nil {
-			return err
-		}
+	if !valid {
+		return fmt.Errorf("%w: payment attribution must identify a holding and instrument in this book", ErrInvalidDisposalParams)
 	}
 	return nil
 }
 
 func validPaymentInLieuParams(params CreateTransactionParams) bool {
 	return params.BookID > 0 && params.ActorUserID > 0 && params.PaymentInLieu != nil &&
-		params.PaymentInLieu.HoldingAccountID > 0 && params.PaymentInLieu.CommodityID > 0 &&
-		params.PaymentInLieu.ExDate != "" && params.PaymentInLieu.ExDate <= params.Spec.TransactionDate &&
 		params.Spec.TransactionKind == "investment" && params.Spec.Status == "posted"
 }
 
-// CreatePaymentInLieu posts a payment in lieu through the investment writer
-// after re-checking the short entitlement. postWrite (suggestion acceptance)
+// CreatePaymentInLieu posts a cash charge through the investment writer.
+// Optional attribution never authorizes the cash. postWrite (suggestion acceptance)
 // runs last in the same transaction.
 func (r *InvestmentRepository) CreatePaymentInLieu(ctx context.Context, params CreateTransactionParams, postWrite func(*sql.Tx, int64) error) (TransactionRecord, error) {
 	if !validPaymentInLieuParams(params) || params.Spec.InvestmentOperationKind != "payment_in_lieu" {
 		return TransactionRecord{}, fmt.Errorf("%w: payment in lieu is incomplete", ErrInvalidDisposalParams)
 	}
-	transaction, _, err := executeInvestmentWriteWithGuardTx(ctx, r.database, params, func(tx *sql.Tx) error {
-		return checkPaymentInLieuEntitlementTx(ctx, tx, params.BookID, *params.PaymentInLieu)
-	}, noPaymentInLieuEffect, postWrite)
+	transaction, _, err := executeInvestmentWriteWithGuardTx(ctx, r.database, params, nil, noPaymentInLieuEffect, postWrite)
 	return transaction, err
 }
 
@@ -180,9 +50,7 @@ func (r *InvestmentRepository) PreviewPaymentInLieu(ctx context.Context, params 
 	if !validPaymentInLieuParams(params) || params.Spec.InvestmentOperationKind != "payment_in_lieu" {
 		return SimulatedInvestmentWrite{}, fmt.Errorf("%w: payment in lieu is incomplete", ErrInvalidDisposalParams)
 	}
-	transaction, _, err := previewInvestmentWriteWithGuardTx(ctx, r.database, params, func(tx *sql.Tx) error {
-		return checkPaymentInLieuEntitlementTx(ctx, tx, params.BookID, *params.PaymentInLieu)
-	}, noPaymentInLieuEffect)
+	transaction, _, err := previewInvestmentWriteWithGuardTx(ctx, r.database, params, nil, noPaymentInLieuEffect)
 	if err != nil {
 		return SimulatedInvestmentWrite{}, err
 	}
@@ -212,7 +80,7 @@ func paymentInLieuOperationByTransactionIDQuery(ctx context.Context, reader sale
 	var record PaymentInLieuOperationRecord
 	var corrected int
 	err := reader.QueryRowContext(ctx, `SELECT o.id, linked_version.transaction_id, link.transaction_version_id,
-		current.id, o.event_date, facts.holding_account_id, facts.commodity_id, facts.ex_date,
+		current.id, o.event_date, COALESCE(facts.holding_account_id, 0), COALESCE(facts.commodity_id, 0), COALESCE(facts.ex_date, ''),
 		EXISTS(SELECT 1 FROM investment_operations successor WHERE successor.correction_of_operation_id = o.id)
 		FROM investment_operations o
 		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
@@ -249,7 +117,7 @@ func checkPaymentInLieuForCorrectionTx(ctx context.Context, tx *sql.Tx, bookID i
 }
 
 // ReversePaymentInLieu posts the exact inverse as a reversal operation that
-// repeats the original's entitlement facts. A reversal needs no entitlement.
+// repeats the original's attribution facts, including unassigned fields.
 func (r *InvestmentRepository) ReversePaymentInLieu(ctx context.Context, params CreateTransactionParams, expected PaymentInLieuOperationRecord) (TransactionRecord, error) {
 	return r.reversePaymentInLieu(ctx, params, expected, false)
 }
@@ -291,7 +159,7 @@ type PaymentInLieuReplacementRecord struct {
 }
 
 // ReplacePaymentInLieu posts the inverse and the corrected payment under one
-// audit event; the replacement re-checks the (unchanged) short entitlement.
+// audit event; the replacement may repair its attribution.
 func (r *InvestmentRepository) ReplacePaymentInLieu(ctx context.Context, expected PaymentInLieuOperationRecord,
 	inverseParams, replacementParams CreateTransactionParams,
 ) (PaymentInLieuReplacementRecord, error) {
@@ -316,7 +184,7 @@ func (r *InvestmentRepository) replacePaymentInLieu(ctx context.Context, expecte
 		inverseParams.ActorUserID != replacementParams.ActorUserID ||
 		inverseParams.Spec.InvestmentOperationKind != "" || inverseParams.PaymentInLieu != nil ||
 		inverseParams.Spec.TransactionKind != "investment" || inverseParams.Spec.Status != "posted" ||
-		!validPaymentInLieuParams(replacementParams) || *replacementParams.PaymentInLieu != expected.Fact ||
+		!validPaymentInLieuParams(replacementParams) ||
 		replacementParams.Spec.InvestmentOperationKind != "payment_in_lieu" ||
 		inverseParams.Spec.TransactionDate != expected.EventDate ||
 		replacementParams.Spec.TransactionDate != expected.EventDate ||
@@ -336,10 +204,7 @@ func (r *InvestmentRepository) replacePaymentInLieu(ctx context.Context, expecte
 	journals, _, err := write(ctx, r.database,
 		[]CreateTransactionParams{inverseParams, replacementParams},
 		func(tx *sql.Tx) error {
-			if err := checkPaymentInLieuForCorrectionTx(ctx, tx, inverseParams.BookID, expected); err != nil {
-				return err
-			}
-			return checkPaymentInLieuEntitlementTx(ctx, tx, replacementParams.BookID, expected.Fact)
+			return checkPaymentInLieuForCorrectionTx(ctx, tx, inverseParams.BookID, expected)
 		}, func(tx *sql.Tx, journals []TransactionRecord, _ int64) (struct{}, error) {
 			inverse, replacement := journals[0], journals[1]
 			operationID, err := investmentOperationIDTx(ctx, tx, replacementParams.BookID, replacement.ID)

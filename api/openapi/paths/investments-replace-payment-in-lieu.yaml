@@ -1,11 +1,12 @@
 post:
   summary: Replace a posted payment in lieu of a dividend
   description: >-
-    Posts the inverse and the corrected payment — amount owed, expense
-    account and recovery — under one audit event (#255). The replacement
-    keeps the short holding, instrument, ex-date, payment date, cash account
-    and currency (omitted holding, instrument or ex-date are taken from the
-    original), and re-checks the short entitlement inside the write.
+    Posts the inverse and corrected payment under one audit event. Holding,
+    instrument and ex-date are optional repairable attribution: omission
+    preserves, null clears, and a value replaces. Payment date, cash account
+    and currency stay fixed. Attribution-only repair nets to zero at every
+    reconciliation boundary and does not change lots or gains. Historical
+    short support and source disagreement are advisory diagnostics.
   parameters:
     - in: path
       name: transaction_id
@@ -61,7 +62,7 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "422":
-      description: The holding is no longer short at the close before the ex-date (INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT)
+      description: Exact financial value exceeds the supported range
       content:
         application/json:
           schema:

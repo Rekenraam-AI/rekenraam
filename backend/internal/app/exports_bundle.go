@@ -22,7 +22,7 @@ import (
 // BundleSchemaVersion is the archive's own version, carried in manifest.json.
 // Columns are appended within a version; a change that cannot be made by
 // appending increments this and needs an ADR (ADR 0011).
-const BundleSchemaVersion = 15
+const BundleSchemaVersion = 16
 
 // bundleFile is one entry of the archive, recorded in the manifest with the
 // checksum computed while it was written.
@@ -936,7 +936,7 @@ value in this archive was ever a floating-point number.`,
   tags.csv           tag names behind the tag columns in ledger.csv
   lots.csv           investment lots as they currently stand
   investment-dividend-facts.csv  paying instrument of cash dividends and reversals
-  investment-payment-in-lieu-facts.csv  short holding and ex-date of payments in lieu and reversals
+  investment-payment-in-lieu-facts.csv  optional owner attribution of payments in lieu and reversals
   investment-operations.csv  named investment command parents
   investment-operation-journal-links.csv  posted versions made by each operation
   investment-operation-dates.csv  typed trade, settlement, and payment dates
@@ -1036,6 +1036,12 @@ Both lots.csv and investment-lot-state.csv carry basis_knowledge for remaining
 projected basis. Unknown basis has empty amount/scale fields, never numeric
 zero; known zero remains explicit. Quantity and immutable opening facts remain
 separate from that current knowledge state.
+Bundle schema 16 makes holding_account_id, commodity_id and ex_date in
+investment-payment-in-lieu-facts.csv nullable attribution. Unknown fields are
+empty cells, not zero IDs or invented dates. Every payment and standalone
+reversal keeps a facts row; immutable originals and correction ancestry remain
+exported. Source event decisions remain attached to their recorded payment;
+correction ancestry identifies its later owner attribution.
 Bundle schema 15 adds posting_version_id to ledger.csv, beside
 posting_line_key, so the posting_version_id columns of
 investment-operation-components.csv and disposal-clearing-allocations.csv join

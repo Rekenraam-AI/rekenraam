@@ -15,16 +15,13 @@ import (
 	"rekenraam/backend/internal/db"
 )
 
-// #379: every investment command enumerates the book's effective payments in
-// lieu and re-checks each one's dated short entitlement before and after its
-// effects (#257). This characterizes what that costs as payment density and
-// short history grow. It is a deliberate measurement, off the push gate:
+// #379 measured the former global entitlement admission. #388 removes that
+// policy; these same history shapes now measure accepted corrections, unrelated
+// writes and rolled-back previews. The diagnostic is measured separately.
 //
 //	./scripts/measure-payment-in-lieu-density.sh
 //
-// Fixture construction is outside every measured operation; the build itself
-// is reported separately, because each payment it records runs the same
-// admission over the payments before it.
+// Fixture construction is outside every measured operation and reported separately.
 
 func paymentDensityEnabled(tb testing.TB) {
 	tb.Helper()
@@ -80,10 +77,9 @@ func paymentDensityInts(tb testing.TB, name string, fallback []int) []int {
 }
 
 // Two history shapes over one holding account. "unrelated": every payment
-// is owed on its own instrument's single short (one replay intent each).
+// is owed on its own instrument's single short (one short each).
 // "concentrated": every background payment is owed on one instrument whose
-// short history grows by one sale per payment, so each check replays a
-// prefix of that history.
+// short history grows by one sale per payment, exercising the same historically expensive shape.
 const (
 	paymentShapeUnrelated    = "unrelated"
 	paymentShapeConcentrated = "concentrated"
@@ -98,7 +94,7 @@ type paymentDensityBook struct {
 	// targetPayment is the payment owed on the target short (zero at density 0).
 	targetPayment int64
 	// entitled records, by construction, which effective payments hold their
-	// short entitlement; the damaged control is false.
+	// short entitlement; the unsupported control is false.
 	entitled  map[int64]bool
 	reversed  int64 // superseded control payment (not effective)
 	effective int
@@ -125,7 +121,10 @@ func (b *paymentDensityBook) short(t *testing.T, commodity int64, date string, q
 func (b *paymentDensityBook) payment(t *testing.T, commodity int64, exDate, date string, entitled bool) int64 {
 	t.Helper()
 	input := paymentInLieuInput(b.f, b.expense, 500)
-	input.CommodityID, input.ExDate, input.TransactionDate = commodity, exDate, date
+	input.CommodityID, input.ExDate, input.TransactionDate = NullableValue(commodity), NullableValue(exDate), date
+	if !entitled {
+		input.HoldingAccountID = NullableValue(seedTestAccountWithClass(t, b.f.database, "active", true, "asset", "security_holding"))
+	}
 	started := time.Now()
 	payment, err := b.f.investmentService.PaymentInLieu(context.Background(), input)
 	require.NoError(t, err)
@@ -147,7 +146,7 @@ func paymentDay(start string, offset int) string {
 }
 
 // buildPaymentDensityBook records `payments` effective payments in lieu:
-// the target's, one damaged control, and the shape's background; plus one
+// the target's, one unsupported control, and the shape's background; plus one
 // reversed (superseded) control. Density 0 is the payment-free control.
 func buildPaymentDensityBook(t *testing.T, shape string, payments int) *paymentDensityBook {
 	t.Helper()
@@ -158,7 +157,7 @@ func buildPaymentDensityBook(t *testing.T, shape string, payments int) *paymentD
 	b.expense = seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
 	b.usd = seedTestCurrencyCommodity(t, f.database, "USD")
 
-	background := max(payments-2, 0) // the target and the damaged control are counted in `payments`
+	background := max(payments-2, 0) // the target and the unsupported control are counted in `payments`
 	switch shape {
 	case paymentShapeUnrelated:
 		for index := range background {
@@ -209,21 +208,14 @@ func buildPaymentDensityBook(t *testing.T, shape string, payments int) *paymentD
 		// never short, so it is already unentitled (a self-check finding).
 		commodity := b.security(t)
 		b.short(t, commodity, "2026-04-01", 10, 100000, f.eurCommodityID)
-		damaged := b.payment(t, commodity, "2026-04-15", "2026-04-17", false)
-		_, err := f.database.Exec(`DROP TRIGGER investment_payment_in_lieu_facts_no_update`)
-		require.NoError(t, err)
-		_, err = f.database.Exec(`UPDATE investment_payment_in_lieu_facts SET holding_account_id = ?
-			WHERE operation_id = (SELECT link.operation_id FROM investment_operation_journal_links link
-				JOIN transaction_versions v ON v.id = link.transaction_version_id
-				WHERE v.transaction_id = ? AND link.role = 'primary')`, f.cashAccountID, damaged)
-		require.NoError(t, err)
+		b.payment(t, commodity, "2026-04-15", "2026-04-17", false)
 		// Superseded control: owed, then reversed; no longer effective.
 		commodity = b.security(t)
 		b.short(t, commodity, "2026-04-01", 10, 100000, f.eurCommodityID)
 		b.reversed = b.payment(t, commodity, "2026-04-15", "2026-04-17", true)
 		delete(b.entitled, b.reversed)
 		b.effective--
-		_, err = f.investmentService.ReversePaymentInLieu(ctx, ReverseInvestmentPaymentInLieuInput{
+		_, err := f.investmentService.ReversePaymentInLieu(ctx, ReverseInvestmentPaymentInLieuInput{
 			OwnerUserID: f.ownerUserID, TransactionID: b.reversed, Reason: "superseded control"})
 		require.NoError(t, err)
 	}
@@ -330,7 +322,7 @@ func TestPaymentInLieuAdmissionCostByDensity(t *testing.T) {
 	if raw := os.Getenv("REKENRAAM_PIL_SHAPES"); raw != "" {
 		shapes = strings.Split(raw, ",")
 	}
-	densities := paymentDensityInts(t, "REKENRAAM_PIL_DENSITIES", []int{0, 10, 100, 1000})
+	densities := paymentDensityInts(t, "REKENRAAM_PIL_DENSITIES", []int{0, 10, 100, 300})
 	repeats := paymentDensityInts(t, "REKENRAAM_PIL_REPEATS", []int{5})[0]
 
 	for _, shape := range shapes {
@@ -342,34 +334,8 @@ func TestPaymentInLieuAdmissionCostByDensity(t *testing.T) {
 				b.requireEntitlementsAsConstructed(t)
 				f := b.f
 
-				// Refused short correction: reversing the target short would
-				// strand its payment. Preview and commit both name it and
-				// leave every durable row unchanged.
-				if b.targetPayment != 0 {
-					before := buyReplacementPreviewSnapshot(t, b.f.database)
-					input := ReverseInvestmentBuyInput{OwnerUserID: f.ownerUserID, TransactionID: b.targetTx, Reason: "never shorted"}
-					var previews, commits []paymentDensitySample
-					for range repeats {
-						sample, err := measurePaymentDensityOperation(t, b, func() error {
-							_, err := f.investmentService.ReverseShortSaleReconciliationImpact(ctx, input)
-							return err
-						})
-						requirePaymentInLieuDependency(t, err, Transaction{ID: b.targetPayment})
-						previews = append(previews, sample)
-						sample, err = measurePaymentDensityOperation(t, b, func() error {
-							_, err := f.investmentService.ReverseShortSale(ctx, input)
-							return err
-						})
-						requirePaymentInLieuDependency(t, err, Transaction{ID: b.targetPayment})
-						commits = append(commits, sample)
-					}
-					require.Equal(t, before, buyReplacementPreviewSnapshot(t, b.f.database), "refused correction wrote nothing")
-					logPaymentDensitySamples(t, shape, payments, "refused_short_reversal_preview", previews)
-					logPaymentDensitySamples(t, shape, payments, "refused_short_reversal", commits)
-				}
-
 				// Successful short correction: new proceeds, same date. The
-				// target's payment is re-checked and stays owed.
+				// target's payment stays effective with supported attribution.
 				var previews, commits []paymentDensitySample
 				for repeat := range repeats {
 					replacement := shortInput(f, "2026-04-01", 10, int64(100000+100*(repeat+1)))
@@ -420,6 +386,31 @@ func TestPaymentInLieuAdmissionCostByDensity(t *testing.T) {
 				}
 				logPaymentDensitySamples(t, shape, payments, "unrelated_short_sale_preview", previews)
 				logPaymentDensitySamples(t, shape, payments, "unrelated_short_sale", commits)
+
+				// Reversal is now admissible with the payment left effective.
+				// Reopen outside timing between samples to keep the financial
+				// position and attributed payment fixed for each measurement.
+				previews, commits = nil, nil
+				for range repeats {
+					input := ReverseInvestmentBuyInput{OwnerUserID: f.ownerUserID, TransactionID: b.targetTx, Reason: "not shorted"}
+					before := buyReplacementPreviewSnapshot(t, f.database)
+					sample, err := measurePaymentDensityOperation(t, b, func() error {
+						_, err := f.investmentService.ReverseShortSaleReconciliationImpact(ctx, input)
+						return err
+					})
+					require.NoError(t, err)
+					require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+					previews = append(previews, sample)
+					sample, err = measurePaymentDensityOperation(t, b, func() error { _, err := f.investmentService.ReverseShortSale(ctx, input); return err })
+					require.NoError(t, err)
+					commits = append(commits, sample)
+					if b.targetPayment != 0 {
+						requirePaymentAttributionWarning(t, f, b.targetPayment)
+					}
+					b.targetTx = b.short(t, b.target, "2026-04-01", 10, int64(100000+100*repeats), f.eurCommodityID).Transaction.ID
+				}
+				logPaymentDensitySamples(t, shape, payments, "short_reversal_preview", previews)
+				logPaymentDensitySamples(t, shape, payments, "short_reversal", commits)
 
 				b.requireEntitlementsAsConstructed(t)
 			})

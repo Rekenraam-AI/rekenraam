@@ -1660,7 +1660,7 @@
   "investments_payment_in_lieu_copy": "Le vendeur à découvert doit au prêteur le dividende des actions empruntées. Il est payé en espèces vers un compte de charges et ne modifie pas la position courte.",
   "investments_payment_in_lieu_holding": "Position courte",
   "investments_payment_in_lieu_ex_date": "Date ex-dividende",
-  "investments_payment_in_lieu_ex_date_hint": "La position devait être courte à la clôture précédant cette date.",
+  "investments_payment_in_lieu_ex_date_hint": "Permet de vérifier les quantités vendues à découvert avant cette date. Laissez vide si elle est inconnue.",
   "investments_payment_in_lieu_payment_date": "Date de paiement",
   "investments_payment_in_lieu_amount": "Montant dû",
   "investments_payment_in_lieu_expense_account": "Compte de charges",
@@ -1684,8 +1684,6 @@
   "investments_suggestion_long_and_short_position": "Long dans une position et court dans une autre avant la date ex : ni un dividende ni un seul paiement compensatoire ne convient. Saisissez chacun à la main ou ignorez cet événement.",
   "api_error_investment_payment_in_lieu_already_corrected": "Ce paiement compensatoire a déjà été corrigé. Actualisez pour voir l'écriture actuelle.",
   "api_error_investment_payment_in_lieu_changed": "Ce paiement compensatoire a changé depuis son chargement. Actualisez et réessayez.",
-  "api_error_investment_payment_in_lieu_not_short": "Cette position n'était pas courte sur cet instrument à la clôture précédant la date ex : aucun paiement compensatoire n'est dû.",
-  "api_error_investment_payment_in_lieu_dependency": "Un paiement compensatoire dépend de cette position courte. Annulez d'abord ce paiement compensatoire, puis corrigez la position courte.",
   "api_error_request_too_large": "La requête est trop volumineuse. Réduisez sa taille et réessayez.",
   "security_tokens_title": "Jetons d’accès personnels",
   "security_tokens_hint": "Créez des identifiants en lecture seule pour vos scripts et outils. Chaque jeton peut uniquement lire les données sélectionnées. Les paramètres, sauvegardes et modifications des écritures sont exclus.",
@@ -1721,5 +1719,10 @@
   "investments_attribution_ex_date_after_payment": "La date de détachement est postérieure à la date de paiement enregistrée.",
   "investments_attribution_unavailable": "Certaines données d’attribution manquent ; le fondement historique ne peut pas être vérifié.",
   "investments_attribution_payment_link": "Ouvrir le paiement nº {id}",
-  "investments_attribution_review": "Attribution à vérifier. Le montant enregistré reste inchangé."
+  "investments_attribution_review": "Attribution à vérifier. Le montant enregistré reste inchangé.",
+  "investments_attribution_optional": "Attribution (facultative)",
+  "investments_attribution_unassigned": "Non attribué",
+  "investments_attribution_repair_hint": "Laissez les informations inconnues vides. Modifier uniquement ces informations conserve le montant enregistré et garde l’original dans l’historique.",
+  "investments_attribution_provider_mismatch": "Ces informations diffèrent des données du fournisseur associées. Les données sources d’origine sont conservées.",
+  "investments_payment_in_lieu_correction_reason": "Motif de la correction"
 }

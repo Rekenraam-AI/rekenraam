@@ -27,10 +27,8 @@
   import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
   import { invalidateInvestmentReads } from './invalidate';
 
-  // A short holder's payment in lieu of a dividend (#255): cash paid to an
-  // expense account, with an optional recovery credited back. It never
-  // changes the short lot. A correction keeps the short holding, instrument,
-  // ex-date, payment date and cash account, and shows them read-only.
+  // Cash is required; optional attribution is editable through the same
+  // audited replacement as amount/account corrections.
   let {
     csrfToken,
     onSaved,
@@ -50,15 +48,15 @@
   const ownerToday = useOwnerToday();
 
   const queryClient = useQueryClient();
-  const accountsQuery = createQuery(() => accountsQueryOptions(false, false));
+  const accountsQuery = createQuery(() => accountsQueryOptions(true, false));
   const currenciesQuery = createQuery(() => currenciesQueryOptions());
   const instrumentsQuery = createQuery(() => investmentInstrumentsQueryOptions());
 
-  let holdingAccountID = $state(terms ? String(terms.holding_account_id)
+  let holdingAccountID = $state(terms ? (terms.holding_account_id ? String(terms.holding_account_id) : '')
     : initialPrefill?.holdingAccountID !== undefined ? String(initialPrefill.holdingAccountID) : '');
-  let commodityID = $state(terms ? String(terms.commodity_id)
+  let commodityID = $state(terms ? (terms.commodity_id ? String(terms.commodity_id) : '')
     : initialPrefill?.commodityID !== undefined ? String(initialPrefill.commodityID) : '');
-  let exDate = $state(terms?.ex_date ?? ownerToday());
+  let exDate = $state(terms?.ex_date ?? '');
   let paymentDate = $state(terms?.event_date ?? ownerToday());
   let cashAccountID = $state(terms ? String(terms.cash_account_id) : '');
   let expenseAccountID = $state(terms ? String(terms.expense_account_id) : '');
@@ -78,7 +76,7 @@
   const instruments = $derived(instrumentsQuery.data?.instruments ?? []);
   const accountName = (id: number) => accounts.find((account: AccountResponse) => account.id === id)?.name ?? `#${id}`;
   const holdingAccounts = $derived(accounts.filter((account: AccountResponse) =>
-    isSubledgerManagedAccountKind(account.account_kind) && account.status === 'active'));
+    isSubledgerManagedAccountKind(account.account_kind)));
   const cashAccounts = $derived(accounts.filter((account: AccountResponse) =>
     ['asset', 'liability'].includes(account.account_class) && account.allows_postings && !account.system_role &&
     !isSubledgerManagedAccountKind(account.account_kind) && (account.status === 'active' || account.id === terms?.cash_account_id)));
@@ -95,24 +93,12 @@
   const cashCommodityID = $derived(terms?.cash_commodity_id ??
     accounts.find((account: AccountResponse) => String(account.id) === cashAccountID)?.default_commodity_id ?? undefined);
   const currencyCode = $derived(cashCommodityID ? currenciesByID.get(cashCommodityID)?.code ?? '' : '');
-  const instrumentLabel = $derived.by(() => {
-    const instrument = instruments.find((candidate) => String(candidate.commodity_id) === commodityID);
-    return instrument ? `${instrument.symbol ?? instrument.commodity_code} · ${instrument.display_name}` : '';
-  });
   const dateFormatter = $derived(new Intl.DateTimeFormat(getLocale(), { year: 'numeric', month: 'short', day: 'numeric' }));
   const loading = $derived(accountsQuery.isPending || currenciesQuery.isPending || instrumentsQuery.isPending);
   const loadError = $derived(accountsQuery.isError || currenciesQuery.isError || instrumentsQuery.isError);
-  const canSubmit = $derived(!loading && !loadError && holdingAccountID !== '' && commodityID !== '' && !!exDate && !!paymentDate &&
+  const canSubmit = $derived(!loading && !loadError && !!paymentDate &&
     cashAccountID !== '' && !!cashCommodityID && expenseAccountID !== '' && amountStr.trim() !== '' &&
     (!showRecovery || recoveryStr.trim() === '' || recoveryAccountID !== '') && (!initial || !!reason.trim()));
-
-  // A short holding's instrument follows from the holding when it names one.
-  function selectHolding() {
-    const holding = accounts.find((account: AccountResponse) => String(account.id) === holdingAccountID);
-    if (holding?.default_commodity_id && instruments.some((instrument) => instrument.commodity_id === holding.default_commodity_id)) {
-      commodityID = String(holding.default_commodity_id);
-    }
-  }
 
   function amountErrorMessage(error: AmountFieldError): string {
     switch (error) {
@@ -136,7 +122,7 @@
     }
     const { amount, withholding: recovery } = amounts.values;
     const payload: PaymentInLieuRequest = {
-      holding_account_id: Number(holdingAccountID), commodity_id: Number(commodityID), ex_date: exDate,
+      holding_account_id: holdingAccountID ? Number(holdingAccountID) : null, commodity_id: commodityID ? Number(commodityID) : null, ex_date: exDate || null,
       transaction_date: paymentDate, cash_account_id: Number(cashAccountID), cash_commodity_id: cashCommodityID,
       expense_account_id: Number(expenseAccountID), amount_value: amount.value, amount_scale: amount.scale,
       recovery_value: recovery?.value, recovery_scale: recovery?.scale,
@@ -216,45 +202,51 @@
     <p class="text-sm text-danger" role="alert">{m.investments_payment_in_lieu_load_error()}</p>
   {/if}
 
-  {#if initial && terms}
-    <dl class="grid grid-cols-1 gap-2 rounded-(--radius-panel) border border-border p-3 text-sm sm:grid-cols-2">
-      <div><dt class="text-xs text-muted">{m.investments_payment_in_lieu_holding()}</dt><dd class="text-foreground">{accountName(terms.holding_account_id)}</dd></div>
-      <div><dt class="text-xs text-muted">{m.investments_form_instrument()}</dt><dd class="text-foreground">{instrumentLabel}</dd></div>
-      <div><dt class="text-xs text-muted">{m.investments_payment_in_lieu_ex_date()}</dt><dd class="text-foreground">{dateFormatter.format(parseISO(terms.ex_date))}</dd></div>
-      <div><dt class="text-xs text-muted">{m.investments_payment_in_lieu_payment_date()}</dt><dd class="text-foreground">{dateFormatter.format(parseISO(terms.event_date))}</dd></div>
-      <div class="sm:col-span-2"><dt class="text-xs text-muted">{m.investments_form_cash_account()}</dt><dd class="text-foreground">{accountName(terms.cash_account_id)} {currencyCode}</dd></div>
-    </dl>
-    <div>
-      <label for="pil-reason" class="mb-1 block text-sm font-medium text-foreground">{m.transactions_investment_reverse_reason()}</label>
-      <input id="pil-reason" type="text" {@attach autofocus} bind:value={reason} maxlength="500" required class={inputClass} />
-    </div>
-  {:else}
+  <fieldset class="space-y-3 rounded-(--radius-panel) border border-border p-3">
+    <legend class="px-1 text-sm font-medium text-foreground">{m.investments_attribution_optional()}</legend>
+    <p class="text-xs text-muted">{m.investments_attribution_repair_hint()}</p>
     <div>
       <label for="pil-holding" class="mb-1 block text-sm font-medium text-foreground">{m.investments_payment_in_lieu_holding()}</label>
-      <select id="pil-holding" {@attach autofocus} bind:value={holdingAccountID} onchange={selectHolding} required class={inputClass}>
-        <option value="">{m.investments_form_select_account()}</option>
+      <select id="pil-holding" bind:value={holdingAccountID} class={inputClass}>
+        <option value="">{m.investments_attribution_unassigned()}</option>
+        {#if holdingAccountID && !holdingAccounts.some(account => String(account.id) === holdingAccountID)}
+          <option value={holdingAccountID}>#{holdingAccountID}</option>
+        {/if}
         {#each holdingAccounts as account (account.id)}<option value={String(account.id)}>{account.name}</option>{/each}
       </select>
     </div>
     <div>
       <label for="pil-instrument" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_instrument()}</label>
-      <select id="pil-instrument" bind:value={commodityID} required class={inputClass}>
-        <option value="">{m.investments_form_instrument_placeholder()}</option>
+      <select id="pil-instrument" bind:value={commodityID} class={inputClass}>
+        <option value="">{m.investments_attribution_unassigned()}</option>
+        {#if commodityID && !instruments.some(instrument => String(instrument.commodity_id) === commodityID)}
+          <option value={commodityID}>#{commodityID}</option>
+        {/if}
         {#each instruments as instrument (instrument.commodity_id)}
           <option value={String(instrument.commodity_id)}>{instrument.symbol ?? instrument.commodity_code} · {instrument.display_name}</option>
         {/each}
       </select>
     </div>
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <div>
-        <label for="pil-ex-date" class="mb-1 block text-sm font-medium text-foreground">{m.investments_payment_in_lieu_ex_date()}</label>
-        <input id="pil-ex-date" type="date" bind:value={exDate} required class={inputClass} aria-describedby="pil-ex-date-hint" />
-        <p id="pil-ex-date-hint" class="mt-1 text-xs text-muted">{m.investments_payment_in_lieu_ex_date_hint()}</p>
-      </div>
-      <div>
-        <label for="pil-payment-date" class="mb-1 block text-sm font-medium text-foreground">{m.investments_payment_in_lieu_payment_date()}</label>
-        <input id="pil-payment-date" type="date" bind:value={paymentDate} min={exDate} required class={inputClass} />
-      </div>
+    <div>
+      <label for="pil-ex-date" class="mb-1 block text-sm font-medium text-foreground">{m.investments_payment_in_lieu_ex_date()}</label>
+      <input id="pil-ex-date" type="date" bind:value={exDate} class={inputClass} aria-describedby="pil-ex-date-hint" />
+      <p id="pil-ex-date-hint" class="mt-1 text-xs text-muted">{m.investments_payment_in_lieu_ex_date_hint()}</p>
+    </div>
+  </fieldset>
+
+  {#if initial && terms}
+    <dl class="grid grid-cols-1 gap-2 rounded-(--radius-panel) border border-border p-3 text-sm sm:grid-cols-2">
+      <div><dt class="text-xs text-muted">{m.investments_payment_in_lieu_payment_date()}</dt><dd class="text-foreground">{dateFormatter.format(parseISO(terms.event_date))}</dd></div>
+      <div class="sm:col-span-2"><dt class="text-xs text-muted">{m.investments_form_cash_account()}</dt><dd class="text-foreground">{accountName(terms.cash_account_id)} {currencyCode}</dd></div>
+    </dl>
+    <div>
+      <label for="pil-reason" class="mb-1 block text-sm font-medium text-foreground">{m.investments_payment_in_lieu_correction_reason()}</label>
+      <input id="pil-reason" type="text" {@attach autofocus} bind:value={reason} maxlength="500" required class={inputClass} />
+    </div>
+  {:else}
+    <div>
+      <label for="pil-payment-date" class="mb-1 block text-sm font-medium text-foreground">{m.investments_payment_in_lieu_payment_date()}</label>
+      <input id="pil-payment-date" type="date" bind:value={paymentDate} required class={inputClass} />
     </div>
     <div>
       <label for="pil-cash" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_cash_account()}</label>

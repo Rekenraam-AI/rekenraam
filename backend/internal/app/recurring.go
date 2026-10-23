@@ -20,13 +20,6 @@ var (
 	ErrRecurringTemplateConflict   = errors.New("recurring template changed concurrently")
 )
 
-// NullablePatch distinguishes omission (preserve) from explicit null (clear).
-// JSON decoding belongs to the API; the service receives the same distinction.
-type NullablePatch[T any] struct {
-	Set   bool
-	Value *T
-}
-
 type RecurringTemplatePatch struct {
 	Name            *string
 	Enabled         *bool

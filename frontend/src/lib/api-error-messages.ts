@@ -38,8 +38,6 @@ const apiErrorMessageByCode: Record<APIErrorCode, () => string> = {
   INVESTMENT_DIVIDEND_CHANGED: () => m.api_error_investment_dividend_changed(),
   INVESTMENT_PAYMENT_IN_LIEU_ALREADY_CORRECTED: () => m.api_error_investment_payment_in_lieu_already_corrected(),
   INVESTMENT_PAYMENT_IN_LIEU_CHANGED: () => m.api_error_investment_payment_in_lieu_changed(),
-  INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT: () => m.api_error_investment_payment_in_lieu_not_short(),
-  INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY: () => m.api_error_investment_payment_in_lieu_dependency(),
   INVESTMENT_WRITE_OFF_ALREADY_CORRECTED: () => m.api_error_investment_write_off_already_corrected(),
   INVESTMENT_WRITE_OFF_CHANGED: () => m.api_error_investment_write_off_changed(),
   INVESTMENT_TRANSFER_ALREADY_CORRECTED: () => m.api_error_investment_transfer_already_corrected(),

@@ -830,7 +830,7 @@ A completed check keeps three measurements apart:
 - **Unavailable coverage** (`unavailable_count`, `unavailable_sample`):
   something could not be verified because the book supportedly does not know
   it. `investment_attribution` counts payments missing instrument/holding/ex-date
-  context (the nullable entry/repair path follows in #388). For basis,
+  context (nullable entry and audited repair ship in #388). For basis,
   `lot_reconciliation` counts every lot,
   open or closed, whose projected basis is supported unknown (not missing,
   not inconsistent knowledge/amounts — those are findings). Its summary names
@@ -901,9 +901,11 @@ same verdicts, and the screen reads the latest one the same way.
 unavailable counts, even beside an integrity failure, with links to the named
 payment's transaction detail. Detail uses the same evaluator on demand. The
 saved self-check is labelled historical; rerun after corrections. No review
-queue or acknowledgement is added. #388 still owns optional attribution entry,
-clearing, audited repair and retirement of the existing write blockers; this
-read-side slice does not claim those workflows have changed.
+queue or acknowledgement is added. #388 completes optional attribution entry,
+clearing and audited repair, removes historical entitlement from write admission,
+and discloses provider/owner differences as `provider_attribution_mismatch`.
+Unknown fact fields export empty in bundle schema 16; source evidence and
+original correction facts stay intact. See the [repair delivery evidence](../reviews/payment-attribution-repair-2026-10-23.md).
 
 ### Unresolved investment basis diagnostic acceptance (#308)
 
@@ -1077,7 +1079,7 @@ Full-suite discipline per `validate-and-ship`: `scripts/test-backend.sh`,
     `product-requirements.md`). The native backup and `restore` are the only
     full-installation round trip, and the #277 drill proves it exact. The
     bundle is a portable ledger export: every ledger and investment figure
-    rebuilds from it, every id resolves inside it (bundle schema 15, #322),
+    rebuilds from it, every id resolves inside it (since bundle schema 15, #322),
     and the manifest names what it omits (#321). No bundle importer, no
     structured settings/metadata interchange, and no installation-complete
     bundle. Moving between Rekenraam instances is backup and restore.

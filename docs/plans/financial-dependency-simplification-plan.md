@@ -106,7 +106,7 @@ their linked implementation ships.
 |---|---|---|---|
 | Cash dividend | Exact gross, recorded withholding, cash/currency/date and posting accounts; gross is never inferred from net alone | Payer is optional, set/change/clear is audited, and holdings are not permanent authorization. Preserve the cash-only correction shape and existing coverage. | #393 closes the clear/unassigned gaps; no new holding/ex-date fields. |
 | Embedded/separate withholding | Exact known tax and correct posting shape; a separate tax payment creates no gross income | Instrument is optional in both forms. Separate-withholding knowledge must survive without a payer-facts row carrying a non-null instrument. No historical lot or mandatory dividend-payment link. | #393 changes the facts representation with its migration. |
-| Payment in lieu of dividend | Exact owed cash/expense, optional recorded recovery, payment date/currency/accounts; no lot effect | Instrument, holding and ex-date are optional owner attribution. Remove entry/replacement entitlement authorization and the shared writer's global before/after scan. Unsupported attribution is diagnostic; allow audited repairs preserving cash. | #388 with #389's visibility. |
+| Payment in lieu of dividend | Exact owed cash/expense, optional recorded recovery, payment date/currency/accounts; no lot effect | Instrument, holding and ex-date are optional owner attribution. Remove entry/replacement entitlement authorization and the shared writer's global before/after scan. Unsupported attribution is diagnostic; allow audited repairs preserving cash. | Delivered by #388/#389; other families remain separate. |
 | Fractional-share cash in lieu | Actual fractional disposal quantity, account/instrument, basis/election, proceeds and disposal/payment dates | Keep immutable parent provenance; validate parent edits by actual replay. Resolve correction ancestry for current context. A retired parent alone is an attribution warning, while impossible disposals still refuse. | #392 characterizes and adapts all four parent families. |
 
 ### Required Facts And Repair Semantics
@@ -170,6 +170,7 @@ Ordinary writes never run this whole-book diagnostic.
 | Complete supported attribution | Passed; this establishes historical support, not correctness of the amount. |
 | Context needed for the historical check is missing | Incomplete coverage with unavailable count/sample; known cash stays usable. |
 | Complete context has no short at the close, or ex-date follows payment | Warning with stable reason (`no_short_at_entitlement_close` / `ex_date_after_payment`), named transaction and repair link. Never label it financial corruption or unknown data. |
+| Effective owner attribution differs from linked/generated provider evidence | Warning `provider_attribution_mismatch`; preserve the source, decision and payment identity through correction ancestry. Missing context is still disclosed separately. |
 | Broken facts/FKs, invalid quantities/elections or journal/lot disagreement | Existing integrity checks fail independently. |
 | Evaluation cannot execute | Existing errored-run/read-error behavior; never substitute unsupported or zero. |
 
@@ -212,11 +213,43 @@ Effective covers and corrections are read through `EffectiveLotMovements`;
 one dated sweep serves the book's payments. The reader uses no savepoint or
 write admission and is not called by investment commands.
 
-This is the explicitly permitted diagnostic-first boundary. #388 still owns
-nullable entry, omission versus clearing, audited attribution repair and
-removal of the global and local write blockers. Unsupported histories are
-constructed through explicit integration fixtures until that slice ships.
+At this first diagnostic delivery, nullable entry, omission versus clearing,
+audited attribution repair and removal of write blockers remained with #388.
+The cash-attribution delivery below completes that boundary; unsupported
+histories now use ordinary owner commands in integration fixtures.
 The broader #390/#391 inventory and #392/#393 remain open.
+
+### Cash-Attribution Delivery (#388, 2026-10-23)
+
+#388 now completes the payment row and #389's repair integration. Entry may
+leave attribution unassigned; replacement preserves omission, clears explicit
+null and accepts supplied values. The existing nullable-field primitive is
+shared with recurring requests. Amount, payment date, cash/currency/expense
+roles and recovery constraints remain required. Attribution references need
+the correct same-book object kind, without historical posting eligibility.
+No instrument or ex-date is inferred from a holding or today's date.
+
+Migration `0023` preserves immutable originals/reversals while admitting SQL
+NULL attribution. A shared structural read view serves integrity and advisory
+readers; typed payment ancestry preserves source identity across corrections.
+An attribution-only repair uses the existing inverse/replacement action with
+one audit event, zero checkpoint-balance change and no gain/lot effect. It is
+labelled a correction. Source disagreement is visible and never erases raw
+evidence, reopens a decision or permits relinking another version of the same
+payment. Bundle schema 16 exports unknown cells empty.
+
+The local entitlement gate and shared writer's before/after enumeration/replay
+are removed, rather than replaced with another whole-book write check.
+SQLite's independent FK checks remain; a native authorizer test refuses all
+attribution-context reads during ordinary investment writes/previews. The
+existing six-locale entry/correction/detail and Data settings surfaces carry
+the workflow, with no new queue or acknowledgement requirement.
+
+The [delivery evidence](../reviews/payment-attribution-repair-2026-10-23.md)
+records policy-test dispositions, retained financial controls and bounded
+measurements. This does not complete #390/#391 or relax #392's real disposal
+constraints. #393 still owns the dividend/separate-withholding nullable payer
+representation and clear workflow.
 
 ## Whole-Application Complexity Review
 

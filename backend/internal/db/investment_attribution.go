@@ -14,6 +14,7 @@ import (
 const (
 	AttributionNoShort            = "no_short_at_entitlement_close"
 	AttributionExDateAfterPayment = "ex_date_after_payment"
+	AttributionProviderMismatch   = "provider_attribution_mismatch"
 )
 
 // PaymentInLieuAttributionDiagnostic describes historical support for the
@@ -26,9 +27,10 @@ type PaymentInLieuAttributionDiagnostic struct {
 }
 
 type paymentInLieuAttributionRecord struct {
-	TransactionID int64
-	PaymentDate   string
-	Fact          PaymentInLieuFact
+	TransactionID  int64
+	PaymentDate    string
+	Fact           PaymentInLieuFact
+	SourceMismatch bool
 }
 
 func (r *SelfCheckRepository) PaymentInLieuAttributions(ctx context.Context, snapshot *sql.Tx, bookID int64) ([]PaymentInLieuAttributionDiagnostic, error) {
@@ -55,18 +57,23 @@ func (r *InvestmentRepository) PaymentInLieuAttribution(ctx context.Context, boo
 
 func paymentInLieuAttributions(ctx context.Context, source queryer, bookID, transactionID int64) ([]PaymentInLieuAttributionDiagnostic, error) {
 	rows, err := source.QueryContext(ctx, `SELECT v.transaction_id, o.event_date,
-		f.holding_account_id, f.commodity_id, f.ex_date
+		f.holding_account_id, f.commodity_id, f.ex_date,
+		EXISTS (SELECT 1 FROM investment_payment_in_lieu_ancestry ancestry
+			JOIN investment_operation_journal_links source_link ON source_link.operation_id = ancestry.ancestor_operation_id AND source_link.role = 'primary'
+			JOIN transaction_versions source_version ON source_version.id = source_link.transaction_version_id
+			JOIN investment_event_suggestions suggestion ON suggestion.book_id = ancestry.book_id
+				AND (suggestion.generated_transaction_id = source_version.transaction_id OR suggestion.linked_transaction_id = source_version.transaction_id)
+			JOIN investment_provider_events event ON event.id = suggestion.provider_event_id AND event.book_id = suggestion.book_id
+			WHERE ancestry.book_id = o.book_id AND ancestry.operation_id = o.id
+			AND suggestion.status IN ('accepted', 'auto_posted', 'linked')
+			AND (f.commodity_id IS NOT json_extract(suggestion.proposed_transaction_json, '$.commodity_id')
+				OR f.ex_date IS NOT event.event_date
+				OR NOT EXISTS (SELECT 1 FROM json_each(suggestion.proposed_transaction_json, '$.holding_account_ids') WHERE value = f.holding_account_id)))
 		FROM effective_investment_operations o
-		JOIN investment_payment_in_lieu_facts f ON f.operation_id = o.id AND f.book_id = o.book_id
+		JOIN valid_investment_payment_in_lieu_facts f ON f.operation_id = o.id AND f.book_id = o.book_id
 		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
 		JOIN transaction_versions v ON v.id = link.transaction_version_id AND v.book_id = o.book_id
 		WHERE o.book_id = ? AND o.operation_kind = 'payment_in_lieu' AND (? = 0 OR v.transaction_id = ?)
-		AND o.created_audit_event_id = f.created_audit_event_id
-		AND (f.ex_date IS NULL OR (length(f.ex_date) = 10
-			AND f.ex_date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'
-			AND date(f.ex_date, '+0 days') = f.ex_date))
-		AND (f.holding_account_id IS NULL OR EXISTS (SELECT 1 FROM accounts a WHERE a.id = f.holding_account_id AND a.book_id = f.book_id))
-		AND (f.commodity_id IS NULL OR EXISTS (SELECT 1 FROM commodities c WHERE c.id = f.commodity_id AND c.book_id = f.book_id AND c.kind IN ('security', 'crypto')))
 		ORDER BY o.id`, bookID, transactionID, transactionID)
 	if err != nil {
 		return nil, fmt.Errorf("read payment attribution: %w", err)
@@ -74,12 +81,12 @@ func paymentInLieuAttributions(ctx context.Context, source queryer, bookID, tran
 	var payments []paymentInLieuAttributionRecord
 	for rows.Next() {
 		var record paymentInLieuAttributionRecord
-		// Nullable reads prepare for #388's partial owner attribution. A missing
+		// Nullable reads preserve #388's partial owner attribution. A missing
 		// facts row is deliberately excluded, never disguised as unavailable:
 		// investment_foundation independently names that structural failure.
 		var holding, commodity sql.NullInt64
 		var exDate sql.NullString
-		if err := rows.Scan(&record.TransactionID, &record.PaymentDate, &holding, &commodity, &exDate); err != nil {
+		if err := rows.Scan(&record.TransactionID, &record.PaymentDate, &holding, &commodity, &exDate, &record.SourceMismatch); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("scan payment attribution: %w", err)
 		}
@@ -118,6 +125,9 @@ func evaluatePaymentInLieuAttributions(payments []paymentInLieuAttributionRecord
 		payment := payments[i]
 		fact := payment.Fact
 		result := PaymentInLieuAttributionDiagnostic{TransactionID: payment.TransactionID, WarningReasons: []string{}}
+		if payment.SourceMismatch {
+			result.WarningReasons = append(result.WarningReasons, AttributionProviderMismatch)
+		}
 		if fact.ExDate != "" && fact.ExDate > payment.PaymentDate {
 			result.WarningReasons = append(result.WarningReasons, AttributionExDateAfterPayment)
 		}

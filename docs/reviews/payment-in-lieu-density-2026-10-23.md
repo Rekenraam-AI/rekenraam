@@ -1,5 +1,7 @@
 # Payment-in-lieu admission density audit — 2026-10-23
 
+> Status update: #388 completes optional attribution, audited repair and retirement of write-time entitlement gates. The evidence below records the earlier delivery; see [repair delivery and new measurements](payment-attribution-repair-2026-10-23.md).
+
 Scope: [#379](https://github.com/sergeyfarin/rekenraam/issues/379), from the
 [#284 invariant ownership report](maintainability-invariants-2026-10-21.md)
 (I10, follow-up 4), after [#272](https://github.com/sergeyfarin/rekenraam/issues/272)

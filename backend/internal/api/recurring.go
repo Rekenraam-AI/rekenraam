@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -11,13 +10,6 @@ import (
 	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/exact"
 )
-
-type nullableRecurringField[T any] struct{ app.NullablePatch[T] }
-
-func (field *nullableRecurringField[T]) UnmarshalJSON(data []byte) error {
-	field.Set = true
-	return json.Unmarshal(data, &field.Value)
-}
 
 type recurringPostingRequest struct {
 	LineKey       string            `json:"line_key"`
@@ -29,25 +21,25 @@ type recurringPostingRequest struct {
 }
 
 type recurringTemplateRequest struct {
-	Name            *string                        `json:"name"`
-	Enabled         *bool                          `json:"enabled"`
-	TransactionKind *string                        `json:"transaction_kind"`
-	PayeeID         nullableRecurringField[int64]  `json:"payee_id"`
-	PayeeName       *string                        `json:"payee_name"`
-	Description     *string                        `json:"description"`
-	NoteMarkdown    *string                        `json:"note_markdown"`
-	Frequency       *string                        `json:"frequency"`
-	IntervalCount   *int                           `json:"interval_count"`
-	ByWeekday       nullableRecurringField[int]    `json:"by_weekday"`
-	DayOfMonth      nullableRecurringField[int]    `json:"day_of_month"`
-	LastDayOfMonth  *bool                          `json:"last_day_of_month"`
-	MonthOfYear     nullableRecurringField[int]    `json:"month_of_year"`
-	StartsOn        *string                        `json:"starts_on"`
-	EndsOn          nullableRecurringField[string] `json:"ends_on"`
-	MaxOccurrences  nullableRecurringField[int]    `json:"max_occurrences"`
-	LeadDays        *int                           `json:"lead_days"`
-	Postings        *[]recurringPostingRequest     `json:"postings"`
-	TagIDs          *[]int64                       `json:"tag_ids"`
+	Name            *string                    `json:"name"`
+	Enabled         *bool                      `json:"enabled"`
+	TransactionKind *string                    `json:"transaction_kind"`
+	PayeeID         nullableField[int64]       `json:"payee_id"`
+	PayeeName       *string                    `json:"payee_name"`
+	Description     *string                    `json:"description"`
+	NoteMarkdown    *string                    `json:"note_markdown"`
+	Frequency       *string                    `json:"frequency"`
+	IntervalCount   *int                       `json:"interval_count"`
+	ByWeekday       nullableField[int]         `json:"by_weekday"`
+	DayOfMonth      nullableField[int]         `json:"day_of_month"`
+	LastDayOfMonth  *bool                      `json:"last_day_of_month"`
+	MonthOfYear     nullableField[int]         `json:"month_of_year"`
+	StartsOn        *string                    `json:"starts_on"`
+	EndsOn          nullableField[string]      `json:"ends_on"`
+	MaxOccurrences  nullableField[int]         `json:"max_occurrences"`
+	LeadDays        *int                       `json:"lead_days"`
+	Postings        *[]recurringPostingRequest `json:"postings"`
+	TagIDs          *[]int64                   `json:"tag_ids"`
 }
 
 type recurringTemplateResponse struct {

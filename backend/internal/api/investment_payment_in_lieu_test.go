@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"rekenraam/backend/internal/app"
 )
 
 // #255: wire contract for a short holder's payment in lieu of a dividend.
@@ -22,17 +24,12 @@ func TestPaymentInLieuEntryAndCorrectionAPI(t *testing.T) {
 		return doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, path, body, status).Result()
 	}
 	request := func(owed int64) paymentInLieuRequest {
-		return paymentInLieuRequest{HoldingAccountID: holding.ID, CommodityID: instrument.CommodityID, ExDate: "2026-03-01",
+		return paymentInLieuRequest{HoldingAccountID: nullableField[int64]{app.NullableValue(holding.ID)}, CommodityID: nullableField[int64]{app.NullableValue(instrument.CommodityID)}, ExDate: nullableField[string]{app.NullableValue("2026-03-01")},
 			TransactionDate: "2026-03-05", CashAccountID: f.cashAccount.ID, CashCommodityID: f.commodityID,
 			ExpenseAccountID: expense.ID, AmountValue: moneyCoefficient(owed), AmountScale: 2}
 	}
 
-	res := post("/api/v1/investments/payment-in-lieu", request(500), http.StatusUnprocessableEntity)
-	var refusal errorResponse
-	require.NoError(t, json.NewDecoder(res.Body).Decode(&refusal))
-	assert.Equal(t, "INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT", refusal.Error.Code)
-
-	res = post("/api/v1/investments/short-sale", tradeRequestBody(f, holding.ID, instrument.CommodityID, "10", 10000), http.StatusCreated)
+	res := post("/api/v1/investments/short-sale", tradeRequestBody(f, holding.ID, instrument.CommodityID, "10", 10000), http.StatusCreated)
 	var shortSale investmentTradeResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&shortSale))
 	post("/api/v1/investments/payment-in-lieu/reconciliation-impact", request(500), http.StatusOK)
@@ -46,8 +43,8 @@ func TestPaymentInLieuEntryAndCorrectionAPI(t *testing.T) {
 	require.NoError(t, json.NewDecoder(chainRes.Body).Decode(&chain))
 	require.True(t, chain.CanCorrectPaymentInLieu)
 	require.NotNil(t, chain.EffectivePaymentInLieu)
-	assert.Equal(t, "2026-03-01", chain.EffectivePaymentInLieu.ExDate)
-	assert.Equal(t, holding.ID, chain.EffectivePaymentInLieu.HoldingAccountID)
+	assert.Equal(t, "2026-03-01", *chain.EffectivePaymentInLieu.ExDate)
+	assert.Equal(t, holding.ID, *chain.EffectivePaymentInLieu.HoldingAccountID)
 	assert.Equal(t, "passed", chain.EffectivePaymentInLieu.Attribution.Status)
 	assert.Equal(t, []string{}, chain.EffectivePaymentInLieu.Attribution.Reasons)
 	assert.False(t, chain.EffectivePaymentInLieu.Attribution.Unavailable)
@@ -62,14 +59,12 @@ func TestPaymentInLieuEntryAndCorrectionAPI(t *testing.T) {
 
 	replacementBase := "/api/v1/investments/transactions/" + strconv.FormatInt(replaced.ReplacementTransaction.ID, 10)
 	reverse := investmentSaleReversalRequest{Reason: "charged in error"}
-	// #257: the short sale cannot be reversed from under an effective payment.
 	shortBase := "/api/v1/investments/transactions/" + strconv.FormatInt(shortSale.Transaction.ID, 10)
 	reverseShort := investmentSaleReversalRequest{Reason: "never shorted"}
-	expectInvestmentConflict(t, handler, f, shortBase+"/reverse-short-sale/reconciliation-impact", reverseShort, "INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY")
-	expectInvestmentConflict(t, handler, f, shortBase+"/reverse-short-sale", reverseShort, "INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY")
+	post(shortBase+"/reverse-short-sale/reconciliation-impact", reverseShort, http.StatusOK)
+	post(shortBase+"/reverse-short-sale", reverseShort, http.StatusCreated)
 	post(replacementBase+"/reverse-payment-in-lieu/reconciliation-impact", reverse, http.StatusOK)
 	post(replacementBase+"/reverse-payment-in-lieu", reverse, http.StatusCreated)
-	post(shortBase+"/reverse-short-sale", reverseShort, http.StatusCreated)
 
 	bundle := downloadBundle(t, handler, f.sessionCookie, "")
 	facts := bundle.table(t, "investment-payment-in-lieu-facts.csv")

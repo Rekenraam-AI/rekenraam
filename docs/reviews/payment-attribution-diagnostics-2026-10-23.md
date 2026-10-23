@@ -1,5 +1,7 @@
 # Payment-In-Lieu Attribution Diagnostics — 2026-10-23
 
+> Status update: #388 completes optional attribution, audited repair and retirement of write-time entitlement gates. The evidence below records the earlier delivery; see [repair delivery and new measurements](payment-attribution-repair-2026-10-23.md).
+
 This is #389's diagnostic-first implementation under
 [ADR 0019](../adrs/0019-financial-effects-and-repairable-attribution.md) and the
 [four-case contract](../plans/financial-dependency-simplification-plan.md#diagnostic-contract-for-389).

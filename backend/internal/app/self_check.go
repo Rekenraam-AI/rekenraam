@@ -575,25 +575,11 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 			AND (a.system_role IS NULL OR pl.line_key LIKE 'investment-charge-%')
 			AND NOT EXISTS (SELECT 1 FROM investment_operation_components c
 				WHERE c.operation_id = o.id AND c.posting_version_id = pv.id)`},
-		{"payment in lieu missing its short holding, instrument and ex-date", `
+		{"payment in lieu has missing, malformed or cross-book attribution facts", `
 			SELECT o.id FROM investment_operations o WHERE o.book_id = ?
 			AND (o.operation_kind = 'payment_in_lieu' OR (o.operation_kind = 'reversal' AND EXISTS (
-				SELECT 1 FROM investment_payment_in_lieu_facts predecessor WHERE predecessor.operation_id = o.correction_of_operation_id)))
-			AND NOT EXISTS (SELECT 1 FROM investment_payment_in_lieu_facts f
-				JOIN investment_operation_dates d ON d.operation_id = f.operation_id AND d.date_role = 'ex' AND d.event_date = f.ex_date
-				WHERE f.operation_id = o.id AND f.book_id = o.book_id)`},
-		{"payment in lieu has malformed or cross-book attribution facts", `
-			SELECT f.operation_id FROM investment_payment_in_lieu_facts f
-			JOIN investment_operations o ON o.id = f.operation_id
-			WHERE f.book_id = ? AND (o.book_id <> f.book_id
-				OR o.created_audit_event_id <> f.created_audit_event_id
-				OR (f.ex_date IS NOT NULL AND (length(f.ex_date) <> 10
-					OR f.ex_date NOT GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'
-					OR date(f.ex_date, '+0 days') IS NOT f.ex_date))
-				OR (f.holding_account_id IS NOT NULL AND NOT EXISTS (
-					SELECT 1 FROM accounts a WHERE a.id = f.holding_account_id AND a.book_id = f.book_id))
-				OR (f.commodity_id IS NOT NULL AND NOT EXISTS (
-					SELECT 1 FROM commodities c WHERE c.id = f.commodity_id AND c.book_id = f.book_id AND c.kind IN ('security', 'crypto'))))`},
+				SELECT 1 FROM investment_operations predecessor WHERE predecessor.id = o.correction_of_operation_id AND predecessor.operation_kind = 'payment_in_lieu')))
+			AND NOT EXISTS (SELECT 1 FROM valid_investment_payment_in_lieu_facts f WHERE f.operation_id = o.id AND f.book_id = o.book_id)`},
 		{"operation journal link is not posted in its book", `
 			SELECT l.id FROM investment_operation_journal_links l
 			JOIN transaction_versions v ON v.id = l.transaction_version_id

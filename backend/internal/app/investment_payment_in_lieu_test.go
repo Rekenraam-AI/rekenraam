@@ -12,12 +12,12 @@ import (
 
 // #255: a short holder's payment in lieu of a dividend is a named cash
 // charge against an expense account, with an optional recovery. It never
-// touches the short lot. The holding must be short at the close before the
-// ex-date, checked inside the write.
+// touches the short lot. #388 makes holding/instrument/ex-date optional
+// attribution; #389 diagnoses historical support without authorizing cash.
 
 func paymentInLieuInput(f *investmentsTestFixture, expenseAccountID int64, owed int64) PaymentInLieuInput {
-	return PaymentInLieuInput{OwnerUserID: f.ownerUserID, HoldingAccountID: f.holdingAccountID,
-		CommodityID: f.stockCommodityID, ExDate: "2026-04-01", TransactionDate: "2026-04-03",
+	return PaymentInLieuInput{OwnerUserID: f.ownerUserID, HoldingAccountID: NullableValue(f.holdingAccountID),
+		CommodityID: NullableValue(f.stockCommodityID), ExDate: NullableValue("2026-04-01"), TransactionDate: "2026-04-03",
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, ExpenseAccountID: expenseAccountID,
 		AmountValue: owed, AmountScale: 2, Memo: "ACME payment in lieu"}
 }
@@ -90,51 +90,33 @@ func TestPaymentInLieuChargesExpenseAndLeavesTheShortLot(t *testing.T) {
 	requireInvestmentSelfCheckPasses(t, f)
 }
 
-func TestPaymentInLieuRefusesAHoldingThatWasNotShortAtTheClose(t *testing.T) {
+func TestPaymentInLieuAllowsUnsupportedAttributionButRetainsFinancialChecks(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	f := newInvestmentsTestFixture(t)
 	expense := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
-	_, err := f.investmentService.PaymentInLieu(ctx, paymentInLieuInput(f, expense, 5000))
-	require.ErrorIs(t, err, ErrInvestmentPaymentInLieuNotShort, "no position at all")
-
-	buyOn(t, f, "2026-01-02", 10, 10000)
-	_, err = f.investmentService.PaymentInLieu(ctx, paymentInLieuInput(f, expense, 5000))
-	require.ErrorIs(t, err, ErrInvestmentPaymentInLieuNotShort, "a long holder is owed a dividend, not charged one")
-
-	g := newInvestmentsTestFixture(t)
-	gExpense := seedTestAccountWithClass(t, g.database, "active", true, "expense", "expense")
-	shortSaleOn(t, g, "2026-04-01", 10, 100000)
-	_, err = g.investmentService.PaymentInLieu(ctx, paymentInLieuInput(g, gExpense, 5000))
-	require.ErrorIs(t, err, ErrInvestmentPaymentInLieuNotShort, "shorted on the ex-date: not short at the close before it")
-	_, err = g.investmentService.PaymentInLieuReconciliationImpact(ctx, paymentInLieuInput(g, gExpense, 5000))
-	require.ErrorIs(t, err, ErrInvestmentPaymentInLieuNotShort, "the preview runs the same check")
-
-	h := newInvestmentsTestFixture(t)
-	hExpense := seedTestAccountWithClass(t, h.database, "active", true, "expense", "expense")
-	shortSaleOn(t, h, "2026-03-02", 10, 100000)
-	_, err = h.investmentService.ShortCover(ctx, coverInput(h, "2026-03-20", 10, 90000, "fifo"))
+	input := paymentInLieuInput(f, expense, 5000)
+	payment, err := f.investmentService.PaymentInLieu(ctx, input)
 	require.NoError(t, err)
-	_, err = h.investmentService.PaymentInLieu(ctx, paymentInLieuInput(h, hExpense, 5000))
-	require.ErrorIs(t, err, ErrInvestmentPaymentInLieuNotShort, "covered before the ex-date")
-
-	income := seedTestAccountWithClass(t, h.database, "active", true, "income", "income")
-	before := buyReplacementPreviewSnapshot(t, h.database)
-	var validation ValidationError
-	early := paymentInLieuInput(h, hExpense, 5000)
+	requirePaymentAttributionWarning(t, f, payment.ID)
+	early := input
 	early.TransactionDate = "2026-03-31"
-	_, err = h.investmentService.PaymentInLieu(ctx, early)
-	require.ErrorAs(t, err, &validation, "payment before the ex-date")
-	_, err = h.investmentService.PaymentInLieu(ctx, withRecovery(paymentInLieuInput(h, hExpense, 5000), hExpense, 5000))
-	require.ErrorAs(t, err, &validation, "recovery must be less than the amount owed")
-	_, err = h.investmentService.PaymentInLieu(ctx, paymentInLieuInput(h, income, 5000))
-	require.ErrorAs(t, err, &validation, "an income account is not the expense")
-	require.Equal(t, before, buyReplacementPreviewSnapshot(t, h.database))
+	earlyPayment, err := f.investmentService.PaymentInLieu(ctx, early)
+	require.NoError(t, err)
+	result := resultFor(t, mustRunInvestmentSelfCheck(t, f), CheckInvestmentAttribution)
+	require.Contains(t, result.WarningSample, SelfCheckWarningSample{TransactionID: earlyPayment.ID, Reason: db.AttributionExDateAfterPayment})
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	var validation ValidationError
+	_, err = f.investmentService.PaymentInLieu(ctx, withRecovery(input, expense, 5000))
+	require.ErrorAs(t, err, &validation)
+	income := seedTestAccountWithClass(t, f.database, "active", true, "income", "income")
+	before = buyReplacementPreviewSnapshot(t, f.database)
+	_, err = f.investmentService.PaymentInLieu(ctx, paymentInLieuInput(f, income, 5000))
+	require.ErrorAs(t, err, &validation)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 }
 
-// The entitlement read before the write is never trusted: a short reversed
-// between preparation and commit refuses the payment inside the transaction.
-func TestPaymentInLieuEntitlementIsRecheckedInsideTheWrite(t *testing.T) {
+func TestPaymentInLieuPreparedBeforeShortCorrectionKeepsCashAuthority(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	f := newInvestmentsTestFixture(t)
@@ -142,13 +124,11 @@ func TestPaymentInLieuEntitlementIsRecheckedInsideTheWrite(t *testing.T) {
 	opening := shortSaleOn(t, f, "2026-03-02", 10, 100000)
 	params, err := f.investmentService.preparePaymentInLieuWrite(ctx, paymentInLieuInput(f, expense, 5000))
 	require.NoError(t, err)
-	_, err = f.investmentService.ReverseShortSale(ctx, ReverseInvestmentBuyInput{OwnerUserID: f.ownerUserID,
-		TransactionID: opening.Transaction.ID, Reason: "never shorted"})
+	_, err = f.investmentService.ReverseShortSale(ctx, ReverseInvestmentBuyInput{OwnerUserID: f.ownerUserID, TransactionID: opening.Transaction.ID, Reason: "never shorted"})
 	require.NoError(t, err)
-	before := buyReplacementPreviewSnapshot(t, f.database)
-	_, err = f.investmentService.repository.CreatePaymentInLieu(ctx, params, nil)
-	require.ErrorIs(t, mapPaymentInLieuError(err), ErrInvestmentPaymentInLieuNotShort)
-	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "nothing written")
+	payment, err := f.investmentService.repository.CreatePaymentInLieu(ctx, params, nil)
+	require.NoError(t, err)
+	requirePaymentAttributionWarning(t, f, payment.ID)
 }
 
 func TestReversePaymentInLieuRequiresReconciliationOverride(t *testing.T) {
@@ -201,15 +181,15 @@ func TestReplacePaymentInLieuCorrectsAmountAndRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	moved := paymentInLieuInput(f, borrow, 6000)
-	moved.ExDate = "2026-03-31"
+	moved.ExDate = NullableValue("2026-02-31")
 	_, err = f.investmentService.ReplacePaymentInLieu(ctx, ReplaceInvestmentPaymentInLieuInput{OwnerUserID: f.ownerUserID,
 		TransactionID: payment.ID, Reason: "wrong ex-date", Replacement: moved})
 	var validation ValidationError
-	require.ErrorAs(t, err, &validation, "the entitlement is fixed")
+	require.ErrorAs(t, err, &validation, "a supplied ex-date must be a calendar date")
 
 	input := ReplaceInvestmentPaymentInLieuInput{OwnerUserID: f.ownerUserID, TransactionID: payment.ID,
 		Reason: "statement shows 60.00 owed, 9.00 recovered", Replacement: withRecovery(paymentInLieuInput(f, borrow, 6000), borrow, 900)}
-	input.Replacement.HoldingAccountID, input.Replacement.CommodityID, input.Replacement.ExDate = 0, 0, ""
+	input.Replacement.HoldingAccountID, input.Replacement.CommodityID, input.Replacement.ExDate = NullablePatch[int64]{}, NullablePatch[int64]{}, NullablePatch[string]{}
 	before := buyReplacementPreviewSnapshot(t, f.database)
 	impact, err := f.investmentService.ReplacePaymentInLieuReconciliationImpact(ctx, input)
 	require.NoError(t, err)

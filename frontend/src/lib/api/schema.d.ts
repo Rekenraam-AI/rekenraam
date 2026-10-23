@@ -15957,7 +15957,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Already corrected, unlinked import, changed, dependent operation impossible, or reconciliation override required; or committed-disposal gain changes not acknowledged (INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED / _STALE); or the change would leave an effective payment in lieu without the short it was owed on, which is named (INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY) */
+                /** @description Already corrected, unlinked import, changed, dependent operation impossible, or reconciliation override required; or committed-disposal gain changes not acknowledged (INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED / _STALE) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -16039,7 +16039,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Already corrected, unlinked import, changed, or dependent replay impossible; or the change would leave an effective payment in lieu without the short it was owed on, which is named (INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY) */
+                /** @description Already corrected, unlinked import, changed, or dependent replay impossible */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -16132,7 +16132,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Buy already corrected, imported without source identity, changed, dependent sale impossible, or reconciliation override required; or committed-disposal gain changes not acknowledged (INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED / _STALE); or the change would leave an effective payment in lieu without the short it was owed on, which is named (INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY) */
+                /** @description Buy already corrected, imported without source identity, changed, dependent sale impossible, or reconciliation override required; or committed-disposal gain changes not acknowledged (INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED / _STALE) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -16214,7 +16214,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Buy already corrected, imported without source identity, changed, or dependent disposal/transfer impossible; or the change would leave an effective payment in lieu without the short it was owed on, which is named (INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY) */
+                /** @description Buy already corrected, imported without source identity, changed, or dependent disposal/transfer impossible */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -16484,7 +16484,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Sale corrected, imported without source identity, changed, dependent operation impossible, or reconciliation override required; or committed-disposal gain changes not acknowledged (INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED / _STALE); or the change would leave an effective payment in lieu without the short it was owed on, which is named (INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY) */
+                /** @description Sale corrected, imported without source identity, changed, dependent operation impossible, or reconciliation override required; or committed-disposal gain changes not acknowledged (INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED / _STALE) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -16566,7 +16566,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Sale corrected, imported, changed, or followed by another position operation; or the change would leave an effective payment in lieu without the short it was owed on, which is named (INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY) */
+                /** @description Sale corrected, imported, changed, or followed by another position operation */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -16826,7 +16826,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Insufficient short lots, out-of-order entry, or reconciliation override required; or the change would leave an effective payment in lieu without the short it was owed on, which is named (INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY) */
+                /** @description Insufficient short lots, out-of-order entry, or reconciliation override required */
                 409: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
@@ -16996,7 +16996,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Insufficient short lots or out-of-order entry; or the cover would leave an effective payment in lieu without the short it was owed on, which is named (INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY) */
+                /** @description Insufficient short lots or out-of-order entry */
                 409: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
@@ -24183,7 +24183,7 @@ export interface paths {
         put?: never;
         /**
          * Replace a posted payment in lieu of a dividend
-         * @description Posts the inverse and the corrected payment — amount owed, expense account and recovery — under one audit event (#255). The replacement keeps the short holding, instrument, ex-date, payment date, cash account and currency (omitted holding, instrument or ex-date are taken from the original), and re-checks the short entitlement inside the write.
+         * @description Posts the inverse and corrected payment under one audit event. Holding, instrument and ex-date are optional repairable attribution: omission preserves, null clears, and a value replaces. Payment date, cash account and currency stay fixed. Attribution-only repair nets to zero at every reconciliation boundary and does not change lots or gains. Historical short support and source disagreement are advisory diagnostics.
          */
         post: {
             parameters: {
@@ -24257,7 +24257,7 @@ export interface paths {
                     };
                 };
                 413: components["responses"]["JSONBodyTooLarge"];
-                /** @description The holding is no longer short at the close before the ex-date (INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT) */
+                /** @description Exact financial value exceeds the supported range */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -25407,7 +25407,7 @@ export interface paths {
         put?: never;
         /**
          * Record a payment in lieu of a dividend owed by a short holder
-         * @description #255: posts the amount owed from the cash account to the expense account, with an optional recovery credited back, under the investment writer's reconciliation guard. The short holding, instrument and ex-date are immutable operation facts; the holding must be short the instrument at the close before the ex-date (422 INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT). It never changes the short lot or its opening proceeds.
+         * @description #255: posts the amount owed from the cash account to the expense account, with an optional recovery credited back, under the investment writer's reconciliation guard. Holding, instrument and ex-date are optional, repairable attribution. Historical support and chronology are advisory diagnostics, independent of cash authorization. It never changes a lot.
          */
         post: {
             parameters: {
@@ -25476,7 +25476,7 @@ export interface paths {
                     };
                 };
                 413: components["responses"]["JSONBodyTooLarge"];
-                /** @description The holding was not short the instrument at the close before the ex-date (INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT) */
+                /** @description A financial amount exceeds the supported exact range */
                 422: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
@@ -25515,7 +25515,7 @@ export interface paths {
         put?: never;
         /**
          * Preview which reconciliation checkpoints a payment in lieu would invalidate
-         * @description Returns the active reconciliation checkpoints that would be invalidated if this payment in lieu were posted. Runs the complete writer, entitlement check included, in a rolled-back transaction. Use it to name the affected checkpoints in a confirmation before retrying with reconciliation_override=true.
+         * @description Returns the active reconciliation checkpoints that would be invalidated if this payment in lieu were posted. Runs the complete cash writer in a rolled-back transaction. Use it to name the affected checkpoints in a confirmation before retrying with reconciliation_override=true.
          */
         post: {
             parameters: {
@@ -28785,7 +28785,7 @@ export interface components {
                 /** Format: int64 */
                 transaction_id: number;
                 /** @enum {string} */
-                reason: "no_short_at_entitlement_close" | "ex_date_after_payment";
+                reason: "no_short_at_entitlement_close" | "ex_date_after_payment" | "provider_attribution_mismatch";
             }[];
             summary: string;
             /** @description What this check verifies and why it matters. */
@@ -32289,7 +32289,7 @@ export interface components {
             /** Format: int64 */
             payee_id?: number;
         };
-        /** @description The effective payment in lieu's posted facts, for pre-filling a replacement. The short holding, instrument, ex-date, payment date, cash account and currency are fixed for a replacement. */
+        /** @description The effective payment in lieu's posted facts, for pre-filling a replacement. Attribution is nullable and repairable; payment date, cash account and currency remain fixed. */
         InvestmentCorrectionPaymentInLieuTerms: {
             /** @description Read-only historical support using the same evaluator as investment_attribution. Never authorizes a write or verifies the amount. */
             attribution: {
@@ -32297,14 +32297,14 @@ export interface components {
                 unavailable: boolean;
                 /** @enum {string} */
                 status: "passed" | "warning" | "incomplete";
-                reasons: ("no_short_at_entitlement_close" | "ex_date_after_payment")[];
+                reasons: ("no_short_at_entitlement_close" | "ex_date_after_payment" | "provider_attribution_mismatch")[];
             };
             /** Format: int64 */
-            holding_account_id: number;
+            holding_account_id: number | null;
             /** Format: int64 */
-            commodity_id: number;
+            commodity_id: number | null;
             /** Format: date */
-            ex_date: string;
+            ex_date: string | null;
             /** Format: date */
             event_date: string;
             /** Format: int64 */
@@ -32857,17 +32857,17 @@ export interface components {
             reconciliation_override?: boolean;
             reconciliation_override_checkpoint_ids?: components["schemas"]["ReviewedCheckpointIds"];
         };
-        /** @description A payment in lieu of a dividend owed by a short holder (#255). Posts cash −amount against the expense account, and optionally cash +recovery against the recovery account. It never touches the short lot or its opening proceeds. The holding must hold open short units of the instrument at the close before ex_date, checked inside the write. */
+        /** @description A payment in lieu of a dividend owed by a short holder (#255). Posts cash −amount against the expense account, and optionally cash +recovery against the recovery account. It never touches the short lot or its opening proceeds. Holding, instrument and ex-date are optional owner attribution, diagnosed independently of cash authorization. Entry omission/null leaves attribution unassigned. In replacement, omission preserves, null clears and a value replaces. A holding without an instrument stays partial. */
         PaymentInLieuRequest: {
             /** Format: int64 */
-            holding_account_id: number;
+            holding_account_id?: number | null;
             /** Format: int64 */
-            commodity_id: number;
+            commodity_id?: number | null;
             /** Format: date */
-            ex_date: string;
+            ex_date?: string | null;
             /**
              * Format: date
-             * @description Payment date, on or after ex_date.
+             * @description Recorded cash payment date; ex-date chronology is advisory.
              */
             transaction_date: string;
             /** Format: int64 */
@@ -33721,7 +33721,7 @@ export interface components {
         };
         ErrorBody: {
             /** @enum {string} */
-            code: "VALIDATION_FAILED" | "DECODE_ERROR" | "REQUEST_TOO_LARGE" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "PRICE_IMPACT_STALE" | "CONFLICT" | "CSRF_INVALID" | "RATE_LIMITED" | "MFA_AUTHENTICATOR_UNAVAILABLE" | "RESOURCE_BUSY" | "LEDGER_OVERFLOW" | "FORECAST_TOO_LARGE" | "FORECAST_BASIS_CHANGED" | "INVESTMENT_WORKFLOW_REQUIRED" | "INVESTMENT_EVENT_OUT_OF_ORDER" | "INVESTMENT_POSITION_SIDE_CONFLICT" | "INVESTMENT_SHORT_DEPENDENCY" | "INVESTMENT_TRANSFER_POOL_REQUIRED" | "INVESTMENT_TRANSFER_POOL_UNAVAILABLE" | "INVESTMENT_SALE_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SALE" | "INVESTMENT_SALE_CHANGED" | "INVESTMENT_SALE_DEPENDENCY" | "INVESTMENT_BUY_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_BUY" | "INVESTMENT_BUY_CHANGED" | "INVESTMENT_BUY_DEPENDENCY" | "INVESTMENT_DIVIDEND_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_DIVIDEND" | "INVESTMENT_DIVIDEND_CHANGED" | "INVESTMENT_PAYMENT_IN_LIEU_ALREADY_CORRECTED" | "INVESTMENT_PAYMENT_IN_LIEU_CHANGED" | "INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT" | "INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY" | "INVESTMENT_WRITE_OFF_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_CHANGED" | "INVESTMENT_TRANSFER_DEPENDENCY" | "INVESTMENT_IMPORTED_TRANSFER" | "INVESTMENT_TRANSFER_BASIS_RESOLVED" | "INVESTMENT_TRANSFER_BASIS_NOT_UNKNOWN" | "INVESTMENT_TRANSFER_BASIS_NOT_RESOLVED" | "INVESTMENT_BASIS_RESOLUTION_ALREADY_CORRECTED" | "INVESTMENT_BASIS_RESOLUTION_CHANGED" | "INVESTMENT_WRITE_OFF_CHANGED" | "INVESTMENT_REINVESTMENT_ALREADY_CORRECTED" | "INVESTMENT_REINVESTMENT_CHANGED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE" | "INVESTMENT_SPLIT_NO_HOLDINGS" | "INVESTMENT_CAPITAL_RETURN_DEPENDENCY" | "INVESTMENT_CAPITAL_RETURN_NO_HOLDINGS" | "INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE" | "INVESTMENT_SPLIT_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPLIT_CHANGED" | "INVESTMENT_SPLIT_DEPENDENCY" | "INVESTMENT_SPLIT_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SPLIT" | "INVESTMENT_EXCHANGE_NO_HOLDINGS" | "INVESTMENT_EXCHANGE_FRACTION_UNREPRESENTABLE" | "INVESTMENT_EXCHANGE_CHANGED" | "INVESTMENT_EXCHANGE_ALREADY_CORRECTED" | "INVESTMENT_SPIN_OFF_NO_HOLDINGS" | "INVESTMENT_SPIN_OFF_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPIN_OFF_CHANGED" | "INVESTMENT_SPIN_OFF_ALREADY_CORRECTED" | "INVESTMENT_MERGER_ALREADY_CORRECTED" | "IMPORT_SPLIT_LINK_UNAVAILABLE" | "IMPORT_SHORT_LINK_UNAVAILABLE" | "IMPORT_SHORT_LINK_CHANGED" | "IMPORT_SHORT_LINK_MISMATCH" | "IMPORT_UPLOAD_TOO_LARGE" | "TRANSACTION_DRAFT_NOT_USER_CREATABLE" | "TRANSACTION_VERSION_STALE" | "RECONCILIATION_IMPACT_STALE" | "POSTING_ACCOUNT_VERSION_STALE" | "RECURRING_TEMPLATE_UNBALANCED" | "RECONCILIATION_START_STALE" | "RECURRING_SCHEDULE_INVALID" | "RECURRING_TEMPLATE_ARCHIVED" | "RECURRING_OCCURRENCE_ALREADY_MATERIALIZED" | "SETUP_REQUIRED" | "SETUP_ALREADY_COMPLETE" | "CONFIG_REQUIRED" | "PROVIDER_ERROR" | "EXPORT_SCOPE_UNSUPPORTED" | "QIF_ACCOUNT_UNSUPPORTED" | "INTERNAL_ERROR";
+            code: "VALIDATION_FAILED" | "DECODE_ERROR" | "REQUEST_TOO_LARGE" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "PRICE_IMPACT_STALE" | "CONFLICT" | "CSRF_INVALID" | "RATE_LIMITED" | "MFA_AUTHENTICATOR_UNAVAILABLE" | "RESOURCE_BUSY" | "LEDGER_OVERFLOW" | "FORECAST_TOO_LARGE" | "FORECAST_BASIS_CHANGED" | "INVESTMENT_WORKFLOW_REQUIRED" | "INVESTMENT_EVENT_OUT_OF_ORDER" | "INVESTMENT_POSITION_SIDE_CONFLICT" | "INVESTMENT_SHORT_DEPENDENCY" | "INVESTMENT_TRANSFER_POOL_REQUIRED" | "INVESTMENT_TRANSFER_POOL_UNAVAILABLE" | "INVESTMENT_SALE_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SALE" | "INVESTMENT_SALE_CHANGED" | "INVESTMENT_SALE_DEPENDENCY" | "INVESTMENT_BUY_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_BUY" | "INVESTMENT_BUY_CHANGED" | "INVESTMENT_BUY_DEPENDENCY" | "INVESTMENT_DIVIDEND_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_DIVIDEND" | "INVESTMENT_DIVIDEND_CHANGED" | "INVESTMENT_PAYMENT_IN_LIEU_ALREADY_CORRECTED" | "INVESTMENT_PAYMENT_IN_LIEU_CHANGED" | "INVESTMENT_WRITE_OFF_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_ALREADY_CORRECTED" | "INVESTMENT_TRANSFER_CHANGED" | "INVESTMENT_TRANSFER_DEPENDENCY" | "INVESTMENT_IMPORTED_TRANSFER" | "INVESTMENT_TRANSFER_BASIS_RESOLVED" | "INVESTMENT_TRANSFER_BASIS_NOT_UNKNOWN" | "INVESTMENT_TRANSFER_BASIS_NOT_RESOLVED" | "INVESTMENT_BASIS_RESOLUTION_ALREADY_CORRECTED" | "INVESTMENT_BASIS_RESOLUTION_CHANGED" | "INVESTMENT_WRITE_OFF_CHANGED" | "INVESTMENT_REINVESTMENT_ALREADY_CORRECTED" | "INVESTMENT_REINVESTMENT_CHANGED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_REQUIRED" | "INVESTMENT_GAIN_IMPACT_ACKNOWLEDGEMENT_STALE" | "INVESTMENT_SPLIT_NO_HOLDINGS" | "INVESTMENT_CAPITAL_RETURN_DEPENDENCY" | "INVESTMENT_CAPITAL_RETURN_NO_HOLDINGS" | "INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE" | "INVESTMENT_SPLIT_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPLIT_CHANGED" | "INVESTMENT_SPLIT_DEPENDENCY" | "INVESTMENT_SPLIT_ALREADY_CORRECTED" | "INVESTMENT_IMPORTED_SPLIT" | "INVESTMENT_EXCHANGE_NO_HOLDINGS" | "INVESTMENT_EXCHANGE_FRACTION_UNREPRESENTABLE" | "INVESTMENT_EXCHANGE_CHANGED" | "INVESTMENT_EXCHANGE_ALREADY_CORRECTED" | "INVESTMENT_SPIN_OFF_NO_HOLDINGS" | "INVESTMENT_SPIN_OFF_FRACTION_UNREPRESENTABLE" | "INVESTMENT_SPIN_OFF_CHANGED" | "INVESTMENT_SPIN_OFF_ALREADY_CORRECTED" | "INVESTMENT_MERGER_ALREADY_CORRECTED" | "IMPORT_SPLIT_LINK_UNAVAILABLE" | "IMPORT_SHORT_LINK_UNAVAILABLE" | "IMPORT_SHORT_LINK_CHANGED" | "IMPORT_SHORT_LINK_MISMATCH" | "IMPORT_UPLOAD_TOO_LARGE" | "TRANSACTION_DRAFT_NOT_USER_CREATABLE" | "TRANSACTION_VERSION_STALE" | "RECONCILIATION_IMPACT_STALE" | "POSTING_ACCOUNT_VERSION_STALE" | "RECURRING_TEMPLATE_UNBALANCED" | "RECONCILIATION_START_STALE" | "RECURRING_SCHEDULE_INVALID" | "RECURRING_TEMPLATE_ARCHIVED" | "RECURRING_OCCURRENCE_ALREADY_MATERIALIZED" | "SETUP_REQUIRED" | "SETUP_ALREADY_COMPLETE" | "CONFIG_REQUIRED" | "PROVIDER_ERROR" | "EXPORT_SCOPE_UNSUPPORTED" | "QIF_ACCOUNT_UNSUPPORTED" | "INTERNAL_ERROR";
             message: string;
             /** @description On a reconciliation guard refusal of a generic ledger write (CONFLICT "reconciliation override is required", or RECONCILIATION_IMPACT_STALE): the checkpoints the write would invalidate right now. A reorder, which has no preview, binds its override to this set (#296). */
             checkpoint_ids?: number[];

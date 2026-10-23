@@ -322,7 +322,10 @@ func eventLinkCandidatesSQL(ctx context.Context) string {
 			AND json_extract(s.proposed_transaction_json, '$.commodity_id') = facts.commodity_id
 			AND facts.holding_account_id IN (SELECT value FROM json_each(s.proposed_transaction_json, '$.holding_account_ids'))
 			AND NOT EXISTS (SELECT 1 FROM investment_event_suggestions other
-				WHERE other.generated_transaction_id = t.id OR other.linked_transaction_id = t.id)
+				JOIN transaction_versions previous_version ON previous_version.transaction_id IN (other.generated_transaction_id, other.linked_transaction_id)
+				JOIN investment_operation_journal_links previous_link ON previous_link.transaction_version_id = previous_version.id AND previous_link.role = 'primary'
+				JOIN investment_payment_in_lieu_ancestry ancestry ON ancestry.ancestor_operation_id = previous_link.operation_id
+				WHERE other.book_id = o.book_id AND ancestry.book_id = o.book_id AND ancestry.operation_id = o.id)
 	)`
 }
 

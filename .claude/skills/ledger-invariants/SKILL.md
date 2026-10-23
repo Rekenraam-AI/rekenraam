@@ -227,18 +227,16 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   (#175) thread the side through `simulateInvestmentReplaySideTx`; shorts
   have only openings and covers. See the operation plan's *Short positions
   (#103)* section.
-- A short holder's payment in lieu of a dividend (#255) is the lot-free
-  `payment_in_lieu` operation: cash to an expense account (optional
-  recovery back), never folded into the short lot's opening proceeds. Its
-  short holding/instrument/ex-date facts are immutable. #389 diagnoses their
-  historical support through effective dated short quantities (including
-  covers), with warnings separate from integrity failures. #388 still owns
-  optional entry/clearing/repair and retiring the gates below. Currently the short
-  entitlement at the close before the ex-date is re-checked inside the write.
-  The shared investment writer also re-checks, after every command's
-  effects, each payment entitled before it (#257): a short correction or
-  backdated cover that strands one is refused naming it
-  (`INVESTMENT_PAYMENT_IN_LIEU_DEPENDENCY`).
+- A short holder's payment in lieu (#255, refined by #388/#389 and ADR 0019)
+  is lot-free cash/expense/recovery. Holding, instrument and ex-date are
+  optional auditable attribution, not write authorization. Entry omission/null
+  is unassigned; replacement omission preserves, null clears and values replace.
+  Use the existing immutable correction chain; attribution-only repair nets to
+  zero at every checkpoint and changes no lots/gains. Historical support,
+  chronology and source disagreement are read-only diagnostics. Preserve source
+  identity/evidence across repair. Ordinary writes never enumerate/replay all
+  payments; real cover quantities, posting roles, recovery constraints and
+  financial reconciliation guards remain active.
 - Effective reads use the views `effective_investment_operations`,
   `latest_investment_disposal_revisions`, `latest_investment_split_revisions`,
   `effective_investment_lot_events` and `effective_investment_transfer_links`;

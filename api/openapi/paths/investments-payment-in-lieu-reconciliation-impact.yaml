@@ -2,8 +2,7 @@ post:
   summary: Preview which reconciliation checkpoints a payment in lieu would invalidate
   description: >
     Returns the active reconciliation checkpoints that would be invalidated if
-    this payment in lieu were posted. Runs the complete writer, entitlement
-    check included, in a rolled-back transaction. Use it to name the affected checkpoints in a confirmation
+    this payment in lieu were posted. Runs the complete cash writer in a rolled-back transaction. Use it to name the affected checkpoints in a confirmation
     before retrying with reconciliation_override=true.
   requestBody:
     required: true

@@ -10,17 +10,12 @@ import (
 	"rekenraam/backend/internal/exact"
 )
 
-// Until #388 relaxes native admission, deliberately bypass only the payment's
-// local entitlement guard. The ordinary writer still writes real balanced
-// cash, immutable facts/components, source links and audit evidence. No mocked
-// evaluator, mutated lot projection or bypass of financial/replay guards.
+// All diagnostic controls now use ordinary owner commands (#388).
 func attributionFixturePayment(t *testing.T, f *investmentsTestFixture, input PaymentInLieuInput) Transaction {
 	t.Helper()
-	params, err := f.investmentService.preparePaymentInLieuWrite(context.Background(), input)
+	payment, err := f.investmentService.PaymentInLieu(context.Background(), input)
 	require.NoError(t, err)
-	record, err := db.NewTransactionRepository(f.database).CreateTransaction(context.Background(), params)
-	require.NoError(t, err)
-	return toTransaction(record)
+	return payment
 }
 
 func TestPaymentAttributionFullCoverWarningPreservesCashAndHistory(t *testing.T) {
@@ -31,8 +26,6 @@ func TestPaymentAttributionFullCoverWarningPreservesCashAndHistory(t *testing.T)
 	shortSaleOn(t, f, "2026-03-02", 10, 100000)
 	_, err := f.investmentService.ShortCover(ctx, coverInput(f, "2026-03-31", 10, 70000, "fifo"))
 	require.NoError(t, err)
-	_, err = f.investmentService.PaymentInLieu(ctx, paymentInLieuInput(f, expense, 5000))
-	require.ErrorIs(t, err, ErrInvestmentPaymentInLieuNotShort, "#388 owns the admission change")
 	payment := attributionFixturePayment(t, f, paymentInLieuInput(f, expense, 5000))
 	require.Equal(t, int64(25000), accountBalance(t, f, f.cashAccountID), "1000 proceeds - 700 cover - 50 charge")
 	require.Equal(t, int64(5000), accountBalance(t, f, expense))

@@ -585,8 +585,8 @@ func TestProviderPaymentInLieuLinksOwnerRecordedPaymentOnce(t *testing.T) {
 	recovery := seedTestAccountWithClass(t, f.database, "active", true, "income", "income")
 	pil := func(holdingAccountID, commodityID int64, exDate string, owed int64) Transaction {
 		t.Helper()
-		payment, err := f.investmentSvc.PaymentInLieu(ctx, PaymentInLieuInput{OwnerUserID: 1, HoldingAccountID: holdingAccountID, CommodityID: commodityID,
-			ExDate: exDate, TransactionDate: "2026-08-14", CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, ExpenseAccountID: expense,
+		payment, err := f.investmentSvc.PaymentInLieu(ctx, PaymentInLieuInput{OwnerUserID: 1, HoldingAccountID: NullableValue(holdingAccountID), CommodityID: NullableValue(commodityID),
+			ExDate: NullableValue(exDate), TransactionDate: "2026-08-14", CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, ExpenseAccountID: expense,
 			AmountValue: owed, AmountScale: 2})
 		require.NoError(t, err)
 		return payment
@@ -595,8 +595,8 @@ func TestProviderPaymentInLieuLinksOwnerRecordedPaymentOnce(t *testing.T) {
 	// The owner recorded the July payment by hand, with a recovery that
 	// does not change what was owed.
 	recovered := int64(100)
-	manual, err := f.investmentSvc.PaymentInLieu(ctx, PaymentInLieuInput{OwnerUserID: 1, HoldingAccountID: f.holding.ID, CommodityID: f.instrument.CommodityID,
-		ExDate: "2026-07-29", TransactionDate: "2026-08-14", CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, ExpenseAccountID: expense,
+	manual, err := f.investmentSvc.PaymentInLieu(ctx, PaymentInLieuInput{OwnerUserID: 1, HoldingAccountID: NullableValue(f.holding.ID), CommodityID: NullableValue(f.instrument.CommodityID),
+		ExDate: NullableValue("2026-07-29"), TransactionDate: "2026-08-14", CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, ExpenseAccountID: expense,
 		AmountValue: 800, AmountScale: 2, RecoveryValue: &recovered, RecoveryAccountID: &recovery})
 	require.NoError(t, err)
 	wrongExDate := pil(f.holding.ID, f.instrument.CommodityID, "2026-07-30", 800)

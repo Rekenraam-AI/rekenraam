@@ -336,21 +336,21 @@ REKENRAAM_PIL_DENSITY=1 REKENRAAM_PIL_DENSITIES=0,10,100 \
 
 It checks the constructed supported/unsupported payments, including the
 superseded control, and reports three wall/allocation/heap samples per shape.
-The admission measurement below remains separate while #388 is pending.
+The write measurement below stays separate from this explicit read diagnostic.
 
 `./scripts/measure-payment-in-lieu-density.sh`
-(`pnpm measure:payment-in-lieu-density`) characterizes the #257 admission. That
-admission re-checks every effective payment in lieu before and after each
-investment command (#379). It builds books with 0/10/100/300/1,000 payments in
-two history shapes and measures accepted and refused short corrections, an
-unrelated short sale and their previews. It asserts entitlement, refusal and
-rollback controls but sets no latency ceiling. `REKENRAAM_PIL_DENSITIES`,
-`REKENRAAM_PIL_SHAPES` and `REKENRAAM_PIL_REPEATS` narrow a run. The full
-matrix takes hours, because each recorded payment runs the same admission. It
-is neither on push nor scheduled. Figures and disposition:
-[payment-in-lieu-density-2026-10-23.md](reviews/payment-in-lieu-density-2026-10-23.md);
-replacement of the write-time policy is tracked in
-[#388](https://github.com/sergeyfarin/rekenraam/issues/388).
+(`pnpm measure:payment-in-lieu-density`) now measures #388's accepted short
+corrections, unrelated writes and rolled-back previews against 0/10/100/300
+payments in both #379 history shapes. Fixture construction is excluded and
+reported separately. It asserts unchanged cash, diagnostic outcomes and
+rollback, without a latency ceiling. `REKENRAAM_PIL_DENSITIES`,
+`REKENRAAM_PIL_SHAPES` and `REKENRAAM_PIL_REPEATS` select the matrix; 1,000
+payments remains opt-in. The former global entitlement scan is gone; a
+work-count regression independently denies attribution-context reads during
+ordinary writes/previews. This manual profiler stays off push and scheduled CI.
+The [historical baseline](reviews/payment-in-lieu-density-2026-10-23.md) records
+why the old matrix took hours; [current delivery measurements](reviews/payment-attribution-repair-2026-10-23.md)
+record the new outcomes and costs.
 
 ### Local Owner Recovery
 

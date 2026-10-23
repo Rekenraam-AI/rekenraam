@@ -1660,7 +1660,7 @@
   "investments_payment_in_lieu_copy": "Ein Leerverkäufer schuldet dem Verleiher die Dividende auf geliehene Aktien. Sie wird aus Bargeld auf ein Aufwandskonto gezahlt und ändert die Short-Position nicht.",
   "investments_payment_in_lieu_holding": "Short-Bestand",
   "investments_payment_in_lieu_ex_date": "Ex-Dividenden-Tag",
-  "investments_payment_in_lieu_ex_date_hint": "Der Bestand muss zum Handelsschluss vor diesem Tag short gewesen sein.",
+  "investments_payment_in_lieu_ex_date_hint": "Dient zur Prüfung der Short-Mengen vor diesem Datum. Bei unbekanntem Datum leer lassen.",
   "investments_payment_in_lieu_payment_date": "Zahltag",
   "investments_payment_in_lieu_amount": "Geschuldeter Betrag",
   "investments_payment_in_lieu_expense_account": "Aufwandskonto",
@@ -1684,8 +1684,6 @@
   "investments_suggestion_long_and_short_position": "Vor dem Ex-Tag in einem Bestand long und in einem anderen short: Weder eine Dividende noch eine einzelne Ersatzzahlung passt. Erfassen Sie beides manuell oder ignorieren Sie dieses Ereignis.",
   "api_error_investment_payment_in_lieu_already_corrected": "Diese Ersatzzahlung wurde bereits korrigiert. Aktualisieren Sie, um den aktuellen Eintrag zu sehen.",
   "api_error_investment_payment_in_lieu_changed": "Diese Ersatzzahlung hat sich seit dem Laden geändert. Aktualisieren und erneut versuchen.",
-  "api_error_investment_payment_in_lieu_not_short": "Dieser Bestand war zum Handelsschluss vor dem Ex-Tag nicht short in diesem Instrument, daher ist keine Ersatzzahlung geschuldet.",
-  "api_error_investment_payment_in_lieu_dependency": "Eine Ersatzzahlung hängt von dieser Short-Position ab. Storniere zuerst diese Ersatzzahlung und korrigiere dann die Short-Position.",
   "api_error_request_too_large": "Die Anfrage ist zu groß. Verkleinern Sie sie und versuchen Sie es erneut.",
   "security_tokens_title": "Persönliche Zugriffstoken",
   "security_tokens_hint": "Erstelle Zugangsdaten mit Lesezugriff für Skripte und Werkzeuge. Jedes Token kann nur die ausgewählten Daten lesen. Einstellungen, Sicherungen und Änderungen an Finanzdaten sind ausgeschlossen.",
@@ -1721,5 +1719,10 @@
   "investments_attribution_ex_date_after_payment": "Der Ex-Tag liegt nach dem erfassten Zahlungstag.",
   "investments_attribution_unavailable": "Einige Zuordnungsangaben fehlen; die historische Grundlage kann nicht geprüft werden.",
   "investments_attribution_payment_link": "Zahlung #{id} öffnen",
-  "investments_attribution_review": "Zuordnung prüfen. Der erfasste Geldbetrag bleibt unverändert."
+  "investments_attribution_review": "Zuordnung prüfen. Der erfasste Geldbetrag bleibt unverändert.",
+  "investments_attribution_optional": "Zuordnung (optional)",
+  "investments_attribution_unassigned": "Nicht zugeordnet",
+  "investments_attribution_repair_hint": "Lassen Sie unbekannte Angaben leer. Wenn Sie nur diese Angaben ändern, bleibt der erfasste Geldbetrag unverändert und das Original im Verlauf erhalten.",
+  "investments_attribution_provider_mismatch": "Diese Angaben weichen von den verknüpften Anbieterdaten ab. Die ursprünglichen Quelldaten bleiben erhalten.",
+  "investments_payment_in_lieu_correction_reason": "Grund der Korrektur"
 }

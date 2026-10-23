@@ -1660,7 +1660,7 @@
   "investments_payment_in_lieu_copy": "Продавец без покрытия должен кредитору дивиденд по заёмным акциям. Он оплачивается деньгами на счёт расходов и не меняет короткую позицию.",
   "investments_payment_in_lieu_holding": "Короткая позиция",
   "investments_payment_in_lieu_ex_date": "Дата экс-дивиденда",
-  "investments_payment_in_lieu_ex_date_hint": "Позиция должна была быть короткой на закрытие накануне этой даты.",
+  "investments_payment_in_lieu_ex_date_hint": "Используется для проверки количества коротких позиций перед этой датой. Если дата неизвестна, оставьте поле пустым.",
   "investments_payment_in_lieu_payment_date": "Дата платежа",
   "investments_payment_in_lieu_amount": "Сумма к уплате",
   "investments_payment_in_lieu_expense_account": "Счёт расходов",
@@ -1684,8 +1684,6 @@
   "investments_suggestion_long_and_short_position": "До экс-даты длинная позиция в одном счёте и короткая в другом: не подходит ни дивиденд, ни одна компенсация. Запишите каждое вручную или проигнорируйте событие.",
   "api_error_investment_payment_in_lieu_already_corrected": "Этот компенсационный платёж уже исправлен. Обновите страницу.",
   "api_error_investment_payment_in_lieu_changed": "Этот платёж изменился после загрузки. Обновите и попробуйте снова.",
-  "api_error_investment_payment_in_lieu_not_short": "На закрытие накануне экс-даты эта позиция не была короткой по инструменту, поэтому компенсация не причитается.",
-  "api_error_investment_payment_in_lieu_dependency": "От этой короткой позиции зависит компенсационный платёж. Сначала сторнируйте этот платёж, затем исправьте короткую позицию.",
   "api_error_request_too_large": "Запрос слишком большой. Уменьшите его размер и повторите попытку.",
   "security_tokens_title": "Персональные токены доступа",
   "security_tokens_hint": "Создавайте учётные данные только для чтения для скриптов и инструментов. Каждый токен читает только выбранные данные. Настройки, резервные копии и изменение финансовых записей недоступны.",
@@ -1721,5 +1719,10 @@
   "investments_attribution_ex_date_after_payment": "Экс-дивидендная дата позже записанной даты платежа.",
   "investments_attribution_unavailable": "Часть данных отнесения отсутствует; историческое основание проверить нельзя.",
   "investments_attribution_payment_link": "Открыть платёж № {id}",
-  "investments_attribution_review": "Проверьте отнесение. Записанная сумма не изменилась."
+  "investments_attribution_review": "Проверьте отнесение. Записанная сумма не изменилась.",
+  "investments_attribution_optional": "Отнесение (необязательно)",
+  "investments_attribution_unassigned": "Не назначено",
+  "investments_attribution_repair_hint": "Оставьте неизвестные данные пустыми. Изменение только этих данных сохраняет записанную сумму и исходную запись в истории.",
+  "investments_attribution_provider_mismatch": "Эти данные отличаются от связанных данных поставщика. Исходные данные сохраняются.",
+  "investments_payment_in_lieu_correction_reason": "Причина исправления"
 }

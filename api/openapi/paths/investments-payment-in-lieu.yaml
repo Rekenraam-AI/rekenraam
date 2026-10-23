@@ -3,10 +3,9 @@ post:
   description: >-
     #255: posts the amount owed from the cash account to the expense account,
     with an optional recovery credited back, under the investment writer's
-    reconciliation guard. The short holding, instrument and ex-date are
-    immutable operation facts; the holding must be short the instrument at
-    the close before the ex-date (422 INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT).
-    It never changes the short lot or its opening proceeds.
+    reconciliation guard. Holding, instrument and ex-date are optional,
+    repairable attribution. Historical support and chronology are advisory
+    diagnostics, independent of cash authorization. It never changes a lot.
   parameters:
     - in: header
       name: X-CSRF-Token
@@ -69,7 +68,7 @@ post:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "422":
-      description: The holding was not short the instrument at the close before the ex-date (INVESTMENT_PAYMENT_IN_LIEU_NOT_SHORT)
+      description: A financial amount exceeds the supported exact range
       headers:
         X-Request-ID:
           $ref: "../openapi.yaml#/components/headers/XRequestID"

@@ -1273,7 +1273,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(22), version, "the head preserves distinct attribution warning outcomes")
+	assert.Equal(t, int64(23), version, "the head preserves repairable cash attribution")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))
@@ -1305,7 +1305,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 		"index":   119,
 		"table":   117,
 		"trigger": 160,
-		"view":    15,
+		"view":    17,
 	}, objectCounts, "the migrated head must retain every schema object")
 	assert.Equal(t, "table", objects["personal_access_tokens"])
 	assert.Equal(t, "index", objects["personal_access_tokens_owner_idx"])
@@ -1377,6 +1377,8 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 		"investment_operation_dates":                "table",
 		"investment_operation_components":           "table",
 		"effective_investment_operations":           "view",
+		"investment_payment_in_lieu_ancestry":       "view",
+		"valid_investment_payment_in_lieu_facts":    "view",
 		"latest_investment_disposal_revisions":      "view",
 		"latest_investment_split_revisions":         "view",
 		"latest_investment_transfer_link_revisions": "view",

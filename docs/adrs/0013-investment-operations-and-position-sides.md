@@ -725,6 +725,15 @@ preserves known effect history; bundle schema 11 exports effect knowledge.
 
 ## Payment-In-Lieu Refinement (2026-10-17, #255)
 
+**Superseding delivery, 2026-10-23:** [ADR 0019](0019-financial-effects-and-repairable-attribution.md)
+and #388/#389 replace the historical entitlement and fixed-attribution rules
+below. Holding, instrument and ex-date are nullable, auditable attribution;
+entry/replacement and later short corrections do not require historical short
+support. Unsupported/missing/source-disagreeing attribution is diagnosed on
+read. Exact cash/recovery, financial roles and reconciliation remain required.
+The stored original facts stay immutable; repair appends an audited net-zero
+replacement. The shared writer's before/after payment replay is removed.
+
 Decision 3's payment in lieu of a dividend is the named operation
 `payment_in_lieu`. It is a cash charge, not an adjustment of the short's
 opening proceeds: cash −owed against an owner-chosen expense account (+owed),
