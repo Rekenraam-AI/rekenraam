@@ -1,14 +1,21 @@
 name: CI
 
+# One full run per validation context (#383): pushes to main, pull requests
+# (GitHub's merge ref against the base) and manual dispatch. Other branch pushes
+# do not run on their own; open a pull request or dispatch the workflow on the
+# branch. Event-level filters only: a path filter or job `if:` would leave the
+# required checks pending. scripts/test-ci-events.py pins this policy.
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
-# A newer push to the same branch/PR cancels an in-flight run for it.
+# A newer run in the same context cancels the in-flight one: the next main push,
+# the next push to a pull request's head (refs/pull/N/merge) or the next
+# dispatch on the same branch. Contexts never cancel one another.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -30,6 +37,8 @@ jobs:
           workload: race
       - name: Check Go cache configuration
         run: python3 scripts/test-ci-go-cache.py
+      - name: Check CI event policy
+        run: python3 scripts/test-ci-events.py
       - name: Run backend tests
         # Shared local/CI gate: race detector, parallel tests inside each
         # package, two packages concurrently, 5m per package (ADR 0016, #164).

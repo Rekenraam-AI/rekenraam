@@ -473,7 +473,7 @@ E2E_BASE_URL=http://localhost:16888 ./scripts/test-e2e.sh
 ```
 
 Run just the fast journeys — everything except the serial release-preflight
-suite. This is what CI runs on every push:
+suite. This is what CI runs for every main push and pull request:
 
 ```sh
 ./scripts/test-e2e-smoke.sh
@@ -572,7 +572,7 @@ pnpm test:release-preflight
 - `scripts/test-e2e-acceptance.sh` runs only the browser cases tagged
   `[acceptance]` — the ones that map onto a plan's validation matrix, so closing
   an initiative can point at a suite rather than at an argument (T-61). The
-  broader suites are split by cost instead: smoke on every push, release
+  broader suites are split by cost instead: smoke in every CI run, release
   preflight before a release.
 - The backend binary also exposes local maintenance commands: `recover-owner`
   (backup-first password recovery and session revocation), `verify-backup`
@@ -916,8 +916,19 @@ Workflow conventions:
   Docker runtime image. The root npm entry updates `frontend/package.json`
   together with `pnpm-lock.yaml`; a separate `/frontend` entry creates PRs
   whose manifests fail CI's frozen install.
-- Browser journeys run in the `E2E Smoke` job groups of `ci.yml` on every push
-  and pull request: `./scripts/test-e2e-smoke.sh`. Each app/audit job builds the
+- `ci.yml` runs one full validation per context (#383): each push to `main`,
+  each pull request update (GitHub's `refs/pull/N/merge` merge context) and
+  each `workflow_dispatch`. A push to any other branch runs nothing on its own;
+  open a pull request, or dispatch it with
+  `gh workflow run ci.yml --ref <branch>` to validate a branch without one. A
+  newer run cancels only an in-flight run of the same event and ref, so a main
+  push never cancels a dispatch and pull requests never cancel each other.
+  There are no path filters or job-level `if:` conditions, so the checks
+  required on `main` (`Backend Tests`, `Frontend Check`, `Integrated Build`;
+  strict) always report. `scripts/test-ci-events.py` pins this policy and runs
+  in the `Backend Tests` job. Evidence: `docs/reviews/ci-event-overlap-2026-10-23.md`.
+- Browser journeys run in the `E2E Smoke` job groups of `ci.yml` in every CI run:
+  `./scripts/test-e2e-smoke.sh`. Each app/audit job builds the
   single binary and boots a throwaway instance per worker (3 workers per job).
   Together they run every spec except `release-preflight.spec.ts`.
   The Playwright report and each worker's

@@ -6,7 +6,14 @@ description: "Use when editing GitHub Actions workflows, job structure, CI trigg
 # GitHub Actions Instructions
 
 - `.github/workflows/ci.yml` runs backend race tests, backend coverage,
-  frontend checks, integrated build and browser smoke on each intended event.
+  frontend checks, integrated build and the app/audit browser smoke matrix (Node
+  24) once per validation context: pushes to `main`, pull requests and
+  `workflow_dispatch`. Other branch pushes do not trigger it (#383). Concurrency
+  is keyed by event and ref. Never add path filters or job-level `if:` to it:
+  `Backend Tests`, `Frontend Check` and `Integrated Build` are required checks
+  on `main` and a skipped job leaves them pending. Keep
+  `scripts/test-ci-events.py` in step with any trigger, concurrency or job-name
+  change.
 - Browser smoke uses disjoint app/audit matrix jobs with three workers each.
   Their union must retain the complete default smoke selection. Record the
   repeated build cost and combined runner minutes when changing this split.
