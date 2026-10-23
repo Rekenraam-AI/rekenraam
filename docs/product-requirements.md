@@ -190,6 +190,15 @@ These apply across all feature phases.
 ### Product Trust
 
 - Financial changes should be explainable through audit-friendly data and UX.
+- Hard financial dependencies require a concrete accounting reason, including
+  the outcome that becomes invalid without the relationship. Owner direction
+  (2026-10-23) separates actual effects/calculated allocations from repairable
+  attribution; unsupported explanation of a cash event should be diagnosed
+  without stranding valid cash. Preserve quantity/basis, source identity,
+  audit, report coverage and reconciliation commitments. [ADR 0019](adrs/0019-financial-effects-and-repairable-attribution.md)
+  and the [dependency plan](plans/financial-dependency-simplification-plan.md)
+  govern per-family contracts; this is accepted direction, not a claim that
+  existing guards have already changed.
 - Import workflows must preserve source metadata where practical.
 - File import and CSV header analysis accept files through 50 MiB inclusive.
   Reject oversized uploads before adapter parsing or batch creation, with a

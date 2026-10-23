@@ -52,6 +52,13 @@ or sequencing change.
 
 ## Initiative and design references
 
+[ADR 0019](adrs/0019-financial-effects-and-repairable-attribution.md) and the
+[financial-dependency plan](plans/financial-dependency-simplification-plan.md)
+record the accounting-reason test and cross-family attribution/correction
+review (#391). The separate product-complexity audit (#390) asks whether
+checks/workflows are necessary; #284 preserves its mechanical-refactor scope.
+These are planning contracts, not delivered runtime simplifications.
+
 [ADR 0018](adrs/0018-personal-access-token-boundary.md) and the
 [personal-access-token contract](plans/personal-access-tokens-plan.md) define
 #334's read-only owner API grants, credential lifecycle and security events.

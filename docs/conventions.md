@@ -18,6 +18,13 @@ When a feature introduces a durable new rule, update one of those documents in t
 - Each slice must leave the app runnable.
 - Avoid hidden partial migrations from `.archive/`.
 - Prefer the smallest viable durable implementation over speculative abstractions.
+- Review necessity before consolidating a restriction: identify its protected
+  user outcome and a concrete failure if it is removed. Behavior-changing
+  simplification belongs in an explicit product/ADR decision, separate from a
+  behavior-preserving refactor. [ADR 0019](adrs/0019-financial-effects-and-repairable-attribution.md)
+  governs hard financial dependencies; repeated courtesy, transactional and
+  storage checks can protect different boundaries. Security/recovery controls
+  need their own threat or operational justification, not only unchanged totals.
 - Keep single-user assumptions explicit until a later ADR changes them.
 
 ## Product Naming And Domain Model

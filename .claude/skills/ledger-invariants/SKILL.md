@@ -139,6 +139,12 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
 
 ## Prices, FX, investments
 
+- Review hard relationships under ADR 0019 and the financial-dependency plan:
+  name the accounting outcome that breaks without the link. Distinguish actual
+  quantity/basis/allocation inputs from repairable cash attribution; preserve
+  source identity, evidence and reconciliation. Accepted simplification policy
+  is not shipped behavior: complete each family contract before removing its
+  existing gates, and change policy-pinning tests with that decision.
 - Prices/FX use `price_series` + `price_observations` (exact integer+scale).
   Correct a price by **superseding or voiding**, never overwriting.
 - Observations distinguish valuation date from recorded-at time; preserve

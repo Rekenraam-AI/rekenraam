@@ -11,6 +11,16 @@ Source: `41732da8f4e0d9d5684f9c701eb387d0319f3821` plus the measurement test
 committed with this report; no production code changed. Raw figures:
 [payment-in-lieu-density-2026-10-23.txt](payment-in-lieu-density-2026-10-23.txt).
 
+## Subsequent policy direction (2026-10-23)
+
+The measurements and verdict below characterize the then-current #255/#257
+contract. The owner subsequently adopted [ADR 0019](../adrs/0019-financial-effects-and-repairable-attribution.md)'s
+necessity test: [#391](https://github.com/sergeyfarin/rekenraam/issues/391)
+reviews financial dependencies across families; #388 now targets retirement of
+cash-only entitlement blocking with #389's diagnostic. This does not change
+the historical figures or claim a shipped runtime improvement. The broader
+product-complexity review is #390, separate from #284's refactoring audit.
+
 ## Verdict
 
 The admission checks are correct, and their cost is material. Every

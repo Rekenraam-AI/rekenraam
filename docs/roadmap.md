@@ -167,10 +167,17 @@ below is execution order, not a chain of hard dependencies.
    The separate P3 payment-density audit
    [#379](https://github.com/sergeyfarin/rekenraam/issues/379) measured the
    payment-density workload
-   ([report](reviews/payment-in-lieu-density-2026-10-23.md)). Its P3
-   optimization [#388](https://github.com/sergeyfarin/rekenraam/issues/388)
-   and self-check backstop [#389](https://github.com/sergeyfarin/rekenraam/issues/389)
-   are independent; neither is a blanket R13 prerequisite.
+   ([report](reviews/payment-in-lieu-density-2026-10-23.md)). Owner direction
+   (2026-10-23) separates product-rule necessity in
+   [#390](https://github.com/sergeyfarin/rekenraam/issues/390) from #284's
+   behavior-preserving refactors. The cross-family dependency contract in
+   [#391](https://github.com/sergeyfarin/rekenraam/issues/391), governed by
+   [ADR 0019](adrs/0019-financial-effects-and-repairable-attribution.md) and its
+   [plan](plans/financial-dependency-simplification-plan.md), reframes
+   [#388](https://github.com/sergeyfarin/rekenraam/issues/388) as cash-only
+   payment attribution and [#389](https://github.com/sergeyfarin/rekenraam/issues/389)
+   as its diagnostic. These do not expand #284's closure checklist, reorder
+   initiatives or introduce a blanket R13 prerequisite.
 3. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
    Use the delivered R18 valuation contracts; resolve portfolio scope,
    external-flow classification, return equations, numerical failure states,

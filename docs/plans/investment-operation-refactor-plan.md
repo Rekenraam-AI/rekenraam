@@ -704,8 +704,14 @@ correction, reversal and backdating; #176 provider import.
   command effects. The [#379 density audit](../reviews/payment-in-lieu-density-2026-10-23.md)
   measured that cost with entitlement and rollback controls. It grows with
   book-wide payment density for every investment command (17 s at 1,000
-  payments). [#388](https://github.com/sergeyfarin/rekenraam/issues/388)
-  makes the check read-only without changing the contract.
+  payments). Owner direction on 2026-10-23 in [ADR 0019](../adrs/0019-financial-effects-and-repairable-attribution.md)
+  now questions the necessity of permanent cash-only entitlement blocking.
+  [#391](https://github.com/sergeyfarin/rekenraam/issues/391) specifies the
+  cross-family [dependency contract](financial-dependency-simplification-plan.md),
+  including fractional-share cash in lieu and other financial relationships;
+  [#388](https://github.com/sergeyfarin/rekenraam/issues/388) retires the payment
+  blocker under that contract and #389 supplies its non-blocking diagnostic.
+  The description above remains current runtime behavior until delivery.
 - **Classification.** Net worth and self-check classify a negative countable
   balance as a named short only up to the quantity of short lots open on that
   date in that account; any further negative quantity remains an
