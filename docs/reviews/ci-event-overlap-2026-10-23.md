@@ -66,4 +66,27 @@ tag pushes) and asserts that the required job names exist, no job carries an
 `if:`, and neither event has a path or branch-ignore filter. Against the
 previous workflow it fails the negative-push and concurrency cases.
 
-Live after-runs: recorded on the issue once observed.
+## After: live runs
+
+Main push of the change itself (`85fd53e4`): exactly one CI run,
+[40013655251](https://github.com/sergeyfarin/rekenraam/actions/runs/40013655251)
+(`push`, `main`), success; the new `Check CI event policy` step ran on the
+runner (4 tests, OK). 28m 51s runner minutes, about 11m 35s wall time.
+
+Probe branch `probe/383-ci-events` with throwaway draft PR
+[#396](https://github.com/sergeyfarin/rekenraam/pull/396), closed unmerged and
+deleted afterwards:
+
+| Step | SHA | CI runs | Outcome |
+| --- | --- | --- | --- |
+| Push branch, no PR | `eeb04895` | none (0 runs after ~40 s) | branch-without-PR policy holds |
+| Open draft PR | `eeb04895` | [40013897583](https://github.com/sergeyfarin/rekenraam/actions/runs/40013897583) `pull_request` | cancelled by the next push after 7m 11s runner minutes (~1.5 min) |
+| Second push | `0e590223` | [40013919227](https://github.com/sergeyfarin/rekenraam/actions/runs/40013919227) `pull_request` | cancelled while still pending (0 runner minutes) |
+| Third push | `e87ce1e7` | [40013929927](https://github.com/sergeyfarin/rekenraam/actions/runs/40013929927) `pull_request` | success; 29m 50s runner minutes, 11m 11s wall |
+
+No `push` run appeared for any of the three probe SHAs. GitHub keeps one running
+and one pending run per concurrency group, so the pending run of the second
+push was replaced by the third. The final run started its jobs only after the
+cancelled run finished stopping (~1m 20s later). The required checks
+`Backend Tests`, `Frontend Check` and `Integrated Build` reported `success` on
+the PR head `e87ce1e7`; none was left pending.
