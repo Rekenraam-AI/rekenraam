@@ -44,6 +44,10 @@ func TestCashInLieuParentMigrationPreservesHistoryAndRefusesMisleadingDowngrade(
 	require.ErrorContains(t, err, "immutable")
 	_, err = provider.DownTo(ctx, 23)
 	require.Error(t, err)
+	// Goose may have reverted newer migrations before the retained-parent
+	// guard refused this older target. Current readers require the head schema.
+	_, err = provider.Up(ctx)
+	require.NoError(t, err)
 	require.Equal(t, original, read())
 	source, err := f.investmentService.repository.TradeCorrectionContext(ctx, BookID, cil.Transaction.ID)
 	require.NoError(t, err)

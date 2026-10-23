@@ -277,8 +277,12 @@ func TestMigrateSeededBaselineMatchesFreshSchema(t *testing.T) {
 	// TestPriceDependencyMigrationBackfillsDerivationLegs covers one that does.
 	assert.Equal(t, "0", after["count:price_observation_dependencies"])
 	delete(after, "count:price_observation_dependencies")
-	// #229 adds unassigned dividend facts without inventing old payers.
-	assert.Equal(t, "0", after["count:investment_dividend_facts"])
+	// #393 records the frozen seed's one known gross-payment shape without
+	// inventing a payer or changing its original audit attribution.
+	assert.Equal(t, "1", after["count:investment_dividend_facts"])
+	var historicalDividend string
+	require.NoError(t, seeded.QueryRow(`SELECT json_array(operation_id,commodity_id,withholding_only,created_audit_event_id) FROM investment_dividend_facts`).Scan(&historicalDividend))
+	assert.Equal(t, "[4,null,0,33]", historicalDividend)
 	delete(after, "count:investment_dividend_facts")
 	// #234 adds empty immutable report storage; existing figures stay exact.
 	assert.Equal(t, "0", after["count:investment_gains_runs"])
@@ -1273,7 +1277,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(24), version, "the head preserves repairable cash attribution")
+	assert.Equal(t, int64(25), version, "the head preserves payment shape independently of payer")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))
@@ -1304,9 +1308,13 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 	assert.Equal(t, map[string]int{
 		"index":   119,
 		"table":   117,
-		"trigger": 160,
-		"view":    19,
+		"trigger": 162,
+		"view":    21,
 	}, objectCounts, "the migrated head must retain every schema object")
+	assert.Equal(t, "view", objects["valid_investment_dividend_facts"])
+	assert.Equal(t, "view", objects["investment_cash_payment_identity"])
+	assert.Equal(t, "trigger", objects["investment_event_payment_identity_insert"])
+	assert.Equal(t, "trigger", objects["investment_event_payment_identity_update"])
 	assert.Equal(t, "table", objects["personal_access_tokens"])
 	assert.Equal(t, "index", objects["personal_access_tokens_owner_idx"])
 	assert.Equal(t, "table", objects["investment_gains_runs"])

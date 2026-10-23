@@ -4,7 +4,7 @@ Owner direction: 2026-10-23, governed by
 [ADR 0019](../adrs/0019-financial-effects-and-repairable-attribution.md).
 This is a design and delivery-boundary plan. #391's cross-family inventory and
 contracts are complete at `4ad8373f772eb02b40126f5e9d746f0eb50c9e79`;
-runtime follow-ups #393/#394/#395 remain open. #388/#389/#392 are delivered.
+runtime follow-ups #394/#395 remain open. #388/#389/#392/#393 are delivered.
 The earlier comparative baseline is `8549045a4484f01e6e9b28e4f0a5fd6aa8213985`.
 
 Delivery acceptance and progress live in
@@ -40,7 +40,7 @@ complete the design review; open implementation issues own their own validation.
 
 | Family | Accepted dependency and correction policy | Delivery disposition |
 |---|---|---|
-| Cash dividend, embedded/separate withholding | Exact cash/gross/tax and payment shape remain required; payer is optional/clearable, without historical share authorization. Preserve known tax independently of payer and unknown imported economics. | #393 implements payer/shape consistency. #395 owns actual date/account/currency correction, distinct from neutral attribution repair. |
+| Cash dividend, embedded/separate withholding | Exact cash/gross/tax and payment shape remain required; payer is optional/clearable, without historical share authorization. Preserve known tax independently of payer and unknown imported economics. | #393 delivers nullable facts, audited assign/clear/omit semantics and missing-payer CSV income. #395 owns actual date/account/currency correction, distinct from neutral attribution repair. |
 | Dividend payment in lieu | Cash/expense/recovery is authoritative; holding/instrument/ex-date are optional audited explanation, with warning/unavailable support rather than write permission. | #388/#389 delivered; retain diagnostics/source controls. #395 owns remaining financial date/account/currency correction. |
 | Fractional cash in lieu, all four parents | Real dated disposal/elections remain required. Original typed parent is immutable provenance; its current standing is advisory on both entry and correction. | #392 delivered correction replay. **Accept #394** for remaining entry/lot-lookup/insert standing gates; probes show valid entry after reversal, impossible quantity still refuses. Keep historical reference/type/book integrity, no nullable-parent redesign. |
 | Reinvested dividend | Retain real income-funded acquisition and required position/date/currency facts. Their values can change through typed old/new-position replay; required presence does not justify permanently fixed values. | **Accept #395**, consistently across cash dividend/payment and reinvestment fixed fields; valid isolated field-change probes pass, dependent-sale date control refuses. Keep typed identity and actual source/election/checkpoint constraints. |
@@ -48,7 +48,7 @@ complete the design review; open implementation issues own their own validation.
 | Capital return | Receipt, dated entitlement cohort, exact per-lot reduction/excess and basis knowledge are real calculation inputs. Preserve explicit elections; replay supported changes. | Keep allocation lineage. No optional-lot reinterpretation or invented zero basis. |
 | Splits/exchanges/spin-offs/cash-stock mergers | Ratios, source/destination quantity/basis, elected fractions/cohorts and root order remain actual effects. Replay supported changes; refuse lost units or owner elections that cannot be reproduced. | Keep actual typed allocations; blanket fraction-parent veto already removed by #392. |
 | Transfers, inbound basis resolution and disposal/cover elections | Keep actual quantity/cost movement, chosen lots and bridge journals. Recompute supported basis changes; withdraw effective resolution before transfer reversal. Never silently choose another specific lot. | Keep current dependency and resolution-reversal workflow; a composed command has no demonstrated need here. |
-| Provider/import evidence and correction identity | Raw evidence and settled owner decisions remain immutable; owner attribution can change. One payment identity spans its correction ancestry. Mismatch is visible without rewriting evidence or re-authorizing duplicate effects. | **Extend #393** with observed dividend duplicate-link ancestry defect and source/payer mismatch disclosure. Payment-in-lieu already has the required ancestry control. No separate ticket per check. |
+| Provider/import evidence and correction identity | Raw evidence and settled owner decisions remain immutable; owner attribution can change. One payment identity spans its correction ancestry. Mismatch is visible without rewriting evidence or re-authorizing duplicate effects. | #393 delivers shared dividend/payment identity, candidate/storage guards and source/payer diagnostics. Original/inverse/descendant claims stay protected. No separate ticket per check. |
 | Prices/derivations | Keep derivation legs and atomic bounded retirement when input is voided; recompute live valuation. Quotes do not authorize journals. | Keep current cascade controls; no cash-correction veto. |
 | Saved reports | Keep snapshot/profile/input/output bytes and hashes; later corrections produce a different live report or a new saved run. | Keep immutable evidence; reject freezing the ledger because a saved report refers to it. |
 | Reconciliation/order | Review actual changed boundary balances/sets and gain allocations, with stale-plan protection. Net compound effects per account/commodity/checkpoint; preserve neutral checkpoints and root order. | Keep current commitment controls; reject per-leg review of neutral attribution repair. |
@@ -68,7 +68,7 @@ identities must still exist in the book. Unknown/unassigned support is unavailab
 known contradictory explanation is a scoped warning, and broken conservation,
 malformed facts or missing journals remain integrity failures. Reuse existing
 detail/history/self-check and coverage discovery; no new queue or repeated
-acknowledgement. #393 must show source/payer disagreement or unassigned attribution
+acknowledgement. #393 shows source/payer disagreement or unassigned attribution
 without erasing the historical source claim. A dividend does not assert dated
 entitlement, so no new holdings diagnostic is added.
 
@@ -156,9 +156,9 @@ deleting all parent fences.
 
 The [comparison report](../reviews/financial-dependency-comparison-2026-10-23.md)
 retains source consumers, independent figures and a reproducible isolated
-experiment. These decisions apply to the four compared cases; other family
-rows above remain hypotheses. Existing runtime contracts change only when
-their linked implementation ships.
+experiment. At that checkpoint these decisions applied to the four compared
+cases; the completed inventory above records the subsequent family dispositions.
+Existing runtime contracts change only when their linked implementation ships.
 
 | Case | Required financial meaning | Attribution and correction disposition | Delivery |
 |---|---|---|---|
@@ -305,9 +305,9 @@ the workflow, with no new queue or acknowledgement requirement.
 
 The [delivery evidence](../reviews/payment-attribution-repair-2026-10-23.md)
 records policy-test dispositions, retained financial controls and bounded
-measurements. This does not complete #390/#391 or relax #392's real disposal
-constraints. #393 still owns the dividend/separate-withholding nullable payer
-representation and clear workflow.
+measurements. At this checkpoint #390/#391 and the dividend/tax slice remained
+open, and real disposal constraints were retained. The subsequent #392/#393
+sections record their runtime delivery.
 
 ### Cash-In-Lieu Parent Delivery (#392, 2026-10-23)
 
@@ -333,6 +333,45 @@ gain/checkpoint binding, rollback, migration and owner-surface controls are
 recorded in [delivery evidence](../reviews/cash-in-lieu-parent-replay-2026-10-23.md).
 At this delivery checkpoint #393 and the remaining #391/#390 inventory stayed
 open. The completed #391 inventory above records the subsequent design review.
+
+## Dividend And Withholding Delivery (#393, 2026-10-23)
+
+Native dividend, embedded-tax and standalone-tax entry accept no payer. The
+existing nullable-field/patch boundary distinguishes entry omission/null and
+replacement omission/preserve, null/clear and value/assign. Shape is independent
+of payer in immutable facts; known standalone tax stays tax without gross income
+or lots. Neutral repairs use the existing atomic inverse/replacement writer,
+retain original/source facts and preserve cash checkpoints. Date/cash account/
+currency correction remains #395's separate financial-input scope.
+
+Migration 25 preserves prior facts and backfills only recorded unambiguous shape,
+never payer. Nullable exact reversals, valid-facts self-check and explicit
+populated downgrade refusal preserve meaning. Bundle schema 17 retains CSV
+columns, exports unassigned payer empty and retains withholding-only shape.
+
+The shared cash-payment identity view and candidate/commit/storage guards cover
+original, inverse and replacement journals for both dividend and payment in
+lieu. A second provider event cannot claim another version of one payment;
+another real unclaimed payment remains linkable. Existing legacy duplicate
+claims are preserved and reported as integrity findings rather than erased.
+Source-linked dividend repair shows a different known payer as a warning and
+cleared payer as unavailable support without inventing a contradiction. Manual
+unassigned payer is disclosed in income coverage, without a new source-agreement
+or holdings workflow. Existing detail/self-check and provider history expose
+the diagnosis, original evidence and original payment/correction chain.
+
+CSV profiles may omit the instrument column or contain blank payer cells; exact
+known gross/tax/cash still use the same native writer. A nonempty unknown source
+code remains reviewable rather than silently ignored. Raw evidence, commit
+identity and dedupe survive unassigned entry and later native payer clearing.
+This refines #241's missing-payer requirement without guessing economics or
+introducing automatic instruments or generic cash fallback.
+
+Six-locale entry/correction and mobile accessibility use existing forms. The
+shared cash/reinvestment headings now name their modal entry dialogs. Named
+controls, independent EUR 100/15/2 figures, schema/history/source preservation,
+API presence, concurrency, rollback and validation are in the
+[delivery evidence](../reviews/dividend-attribution-repair-2026-10-23.md).
 
 ## Whole-Application Complexity Review
 

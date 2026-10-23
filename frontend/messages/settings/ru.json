@@ -1713,7 +1713,7 @@
   "settings_data_selfcheck_warnings": "Предупреждений об отнесении: {count}.",
   "settings_data_selfcheck_historical": "Сохранённый результат; повторите проверку после исправлений.",
   "settings_data_selfcheck_attribution_title": "Привязка инвестиций",
-  "settings_data_selfcheck_attribution_explanation": "Проверяет исторические короткие позиции для компенсационных выплат и текущую корпоративную операцию для продажи дробных долей. Финансовая корректность проверяется отдельно.",
+  "settings_data_selfcheck_attribution_explanation": "Проверяет прошлые короткие позиции для компенсационных выплат, текущую связанную операцию для продажи дробных долей и плательщика по сохранённым данным поставщика. Финансовая корректность проверяется отдельно.",
   "settings_data_selfcheck_attribution_next": "Откройте платёж и сравните его отнесение с отчётом брокера. Проверка не меняет суммы или исходные данные.",
   "investments_attribution_no_short": "На закрытие перед экс-дивидендной датой нет коротких позиций, подтверждающих это отнесение.",
   "investments_attribution_ex_date_after_payment": "Экс-дивидендная дата позже записанной даты платежа.",
@@ -1727,5 +1727,6 @@
   "investments_payment_in_lieu_correction_reason": "Причина исправления",
   "investments_attribution_cash_parent_unresolved": "Исходная корпоративная операция отменена. Продажа остаётся в учёте; её финансовая корректность проверяется отдельно.",
   "investments_attribution_cash_parent_mismatch": "Текущая корпоративная операция больше не соответствует счёту, инструменту или дате этой продажи. Исходная ссылка сохранена.",
-  "investments_cash_in_lieu_current_parent": "Текущая операция № {id}"
+  "investments_cash_in_lieu_current_parent": "Текущая операция № {id}",
+  "investments_dividend_payer_help": "Плательщик необязателен. Изменение только этой привязки не меняет денежные суммы и налог."
 }

@@ -159,7 +159,7 @@ var checkNarratives = map[string]checkNarrative{
 		nextStep:    "Review the named operation, disposal decision, journal, lot or saved gains run and the setup accounts. Preserve the original rows before correcting any mismatch or missing link.",
 	},
 	CheckInvestmentAttribution: {
-		explanation: "Payment-in-lieu attribution is checked against effective short openings minus covers at the close before its ex-date, separately in each cost currency. This establishes historical support, not whether the amount charged is correct. Cash-in-lieu parent ancestry is checked for current explanatory support independently of its disposal. Unsupported attribution is a warning; missing context is unavailable coverage. Neither is financial corruption.",
+		explanation: "Payment-in-lieu attribution is checked against historical short quantities, and fractional-disposal parents against current explanatory context. Dividend payer attribution is compared with retained provider claims; a different known payer warns, while an unassigned payer has unavailable support. Manual unassigned cash remains visible in income coverage without asserting share entitlement. None of these diagnostics authorizes cash or indicates financial corruption.",
 		nextStep:    "Open the named payment and compare its attribution with the broker statement. The diagnostic never changes cash or source evidence. A saved self-check describes its recorded snapshot; rerun after a correction.",
 	},
 	CheckInvestmentReplay: {
@@ -580,6 +580,16 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 			AND (o.operation_kind = 'payment_in_lieu' OR (o.operation_kind = 'reversal' AND EXISTS (
 				SELECT 1 FROM investment_operations predecessor WHERE predecessor.id = o.correction_of_operation_id AND predecessor.operation_kind = 'payment_in_lieu')))
 			AND NOT EXISTS (SELECT 1 FROM valid_investment_payment_in_lieu_facts f WHERE f.operation_id = o.id AND f.book_id = o.book_id)`},
+		{"dividend has missing, malformed or inconsistent payment-shape facts", `
+			SELECT o.id FROM investment_operations o WHERE o.book_id=?
+			AND (o.operation_kind='dividend' OR (o.operation_kind='reversal' AND EXISTS (
+				SELECT 1 FROM investment_operations predecessor WHERE predecessor.id=o.correction_of_operation_id AND predecessor.operation_kind='dividend')))
+			AND NOT EXISTS (SELECT 1 FROM valid_investment_dividend_facts f WHERE f.operation_id=o.id AND f.book_id=o.book_id)`},
+		{"cash payment claimed by multiple provider events", `
+			SELECT identity.root_operation_id FROM investment_cash_payment_identity identity
+			JOIN investment_event_suggestions claim ON claim.book_id=identity.book_id
+				AND (claim.generated_transaction_id=identity.transaction_id OR claim.linked_transaction_id=identity.transaction_id)
+			WHERE identity.book_id=? GROUP BY identity.root_operation_id HAVING COUNT(DISTINCT claim.id)>1`},
 		{"operation journal link is not posted in its book", `
 			SELECT l.id FROM investment_operation_journal_links l
 			JOIN transaction_versions v ON v.id = l.transaction_version_id

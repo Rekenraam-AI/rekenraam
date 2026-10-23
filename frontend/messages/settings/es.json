@@ -1713,7 +1713,7 @@
   "settings_data_selfcheck_warnings": "{count} advertencias de atribución.",
   "settings_data_selfcheck_historical": "Resultado guardado; repita la comprobación después de las correcciones.",
   "settings_data_selfcheck_attribution_title": "Atribución de inversiones",
-  "settings_data_selfcheck_attribution_explanation": "Comprueba el respaldo histórico de pagos sustitutivos y la operación actual asociada a disposiciones fraccionarias. La validez financiera se comprueba por separado.",
+  "settings_data_selfcheck_attribution_explanation": "Comprueba las posiciones cortas históricas de los pagos compensatorios, la operación vinculada a ventas de fracciones y el pagador frente a los datos conservados del proveedor. La validez financiera se comprueba por separado.",
   "settings_data_selfcheck_attribution_next": "Abra el pago y compare su atribución con el extracto del bróker. La comprobación no cambia importes ni datos de origen.",
   "investments_attribution_no_short": "No hay unidades en corto que respalden esta atribución al cierre anterior a la fecha exdividendo.",
   "investments_attribution_ex_date_after_payment": "La fecha exdividendo es posterior a la fecha de pago registrada.",
@@ -1727,5 +1727,6 @@
   "investments_payment_in_lieu_correction_reason": "Motivo de la corrección",
   "investments_attribution_cash_parent_unresolved": "La operación corporativa original se revirtió. La disposición sigue registrada; su validez financiera se comprueba por separado.",
   "investments_attribution_cash_parent_mismatch": "La operación corporativa actual ya no coincide con la cuenta, el instrumento o la fecha de esta disposición. Se conserva la referencia original.",
-  "investments_cash_in_lieu_current_parent": "Operación actual #{id}"
+  "investments_cash_in_lieu_current_parent": "Operación actual #{id}",
+  "investments_dividend_payer_help": "El pagador es opcional. Cambiar solo esta atribución no modifica el efectivo ni los impuestos."
 }

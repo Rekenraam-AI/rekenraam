@@ -530,7 +530,7 @@ type DividendInput struct {
 	AuthSessionID        int64
 	RequestID            string
 	TransactionDate      string
-	CommodityID          *int64
+	CommodityID          NullablePatch[int64]
 	CashAccountID        int64
 	CashCommodityID      int64
 	IncomeAccountID      *int64
@@ -1851,8 +1851,8 @@ func (s *InvestmentService) dividendPlan(ctx context.Context, input DividendInpu
 	if err != nil {
 		return investmentTransactionPlan{}, err
 	}
-	if input.CommodityID != nil && (input.IncomeAccountID == nil || input.WithholdingAccountID == nil) {
-		defaultRecord, err := s.repository.ResolveDividendDefault(ctx, BookID, *input.CommodityID, date)
+	if input.CommodityID.Value != nil && (input.IncomeAccountID == nil || input.WithholdingAccountID == nil) {
+		defaultRecord, err := s.repository.ResolveDividendDefault(ctx, BookID, *input.CommodityID.Value, date)
 		if err == nil {
 			if input.IncomeAccountID == nil {
 				input.IncomeAccountID = &defaultRecord.IncomeAccountID
@@ -1977,8 +1977,7 @@ func (s *InvestmentService) prepareDividendWrite(ctx context.Context, input Divi
 	if err != nil {
 		return db.CreateTransactionParams{}, err
 	}
-	params.DividendCommodityID = nullableInt64(input.CommodityID)
-	params.DividendWithholdingOnly = input.WithholdingOnly
+	params.Dividend = &db.DividendFact{CommodityID: nullableInt64(input.CommodityID.Value), WithholdingOnly: input.WithholdingOnly}
 	params.InvestmentComponents = []db.InvestmentComponentSpec{{
 		Kind: "dividend_gross", CommodityID: input.CashCommodityID,
 		AmountValue: strconv.FormatInt(input.AmountValue, 10), AmountScale: input.AmountScale,
@@ -2302,7 +2301,7 @@ func (s *InvestmentService) AcceptSuggestionWithCompletion(ctx context.Context, 
 		AuthSessionID:          authSessionID,
 		RequestID:              requestID,
 		TransactionDate:        proposal.TransactionDate,
-		CommodityID:            commodityID,
+		CommodityID:            NullablePatch[int64]{Set: true, Value: commodityID},
 		CashAccountID:          proposal.CashAccountID,
 		CashCommodityID:        proposal.CashCommodityID,
 		IncomeAccountID:        proposal.IncomeAccountID,
@@ -2907,10 +2906,9 @@ func validateDividendInput(input DividendInput) (string, error) {
 	if input.AmountValue <= 0 {
 		return "", ValidationError{Message: "dividend amount is required"}
 	}
-	if input.WithholdingOnly && (input.CommodityID == nil || *input.CommodityID <= 0 ||
-		input.WithholdingAccountID == nil || *input.WithholdingAccountID <= 0 ||
+	if input.WithholdingOnly && (input.WithholdingAccountID == nil || *input.WithholdingAccountID <= 0 ||
 		input.IncomeAccountID != nil || input.WithholdingValue != nil || input.WithholdingScale != nil) {
-		return "", ValidationError{Message: "separate withholding requires an instrument and tax account, with amount_value as tax and no income or combined withholding fields"}
+		return "", ValidationError{Message: "separate withholding requires a tax account, with amount_value as tax and no income or combined withholding fields"}
 	}
 	date, err := cleanRequiredDate(input.TransactionDate, "transaction date")
 	if err != nil {

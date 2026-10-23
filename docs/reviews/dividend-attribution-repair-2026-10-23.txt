@@ -1,0 +1,233 @@
+#393 dividend/withholding attribution delivery validation — 2026-10-23
+Implementation base: be38634874d9299072e70f06b7657996da02be52
+Companion implementation commit owns the resulting code/docs.
+Native SQLite; Go race mode instruments Go/driver-wrapper code, not SQLite C.
+Synthetic isolated books only; no owner database or live provider used.
+
+EXPECTED FAILING REGRESSIONS BEFORE THEIR FIXES
+Primary tests at the implementation base; CSV tests on the same slice before
+its CSV optional-payer refinement. Failures below are intentional evidence.
+--- FAIL: TestSeparateWithholdingWithoutPayerPreservesShapeAndExactCoverage (1.26s)
+    investment_dividend_attribution_repair_test.go:22:
+            Error Trace:    /home/coder/Repos/rekenraam/backend/internal/app/investment_dividend_attribution_repair_test.go:22
+            Error:          Received unexpected error:
+                            separate withholding requires an instrument and tax account, with amount_value as tax and no income or combined withholding fields
+            Test:           TestSeparateWithholdingWithoutPayerPreservesShapeAndExactCoverage
+--- FAIL: TestDividendProviderIdentityExcludesCorrectedPaymentDescendants (1.35s)
+    investment_dividend_attribution_repair_test.go:72:
+            Error Trace:    /home/coder/Repos/rekenraam/backend/internal/app/investment_dividend_attribution_repair_test.go:72
+            Error:          An error is expected but got nil.
+                            expected: app.ValidationError
+            Test:           TestDividendProviderIdentityExcludesCorrectedPaymentDescendants
+FAIL
+FAIL    rekenraam/backend/internal/app  1.373s
+FAIL
+
+CSV BEFORE FIX
+--- FAIL: TestCSVIncomeMissingPayerPreservesKnownAmountsAndImportIdentity (0.00s)
+    --- FAIL: TestCSVIncomeMissingPayerPreservesKnownAmountsAndImportIdentity/no_payer_column (4.75s)
+        import_csv_investment_test.go:29:
+                Error Trace:    /home/coder/Repos/rekenraam/backend/internal/app/import_csv_investment_test.go:29
+                Error:          Received unexpected error:
+                                CSV investment mapping requires an explicit kind, instrument code column and dividend gross column
+                Test:           TestCSVIncomeMissingPayerPreservesKnownAmountsAndImportIdentity/no_payer_column
+    --- FAIL: TestCSVIncomeMissingPayerPreservesKnownAmountsAndImportIdentity/empty_source_cells (4.81s)
+        import_csv_investment_test.go:34:
+                Error Trace:    /home/coder/Repos/rekenraam/backend/internal/app/import_csv_investment_test.go:34
+                Error:          Received unexpected error:
+                                CSV investment row requires review: choose instrument, kind and accounts; gross minus withholding must equal signed cash
+                Test:           TestCSVIncomeMissingPayerPreservesKnownAmountsAndImportIdentity/empty_source_cells
+FAIL
+FAIL    rekenraam/backend/internal/app  4.874s
+FAIL
+
+FOCUSED APPLICATION/API CONTROLS
+./scripts/go-backend.sh test -race -count=1 -timeout=180s -run <dividend/withholding/provider/import/HTTP controls> ./internal/app ./internal/api
+ok      rekenraam/backend/internal/app  6.947s
+ok      rekenraam/backend/internal/api  4.489s
+
+LEGACY SOURCE/MIGRATION AND EXPLICIT IMPORT CLEAR
+./scripts/go-backend.sh test -race -count=1 -timeout=180s -run "^(TestDividendAttributionMigration.*|TestImportedDividendCorrectionPreservesCommittedIdentity)$" ./internal/app
+ok      rekenraam/backend/internal/app  4.602s
+
+CSV MISSING PAYER, IDENTITY AND INVALID-SOURCE CONTROLS
+./scripts/go-backend.sh test -race -count=1 -timeout=180s -run "^TestCSVInvestment.*|^TestCSVIncomeMissingPayer.*" ./internal/app
+ok      rekenraam/backend/internal/app  7.087s
+
+FINAL BACKEND GATE: COMPLETED BUILD, STABLE EMBED ASSETS
+./scripts/test-backend.sh
+ok      rekenraam/backend/cmd/rekenraam 91.751s
+ok      rekenraam/backend/internal/api  161.664s
+ok      rekenraam/backend/internal/app  287.960s
+ok      rekenraam/backend/internal/appruntime   6.652s
+ok      rekenraam/backend/internal/config   (cached)
+ok      rekenraam/backend/internal/db   221.591s
+ok      rekenraam/backend/internal/exact    (cached)
+?       rekenraam/backend/internal/lockfile [no test files]
+ok      rekenraam/backend/internal/marketdata   (cached)
+ok      rekenraam/backend/internal/onlinesource/trading212  (cached)
+ok      rekenraam/backend/internal/recur    (cached)
+ok      rekenraam/backend/internal/secretbox    (cached)
+ok      rekenraam/backend/internal/testdb   8.382s
+ok      rekenraam/backend/internal/totp (cached)
+ok      rekenraam/backend/internal/web  1.063s
+ok      rekenraam/backend/migrations    (cached)
+
+FINAL FRONTEND GATE
+./scripts/test-frontend.sh
+$ pnpm run catalogs:check && pnpm run openapi:generate && pnpm run paraglide:compile && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
+$ svelte-kit sync && vitest run src/lib/i18n/catalog-parity.test.ts
+
+ RUN  v5.0.5 /home/coder/Repos/rekenraam/frontend
+
+
+ Test Files  1 passed (1)
+      Tests  66 passed (66)
+   Start at  20:47:14
+   Duration  1.22s (tests 94%, import 5%, transform 1%, worker 1%)
+
+$ openapi-typescript ../api/openapi/openapi.yaml -o ./src/lib/api/schema.d.ts
+✨ openapi-typescript 7.13.0
+🚀 ../api/openapi/openapi.yaml → ./src/lib/api/schema.d.ts [1.6s]
+$ paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --strategy localStorage preferredLanguage baseLocale --emit-ts-declarations
+ℹ [paraglide-js] Compiling inlang project ...
+✔ [paraglide-js] Successfully compiled inlang project.
+Loading svelte-check in workspace: /home/coder/Repos/rekenraam/frontend
+Getting Svelte diagnostics...
+
+svelte-check found 0 errors and 0 warnings
+$ vitest run
+
+ RUN  v5.0.5 /home/coder/Repos/rekenraam/frontend
+
+
+ Test Files  56 passed (56)
+      Tests  727 passed (727)
+   Start at  20:48:36
+   Duration  9.52s (transform 46%, import 45%, tests 8%, worker 1%)
+
+    Isolate  56 workers spawned · ~243ms startup each (spawn + environment, per file)
+             at least ~1.27s faster with isolate: false — reuses workers across files instead of one per file
+
+
+FINAL INTEGRATED BUILD (TAIL)
+pnpm build
+✓ built in 6.70s
+(node:1170415) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Run npm run preview to preview your production build locally.
+
+> Using @sveltejs/adapter-static
+(node:1170415) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Wrote site to "build"
+✔ done
+ok      rekenraam/backend/internal/web  0.006s
+
+FINAL BROWSER GATE: CURRENT BINARY REUSED
+E2E_SKIP_BUILD=1 E2E_WORKERS=3 pnpm --dir e2e test investments-dividend-attribution.spec.ts investments-dividend-correction.spec.ts investments-provider-dividends.spec.ts income-coverage.spec.ts import-dividend-review.spec.ts csv-investment-income.spec.ts
+$ playwright test investments-dividend-attribution.spec.ts investments-dividend-correction.spec.ts investments-provider-dividends.spec.ts income-coverage.spec.ts import-dividend-review.spec.ts csv-investment-income.spec.ts
+[WebServer] (node:1181175) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 36 tests using 3 workers
+(node:1181504) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1181508) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1181503) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+····································
+  36 passed (1.8m)
+
+250K-POSTING RESOURCE GATE: NO CONCURRENT BUILD/BROWSER LOAD
+./scripts/measure-large-book.sh
+=== RUN   TestLargeBookExportAndSelfCheckStayBounded
+=== PAUSE TestLargeBookExportAndSelfCheckStayBounded
+=== CONT  TestLargeBookExportAndSelfCheckStayBounded
+    large_book_test.go:245: bundle export: wall=11.669s allocated=433MiB peak-heap=20MiB
+    large_book_test.go:277: self-check: wall=13.514s allocated=137MiB peak-heap=39MiB
+--- PASS: TestLargeBookExportAndSelfCheckStayBounded (39.52s)
+PASS
+ok      rekenraam/backend/internal/app  39.526s
+
+WRITER DENSITY: BOTH SHAPES, BUILDS OUTSIDE OPERATION TIMINGS
+REKENRAAM_PIL_DENSITIES=0,10,100 REKENRAAM_PIL_REPEATS=3 ./scripts/measure-payment-in-lieu-density.sh
+=== RUN   TestPaymentInLieuAdmissionCostByDensity
+=== RUN   TestPaymentInLieuAdmissionCostByDensity/unrelated/0
+    payment_in_lieu_density_test.go:332: BUILD shape=unrelated payments=0 wall=835ms last_payment_writes=[]
+    payment_in_lieu_density_test.go:363: RESULT shape=unrelated payments=0 op=short_replacement_preview runs=3 wall_min=14.6ms wall_median=16.05ms wall_max=16.25ms alloc_mean_KiB=269 writer_wait_max=12.69ms
+    payment_in_lieu_density_test.go:364: RESULT shape=unrelated payments=0 op=short_replacement runs=3 wall_min=20.01ms wall_median=21.2ms wall_max=23.56ms alloc_mean_KiB=250 writer_wait_max=18.68ms
+    payment_in_lieu_density_test.go:387: RESULT shape=unrelated payments=0 op=unrelated_short_sale_preview runs=3 wall_min=8.05ms wall_median=8.34ms wall_max=8.45ms alloc_mean_KiB=112 writer_wait_max=6.78ms
+    payment_in_lieu_density_test.go:388: RESULT shape=unrelated payments=0 op=unrelated_short_sale runs=3 wall_min=13.64ms wall_median=13.93ms wall_max=14.22ms alloc_mean_KiB=122 writer_wait_max=12.13ms
+    payment_in_lieu_density_test.go:412: RESULT shape=unrelated payments=0 op=short_reversal_preview runs=3 wall_min=8.97ms wall_median=9.42ms wall_max=10.01ms alloc_mean_KiB=149 writer_wait_max=7.88ms
+    payment_in_lieu_density_test.go:413: RESULT shape=unrelated payments=0 op=short_reversal runs=3 wall_min=15.02ms wall_median=15.05ms wall_max=16.06ms alloc_mean_KiB=159 writer_wait_max=13.56ms
+=== RUN   TestPaymentInLieuAdmissionCostByDensity/unrelated/10
+    payment_in_lieu_density_test.go:332: BUILD shape=unrelated payments=10 wall=791ms last_payment_writes=[9.85173ms 9.404028ms 13.054388ms 8.637132ms 8.196387ms]
+    payment_in_lieu_density_test.go:363: RESULT shape=unrelated payments=10 op=short_replacement_preview runs=3 wall_min=15.93ms wall_median=16.18ms wall_max=20.98ms alloc_mean_KiB=242 writer_wait_max=15.98ms
+    payment_in_lieu_density_test.go:364: RESULT shape=unrelated payments=10 op=short_replacement runs=3 wall_min=21.64ms wall_median=22.36ms wall_max=24.66ms alloc_mean_KiB=254 writer_wait_max=19.92ms
+    payment_in_lieu_density_test.go:387: RESULT shape=unrelated payments=10 op=unrelated_short_sale_preview runs=3 wall_min=7.73ms wall_median=7.79ms wall_max=9.05ms alloc_mean_KiB=121 writer_wait_max=7.35ms
+    payment_in_lieu_density_test.go:388: RESULT shape=unrelated payments=10 op=unrelated_short_sale runs=3 wall_min=13.8ms wall_median=14.48ms wall_max=85.83ms alloc_mean_KiB=131 writer_wait_max=83.58ms
+    payment_in_lieu_density_test.go:412: RESULT shape=unrelated payments=10 op=short_reversal_preview runs=3 wall_min=9.35ms wall_median=13.09ms wall_max=13.67ms alloc_mean_KiB=165 writer_wait_max=10.94ms
+    payment_in_lieu_density_test.go:413: RESULT shape=unrelated payments=10 op=short_reversal runs=3 wall_min=14.21ms wall_median=14.29ms wall_max=86.42ms alloc_mean_KiB=170 writer_wait_max=82.76ms
+=== RUN   TestPaymentInLieuAdmissionCostByDensity/unrelated/100
+    payment_in_lieu_density_test.go:332: BUILD shape=unrelated payments=100 wall=5.953s last_payment_writes=[12.891917ms 8.639102ms 9.119275ms 9.397218ms 9.054266ms]
+    payment_in_lieu_density_test.go:363: RESULT shape=unrelated payments=100 op=short_replacement_preview runs=3 wall_min=17.28ms wall_median=17.37ms wall_max=19.35ms alloc_mean_KiB=322 writer_wait_max=16.04ms
+    payment_in_lieu_density_test.go:364: RESULT shape=unrelated payments=100 op=short_replacement runs=3 wall_min=23.42ms wall_median=24.15ms wall_max=24.58ms alloc_mean_KiB=334 writer_wait_max=20.73ms
+    payment_in_lieu_density_test.go:387: RESULT shape=unrelated payments=100 op=unrelated_short_sale_preview runs=3 wall_min=9.55ms wall_median=10.51ms wall_max=10.7ms alloc_mean_KiB=191 writer_wait_max=9.16ms
+    payment_in_lieu_density_test.go:388: RESULT shape=unrelated payments=100 op=unrelated_short_sale runs=3 wall_min=15.45ms wall_median=15.47ms wall_max=15.57ms alloc_mean_KiB=201 writer_wait_max=13.24ms
+    payment_in_lieu_density_test.go:412: RESULT shape=unrelated payments=100 op=short_reversal_preview runs=3 wall_min=12.36ms wall_median=12.91ms wall_max=13.41ms alloc_mean_KiB=250 writer_wait_max=11.33ms
+    payment_in_lieu_density_test.go:413: RESULT shape=unrelated payments=100 op=short_reversal runs=3 wall_min=16.92ms wall_median=17.69ms wall_max=21.65ms alloc_mean_KiB=261 writer_wait_max=18.76ms
+=== RUN   TestPaymentInLieuAdmissionCostByDensity/concentrated/0
+    payment_in_lieu_density_test.go:332: BUILD shape=concentrated payments=0 wall=119ms last_payment_writes=[]
+    payment_in_lieu_density_test.go:363: RESULT shape=concentrated payments=0 op=short_replacement_preview runs=3 wall_min=14.42ms wall_median=15.01ms wall_max=16ms alloc_mean_KiB=232 writer_wait_max=12.63ms
+    payment_in_lieu_density_test.go:364: RESULT shape=concentrated payments=0 op=short_replacement runs=3 wall_min=19.34ms wall_median=20.07ms wall_max=20.85ms alloc_mean_KiB=243 writer_wait_max=17.03ms
+    payment_in_lieu_density_test.go:387: RESULT shape=concentrated payments=0 op=unrelated_short_sale_preview runs=3 wall_min=8.26ms wall_median=10.98ms wall_max=11.01ms alloc_mean_KiB=112 writer_wait_max=8.95ms
+    payment_in_lieu_density_test.go:388: RESULT shape=concentrated payments=0 op=unrelated_short_sale runs=3 wall_min=13.33ms wall_median=13.57ms wall_max=14.48ms alloc_mean_KiB=121 writer_wait_max=12.31ms
+    payment_in_lieu_density_test.go:412: RESULT shape=concentrated payments=0 op=short_reversal_preview runs=3 wall_min=8.76ms wall_median=9.52ms wall_max=12.9ms alloc_mean_KiB=149 writer_wait_max=10.18ms
+    payment_in_lieu_density_test.go:413: RESULT shape=concentrated payments=0 op=short_reversal runs=3 wall_min=14.85ms wall_median=15.1ms wall_max=18.64ms alloc_mean_KiB=159 writer_wait_max=15.81ms
+=== RUN   TestPaymentInLieuAdmissionCostByDensity/concentrated/10
+    payment_in_lieu_density_test.go:332: BUILD shape=concentrated payments=10 wall=704ms last_payment_writes=[10.93735ms 10.751649ms 9.861901ms 16.263644ms 9.249727ms]
+    payment_in_lieu_density_test.go:363: RESULT shape=concentrated payments=10 op=short_replacement_preview runs=3 wall_min=14.73ms wall_median=16.78ms wall_max=17.96ms alloc_mean_KiB=236 writer_wait_max=14.18ms
+    payment_in_lieu_density_test.go:364: RESULT shape=concentrated payments=10 op=short_replacement runs=3 wall_min=21.75ms wall_median=27.51ms wall_max=28.08ms alloc_mean_KiB=248 writer_wait_max=22.66ms
+    payment_in_lieu_density_test.go:387: RESULT shape=concentrated payments=10 op=unrelated_short_sale_preview runs=3 wall_min=7.66ms wall_median=7.69ms wall_max=7.74ms alloc_mean_KiB=113 writer_wait_max=6.45ms
+    payment_in_lieu_density_test.go:388: RESULT shape=concentrated payments=10 op=unrelated_short_sale runs=3 wall_min=12.9ms wall_median=13.05ms wall_max=13.51ms alloc_mean_KiB=124 writer_wait_max=11.48ms
+    payment_in_lieu_density_test.go:412: RESULT shape=concentrated payments=10 op=short_reversal_preview runs=3 wall_min=10.26ms wall_median=12.21ms wall_max=13.52ms alloc_mean_KiB=156 writer_wait_max=10.45ms
+    payment_in_lieu_density_test.go:413: RESULT shape=concentrated payments=10 op=short_reversal runs=3 wall_min=14.57ms wall_median=14.71ms wall_max=15.14ms alloc_mean_KiB=166 writer_wait_max=12.57ms
+=== RUN   TestPaymentInLieuAdmissionCostByDensity/concentrated/100
+    payment_in_lieu_density_test.go:332: BUILD shape=concentrated payments=100 wall=3.464s last_payment_writes=[11.374683ms 9.377087ms 9.429378ms 80.075102ms 8.695051ms]
+    payment_in_lieu_density_test.go:363: RESULT shape=concentrated payments=100 op=short_replacement_preview runs=3 wall_min=17.22ms wall_median=17.31ms wall_max=18.02ms alloc_mean_KiB=270 writer_wait_max=14.58ms
+    payment_in_lieu_density_test.go:364: RESULT shape=concentrated payments=100 op=short_replacement runs=3 wall_min=23.18ms wall_median=24.11ms wall_max=29.06ms alloc_mean_KiB=284 writer_wait_max=23.54ms
+    payment_in_lieu_density_test.go:387: RESULT shape=concentrated payments=100 op=unrelated_short_sale_preview runs=3 wall_min=9.26ms wall_median=9.56ms wall_max=10.87ms alloc_mean_KiB=136 writer_wait_max=9.12ms
+    payment_in_lieu_density_test.go:388: RESULT shape=concentrated payments=100 op=unrelated_short_sale runs=3 wall_min=13.72ms wall_median=15.67ms wall_max=15.92ms alloc_mean_KiB=147 writer_wait_max=13.19ms
+    payment_in_lieu_density_test.go:412: RESULT shape=concentrated payments=100 op=short_reversal_preview runs=3 wall_min=12.48ms wall_median=15.92ms wall_max=16.55ms alloc_mean_KiB=188 writer_wait_max=13.39ms
+    payment_in_lieu_density_test.go:413: RESULT shape=concentrated payments=100 op=short_reversal runs=3 wall_min=15.62ms wall_median=16.99ms wall_max=18.47ms alloc_mean_KiB=196 writer_wait_max=15.65ms
+--- PASS: TestPaymentInLieuAdmissionCostByDensity (20.65s)
+PASS
+ok      rekenraam/backend/internal/app  20.665s
+
+STRUCTURAL AUDIT: EXPECTED POLICY-TEST RENAME REVIEWED
+./scripts/check-post-merge.sh HEAD
+
+== numbered-file collisions (migrations, ADRs)
+
+== generated OpenAPI client drift
+
+== duplicate paragraphs in Markdown docs
+
+== duplicate GitHub workflows
+
+== colliding work-item IDs
+
+== tests lost relative to the merged sides
+  missing since HEAD: backend/internal/app: TestSeparateWithholdingRequiresInstrumentAndTaxAccount
+
+post-merge audit: findings above — review each before pushing
+
+Structural finding disposition: the old missing-payer requirement name is
+intentionally replaced by TestSeparateWithholdingRequiresTaxShapeAndValidSuppliedPayer.
+The invalid-reference/account/shape controls remain; positive unassigned entry
+and omission/null/value repairs are covered by new named tests. No financial
+invariant test is removed. All other structural checks, including generated
+OpenAPI drift, pass. Document links/named controls and git diff --check pass.

@@ -34,7 +34,11 @@ func (s *SelfCheckService) investmentAttributionCheck(ctx context.Context, snaps
 	if err != nil {
 		return SelfCheckResult{}, err
 	}
-	return investmentAttributionResult(append(records, cash...)), nil
+	dividends, err := s.repository.DividendAttributions(ctx, snapshot, BookID)
+	if err != nil {
+		return SelfCheckResult{}, err
+	}
+	return investmentAttributionResult(append(append(records, cash...), dividends...)), nil
 }
 
 func investmentAttributionResult(records []db.InvestmentAttributionDiagnostic) SelfCheckResult {

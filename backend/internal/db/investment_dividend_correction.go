@@ -7,6 +7,11 @@ import (
 	"fmt"
 )
 
+type DividendFact struct {
+	CommodityID     sql.NullInt64
+	WithholdingOnly bool
+}
+
 // DividendOperationRecord pins a posted cash dividend (T-115). A cash
 // dividend opens no lot and replays nothing; its correction is an audited
 // inverse journal, optionally followed by a replacement, under the shared
@@ -37,7 +42,7 @@ func dividendOperationByTransactionIDQuery(ctx context.Context, reader saleOpera
 		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
 		JOIN transaction_versions linked_version ON linked_version.id = link.transaction_version_id
 		JOIN current_transaction_versions current ON current.transaction_id = linked_version.transaction_id
-		LEFT JOIN investment_dividend_facts facts ON facts.operation_id = o.id
+		JOIN investment_dividend_facts facts ON facts.operation_id = o.id AND facts.book_id=o.book_id
 		WHERE o.book_id = ? AND linked_version.transaction_id = ? AND o.operation_kind = 'dividend'`,
 		bookID, transactionID).Scan(&record.OperationID, &record.TransactionID, &record.TransactionVersionID,
 		&record.CurrentVersionID, &record.EventDate, &record.CommodityID, &record.WithholdingOnly, &corrected)

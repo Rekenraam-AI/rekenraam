@@ -565,6 +565,10 @@ pnpm test:release-preflight
 ## Area Notes
 
 - Backend code lives in `backend/`; focused commands use `./scripts/go-backend.sh`. The full validation gate remains `./scripts/test-backend.sh`.
+- Finish an integrated build before running Go gates that embed its assets.
+  Building replaces `backend/internal/web/dist`; overlapping it with compilation
+  can remove files after Go has enumerated them. Browser checks can reuse that
+  completed, current binary with `E2E_SKIP_BUILD=1`.
 - `scripts/test-e2e-acceptance.sh` runs only the browser cases tagged
   `[acceptance]` — the ones that map onto a plan's validation matrix, so closing
   an initiative can point at a suite rather than at an argument (T-61). The

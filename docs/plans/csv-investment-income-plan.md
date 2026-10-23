@@ -1,12 +1,14 @@
 # CSV dividend and withholding mapping (#241)
 
-Governed by product requirements, the import plan and ADRs 0011–0013.
+Governed by product requirements, the import plan and ADRs 0011–0013/0019.
 
 CSV profiles opt into an `investment` mapping; profiles without it keep their
 bank-cash contract. A mapping chooses dividend, separate withholding, or an
 explicit row-type column with two distinct owner-chosen source values. Unknown
-values stay unresolved. The instrument column contains the exact existing
-commodity code, never a guessed ticker or a description. One bulk instrument
+values stay unresolved. The optional instrument column contains an exact existing
+commodity code, never a guessed ticker or a description. Missing columns or blank
+cells mean unassigned payer (#393); a supplied nonempty unresolved code still
+requires review rather than being silently discarded. One bulk instrument
 read resolves codes for staging; the owner may choose another existing instrument
 in review. No instrument is created implicitly.
 
@@ -36,5 +38,12 @@ investment evidence plus occurrence when no reference exists); changed evidence
 under an already committed identity remains duplicate and uses native correction.
 
 Instrument activity, correction/reversal and bundle export reuse #229's facts.
+The #393 refinement stores payment shape independently of nullable payer; native
+payer correction preserves on omission, clears on explicit null and assigns on
+a value. Unassigned standalone tax is known tax without gross income, not an
+unknown-economics cash fallback. Raw/normalized source and commit identity stay
+unchanged through native corrections and reimport. Bundle schema 17 retains
+withholding-only shape with an empty payer field. See the
+[delivery evidence](../reviews/dividend-attribution-repair-2026-10-23.md).
 This slice adds no provider adapter, corporate-action importer, automatic tax
 classification, guessed gross amounts or currency conversion.

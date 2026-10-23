@@ -41,7 +41,7 @@ test('[acceptance] CSV dividends and separate tax use saved mappings and reviewe
   await mapping.getByRole('combobox', { name: 'Payment type column', exact: true }).selectOption('Type');
   await mapping.getByLabel('Source value for dividends').fill('DIV');
   await mapping.getByLabel('Source value for tax').fill('TAX');
-  await mapping.getByRole('combobox', { name: 'Instrument commodity code column', exact: true }).selectOption('Code');
+  await mapping.getByRole('combobox', { name: /^Instrument commodity code column/ }).selectOption('Code');
   await mapping.getByRole('combobox', { name: 'Gross dividend column', exact: true }).selectOption('Gross');
   await mapping.getByRole('combobox', { name: 'Withholding amount column', exact: true }).selectOption('Tax');
   await mapping.getByRole('combobox', { name: 'Cash account', exact: true }).selectOption(String(cash.id));
@@ -78,4 +78,48 @@ test('[acceptance] CSV dividends and separate tax use saved mappings and reviewe
   await page.getByRole('button', { name: 'Commit to ledger' }).click();
   await expect(page.getByText('0 transactions committed')).toBeVisible();
   expect((await activity()).transactions).toHaveLength(3);
+});
+
+test('CSV dividends and withholding without a payer column keep exact amounts and dedupe', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const suffix = Date.now();
+  const date = todayISO();
+  const cash = await createCashAccount(page, csrfToken, `Unassigned CSV ${suffix}`, currencyID);
+  const category = async (kind: 'income' | 'expense') => apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: `Unassigned ${kind} ${suffix}`, account_class: kind, account_kind: kind, default_commodity_id: currencyID,
+    allows_postings: true, opened_on: date, effective_from: date
+  });
+  const income = await category('income');
+  const tax = await category('expense');
+  const profile = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/import-profiles', csrfToken, {
+    name: `Unassigned mapping ${suffix}`, adapter_kind: 'csv', config: JSON.stringify({ delimiter: 'semicolon', date_column: 'Date', amount_column: 'Cash', date_layout: 'YMD', decimal_separator: ',', external_ref_column: 'Ref',
+      investment: { kind: 'column', kind_column: 'Type', dividend_value: 'DIV', withholding_value: 'TAX', gross_column: 'Gross', withholding_column: 'Tax', cash_account_id: cash.id, income_account_id: income.id, withholding_account_id: tax.id } })
+  });
+  const contents = `Date;Type;Cash;Gross;Tax;Ref\n${date};DIV;85,00;100,00;15,00;div-${suffix}\n${date};TAX;-2,00;;;tax-${suffix}\n`;
+  const upload = async () => {
+    await page.locator('input[type="file"]').setInputFiles({ name: 'unassigned.csv', mimeType: 'text/csv', buffer: Buffer.from(contents) });
+    await page.getByLabel('Saved mapping').selectOption(String(profile.id));
+    await page.getByRole('button', { name: 'Upload & preview' }).click();
+  };
+  await page.goto('/app/import');
+  await upload();
+  for (const index of [1, 2]) {
+    const row = page.getByRole('group', { name: `Investment row ${index}`, exact: true });
+    await expect(row.getByRole('combobox', { name: /^Instrument/ })).toHaveValue('');
+    await expect(row.getByRole('option', { name: 'Unassigned', exact: true })).toHaveCount(1);
+  }
+  await expectNoAccessibilityViolations(page, 'CSV income without payer attribution');
+  await page.getByRole('button', { name: 'Commit to ledger' }).click();
+  await expect(page.getByText('2 transactions committed')).toBeVisible();
+  const coverage = await apiJSON<{ unassigned: Array<{ transaction_id: number; cash: { value: string; scale: number }; gross_state: string; withholding_state: string }> }>(page, 'GET', '/api/v1/investments/income-coverage');
+  const ledger = await apiJSON<{ transactions: Array<{ id: number }> }>(page, 'GET', `/api/v1/transactions?account_id=${cash.id}`);
+  expect(ledger.transactions).toHaveLength(2);
+  const items = coverage.unassigned.filter(row => ledger.transactions.some(transaction => transaction.id === row.transaction_id));
+  expect(items).toHaveLength(2);
+  expect(items.reduce((sum, item) => sum + BigInt(item.cash.value) * 100n / 10n ** BigInt(item.cash.scale), 0n)).toBe(8300n);
+  expect(items.find(item => item.gross_state === 'none')?.withholding_state).toBe('known');
+  await page.getByRole('button', { name: 'Import another file' }).click();
+  await upload();
+  await page.getByRole('button', { name: 'Commit to ledger' }).click();
+  await expect(page.getByText('0 transactions committed')).toBeVisible();
 });

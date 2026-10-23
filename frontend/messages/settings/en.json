@@ -1713,7 +1713,7 @@
   "settings_data_selfcheck_warnings": "{count} attribution warnings.",
   "settings_data_selfcheck_historical": "Saved result; rerun after corrections.",
   "settings_data_selfcheck_attribution_title": "Investment attribution",
-  "settings_data_selfcheck_attribution_explanation": "Checks historical short support for payments in lieu and the current parent explanation for fractional-share disposals. Financial validity is checked separately.",
+  "settings_data_selfcheck_attribution_explanation": "Checks historical short support for payments in lieu, the current parent explanation for fractional-share disposals, and payer attribution against retained provider claims. Financial validity is checked separately.",
   "settings_data_selfcheck_attribution_next": "Open the payment and compare its attribution with your broker statement. The check never changes cash or source evidence.",
   "investments_attribution_no_short": "No short units support this attribution at the close before the ex-date.",
   "investments_attribution_ex_date_after_payment": "The ex-date follows the recorded payment date.",
@@ -1727,5 +1727,6 @@
   "investments_payment_in_lieu_correction_reason": "Reason for correction",
   "investments_attribution_cash_parent_unresolved": "The original corporate action was reversed. The disposal remains recorded; its financial validity is checked separately.",
   "investments_attribution_cash_parent_mismatch": "The current corporate action no longer matches this disposal’s holding, instrument or date. The original reference is preserved.",
-  "investments_cash_in_lieu_current_parent": "Current action #{id}"
+  "investments_cash_in_lieu_current_parent": "Current action #{id}",
+  "investments_dividend_payer_help": "The payer is optional. Changing only this attribution leaves cash and tax unchanged."
 }

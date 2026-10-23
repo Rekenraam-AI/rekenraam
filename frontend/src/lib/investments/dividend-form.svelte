@@ -214,7 +214,7 @@
   const canSubmitCash = $derived(
     cashAccountID !== '' &&
     !!cashCommodityID &&
-    (mode === 'withholding' ? !!selectedInstrument && withholdingAccountID !== '' : incomeAccountID !== '') &&
+    (mode === 'withholding' ? withholdingAccountID !== '' : incomeAccountID !== '') &&
     amountStr.trim() !== ''
   );
 
@@ -390,7 +390,7 @@
 {/if}
 
 <form onsubmit={handleSubmit} aria-busy={pending} class="space-y-4">
-  <h2 id={mode === 'withholding' ? 'withholding-title' : undefined} class="text-base font-semibold text-foreground">{title}</h2>
+  <h2 id={mode === 'withholding' ? 'withholding-title' : mode === 'cash' ? 'dividend-title' : 'reinvested-dividend-title'} class="text-base font-semibold text-foreground">{title}</h2>
 
   <!-- Date -->
   <div>
@@ -410,10 +410,13 @@
   <div class="relative">
     <label for="div-instrument" class="mb-1 block text-sm font-medium text-foreground">
       {m.investments_form_instrument()}
-      {#if mode === 'cash'}
+      {#if mode !== 'reinvested'}
         <span class="ml-1 text-xs font-normal text-muted">({m.investments_form_optional()})</span>
       {/if}
     </label>
+    {#if mode !== 'reinvested'}
+      <p class="mb-2 text-xs text-muted">{m.investments_dividend_payer_help()}</p>
+    {/if}
     <input
       id="div-instrument"
       type="text"

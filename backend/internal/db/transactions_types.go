@@ -257,9 +257,8 @@ type CreateTransactionParams struct {
 	// spec if any of them has been restructured since (T-100).
 	AccountRuleDependencies []AccountRuleDependency
 	InvestmentComponents    []InvestmentComponentSpec
-	// DividendCommodityID identifies the payer of all gross/withholding components.
-	DividendCommodityID     sql.NullInt64
-	DividendWithholdingOnly bool
+	// Dividend preserves the payment shape independently of optional payer attribution.
+	Dividend *DividendFact
 	// PaymentInLieu names the short holding and ex-date a payment in lieu
 	// of a dividend was owed for (#255); a reversal repeats its predecessor's.
 	PaymentInLieu            *PaymentInLieuFact

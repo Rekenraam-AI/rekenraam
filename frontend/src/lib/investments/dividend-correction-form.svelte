@@ -150,7 +150,7 @@
       } };
     } else {
       target = { kind: 'cash', payload: {
-        commodity_id: payerID ? Number(payerID) : initialDividend!.commodity_id,
+        commodity_id: payerID ? Number(payerID) : null,
         withholding_only: withholdingOnly,
         transaction_date: terms.event_date, cash_account_id: initialDividend!.cash_account_id,
         cash_commodity_id: terms.cash_commodity_id, income_account_id: withholdingOnly ? undefined : Number(incomeAccountID),
@@ -276,16 +276,17 @@
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 font-mono text-sm text-foreground" />
   </div>
 
-  {#if !reinvested && !withholdingOnly}
+  {#if !reinvested}
     <div>
       <label for="dividend-correction-payer" class="mb-1 block text-sm font-medium text-foreground">{m.income_coverage_payer()}</label>
       <select id="dividend-correction-payer" bind:value={payerID}
         class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground">
-        {#if !initialDividend?.commodity_id}<option value="">{m.income_coverage_payer_unassigned()}</option>{/if}
+        <option value="">{m.income_coverage_payer_unassigned()}</option>
         {#each instrumentsQuery.data?.instruments ?? [] as instrument (instrument.commodity_id)}
           <option value={String(instrument.commodity_id)}>{instrument.display_name} ({instrument.symbol || instrument.commodity_code})</option>
         {/each}
       </select>
+      <p class="mt-1 text-xs text-muted">{m.investments_dividend_payer_help()}</p>
     </div>
   {/if}
 

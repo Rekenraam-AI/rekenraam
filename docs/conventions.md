@@ -207,6 +207,17 @@ When a feature introduces a durable new rule, update one of those documents in t
 - Keep owner declarations separate from immutable provider evidence. Manual
   linking must not duplicate financial effects; later refresh must not overwrite
   owner corrections. A missing local mapping/default is an app review gap.
+- Cash-dividend and withholding payer is optional attribution (#393, ADR 0019),
+  independent of immutable payment shape and exact known gross/tax/cash. Entry
+  omission/null is unassigned; replacement omission preserves, null clears and
+  a value assigns. Do not infer holdings or zero tax to fill missing attribution.
+  Provider claims retain payment identity across original/inverse/replacement
+  journals; repair never erases source evidence or admits a second claim. A
+  different known source-linked payer warns, an unassigned payer has unavailable
+  current support, and manual unassigned cash stays in income coverage. CSV
+  income with no payer uses the same writer; a supplied unresolved source code
+  still requires review. Actual financial date/account/currency corrections are
+  a separate command contract from neutral attribution repair.
 - Market-data provider secrets belong in operator configuration, not SQLite
   business tables.
 - Market-data providers should be added in this order: built-in Go adapters for

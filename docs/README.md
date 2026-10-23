@@ -71,9 +71,11 @@ records #392's all-four-parent replay, retained financial controls and current
 provenance diagnostics. The completed
 [cross-family inventory](reviews/financial-dependency-inventory-2026-10-23.md)
 records #391's dispositions, independent figures and reproducible counterfactuals.
-#393 retains payer/shape consistency and dividend source ancestry; #394/#395
-own historical-parent entry and typed cash/reinvestment field corrections.
-Their runtime changes and the wider #390 product/workflow audit remain open.
+The [dividend/tax delivery evidence](reviews/dividend-attribution-repair-2026-10-23.md)
+records #393's optional/clearable payer, immutable tax shape, source identity and
+diagnostics, including missing-payer CSV income. #394/#395 still own historical-parent
+entry and typed cash/reinvestment field corrections; #390 remains the wider
+product/workflow audit.
 
 [ADR 0018](adrs/0018-personal-access-token-boundary.md) and the
 [personal-access-token contract](plans/personal-access-tokens-plan.md) define

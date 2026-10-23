@@ -53,8 +53,9 @@
     </label>
     {/if}
     <label class="flex min-w-0 flex-col gap-1 text-sm text-foreground">{m.investments_form_instrument()}
+      {#if !source.instrument_code}<span class="text-xs text-muted">{m.investments_form_optional()}</span>{/if}
       <select value={resolution.instrument_commodity_id || ''} onchange={(e) => onchange({ instrument_commodity_id: Number(e.currentTarget.value) || undefined })} class="min-h-11 min-w-0 w-full rounded-(--radius-control) border border-border bg-control px-3 py-2">
-        <option value="">{sourceInstrumentOption ?? m.import_csv_column_none()}</option>
+        <option value="">{sourceInstrumentOption ?? (!source.instrument_code ? m.income_coverage_payer_unassigned() : m.import_csv_column_none())}</option>
         {#each instruments.filter(i => i.status === 'active') as instrument (instrument.commodity_id)}<option value={instrument.commodity_id}>{instrument.commodity_code} · {instrument.display_name}</option>{/each}
       </select>
     </label>

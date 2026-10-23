@@ -176,6 +176,28 @@
   }
 </script>
 
+{#snippet evidenceValues(evidence: ProviderDividendEvidence, shape: string)}
+<dl class="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+  <div>
+    <dt class="text-xs text-muted">{m.investments_suggestion_per_share()}</dt>
+    <dd class="tabular-nums text-foreground">
+      {amount(evidence.amountPerShare)}
+      {#if evidence.amountPerShare && evidence.listingCurrency}
+        <span class="block text-xs text-muted">{m.investments_suggestion_listing_currency_note({ currency: evidence.listingCurrency })}</span>
+      {/if}
+    </dd>
+  </div>
+  <div>
+    <dt class="text-xs text-muted">{m.investments_suggestion_units({ date: evidence.entitlementDate })}</dt>
+    <dd class="tabular-nums text-foreground">{amount(evidence.entitledUnits)}</dd>
+  </div>
+  <div>
+    <dt class="text-xs text-muted">{shape === 'payment_in_lieu' ? m.investments_suggestion_estimated_owed() : m.investments_suggestion_estimated_gross()}</dt>
+    <dd class="tabular-nums text-foreground">{amount(evidence.estimatedGross)}</dd>
+  </div>
+</dl>
+{/snippet}
+
 {#snippet revisionNotice(s: InvestmentEventSuggestionResponse, evidence: ProviderDividendEvidence | null, settled: boolean)}
   {@const steps = providerDividendRevisions(evidence, s.revisions)}
   {#if steps.length > 0}
@@ -234,25 +256,7 @@
                 </div>
 
                 {#if evidence}
-                  <dl class="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
-                    <div>
-                      <dt class="text-xs text-muted">{m.investments_suggestion_per_share()}</dt>
-                      <dd class="tabular-nums text-foreground">
-                        {amount(evidence.amountPerShare)}
-                        {#if evidence.amountPerShare && evidence.listingCurrency}
-                          <span class="block text-xs text-muted">{m.investments_suggestion_listing_currency_note({ currency: evidence.listingCurrency })}</span>
-                        {/if}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt class="text-xs text-muted">{m.investments_suggestion_units({ date: evidence.entitlementDate })}</dt>
-                      <dd class="tabular-nums text-foreground">{amount(evidence.entitledUnits)}</dd>
-                    </div>
-                    <div>
-                      <dt class="text-xs text-muted">{shape === 'payment_in_lieu' ? m.investments_suggestion_estimated_owed() : m.investments_suggestion_estimated_gross()}</dt>
-                      <dd class="tabular-nums text-foreground">{amount(evidence.estimatedGross)}</dd>
-                    </div>
-                  </dl>
+                  {@render evidenceValues(evidence, shape)}
                   {#if (shape === 'needs_completion' || shape === 'payment_in_lieu') && evidence.missing.length > 0}
                     <p class="text-xs text-muted">
                       {m.investments_suggestion_needs()}: {evidence.missing.map(missingLabel).join(', ')}
@@ -349,13 +353,26 @@
         <h2 class="mb-3 text-sm font-semibold text-foreground">{m.investments_suggestions_history_title()}</h2>
         <ul class="space-y-2">
           {#each history as s (s.id)}
+            {@const retained = parseProviderDividendEvidence(s.evidence)}
+            {@const paymentID = s.generated_transaction_id ?? s.linked_transaction_id}
             <li>
               <Panel>
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="rounded-full px-2 py-0.5 text-xs font-medium {statusClass(s.status)}">{statusLabel(s.status)}</span>
                   <span class="text-sm text-foreground">{title(s)}</span>
                   <span class="text-xs text-muted">{m.investments_suggestion_ex_date({ date: s.event_date })}</span>
+                  <span class="text-xs text-muted">{sourceLabel(s.source_code)}</span>
                 </div>
+                {#if paymentID}
+                  <a class="mt-1 inline-block text-sm underline" href={`/app/transactions?transaction_id=${paymentID}`}>
+                    {m.investments_attribution_payment_link({ id: String(paymentID) })}
+                  </a>
+                {/if}
+                {#if retained}
+                  <div class="mt-2" data-testid="settled-event-evidence">
+                    {@render evidenceValues(retained, proposalShape(s.proposed_transaction))}
+                  </div>
+                {/if}
                 {#if s.failure_reason}
                   <p class="mt-1 text-xs text-danger">{s.failure_reason}</p>
                 {/if}

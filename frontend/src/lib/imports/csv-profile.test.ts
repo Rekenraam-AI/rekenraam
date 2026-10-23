@@ -41,6 +41,8 @@ describe('investment CSV profile matching', () => {
     expect(validCSVInvestmentMapping({ ...investment, gross_column: '' })).toBe(false);
     expect(validCSVInvestmentMapping({ ...investment, withholding_value: 'DIV' })).toBe(false);
     expect(validCSVInvestmentMapping({ kind: 'withholding', instrument_column: 'Code' })).toBe(true);
+    expect(validCSVInvestmentMapping({ kind: 'withholding' })).toBe(true);
+    expect(validCSVInvestmentMapping({ ...investment, instrument_column: '' })).toBe(true);
   });
   it('does not suggest a mapping when investment evidence columns are missing', () => {
     const profiles = [{ id: 1, config: JSON.stringify({ delimiter: 'semicolon', date_column: 'Date', amount_column: 'Cash', date_layout: 'YMD', decimal_separator: ',', investment }) }];

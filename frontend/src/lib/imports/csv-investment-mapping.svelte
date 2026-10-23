@@ -46,6 +46,7 @@
         </label>
       {/if}
       <label class="flex flex-col gap-1 text-sm text-foreground">{m.import_investment_code_column()}
+        <span class="text-xs text-muted">{m.investments_form_optional()}</span>
         <select bind:value={value.instrument_column} class="min-h-11 rounded-(--radius-control) border border-border bg-control px-3 py-2">
           <option value="">{m.import_csv_column_none()}</option>{#each headers as header}<option value={header}>{header}</option>{/each}
         </select>

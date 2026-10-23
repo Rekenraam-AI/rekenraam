@@ -20,7 +20,7 @@ func TestListTransactionsFiltersByPostingCommodity(t *testing.T) {
 	buy := buyOn(t, f, "2026-01-10", 10, 10000)
 	dividend, err := f.investmentService.Dividend(ctx, DividendInput{
 		OwnerUserID: f.ownerUserID, TransactionDate: "2026-02-01",
-		CommodityID: &f.stockCommodityID, CashAccountID: f.cashAccountID,
+		CommodityID: NullableValue(f.stockCommodityID), CashAccountID: f.cashAccountID,
 		CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.incomeAccountID,
 		AmountValue: 500, AmountScale: 2,
 	})
@@ -48,7 +48,7 @@ func TestInstrumentActivityRetainsDividendWithholdingThroughReplacementAndRevers
 	ctx := context.Background()
 	withholding := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
 	input := cashDividendInput(f, withholding, 10000, 1500)
-	input.CommodityID = &f.stockCommodityID
+	input.CommodityID = NullableValue(f.stockCommodityID)
 	original, err := f.investmentService.Dividend(ctx, input)
 	require.NoError(t, err)
 	replacement, err := f.investmentService.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{
@@ -102,11 +102,11 @@ func TestDividendInstrumentReplacementKeepsInverseWithOriginalPayer(t *testing.T
 	})
 	require.NoError(t, err)
 	originalInput := cashDividendInput(f, 0, 10000, 0)
-	originalInput.CommodityID = &f.stockCommodityID
+	originalInput.CommodityID = NullableValue(f.stockCommodityID)
 	original, err := f.investmentService.Dividend(ctx, originalInput)
 	require.NoError(t, err)
 	replacementInput := originalInput
-	replacementInput.CommodityID = &instrument.CommodityID
+	replacementInput.CommodityID = NullableValue(instrument.CommodityID)
 	replacement, err := f.investmentService.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{
 		OwnerUserID: f.ownerUserID, TransactionID: original.ID, Reason: "wrong payer", Replacement: replacementInput,
 	})
@@ -133,11 +133,11 @@ func TestDividendInstrumentFactsAreImmutableAndValidatePayer(t *testing.T) {
 	f := newInvestmentsTestFixture(t)
 	ctx := context.Background()
 	input := cashDividendInput(f, 0, 10000, 0)
-	input.CommodityID = &f.eurCommodityID
+	input.CommodityID = NullableValue(f.eurCommodityID)
 	_, err := f.investmentService.Dividend(ctx, input)
 	var validation ValidationError
 	require.ErrorAs(t, err, &validation)
-	input.CommodityID = &f.stockCommodityID
+	input.CommodityID = NullableValue(f.stockCommodityID)
 	dividend, err := f.investmentService.Dividend(ctx, input)
 	require.NoError(t, err)
 	operation, err := f.investmentService.repository.DividendOperationByTransactionID(ctx, BookID, dividend.ID)
@@ -147,7 +147,7 @@ func TestDividendInstrumentFactsAreImmutableAndValidatePayer(t *testing.T) {
 	_, err = f.database.Exec(`DELETE FROM investment_dividend_facts WHERE operation_id = ?`, operation.OperationID)
 	require.ErrorContains(t, err, "immutable")
 	// A cash-only historical/unassigned dividend remains valid and does not guess a payer.
-	input.CommodityID = nil
+	input.CommodityID = NullablePatch[int64]{}
 	unassigned, err := f.investmentService.Dividend(ctx, input)
 	require.NoError(t, err)
 	operation, err = f.investmentService.repository.DividendOperationByTransactionID(ctx, BookID, unassigned.ID)
@@ -163,7 +163,7 @@ func TestDividendInstrumentFactsAreImmutableAndValidatePayer(t *testing.T) {
 	require.ErrorContains(t, err, "CHECK constraint failed", "downgrade must preserve paying-instrument evidence")
 	var count int
 	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM investment_dividend_facts`).Scan(&count))
-	require.Equal(t, 1, count)
+	require.Equal(t, 2, count, "assigned and unassigned facts both retain payment shape")
 
 }
 
@@ -172,7 +172,7 @@ func TestSeparateWithholdingIsInstrumentActivityWithoutGrossIncome(t *testing.T)
 	f := newInvestmentsTestFixture(t)
 	ctx := context.Background()
 	taxAccount := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
-	input := DividendInput{OwnerUserID: f.ownerUserID, WithholdingOnly: true, CommodityID: &f.stockCommodityID,
+	input := DividendInput{OwnerUserID: f.ownerUserID, WithholdingOnly: true, CommodityID: NullableValue(f.stockCommodityID),
 		TransactionDate: "2026-03-01", CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
 		AmountValue: 1500, AmountScale: 2, WithholdingAccountID: &taxAccount, Memo: "separate tax"}
 	tax, err := f.investmentService.Dividend(ctx, input)
@@ -210,16 +210,16 @@ func TestSeparateWithholdingIsInstrumentActivityWithoutGrossIncome(t *testing.T)
 	requireInvestmentSelfCheckPasses(t, f)
 }
 
-func TestSeparateWithholdingRequiresInstrumentAndTaxAccount(t *testing.T) {
+func TestSeparateWithholdingRequiresTaxShapeAndValidSuppliedPayer(t *testing.T) {
 	t.Parallel()
 	f := newInvestmentsTestFixture(t)
 	ctx := context.Background()
 	taxAccount := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
-	valid := DividendInput{OwnerUserID: f.ownerUserID, WithholdingOnly: true, CommodityID: &f.stockCommodityID,
+	valid := DividendInput{OwnerUserID: f.ownerUserID, WithholdingOnly: true, CommodityID: NullableValue(f.stockCommodityID),
 		TransactionDate: "2026-03-01", CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
 		AmountValue: 1500, AmountScale: 2, WithholdingAccountID: &taxAccount}
 	for _, mutate := range []func(*DividendInput){
-		func(i *DividendInput) { i.CommodityID = nil },
+		func(i *DividendInput) { i.CommodityID = NullableValue(int64(0)) },
 		func(i *DividendInput) { i.WithholdingAccountID = nil },
 		func(i *DividendInput) { i.IncomeAccountID = &f.incomeAccountID },
 		func(i *DividendInput) { i.WithholdingValue = &i.AmountValue },
@@ -243,7 +243,7 @@ func TestSeparateWithholdingReconciliationPreviewGuardsCreate(t *testing.T) {
 	require.NoError(t, err)
 	checkpoint := reconcileCash(t, f, "2026-04-01", 100)
 	taxAccount := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
-	tax := DividendInput{OwnerUserID: f.ownerUserID, WithholdingOnly: true, CommodityID: &f.stockCommodityID,
+	tax := DividendInput{OwnerUserID: f.ownerUserID, WithholdingOnly: true, CommodityID: NullableValue(f.stockCommodityID),
 		TransactionDate: "2026-03-01", CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
 		AmountValue: 1500, AmountScale: 2, WithholdingAccountID: &taxAccount}
 	before := buyReplacementPreviewSnapshot(t, f.database)
@@ -267,7 +267,7 @@ func TestSeparateWithholdingCorrectionRequiresReconciliationOverride(t *testing.
 	f := newInvestmentsTestFixture(t)
 	ctx := context.Background()
 	taxAccount := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
-	tax := DividendInput{OwnerUserID: f.ownerUserID, WithholdingOnly: true, CommodityID: &f.stockCommodityID,
+	tax := DividendInput{OwnerUserID: f.ownerUserID, WithholdingOnly: true, CommodityID: NullableValue(f.stockCommodityID),
 		TransactionDate: "2026-03-01", CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
 		AmountValue: 1500, AmountScale: 2, WithholdingAccountID: &taxAccount}
 	recorded, err := f.investmentService.Dividend(ctx, tax)

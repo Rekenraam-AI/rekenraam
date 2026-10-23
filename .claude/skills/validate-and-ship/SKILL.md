@@ -48,6 +48,11 @@ Use `./scripts/go-backend.sh test ...` for focused checks. Go race detection
 covers application and driver-wrapper Go code; it does not instrument the
 bundled SQLite C engine.
 
+Finish `pnpm build` before running backend gates: the build replaces embedded
+assets under `backend/internal/web/dist`, so overlapping compilation can read
+files that have just been removed. Reuse the completed current browser binary
+with `E2E_SKIP_BUILD=1`; do not reuse it after changing runtime/frontend code.
+
 ADR 0016 sets two concurrent packages and a five-minute per-package deadline
 for both race and coverage modes. Normal commands use available Go CPU
 resources; the old four-core tuning advice applies only to historical modernc

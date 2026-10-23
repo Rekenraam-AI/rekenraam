@@ -254,7 +254,7 @@ func TestProviderDividendRevisionAfterLinkLeavesLinkAndPayment(t *testing.T) {
 	f := newDividendEventFixture(t)
 	f.fetch(t)
 	july := suggestionForExDate(t, f.suggestions(t), "2026-07-29")
-	recorded, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: &f.instrument.CommodityID,
+	recorded, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: NullableValue(f.instrument.CommodityID),
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID, AmountValue: 1600, AmountScale: 2})
 	require.NoError(t, err)
 	linked, err := f.investmentSvc.LinkSuggestion(ctx, 1, 0, "req", july.ID, recorded.ID)
@@ -375,11 +375,11 @@ func TestProviderDividendLinksOwnerRecordedDividendOnce(t *testing.T) {
 	ctx := context.Background()
 	f := newDividendEventFixture(t)
 	// The owner recorded the July payment manually before any fetch.
-	manual, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: &f.instrument.CommodityID,
+	manual, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: NullableValue(f.instrument.CommodityID),
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID, AmountValue: 1600, AmountScale: 2})
 	require.NoError(t, err)
 	// A dividend recorded before the ex-date is not offered for it.
-	early, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-07-01", CommodityID: &f.instrument.CommodityID,
+	early, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-07-01", CommodityID: NullableValue(f.instrument.CommodityID),
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID, AmountValue: 100, AmountScale: 2})
 	require.NoError(t, err)
 	f.fetch(t)
@@ -441,7 +441,7 @@ func TestShortProviderDividendCompletesIntoPaymentInLieu(t *testing.T) {
 	f := newDividendEventFixture(t)
 	f.goShort(t, f.holding.ID)
 	// A cash dividend the owner recorded for the instrument is not this event.
-	_, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: &f.instrument.CommodityID,
+	_, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: NullableValue(f.instrument.CommodityID),
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID, AmountValue: 800, AmountScale: 2})
 	require.NoError(t, err)
 	f.fetch(t)
@@ -553,7 +553,7 @@ func TestDividendProducerFailureNeverBlocksManualEntry(t *testing.T) {
 	require.Len(t, failed, 1, "a missing plan entitlement is terminal and visible")
 	assert.Equal(t, dividendEventWorkKind, failed[0].Kind)
 	assert.Empty(t, f.suggestions(t))
-	_, err = f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: &f.instrument.CommodityID,
+	_, err = f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: NullableValue(f.instrument.CommodityID),
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID, AmountValue: 1600, AmountScale: 2})
 	require.NoError(t, err, "manual dividend entry is unaffected by provider coverage")
 
@@ -604,7 +604,7 @@ func TestProviderPaymentInLieuLinksOwnerRecordedPaymentOnce(t *testing.T) {
 	_, err = f.investmentSvc.ReversePaymentInLieu(ctx, ReverseInvestmentPaymentInLieuInput{OwnerUserID: 1, TransactionID: reversed.ID, Reason: "entered twice"})
 	require.NoError(t, err)
 	// A cash dividend of the instrument is never this short's charge.
-	dividend, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: &f.instrument.CommodityID,
+	dividend, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: NullableValue(f.instrument.CommodityID),
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID, AmountValue: 800, AmountScale: 2})
 	require.NoError(t, err)
 	// Another instrument's payment in lieu on the same ex-date is not this one.

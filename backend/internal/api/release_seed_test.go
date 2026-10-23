@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"rekenraam/backend/internal/app"
 	"rekenraam/backend/internal/exact"
 )
 
@@ -133,7 +134,7 @@ func TestBuildReleaseSeedFixture(t *testing.T) {
 	doInvestmentRequest(t, handler, session, csrf, http.MethodPost, "/api/v1/investments/sell", sell, http.StatusCreated)
 
 	doInvestmentRequest(t, handler, session, csrf, http.MethodPost, "/api/v1/investments/dividend", dividendRequest{
-		TransactionDate: "2026-05-02", CommodityID: &instrument.CommodityID,
+		TransactionDate: "2026-05-02", CommodityID: nullableField[int64]{app.NullableValue(instrument.CommodityID)},
 		CashAccountID: f.cashAccount.ID, CashCommodityID: f.commodityID,
 		IncomeAccountID: &f.incomeAccount.ID, AmountValue: 1234, AmountScale: 2,
 	}, http.StatusCreated)

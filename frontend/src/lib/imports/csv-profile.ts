@@ -5,7 +5,7 @@ export interface CSVInvestmentMapping {
   kind_column?: string;
   dividend_value?: string;
   withholding_value?: string;
-  instrument_column: string;
+  instrument_column?: string;
   gross_column?: string;
   withholding_column?: string;
   cash_account_id?: number;
@@ -16,7 +16,7 @@ export interface CSVInvestmentMapping {
 export function validCSVInvestmentMapping(value: CSVInvestmentMapping | undefined): boolean {
   if (!value) return true;
   const text = (field: string | undefined) => field?.trim() ?? '';
-  return ['dividend', 'withholding', 'column'].includes(value.kind) && !!text(value.instrument_column) &&
+  return ['dividend', 'withholding', 'column'].includes(value.kind) &&
     (value.kind === 'withholding' || !!text(value.gross_column)) &&
     (value.kind !== 'column' || (!!text(value.kind_column) && !!text(value.dividend_value) && !!text(value.withholding_value) && text(value.dividend_value) !== text(value.withholding_value)));
 }

@@ -38,7 +38,7 @@ var capabilityScenarios = []struct {
 		sale := acknowledgedSell(t, f, sellInput(f, "2026-02-01", 1))
 		writeOff := writeOffOn(t, f, "2026-02-02", 1, "fifo")
 		dividendInput := cashDividendInput(f, 0, 10000, 0)
-		dividendInput.CommodityID = &f.stockCommodityID
+		dividendInput.CommodityID = NullableValue(f.stockCommodityID)
 		dividend, err := f.investmentService.Dividend(ctx, dividendInput)
 		require.NoError(t, err)
 		taxAccount := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")

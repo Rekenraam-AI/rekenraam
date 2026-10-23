@@ -159,3 +159,50 @@ test('a short-only provider dividend links the payment in lieu the owner already
   expect(linked?.status).toBe('linked');
   expect(linked?.linked_transaction_id).toBe(payment.id);
 });
+
+test('a repaired dividend shows source mismatch and keeps its original provider evidence', async ({ page }) => {
+  const s = await heldProviderListing(page, 'E2EDIVPAYER');
+  await page.goto('/app/investments');
+  await page.getByRole('button', { name: /^Suggestions/ }).click();
+  await page.getByRole('button', { name: 'Check provider dividends', exact: true }).click();
+  const card = page.getByTestId('event-suggestion').filter({ hasText: s.name });
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  const suggestions = await apiJSON<{ suggestions: Array<{ id: number; instrument_id: number }> }>(page, 'GET', '/api/v1/investments/event-suggestions');
+  const suggestion = suggestions.suggestions.find(item => item.instrument_id === s.instrument.id)!;
+  const accepted = await apiJSON<{ generated_transaction_id: number }>(page, 'POST', `/api/v1/investments/event-suggestions/${suggestion.id}/accept`, s.csrfToken, {
+    completion: { transaction_date: s.paymentDate, cash_account_id: s.cash.id, cash_commodity_id: s.currencyID,
+      income_account_id: s.income.id, amount_value: '480', amount_scale: 2 }
+  });
+  const other = await apiJSON<{ commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', s.csrfToken, {
+    commodity_code: `OTHER${s.instrument.id}`, instrument_type: 'stock', display_name: 'Different payer',
+    quote_commodity_id: s.currencyID, trading_commodity_id: s.currencyID, quantity_scale: 0, price_scale: 2, effective_from: s.openedOn
+  });
+  const replacement = await apiJSON<{ replacement_transaction: { id: number } }>(page, 'POST', `/api/v1/investments/transactions/${accepted.generated_transaction_id}/replace-dividend`, s.csrfToken, {
+    reason: 'Different payer on statement', replacement: { transaction_date: s.paymentDate, commodity_id: other.commodity_id,
+      cash_account_id: s.cash.id, cash_commodity_id: s.currencyID, income_account_id: s.income.id, amount_value: '480', amount_scale: 2 }
+  });
+  await page.goto(`/app/transactions?transaction_id=${replacement.replacement_transaction.id}`);
+  await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText('These details differ from the linked provider evidence');
+  await expectNoAccessibilityViolations(page, 'dividend source mismatch');
+  await page.getByRole('button', { name: 'Correct dividend…', exact: true }).click();
+  const form = page.getByRole('dialog', { name: 'Correct this dividend', exact: true });
+  await form.locator('#dividend-correction-payer').selectOption('');
+  await form.getByLabel('Reason for correction', { exact: true }).fill('Payer is unknown');
+  const saved = page.waitForResponse(response => response.url().endsWith('/replace-dividend') && response.request().method() === 'POST');
+  await form.getByRole('button', { name: 'Review and replace', exact: true }).click();
+  const cleared = await (await saved).json() as { replacement_transaction: { id: number } };
+  await expect(form).toBeHidden();
+  await page.goto(`/app/transactions?transaction_id=${cleared.replacement_transaction.id}`);
+  await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText('Some attribution context is missing');
+  await expect(page.getByTestId('investment-attribution-diagnostic')).not.toContainText('These details differ');
+  await page.goto('/app/investments');
+  await page.getByRole('button', { name: /^Suggestions/ }).click();
+  const history = page.getByRole('listitem').filter({ hasText: s.name }).filter({ hasText: 'Accepted' });
+  await expect(history.getByTestId('settled-event-evidence')).toContainText('Announced per share');
+  await expect(history.getByTestId('settled-event-evidence')).toContainText('0.5');
+  await expect(history.locator(`a[href="/app/transactions?transaction_id=${accepted.generated_transaction_id}"]`)).toBeVisible();
+  await expect(history).not.toContainText('Different payer');
+  const coverage = await apiJSON<{ unassigned: Array<{ transaction_id: number; cash: { value: string; scale: number } }> }>(page, 'GET', '/api/v1/investments/income-coverage');
+  const item = coverage.unassigned.find(row => row.transaction_id === cleared.replacement_transaction.id)!;
+  expect(BigInt(item.cash.value) * 100n / 10n ** BigInt(item.cash.scale)).toBe(480n);
+});

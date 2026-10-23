@@ -1713,7 +1713,7 @@
   "settings_data_selfcheck_warnings": "{count} Zuordnungswarnungen.",
   "settings_data_selfcheck_historical": "Gespeichertes Ergebnis; nach Korrekturen erneut prüfen.",
   "settings_data_selfcheck_attribution_title": "Zuordnung von Anlagen",
-  "settings_data_selfcheck_attribution_explanation": "Prüft historische Shortbestände für Ausgleichszahlungen und die aktuelle zugeordnete Kapitalmaßnahme bei Bruchstückverkäufen. Die finanzielle Gültigkeit wird getrennt geprüft.",
+  "settings_data_selfcheck_attribution_explanation": "Prüft frühere Shortpositionen für Ausgleichszahlungen, die aktuelle Zuordnung von Bruchteilsverkäufen und den Zahler anhand gespeicherter Anbieterdaten. Die finanzielle Gültigkeit wird separat geprüft.",
   "settings_data_selfcheck_attribution_next": "Öffnen Sie die Zahlung und vergleichen Sie die Zuordnung mit der Brokerabrechnung. Die Prüfung ändert weder Geldbeträge noch Quelldaten.",
   "investments_attribution_no_short": "Zum Handelsschluss vor dem Ex-Tag stützen keine Short-Mengen diese Zuordnung.",
   "investments_attribution_ex_date_after_payment": "Der Ex-Tag liegt nach dem erfassten Zahlungstag.",
@@ -1727,5 +1727,6 @@
   "investments_payment_in_lieu_correction_reason": "Grund der Korrektur",
   "investments_attribution_cash_parent_unresolved": "Die ursprüngliche Kapitalmaßnahme wurde storniert. Der Verkauf bleibt erfasst; seine finanzielle Gültigkeit wird getrennt geprüft.",
   "investments_attribution_cash_parent_mismatch": "Die aktuelle Kapitalmaßnahme passt nicht mehr zu Konto, Wertpapier oder Datum dieses Verkaufs. Der ursprüngliche Verweis bleibt erhalten.",
-  "investments_cash_in_lieu_current_parent": "Aktuelle Maßnahme Nr. {id}"
+  "investments_cash_in_lieu_current_parent": "Aktuelle Maßnahme Nr. {id}",
+  "investments_dividend_payer_help": "Der Zahler ist optional. Wenn Sie nur diese Zuordnung ändern, bleiben Geldbetrag und Steuer unverändert."
 }

@@ -10,6 +10,58 @@ import (
 	"rekenraam/backend/internal/db"
 )
 
+func TestCSVIncomeMissingPayerPreservesKnownAmountsAndImportIdentity(t *testing.T) {
+	t.Parallel()
+	for _, omitColumn := range []bool{false, true} {
+		name := "empty source cells"
+		if omitColumn {
+			name = "no payer column"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			f, _, tax, profile := csvIncomeFixture(t)
+			if omitColumn {
+				var config csvProfileConfig
+				require.NoError(t, json.Unmarshal([]byte(profile.ConfigJSON), &config))
+				config.Investment.InstrumentColumn = ""
+				encoded, err := json.Marshal(config)
+				require.NoError(t, err)
+				profile, err = f.importService.CreateImportProfile(ctx, CreateImportProfileInput{OwnerUserID: f.ownerUserID, Name: "No payer", AdapterKind: "csv", ConfigJSON: string(encoded)})
+				require.NoError(t, err)
+			}
+			rows := "2026-03-01;DIV;;85,00;100,00;15,00;unassigned-div\n2026-03-02;TAX;;-2,00;;;unassigned-tax\n"
+			staged := stageCSVIncome(t, f, profile, rows)
+			preview, err := f.importService.PreviewCommit(ctx, PreviewCommitInput{OwnerUserID: f.ownerUserID, BatchID: staged.Batch.ID})
+			require.NoError(t, err)
+			require.Equal(t, 2, preview.IncludableCount)
+			committed, err := f.importService.CommitImportBatch(ctx, CommitImportBatchInput{OwnerUserID: f.ownerUserID, BatchID: staged.Batch.ID})
+			require.NoError(t, err)
+			require.Equal(t, 2, committed.CommittedCount)
+			fixture := &investmentsTestFixture{database: f.database}
+			require.Equal(t, int64(8300), accountBalance(t, fixture, f.cashAccountID))
+			require.Equal(t, int64(-10000), accountBalance(t, fixture, f.categoryAccountID))
+			require.Equal(t, int64(1700), accountBalance(t, fixture, tax))
+			stored, err := f.importRepo.ListAllImportStagedRows(ctx, staged.Batch.ID)
+			require.NoError(t, err)
+			for i, row := range stored {
+				chain, err := f.investmentSvc.CorrectionChain(ctx, f.ownerUserID, row.CommittedTransactionID.Int64)
+				require.NoError(t, err)
+				require.Nil(t, chain.EffectiveDividend.CommodityID)
+				require.Equal(t, i == 1, chain.EffectiveDividend.WithholdingOnly)
+			}
+			count := transactionCount(t, f)
+			again := stageCSVIncome(t, f, profile, rows)
+			for _, row := range again.Rows {
+				require.Equal(t, "duplicate", row.DedupeStatus)
+			}
+			_, err = f.importService.CommitImportBatch(ctx, CommitImportBatchInput{OwnerUserID: f.ownerUserID, BatchID: again.Batch.ID})
+			require.NoError(t, err)
+			require.Equal(t, count, transactionCount(t, f))
+		})
+	}
+}
+
 func csvIncomeFixture(t *testing.T) (*investTestFixture, InvestmentInstrument, int64, ImportProfile) {
 	t.Helper()
 	f := newInvestTestFixture(t)

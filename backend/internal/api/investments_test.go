@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"rekenraam/backend/internal/app"
 	ledgerdb "rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/exact"
 )
@@ -1454,7 +1455,7 @@ func TestDividend_ReconciliationOverrideProceedsAndInvalidates(t *testing.T) {
 	checkpointID := activeCheckpointID(t, handler, f.sessionCookie, f.cashAccount.ID)
 
 	backdated := dividendRequest{
-		TransactionDate: "2026-01-15", CommodityID: &instrument.CommodityID,
+		TransactionDate: "2026-01-15", CommodityID: nullableField[int64]{app.NullableValue(instrument.CommodityID)},
 		CashAccountID: f.cashAccount.ID, CashCommodityID: f.commodityID,
 		IncomeAccountID: &f.incomeAccount.ID, AmountValue: 5000, AmountScale: 2,
 	}

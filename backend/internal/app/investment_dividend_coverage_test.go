@@ -33,13 +33,13 @@ func TestDividendCoverageSeparatesKnownUnassignedAndCashOnlyIncome(t *testing.T)
 	f, fallbackBatch, fallbackRow, fallbackTransaction, payer := legacyDividendFallback(t, "85.00")
 	tax := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
 	withholding, withholdingScale := int64(1500), 2
-	_, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: f.ownerUserID, TransactionDate: "2026-04-01", CommodityID: &payer,
+	_, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: f.ownerUserID, TransactionDate: "2026-04-01", CommodityID: NullableValue(payer),
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID,
 		AmountValue: 10000, AmountScale: 2, WithholdingValue: &withholding, WithholdingScale: &withholdingScale, WithholdingAccountID: &tax})
 	require.NoError(t, err)
 	_, zeroTaxPayer, _, err := f.investmentSvc.ResolveOrCreateInstrumentForImport(ctx, f.ownerUserID, 0, "", "US5949181045", "MSFT_US_EQ")
 	require.NoError(t, err)
-	_, err = f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: f.ownerUserID, TransactionDate: "2026-04-02", CommodityID: &zeroTaxPayer,
+	_, err = f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: f.ownerUserID, TransactionDate: "2026-04-02", CommodityID: NullableValue(zeroTaxPayer),
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID, AmountValue: 500, AmountScale: 2})
 	require.NoError(t, err)
 	unassigned, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: f.ownerUserID, TransactionDate: "2026-05-01",
@@ -128,7 +128,7 @@ func TestDividendCoverageSeparatesKnownUnassignedAndCashOnlyIncome(t *testing.T)
 		ExpectedTransactionVersionID: original.VersionID, Reason: "statement", Resolution: reviewedDividendResolution(f, "85.00", "0")})
 	require.NoError(t, err)
 	_, err = f.investmentSvc.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{OwnerUserID: f.ownerUserID, TransactionID: unassigned.ID, Reason: "assign payer",
-		Replacement: DividendInput{TransactionDate: "2026-05-01", CommodityID: &zeroTaxPayer, CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
+		Replacement: DividendInput{TransactionDate: "2026-05-01", CommodityID: NullableValue(zeroTaxPayer), CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
 			IncomeAccountID: &f.categoryAccountID, AmountValue: 2000, AmountScale: 2}})
 	require.NoError(t, err)
 	coverage, err = f.investmentSvc.DividendCoverage(ctx, DividendCoverageInput{})

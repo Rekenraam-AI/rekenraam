@@ -281,7 +281,7 @@ func (s *ImportService) reviewedDividendInput(ctx context.Context, c importDivid
 	}
 	input := DividendInput{OwnerUserID: ownerID, AuthSessionID: sessionID, RequestID: requestID, NeedsReview: true, TransactionDate: c.source.Date, CashAccountID: res.AccountID, CashCommodityID: res.CommodityID, IncomeAccountID: res.CategoryID, AmountValue: amount, AmountScale: gs, WithholdingAccountID: res.WithholdingAccountID, Memo: c.source.Memo, PayeeID: res.PayeeID, PayeeName: res.PayeeName, TagIDs: res.TagIDs, ExternalRefHint: c.source.ExternalRef, OriginType: "import", Operation: "investment.dividend.review", ChangeReason: "reviewed imported dividend"}
 	if res.InstrumentCommodityID > 0 {
-		input.CommodityID = &res.InstrumentCommodityID
+		input.CommodityID = NullableValue(res.InstrumentCommodityID)
 	}
 	if tax.Sign() > 0 {
 		value, err := exact.ScaledIntFromCoefficient(tax, ts).Int64()
@@ -330,12 +330,12 @@ func (s *ImportService) writeReviewedPendingDividend(ctx context.Context, c impo
 	}
 	var instrumentID, commodityID int64
 	var created bool
-	if input.CommodityID == nil && strings.TrimSpace(c.raw[rawKeyTicker]) != "" {
+	if input.CommodityID.Value == nil && strings.TrimSpace(c.raw[rawKeyTicker]) != "" {
 		instrumentID, commodityID, created, err = s.investmentService.ResolveOrCreateInstrumentForImport(ctx, input.OwnerUserID, input.AuthSessionID, input.RequestID, c.raw[rawKeyISIN], c.raw[rawKeyTicker])
 		if err != nil {
 			return db.TransactionRecord{}, err
 		}
-		input.CommodityID = &commodityID
+		input.CommodityID = NullableValue(commodityID)
 	}
 	params, err := s.investmentService.prepareDividendWrite(ctx, input)
 	if err == nil {
@@ -505,7 +505,7 @@ func (s *ImportService) writeImportDividendRepair(ctx context.Context, c importD
 	var instrumentID, commodityID int64
 	var created bool
 	var err error
-	if !p.Journal.DividendCommodityID.Valid && strings.TrimSpace(c.raw[rawKeyTicker]) != "" {
+	if p.Journal.Dividend != nil && !p.Journal.Dividend.CommodityID.Valid && strings.TrimSpace(c.raw[rawKeyTicker]) != "" {
 		instrumentID, commodityID, created, err = s.investmentService.ResolveOrCreateInstrumentForImport(ctx, input.OwnerUserID, input.AuthSessionID, input.RequestID, c.raw[rawKeyISIN], c.raw[rawKeyTicker])
 		if err != nil {
 			return db.TransactionRecord{}, err

@@ -236,13 +236,26 @@ func TestImportedDividendCorrectionPreservesCommittedIdentity(t *testing.T) {
 	row, err := f.importRepo.ImportStagedRowByID(ctx, divRow)
 	require.NoError(t, err)
 	originalID := row.CommittedTransactionID.Int64
+	originalRaw := row.RawJSON
 
-	replacement := DividendInput{TransactionDate: "2026-06-15", CommodityID: &commodityID,
+	replacement := DividendInput{TransactionDate: "2026-06-15", CommodityID: NullableValue(commodityID),
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.categoryAccountID,
 		AmountValue: 523, AmountScale: 2}
 	result, err := f.investmentSvc.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{OwnerUserID: f.ownerUserID,
 		TransactionID: originalID, Reason: "broker statement shows 5.23", Replacement: replacement})
 	require.NoError(t, err)
+	// #393: explicit payer clearing retains the committed import identity and
+	// raw source, even after an earlier financial correction in the same chain.
+	replacement.CommodityID = NullablePatch[int64]{Set: true}
+	result, err = f.investmentSvc.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{OwnerUserID: f.ownerUserID,
+		TransactionID: result.Replacement.ID, Reason: "payer unknown", Replacement: replacement})
+	require.NoError(t, err)
+	chain, err := f.investmentSvc.CorrectionChain(ctx, f.ownerUserID, originalID)
+	require.NoError(t, err)
+	require.Nil(t, chain.EffectiveDividend.CommodityID)
+	unchangedSource, err := f.importRepo.ImportStagedRowByID(ctx, divRow)
+	require.NoError(t, err)
+	require.Equal(t, originalRaw, unchangedSource.RawJSON)
 
 	var identityTransaction int64
 	require.NoError(t, f.database.QueryRow(`SELECT effect.transaction_id FROM import_commit_identity_effects effect
@@ -277,7 +290,7 @@ func TestCorrectionChainOffersDividendTerms(t *testing.T) {
 	require.False(t, chain.CanCorrectReinvestedDividend)
 	terms := chain.EffectiveDividend
 	require.NotNil(t, terms)
-	require.Equal(t, InvestmentCorrectionDividendTerms{EventDate: "2026-03-01", CashAccountID: f.cashAccountID,
+	require.Equal(t, InvestmentCorrectionDividendTerms{Attribution: InvestmentAttributionDiagnostic{Status: SelfCheckPassed, Reasons: []string{}}, EventDate: "2026-03-01", CashAccountID: f.cashAccountID,
 		CashCommodityID: f.eurCommodityID, IncomeAccountID: f.incomeAccountID, AmountValue: exact.New(10000), AmountScale: 2,
 		WithholdingAccountID: &withholding, WithholdingValue: terms.WithholdingValue, WithholdingScale: terms.WithholdingScale,
 		Memo: "ACME dividend"}, *terms)

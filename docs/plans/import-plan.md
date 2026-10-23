@@ -496,7 +496,10 @@ R4–R7.
 Opt-in profiles map existing instrument codes and explicit dividend/withholding
 kinds, signed cash, separate gross/tax and account defaults. Review choices,
 exact net checks, named writer admission and source-identity atomicity follow
-[the CSV investment income contract](csv-investment-income-plan.md). Bank-only
+[the CSV investment income contract](csv-investment-income-plan.md).
+The #393 refinement permits absent payer columns/cells while preserving exact
+known income/tax and import identity. Supplied unresolved codes still require
+review; no payer or economics is guessed. Bank-only
 profiles retain Slice 2 behavior. Trading 212's separate missing-default fallback
 is #242, not part of this CSV slice.
 

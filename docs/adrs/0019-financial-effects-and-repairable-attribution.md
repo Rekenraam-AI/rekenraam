@@ -18,16 +18,19 @@ repair and warning versus unavailable/integrity outcomes. Its
 [source-pinned experiment](../reviews/financial-dependency-comparison-2026-10-23.md)
 supports relaxing the permanent cash-only and blanket parent fences while
 retaining real disposal admission. #388/#389 implement their targeted contract;
-#392 implements cash-in-lieu parent corrections; #393 still owns cash-dividend/
-withholding attribution. The completed
+#392 implements cash-in-lieu parent corrections; #393 delivers nullable,
+clearable cash-dividend/withholding payer facts, tax-shape preservation, shared
+cash-payment source identity and read-only source mismatch visibility. CSV
+income without a payer uses the same typed writer; supplied unknown source
+codes still require review. The completed
 [family inventory](../reviews/financial-dependency-inventory-2026-10-23.md)
 and [plan dispositions](../plans/financial-dependency-simplification-plan.md#completed-family-dispositions-2026-10-23)
 cover every #391 family. #394 accepts historical-parent fractional-disposal
 entry through actual replay; #395 accepts typed cash/reinvestment field
 corrections through the existing writer and acquisition replay. #393 also owns
 dividend source identity across correction ancestry and visible source/payer
-mismatch. These are accepted
-contracts, not shipped runtime changes. Other typed allocation, source,
+mismatch, now delivered with migration 25 and bundle schema 17. #394/#395 are
+accepted contracts, not shipped runtime changes. Other typed allocation, source,
 derivation, snapshot and reconciliation dependencies are retained with concrete
 counterexamples; the review adds no relationship engine or loan subsystem.
 

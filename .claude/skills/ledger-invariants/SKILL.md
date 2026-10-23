@@ -233,6 +233,15 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   (#175) thread the side through `simulateInvestmentReplaySideTx`; shorts
   have only openings and covers. See the operation plan's *Short positions
   (#103)* section.
+- Cash dividends and standalone withholding (#393) keep payment shape separate
+  from nullable payer. Reuse nullable-field/patch presence: entry omission/null
+  unassigned; replacement omission preserves, null clears, value assigns. A
+  neutral payer repair changes no cash/tax/lots/checkpoints. Unknown tax is never
+  invented; standalone tax remains tax without income. Preserve source identity
+  across original/inverse/replacement journals for both cash families, raw
+  evidence and settled suggestions. Compare retained source claims read-only;
+  do not add holdings authorization or a review queue for manual unassigned cash.
+  CSV income permits absent payer; asserted unresolved codes still need review.
 - A short holder's payment in lieu (#255, refined by #388/#389 and ADR 0019)
   is lot-free cash/expense/recovery. Holding, instrument and ex-date are
   optional auditable attribution, not write authorization. Entry omission/null

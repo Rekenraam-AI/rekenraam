@@ -30257,7 +30257,7 @@ export interface components {
             name: string;
             /** @enum {string} */
             adapter_kind: "csv";
-            /** @description JSON object string containing header mappings and locale/sign rules. Optional investment mapping has kind (dividend, withholding, column), instrument_column (exact existing commodity code), gross_column (required except withholding), withholding_column (omitted means zero), and optional cash_account_id, income_account_id, withholding_account_id defaults. Column kind also requires kind_column and distinct dividend_value and withholding_value source texts. Amount/debit/credit columns remain signed cash. All amounts use the file-level decimal separator. */
+            /** @description JSON object string containing header mappings and locale/sign rules. Optional investment mapping has kind (dividend, withholding, column), optional instrument_column (exact existing commodity code when supplied), gross_column (required except withholding), withholding_column (omitted means zero), and optional cash_account_id, income_account_id, withholding_account_id defaults. Column kind also requires kind_column and distinct dividend_value and withholding_value source texts. Amount/debit/credit columns remain signed cash. Missing payer is unassigned; a supplied unknown code still requires review. All amounts use the file-level decimal separator. */
             config: string;
         };
         UpdateImportProfileRequest: {
@@ -32262,11 +32262,12 @@ export interface components {
         };
         /** @description The effective cash dividend's posted facts, for pre-filling a replacement. The date, cash account and currency are fixed for a replacement. */
         InvestmentCorrectionDividendTerms: {
+            attribution: components["schemas"]["InvestmentAttributionDiagnostic"];
             /** @description Separate tax payment; amount is tax, no income leg, and withholding_account_id is required. */
             withholding_only?: boolean;
             /**
              * Format: int64
-             * @description Paying instrument shared by gross income and withholding; absent for unassigned historical dividends.
+             * @description Optional payer shared by gross income and withholding; absent when unassigned. Retained provider claims are diagnosed separately.
              */
             commodity_id?: number;
             /** Format: date */
@@ -32840,14 +32841,17 @@ export interface components {
         };
         DividendRequest: {
             /**
-             * @description Record a separate withholding-tax payment using amount_value/amount_scale as the positive tax magnitude. Requires commodity_id and withholding_account_id; income_account_id, withholding_value and withholding_scale must be absent. The operation has no gross income or security quantity posting.
+             * @description Record a separate withholding-tax payment using amount_value/amount_scale as the positive tax magnitude. Requires withholding_account_id; payer is optional. income_account_id, withholding_value and withholding_scale must be absent. The operation has no gross income or security quantity posting.
              * @default false
              */
             withholding_only: boolean;
             /** Format: date */
             transaction_date: string;
-            /** Format: int64 */
-            commodity_id?: number;
+            /**
+             * Format: int64
+             * @description Optional payer attribution. Entry omission/null is unassigned; replacement omission preserves, null clears and a value assigns. No historical holding is required.
+             */
+            commodity_id?: number | null;
             /** Format: int64 */
             cash_account_id: number;
             /** Format: int64 */

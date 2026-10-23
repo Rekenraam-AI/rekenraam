@@ -185,8 +185,10 @@ below is execution order, not a chain of hard dependencies.
    allocation/source/reconciliation dependencies. #388/#389 now deliver optional
    payment attribution, audited repair and diagnostics, removing the cash-only write
    blockers. #392 now delivers parent replay for all four cash-in-lieu families.
-   #393 remains the ready payer/shape slice, including the demonstrated dividend
-   source-ancestry gap. Accepted follow-ups #394/#395 cover historical-parent
+   #393 now delivers payer/shape consistency, missing-payer CSV income and the
+   dividend source-ancestry fix with visible source mismatch/unavailable support
+   ([evidence](reviews/dividend-attribution-repair-2026-10-23.md)).
+   Accepted follow-ups #394/#395 cover historical-parent
    fractional entry and typed cash/reinvestment field correction through
    existing replay.
    These do not expand #284's closure checklist, reorder

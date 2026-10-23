@@ -41,11 +41,11 @@ func validateCSVInvestmentMapping(config csvProfileConfig) error {
 	for _, field := range []*string{&m.Kind, &m.KindColumn, &m.DividendValue, &m.WithholdingValue, &m.InstrumentColumn, &m.GrossColumn, &m.WithholdingColumn} {
 		*field = strings.TrimSpace(*field)
 	}
-	if (m.Kind != "dividend" && m.Kind != "withholding" && m.Kind != "column") || m.InstrumentColumn == "" ||
+	if (m.Kind != "dividend" && m.Kind != "withholding" && m.Kind != "column") ||
 		(m.Kind != "withholding" && m.GrossColumn == "") ||
 		(m.Kind == "column" && (m.KindColumn == "" || m.DividendValue == "" || m.WithholdingValue == "" || m.DividendValue == m.WithholdingValue)) ||
 		m.CashAccountID < 0 || m.IncomeAccountID < 0 || m.WithholdingAccountID < 0 {
-		return ValidationError{Message: "CSV investment mapping requires an explicit kind, instrument code column and dividend gross column"}
+		return ValidationError{Message: "CSV investment mapping requires an explicit kind and dividend gross column"}
 	}
 	if m.Kind != "column" {
 		m.KindColumn = ""
@@ -160,7 +160,7 @@ func (s *ImportService) csvInvestmentDividend(ctx context.Context, row db.Import
 	}
 
 	refuse := func() (DividendInput, error) {
-		return DividendInput{}, ValidationError{Message: "CSV investment row requires review: choose instrument, kind and accounts; gross minus withholding must equal signed cash"}
+		return DividendInput{}, ValidationError{Message: "CSV investment row requires review: confirm any source instrument, kind and accounts; gross minus withholding must equal signed cash"}
 	}
 	var normalized struct {
 		Date        string            `json:"date"`
@@ -174,17 +174,23 @@ func (s *ImportService) csvInvestmentDividend(ctx context.Context, row db.Import
 		return refuse()
 	}
 	resolution, err := parseResolutionJSON(row.ResolutionJSON)
-	if err != nil || resolution.AccountID <= 0 || resolution.CommodityID <= 0 || resolution.InstrumentCommodityID <= 0 || resolution.TransferAccountID != nil || len(resolution.TagIDs) > 0 {
+	if err != nil || resolution.AccountID <= 0 || resolution.CommodityID <= 0 || resolution.InstrumentCommodityID < 0 || resolution.TransferAccountID != nil || len(resolution.TagIDs) > 0 {
 		return refuse()
 	}
-	instrument, err := s.investmentService.repository.InstrumentByCommodityID(ctx, BookID, resolution.InstrumentCommodityID)
-	if errors.Is(err, db.ErrNotFound) {
-		return refuse()
-	}
-	if err != nil {
-		return DividendInput{}, fmt.Errorf("read CSV paying instrument: %w", err)
-	}
-	if instrument.Status != "active" {
+	if resolution.InstrumentCommodityID > 0 {
+		instrument, err := s.investmentService.repository.InstrumentByCommodityID(ctx, BookID, resolution.InstrumentCommodityID)
+		if errors.Is(err, db.ErrNotFound) {
+			return refuse()
+		}
+		if err != nil {
+			return DividendInput{}, fmt.Errorf("read CSV paying instrument: %w", err)
+		}
+		if instrument.Status != "active" {
+			return refuse()
+		}
+	} else if normalized.Investment.InstrumentCode != "" {
+		// Missing source attribution is allowed; an asserted but unresolved
+		// identity must be reviewed rather than silently discarded.
 		return refuse()
 	}
 	source := normalized.Investment
@@ -214,10 +220,13 @@ func (s *ImportService) csvInvestmentDividend(ctx context.Context, row db.Import
 		return refuse()
 	}
 	input := DividendInput{OwnerUserID: ownerID, AuthSessionID: sessionID, RequestID: requestID,
-		TransactionDate: normalized.Date, CommodityID: &resolution.InstrumentCommodityID,
-		CashAccountID: resolution.AccountID, CashCommodityID: resolution.CommodityID,
+		TransactionDate: normalized.Date,
+		CashAccountID:   resolution.AccountID, CashCommodityID: resolution.CommodityID,
 		WithholdingAccountID: resolution.WithholdingAccountID, Memo: normalized.Memo, PayeeID: resolution.PayeeID,
 		NeedsReview: true, ExternalRefHint: normalized.ExternalRef, OriginType: "import", Operation: "investment.dividend.csv",
+	}
+	if resolution.InstrumentCommodityID > 0 {
+		input.CommodityID = NullableValue(resolution.InstrumentCommodityID)
 	}
 	if kind == "withholding" {
 		if cash.Sign() >= 0 {

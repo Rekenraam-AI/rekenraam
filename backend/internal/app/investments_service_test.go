@@ -248,7 +248,7 @@ func TestInvestmentCommandsPersistNamedOperationAtomically(t *testing.T) {
 	require.NoError(t, err)
 	dividend, err := f.investmentService.Dividend(ctx, DividendInput{
 		OwnerUserID: f.ownerUserID, TransactionDate: "2026-03-03",
-		CommodityID: &f.stockCommodityID, CashAccountID: f.cashAccountID,
+		CommodityID: NullableValue(f.stockCommodityID), CashAccountID: f.cashAccountID,
 		CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.incomeAccountID,
 		AmountValue: 500, AmountScale: 2,
 	})
@@ -1211,7 +1211,7 @@ func TestDividend_ResolvesDefaultsFromCommodityWhenAccountsOmitted(t *testing.T)
 
 	transaction, err := f.investmentService.Dividend(ctx, DividendInput{
 		OwnerUserID: f.ownerUserID, TransactionDate: "2026-03-01",
-		CommodityID:   &f.stockCommodityID,
+		CommodityID:   NullableValue(f.stockCommodityID),
 		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
 		AmountValue: 10000, AmountScale: 2,
 	})

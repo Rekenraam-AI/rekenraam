@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"rekenraam/backend/internal/app"
 	"rekenraam/backend/internal/exact"
 )
 
@@ -28,7 +29,7 @@ func TestReplaceAndReverseDividendAPI(t *testing.T) {
 	f := bootstrapInvestmentAPITest(t, handler)
 	instrument := createInstrumentForSession(t, handler, f, "DIVPAY")
 	dividend := func(amount int64) dividendRequest {
-		return dividendRequest{CommodityID: &instrument.CommodityID, TransactionDate: "2026-04-01", CashAccountID: f.cashAccount.ID, CashCommodityID: f.commodityID,
+		return dividendRequest{CommodityID: nullableField[int64]{app.NullableValue(instrument.CommodityID)}, TransactionDate: "2026-04-01", CashAccountID: f.cashAccount.ID, CashCommodityID: f.commodityID,
 			IncomeAccountID: &f.incomeAccount.ID, AmountValue: moneyCoefficient(amount), AmountScale: 2}
 	}
 	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/dividend", dividend(5000), http.StatusCreated)
@@ -152,7 +153,7 @@ func TestSeparateWithholdingAPIAndBundle(t *testing.T) {
 	f := bootstrapInvestmentAPITest(t, handler)
 	instrument := createInstrumentForSession(t, handler, f, "TAXPAY")
 	taxAccount := createLedgerAccount(t, handler, f.sessionCookie, f.csrfToken, "Withholding tax", "expense", "expense", f.commodityID, 2)
-	input := dividendRequest{WithholdingOnly: true, CommodityID: &instrument.CommodityID,
+	input := dividendRequest{WithholdingOnly: true, CommodityID: nullableField[int64]{app.NullableValue(instrument.CommodityID)},
 		TransactionDate: "2026-04-01", CashAccountID: f.cashAccount.ID, CashCommodityID: f.commodityID,
 		WithholdingAccountID: &taxAccount.ID, AmountValue: moneyCoefficient(1500), AmountScale: 2}
 	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost,

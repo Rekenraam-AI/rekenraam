@@ -1713,7 +1713,7 @@
   "settings_data_selfcheck_warnings": "{count} avertissements d’attribution.",
   "settings_data_selfcheck_historical": "Résultat enregistré ; relancez le contrôle après les corrections.",
   "settings_data_selfcheck_attribution_title": "Attribution des investissements",
-  "settings_data_selfcheck_attribution_explanation": "Vérifie les positions courtes historiques des paiements compensatoires et l’opération actuelle associée aux cessions fractionnaires. La validité financière est vérifiée séparément.",
+  "settings_data_selfcheck_attribution_explanation": "Vérifie les positions courtes historiques des paiements compensatoires, l’opération liée aux ventes de fractions et le payeur par rapport aux données conservées du fournisseur. La validité financière est vérifiée séparément.",
   "settings_data_selfcheck_attribution_next": "Ouvrez le paiement et comparez son attribution au relevé du courtier. Le contrôle ne modifie ni les montants ni les données sources.",
   "investments_attribution_no_short": "Aucune quantité vendue à découvert ne justifie cette attribution à la clôture précédant le détachement.",
   "investments_attribution_ex_date_after_payment": "La date de détachement est postérieure à la date de paiement enregistrée.",
@@ -1727,5 +1727,6 @@
   "investments_payment_in_lieu_correction_reason": "Motif de la correction",
   "investments_attribution_cash_parent_unresolved": "L’opération sur titres d’origine a été contrepassée. La cession reste enregistrée ; sa validité financière est vérifiée séparément.",
   "investments_attribution_cash_parent_mismatch": "L’opération sur titres actuelle ne correspond plus au compte, à l’instrument ou à la date de cette cession. La référence d’origine est conservée.",
-  "investments_cash_in_lieu_current_parent": "Opération actuelle nº {id}"
+  "investments_cash_in_lieu_current_parent": "Opération actuelle nº {id}",
+  "investments_dividend_payer_help": "Le payeur est facultatif. Modifier uniquement cette attribution ne change ni les espèces ni les impôts."
 }

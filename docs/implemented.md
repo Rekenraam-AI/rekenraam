@@ -117,11 +117,22 @@ browser `import-short-link.spec.ts` (390 px, real stub fetch, axe, re-fetch dedu
 
 ## Cash dividend instrument attribution — #229 (2026-10-15)
 
-Cash dividends store an optional immutable paying-instrument fact on the named
-operation, shared by gross income and withholding. Separate withholding-tax
-payments require an instrument and record only tax and cash, without gross
-income or security units; entry, correction and reversal are available in all
-six locales, including the instrument view. Instrument activity includes
+Cash dividends, embedded withholding and separate withholding-tax payments
+store immutable payment-shape facts with optional payer (#393, 2026-10-23).
+Standalone tax records only tax and cash, without gross income or security
+units. Entry, correction and reversal are available in all six locales,
+including the instrument view. Replacement omission preserves payer; explicit
+null clears it and a supplied instrument assigns it. Payer-only repairs keep
+cash/tax and neutral checkpoints unchanged. Migration 25 preserves historical
+facts and backfills only recorded shape, never payer; bundle schema 17 exports
+nullable payer empty while retaining withholding-only classification. Shared
+cash-payment ancestry prevents a second provider event claiming an original,
+inverse or corrected version of one payment. Source-linked mismatch warns;
+missing payer is unavailable support. Manual unassigned cash remains in income
+coverage. Original provider evidence/history stays inspectable. Missing-payer
+CSV income uses the same native contract; unknown supplied source codes still
+require review. [Delivery evidence](reviews/dividend-attribution-repair-2026-10-23.md).
+Instrument activity includes
 the complete cash journal, replacements and reversals in its existing paginated
 read. Corrections expose and retain the payer when omitted, including older API
 clients; explicitly correcting the payer assigns only the replacement to the new
@@ -374,7 +385,7 @@ reauthentication budget that answers `429 RATE_LIMITED` with `Retry-After`
 | Export format contract | ✅ | `docs/adrs/0011-ledger-export-contract.md` — grain and order, entry-complete filter semantics, the `in_scope` definition, the seven-column trial-balance identities, amount rendering, and append-only schema stability. |
 | In-kind transfer bundle rows | ✅ | Bundle v2 adds `investment-transfer-facts.csv` and `investment-transfer-lot-links.csv`, preserving the typed source, carried-basis knowledge, and optional original acquisition date. The files are present with headers even in an empty book. |
 | Account paths | ✅ | Every row carries `account_id` (join key) and `account_path` (colon-separated hierarchy, current names). A system account is named by its role rather than left blank; the path builder refuses to loop on a cyclic parent chain. |
-| Export archive | ✅ | `GET /api/v1/exports/bundle.zip` — manifest schema version 16 ([#388](https://github.com/sergeyfarin/rekenraam/issues/388)) permits empty holding/instrument/ex-date attribution in payment facts; version 15 ([#322](https://github.com/sergeyfarin/rekenraam/issues/322)) adds `posting_version_id` to `ledger.csv` and drops account-version/cost-basis-profile ids, so every id resolves inside the archive except audit and user attribution; schema 14 added payment-in-lieu facts and retains paying-instrument and separate-withholding facts beside immutable saved gains/statement documents and fingerprints, and retains non-sale effect knowledge and preserves projected basis knowledge with empty unknown amounts to lot summary/state files, alongside immutable decision-to-clearing posting portions and separate current lot-state/projection attribution and operation journal links, typed dates, exact source components, immutable lot-opening facts and events, effect links, and fee policy versions beside the existing `ledger.csv`, current `lots.csv`, disposal records, prices, and trial balance. Approximate trade prices carry typed source transaction version and audit identifiers. `manifest.json` is written **last**, so a truncated download fails to open rather than looking complete. The manifest carries a SHA-256 and byte count per file, the resolved query, the incomplete-transaction count, and the counterpart-posting count. |
+| Export archive | ✅ | `GET /api/v1/exports/bundle.zip` — manifest schema version 17 ([#393](https://github.com/sergeyfarin/rekenraam/issues/393)) permits nullable dividend payer while preserving payment shape, and retains empty holding/instrument/ex-date attribution in payment facts; version 15 ([#322](https://github.com/sergeyfarin/rekenraam/issues/322)) adds `posting_version_id` to `ledger.csv` and drops account-version/cost-basis-profile ids, so every id resolves inside the archive except audit and user attribution; schema 14 added payment-in-lieu facts and retains paying-instrument and separate-withholding facts beside immutable saved gains/statement documents and fingerprints, and retains non-sale effect knowledge and preserves projected basis knowledge with empty unknown amounts to lot summary/state files, alongside immutable decision-to-clearing posting portions and separate current lot-state/projection attribution and operation journal links, typed dates, exact source components, immutable lot-opening facts and events, effect links, and fee policy versions beside the existing `ledger.csv`, current `lots.csv`, disposal records, prices, and trial balance. Approximate trade prices carry typed source transaction version and audit identifiers. `manifest.json` is written **last**, so a truncated download fails to open rather than looking complete. The manifest carries a SHA-256 and byte count per file, the resolved query, the incomplete-transaction count, and the counterpart-posting count. |
 | Scoped export filters | ✅ | `from`, `to`, `date_basis=entry\|transaction`, repeatable `account_id` with `include_descendants`, repeatable `commodity_id` — on the archive only. Filters select whole **journal entries**: every posting of a selected entry is exported, so the archive balances per entry under every filter, and `transaction_complete` reports per row which transaction groups are whole. Any account class is accepted, unlike the reports filter, because exporting everything that touched a category is a reasonable request. A rejected filter is a 400 before the first byte (`ValidateFilter`), since a stream cannot change its status afterwards. |
 | Trial balance | ✅ | `trial-balance.csv` states `in_scope`, `opening_balance`, `exported_in_range_movement`, `exported_out_of_range_movement`, `excluded_in_range_movement`, `derived_closing_balance`, and `actual_closing_balance`, with three exact identities tested over the two shapes that break simpler models: a scoped export whose counterpart account has unrelated activity, and a transaction whose entries straddle the range under both date bases. The derived figure is never called the account's closing balance. Each figure keeps the scale it accumulated at — the same decision R2 reached for cashflow measures, for the same 38-digit-ceiling reason — except a figure that accumulated nothing, which takes its row's scale, because zero is the same number at every scale and deepening it can widen nothing. A derived total wider than a stored coefficient (a 38-digit posting plus a 2.50 one) is written exactly through `exact.DecimalFromBig` rather than failing the archive; the ceiling governs stored values, not decimal text. |
 | Cross-language decimal rendering | ✅ | `fixtures/decimal-rendering.json` is one specification with two readers: `exact.Decimal` (Go) and `formatLedgerAmount` (TypeScript) both test against it, so the twin implementations cannot drift. |
@@ -634,9 +645,10 @@ converting coefficients to `Number`.
   covers cash attribution, real allocations, source identity, prices/reports,
   reconciliation and ordinary loan-payment composition, with retained accounting
   controls and isolated counterfactuals. This delivers audit/contracts;
-  payer/source consistency (#393), historical-parent entry (#394) and typed
-  financial field corrections (#395) remain runtime follow-ups. Existing feature
-  rows describe shipped behavior; no loan subsystem or generic dependency engine.
+  payer/source consistency (#393) is now delivered. Historical-parent entry
+  (#394) and typed financial field corrections (#395) remain runtime follow-ups.
+  Existing feature rows describe shipped behavior; no loan subsystem or generic
+  dependency engine.
 - Hybrid audit model: version/lifecycle tables record *what*; `audit_events`
   records *who/when/how/why* (request + session attribution).
 - Docker build inputs exclude local data, environment secrets and generated

@@ -22,7 +22,7 @@ import (
 // BundleSchemaVersion is the archive's own version, carried in manifest.json.
 // Columns are appended within a version; a change that cannot be made by
 // appending increments this and needs an ADR (ADR 0011).
-const BundleSchemaVersion = 16
+const BundleSchemaVersion = 17
 
 // bundleFile is one entry of the archive, recorded in the manifest with the
 // checksum computed while it was written.

@@ -198,8 +198,8 @@ func (s *InvestmentService) validateDividendRoles(ctx context.Context, input Div
 			return err
 		}
 	}
-	if input.CommodityID != nil {
-		if err := s.requireCommodityKind(ctx, *input.CommodityID, date, "traded commodity", false); err != nil {
+	if input.CommodityID.Value != nil {
+		if err := s.requireCommodityKind(ctx, *input.CommodityID.Value, date, "traded commodity", false); err != nil {
 			return err
 		}
 	}

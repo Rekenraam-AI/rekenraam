@@ -270,13 +270,18 @@ type EventLinkCandidate struct {
 	HoldingAccountName string
 }
 
-// eventLinkCandidatesSQL(ctx) offers each suggestion only its own kind of payment.
-// A dividend suggestion takes a cash dividend of the instrument dated within
-// the link window; a payment-in-lieu suggestion takes a payment in lieu of the
-// instrument, for one of the proposal's short holdings, with the event's
-// ex-date. Neither is ever offered for the other, and a transaction another
-// suggestion generated or linked is never offered again (the migration 0011
-// unique index backs this once-per-payment rule).
+// Both cash families share the once-per-root claim check. Migration 25 also
+// enforces it at storage admission, including inverse/replacement journals.
+const cashPaymentClaimSQL = `SELECT 1 FROM investment_cash_payment_identity target
+	JOIN investment_cash_payment_identity previous ON previous.book_id=target.book_id AND previous.root_operation_id=target.root_operation_id
+	JOIN investment_event_suggestions other ON other.book_id=previous.book_id
+		AND (other.generated_transaction_id=previous.transaction_id OR other.linked_transaction_id=previous.transaction_id)
+	WHERE target.book_id=o.book_id AND target.transaction_id=t.id`
+
+// eventLinkCandidatesSQL offers each suggestion only its own kind of payment.
+// Dividend candidates match instrument/date window; payment-in-lieu candidates
+// match instrument, one proposed holding and ex-date. Claim identity spans the
+// correction ancestry independently of the current owner attribution.
 func eventLinkCandidatesSQL(ctx context.Context) string {
 	return `
 	SELECT suggestion_id, transaction_id, transaction_date, cash_code, amount_value, amount_scale, holding_account_id, holding_account_name
@@ -299,8 +304,7 @@ func eventLinkCandidatesSQL(ctx context.Context) string {
 			-- A short holder's payment in lieu (#255) is never a cash dividend.
 			AND json_extract(s.proposed_transaction_json, '$.kind') IS NOT 'payment_in_lieu'
 			AND o.event_date >= e.event_date AND o.event_date <= date(e.event_date, '+' || ? || ' days')
-			AND NOT EXISTS (SELECT 1 FROM investment_event_suggestions other
-				WHERE other.generated_transaction_id = t.id OR other.linked_transaction_id = t.id)
+			AND NOT EXISTS (` + cashPaymentClaimSQL + `)
 		UNION ALL
 		SELECT s.id, tv.transaction_id, o.event_date, cash.code, c.amount_value, c.amount_scale, c.component_seq,
 			facts.holding_account_id, COALESCE(holding.name, '')
@@ -321,11 +325,7 @@ func eventLinkCandidatesSQL(ctx context.Context) string {
 			AND json_extract(s.proposed_transaction_json, '$.kind') = 'payment_in_lieu'
 			AND json_extract(s.proposed_transaction_json, '$.commodity_id') = facts.commodity_id
 			AND facts.holding_account_id IN (SELECT value FROM json_each(s.proposed_transaction_json, '$.holding_account_ids'))
-			AND NOT EXISTS (SELECT 1 FROM investment_event_suggestions other
-				JOIN transaction_versions previous_version ON previous_version.transaction_id IN (other.generated_transaction_id, other.linked_transaction_id)
-				JOIN investment_operation_journal_links previous_link ON previous_link.transaction_version_id = previous_version.id AND previous_link.role = 'primary'
-				JOIN investment_payment_in_lieu_ancestry ancestry ON ancestry.ancestor_operation_id = previous_link.operation_id
-				WHERE other.book_id = o.book_id AND ancestry.book_id = o.book_id AND ancestry.operation_id = o.id)
+			AND NOT EXISTS (` + cashPaymentClaimSQL + `)
 	)`
 }
 
