@@ -1,0 +1,67 @@
+Source: b7cd389a0855645287a3c54b5b1101c1d4b75269
+Probe SHA-256: 5271d67b7f61d9ee03f3fa5e3802a7ce47805f0c17697fbc848b74d7237505bd
+go version go1.27.3 linux/amd64
+BASELINE: both relationship fences intact
+=== RUN   TestDependencyComparisonAuditDividendAndWithholding
+=== PAUSE TestDependencyComparisonAuditDividendAndWithholding
+=== RUN   TestDependencyComparisonAuditPaymentPositionCorrection
+=== PAUSE TestDependencyComparisonAuditPaymentPositionCorrection
+=== RUN   TestDependencyComparisonAuditPaymentCoveredBeforeExDate
+=== PAUSE TestDependencyComparisonAuditPaymentCoveredBeforeExDate
+=== RUN   TestDependencyComparisonAuditCashInLieuParentReplacement
+=== PAUSE TestDependencyComparisonAuditCashInLieuParentReplacement
+=== RUN   TestDependencyComparisonAuditCashInLieuImpossibleAfterParentChange
+=== PAUSE TestDependencyComparisonAuditCashInLieuImpossibleAfterParentChange
+=== CONT  TestDependencyComparisonAuditPaymentCoveredBeforeExDate
+=== CONT  TestDependencyComparisonAuditCashInLieuParentReplacement
+=== CONT  TestDependencyComparisonAuditCashInLieuImpossibleAfterParentChange
+=== CONT  TestDependencyComparisonAuditPaymentPositionCorrection
+=== CONT  TestDependencyComparisonAuditDividendAndWithholding
+--- PASS: TestDependencyComparisonAuditPaymentCoveredBeforeExDate (1.37s)
+=== NAME  TestDependencyComparisonAuditCashInLieuParentReplacement
+    dependency_comparison_audit_test.go:147: baseline: ratio correction refused by parent fence despite sufficient units for the fraction
+--- PASS: TestDependencyComparisonAuditCashInLieuParentReplacement (1.38s)
+=== NAME  TestDependencyComparisonAuditPaymentPositionCorrection
+    dependency_comparison_audit_test.go:86: baseline: position-date correction refused solely by payment dependency; durable snapshot unchanged
+=== NAME  TestDependencyComparisonAuditCashInLieuImpossibleAfterParentChange
+    dependency_comparison_audit_test.go:172: both modes: impossible 0.5-unit disposal against 0.3 units refused; durable snapshot unchanged
+=== NAME  TestDependencyComparisonAuditDividendAndWithholding
+    dependency_comparison_audit_test.go:67: cash=83.00 income=-100.00 tax=17.00 lots=0; payer repair preserves amounts/checkpoint; standalone missing-payer entry refused
+--- PASS: TestDependencyComparisonAuditPaymentPositionCorrection (1.48s)
+--- PASS: TestDependencyComparisonAuditCashInLieuImpossibleAfterParentChange (1.48s)
+--- PASS: TestDependencyComparisonAuditDividendAndWithholding (1.48s)
+PASS
+ok  	rekenraam/backend/internal/app	2.511s
+ABLATION: only the two after-effect/parent fences disabled
+=== RUN   TestDependencyComparisonAuditDividendAndWithholding
+=== PAUSE TestDependencyComparisonAuditDividendAndWithholding
+=== RUN   TestDependencyComparisonAuditPaymentPositionCorrection
+=== PAUSE TestDependencyComparisonAuditPaymentPositionCorrection
+=== RUN   TestDependencyComparisonAuditPaymentCoveredBeforeExDate
+=== PAUSE TestDependencyComparisonAuditPaymentCoveredBeforeExDate
+=== RUN   TestDependencyComparisonAuditCashInLieuParentReplacement
+=== PAUSE TestDependencyComparisonAuditCashInLieuParentReplacement
+=== RUN   TestDependencyComparisonAuditCashInLieuImpossibleAfterParentChange
+=== PAUSE TestDependencyComparisonAuditCashInLieuImpossibleAfterParentChange
+=== CONT  TestDependencyComparisonAuditPaymentPositionCorrection
+=== CONT  TestDependencyComparisonAuditCashInLieuImpossibleAfterParentChange
+=== CONT  TestDependencyComparisonAuditCashInLieuParentReplacement
+=== CONT  TestDependencyComparisonAuditDividendAndWithholding
+=== CONT  TestDependencyComparisonAuditPaymentCoveredBeforeExDate
+=== NAME  TestDependencyComparisonAuditCashInLieuImpossibleAfterParentChange
+    dependency_comparison_audit_test.go:172: both modes: impossible 0.5-unit disposal against 0.3 units refused; durable snapshot unchanged
+=== NAME  TestDependencyComparisonAuditPaymentCoveredBeforeExDate
+    dependency_comparison_audit_test.go:128: ablated: cash=250.00 expense=50.00 short=0; fully covered before ex-date still passes old foundation check (the #389 gap)
+=== NAME  TestDependencyComparisonAuditDividendAndWithholding
+    dependency_comparison_audit_test.go:67: cash=83.00 income=-100.00 tax=17.00 lots=0; payer repair preserves amounts/checkpoint; standalone missing-payer entry refused
+=== NAME  TestDependencyComparisonAuditPaymentPositionCorrection
+    dependency_comparison_audit_test.go:103: ablated: cash=950.00 expense=50.00 short=10 opening proceeds=1000.00; all selected financial checks pass; foundation fails only attribution
+--- PASS: TestDependencyComparisonAuditCashInLieuImpossibleAfterParentChange (1.57s)
+--- PASS: TestDependencyComparisonAuditPaymentCoveredBeforeExDate (1.57s)
+=== NAME  TestDependencyComparisonAuditCashInLieuParentReplacement
+    dependency_comparison_audit_test.go:157: ablated: cash=-28.00 units=7 disposed basis=2.40 remaining basis=33.60; replay/gain review work; foundation fails only parent effectiveness
+--- PASS: TestDependencyComparisonAuditDividendAndWithholding (1.58s)
+--- PASS: TestDependencyComparisonAuditPaymentPositionCorrection (1.58s)
+--- PASS: TestDependencyComparisonAuditCashInLieuParentReplacement (1.59s)
+PASS
+ok  	rekenraam/backend/internal/app	2.618s

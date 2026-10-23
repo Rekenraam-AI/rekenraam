@@ -820,6 +820,13 @@ ceiling, it moves onto the work queue as a follow-up, not a redesign.
 
 ### Self-check outcomes (#313)
 
+The section below describes shipped #313 behavior. The later
+[four-case dependency contract](financial-dependency-simplification-plan.md#diagnostic-contract-for-389)
+specifies a pending #389 extension: a distinct attribution-warning outcome,
+separate warning counts and transaction repair links. It preserves genuine
+integrity findings, unavailable coverage and saved historical runs. Those new
+enums/storage/API/UI changes are not implemented by the design slice.
+
 A completed check measures two things and keeps them apart:
 
 - **Integrity findings** (`finding_count`, `sample`): something is wrong — a

@@ -58,6 +58,9 @@ record the accounting-reason test and cross-family attribution/correction
 review (#391). The separate product-complexity audit (#390) asks whether
 checks/workflows are necessary; #284 preserves its mechanical-refactor scope.
 These are planning contracts, not delivered runtime simplifications.
+The [first four-case comparison](reviews/financial-dependency-comparison-2026-10-23.md)
+retains independent figures and the isolated fence-removal experiment; it
+specifies #388/#389 and scopes cash-in-lieu/payer follow-ups #392/#393.
 
 [ADR 0018](adrs/0018-personal-access-token-boundary.md) and the
 [personal-access-token contract](plans/personal-access-tokens-plan.md) define

@@ -176,7 +176,11 @@ below is execution order, not a chain of hard dependencies.
    [plan](plans/financial-dependency-simplification-plan.md), reframes
    [#388](https://github.com/sergeyfarin/rekenraam/issues/388) as cash-only
    payment attribution and [#389](https://github.com/sergeyfarin/rekenraam/issues/389)
-   as its diagnostic. These do not expand #284's closure checklist, reorder
+   as its diagnostic. The owner-directed
+   [four-case comparative slice](reviews/financial-dependency-comparison-2026-10-23.md)
+   specifies their targeted contract, with #392/#393 covering cash-in-lieu
+   parent corrections and dividend/withholding payer attribution. The wider
+   #391 inventory remains open. These do not expand #284's closure checklist, reorder
    initiatives or introduce a blanket R13 prerequisite.
 3. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
    Use the delivered R18 valuation contracts; resolve portfolio scope,

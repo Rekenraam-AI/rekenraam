@@ -2,8 +2,9 @@
 
 Owner direction: 2026-10-23, governed by
 [ADR 0019](../adrs/0019-financial-effects-and-repairable-attribution.md).
-This is a design and delivery-boundary plan, not a completed audit or shipped
-behavior. Baseline: `8549045a4484f01e6e9b28e4f0a5fd6aa8213985`.
+This is a design and delivery-boundary plan. The first four-case comparative
+contract below is complete; the wider family inventory and runtime delivery
+remain open. Runtime baseline: `8549045a4484f01e6e9b28e4f0a5fd6aa8213985`.
 
 Delivery acceptance and progress live in
 [#391](https://github.com/sergeyfarin/rekenraam/issues/391). The broader
@@ -92,6 +93,114 @@ reassigned/versioned. Do not weaken a constraint before its readers and
 derived effects have a replacement contract. #391 files a bounded delivery
 issue once these decisions and named tests are ready; it does not pre-approve
 deleting all parent fences.
+
+## Four-Case Contract (2026-10-23)
+
+The [comparison report](../reviews/financial-dependency-comparison-2026-10-23.md)
+retains source consumers, independent figures and a reproducible isolated
+experiment. These decisions apply to the four compared cases; other family
+rows above remain hypotheses. Existing runtime contracts change only when
+their linked implementation ships.
+
+| Case | Required financial meaning | Attribution and correction disposition | Delivery |
+|---|---|---|---|
+| Cash dividend | Exact gross, recorded withholding, cash/currency/date and posting accounts; gross is never inferred from net alone | Payer is optional, set/change/clear is audited, and holdings are not permanent authorization. Preserve the cash-only correction shape and existing coverage. | #393 closes the clear/unassigned gaps; no new holding/ex-date fields. |
+| Embedded/separate withholding | Exact known tax and correct posting shape; a separate tax payment creates no gross income | Instrument is optional in both forms. Separate-withholding knowledge must survive without a payer-facts row carrying a non-null instrument. No historical lot or mandatory dividend-payment link. | #393 changes the facts representation with its migration. |
+| Payment in lieu of dividend | Exact owed cash/expense, optional recorded recovery, payment date/currency/accounts; no lot effect | Instrument, holding and ex-date are optional owner attribution. Remove entry/replacement entitlement authorization and the shared writer's global before/after scan. Unsupported attribution is diagnostic; allow audited repairs preserving cash. | #388 with #389's visibility. |
+| Fractional-share cash in lieu | Actual fractional disposal quantity, account/instrument, basis/election, proceeds and disposal/payment dates | Keep immutable parent provenance; validate parent edits by actual replay. Resolve correction ancestry for current context. A retired parent alone is an attribution warning, while impossible disposals still refuse. | #392 characterizes and adapts all four parent families. |
+
+### Required Facts And Repair Semantics
+
+Cash-only commands always require owner-confirmed financial magnitudes and
+valid cash/tax/income/expense accounts, currency and payment date. The payment
+in lieu recovery retains its existing positive, same-currency, less-than-owed
+contract. Supplied attribution IDs must name the proper object kind in the
+same book; supplied dates must be calendar dates. Holding attribution is not
+a security posting and does not authorize one. Missing attribution cannot
+block an otherwise supported cash-only command or silently choose an account,
+instrument, ex-date, gross amount or tax treatment.
+
+For cash-only attribution fields, entry omission/null means unassigned;
+replacement omission preserves the prior value, explicit null clears it and
+a supplied value replaces it. Presence must survive HTTP decoding. A supplied
+holding with no instrument is retained as partial attribution rather than
+inventing a payer. A missing field means unavailable historical support; a
+complete ex-date after the recorded payment is a chronology warning rather
+than a reason to erase/refuse the known cash. Currency/payment-date/posting
+account corrections remain financial operations governed by existing rules.
+
+Use the current immutable facts and replacement/correction chain, extending
+the typed facts with nullable attribution fields and their guards. Every named
+payment keeps its own facts row; missing facts rows, cross-book references and
+malformed stored values remain integrity failures. Preserve historical values
+and repeated reversal facts. For separate withholding, retain payment shape
+independently of payer presence. Migrations preserve existing known values;
+new export manifests declare nullable attribution/shape representation and
+leave unknown cells empty. No generic relationship table is needed.
+
+One owner action previews and commits an attribution repair. Reuse the
+audited inverse-plus-replacement mechanism with the same payment date/cash
+account/currency. Equal financial legs net to zero; all affected checkpoint
+balances and gains remain unchanged, so an attribution-only repair needs no
+reconciliation invalidation. Show a correction, not a broker refund followed
+by a new charge. A real amount/account/date change still follows normal
+financial review. Reversal does not require supported attribution.
+
+Owner attribution and source statements remain distinct. A repaired payment
+does not post again on reimport. A provider event link keeps its original
+evidence; when effective owner attribution no longer matches it, disclose the
+disagreement without rewriting the event, reopening its decision or admitting
+a second source identity. An explicit relink still validates book, effective
+payment and once-per-payment identity atomically. Reports continue using
+recorded amounts and existing scope/formulas; diagnostics do not reclassify
+payment-in-lieu expenses as dividends or claim to verify the charged amount.
+
+### Diagnostic Contract For #389
+
+Reuse the existing Data settings self-check and transaction detail/correction
+surface. Add a read-only `investment_attribution` check and one `warning`
+severity, keeping integrity failure and unavailable coverage meanings intact.
+No new review queue, persistent acknowledgement, worker or mandatory modal is
+introduced. The check uses exact effective openings minus covers by cost
+currency at the close before the ex-date, grouped/batched where necessary.
+Ordinary writes never run this whole-book diagnostic.
+
+| Evaluation | Result and visibility |
+|---|---|
+| Complete supported attribution | Passed; this establishes historical support, not correctness of the amount. |
+| Context needed for the historical check is missing | Incomplete coverage with unavailable count/sample; known cash stays usable. |
+| Complete context has no short at the close, or ex-date follows payment | Warning with stable reason (`no_short_at_entitlement_close` / `ex_date_after_payment`), named transaction and repair link. Never label it financial corruption or unknown data. |
+| Broken facts/FKs, invalid quantities/elections or journal/lot disagreement | Existing integrity checks fail independently. |
+| Evaluation cannot execute | Existing errored-run/read-error behavior; never substitute unsupported or zero. |
+
+Keep `finding_count`/`sample` for integrity findings and
+`unavailable_count`/`unavailable_sample` for missing coverage. Add distinct
+`warning_count`/`warning_sample` fields and `warning_check_count` at run level;
+each attribution warning sample is `{transaction_id, reason}`. Unavailable
+samples for this check also identify transactions, not operation IDs.
+Aggregation is failed > warning > incomplete > passed after successful
+execution; warning and unavailable counts stay visible even alongside failure.
+Saved runs retain their original results/timestamps. Changes require a
+self-check storage migration, OpenAPI/generated types, translated status/copy
+and Data settings rendering; add no universal severity/rule registry.
+
+Warnings and missing-context rows link to
+`/app/transactions?transaction_id=...` and the existing replacement form's
+editable attribution. The effective payment terms read supplies the same
+diagnostic on demand for detail/repair; it is advisory, never write permission.
+After repair, refresh that detail and allow rerunning the self-check; its last
+saved run is explicitly historical. Do not invent support for dividend
+eligibility where holding/ex-date data is not recorded. The #392 parent-link
+warning can use this same surface once its source-resolution contract ships.
+
+### Implementation Boundaries
+
+#388 and #389 now have their targeted contract; neither waits for every other
+#391 family or #390. They may ship together, or #389's read/visibility first
+against explicit fixtures. Missing attribution fields and contradictory
+historical support are accepted only alongside this visibility. #392 and #393
+are separate bounded changes with their own negative controls. The wider
+family inventory remains in #391; this slice does not complete that issue.
 
 ## Whole-Application Complexity Review
 

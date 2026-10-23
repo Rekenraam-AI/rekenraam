@@ -1,0 +1,173 @@
+package app
+
+import (
+	"context"
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+// Historical #391 experiment, compiled only in the disposable source snapshot.
+// The ablated run disables two relationship fences, not disposal admission,
+// replay, source identity, reconciliation, gain review or storage constraints.
+func dependencyAuditAblated() bool { return os.Getenv("REKENRAAM_DEPENDENCY_ABLATION") == "1" }
+
+func dependencyAuditIntegrity(t *testing.T, f *investmentsTestFixture, attributionMessage string) {
+	t.Helper()
+	run := mustRunInvestmentSelfCheck(t, f)
+	for _, id := range []string{CheckEntryBalance, CheckTransactionBalance, CheckBookBalance,
+		CheckLotReconciliation, CheckInvestmentReplay, CheckCheckpointIntegrity, CheckSQLiteIntegrity} {
+		require.Equal(t, SelfCheckPassed, resultFor(t, run, id).Status, id)
+	}
+	foundation := resultFor(t, run, CheckInvestmentFoundation)
+	if attributionMessage == "" {
+		require.Equal(t, SelfCheckPassed, foundation.Status)
+	} else {
+		require.Equal(t, SelfCheckFailed, foundation.Status)
+		require.Equal(t, int64(1), foundation.FindingCount)
+		require.Contains(t, foundation.Summary, attributionMessage)
+	}
+}
+
+func TestDependencyComparisonAuditDividendAndWithholding(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newInvestmentsTestFixture(t)
+	tax := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
+	input := cashDividendInput(f, tax, 10000, 1500)
+	dividend, err := f.investmentService.Dividend(ctx, input)
+	require.NoError(t, err, "100 gross less 15 tax works with no holdings or payer")
+	require.Equal(t, int64(8500), accountBalance(t, f, f.cashAccountID))
+	separate := DividendInput{OwnerUserID: f.ownerUserID, TransactionDate: "2026-03-02",
+		WithholdingOnly: true, CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
+		WithholdingAccountID: &tax, AmountValue: 200, AmountScale: 2}
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	_, err = f.investmentService.Dividend(ctx, separate)
+	var validation ValidationError
+	require.ErrorAs(t, err, &validation, "separate withholding currently requires payer attribution")
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	separate.CommodityID = &f.stockCommodityID
+	_, err = f.investmentService.Dividend(ctx, separate)
+	require.NoError(t, err, "a payer identity suffices; historical shares are not checked")
+	checkpoint := reconcileCash(t, f, "2026-04-01", 83)
+	input.CommodityID = &f.stockCommodityID
+	_, err = f.investmentService.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{
+		OwnerUserID: f.ownerUserID, TransactionID: dividend.ID,
+		Reason: "identify payer without changing cash", Replacement: input})
+	require.NoError(t, err)
+	require.Equal(t, int64(8300), accountBalance(t, f, f.cashAccountID))
+	require.Equal(t, int64(-10000), accountBalance(t, f, f.incomeAccountID))
+	require.Equal(t, int64(1700), accountBalance(t, f, tax))
+	require.Equal(t, []int64{checkpoint}, activeCheckpointIDs(t, f), "payer-only repair preserves reconciled cash")
+	var lots int
+	require.NoError(t, f.database.QueryRow(`SELECT COUNT(*) FROM investment_lots`).Scan(&lots))
+	require.Zero(t, lots)
+	dependencyAuditIntegrity(t, f, "")
+	t.Log("cash=83.00 income=-100.00 tax=17.00 lots=0; payer repair preserves amounts/checkpoint; standalone missing-payer entry refused")
+}
+
+func TestDependencyComparisonAuditPaymentPositionCorrection(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newInvestmentsTestFixture(t)
+	expense := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
+	opening := shortSaleOn(t, f, "2026-03-02", 10, 100000)
+	payment, err := f.investmentService.PaymentInLieu(ctx, paymentInLieuInput(f, expense, 5000))
+	require.NoError(t, err)
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	_, err = f.investmentService.ReplaceShortSale(ctx, ReplaceInvestmentBuyInput{
+		OwnerUserID: f.ownerUserID, TransactionID: opening.Transaction.ID,
+		Reason: "opening occurred on ex-date", Replacement: shortInput(f, "2026-04-01", 10, 100000)})
+	if !dependencyAuditAblated() {
+		requirePaymentInLieuDependency(t, err, payment)
+		require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+		dependencyAuditIntegrity(t, f, "")
+		t.Log("baseline: position-date correction refused solely by payment dependency; durable snapshot unchanged")
+		return
+	}
+	require.NoError(t, err)
+	require.Equal(t, int64(95000), accountBalance(t, f, f.cashAccountID))
+	require.Equal(t, int64(5000), accountBalance(t, f, expense))
+	var state [4]string
+	require.NoError(t, f.database.QueryRow(`SELECT s.remaining_quantity_value, s.remaining_quantity_scale,
+		s.remaining_cost_basis_value, s.status FROM investment_lots l
+		JOIN investment_lot_state s ON s.lot_id = l.id
+		JOIN effective_investment_operations o ON o.id = l.operation_id
+		WHERE l.position_side = 'short'`).Scan(&state[0], &state[1], &state[2], &state[3]))
+	require.Equal(t, [4]string{"10", "0", "100000", "open"}, state)
+	var effective int
+	require.NoError(t, f.database.QueryRow(`SELECT COUNT(*) FROM effective_investment_operations WHERE operation_kind = 'payment_in_lieu'`).Scan(&effective))
+	require.Equal(t, 1, effective)
+	dependencyAuditIntegrity(t, f, "payment in lieu without a short lot")
+	t.Log("ablated: cash=950.00 expense=50.00 short=10 opening proceeds=1000.00; all selected financial checks pass; foundation fails only attribution")
+}
+
+func TestDependencyComparisonAuditPaymentCoveredBeforeExDate(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newInvestmentsTestFixture(t)
+	expense := seedTestAccountWithClass(t, f.database, "active", true, "expense", "expense")
+	shortSaleOn(t, f, "2026-03-02", 10, 100000)
+	payment, err := f.investmentService.PaymentInLieu(ctx, paymentInLieuInput(f, expense, 5000))
+	require.NoError(t, err)
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	_, err = f.investmentService.ShortCover(ctx, coverInput(f, "2026-03-20", 10, 70000, "fifo"))
+	if !dependencyAuditAblated() {
+		requirePaymentInLieuDependency(t, err, payment)
+		require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+		return
+	}
+	require.NoError(t, err)
+	require.Equal(t, int64(25000), accountBalance(t, f, f.cashAccountID))
+	require.Equal(t, int64(5000), accountBalance(t, f, expense))
+	state := shortLotState(t, f)
+	require.Equal(t, "0", state[0])
+	require.Equal(t, "closed", state[3])
+	dependencyAuditIntegrity(t, f, "")
+	t.Log("ablated: cash=250.00 expense=50.00 short=0; fully covered before ex-date still passes old foundation check (the #389 gap)")
+}
+
+func TestDependencyComparisonAuditCashInLieuParentReplacement(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newInvestmentsTestFixture(t)
+	buyOn(t, f, "2026-05-01", 3, 3600)
+	split, err := f.investmentService.Split(ctx, splitInput(f, "2026-06-01", 3, 2))
+	require.NoError(t, err)
+	cil, err := f.investmentService.CashInLieu(ctx, cashInLieuInput(f, split.Transaction.ID))
+	require.NoError(t, err)
+	requireScaled(t, 400, 2, saleEffectiveBasis(t, f, cil.Transaction.ID), "36 / 4.5 * 0.5 = 4")
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	_, err = acknowledgedReplaceSplit(ctx, f.investmentService,
+		replaceSplitInput(f, split.Transaction.ID, "2026-06-01", 5, 2))
+	if !dependencyAuditAblated() {
+		require.ErrorIs(t, err, ErrInvestmentSplitDependency)
+		require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+		t.Log("baseline: ratio correction refused by parent fence despite sufficient units for the fraction")
+		return
+	}
+	require.NoError(t, err)
+	quantity, basis := openPositionBasis(t, f, f.holdingAccountID)
+	requireScaled(t, 7, 0, quantity, "3 * 5/2 - 0.5 = 7")
+	requireScaled(t, 3360, 2, basis, "remaining basis 36 - 2.40")
+	requireScaled(t, 240, 2, saleEffectiveBasis(t, f, cil.Transaction.ID), "36 / 7.5 * 0.5 = 2.40")
+	require.Equal(t, int64(-2800), accountBalance(t, f, f.cashAccountID))
+	dependencyAuditIntegrity(t, f, "cash in lieu missing its link")
+	t.Log("ablated: cash=-28.00 units=7 disposed basis=2.40 remaining basis=33.60; replay/gain review work; foundation fails only parent effectiveness")
+}
+
+func TestDependencyComparisonAuditCashInLieuImpossibleAfterParentChange(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f, split := cashInLieuSetup(t)
+	_, err := f.investmentService.CashInLieu(ctx, cashInLieuInput(f, split.Transaction.ID))
+	require.NoError(t, err)
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	_, err = acknowledgedReplaceSplit(ctx, f.investmentService,
+		replaceSplitInput(f, split.Transaction.ID, "2026-06-01", 1, 10))
+	require.ErrorIs(t, err, ErrInvestmentSplitDependency, "0.3 available cannot satisfy 0.5 disposal")
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	dependencyAuditIntegrity(t, f, "")
+	t.Log("both modes: impossible 0.5-unit disposal against 0.3 units refused; durable snapshot unchanged")
+}

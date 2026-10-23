@@ -9,6 +9,15 @@ and [#391](https://github.com/sergeyfarin/rekenraam/issues/391) before implement
 This planning decision does not claim a runtime change. Existing cash-in-lieu
 and payment-in-lieu guards remain until their replacement slices ship.
 
+The first [four-case comparative contract](../plans/financial-dependency-simplification-plan.md#four-case-contract-2026-10-23)
+now specifies nullable cash attribution, explicit clearing, audited net-zero
+repair and warning versus unavailable/integrity outcomes. Its
+[source-pinned experiment](../reviews/financial-dependency-comparison-2026-10-23.md)
+supports relaxing the permanent cash-only and blanket parent fences while
+retaining real disposal admission. #388/#389 have their targeted design;
+#392 covers cash-in-lieu implementation and #393 cash-dividend/withholding
+attribution. Remaining #391 families and runtime delivery are still open.
+
 Refines ADR 0013's cash/payment-in-lieu dependency policy and extends ADR 0017's
 separation of financial effects, owner attribution and provider evidence. ADR
 0012's journal/subledger atomicity and reporting boundaries remain in force.
