@@ -266,51 +266,94 @@ func (t *RateTable) Scale() int { return t.quoteScale }
 // the figure rather than substituting a zero, which would read as "nothing"
 // instead of "unknown".
 func (t *RateTable) Convert(value exact.Coefficient, scale int, commodityID int64, onDate string) (*big.Int, bool) {
-	if commodityID == t.quoteCommodityID {
+	rate, ok := t.resolve(commodityID, onDate)
+	if !ok {
+		return nil, false
+	}
+	if rate.identity {
 		// The reporting currency converts to itself at 1, exactly, with no
 		// observation involved and nothing to round.
 		aligned := exact.ScaledIntFromCoefficient(value, scale)
 		aligned.Align(t.quoteScale)
 		return aligned.BigInt(), true
 	}
-
-	rate, found := t.observationOnOrBefore(t.byCommodity[commodityID], onDate)
-	if !found {
-		return t.convertChained(value, scale, commodityID, onDate)
-	}
-
-	converted, err := exact.MulDivRound(
-		value.BigInt(), scale,
-		big.NewInt(rate.PriceValue), rate.PriceScale,
-		big.NewInt(rate.BaseQuantityValue), rate.BaseQuantityScale,
-		t.quoteScale,
-	)
+	converted, err := exact.MulDivRound(value.BigInt(), scale, rate.price, rate.priceScale, rate.base, rate.baseScale, t.quoteScale)
 	if err != nil {
 		t.gaps[commodityID] = RateGap{CommodityID: commodityID, Reason: RateMissingNoObservation}
 		return nil, false
 	}
-
-	stale := rate.ValuationDate != onDate
-	// Preserve each selected observation/date, so a later estimated or stale
-	// use cannot disappear behind the first exact quote of that currency.
-	t.used[rateUseKey{commodityID, rate.ObservationID, 0, onDate}] = RateUse{
-		ObservationID: rate.ObservationID, Approximate: rate.IsApproximate,
-		CommodityID: commodityID, ObservationDate: rate.ValuationDate, RequestedDate: onDate, Stale: stale, Derived: rate.IsDerived,
-	}
-
+	t.recordUse(commodityID, onDate, rate)
 	return converted, true
 }
 
-// convertChained values a commodity with no direct reporting rate through a
+// ConvertExact values an amount like Convert, with the same rate selection,
+// coverage and gaps, but returns the exact rational value instead of rounding
+// it to the reporting currency's scale. A consumer whose arithmetic needs the
+// true sign or ratio (R13's time-weighted chain) rounds only what it shows.
+func (t *RateTable) ConvertExact(value exact.Coefficient, scale int, commodityID int64, onDate string) (*big.Rat, bool) {
+	rate, ok := t.resolve(commodityID, onDate)
+	if !ok {
+		return nil, false
+	}
+	amount := new(big.Rat).SetFrac(value.BigInt(), pow10(scale))
+	if rate.identity {
+		return amount, true
+	}
+	amount.Mul(amount, new(big.Rat).SetFrac(rate.price, pow10(rate.priceScale)))
+	amount.Quo(amount, new(big.Rat).SetFrac(rate.base, pow10(rate.baseScale)))
+	t.recordUse(commodityID, onDate, rate)
+	return amount, true
+}
+
+func pow10(scale int) *big.Int {
+	return new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(scale)), nil)
+}
+
+// resolvedRate is the conversion a commodity takes on a date: price over base
+// quantity, direct or chained through a quote currency (#281), or identity
+// for the reporting currency itself.
+type resolvedRate struct {
+	identity              bool
+	price, base           *big.Int
+	priceScale, baseScale int
+	use                   RateUse
+}
+
+// resolve selects a commodity's rate on a date and records a gap on a miss.
+// A direct rate, when usable, always wins; a chain never stands in for a
+// missing leg.
+func (t *RateTable) resolve(commodityID int64, onDate string) (resolvedRate, bool) {
+	if commodityID == t.quoteCommodityID {
+		return resolvedRate{identity: true}, true
+	}
+	if rate, found := t.observationOnOrBefore(t.byCommodity[commodityID], onDate); found {
+		return resolvedRate{
+			price: big.NewInt(rate.PriceValue), priceScale: rate.PriceScale,
+			base: big.NewInt(rate.BaseQuantityValue), baseScale: rate.BaseQuantityScale,
+			use: RateUse{ObservationID: rate.ObservationID, Approximate: rate.IsApproximate,
+				CommodityID: commodityID, ObservationDate: rate.ValuationDate, RequestedDate: onDate,
+				Stale: rate.ValuationDate != onDate, Derived: rate.IsDerived},
+		}, true
+	}
+	return t.resolveChained(commodityID, onDate)
+}
+
+// recordUse preserves each selected observation/date, so a later estimated
+// or stale use cannot disappear behind the first exact quote of that
+// currency.
+func (t *RateTable) recordUse(commodityID int64, onDate string, rate resolvedRate) {
+	t.used[rateUseKey{commodityID, rate.use.ObservationID, rate.use.ViaObservationID, onDate}] = rate.use
+}
+
+// resolveChained values a commodity with no direct reporting rate through a
 // currency it is priced in: value × price in that currency × that currency's
-// reporting rate, rounded once (#281). A direct rate, when usable, always wins;
-// a chain never stands in for a missing leg.
+// reporting rate, rounded once by the caller (#281).
 //
 // With several usable quote currencies, the freshest first leg wins, then the
 // freshest second leg, then the lowest currency id, so the choice is
 // deterministic. When a price exists but no quote currency converts, the gap
 // names that currency, because its rate is what the owner has to add.
-func (t *RateTable) convertChained(value exact.Coefficient, scale int, commodityID int64, onDate string) (*big.Int, bool) {
+func (t *RateTable) resolveChained(commodityID int64, onDate string) (resolvedRate, bool) {
 	byQuote := t.chainQuotes[commodityID]
 	quoteIDs := make([]int64, 0, len(byQuote))
 	for quoteID := range byQuote {
@@ -345,27 +388,18 @@ func (t *RateTable) convertChained(value exact.Coefficient, scale int, commodity
 		} else {
 			t.recordGap(commodityID, onDate)
 		}
-		return nil, false
+		return resolvedRate{}, false
 	}
-
-	converted, err := exact.MulDivRound(
-		value.BigInt(), scale,
-		new(big.Int).Mul(big.NewInt(first.PriceValue), big.NewInt(second.PriceValue)), first.PriceScale+second.PriceScale,
-		new(big.Int).Mul(big.NewInt(first.BaseQuantityValue), big.NewInt(second.BaseQuantityValue)), first.BaseQuantityScale+second.BaseQuantityScale,
-		t.quoteScale,
-	)
-	if err != nil {
-		t.gaps[commodityID] = RateGap{CommodityID: commodityID, Reason: RateMissingNoObservation}
-		return nil, false
-	}
-
-	t.used[rateUseKey{commodityID, first.ObservationID, second.ObservationID, onDate}] = RateUse{
-		ObservationID: first.ObservationID, Approximate: first.IsApproximate || second.IsApproximate,
-		CommodityID: commodityID, ObservationDate: first.ValuationDate, RequestedDate: onDate,
-		Stale:   first.ValuationDate != onDate || second.ValuationDate != onDate,
-		Derived: true, ViaCommodityID: second.BaseCommodityID, ViaObservationID: second.ObservationID, ViaObservationDate: second.ValuationDate,
-	}
-	return converted, true
+	return resolvedRate{
+		price:      new(big.Int).Mul(big.NewInt(first.PriceValue), big.NewInt(second.PriceValue)),
+		priceScale: first.PriceScale + second.PriceScale,
+		base:       new(big.Int).Mul(big.NewInt(first.BaseQuantityValue), big.NewInt(second.BaseQuantityValue)),
+		baseScale:  first.BaseQuantityScale + second.BaseQuantityScale,
+		use: RateUse{ObservationID: first.ObservationID, Approximate: first.IsApproximate || second.IsApproximate,
+			CommodityID: commodityID, ObservationDate: first.ValuationDate, RequestedDate: onDate,
+			Stale:   first.ValuationDate != onDate || second.ValuationDate != onDate,
+			Derived: true, ViaCommodityID: second.BaseCommodityID, ViaObservationID: second.ObservationID, ViaObservationDate: second.ValuationDate},
+	}, true
 }
 
 // rateFor finds a commodity's direct reporting rate, recording a gap on a miss.

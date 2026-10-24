@@ -618,9 +618,20 @@ func TestCreateImportConnection_CashAccountIDNonAssetRejected(t *testing.T) {
 func TestCreateImportConnection_CashAccountIDSystemAccountRejected(t *testing.T) {
 	t.Parallel()
 	svc, database := newTestConnectionServiceWithAccounts(t)
-	accountID := seedCommodityTradingAccount(t, database)
+	// transfer_clearing is the system account production seeds as an asset
+	// (app/accounts.go), so only the system-account rule can reject it.
+	result, err := database.Exec(`INSERT INTO accounts (book_id, system_role, created_at, created_by_user_id)
+		VALUES (?, 'transfer_clearing', '2026-01-01T00:00:00Z', 1)`, BookID)
+	require.NoError(t, err)
+	accountID, err := result.LastInsertId()
+	require.NoError(t, err)
+	_, err = database.Exec(`INSERT INTO account_versions (account_id, version_seq, effective_from, recorded_at,
+		changed_by_user_id, change_reason, status, opened_on, code, name, account_class, account_kind, allows_postings)
+		VALUES (?, 1, '0001-01-01', '2026-01-01T00:00:00Z', 1, 'test fixture', 'active', '0001-01-01',
+		'CLEARING', 'Transfer Clearing', 'asset', 'receivable', 1)`, accountID)
+	require.NoError(t, err)
 
-	_, err := svc.CreateImportConnection(context.Background(), CreateImportConnectionInput{
+	_, err = svc.CreateImportConnection(context.Background(), CreateImportConnectionInput{
 		OwnerUserID: 1, SourceKind: "trading212", DisplayName: "ISA", APIKey: "api-key-xxxx",
 		CashAccountID: &accountID,
 	})

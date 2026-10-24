@@ -254,8 +254,13 @@ func signChanges(flows []returnsCashflow) int {
 // formatReturnRat rounds an exact fraction half away from zero to the
 // presentation precision.
 func formatReturnRat(value *big.Rat) string {
-	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(returnFractionPlaces), nil)
-	scaled := new(big.Rat).Mul(value, new(big.Rat).SetInt(scale))
+	return formatScaledReturn(roundRatToScale(value, returnFractionPlaces))
+}
+
+// roundRatToScale returns value × 10^scale rounded half away from zero, the
+// convention exact.MulDivRound uses for converted money.
+func roundRatToScale(value *big.Rat, scale int) *big.Int {
+	scaled := new(big.Rat).Mul(value, new(big.Rat).SetInt(pow10(scale)))
 	quotient, remainder := new(big.Int).QuoRem(scaled.Num(), scaled.Denom(), new(big.Int))
 	twice := new(big.Int).Mul(new(big.Int).Abs(remainder), big.NewInt(2))
 	if twice.Cmp(scaled.Denom()) >= 0 {
@@ -265,7 +270,7 @@ func formatReturnRat(value *big.Rat) string {
 			quotient.Add(quotient, big.NewInt(1))
 		}
 	}
-	return formatScaledReturn(quotient)
+	return quotient
 }
 
 func formatReturnFloat(value float64) string {

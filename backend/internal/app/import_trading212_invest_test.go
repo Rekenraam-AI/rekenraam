@@ -117,7 +117,7 @@ func seedCommodityTradingAccount(t *testing.T, database *sql.DB) int64 {
 			account_id, version_seq, effective_from, recorded_at, changed_by_user_id,
 			change_reason, status, opened_on, code, name, account_class,
 			account_kind, allows_postings
-		) VALUES (?, 1, '0001-01-01', '2026-01-01T00:00:00Z', 1, 'test fixture', 'active', '0001-01-01', 'TRADING', 'Commodity Trading', 'asset', 'other_asset', 1)
+		) VALUES (?, 1, '0001-01-01', '2026-01-01T00:00:00Z', 1, 'test fixture', 'active', '0001-01-01', 'TRADING', 'Commodity Trading', 'equity', 'equity', 1)
 	`, accountID)
 	require.NoError(t, err)
 	return accountID

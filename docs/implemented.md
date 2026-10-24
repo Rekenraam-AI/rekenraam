@@ -595,10 +595,11 @@ subtrees or the default investment accounts. Investment-operation cash is
 classified by the holding or instrument its facts name, so a dividend paid to
 checking is income plus a same-day withdrawal without any posting;
 unattributable cash falls back to the cash side and every fallback is listed.
-External security transfers count at market value, and correction chains net
-before flows split into inflows and outflows. A same-day review of
-`e30413a5` found seven contract/formula defects, all corrected with
-regression cases R1–R7. Missing price/FX, unclassified shorts,
+External security transfers count at market value (trading legs stay
+internal), correction chains net before flows split into inflows and
+outflows, and the chain divides exact values, rounding only shown amounts.
+Two same-day reviews (`e30413a5`, `ae084c4d`) found nine contract/formula
+defects, all corrected with regression cases. Missing price/FX, unclassified shorts,
 non-positive capital and unproven roots make only the dependent figures null
 with a reason. No screen, chart, allocation, benchmark or saved run yet.
 

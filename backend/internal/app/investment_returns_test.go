@@ -385,3 +385,96 @@ func TestReturnsDiscloseNotHeldFallback(t *testing.T) {
 	require.Equal(t, ReturnsFallbackNotHeld, result.AttributionFallbacks[0].Reason)
 	require.False(t, result.AttributionFallbacks[0].Counted)
 }
+
+// Second review of ae084c4d. Production seeds commodity_trading as an
+// equity account (app/accounts.go), and so does the shared fixture now: the
+// conversion leg of a trade or write-off is internal, never a delivery's
+// book-value bridge.
+func TestReturnsKeepTradingLegsInternal(t *testing.T) {
+	t.Parallel()
+	t.Run("buy inside the portfolio", func(t *testing.T) {
+		t.Parallel()
+		f := newReturnsFixture(t)
+		f.price(t, "2026-07-30", 10000)
+		f.price(t, "2026-07-31", 11000)
+		f.price(t, "2027-01-31", 11000)
+		_, err := f.investmentService.Buy(context.Background(), InvestmentTradeInput{
+			OwnerUserID: f.ownerUserID, TransactionDate: "2026-07-31", CommodityID: f.stockCommodityID,
+			HoldingAccountID: f.holdingAccountID, CashAccountID: f.brokerCashID,
+			QuantityValue: exact.New(1), CashAmountValue: 10000, CashAmountScale: 2, CashCommodityID: f.eurCommodityID,
+		})
+		require.NoError(t, err)
+
+		result := f.read(t, "2026-02-01", "2027-01-31")
+		requireReturnsAmount(t, 0, result.Contributions)
+		requireReturnsAmount(t, 1210, result.ClosingValue)
+		requireReturnsAmount(t, 110, result.Gain)
+		requireReturn(t, "0.100000", result.TimeWeighted)
+	})
+	t.Run("write-off", func(t *testing.T) {
+		t.Parallel()
+		f := newReturnsFixture(t)
+		f.price(t, "2026-07-31", 10000)
+		_, err := f.investmentService.WriteOff(context.Background(), InvestmentWriteOffInput{
+			OwnerUserID: f.ownerUserID, TransactionDate: "2026-07-31", CommodityID: f.stockCommodityID,
+			HoldingAccountID: f.holdingAccountID, QuantityValue: exact.New(10), Reason: "issuer liquidated",
+		})
+		require.NoError(t, err)
+
+		result := f.read(t, "2026-02-01", "2027-01-31")
+		requireReturnsAmount(t, 0, result.Withdrawals)
+		requireReturnsAmount(t, -1000, result.Gain)
+		requireReturn(t, "-0.909091", result.TimeWeighted)
+	})
+}
+
+// A positive holding worth less than half a cent is positive capital. The
+// chain divides exact values, so the result never depends on whether that
+// day happens to be an evaluation day; only displayed amounts are rounded.
+func TestReturnsDivideExactValuesNotRoundedOnes(t *testing.T) {
+	t.Parallel()
+	setup := func(t *testing.T) *returnsFixture {
+		f := newReturnsFixture(t)
+		f.price(t, "2026-07-29", 10000)
+		_, err := f.pricing.CreatePrice(context.Background(), PriceObservationInput{OwnerUserID: f.ownerUserID,
+			BaseCommodityID: f.stockCommodityID, QuoteCommodityID: f.eurCommodityID, QuoteType: "close", AdjustmentBasis: "raw",
+			IsManual: true, ValuationDate: "2026-07-30", PriceValue: 1, PriceScale: 5})
+		require.NoError(t, err)
+		f.price(t, "2026-07-31", 10000)
+		return f
+	}
+	read := func(t *testing.T, f *returnsFixture) ReturnsResult {
+		result, err := f.investmentService.ReadReturns(context.Background(), ReturnsInput{From: "2026-07-30", To: "2026-07-31",
+			ReportingCommodityID: f.eurCommodityID, AccountIDs: []int64{f.holdingAccountID}})
+		require.NoError(t, err)
+		return result
+	}
+
+	t.Run("telescoped", func(t *testing.T) {
+		t.Parallel()
+		// 1,000 → 0.0001 → 1,000: every exact daily value is positive.
+		result := read(t, setup(t))
+		requireReturnsAmount(t, 1000, result.OpeningValue)
+		requireReturnsAmount(t, 1000, result.ClosingValue)
+		requireReturn(t, "0.000000", result.TimeWeighted)
+	})
+	t.Run("evaluated", func(t *testing.T) {
+		t.Parallel()
+		// A transfer-out on 07-30 makes it an evaluation day. Rounded, V would
+		// be 0.00 and the next factor would divide by zero; exactly it is
+		// (0.00009 + 0.00001) / 1000 · 900 / 0.00009 = 1.
+		f := setup(t)
+		seedExternalTransferEquity(t, f.database)
+		var lotID int64
+		require.NoError(t, f.database.QueryRow(`SELECT id FROM investment_lots WHERE account_id = ?`, f.holdingAccountID).Scan(&lotID))
+		_, err := f.investmentService.ExternalTransferOut(context.Background(), ExternalTransferOutInput{OwnerUserID: f.ownerUserID,
+			EffectiveOn: "2026-07-30", SourceAccountID: f.holdingAccountID, CommodityID: f.stockCommodityID,
+			CostCommodityID: f.eurCommodityID, Allocations: []InvestmentLotAllocationInput{{LotID: lotID, QuantityValue: exact.New(1)}}})
+		require.NoError(t, err)
+
+		result := read(t, f)
+		requireReturn(t, "0.000000", result.TimeWeighted)
+		requireReturnsAmount(t, 0, result.Withdrawals) // €0.00001, shown at cent scale
+		requireReturnsAmount(t, 900, result.ClosingValue)
+	})
+}

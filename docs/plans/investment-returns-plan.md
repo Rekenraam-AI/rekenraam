@@ -2,8 +2,9 @@
 
 Status: **contract accepted by the owner 2026-10-24 (four policy answers
 recorded below); slice 1 (backend read) delivered 2026-10-24 and corrected
-the same day after review of `e30413a5` (seven findings, recorded inline as
-"finding N"). Later slices pending.**
+the same day after two reviews (`e30413a5`: seven findings, recorded inline
+as "finding N"; `ae084c4d`: two, recorded under the expected cases). Later
+slices pending.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
 0017 (provider independence, honest incomplete data) govern this plan.
@@ -124,7 +125,7 @@ The entry's external flow, in the reporting currency at the entry date:
 
 | Entry | Flow `F` (positive = into the portfolio) |
 |---|---|
-| **Delivery**: belongs, and is an external transfer in/out (or its correction), or has an O posting on an equity-class account | `F = Σ value(B) + Σ value(P)` |
+| **Delivery**: belongs, and is an external transfer in/out (or its correction), or has an O posting on an equity-class account (never the T leg: `commodity_trading` is equity-class in production, but internal) | `F = Σ value(B) + Σ value(P)` |
 | Belongs otherwise (anchored in, mixed, or cash side with a B posting) | `F = −Σ value(O)` |
 | No, anchored out, but has B postings | `F = +Σ value(B)` (the cash entering is a contribution, not return) |
 | No and no B posting | not examined |
@@ -193,8 +194,10 @@ R_twr    = Π_{d=from..to} (1 + r(d)) − 1
   happening) is 1.
 - A denominator `≤ 0` otherwise makes TTWROR unavailable:
   `non_positive_capital`, with the date.
-- Arithmetic is exact (`big.Rat`) over values already rounded to the reporting
-  currency's scale by `RateTable`; only the final ratio is rounded.
+- Arithmetic is exact (`big.Rat`) over **unrounded** values and flows
+  (`RateTable.ConvertExact`: the same rate selection, coverage and gaps as
+  `Convert`, without rounding to the reporting currency's scale). Only shown
+  amounts and the final ratios are rounded, once.
 
 **Evaluation days.** A run of days whose factors are all valid telescopes to
 the ratio of its end values, so the calculator values only the days the
@@ -212,7 +215,11 @@ needed. The evaluation days are:
 4. every day of a run with constant but unsafe balances (a short, negative
    cash, a margin liability), because prices alone can turn the value's sign.
 
-All-zero balances value at exactly 0 without prices. Every other evaluation
+The proof is about exact values, which is why the chain must divide exact
+values too (second review, finding 2): ten units at €0.00001 are worth
+€0.0001, positive capital, though €0.00 at cent scale. Dividing rounded
+values would make the result depend on whether that day happened to be an
+evaluation day. All-zero balances value at exactly 0 without prices. Every other evaluation
 day needs its own valuation; a gap is `valuation_unavailable` for TTWROR only.
 This is exactly the daily product for every portfolio, and as cheap as the
 original breakpoint set for long-only portfolios.
@@ -320,6 +327,29 @@ is outside.
 Slice 1 tests pin these literals; they never derive expected values from the
 calculator. R1–R7 are the reproducers from the 2026-10-24 review of
 `e30413a5`; they failed before the corrections recorded here.
+
+**Second review of `ae084c4d` (2026-10-24).**
+
+1. *Trading legs read as deliveries* — accepted. Delivery detection matched
+   any equity-class O posting, and production seeds `commodity_trading` as
+   equity, so an internal buy invented a contribution and a write-off became
+   a withdrawal. Detection now excludes the T leg, and the shared test
+   fixture seeds `commodity_trading` as equity like production (it used
+   asset, which hid the defect). Cases: internal buy of 1 ACME for 100 at a
+   110 close → contribution 0, gain 110, TTWROR `0.100000`; write-off of
+   10 ACME → withdrawal 0, gain −1000, TTWROR `−0.909091`.
+2. *Rounding to zero* — the defect accepted, the expected answer not. The
+   review expected `non_positive_capital` for a holding valued
+   1000 → €0.0001 → 1000. Every exact daily value there is positive, so the
+   daily product is defined and is exactly 1 (`0.000000`); a zero
+   denominator exists only after rounding, which is presentation, not
+   capital. The real defect was the inconsistency: had that day been an
+   evaluation day, rounded values would have divided by zero. The fix makes
+   the chain exact rather than making the proof price every day of every
+   portfolio. Cases: the telescoped sequence is `0.000000`; with a
+   transfer-out of 1 unit on the €0.00001 day (forcing evaluation),
+   (0.00009 + 0.00001) / 1000 · 900 / 0.00009 − 1 = `0.000000`, and a
+   cent-rounded chain fails this case.
 
 ## Slices
 

@@ -352,7 +352,11 @@ func (r *returnsReader) classify(anchors []db.ReturnsOperationAnchor) ([]returns
 		}
 		delivery := belongs && isOperation && returnsDeliveryKinds[anchor.SourceKind]
 		for _, posting := range entry {
-			if belongs && !r.inScope[posting.AccountID] && r.accounts[posting.AccountID].AccountClass == "equity" {
+			// An equity counterpart outside the portfolio is a book-value
+			// bridge. The commodity-trading conversion leg is equity-class
+			// in production too, but it is internal, never a bridge.
+			if belongs && !r.inScope[posting.AccountID] && r.isOutsideBalance(posting.AccountID) &&
+				r.accounts[posting.AccountID].AccountClass == "equity" {
 				delivery = true
 			}
 		}
@@ -458,12 +462,12 @@ func (r *returnsReader) anchorSide(anchor db.ReturnsOperationAnchor, transaction
 	return "", ReturnsFallbackNotHeld
 }
 
+// convert values a posting exactly. Returns are ratios of these values, so
+// they are never rounded to the reporting currency's scale before the chain
+// divides by them: a positive holding worth €0.0001 must not read as zero
+// capital. Only amounts shown to the reader are rounded, once.
 func (r *returnsReader) convert(value exact.Coefficient, scale int, commodityID int64, date string) (*big.Rat, bool) {
-	converted, ok := r.rates.Convert(value, scale, commodityID, date)
-	if !ok {
-		return nil, false
-	}
-	return new(big.Rat).SetFrac(converted, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(r.rates.Scale())), nil)), true
+	return r.rates.ConvertExact(value, scale, commodityID, date)
 }
 
 // returnsValuation is V(d), or why it is unknown.
@@ -757,11 +761,10 @@ func (r *returnsReader) amount(valuation returnsValuation, date string) ReturnsA
 	return ReturnsAmount{Amount: r.quantity(valuation.value)}
 }
 
-// quantity restates an exact reporting-currency figure at the currency's
-// scale. Every addend was already rounded there, so the division is exact.
+// quantity rounds an exact reporting-currency figure once, half away from
+// zero, to the currency's scale.
 func (r *returnsReader) quantity(value *big.Rat) *BalanceQuantity {
-	scaled := new(big.Rat).Mul(value, new(big.Rat).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(r.rates.Scale())), nil)))
-	coefficient, err := exact.FromBig(new(big.Int).Quo(scaled.Num(), scaled.Denom()))
+	coefficient, err := exact.FromBig(roundRatToScale(value, r.rates.Scale()))
 	if err != nil {
 		return nil
 	}
