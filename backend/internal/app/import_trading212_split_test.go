@@ -118,7 +118,7 @@ func TestTrading212SplitRowLinksToRecordedSplitWithoutDoublePosting(t *testing.T
 	require.Len(t, candidates, 1)
 	assert.True(t, candidates[0].Linked)
 	assert.Equal(t, "20", f.holding(t))
-	requireInvestSelfCheckPasses(t, f.investTestFixture)
+	requireKnownBasisSelfCheckPasses(t, f.database)
 }
 
 func TestTrading212SplitLinkRefusesOtherSecurityAndNonSplitRows(t *testing.T) {
@@ -150,16 +150,6 @@ func TestTrading212SplitLinkRefusesOtherSecurityAndNonSplitRows(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, result.CommittedCount)
 	assert.Equal(t, "20", f.holding(t))
-}
-
-func requireInvestSelfCheckPasses(t *testing.T, f *investTestFixture) {
-	t.Helper()
-	run, err := selfCheckOver(t, f.database).RunSelfCheck(context.Background(), "manual")
-	require.NoError(t, err)
-	for _, check := range []string{CheckLotReconciliation, CheckInvestmentFoundation} {
-		result := resultFor(t, run, check)
-		assert.Equal(t, SelfCheckPassed, result.Status, "%s: %s", check, result.Summary)
-	}
 }
 
 // T-139: the admission check runs before the write transaction. A discard

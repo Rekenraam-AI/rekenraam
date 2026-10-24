@@ -174,5 +174,5 @@ func TestWriteOffCorrectionsExportAsOperations(t *testing.T) {
 	reversed := byTransaction[strconv.FormatInt(reversal.ID, 10)]
 	require.Equal(t, []string{"reversal", "reverse", "not delisted"}, []string{reversed[2], reversed[6], reversed[7]})
 	require.Equal(t, byTransaction[strconv.FormatInt(second.Transaction.ID, 10)][0], reversed[5])
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }

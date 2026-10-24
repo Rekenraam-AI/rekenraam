@@ -112,7 +112,7 @@ func TestCashInLieuBackdatedBehindALaterSaleRevisesIt(t *testing.T) {
 	quantity, basis := openPositionBasis(t, f, f.holdingAccountID)
 	require.Zero(t, quantity.Sign(), "the fraction and sale close the holding")
 	require.Zero(t, basis.Sign(), "all opening basis is disposed")
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestCashInLieuBackdatedBehindAFullSaleNamesItAndWritesNothing(t *testing.T) {
@@ -136,7 +136,7 @@ func TestCashInLieuBackdatedBehindAFullSaleNamesItAndWritesNothing(t *testing.T)
 	require.ErrorAs(t, err, &dependency)
 	require.Equal(t, transferOperationID(t, f, sold.Transaction.ID), dependency.OperationID)
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "impossible commit writes nothing")
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestCashInLieuRefusesWholeShares(t *testing.T) {

@@ -338,11 +338,7 @@ func TestCompletedProviderDividendCommitsThroughNativeCommandAtomically(t *testi
 
 	_, err = f.investmentSvc.AcceptSuggestionWithCompletion(ctx, 1, 0, "req", july.ID, completion)
 	require.ErrorIs(t, err, ErrInvestmentSuggestionNotPending)
-	check, err := selfCheckOver(t, f.database).RunSelfCheck(ctx, "manual")
-	require.NoError(t, err)
-	for _, id := range []string{CheckInvestmentFoundation, CheckEntryBalance} {
-		assert.Equal(t, SelfCheckPassed, resultFor(t, check, id).Status, id)
-	}
+	requireKnownBasisSelfCheckPasses(t, f.database)
 }
 
 func TestProviderDividendAcceptLateFailureRollsBackPosting(t *testing.T) {

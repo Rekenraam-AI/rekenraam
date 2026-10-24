@@ -64,7 +64,7 @@ func TestReverseShortCoverRestoresOwedUnits(t *testing.T) {
 	chain, err = f.investmentService.CorrectionChain(ctx, f.ownerUserID, cover.Transaction.ID)
 	require.NoError(t, err)
 	assert.False(t, chain.CanCorrectShortCover)
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestReverseShortSaleNamesTheCoverThatNeedsIt(t *testing.T) {
@@ -95,7 +95,7 @@ func TestReverseShortSaleNamesTheCoverThatNeedsIt(t *testing.T) {
 	positions, err := f.investmentService.Positions(ctx)
 	require.NoError(t, err)
 	assert.Empty(t, positions)
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestReplaceShortSaleRevisesLaterCoverWithAcknowledgement(t *testing.T) {
@@ -132,7 +132,7 @@ func TestReplaceShortSaleRevisesLaterCoverWithAcknowledgement(t *testing.T) {
 	var originals int
 	require.NoError(t, f.database.QueryRow(`SELECT COUNT(*) FROM investment_lots WHERE position_side = 'short'`).Scan(&originals))
 	assert.Equal(t, 2, originals, "the original opening lot stays as evidence")
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestReplaceShortCoverChangesMethodAmountAndDate(t *testing.T) {
@@ -159,7 +159,7 @@ func TestReplaceShortCoverChangesMethodAmountAndDate(t *testing.T) {
 	require.NotContains(t, gains, "2026-05-01")
 	assertMoneyValue(t, 4000, 2, gains["2026-04-01"].RealizedGainValue, gains["2026-04-01"].RealizedGainScale, "75.00 − 35.00")
 	assertMoneyValue(t, 1000, 2, gains["2026-06-01"].RealizedGainValue, gains["2026-06-01"].RealizedGainScale, "50.00 − 40.00")
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestGenericMutationCannotStrandShortOperations(t *testing.T) {

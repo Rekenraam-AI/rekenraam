@@ -152,7 +152,7 @@ func TestTrading212ShortSaleRowLinksToRecordedShortSaleWithoutDoublePosting(t *t
 	require.ErrorIs(t, f.importService.LinkTrading212Short(ctx, LinkTrading212ShortInput{
 		Trading212ShortRowInput: other, OperationID: operationID}), ErrImportShortLinkUnavailable)
 	assert.Equal(t, after.transactions, f.counts(t).transactions)
-	requireInvestSelfCheckPasses(t, f.investTestFixture)
+	requireKnownBasisSelfCheckPasses(t, f.database)
 }
 
 func TestTrading212CoverRowLinksToRecordedShortCover(t *testing.T) {
@@ -186,7 +186,7 @@ func TestTrading212CoverRowLinksToRecordedShortCover(t *testing.T) {
 	assert.Equal(t, before.decisions, after.decisions)
 	assert.Equal(t, before.transactions, after.transactions)
 	assert.Equal(t, before.identities+1, after.identities)
-	requireInvestSelfCheckPasses(t, f.investTestFixture)
+	requireKnownBasisSelfCheckPasses(t, f.database)
 }
 
 func TestTrading212ShortLinkRefusesMismatchedEvidenceAndIneligibleRows(t *testing.T) {
@@ -351,7 +351,7 @@ func TestTrading212ShortLinkSurvivesNativeCorrection(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, linked.RawJSON, final.RawJSON)
 	assert.Equal(t, "committed", final.CommitStatus)
-	requireInvestSelfCheckPasses(t, f.investTestFixture)
+	requireKnownBasisSelfCheckPasses(t, f.database)
 }
 
 func TestTrading212ShortLinkRollsBackOnLateFailure(t *testing.T) {

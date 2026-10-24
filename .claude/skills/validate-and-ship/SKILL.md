@@ -142,6 +142,15 @@ non-trivial diff (yours or reviewed):
     file's declared separator and commit re-read rejected text with per-value
     detection. A value rejected at staging is recorded on the row and refused
     at commit, never re-parsed (`TestImportAuditRejectedConventionRowsAreFlaggedAndNeverCommitted`).
+    Tests repeat it: `10a03db7` made two self-check helpers assert the whole
+    run and missed four other helpers and six inline lists, so 114 call sites
+    never asserted checks outside a short named list, such as #389's
+    `investment_attribution` (#397).
+    A healthy known-basis book asserts through
+    `requireKnownBasisSelfCheckPasses` (or `requireInvestmentSelfCheckPasses`,
+    which adds the investment oracles); never hand-list the checks that must
+    pass. Unknown-basis books use `requireHealthyUnresolvedBook`, and damage
+    tests name the check they expect to fail.
 
 14. **Consolidation that silently widens what is accepted** — retiring a
     private helper onto a shared one is a behaviour change unless proven
@@ -409,8 +418,8 @@ non-trivial diff (yours or reviewed):
     `TestShortOpeningInsideALongClosedByARevisedTransferIsRefused`.
     Replay equivalence cannot see this class, because stored state and replay
     agree. The independent oracle (`requireConservationOracle`, #190) checks
-    readers against the posted journal and operation facts. It runs in every
-    shared self-check pass helper; call it before a later correction retires
+    readers against the posted journal and operation facts. It runs in
+    `requireInvestmentSelfCheckPasses`; call it before a later correction retires
     the revision under test.
 35. **An operation kind added without its capabilities** — kinds are
     special-cased by string across generic code, so a new kind can ship

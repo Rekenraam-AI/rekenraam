@@ -37,7 +37,7 @@ func TestJournalFreeSplitReversalBeforeAndAfterEntitlement(t *testing.T) {
 			} else {
 				require.Zero(t, result.ID)
 			}
-			requireSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 			_, err = f.investmentService.ReverseSplit(ctx, input)
 			require.ErrorIs(t, err, ErrInvestmentSplitAlreadyCorrected)
 		})
@@ -62,7 +62,7 @@ func TestSplitOperationReplacementCrossesZeroBothWays(t *testing.T) {
 	require.Zero(t, positive.Inverse.ID)
 	require.Positive(t, positive.Replacement.ID)
 	require.Zero(t, holdingQuantity(t, f).Cmp(scaled(20, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 	input.OperationID = positive.OperationID
 	input.EffectiveOn = "2026-01-01"
 	input.Memo = "corrected source memo"
@@ -72,7 +72,7 @@ func TestSplitOperationReplacementCrossesZeroBothWays(t *testing.T) {
 	require.Zero(t, negative.Replacement.ID)
 	require.Positive(t, negative.OperationID)
 	require.Zero(t, holdingQuantity(t, f).Cmp(scaled(10, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 	activity, _, err := f.investmentService.SplitActivity(ctx, f.ownerUserID, 0, 50)
 	require.NoError(t, err)
 	require.Equal(t, "corrected source memo", activity[0].Memo)
@@ -103,7 +103,7 @@ func TestJournalFreeSplitCashInLieuRetainsIdentityAndReviewsReversal(t *testing.
 	require.NoError(t, err)
 	require.Equal(t, split.OperationID, context.SettledOperationID)
 	require.Zero(t, context.SettledTransactionID)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestJournalFreeSplitReversalAcknowledgesGainsAndGuardsAdjustedQuantity(t *testing.T) {
@@ -135,7 +135,7 @@ func TestJournalFreeSplitReversalAcknowledgesGainsAndGuardsAdjustedQuantity(t *t
 	_, err = f.investmentService.ReverseSplit(ctx, input)
 	require.NoError(t, err)
 	require.Zero(t, holdingQuantity(t, f).Cmp(scaled(5, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestJournalFreeSplitReplacementRetainsSameDayRootSlot(t *testing.T) {
@@ -150,7 +150,7 @@ func TestJournalFreeSplitReplacementRetainsSameDayRootSlot(t *testing.T) {
 	require.Zero(t, holdingQuantity(t, f).Cmp(scaled(10, 0)), "later same-day opening remains unentitled")
 	buyOn(t, f, "2026-02-01", 1, 1000)
 	require.Zero(t, holdingQuantity(t, f).Cmp(scaled(13, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitOperationCorrectionsExportAndRestoreBothJournalShapes(t *testing.T) {
@@ -185,7 +185,7 @@ func TestSplitOperationCorrectionsExportAndRestoreBothJournalShapes(t *testing.T
 		}
 	}
 	require.True(t, inverseLinked)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 	backup := filepath.Join(t.TempDir(), "backup.sqlite")
 	_, err = db.OnlineBackupSQLiteDatabase(ctx, f.database, backup, db.OnlineBackupOptions{})
 	require.NoError(t, err)
@@ -206,7 +206,7 @@ func TestSplitOperationCorrectionsExportAndRestoreBothJournalShapes(t *testing.T
 	require.Equal(t, "reversed", activity[0].Standing)
 	buyOn(t, f, "2026-01-01", 1, 1000)
 	require.Zero(t, holdingQuantity(t, f).Cmp(scaled(11, 0)), "withdrawn ratios remain audit evidence only")
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestJournalFreeSplitImpossibleReversalNamesDependentAndRollsBack(t *testing.T) {
@@ -233,7 +233,7 @@ func TestJournalFreeSplitImpossibleReversalNamesDependentAndRollsBack(t *testing
 		require.Equal(t, saleID, dependency.OperationID)
 		require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 	}
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestJournalFreeSplitReplacementLateFailureRollsBackBothHeaders(t *testing.T) {
@@ -257,7 +257,7 @@ func TestJournalFreeSplitReplacementLateFailureRollsBackBothHeaders(t *testing.T
 		require.Contains(t, err.Error(), "late split refusal")
 		require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 	}
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestJournalFreeSplitReversalExemptionRequiresNonzeroInverseJournal(t *testing.T) {
@@ -269,7 +269,7 @@ func TestJournalFreeSplitReversalExemptionRequiresNonzeroInverseJournal(t *testi
 	buyOn(t, f, "2026-02-01", 10, 10000)
 	inverse, err := f.investmentService.ReverseSplit(ctx, ReverseInvestmentSplitInput{OwnerUserID: f.ownerUserID, OperationID: split.OperationID, Reason: "wrong split"})
 	require.NoError(t, err)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 	_, err = f.database.Exec(`DROP TRIGGER investment_operation_journal_links_no_delete`)
 	require.NoError(t, err)
 	_, err = f.database.Exec(`DELETE FROM investment_operation_journal_links WHERE transaction_version_id IN

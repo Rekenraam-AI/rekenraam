@@ -86,7 +86,7 @@ func TestOracleShortCoverRevisionsBesideARevisedTransferAndSale(t *testing.T) {
 	}
 	_, err = f.investmentService.ReplaceShortCover(ctx, input)
 	require.NoError(t, err)
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A split entered behind a sale, a backdated buy behind both, then the sale's
@@ -106,7 +106,7 @@ func TestOracleSplitBehindASaleWithABackdatedBuyAndSaleReplacement(t *testing.T)
 	_, err = acknowledgedReplaceSale(ctx, f.investmentService, ReplaceInvestmentSaleInput{OwnerUserID: f.ownerUserID,
 		TransactionID: sale.Transaction.ID, Reason: "six were sold", Replacement: fifoSellInput(f, "2026-04-01", 6)})
 	require.NoError(t, err)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A return of capital behind a later sale, a backdated buy that reallocates
@@ -157,7 +157,7 @@ func TestOracleSpinOffWithParentSaleAndUpstreamCorrection(t *testing.T) {
 	childSale := sellInput(f, "2026-08-01", 1)
 	childSale.CommodityID = childID
 	acknowledgedSell(t, f, childSale)
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // Unknown inbound basis moved between accounts and partly sold stays

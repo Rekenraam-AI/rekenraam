@@ -230,6 +230,13 @@ iteration on ledger, cashflow, lot conservation and gains arithmetic:
 ./scripts/go-backend.sh test ./internal/app ./internal/api -run '^TestFinancial' -count=1
 ```
 
+A test that builds a healthy known-basis book asserts self-check through one
+owner, `requireKnownBasisSelfCheckPasses`: every applicable check passed and
+the run passed, so a newly added check is asserted everywhere at once
+([#397](https://github.com/sergeyfarin/rekenraam/issues/397)).
+`requireInvestmentSelfCheckPasses` adds the investment fixture's oracles below;
+`requireHealthyUnresolvedBook` is the separate unknown-basis contract.
+
 Investment tests also run an independent conservation oracle
 (`requireConservationOracle`, [#190](https://github.com/sergeyfarin/rekenraam/issues/190)).
 Its expected values never come from replay or from the effective-movement

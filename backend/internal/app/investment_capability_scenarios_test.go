@@ -221,7 +221,7 @@ func TestEveryOperationKindExportsItsRowsAndPassesSelfCheck(t *testing.T) {
 						}
 					}
 				}
-				requireSelfCheckPasses(t, f)
+				requireInvestmentSelfCheckPasses(t, f)
 				recordedKinds <- kinds
 			})
 		}

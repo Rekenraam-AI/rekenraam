@@ -152,11 +152,7 @@ func TestShareExchangeCarriesBasisAndDatesAndRealizesNothing(t *testing.T) {
 	assert.Zero(t, commodityTradingBalance(t, f, f.stockCommodityID).Sign())
 	assert.Zero(t, commodityTradingBalance(t, f, newID).Sign())
 
-	run, err := selfCheckOver(t, f.database).RunSelfCheck(ctx, "manual")
-	require.NoError(t, err)
-	for _, check := range []string{CheckInvestmentFoundation, CheckInvestmentReplay, CheckLotReconciliation} {
-		assert.Equal(t, SelfCheckPassed, resultFor(t, run, check).Status, check)
-	}
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestShareExchangeOrdersDestinationLotsByOriginalDate(t *testing.T) {
@@ -303,11 +299,7 @@ func TestShareExchangeUpstreamBuyReplacementRevisesTheNewLot(t *testing.T) {
 	require.Len(t, sold.Allocations, 1)
 	assert.Zero(t, exact.ScaledIntFromInt64(sold.Allocations[0].CostBasisValue, sold.Allocations[0].CostBasisScale).Cmp(
 		exact.ScaledIntFromInt64(15000, 2)))
-	run, err := selfCheckOver(t, f.database).RunSelfCheck(ctx, "manual")
-	require.NoError(t, err)
-	for _, check := range []string{CheckInvestmentFoundation, CheckInvestmentReplay, CheckLotReconciliation} {
-		assert.Equal(t, SelfCheckPassed, resultFor(t, run, check).Status, "%s: %s", check, resultFor(t, run, check).Summary)
-	}
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A purchase dated before the exchange would leave old units held after the
@@ -433,9 +425,5 @@ func TestShareExchangeIntoAnotherHoldingFollowsUpstreamCorrections(t *testing.T)
 	require.NoError(t, f.database.QueryRow(`SELECT remaining_cost_basis_value, remaining_cost_basis_scale
 		FROM current_investment_lots WHERE id = ?`, exchanged.Plan.Links[0].DestinationLotID).Scan(&basis, &basisScale))
 	assert.Zero(t, exact.ScaledIntFromCoefficient(basis, basisScale).Cmp(exact.ScaledIntFromInt64(12000, 2)), "basis %s", basis)
-	run, err := selfCheckOver(t, f.database).RunSelfCheck(ctx, "manual")
-	require.NoError(t, err)
-	for _, check := range []string{CheckInvestmentFoundation, CheckInvestmentReplay, CheckLotReconciliation} {
-		assert.Equal(t, SelfCheckPassed, resultFor(t, run, check).Status, "%s: %s", check, resultFor(t, run, check).Summary)
-	}
+	requireInvestmentSelfCheckPasses(t, f)
 }

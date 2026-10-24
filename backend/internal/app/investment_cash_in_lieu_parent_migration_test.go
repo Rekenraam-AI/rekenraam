@@ -52,7 +52,7 @@ func TestCashInLieuParentMigrationPreservesHistoryAndRefusesMisleadingDowngrade(
 	source, err := f.investmentService.repository.TradeCorrectionContext(ctx, BookID, cil.Transaction.ID)
 	require.NoError(t, err)
 	require.NotEqual(t, source.SettledOperationID, source.EffectiveSettledOperationID)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestHistoricalCashEntryMigrationChangesAdmissionWithoutRewritingHistory(t *testing.T) {

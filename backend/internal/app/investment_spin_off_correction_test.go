@@ -104,7 +104,7 @@ func TestSpinOffReversalRestoresParentBasisAndRetiresTheNewLots(t *testing.T) {
 	require.NoError(t, f.database.QueryRow(`SELECT COUNT(*) FROM effective_investment_lot_events WHERE event_kind = 'basis_reduction'`).Scan(&effective))
 	assert.Zero(t, effective, "a reversed spin-off reduces nothing")
 	assert.Zero(t, commodityTradingBalance(t, f, newID).Sign(), "the inverse cancels the new units in clearing")
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 
 	chain, err = f.investmentService.CorrectionChain(ctx, f.ownerUserID, spun.Transaction.ID)
 	require.NoError(t, err)
@@ -212,7 +212,7 @@ func TestSpinOffReplacementChangesFractionRatioAndInstrument(t *testing.T) {
 	assert.JSONEq(t, `{"notice":"issuer allocation","ex_date":"2026-05-29"}`, evidence, "omitted evidence keeps the recorded evidence")
 	assert.Zero(t, commodityTradingBalance(t, f, newID).Sign(), "the inverse cancels the first spin-off's new units")
 	assert.Zero(t, commodityTradingBalance(t, f, otherID).Cmp(exact.ScaledIntFromInt64(-20, 0)))
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 
 	// The chain now explains the replacement.
 	chain, err := f.investmentService.CorrectionChain(ctx, f.ownerUserID, spun.Transaction.ID)
@@ -262,7 +262,7 @@ func TestSpinOffReplacementRestatesALaterParentGainWithAcknowledgement(t *testin
 
 	requireScaled(t, 3500, 2, saleEffectiveBasis(t, f, sold.Transaction.ID), "half of the 70 % the parent now keeps")
 	assert.Equal(t, "10", positionQuantity(t, f, f.holdingAccountID, newID))
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // Moving the spin-off past a parent sale entitles fewer units, which a later
@@ -311,7 +311,7 @@ func TestSpinOffReplacementMovedLaterEntitlesTheHoldingThen(t *testing.T) {
 	assert.Equal(t, "15", positionQuantity(t, f, f.holdingAccountID, f.stockCommodityID))
 	assert.Equal(t, "15", positionQuantity(t, f, f.holdingAccountID, newID))
 	assert.Equal(t, "2026-09-01", result.Replacement.TransactionDate)
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A replacement must change something; one that changes nothing is refused.
@@ -368,7 +368,7 @@ func TestSpinOffReversalLateReconciliationRefusalRollsBackEverything(t *testing.
 	require.NoError(t, err)
 	assert.Equal(t, "0", positionQuantity(t, f, f.holdingAccountID, newID))
 	requireScaled(t, 10000, 2, lotRemainingBasis(t, f, *bought.LotID), "the parent basis is back")
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A spin-off dated behind a later parent sale entitles every lot open at its
@@ -417,7 +417,7 @@ func TestSpinOffBackdatedBehindAParentSaleRevisesIt(t *testing.T) {
 	assert.Equal(t, "12", positionQuantity(t, f, f.holdingAccountID, f.stockCommodityID))
 	assert.Equal(t, "10", positionQuantity(t, f, f.holdingAccountID, newID))
 	requireScaled(t, 2500, 2, lotRemainingBasis(t, f, link.DestinationLotID), "the new lot opens at the allocation")
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 
 	// The backdated spin-off is itself correctable; undoing it restates the
 	// sale again.
@@ -456,7 +456,7 @@ func TestSpinOffBackdatedBehindANewInstrumentSaleRevisesIt(t *testing.T) {
 	requireScaled(t, 15000, 2, lotRemainingBasis(t, f, *bought.LotID), "the parent keeps 75 %")
 	assert.Equal(t, "10", positionQuantity(t, f, f.holdingAccountID, newID))
 	requireScaled(t, 2500, 2, lotRemainingBasis(t, f, result.Plan.Links[0].DestinationLotID), "half the allocation remains")
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A link revision of a reversed spin-off stays evidence only: the parent gets
@@ -484,7 +484,7 @@ func TestSpinOffReversalKeepsALinkRevisionAsEvidence(t *testing.T) {
 	assert.Equal(t, "closed", lotStatus(t, f, spun.Plan.Links[0].DestinationLotID))
 	require.NoError(t, f.database.QueryRow(`SELECT COUNT(*) FROM investment_transfer_link_revisions`).Scan(&revisions))
 	assert.Equal(t, 1, revisions, "the revision stays as evidence")
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // The export keeps the whole correction chain: the original spin-off, its
@@ -530,7 +530,7 @@ func TestSpinOffCorrectionsExportAsOperations(t *testing.T) {
 	assert.Equal(t, 3, facts, "every spin-off fact stays as evidence")
 	assert.Equal(t, "30", positionQuantity(t, f, f.holdingAccountID, newID))
 	requireScaled(t, 8000, 2, lotRemainingBasis(t, f, replaced.Plan.Links[0].SourceLotID), "only the replacement's 20 % is effective")
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A correction is planned against the spin-off outside its write. If another

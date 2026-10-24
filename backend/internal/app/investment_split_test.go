@@ -55,18 +55,6 @@ func holdingBasis(t *testing.T, f *investmentsTestFixture) *exact.ScaledInt {
 
 func scaled(value int64, scale int) *exact.ScaledInt { return exact.ScaledIntFromInt64(value, scale) }
 
-func requireSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
-	t.Helper()
-	run, err := selfCheckOver(t, f.database).RunSelfCheck(context.Background(), "manual")
-	require.NoError(t, err)
-	for _, check := range []string{CheckLotReconciliation, CheckInvestmentFoundation, CheckCommodityPositionSign, CheckInvestmentReplay} {
-		result := resultFor(t, run, check)
-		assert.Equal(t, SelfCheckPassed, result.Status, "%s: %s", check, result.Summary)
-	}
-	requireEffectiveMovementsConsistent(t, f)
-	requireConservationOracle(t, f)
-}
-
 // effectiveDisposedBasis is the decision's current basis: its latest replay
 // revision, else its immutable snapshot.
 func effectiveDisposedBasis(t *testing.T, database *sql.DB, transactionID int64) *exact.ScaledInt {
@@ -127,7 +115,7 @@ func TestSplitTenForOneConservesBasisAndPostsQuantityDelta(t *testing.T) {
 	assert.Equal(t, before.audits+1, after.audits, "one audit event per command")
 	assert.Equal(t, before.facts+1, after.facts)
 	assert.Equal(t, before.events+1, after.events)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitThreeForOneAndLowestTerms(t *testing.T) {
@@ -143,7 +131,7 @@ func TestSplitThreeForOneAndLowestTerms(t *testing.T) {
 	var numerator, denominator int64
 	require.NoError(t, f.database.QueryRow(`SELECT ratio_numerator, ratio_denominator FROM investment_split_facts`).Scan(&numerator, &denominator))
 	assert.Equal(t, []int64{3, 1}, []int64{numerator, denominator})
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitThreeForTwoWidensScaleExactly(t *testing.T) {
@@ -159,7 +147,7 @@ func TestSplitThreeForTwoWidensScaleExactly(t *testing.T) {
 	assert.Equal(t, 1, result.Plan.Effects[0].AfterScale)
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(75, 1)))
 	assert.Zero(t, holdingBasis(t, f).Cmp(scaled(10000, 2)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestReverseSplitPostsNegativeDeltaAndKeepsBasis(t *testing.T) {
@@ -173,7 +161,7 @@ func TestReverseSplitPostsNegativeDeltaAndKeepsBasis(t *testing.T) {
 	require.Len(t, result.Plan.Effects, 2)
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(5, 0)))
 	assert.Zero(t, holdingBasis(t, f).Cmp(scaled(40000, 2)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitRefusesUnrepresentableFractionWithoutWriting(t *testing.T) {
@@ -213,12 +201,12 @@ func TestSplitWithNoHoldingsIsJournalFree(t *testing.T) {
 	require.NoError(t, f.database.QueryRow(`SELECT metadata_json FROM audit_events WHERE operation = 'investment.split'`).Scan(&metadata))
 	require.JSONEq(t, `{"memo":"split"}`, metadata)
 	require.Equal(t, counts.audits+1, countSplitRows(t, f.database).audits)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 	// A later opening is not entitled, including one on the split's date
 	// entered after the split's same-day slot.
 	buyOn(t, f, "2026-03-01", 10, 10000)
 	require.Zero(t, holdingQuantity(t, f).Cmp(scaled(10, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 	var validation ValidationError
 	_, err = f.investmentService.Split(ctx, splitInput(f, "2026-05-01", 3, 3))
 	require.ErrorAs(t, err, &validation)
@@ -239,7 +227,7 @@ func TestBackdatedAcquisitionEntitledToJournalFreeSplitPostsAdjustment(t *testin
 	require.Equal(t, "10", adjustments[0].holding)
 	require.Equal(t, "-10", adjustments[0].trading)
 	require.Equal(t, "2026-03-01", adjustments[0].date)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestLaterSaleAfterSplitUsesSplitAdjustedPerShareBasis(t *testing.T) {
@@ -255,7 +243,7 @@ func TestLaterSaleAfterSplitUsesSplitAdjustedPerShareBasis(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, effectiveDisposedBasis(t, f.database, sale.Transaction.ID).Cmp(scaled(7500, 2)))
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(5, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestBackdatedSplitReplaysLaterSaleBehindGainAcknowledgement(t *testing.T) {
@@ -295,7 +283,7 @@ func TestBackdatedSplitReplaysLaterSaleBehindGainAcknowledgement(t *testing.T) {
 	assert.Zero(t, effectiveDisposedBasis(t, f.database, sale.Transaction.ID).Cmp(scaled(2500, 2)))
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(15, 0)))
 	assert.Zero(t, holdingBasis(t, f).Cmp(scaled(7500, 2)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestBackdatedReverseSplitRefusesImpossibleLaterSaleAtomically(t *testing.T) {
@@ -346,7 +334,7 @@ func TestEarlierAcquisitionBasisCorrectionReplaysThroughSplit(t *testing.T) {
 	assert.Zero(t, effectiveDisposedBasis(t, f.database, sale.Transaction.ID).Cmp(scaled(5000, 2)))
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(15, 0)))
 	assert.Zero(t, holdingBasis(t, f).Cmp(scaled(15000, 2)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // splitAdjustment is one adjustment journal a split revision posted.
@@ -428,7 +416,7 @@ func TestQuantityCorrectionBeforeSplitPostsAdjustmentJournal(t *testing.T) {
 		causedBy: operationOf(t, f, corrected.Replacement.Transaction.ID)}}, splitAdjustments(t, f))
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(24, 0)))
 	assert.Zero(t, holdingBasis(t, f).Cmp(scaled(12000, 2)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestBackdatedBuyBeforeSplitPostsAdjustmentAndRevisesLaterGain(t *testing.T) {
@@ -467,7 +455,7 @@ func TestBackdatedBuyBeforeSplitPostsAdjustmentAndRevisesLaterGain(t *testing.T)
 	assert.Zero(t, effectiveDisposedBasis(t, f.database, sale.Transaction.ID).Cmp(scaled(13000, 2)))
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(6, 0)))
 	assert.Zero(t, holdingBasis(t, f).Cmp(scaled(3000, 2)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestReversalsBeforeSplitPostAdjustmentJournals(t *testing.T) {
@@ -486,7 +474,7 @@ func TestReversalsBeforeSplitPostAdjustmentJournals(t *testing.T) {
 		OwnerUserID: f.ownerUserID, TransactionID: sale.Transaction.ID, Reason: "entered twice"})
 	require.NoError(t, err)
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(20, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 
 	// Reversing the purchase leaves nothing for the split to multiply: the
 	// second adjustment cancels its remaining delta exactly.
@@ -498,7 +486,7 @@ func TestReversalsBeforeSplitPostAdjustmentJournals(t *testing.T) {
 	assert.Equal(t, []string{"4", "-10"}, []string{adjustments[0].holding, adjustments[1].holding})
 	assert.Equal(t, []string{"-4", "10"}, []string{adjustments[0].trading, adjustments[1].trading})
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(0, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitAdjustmentIntoReconciledPeriodNeedsOverride(t *testing.T) {
@@ -529,7 +517,7 @@ func TestSplitAdjustmentIntoReconciledPeriodNeedsOverride(t *testing.T) {
 	var status string
 	require.NoError(t, f.database.QueryRow(`SELECT status FROM reconciliation_checkpoints`).Scan(&status))
 	assert.NotEqual(t, "active", status)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // TestCombinedGuardNetsSplitAdjustmentJournal proves the writer's guard counts
@@ -567,7 +555,7 @@ func TestCombinedGuardNetsSplitAdjustmentJournal(t *testing.T) {
 	assert.Len(t, splitAdjustments(t, f), adjustmentsBefore+1, "replay posted the adjustment the guard netted")
 	assert.Len(t, activeCheckpointIDsFor(t, f, f.holdingAccountID, f.stockCommodityID), 1)
 	assert.Zero(t, holdingQuantity(t, f).Cmp(exact.ScaledIntFromInt64(26, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitAdjustmentRollsBackWithItsCommand(t *testing.T) {
@@ -597,14 +585,14 @@ func TestSplitAdjustmentRollsBackWithItsCommand(t *testing.T) {
 	require.NoError(t, f.database.QueryRow(`SELECT COUNT(*) FROM investment_operation_journal_links
 		WHERE role = 'split_adjustment'`).Scan(&links))
 	assert.Zero(t, links)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 
 	_, err = f.database.Exec(`DROP TRIGGER reject_split_adjustment`)
 	require.NoError(t, err)
 	_, err = f.investmentService.Buy(ctx, backdated)
 	require.NoError(t, err)
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(26, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSameDaySplitOrderingFollowsEntrySlot(t *testing.T) {
@@ -622,7 +610,7 @@ func TestSameDaySplitOrderingFollowsEntrySlot(t *testing.T) {
 	// A purchase entered on the split date afterwards was not entitled.
 	buyOn(t, f, "2026-03-01", 5, 5000)
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(21, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitCommitRefusesPositionChangedAfterPlanning(t *testing.T) {
@@ -709,7 +697,7 @@ func TestSplitThenAverageCostAndSpecificLotSalesUseConservedBasis(t *testing.T) 
 			require.NoError(t, err)
 			assert.Zero(t, effectiveDisposedBasis(t, f.database, result.Transaction.ID).Cmp(want))
 			assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(30, 0)))
-			requireSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 		})
 	}
 }

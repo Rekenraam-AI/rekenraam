@@ -38,7 +38,7 @@ func TestCashInLieuSurvivesSplitRatioCorrectionWithReviewedBasis(t *testing.T) {
 	requireScaled(t, 240, 2, saleEffectiveBasis(t, f, cil.Transaction.ID), "36 / 7.5 * 0.5")
 	require.Equal(t, int64(-2800), accountBalance(t, f, f.cashAccountID))
 	require.Equal(t, []int64{checkpoint}, activeCheckpointIDs(t, f))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 type cashParentCase struct {
@@ -231,7 +231,7 @@ func TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance(t *testing
 			}
 			_, err = f.investmentService.ReplaceCashInLieu(ctx, input)
 			require.NoError(t, err)
-			requireSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 		})
 	}
 }
@@ -376,7 +376,7 @@ func TestCashInLieuParentDateAndAncestryAreAdvisoryWhileCorruptionStillFails(t *
 	source, err := f.investmentService.repository.TradeCorrectionContext(ctx, BookID, cil.Transaction.ID)
 	require.NoError(t, err)
 	require.Equal(t, transferOperationID(t, f, replacement), source.EffectiveSettledOperationID)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 	// Query-only diagnostics never require simulation writes.
 	_, err = f.database.Exec(`PRAGMA query_only=ON`)
 	require.NoError(t, err)
@@ -419,7 +419,7 @@ func TestCashInLieuParentReplayStillBindsReconciledHoldingReview(t *testing.T) {
 	_, err = f.investmentService.ReplaceSplit(ctx, input)
 	require.NoError(t, err)
 	require.Empty(t, activeCheckpointIDs(t, f))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder(t *testing.T) {
@@ -450,7 +450,7 @@ func TestCashInLieuAllParentCorrectionsReplayLaterDisposalsInRootOrder(t *testin
 			quantity, basis := openCommodityPosition(t, f, f.holdingAccountID, c.commodity)
 			requireScaled(t, 6, 0, quantity, "7.5 less 0.5 less 1")
 			requireScaled(t, total-3*halfBasis, 2, basis, "remaining plus both disposals conserve basis")
-			requireSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 		})
 	}
 }

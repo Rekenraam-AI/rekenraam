@@ -129,7 +129,7 @@ func TestReplaceBuyMovesTradeDateEarlierAndRestatesLaterSale(t *testing.T) {
 	assert.Zero(t, exact.ScaledIntFromInt64(gains[0].DisposedBasisValue, gains[0].DisposedBasisScale).
 		Cmp(exact.ScaledIntFromInt64(-150000, 2)))
 	assert.Equal(t, "15", positionQuantity(t, f, f.holdingAccountID, f.stockCommodityID))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // Moving a buy after the sale that consumed it leaves the sale without
@@ -187,7 +187,7 @@ func TestReplaceBuyMovesHoldingAccountAndReplaysBothPositions(t *testing.T) {
 	var audits int
 	require.NoError(t, f.database.QueryRow(`SELECT count(DISTINCT created_audit_event_id) FROM investment_disposal_revisions`).Scan(&audits))
 	assert.Equal(t, 1, audits)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // Instrument and cost currency both change: the source position empties and
@@ -215,7 +215,7 @@ func TestReplaceBuyChangesInstrumentAndCostCurrency(t *testing.T) {
 		*result.Replacement.LotID).Scan(&lotCommodity, &lotCost))
 	assert.Equal(t, corrected, lotCommodity)
 	assert.Equal(t, usd, lotCost)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A later sale elected the acquisition by specific lot. Moving that
@@ -303,7 +303,7 @@ func TestReplaceBuyDateKeepsMultiJournalFeeDates(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"2026-03-01", "2026-03-03", "2026-03-10"}, journalDates(t, f, result.Inverse.ID))
 	assert.Equal(t, []string{"2026-02-01", "2026-02-03", "2026-03-10"}, journalDates(t, f, result.Replacement.Transaction.ID))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // The checkpoint covers the original date's cash but not the corrected one,
@@ -345,7 +345,7 @@ func TestReplaceBuyDateCrossingCheckpointRequiresOverride(t *testing.T) {
 			_, err = acknowledgedReplaceBuy(ctx, f.investmentService, input)
 			require.NoError(t, err)
 			assert.Empty(t, activeCheckpointIDs(t, f))
-			requireSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 		})
 	}
 }
@@ -382,7 +382,7 @@ func TestReplaceBuyAcrossPositionsRollsBackLateFailure(t *testing.T) {
 	assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 	assert.Equal(t, "15", positionQuantity(t, f, f.holdingAccountID, f.stockCommodityID))
 	assert.Equal(t, "0", positionQuantity(t, f, other, f.stockCommodityID))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A sale moves to its correct holding account and an earlier date. The
@@ -430,7 +430,7 @@ func TestReplaceSaleMovesAccountAndDateReplaysBothPositions(t *testing.T) {
 		basis.AddScaled(exact.ScaledIntFromInt64(allocation.CostBasisValue, allocation.CostBasisScale))
 	}
 	assert.Zero(t, basis.Cmp(exact.ScaledIntFromInt64(40000, 2)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A sale moved to a position that cannot cover it on the new date is refused
@@ -497,7 +497,7 @@ func TestReplaceSaleDateKeepsOriginalSameDaySlot(t *testing.T) {
 		basis.AddScaled(exact.ScaledIntFromInt64(allocation.CostBasisValue, allocation.CostBasisScale))
 	}
 	assert.Zero(t, basis.Cmp(exact.ScaledIntFromInt64(50000, 2)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // An imported buy moved to another date keeps its committed source identity
@@ -591,5 +591,5 @@ func TestReplaceBuyIntoPositionWithLaterPooledTransfer(t *testing.T) {
 	assert.Equal(t, "3", positionQuantity(t, f, f.holdingAccountID, f.stockCommodityID))
 	assert.Equal(t, "1", positionQuantity(t, f, destination, f.stockCommodityID))
 	assert.Equal(t, "0", positionQuantity(t, f, wrong, f.stockCommodityID))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }

@@ -46,20 +46,6 @@ func lotBasis(t *testing.T, f *investmentsTestFixture, lotID int64) (string, *ex
 	return quantity, exact.ScaledIntFromCoefficient(exact.Coefficient(*basis), *basisScale), knowledge, status
 }
 
-func requireSpinOffSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
-	t.Helper()
-	run, err := selfCheckOver(t, f.database).RunSelfCheck(context.Background(), "manual")
-	require.NoError(t, err)
-	for _, result := range run.Results {
-		if result.Status != SelfCheckNotApplicable {
-			assert.Equal(t, SelfCheckPassed, result.Status, "%s: %s", result.CheckID, result.Summary)
-		}
-	}
-	assert.Equal(t, SelfCheckPassed, run.Status)
-	requireEffectiveMovementsConsistent(t, f)
-	requireConservationOracle(t, f)
-}
-
 func TestSpinOffDividesBasisKeepsUnitsAndRealizesNothing(t *testing.T) {
 	t.Parallel()
 	f := newInvestmentsTestFixture(t)
@@ -154,7 +140,7 @@ func TestSpinOffDividesBasisKeepsUnitsAndRealizesNothing(t *testing.T) {
 	assert.Zero(t, commodityTradingBalance(t, f, f.eurCommodityID).Cmp(exact.ScaledIntFromInt64(-15000, 2)))
 	assert.Zero(t, commodityTradingBalance(t, f, f.stockCommodityID).Sign())
 	assert.Zero(t, commodityTradingBalance(t, f, newID).Sign())
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // The allocation is truncated at the position's allocation scale and the
@@ -182,7 +168,7 @@ func TestSpinOffTruncatesTheAllocationAndConservesEachLot(t *testing.T) {
 		step.Add(big.NewInt(1), child.Scale())
 		assert.Positive(t, step.Cmp(exactShare), "truncated, not rounded down further")
 	}
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSpinOffCarriesUnknownBasisAndResolvesThroughReplay(t *testing.T) {
@@ -224,7 +210,7 @@ func TestSpinOffCarriesUnknownBasisAndResolvesThroughReplay(t *testing.T) {
 	require.NoError(t, f.database.QueryRow(`SELECT basis_knowledge FROM latest_investment_transfer_link_revisions
 		WHERE operation_id = (SELECT operation_id FROM investment_transfer_facts WHERE transfer_kind = 'spin_off')`).Scan(&revisionKnowledge))
 	assert.Equal(t, db.InvestmentBasisKnown, revisionKnowledge)
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A corrected acquisition before the spin-off changes what each side gets;
@@ -274,7 +260,7 @@ func TestSpinOffUpstreamBuyReplacementRevisesBothSides(t *testing.T) {
 	reduction := requireRevisedMovement(t, f, db.MovementSourceTransferLinkRevision, "basis_reduction", 0)
 	require.Negative(t, reduction.CostBasisValue)
 	requireRevisedMovement(t, f, db.MovementSourceTransferLinkRevision, "transfer_in", 1)
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // History that changes which lots or units the spin-off entitled refuses with

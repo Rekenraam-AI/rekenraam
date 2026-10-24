@@ -77,7 +77,7 @@ func TestNamedShortCountsARevisedCoverOnItsDate(t *testing.T) {
 	worth, err := f.transactionService.NetWorth(context.Background(), NetWorthInput{AsOf: "2026-05-31"})
 	require.NoError(t, err)
 	assert.Empty(t, worth.UnclassifiedShorts, "eleven owed units explain a −11 holding")
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // An unexplained unit beside a revised cover stays a warning: in net worth, in
@@ -130,7 +130,7 @@ func TestNamedShortFollowsTheLatestOfRepeatedCoverRevisions(t *testing.T) {
 
 	assert.Equal(t, "17", namedShortUnits(t, f, "2026-04-30"))
 	assert.Equal(t, "13", namedShortUnits(t, f, ""), "10 + 5 + 2 − 4, counting only the latest revision")
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestNamedShortAfterCorrectingARevisedCover(t *testing.T) {
@@ -150,7 +150,7 @@ func TestNamedShortAfterCorrectingARevisedCover(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "12", namedShortUnits(t, f, ""), "the replacement counts once; the superseded revision not at all")
-		shortSelfCheckPasses(t, f)
+		requireInvestmentSelfCheckPasses(t, f)
 	})
 	t.Run("reversal", func(t *testing.T) {
 		t.Parallel()
@@ -159,7 +159,7 @@ func TestNamedShortAfterCorrectingARevisedCover(t *testing.T) {
 		reverseShortCoverAcknowledged(t, f, cover.Transaction.ID, "no such cover")
 
 		assert.Equal(t, "15", namedShortUnits(t, f, ""), "a reversed cover's revision covers nothing")
-		shortSelfCheckPasses(t, f)
+		requireInvestmentSelfCheckPasses(t, f)
 	})
 }
 
@@ -188,7 +188,7 @@ func TestNamedShortAfterCorrectingTheBackdatedOpening(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "12", namedShortUnits(t, f, ""), "10 + 6 − 4")
-		shortSelfCheckPasses(t, f)
+		requireInvestmentSelfCheckPasses(t, f)
 	})
 	t.Run("reversal", func(t *testing.T) {
 		t.Parallel()
@@ -205,7 +205,7 @@ func TestNamedShortAfterCorrectingTheBackdatedOpening(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "6", namedShortUnits(t, f, ""), "the cover replays against the March lot alone")
-		shortSelfCheckPasses(t, f)
+		requireInvestmentSelfCheckPasses(t, f)
 	})
 }
 

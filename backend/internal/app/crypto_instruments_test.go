@@ -32,12 +32,7 @@ func TestCryptoInstrumentCreatesScale24CommodityAndPreservesLots(t *testing.T) {
 	input.CashAmountValue = 1
 	_, err = f.investmentSvc.Sell(ctx, input)
 	require.NoError(t, err)
-	check, err := selfCheckOver(t, f.database).RunSelfCheck(ctx, "manual")
-	require.NoError(t, err)
-	for _, id := range []string{CheckLotReconciliation, CheckInvestmentFoundation, CheckInvestmentReplay, CheckEntryBalance, CheckCommodityPositionSign} {
-		result := resultFor(t, check, id)
-		assert.Equal(t, SelfCheckPassed, result.Status, "%s: %s", id, result.Summary)
-	}
+	requireKnownBasisSelfCheckPasses(t, f.database)
 
 	lots, err := f.investmentSvc.ListLots(ctx, holding.ID, instrument.CommodityID)
 	require.NoError(t, err)
@@ -177,12 +172,7 @@ func TestCryptoCSVBackdatedBuyDisclosesGainsAndHoldsUntilAcknowledged(t *testing
 	committed, err := f.importService.CommitImportBatch(ctx, command)
 	require.NoError(t, err)
 	assert.Equal(t, 1, committed.CommittedCount)
-	check, err := selfCheckOver(t, f.database).RunSelfCheck(ctx, "manual")
-	require.NoError(t, err)
-	for _, id := range []string{CheckLotReconciliation, CheckInvestmentFoundation, CheckInvestmentReplay} {
-		result := resultFor(t, check, id)
-		assert.Equal(t, SelfCheckPassed, result.Status, "%s: %s", id, result.Summary)
-	}
+	requireKnownBasisSelfCheckPasses(t, f.database)
 }
 
 func TestQuoteIdentifierEditPreservesExactUnrelatedMetadata(t *testing.T) {

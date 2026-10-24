@@ -80,7 +80,7 @@ func TestSplitReversalPostsExactInverseAndRestoresUnsplitHolding(t *testing.T) {
 	assert.False(t, chain.CanCorrectSplit)
 	_, err = f.investmentService.ReverseSplit(ctx, reverseSplitInput(f, split.Transaction.ID))
 	require.ErrorIs(t, err, ErrInvestmentSplitAlreadyCorrected)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitReversalInvertsPrimaryPlusAdjustmentDelta(t *testing.T) {
@@ -103,7 +103,7 @@ func TestSplitReversalInvertsPrimaryPlusAdjustmentDelta(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "-13", holdingPosting(t, f, inverse))
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(13, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitReversalRefusesImpossibleLaterSaleAtomically(t *testing.T) {
@@ -135,7 +135,7 @@ func TestSplitReversalRefusesImpossibleLaterSaleAtomically(t *testing.T) {
 	}
 	assert.Equal(t, before, countSplitRows(t, f.database))
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(5, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitReplacementCorrectsRatioAndRevisesLaterGain(t *testing.T) {
@@ -173,7 +173,7 @@ func TestSplitReplacementCorrectsRatioAndRevisesLaterGain(t *testing.T) {
 	assert.True(t, chain.CanCorrectSplit, "the replacement is itself correctable")
 	_, err = f.investmentService.ReplaceSplit(ctx, replaceSplitInput(f, split.Transaction.ID, "2026-03-01", 4, 1))
 	require.ErrorIs(t, err, ErrInvestmentSplitAlreadyCorrected)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitReplacementMovesDateOverLaterPurchase(t *testing.T) {
@@ -193,7 +193,7 @@ func TestSplitReplacementMovesDateOverLaterPurchase(t *testing.T) {
 	assert.Equal(t, "2026-03-15", result.Replacement.TransactionDate)
 	assert.Equal(t, "15", holdingPosting(t, f, result.Replacement))
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(30, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitReplacementRefusesUnchangedTermsAndOtherKinds(t *testing.T) {
@@ -234,7 +234,7 @@ func TestSplitReversalIntoReconciledPeriodNeedsOverride(t *testing.T) {
 	input.ReconciliationOverride = unboundOverride
 	_, err = f.investmentService.ReverseSplit(ctx, input)
 	require.NoError(t, err)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitCorrectionRollsBackLateFailure(t *testing.T) {
@@ -277,12 +277,12 @@ func TestSplitCorrectionRollsBackLateFailure(t *testing.T) {
 			require.ErrorContains(t, commit(), "forced split correction failure")
 			assert.Equal(t, before, countSplitRows(t, f.database))
 			assert.Zero(t, holdingQuantity(t, f).Cmp(beforeHolding))
-			requireSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 
 			_, err = f.database.Exec(`DROP TRIGGER reject_split_correction`)
 			require.NoError(t, err)
 			require.NoError(t, commit())
-			requireSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 		})
 	}
 }
@@ -332,7 +332,7 @@ func TestSplitCorrectionsAndAdjustmentsExportTheirLinks(t *testing.T) {
 	require.Len(t, revisions, 2)
 	assert.Equal(t, "adjustment_transaction_version_id", revisions[0][8])
 	assert.NotEmpty(t, revisions[1][8])
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestSplitAdjustmentJournalsCarryASystemLabel(t *testing.T) {
@@ -396,5 +396,5 @@ func TestSplitReplacementKeepsTheReplacedSplitsSameDaySlot(t *testing.T) {
 	// The corrected ratio still applies only to the ten earlier shares.
 	assert.Equal(t, "20", holdingPosting(t, f, result.Replacement))
 	assert.Zero(t, holdingQuantity(t, f).Cmp(scaled(35, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }

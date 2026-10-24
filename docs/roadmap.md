@@ -20,8 +20,8 @@ GitHub issue state. The documentation and competitor review is recorded in the
 R16, R11, R17 and R18 have met their bounded delivery bars. **R13 remains the
 next feature initiative; its calculation contract is not yet implementation-ready.**
 The cross-app engineering audit is delivered; owner/release follow-ups remain
-explicit below. **#397 is the current engineering focus; #284's owner review
-is complete.** Earlier milestone detail lives in the
+explicit below. **#402 is the current engineering focus (#397 delivered
+2026-10-24); #284's owner review is complete.** Earlier milestone detail lives in the
 [completed roadmap record](reviews/completed-roadmap-2026-09-27.md)
 and the [capability ledger](implemented.md).
 
@@ -152,8 +152,8 @@ below is execution order, not a chain of hard dependencies.
 
    | Order | Issue | Bounded outcome |
    |---:|---|---|
-   | 1 — current | [#397](https://github.com/sergeyfarin/rekenraam/issues/397) | One strict self-check assertion owner; keep the unknown-basis variant and independent oracles. |
-   | 2 | [#402](https://github.com/sergeyfarin/rekenraam/issues/402) | Investigate race-suite/migration-chain cost now: the retained matched 219.8 s run already crosses the proposed 200 s trigger. Optimize only with preserved upgrade coverage and unchanged ADR 0016 resources. |
+   | 1 — delivered 2026-10-24 | [#397](https://github.com/sergeyfarin/rekenraam/issues/397) | One strict self-check assertion owner (`requireKnownBasisSelfCheckPasses`); the unknown-basis variant and independent oracles are kept. |
+   | 2 — current | [#402](https://github.com/sergeyfarin/rekenraam/issues/402) | Investigate race-suite/migration-chain cost now: the retained matched 219.8 s run already crosses the proposed 200 s trigger. Optimize only with preserved upgrade coverage and unchanged ADR 0016 resources. |
    | 3 | [#398](https://github.com/sergeyfarin/rekenraam/issues/398) | Own browser self-check assertions by dedicated book or transaction; preserve diagnostic and navigation coverage. |
 
    These are the chosen maintenance slots, not technical blockers for R13.

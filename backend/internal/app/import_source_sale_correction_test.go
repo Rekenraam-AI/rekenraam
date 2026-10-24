@@ -121,7 +121,7 @@ func TestCorrectTrading212SaleKeepsIdentityAndRecordedMethodWithDependentReplay(
 			require.NoError(t, f.database.QueryRow(`SELECT origin_type, operation FROM audit_events WHERE id = (SELECT created_audit_event_id FROM investment_operations WHERE id = ?)`, corrected.OperationID).Scan(&origin, &operation))
 			require.Equal(t, "import", origin)
 			require.Equal(t, "investment.sale.source_correct", operation)
-			assertSourceSaleIntegrity(t, f)
+			requireKnownBasisSelfCheckPasses(t, f.database)
 		})
 	}
 }
@@ -140,16 +140,6 @@ func sourceSaleWriteSnapshot(t *testing.T, f sourceSaleFixture) map[string]strin
 	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM price_observations WHERE voided_at IS NOT NULL`).Scan(&resultValue))
 	result["voided-prices"] = resultValue
 	return result
-}
-
-func assertSourceSaleIntegrity(t *testing.T, f sourceSaleFixture) {
-	t.Helper()
-	run, err := selfCheckOver(t, f.database).RunSelfCheck(context.Background(), "manual")
-	require.NoError(t, err)
-	for _, check := range []string{CheckInvestmentFoundation, CheckLotReconciliation, CheckCommodityPositionSign, CheckEntryBalance, CheckTransactionBalance} {
-		result := resultFor(t, run, check)
-		require.Equal(t, SelfCheckPassed, result.Status, "%s: %s", check, result.Summary)
-	}
 }
 
 func TestCorrectTrading212SalePreviewAndSourceAcceptanceRollback(t *testing.T) {
@@ -186,7 +176,7 @@ func TestCorrectTrading212SalePreviewAndSourceAcceptanceRollback(t *testing.T) {
 	result, err := acknowledgedCorrectTrading212Sale(ctx, f.importService, input)
 	require.NoError(t, err)
 	require.Contains(t, append(result.Inverse.InvalidatedCheckpointIDs, result.Replacement.Transaction.InvalidatedCheckpointIDs...), checkpointID)
-	assertSourceSaleIntegrity(t, f)
+	requireKnownBasisSelfCheckPasses(t, f.database)
 }
 
 func TestCorrectTrading212SaleRefusesUnsupportedSourceChangesAtomically(t *testing.T) {
@@ -258,7 +248,7 @@ func TestCorrectTrading212SalePreservesSpecificElectionWithoutGuessingQuantityCh
 	_, err = acknowledgedCorrectTrading212Sale(ctx, f.importService, input)
 	require.ErrorContains(t, err, "explicit lot election")
 	require.Equal(t, before, sourceSaleWriteSnapshot(t, f))
-	assertSourceSaleIntegrity(t, f)
+	requireKnownBasisSelfCheckPasses(t, f.database)
 }
 
 func TestCorrectTrading212SaleRefusesImpossibleDependentReplay(t *testing.T) {
@@ -283,7 +273,7 @@ func TestCorrectTrading212SaleRefusesImpossibleDependentReplay(t *testing.T) {
 	row, err := f.importRepo.ImportStagedRowByID(ctx, input.RowID)
 	require.NoError(t, err)
 	require.Equal(t, "pending", row.CommitStatus)
-	assertSourceSaleIntegrity(t, f)
+	requireKnownBasisSelfCheckPasses(t, f.database)
 }
 
 func TestCorrectTrading212SaleDoesNotOfferCashFallback(t *testing.T) {

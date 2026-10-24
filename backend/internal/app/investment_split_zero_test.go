@@ -45,11 +45,11 @@ func TestJournalFreeSplitExportsAndSurvivesRestore(t *testing.T) {
 	f.accountService = NewAccountService(accountRepository, db.NewInstitutionRepository(restored), nil)
 	f.transactionService = NewTransactionService(db.NewTransactionRepository(restored), db.NewPayeeRepository(restored), accountRepository, db.NewCommodityRepository(restored))
 	f.investmentService = NewInvestmentService(db.NewInvestmentRepository(restored), f.accountService, f.transactionService, nil)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 	// Restored source terms remain active even before the first lot exists.
 	buyOn(t, f, "2026-02-01", 10, 10000)
 	require.Zero(t, holdingQuantity(t, f).Cmp(scaled(20, 0)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 	files = exportedBundle(t, f)
 	require.Len(t, files["investment-split-revisions.csv"], 1)
 	require.NotEmpty(t, files["investment-split-revisions.csv"][0]["adjustment_transaction_version_id"])
@@ -79,7 +79,7 @@ func TestJournalFreeSplitEntitlementRefusalNamesSplitAndRollsBack(t *testing.T) 
 		require.Equal(t, split.OperationID, dependency.OperationID)
 		require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 	}
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestJournalFreeSplitAdjustmentUsesGainAndCheckpointGuards(t *testing.T) {
@@ -112,7 +112,7 @@ func TestJournalFreeSplitAdjustmentUsesGainAndCheckpointGuards(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, holdingQuantity(t, f).Cmp(scaled(25, 0)))
 	require.Zero(t, effectiveDisposedBasis(t, f.database, sale.Transaction.ID).Cmp(scaled(2500, 2)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestJournalFreeSplitStalePlanAndAccountAreRefused(t *testing.T) {
@@ -155,7 +155,7 @@ func TestJournalFreeSplitExemptionDoesNotHideMissingJournals(t *testing.T) {
 			if initialZero {
 				buyOn(t, f, "2026-02-01", 10, 10000)
 			}
-			requireSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 			_, err = f.database.Exec(`DROP TRIGGER investment_operation_journal_links_no_delete`)
 			require.NoError(t, err)
 			_, err = f.database.Exec(`DELETE FROM investment_operation_journal_links WHERE operation_id = ?`, split.OperationID)
@@ -184,5 +184,5 @@ func TestJournalFreeSplitCannotCorrectAnAdjustmentAsItsPrimary(t *testing.T) {
 		OwnerUserID: f.ownerUserID, TransactionID: adjustmentID, Reason: "wrong ratio"})
 	require.ErrorIs(t, err, ErrInvestmentSplitNotFound)
 	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }

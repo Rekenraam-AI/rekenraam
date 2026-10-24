@@ -71,17 +71,6 @@ func commodityTradingAccountIDForTest(t *testing.T, f *investmentsTestFixture) i
 	return id
 }
 
-func shortSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
-	t.Helper()
-	run := mustRunInvestmentSelfCheck(t, f)
-	for _, check := range []string{CheckInvestmentFoundation, CheckLotReconciliation, CheckCommodityPositionSign, CheckInvestmentReplay} {
-		result := resultFor(t, run, check)
-		assert.Equal(t, SelfCheckPassed, result.Status, "%s: %s", check, result.Summary)
-	}
-	requireEffectiveMovementsConsistent(t, f)
-	requireConservationOracle(t, f)
-}
-
 func TestShortSaleOpensShortLotWithExactOpeningProceeds(t *testing.T) {
 	t.Parallel()
 	f := newInvestmentsTestFixture(t)
@@ -108,7 +97,7 @@ func TestShortSaleOpensShortLotWithExactOpeningProceeds(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, positions, 1)
 	assert.Equal(t, "short", positions[0].PositionSide)
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestShortCoverRealizesOpeningProceedsLessCoveringCost(t *testing.T) {
@@ -153,7 +142,7 @@ func TestShortCoverRealizesOpeningProceedsLessCoveringCost(t *testing.T) {
 	assertMoneyValue(t, 3000, 2, gains[0].RealizedGainValue, gains[0].RealizedGainScale, "report result")
 	assertMoneyValue(t, 10000, 2, gains[0].DisposedBasisValue, gains[0].DisposedBasisScale, "opening proceeds")
 	assertMoneyValue(t, -7000, 2, gains[0].ProceedsValue, gains[0].ProceedsScale, "covering cost")
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestShortCoverResultIsExactAcrossChargesAndScales(t *testing.T) {
@@ -240,7 +229,7 @@ func TestShortCoverResultIsExactAcrossChargesAndScales(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, gains, 1)
 			assertMoneyValue(t, test.want, test.scale, gains[0].RealizedGainValue, gains[0].RealizedGainScale, "committed")
-			shortSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 		})
 	}
 }
@@ -294,7 +283,7 @@ func TestPartialCoversConserveOpeningProceedsUnderEveryMethod(t *testing.T) {
 			var lock int
 			require.NoError(t, f.database.QueryRow(`SELECT COUNT(*) FROM investment_position_basis_state`).Scan(&lock))
 			assert.Zero(t, lock, "closing the short position releases its method lock")
-			shortSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 		})
 	}
 }
@@ -357,7 +346,7 @@ func TestPositionSideConflictRefusesOverlappingSides(t *testing.T) {
 		_, err := f.investmentService.Sell(ctx, sellInput(f, "2026-03-02", 5))
 		require.NoError(t, err)
 		shortSaleOn(t, f, "2026-03-02", 2, 2000)
-		shortSelfCheckPasses(t, f)
+		requireInvestmentSelfCheckPasses(t, f)
 	})
 	t.Run("buy dated before later short activity", func(t *testing.T) {
 		t.Parallel()
@@ -370,7 +359,7 @@ func TestPositionSideConflictRefusesOverlappingSides(t *testing.T) {
 		require.ErrorIs(t, err, ErrInvestmentPositionSideConflict, "the holding was short then")
 		require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 		buyOn(t, f, "2026-04-01", 1, 1000)
-		shortSelfCheckPasses(t, f)
+		requireInvestmentSelfCheckPasses(t, f)
 	})
 	t.Run("other holdings may take the other side", func(t *testing.T) {
 		t.Parallel()
@@ -380,7 +369,7 @@ func TestPositionSideConflictRefusesOverlappingSides(t *testing.T) {
 		buy.HoldingAccountID = seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
 		_, err := f.investmentService.Buy(ctx, buy)
 		require.NoError(t, err)
-		shortSelfCheckPasses(t, f)
+		requireInvestmentSelfCheckPasses(t, f)
 	})
 }
 
@@ -434,7 +423,7 @@ func TestBackdatedShortOpeningRevisesLaterLIFOCoverWithAcknowledgement(t *testin
 	var revisions int
 	require.NoError(t, f.database.QueryRow(`SELECT COUNT(*) FROM investment_disposal_revisions`).Scan(&revisions))
 	assert.Equal(t, 1, revisions, "the May decision keeps its original evidence and gains a revision")
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestBackdatedShortCoverRevisesLaterFIFOCover(t *testing.T) {
@@ -461,7 +450,7 @@ func TestBackdatedShortCoverRevisesLaterFIFOCover(t *testing.T) {
 	// May now covers 2 of the first lot and 3 of the second: 20.00 + 45.00.
 	may := shortGainOn(t, f, "2026-05-01")
 	assertMoneyValue(t, 2500, 2, may.RealizedGainValue, may.RealizedGainScale, "65.00 − 40.00")
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestBackdatedShortCoverNamesImpossibleLaterCoverAndWritesNothing(t *testing.T) {
@@ -482,7 +471,7 @@ func TestBackdatedShortCoverNamesImpossibleLaterCoverAndWritesNothing(t *testing
 	shortSaleOn(t, f, "2026-05-01", 2, 2000)
 	_, err = f.investmentService.ShortCover(ctx, coverInput(f, "2026-05-01", 2, 1500, "fifo"))
 	require.NoError(t, err)
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 func TestBackdatedShortReplayRollsBackEverythingOnLateFailure(t *testing.T) {
@@ -556,7 +545,7 @@ func TestNamedShortExplainsNegativeHoldingOnlyUpToOwedUnits(t *testing.T) {
 	worth, err := f.transactionService.NetWorth(ctx, NetWorthInput{AsOf: "2026-03-31"})
 	require.NoError(t, err)
 	assert.Empty(t, worth.UnclassifiedShorts, "ten owed units explain a −10 holding")
-	shortSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 
 	// Damage the subledger so it explains only 6 of the 10 units: the excess
 	// is an unclassified negative again, in net worth and in the self-check.
@@ -592,7 +581,7 @@ func TestSelfCheckDetectsShortLotAndSideDamage(t *testing.T) {
 			shortSaleOn(t, f, "2026-03-02", 10, 10000)
 			_, err := f.investmentService.ShortCover(context.Background(), shortInput(f, "2026-04-01", 10, 7000))
 			require.NoError(t, err)
-			shortSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 			_, err = f.database.Exec(test.damage)
 			require.NoError(t, err)
 			assert.Equal(t, SelfCheckFailed, resultFor(t, mustRunInvestmentSelfCheck(t, f), test.check).Status)

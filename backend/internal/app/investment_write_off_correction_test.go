@@ -85,7 +85,7 @@ func TestReverseFullWriteOffRestoresPosition(t *testing.T) {
 	require.NoError(t, f.database.QueryRow(`SELECT operation FROM audit_events a
 		JOIN transactions t ON t.created_audit_event_id = a.id WHERE t.id = ?`, inverse.ID).Scan(&operation))
 	assert.Equal(t, "investment.write_off.reverse", operation)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A partial write-off is replaced by a smaller one at zero proceeds. A later
@@ -122,7 +122,7 @@ func TestReplacePartialWriteOffReplaysDependentSale(t *testing.T) {
 		Cmp(exact.ScaledIntFromInt64(-50000, 2)))
 	assert.Zero(t, exact.ScaledIntFromInt64(gains["2026-03-01"].RealizedGainValue, gains["2026-03-01"].RealizedGainScale).
 		Cmp(exact.ScaledIntFromInt64(-40000, 2)))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // Reversing a write-off restores units a later sale did not need; reducing a
@@ -176,7 +176,7 @@ func TestReplaceSpecificLotWriteOffKeepsLineage(t *testing.T) {
 	_, err = f.investmentService.Sell(ctx, sale)
 	require.NoError(t, err)
 	assert.Equal(t, "0", positionQuantity(t, f, f.holdingAccountID, f.stockCommodityID))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // An already corrected write-off cannot be corrected again, and the sale and
@@ -267,7 +267,7 @@ func TestReplaceWriteOffRollsBackLateFailure(t *testing.T) {
 	require.ErrorIs(t, err, injected)
 	assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 	assert.Equal(t, "3", positionQuantity(t, f, f.holdingAccountID, f.stockCommodityID))
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A reconciled write-off date needs the explicit override; the preview names
@@ -291,7 +291,7 @@ func TestReverseWriteOffRequiresReconciliationOverride(t *testing.T) {
 	input.ReconciliationOverride = unboundOverride
 	_, err = acknowledgedReverseWriteOff(ctx, f.investmentService, input)
 	require.NoError(t, err)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }
 
 // A write-off recorded against the wrong holding moves to the right one. It
@@ -320,5 +320,5 @@ func TestReplaceWriteOffMovesHolding(t *testing.T) {
 	require.NoError(t, f.database.QueryRow(`SELECT cost_commodity_id FROM investment_disposal_decisions
 		WHERE transaction_id = ?`, result.Replacement.Transaction.ID).Scan(&cost))
 	assert.Equal(t, f.eurCommodityID, cost)
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 }

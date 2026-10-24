@@ -81,7 +81,7 @@ func TestWriteOffMixedCurrenciesEachMethodConsumesOnlySelectedCurrency(t *testin
 			require.Equal(t, wantLot, result.Allocations[0].LotID)
 			requireWriteOffCurrency(t, f, result, f.eurCommodityID)
 			requireUntouchedDollarLot(t, f, dollars)
-			requireSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 		})
 	}
 }
@@ -135,7 +135,7 @@ func TestWriteOffMixedCurrenciesRejectsAmbiguousAndInvalidElectionsAtomically(t 
 			require.Error(t, err)
 			require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 			requireUntouchedDollarLot(t, f, dollars)
-			requireSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 		})
 	}
 }
@@ -186,7 +186,7 @@ func TestWriteOffSelectedCurrencyUsesClosedHistoricalLotsAndGuardsGainsAndCheckp
 			require.Equal(t, preview.Allocations, result.Allocations)
 			requireWriteOffCurrency(t, f, result, f.eurCommodityID)
 			requireUntouchedDollarLot(t, f, dollars)
-			requireSelfCheckPasses(t, f)
+			requireInvestmentSelfCheckPasses(t, f)
 		})
 	}
 }
@@ -238,7 +238,7 @@ func TestWriteOffReplacementPinsOrChangesCurrencyAndExportsOriginalEvidence(t *t
 		}
 		require.True(t, found, "export preserves each currency-pinned original decision")
 	}
-	requireSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 	backupPath := filepath.Join(t.TempDir(), "backup.sqlite")
 	_, err = db.OnlineBackupSQLiteDatabase(ctx, f.database, backupPath, db.OnlineBackupOptions{})
 	require.NoError(t, err)

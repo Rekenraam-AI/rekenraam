@@ -81,7 +81,7 @@ func TestSpinOffReplacementPreservesExactUneditedSourceEvidence(t *testing.T) {
 	assert.Equal(t, `{"nested":{"id":18446744073709551617,"tags":["a",1e400]},`+
 		`"ratio":0.123456789012345678901234567890,"reference":"amended notice","revision":9007199254740993}`,
 		transferFactsEvidence(t, f, edited.Replacement.ID))
-	requireSpinOffSelfCheckPasses(t, f)
+	requireInvestmentSelfCheckPasses(t, f)
 
 	// The export carries the original and every successor's tokens verbatim.
 	snapshot, err := db.NewExportRepository(f.database).Snapshot(ctx)

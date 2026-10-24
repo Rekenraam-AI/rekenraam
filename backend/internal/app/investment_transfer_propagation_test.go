@@ -54,22 +54,6 @@ func saleEffectiveBasis(t *testing.T, f *investmentsTestFixture, saleTransaction
 	return exact.ScaledIntFromCoefficient(value, scale)
 }
 
-func requireInvestmentSelfCheckPasses(t *testing.T, f *investmentsTestFixture) {
-	t.Helper()
-	run, err := selfCheckOver(t, f.database).RunSelfCheck(context.Background(), "manual")
-	require.NoError(t, err)
-	// Known-basis books must pass outright: every check, not a selection,
-	// and no unavailable coverage (#273/#313).
-	for _, result := range run.Results {
-		if result.Status != SelfCheckNotApplicable {
-			assert.Equalf(t, SelfCheckPassed, result.Status, "%s: %s %v", result.CheckID, result.Summary, result.Sample)
-		}
-	}
-	assert.Equal(t, SelfCheckPassed, run.Status)
-	requireEffectiveMovementsConsistent(t, f)
-	requireConservationOracle(t, f)
-}
-
 func replaceBuyPrice(f *investmentsTestFixture, buy InvestmentTradeResult, date string, quantity, cash int64) ReplaceInvestmentBuyInput {
 	return ReplaceInvestmentBuyInput{OwnerUserID: f.ownerUserID, TransactionID: buy.Transaction.ID,
 		Reason: "broker correction", Replacement: InvestmentTradeInput{TransactionDate: date,
