@@ -91,6 +91,8 @@ Remedies are taken in this order:
    cost and raising the deadline. Reducing schema load means fewer or smaller
    triggers and views, preferably before v0.1.0 while migrations can still be
    rewritten. A deadline change needs a new amendment with matched evidence.
+   Schema slimming is already scheduled as a v0.1.0 release gate
+   ([#405](https://github.com/sergeyfarin/rekenraam/issues/405)), after #404.
 
 Do not recover headroom by:
 

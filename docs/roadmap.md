@@ -157,6 +157,7 @@ below is execution order, not a chain of hard dependencies.
    | 2 — delivered 2026-10-24 | [#402](https://github.com/sergeyfarin/rekenraam/issues/402) | [Measured](reviews/race-suite-cost-2026-10-24.md): migration replay is 4.5% of application race CPU; growth is schema size (per-connection load, statement compilation) plus new tests. No coverage-preserving test change is justified. Explicit thresholds (ADR 0016 amendment) replace the 200 s trigger; the owner sequenced compilation-cost work as #404. |
    | 3 | [#398](https://github.com/sergeyfarin/rekenraam/issues/398) | Own browser self-check assertions by dedicated book or transaction; preserve diagnostic and navigation coverage. |
    | 4 | [#404](https://github.com/sergeyfarin/rekenraam/issues/404) | Reduce statement compilation cost, measured. Track A first: explicit statement reuse at hot production sites. Track B: the global native cache, adopted only after the authorizer seams and the long-lived-pool review, with a measured size and an ADR note. Prefer A if it recovers most of B's gain. The ADR 0016 thresholds (amended 2026-10-24) say when to act. |
+   | 5 | [#405](https://github.com/sergeyfarin/rekenraam/issues/405) | Before the v0.1.0 tag, after #404: collapse migrations into one slimmed baseline (see Public-release gates). Measured with the #402 method; no invariant or error contract lost. |
 
    These are the chosen maintenance slots, not technical blockers for R13.
    R13 specification may proceed in parallel. The separate product-policy
@@ -348,6 +349,20 @@ Synthetic automated acceptance does not substitute for that dry run.
 
 Release readiness is a parallel track; announcement and marketplace listing
 remain separate from local daily-driver delivery.
+
+### Before the v0.1.0 tag
+
+- **Collapse and slim the schema:
+  [#405](https://github.com/sergeyfarin/rekenraam/issues/405).**
+  - The tag makes migrations append-only, so this is the last cheap window.
+  - Deliver it after #404. Start sooner if the ADR 0016 full-gate threshold
+    still fires after #404.
+  - The goal is fewer and smaller schema objects. Each connection currently
+    loads 507 objects in 8.9 ms, and statement compilation compiles them into
+    writes. One baseline file is only the packaging.
+  - Every financial invariant and error contract is kept, each with a named
+    owning test.
+  - Requires a `BREAKING DEV DATABASE` reset.
 
 ### Public repository hygiene
 

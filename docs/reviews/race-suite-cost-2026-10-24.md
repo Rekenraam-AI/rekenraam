@@ -268,6 +268,12 @@ scheduling or budget.
    choices are option 4 (schema slimming, before v0.1.0) or option 8 (a
    deadline change), through an ADR 0016 amendment with matched evidence.
    Options 5–7 stay rejected.
+4. **Before v0.1.0 regardless (added the same day).** Collapse the migrations
+   into one slimmed baseline in
+   [#405](https://github.com/sergeyfarin/rekenraam/issues/405). Collapsing
+   alone recovers only migration replay (about 3–4% of CPU, mostly by retiring
+   downgrade tests). Slimming targets the schema-load and compilation buckets.
+   The tag makes migrations append-only, so this is the last cheap window.
 
 Excluded throughout, by #402 and ADR 0016:
 
