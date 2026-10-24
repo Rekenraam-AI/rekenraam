@@ -7,7 +7,8 @@ replay is 4.5% of package CPU. The growth is the per-connection and
 per-statement cost of a larger schema, paid by every test, plus new tests. No
 test-fixture change recovers a measurable share without skipping real upgrade
 paths, so none is made. One measured lever remains, and it is a production
-setting: the native statement cache. That is an owner decision, below.
+setting: the native statement cache. The owner accepted the remedy sequence
+below, which also tries explicit statement reuse first.
 
 The investigation found a production bug,
 [#403](https://github.com/sergeyfarin/rekenraam/issues/403). On a reused
@@ -211,7 +212,8 @@ not, and is close enough to the deadline that ordinary noise can fail it, as
 ## Monitoring threshold
 
 The 200-second trigger slice 6 proposed did not say which measurement it
-applied to. These replace it:
+applied to. These replace it. They are adopted in the
+[ADR 0016 amendment](../adrs/0016-native-backend-test-resources.md#amendment--race-suite-cost-thresholds-2026-10-24):
 
 - **Investigate** when the median of three interleaved, uncached single-package
   runs of `./internal/app` (this document's command, reference ten-CPU host)
@@ -225,28 +227,53 @@ applied to. These replace it:
 At this base, the single-package and full-gate thresholds have both fired; the
 CI one has not.
 
+## Options considered
+
+The cost has two levers: compilation and schema-load work per test, and the
+amount of test work. Every option pulls one of these, or changes the
+scheduling or budget.
+
+| # | Option | For | Against |
+|---:|---|---|---|
+| 1 | Global native statement cache | One setting; measured 8–11%; also speeds production requests | Changes behavior on every connection; needs a correctness review and six authorizer seams reworked; a one-off gain while the schema grows |
+| 2 | Explicit statement reuse at hot sites | No global semantics change; local and reviewable; authorizer seams mostly keep working; speeds production writes. Compilation under `insertTransactionVersion` and the investment journal writers alone is about 85–120 CPU-seconds | Gain not yet measured; needs care per site; diminishing returns |
+| 3 | Accept the trend with explicit thresholds | No cost; CI keeps about 39% headroom | The local full gate is at about 92% of the deadline already, and every migration and test adds to it |
+| 4 | Reduce schema load cost (fewer or smaller triggers and views) | Root cause; cheaper connections in production too; migrations can still be rewritten before v0.1.0 | The triggers are ledger invariants; high risk, slow; schema load is about 19% of CPU, so a large cut yields roughly 10% |
+| 5 | Split the application test package | Better `-p 2` balance and per-package headroom | Total CPU unchanged, so it games the bound; the tests use unexported internals, making it a large refactor |
+| 6 | Trim or cheapen test work (self-check runs, overlapping matrices) | Direct cut | Trades coverage for time; needs a per-test coverage map |
+| 7 | Pooled, reset or in-memory fixtures (open/close is about 15%) | Direct cut | Breaks isolation or production equivalence; ADR 0016 forbids test-only database settings |
+| 8 | Raise the deadline, use faster hardware, or run a CI-only full gate | No code | Hides the trend; ADR 0016 requires measured optimization first; this host is a low-clock EPYC 3251 |
+
 ## Owner disposition
 
-**Recorded 2026-10-24: evaluate the statement cache in its own issue,
-[#404](https://github.com/sergeyfarin/rekenraam/issues/404).** The owner chose
-this over accepting the trend unchanged. It is also preferred to reducing
-schema load cost, which is a schema-design question outside test maintenance.
-#404 is a production DSN change, measured here at 8–11%. Its scope:
+**Accepted 2026-10-24.**
 
-- Rewrite the authorizer-based seams so they no longer depend on statement
-  compilation. Three fail with the cache on. Three more authorizer tests passed
-  and must be audited, because they may now pass vacuously.
-- Review cached statements against long-lived pools: schema changes, the
-  read-only pool, transactions, FTS5 and the busy/reset paths.
-- Choose a cache size from measurement.
-- Add an ADR note.
+1. **Baseline now (option 3).** The thresholds above are adopted in the
+   [ADR 0016 amendment](../adrs/0016-native-backend-test-resources.md#amendment--race-suite-cost-thresholds-2026-10-24).
+   #402 and #403 close with this change.
+2. **Reduce statement compilation cost, measured, in
+   [#404](https://github.com/sergeyfarin/rekenraam/issues/404).**
+   - Track A (option 2) comes first: explicit statement reuse at the hot
+     production sites the profile names.
+   - Track B (option 1) is the global native cache. It needs:
+     - the six authorizer-based seams made independent of compilation, each
+       with a cache-on negative control (three fail with the cache on, and
+       three may pass vacuously);
+     - a long-lived-pool correctness review;
+     - a measured size;
+     - an ADR note.
+   - Prefer Track A if it recovers most of Track B's gain. Adopt Track B only
+     after its review.
+3. **Tripwire.** If the full-gate threshold still fires after #404, the next
+   choices are option 4 (schema slimming, before v0.1.0) or option 8 (a
+   deadline change), through an ADR 0016 amendment with matched evidence.
+   Options 5–7 stay rejected.
 
-The gain is one-off; schema growth continues. Until #404 lands, the monitoring
-thresholds above apply as written.
+Excluded throughout, by #402 and ADR 0016:
 
-Excluded by #402 and ADR 0016: raising the deadline, lowering `-p` or test
-parallelism, faster test-only database settings, and removing assertions or
-upgrade paths.
+- lowering `-p` or test parallelism;
+- faster test-only database settings;
+- removing assertions or upgrade paths.
 
 ## Reproduction and validation
 

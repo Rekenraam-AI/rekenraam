@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted (2026-10-12). Supersedes ADR 0015 decision 5's retained serial-package
+Accepted (2026-10-12); amended 2026-10-24 by #402 (monitoring thresholds and
+escalation order). Supersedes ADR 0015 decision 5's retained serial-package
 schedule and 20-minute deadline. FULL durability and native-driver admission
 remain unchanged.
 
@@ -53,9 +54,59 @@ or sustained runtime pressure should trigger measured optimization before
 raising it. A CPU limit can still be used for a declared diagnostic comparison;
 it must not quietly become the default developer command.
 
+## Amendment — race-suite cost thresholds, 2026-10-24
+
+[#402](https://github.com/sergeyfarin/rekenraam/issues/402) measured the
+application package at `935ccdb7` on a ten-CPU host. The
+[record](../reviews/race-suite-cost-2026-10-24.md) has the matched runs and the
+profile. Results:
+
+- Single package: median 225.7 s.
+- Full `-p 2` gate: 276.6–277.7 s.
+- CI per package: about 183 s.
+
+Migration replay is 4.5% of the package's CPU. Statement compilation is 32.7%,
+and per-connection schema loading is 19.4%: every test pays for schema size.
+The earlier 200-second trigger did not name a measurement scope, so it is
+replaced by these thresholds.
+
+- **Investigate** when either median exceeds **210 s**: three interleaved,
+  uncached single-package runs of `./internal/app` on the reference ten-CPU
+  host, or CI's per-package time over the latest six successful `main` runs.
+- **Act before the next feature slice** when two uncached full-gate runs
+  (`GOFLAGS=-count=1 GO_PHASE_TIMINGS=1 scripts/test-backend.sh`) both exceed
+  **270 s** (90% of the deadline) for any package.
+- Single runs, and CI jobs without a matched base, are observations, not
+  triggers. The wrapper does not bypass Go's test cache, so timing runs set
+  `-count=1`.
+
+Remedies are taken in this order:
+
+1. Reduce statement compilation cost, measured
+   ([#404](https://github.com/sergeyfarin/rekenraam/issues/404)). First reuse
+   statements explicitly at the hot production sites, then evaluate the native
+   statement cache. Prefer explicit reuse when it recovers most of the gain;
+   adopt the global cache only after its correctness review.
+2. If the full-gate threshold still fires, choose between reducing schema load
+   cost and raising the deadline. Reducing schema load means fewer or smaller
+   triggers and views, preferably before v0.1.0 while migrations can still be
+   rewritten. A deadline change needs a new amendment with matched evidence.
+
+Do not recover headroom by:
+
+- splitting packages to fit the per-package bound;
+- trimming coverage or upgrade paths;
+- pooled or reset fixtures;
+- faster test-only database settings;
+- lowering `-p` or test parallelism.
+
+At `935ccdb7` the single-package and full-gate thresholds have fired; the CI
+threshold has not. #404 is the response.
+
 ## References
 
 - [ADR 0014](0014-native-sqlite-driver.md), native driver admission.
 - [ADR 0015](0015-sqlite-commit-durability.md), FULL durability.
 - [FULL timing evidence](../reviews/sqlite-full-durability-2026-10-12.md).
 - [#164](https://github.com/sergeyfarin/rekenraam/issues/164), development feedback.
+- [Race-suite cost investigation](../reviews/race-suite-cost-2026-10-24.md), #402 amendment.

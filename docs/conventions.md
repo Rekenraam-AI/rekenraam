@@ -803,6 +803,9 @@ has actual installations, its migration files are immutable.
   commands use available Go CPU resources; do not impose the historical
   four-core/GOMAXPROCS limit. CI's integrated build runs independently of
   other checks, with all validation jobs retained.
+  Its 2026-10-24 amendment (#402) defines when suite cost is investigated
+  or acted on, and the order of remedies. Never use package splits, coverage
+  trims or test-only settings to recover headroom.
 - Every top-level test in `internal/app` and `internal/db` calls `t.Parallel()`
   first; serial tests still use only one core within their package (T-125).
   A test that genuinely needs process-wide state

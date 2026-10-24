@@ -1020,6 +1020,24 @@ production build. Frontend compilation and browser execution remain separate
 costs; the entire E2E setup duration is never treated as recoverable Go work.
 Normal local commands omit the extra precompile passes unless opted in.
 
+**Race-suite cost thresholds.** Thresholds are defined in the
+[ADR 0016 amendment](adrs/0016-native-backend-test-resources.md#amendment--race-suite-cost-thresholds-2026-10-24),
+and #402's [record](reviews/race-suite-cost-2026-10-24.md) has the baseline.
+Measure against them uncached, with matched runs:
+
+```sh
+# full gate: two uncached runs, interleaved with the base when comparing
+GOFLAGS=-count=1 GO_PHASE_TIMINGS=1 ./scripts/test-backend.sh
+# single package: three interleaved rotations, test binaries prebuilt
+./scripts/go-backend.sh test -race -count=1 -exec /bin/true ./internal/app
+./scripts/go-backend.sh test -race -count=1 -timeout=10m -json ./internal/app > run.json
+python3 docs/reviews/fixtures/race-suite-cost-leaves.py run.json
+```
+
+Without `-count=1`, a rerun of unchanged packages reports `(cached)`, not a
+time. Compare case-name digests as well as wall time. Attribute cost with a
+CPU profile (`-cpuprofile`), not with test-name patterns.
+
 For the hosted comparison, use one source/toolchain/runner image and fresh
 runners: one cold run under the new namespace, then at least two exact-hit
 warm runs. Record Actions run URLs, source SHA, configuration, keys, paths,
