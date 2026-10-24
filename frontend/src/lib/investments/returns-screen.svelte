@@ -291,7 +291,7 @@
 
         <Panel>
           <ReturnsChart series={result.time_weighted_series} {locale} formatDate={day}
-            missingCommodities={seriesCoverage.missing.map(currencyOrCommodity)} />
+            missingCommodities={seriesCoverage.missing.map(currencyOrCommodity)} staleDates={seriesCoverage.staleDates} />
         </Panel>
 
         <Panel>

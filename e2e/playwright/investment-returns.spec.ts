@@ -65,6 +65,9 @@ test('[acceptance] returns show an empty book, then exact figures and reasons on
   const chart = summary.getByTestId('returns-chart');
   await expect(chart.getByRole('img')).toBeVisible();
   await expect(chart.getByTestId('returns-chart-gaps')).toHaveText('32 of 47 points have no value.');
+  // Days -39 to -33 reuse the purchase's fill price: disclosed with the
+  // chart, though no headline figure needs it.
+  await expect(chart.getByTestId('returns-chart-stale')).toContainText('Some points use prices or rates from earlier days:');
   await chart.getByText('Table of points', { exact: true }).click();
   const points = chart.getByTestId('returns-chart-table').locator('tbody tr');
   await expect(points).toHaveCount(47);

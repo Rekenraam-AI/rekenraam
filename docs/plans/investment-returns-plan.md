@@ -243,14 +243,22 @@ rounded values.
   only splits a telescoping run: it changes no factor, cannot introduce
   non-positive capital, and the closing point equals `time_weighted` (or
   carries its reason) by construction. Every ledger test asserts this.
-- **Coverage per point.** The chain is defined only before its first failure:
-  an unknown flow (every point `flow_unavailable`), a required evaluation day
-  without a valuation, or a non-positive denominator. Every point from that
-  day on carries the headline's reason and date. A point that needs a price
-  no headline figure needs is unavailable on its own date (its own reason)
-  and removes nothing else. The series' `valuation` covers only those
-  point-only days, so a chart gap never reads as a gap behind the headline
-  figures, whose `valuation` is unchanged.
+- **Coverage per point: one failure policy.** Each point applies the
+  headline's policy as if it closed the period, in this order: an unknown
+  flow (`flow_unavailable`), the opening valuation, the point's **own**
+  valuation (dated at the point), the first other required valuation before
+  it, then the chain's non-positive capital at or before it. The headline
+  TTWROR *is* the closing point, so a missing closing valuation outranks an
+  earlier gap or capital failure in both (review of `df4a75b1`, finding 1:
+  the series had picked the first failure in date order and disagreed). A
+  point-only price gap removes only that point. The series' `valuation`
+  covers only point-only days, so a chart gap never reads as a gap behind the
+  headline figures; its stale quotes are disclosed with the chart (finding 2:
+  they had been dropped).
+- **Consequence.** The policy is per point, not monotone: a point after a
+  capital failure can report a later missing price of its own, and points
+  after a required gap report that gap. Gain and IRR keep their own
+  dependencies (the two boundary values and the flows).
 - **No capital** (zero opening value and no flows) makes every point
   `no_capital`. Before the first inflow of a portfolio that starts empty,
   factors are 0/0 and the points read `0`, as the chain does.
@@ -365,7 +373,10 @@ is outside.
 | C1 daily | period 02-01..02-05; prices 105 (02-02), 110 (02-04); deposit 500 into broker cash 02-03 | 01-31 `0`, 02-01 `0`, 02-02 `0.045455`, 02-03 `0.045455`, 02-04 `0.077135` = 1150/1100 · 1700/1650 − 1, 02-05 `0.077135` = headline |
 | C2 weekly, local gap | full year; prices 105 (07-31), 110 (close) | 54 points; 02-07 `0` (7-day-old price); 02-14 and 07-25 `valuation_unavailable` on their own dates; 08-01 `0.045455`; close `0.090909`; headline coverage complete, series coverage names ACME |
 | C4 chain stop | R4 ledger (broker cash only) | 07-25 `0`; 08-01 and close `non_positive_capital` dated 07-30 |
-| C5 required gap | R5 ledger | 02-07 `0`; 05-02 and close `valuation_unavailable` dated 05-01 |
+| C5 required gap | R5 ledger plus a price on 05-09 | 02-07 `0`; 05-02 own gap dated 05-02; 05-09 and close `valuation_unavailable` dated 05-01 |
+| C6 closing gap first | R5 ledger, no closing price | headline and closing point `valuation_unavailable` dated the closing day, not 05-01 |
+| C7 closing gap over capital | prices 100 on 07-29..07-31; fee 1,200 from broker cash 07-30, income 1,200 on 07-31; no closing price | 08-01 `non_positive_capital` dated 07-30; headline and closing point `valuation_unavailable` dated the closing day |
+| C8 chart-only staleness | prices only at the boundaries (01-31, 02-05), period 02-01..02-05 | headline quotes all exact; series coverage marks 02-01..02-04 stale |
 
 Slice 1 tests pin these literals; they never derive expected values from the
 calculator. R1–R7 are the reproducers from the 2026-10-24 review of

@@ -10,13 +10,16 @@
     series,
     locale,
     formatDate,
-    missingCommodities
+    missingCommodities,
+    staleDates
   }: {
     series: ReturnsSeries;
     locale: string;
     formatDate: (date: string) => string;
     /** Commodities only the chart points lacked a price or rate for. */
     missingCommodities: string[];
+    /** Earlier-dated quotes behind points only the chart needed. */
+    staleDates: string[];
   } = $props();
 
   const chart = $derived(returnsChartModel(series.points));
@@ -76,6 +79,9 @@
   {/if}
   {#if missingCommodities.length > 0}
     <p class="text-sm text-muted">{m.returns_chart_coverage({ commodities: missingCommodities.join(', ') })}</p>
+  {/if}
+  {#if staleDates.length > 0}
+    <p class="text-sm text-muted" data-testid="returns-chart-stale">{m.returns_chart_coverage_stale({ dates: staleDates.map(formatDate).join(', ') })}</p>
   {/if}
 
   <details class="text-sm">

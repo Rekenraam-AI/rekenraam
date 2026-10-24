@@ -33851,7 +33851,7 @@ export interface components {
             date: string;
             time_weighted: components["schemas"]["ReturnFigure"];
         };
-        /** @description Cumulative time-weighted return at chart points, from the same exact chain as `time_weighted`; the last point is the closing day and equals it, or carries its reason. Points are the opening day, then every day (periods up to 92 days), every seventh day counted from the opening day (up to 731 days) or every calendar month end, and the closing day. A point needing a price no headline figure needs is unavailable on its own date and never removes another figure; once the chain fails (a required valuation, non-positive capital, an unknown flow) every later point carries that reason. */
+        /** @description Cumulative time-weighted return at chart points, from the same exact chain as `time_weighted`; the last point is the closing day and equals it, or carries its reason. Points are the opening day, then every day (periods up to 92 days), every seventh day counted from the opening day (up to 731 days) or every calendar month end, and the closing day. A point applies the headline's failure policy as if it closed the period: an unknown flow, the opening valuation, its own valuation, the first other required valuation before it, then non-positive capital at or before it. A price gap only a point needs removes that point alone. */
         ReturnsSeries: {
             /** @enum {string} */
             interval: "day" | "week" | "month";

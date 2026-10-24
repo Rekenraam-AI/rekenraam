@@ -887,6 +887,7 @@
   "returns_chart_empty": "Ни у одной точки нет значения, поэтому линии нет. Причина указана в таблице точек.",
   "returns_chart_gaps": "Без значения: {missing} из {total} точек.",
   "returns_chart_coverage": "Точки без пригодной цены или курса для: {commodities}. Показателям выше они не нужны.",
+  "returns_chart_coverage_stale": "Некоторые точки используют цены или курсы за более ранние дни: {dates}.",
   "returns_chart_data": "Таблица точек",
   "returns_chart_column_date": "Конец дня",
   "returns_chart_column_return": "Доходность, взвешенная по времени"

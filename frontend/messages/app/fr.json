@@ -887,6 +887,7 @@
   "returns_chart_empty": "Aucun point n’a de valeur, il n’y a donc pas de ligne. Le tableau des points indique pourquoi.",
   "returns_chart_gaps": "{missing} points sur {total} n’ont pas de valeur.",
   "returns_chart_coverage": "Points sans cours ni taux de change utilisable pour : {commodities}. Les chiffres ci-dessus n’en ont pas besoin.",
+  "returns_chart_coverage_stale": "Certains points utilisent des cours ou des taux de jours antérieurs : {dates}.",
   "returns_chart_data": "Tableau des points",
   "returns_chart_column_date": "Fin de journée",
   "returns_chart_column_return": "Rendement pondéré par le temps"

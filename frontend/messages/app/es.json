@@ -887,6 +887,7 @@
   "returns_chart_empty": "Ningún punto tiene valor, así que no hay línea. La tabla de puntos indica por qué.",
   "returns_chart_gaps": "{missing} de {total} puntos no tienen valor.",
   "returns_chart_coverage": "Puntos sin precio ni tipo de cambio utilizable para: {commodities}. Las cifras de arriba no los necesitan.",
+  "returns_chart_coverage_stale": "Algunos puntos usan precios o tipos de cambio de días anteriores: {dates}.",
   "returns_chart_data": "Tabla de puntos",
   "returns_chart_column_date": "Fin del día",
   "returns_chart_column_return": "Rentabilidad ponderada por el tiempo"

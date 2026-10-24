@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -564,16 +565,73 @@ func TestReturnsSeriesStopsAtNonPositiveCapital(t *testing.T) {
 	requireSeriesPoint(t, series, "2027-01-31", "", ReturnReasonNonPositiveCapital, "2026-07-30")
 }
 
-// R5 base: a required intermediate valuation gap removes the points from
-// that day on, as it removes the headline TTWROR.
+// R5 base: a required intermediate valuation gap removes every later point,
+// as it removes the headline TTWROR. A point whose own price is missing
+// says so first, as the headline does for its closing day.
 func TestReturnsSeriesStopsAtARequiredValuationGap(t *testing.T) {
 	t.Parallel()
 	f := newReturnsFixture(t)
 	f.post(t, "2026-05-02", f.brokerCashID, f.cashAccountID, 50000)
+	f.price(t, "2026-05-09", 10000)
 	f.price(t, "2027-01-31", 10000)
 
 	series := f.read(t, "2026-02-01", "2027-01-31").TimeWeightedSeries
 	requireSeriesPoint(t, series, "2026-02-07", "0.000000", "", "")
-	requireSeriesPoint(t, series, "2026-05-02", "", ReturnReasonValuationUnavailable, "2026-05-01")
+	requireSeriesPoint(t, series, "2026-05-02", "", ReturnReasonValuationUnavailable, "2026-05-02")
+	requireSeriesPoint(t, series, "2026-05-09", "", ReturnReasonValuationUnavailable, "2026-05-01")
 	requireSeriesPoint(t, series, "2027-01-31", "", ReturnReasonValuationUnavailable, "2026-05-01")
+}
+
+// Review of df4a75b1, finding 1: with an intermediate and a closing gap the
+// headline names the closing day, and so must the closing point.
+func TestReturnsSeriesClosingGapOutranksAnEarlierGap(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.post(t, "2026-05-02", f.brokerCashID, f.cashAccountID, 50000)
+
+	result := f.read(t, "2026-02-01", "2027-01-31")
+	require.Equal(t, ReturnReasonValuationUnavailable, result.TimeWeighted.Reason)
+	require.Equal(t, "2027-01-31", result.TimeWeighted.Date)
+	requireSeriesPoint(t, result.TimeWeightedSeries, "2026-02-07", "0.000000", "", "")
+	requireSeriesPoint(t, result.TimeWeightedSeries, "2027-01-31", "", ReturnReasonValuationUnavailable, "2027-01-31")
+}
+
+// Review of df4a75b1, finding 1: non-positive capital in July with no
+// closing price. Points after July report the capital failure; the closing
+// point, like the headline, reports its missing valuation.
+func TestReturnsSeriesClosingGapOutranksAnEarlierCapitalFailure(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	for _, date := range []string{"2026-07-29", "2026-07-30", "2026-07-31"} {
+		f.price(t, date, 10000)
+	}
+	// Broker cash 100 → −1,100 on 07-30, so V(07-30) = −100.
+	f.post(t, "2026-07-30", f.feeID, f.brokerCashID, 120000)
+	f.post(t, "2026-07-31", f.brokerCashID, f.incomeAccountID, 120000)
+
+	result := f.read(t, "2026-02-01", "2027-01-31")
+	require.Equal(t, ReturnReasonValuationUnavailable, result.TimeWeighted.Reason)
+	require.Equal(t, "2027-01-31", result.TimeWeighted.Date)
+	requireSeriesPoint(t, result.TimeWeightedSeries, "2026-08-01", "", ReturnReasonNonPositiveCapital, "2026-07-30")
+	requireSeriesPoint(t, result.TimeWeightedSeries, "2027-01-31", "", ReturnReasonValuationUnavailable, "2027-01-31")
+}
+
+// Review of df4a75b1, finding 2: exact boundary quotes, older quotes behind
+// the points between them. The staleness belongs to the series' coverage.
+func TestReturnsSeriesKeepsItsOwnStaleQuotes(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.price(t, "2026-02-05", 11000)
+
+	result := f.read(t, "2026-02-01", "2026-02-05")
+	for _, use := range result.Valuation.Used {
+		require.False(t, use.Stale, use.RequestedDate)
+	}
+	stale := []string{}
+	for _, use := range result.TimeWeightedSeries.Valuation.Used {
+		if use.Stale {
+			stale = append(stale, use.RequestedDate)
+		}
+	}
+	require.Equal(t, []string{"2026-02-01", "2026-02-02", "2026-02-03", "2026-02-04"}, slices.Sorted(slices.Values(stale)))
 }

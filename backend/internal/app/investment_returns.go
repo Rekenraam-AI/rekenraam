@@ -620,7 +620,8 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 	}
 	evaluation := r.evaluationDays(breakpoints)
 	values := r.valuations(evaluation, r.rates)
-	result.TimeWeightedSeries = r.series(byDay, flowsKnown, values, result.Days)
+	var twrGrowth *big.Rat
+	result.TimeWeightedSeries, twrGrowth = r.series(byDay, flowsKnown, values, result.Days)
 
 	result.OpeningValue = r.amount(values[r.openDate], r.openDate)
 	result.ClosingValue = r.amount(values[r.to], r.to)
@@ -633,7 +634,8 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 	}
 
 	// Each figure has its own dependencies: gain and IRR need the flows and
-	// the two boundary values; TTWROR also needs every evaluation day.
+	// the two boundary values; TTWROR also needs every evaluation day, and is
+	// the series' closing point so both apply one failure policy.
 	var boundaryBlock ReturnFigure
 	switch {
 	case !flowsKnown:
@@ -643,28 +645,11 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 	case values[r.to].reason != "":
 		boundaryBlock = unavailableReturn(values[r.to].reason, r.to)
 	}
-	twrBlock := boundaryBlock
-	if twrBlock.Reason == "" {
-		for _, date := range slices.Sorted(maps.Keys(values)) {
-			if values[date].reason != "" {
-				twrBlock = unavailableReturn(values[date].reason, date)
-				break
-			}
-		}
-	}
-
-	if twrBlock.Reason != "" {
-		result.TimeWeighted, result.TimeWeightedAnnualized = twrBlock, twrBlock
-	} else {
-		known := make(map[string]*big.Rat, len(values))
-		for date, valuation := range values {
-			known[date] = valuation.value
-		}
-		growth, twr := timeWeightedReturn(r.openDate, known, byDay)
-		result.TimeWeighted, result.TimeWeightedAnnualized = twr, twr
-		if growth != nil {
-			result.TimeWeightedAnnualized = annualizedReturn(growth, result.Days)
-		}
+	points := result.TimeWeightedSeries.Points
+	result.TimeWeighted = points[len(points)-1].TimeWeighted
+	result.TimeWeightedAnnualized = result.TimeWeighted
+	if twrGrowth != nil {
+		result.TimeWeightedAnnualized = annualizedReturn(twrGrowth, result.Days)
 	}
 
 	if boundaryBlock.Reason != "" {
@@ -715,11 +700,14 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 // series reads the cumulative time-weighted return at each chart point from
 // the same chain as the headline figure (the plan's slice 3). A point that is
 // not already an evaluation day lies in a run the chain proved valid, so its
-// value only splits a telescoping run and changes no factor. The chain is
-// defined only before its first failure (a required valuation, non-positive
-// capital, an unknown flow); a point's own missing valuation removes only
-// that point.
-func (r *returnsReader) series(byDay map[string]returnsDayFlow, flowsKnown bool, required map[string]returnsValuation, days int) ReturnsSeries {
+// value only splits a telescoping run and changes no factor.
+//
+// Every point applies the headline's own failure policy as if it closed the
+// period: an unknown flow, then the opening valuation, then the point's own
+// valuation, then the first other required valuation before it, then the
+// chain. The headline TTWROR is the closing point, so the two cannot
+// disagree. Also returned: the closing growth factor, for annualizing.
+func (r *returnsReader) series(byDay map[string]returnsDayFlow, flowsKnown bool, required map[string]returnsValuation, days int) (ReturnsSeries, *big.Rat) {
 	interval, dates := returnsSeriesDates(r.openDate, r.to, days)
 	extra := make([]string, 0, len(dates))
 	for _, date := range dates {
@@ -729,20 +717,19 @@ func (r *returnsReader) series(byDay map[string]returnsDayFlow, flowsKnown bool,
 	}
 	own := r.valuations(extra, r.seriesRates)
 
-	failedOn, failure := "", ReturnFigure{}
-	if !flowsKnown {
-		failedOn, failure = r.openDate, unavailableReturn(ReturnReasonFlowUnavailable, "")
-	} else {
-		for _, date := range slices.Sorted(maps.Keys(required)) {
-			if required[date].reason != "" {
-				failedOn, failure = date, unavailableReturn(required[date].reason, date)
-				break
-			}
+	// The chain is defined only before the first required day without a
+	// value; a later point reports that gap (or its own) instead.
+	firstGap := ""
+	for _, date := range slices.Sorted(maps.Keys(required)) {
+		if required[date].reason != "" {
+			firstGap = date
+			break
 		}
 	}
-	before := func(date string) bool { return failedOn == "" || date < failedOn }
-	growth := map[string]*big.Rat{}
-	if failedOn != r.openDate {
+	before := func(date string) bool { return firstGap == "" || date < firstGap }
+	var growth map[string]*big.Rat
+	chainFailedOn, chainFailure := "", ReturnFigure{}
+	if flowsKnown && firstGap != r.openDate {
 		known := map[string]*big.Rat{}
 		for _, valuations := range []map[string]returnsValuation{required, own} {
 			for date, valuation := range valuations {
@@ -751,28 +738,37 @@ func (r *returnsReader) series(byDay map[string]returnsDayFlow, flowsKnown bool,
 				}
 			}
 		}
-		var chainFailedOn string
-		var chainFailure ReturnFigure
 		growth, chainFailedOn, chainFailure = timeWeightedChain(r.openDate, known, byDay)
-		if chainFailedOn != "" && before(chainFailedOn) {
-			failedOn, failure = chainFailedOn, chainFailure
-		}
 	}
 
 	series := ReturnsSeries{Interval: interval, Points: make([]ReturnsSeriesPoint, 0, len(dates))}
+	var closingGrowth *big.Rat
 	for _, date := range dates {
+		valuation, isOwn := own[date]
+		if !isOwn {
+			valuation = required[date]
+		}
 		point := ReturnsSeriesPoint{Date: date}
-		switch valuation, isOwn := own[date]; {
-		case !before(date):
-			point.TimeWeighted = failure
-		case isOwn && valuation.reason != "":
+		switch {
+		case !flowsKnown:
+			point.TimeWeighted = unavailableReturn(ReturnReasonFlowUnavailable, "")
+		case required[r.openDate].reason != "":
+			point.TimeWeighted = unavailableReturn(required[r.openDate].reason, r.openDate)
+		case valuation.reason != "":
 			point.TimeWeighted = unavailableReturn(valuation.reason, date)
+		case !before(date):
+			point.TimeWeighted = unavailableReturn(required[firstGap].reason, firstGap)
+		case chainFailedOn != "" && date >= chainFailedOn:
+			point.TimeWeighted = chainFailure
 		default:
 			point.TimeWeighted = availableReturn(formatReturnRat(new(big.Rat).Sub(growth[date], big.NewRat(1, 1))))
+			if date == r.to {
+				closingGrowth = growth[date]
+			}
 		}
 		series.Points = append(series.Points, point)
 	}
-	return series
+	return series, closingGrowth
 }
 
 // evaluationDays adds to the flow breakpoints every day the daily product's

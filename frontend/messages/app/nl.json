@@ -887,6 +887,7 @@
   "returns_chart_empty": "Geen enkel punt heeft een waarde, dus er is geen lijn. De tabel met punten zegt waarom.",
   "returns_chart_gaps": "{missing} van {total} punten hebben geen waarde.",
   "returns_chart_coverage": "Punten zonder bruikbare koers of wisselkoers voor: {commodities}. De cijfers hierboven hebben die niet nodig.",
+  "returns_chart_coverage_stale": "Sommige punten gebruiken koersen of wisselkoersen van eerdere dagen: {dates}.",
   "returns_chart_data": "Tabel met punten",
   "returns_chart_column_date": "Einde van de dag",
   "returns_chart_column_return": "Tijdgewogen rendement"

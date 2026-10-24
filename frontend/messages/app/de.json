@@ -887,6 +887,7 @@
   "returns_chart_empty": "Kein Punkt hat einen Wert, daher gibt es keine Linie. Die Punkttabelle nennt den Grund.",
   "returns_chart_gaps": "{missing} von {total} Punkten haben keinen Wert.",
   "returns_chart_coverage": "Punkte ohne nutzbaren Kurs oder Wechselkurs für: {commodities}. Die Werte oben benötigen sie nicht.",
+  "returns_chart_coverage_stale": "Einige Punkte verwenden Kurse oder Wechselkurse früherer Tage: {dates}.",
   "returns_chart_data": "Punkttabelle",
   "returns_chart_column_date": "Tagesende",
   "returns_chart_column_return": "Zeitgewichtete Rendite"

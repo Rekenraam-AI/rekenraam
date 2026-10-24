@@ -887,6 +887,7 @@
   "returns_chart_empty": "No point has a value, so there is no line to draw. The table of points says why.",
   "returns_chart_gaps": "{missing} of {total} points have no value.",
   "returns_chart_coverage": "Points without a usable price or exchange rate for: {commodities}. The figures above do not need them.",
+  "returns_chart_coverage_stale": "Some points use prices or rates from earlier days: {dates}.",
   "returns_chart_data": "Table of points",
   "returns_chart_column_date": "End of day",
   "returns_chart_column_return": "Time-weighted return"
