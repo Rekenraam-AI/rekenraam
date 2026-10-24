@@ -257,3 +257,131 @@ func TestReturnsRejectInvalidInput(t *testing.T) {
 		require.ErrorAs(t, err, &validation, "%+v", input)
 	}
 }
+
+// The 2026-10-24 review of e30413a5 (plan cases R1–R7). Each failed before
+// the contract correction; the figures are the plan's literals.
+
+// R1: a delivery is a flow at market value, whatever basis bridged it.
+func TestReturnsRecognizeDeliveriesAtMarketValue(t *testing.T) {
+	t.Parallel()
+	for _, knowledge := range []string{"known", "unknown"} {
+		t.Run(knowledge, func(t *testing.T) {
+			t.Parallel()
+			f := newReturnsFixture(t)
+			seedExternalTransferEquity(t, f.database)
+			f.price(t, "2026-07-30", 10000)
+			f.price(t, "2026-07-31", 10000)
+			f.price(t, "2027-01-31", 10000)
+			input := ExternalTransferInInput{OwnerUserID: f.ownerUserID, EffectiveOn: "2026-07-31",
+				HoldingAccountID: f.holdingAccountID, CommodityID: f.stockCommodityID, QuantityValue: exact.New(1),
+				CostCommodityID: f.eurCommodityID, BasisKnowledge: knowledge}
+			if knowledge == "known" {
+				input.CarriedBasisValue, input.CarriedBasisScale = 100, 2
+			}
+			_, err := f.investmentService.ExternalTransferIn(context.Background(), input)
+			require.NoError(t, err)
+
+			result := f.read(t, "2026-02-01", "2027-01-31")
+			requireReturnsAmount(t, 100, result.Contributions)
+			requireReturnsAmount(t, 0, result.Gain)
+			requireReturn(t, "0.000000", result.TimeWeighted)
+		})
+	}
+}
+
+// A transfer-out posts units against commodity trading only; it is a
+// withdrawal at market, not a loss.
+func TestReturnsRecognizeTransferOutAsWithdrawal(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	seedExternalTransferEquity(t, f.database)
+	f.price(t, "2026-07-31", 10000)
+	f.price(t, "2027-01-31", 11000)
+	var lotID int64
+	require.NoError(t, f.database.QueryRow(`SELECT id FROM investment_lots WHERE account_id = ?`, f.holdingAccountID).Scan(&lotID))
+	_, err := f.investmentService.ExternalTransferOut(context.Background(), ExternalTransferOutInput{OwnerUserID: f.ownerUserID,
+		EffectiveOn: "2026-07-31", SourceAccountID: f.holdingAccountID, CommodityID: f.stockCommodityID,
+		CostCommodityID: f.eurCommodityID,
+		Allocations:     []InvestmentLotAllocationInput{{LotID: lotID, QuantityValue: exact.New(2)}}})
+	require.NoError(t, err)
+
+	result := f.read(t, "2026-02-01", "2027-01-31")
+	requireReturnsAmount(t, 200, result.Withdrawals)
+	requireReturnsAmount(t, 980, result.ClosingValue)
+	requireReturnsAmount(t, 80, result.Gain)
+	// (900 + 200) / 1100 · 980 / 900 − 1
+	requireReturn(t, "0.088889", result.TimeWeighted)
+}
+
+// R3: an erroneous dividend and its reversal leave the figures untouched.
+func TestReturnsNetCorrectionChainsBeforeSplittingFlows(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.price(t, "2026-07-30", 10000)
+	f.price(t, "2026-07-31", 11000)
+	f.price(t, "2027-01-31", 11000)
+	dividend, err := f.investmentService.Dividend(context.Background(), DividendInput{OwnerUserID: f.ownerUserID,
+		TransactionDate: "2026-07-31", CommodityID: NullablePatch[int64]{Set: true, Value: &f.stockCommodityID},
+		CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.incomeAccountID,
+		AmountValue: 2000, AmountScale: 2})
+	require.NoError(t, err)
+	_, err = f.investmentService.ReverseDividend(context.Background(), ReverseInvestmentDividendInput{
+		OwnerUserID: f.ownerUserID, TransactionID: dividend.ID, Reason: "payment never occurred"})
+	require.NoError(t, err)
+
+	result := f.read(t, "2026-02-01", "2027-01-31")
+	requireReturnsAmount(t, 0, result.Contributions)
+	requireReturnsAmount(t, 0, result.Withdrawals)
+	requireReturn(t, "0.090909", result.TimeWeighted)
+	requireReturn(t, "0.090909", result.MoneyWeighted)
+}
+
+// R4: performance alone can take capital through zero between flows; the
+// daily product's denominator is then non-positive and must be found.
+func TestReturnsFindNonPositiveCapitalBetweenFlows(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.post(t, "2026-07-30", f.feeID, f.brokerCashID, 20000)
+	f.post(t, "2026-07-31", f.brokerCashID, f.incomeAccountID, 20000)
+
+	result, err := f.investmentService.ReadReturns(context.Background(), ReturnsInput{From: "2026-02-01", To: "2027-01-31",
+		ReportingCommodityID: f.eurCommodityID, AccountIDs: []int64{f.brokerCashID}})
+	require.NoError(t, err)
+	require.Equal(t, ReturnReasonNonPositiveCapital, result.TimeWeighted.Reason)
+	require.Equal(t, "2026-07-30", result.TimeWeighted.Date)
+	requireReturnsAmount(t, 0, result.Gain)
+}
+
+// R5: a gap only TTWROR needs removes only TTWROR.
+func TestReturnsKeepGainAndIRRWithoutIntermediatePrices(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.post(t, "2026-05-02", f.brokerCashID, f.cashAccountID, 50000)
+	f.price(t, "2027-01-31", 10000)
+
+	result := f.read(t, "2026-02-01", "2027-01-31")
+	require.Equal(t, ReturnReasonValuationUnavailable, result.TimeWeighted.Reason)
+	require.Equal(t, "2026-05-01", result.TimeWeighted.Date)
+	requireReturnsAmount(t, 1600, result.ClosingValue)
+	requireReturnsAmount(t, 0, result.Gain)
+	requireReturn(t, "0.000000", result.MoneyWeighted)
+}
+
+// R7: income whose instrument nobody held is disclosed even when it landed
+// outside the portfolio.
+func TestReturnsDiscloseNotHeldFallback(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	_, err := f.investmentService.Sell(context.Background(), InvestmentTradeInput{
+		OwnerUserID: f.ownerUserID, TransactionDate: "2026-07-01", CommodityID: f.stockCommodityID,
+		HoldingAccountID: f.holdingAccountID, CashAccountID: f.brokerCashID,
+		QuantityValue: exact.New(10), CashAmountValue: 100000, CashAmountScale: 2, CashCommodityID: f.eurCommodityID,
+	})
+	require.NoError(t, err)
+	f.dividend(t, "2026-07-31", f.cashAccountID, &f.stockCommodityID, 2000)
+
+	result := f.read(t, "2026-02-01", "2027-01-31")
+	require.Len(t, result.AttributionFallbacks, 1)
+	require.Equal(t, ReturnsFallbackNotHeld, result.AttributionFallbacks[0].Reason)
+	require.False(t, result.AttributionFallbacks[0].Counted)
+}

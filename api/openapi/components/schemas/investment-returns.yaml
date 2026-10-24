@@ -23,7 +23,7 @@ ReturnFigure:
       pattern: "^-?[0-9]+\\.[0-9]{6}$"
     reason:
       type: [string, "null"]
-      enum: [valuation_unavailable, flow_unavailable, unclassified_short, non_positive_capital, no_capital, no_root, root_not_unique, period_shorter_than_year, non_positive_growth, null]
+      enum: [valuation_unavailable, flow_unavailable, unclassified_short, non_positive_capital, no_capital, no_root, root_not_unique, numerical_limit, period_shorter_than_year, non_positive_growth, null]
     date:
       type: [string, "null"]
       format: date

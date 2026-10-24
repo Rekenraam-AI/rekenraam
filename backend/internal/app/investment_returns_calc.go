@@ -23,6 +23,7 @@ const (
 	ReturnReasonRootNotUnique         = "root_not_unique"
 	ReturnReasonPeriodShorterThanYear = "period_shorter_than_year"
 	ReturnReasonNonPositiveGrowth     = "non_positive_growth"
+	ReturnReasonNumericalLimit        = "numerical_limit"
 )
 
 // returnFractionPlaces is the presentation precision of every return: a
@@ -43,14 +44,10 @@ func unavailableReturn(reason, date string) ReturnFigure {
 	return ReturnFigure{Reason: reason, Date: date}
 }
 
-// returnsFlowDay is one day with external flows. In and Out are non-negative
-// magnitudes. Before is V(d−1), needed only when In > 0; After is V(d),
-// needed only when Out > 0. Days without a flow never appear: their daily
-// factors telescope into the neighbouring breakpoints.
-type returnsFlowDay struct {
-	Date          string
-	In, Out       *big.Rat
-	Before, After *big.Rat
+// returnsDayFlow is one day's external flows as non-negative magnitudes,
+// after correction chains have been netted.
+type returnsDayFlow struct {
+	In, Out *big.Rat
 }
 
 // timeWeightedReturn links Portfolio Performance's documented daily factor,
@@ -58,45 +55,56 @@ type returnsFlowDay struct {
 //
 //	1 + r(d) = (V(d) + Out(d)) / (V(d−1) + In(d))
 //
-// over the minimal breakpoint set. The product is exact; only the result is
-// rounded. A 0/0 factor (no capital, nothing happening) is 1; any other
-// non-positive denominator makes the figure unavailable on that date.
-func timeWeightedReturn(openDate string, open *big.Rat, days []returnsFlowDay, closing *big.Rat) (*big.Rat, ReturnFigure) {
-	if open.Sign() == 0 && len(days) == 0 {
+// values holds V at the opening day and at every evaluation day the caller
+// chose: the closing day, d−1 of every inflow, d of every outflow, and every
+// day whose validity could not be proven without a price (the plan's
+// "Evaluation days"). Runs between evaluation days telescope, so the product
+// is exactly the daily one. A 0/0 factor is 1; any other non-positive
+// denominator makes the figure unavailable, dated at the capital it measured.
+func timeWeightedReturn(openDate string, values map[string]*big.Rat, flows map[string]returnsDayFlow) (*big.Rat, ReturnFigure) {
+	if values[openDate].Sign() == 0 && len(flows) == 0 {
 		return nil, unavailableReturn(ReturnReasonNoCapital, "")
 	}
-	product := big.NewRat(1, 1)
-	link := func(numerator, denominator *big.Rat) bool {
-		if denominator.Sign() == 0 && numerator.Sign() == 0 {
-			return true
+	dates := make([]string, 0, len(values)+len(flows))
+	for date := range values {
+		if date > openDate {
+			dates = append(dates, date)
 		}
-		if denominator.Sign() <= 0 {
-			return false
-		}
-		product.Mul(product, new(big.Rat).Quo(numerator, denominator))
-		return true
 	}
-	prev, prevDate := open, openDate
-	for _, day := range days {
-		start := prev
-		if day.In.Sign() > 0 {
-			if !link(day.Before, prev) {
-				return nil, unavailableReturn(ReturnReasonNonPositiveCapital, prevDate)
-			}
-			start = new(big.Rat).Add(day.Before, day.In)
-			prevDate = day.Date
+	for date := range flows {
+		if _, ok := values[date]; !ok {
+			dates = append(dates, date)
 		}
-		if day.Out.Sign() > 0 {
-			if !link(new(big.Rat).Add(day.After, day.Out), start) {
-				return nil, unavailableReturn(ReturnReasonNonPositiveCapital, prevDate)
-			}
-			prev, prevDate = day.After, day.Date
+	}
+	sort.Strings(dates)
+
+	product := big.NewRat(1, 1)
+	prev, prevDate := values[openDate], openDate
+	for _, date := range dates {
+		flow, hasFlow := flows[date]
+		start := prev
+		if hasFlow && flow.In.Sign() > 0 {
+			start = new(big.Rat).Add(prev, flow.In)
+		}
+		value, evaluated := values[date]
+		if !evaluated {
+			// An inflow-only day without a needed valuation: its factor and the
+			// next run's share V(d), which cancels.
+			prev, prevDate = start, date
 			continue
 		}
-		prev = start
-	}
-	if !link(closing, prev) {
-		return nil, unavailableReturn(ReturnReasonNonPositiveCapital, prevDate)
+		numerator := value
+		if hasFlow && flow.Out.Sign() > 0 {
+			numerator = new(big.Rat).Add(value, flow.Out)
+		}
+		switch {
+		case start.Sign() == 0 && numerator.Sign() == 0:
+		case start.Sign() <= 0:
+			return nil, unavailableReturn(ReturnReasonNonPositiveCapital, prevDate)
+		default:
+			product.Mul(product, new(big.Rat).Quo(numerator, start))
+		}
+		prev, prevDate = value, date
 	}
 	return product, availableReturn(formatReturnRat(new(big.Rat).Sub(product, big.NewRat(1, 1))))
 }
@@ -122,11 +130,22 @@ type returnsCashflow struct {
 	Amount *big.Rat
 }
 
-// moneyWeightedReturn solves Σ c_i (1+irr)^(−t_i/365) = 0, Actual/365, but
-// only once a unique root is proven: Descartes' rule of signs on the
-// time-ordered flows, or Norström's criterion on their running sum. A root is
-// never chosen among several.
-func moneyWeightedReturn(flows []returnsCashflow) (float64, ReturnFigure) {
+// returnsLogGrowthLimit bounds |ln(1 + period return)|; exp beyond it leaves
+// float64.
+const returnsLogGrowthLimit = 700
+
+// moneyWeightedGrowth solves Σ c_i (1+irr)^(−t_i/365) = 0 in log-growth
+// space over the period, u = ln(1 + period return), so the terms are
+// c_i · exp(−u · t_i / days) and a one-day 10 % return is u ≈ 0.095, not an
+// annual rate beyond any fixed bracket.
+//
+// A root is solved only when Descartes' rule of signs proves it unique: one
+// sign change in the time-ordered flows means exactly one root with
+// irr > −1. Norström's running-sum criterion is deliberately not used; it
+// proves only a unique non-negative rate (−1800, +2270, −309, +10 also has
+// roots at −95 % and −90 %). Under Descartes a sign change of the NPV must
+// exist, so failing to bracket one is a numerical limit, not an absent root.
+func moneyWeightedGrowth(flows []returnsCashflow, days int) (float64, string) {
 	merged := mergeReturnsCashflows(flows)
 	positive, negative := false, false
 	for _, flow := range merged {
@@ -134,10 +153,10 @@ func moneyWeightedReturn(flows []returnsCashflow) (float64, ReturnFigure) {
 		negative = negative || flow.Amount.Sign() < 0
 	}
 	if !positive || !negative {
-		return 0, unavailableReturn(ReturnReasonNoRoot, "")
+		return 0, ReturnReasonNoRoot
 	}
-	if signChanges(merged, false) != 1 && !norstromUnique(merged) {
-		return 0, unavailableReturn(ReturnReasonRootNotUnique, "")
+	if signChanges(merged) != 1 {
+		return 0, ReturnReasonRootNotUnique
 	}
 
 	// Scale by the largest magnitude so the float sum stays well-conditioned.
@@ -151,27 +170,33 @@ func moneyWeightedReturn(flows []returnsCashflow) (float64, ReturnFigure) {
 	for i, flow := range merged {
 		amounts[i], _ = new(big.Rat).Quo(flow.Amount, largest).Float64()
 	}
-	npv := func(rate float64) float64 {
+	npv := func(u float64) float64 {
 		total := 0.0
 		for i, flow := range merged {
-			total += amounts[i] * math.Pow(1+rate, -float64(flow.Offset)/365)
+			total += amounts[i] * math.Exp(-u*float64(flow.Offset)/float64(days))
 		}
 		return total
 	}
-	low, high := -0.999999, 1e6
+	low, high := -1.0, 1.0
 	lowValue, highValue := npv(low), npv(high)
-	if lowValue == 0 {
-		return low, availableReturn(formatReturnFloat(low))
+	for (lowValue > 0) == (highValue > 0) && lowValue != 0 && highValue != 0 {
+		if high >= returnsLogGrowthLimit {
+			return 0, ReturnReasonNumericalLimit
+		}
+		low, high = 2*low, 2*high
+		lowValue, highValue = npv(low), npv(high)
 	}
-	if (lowValue > 0) == (highValue > 0) {
-		return 0, unavailableReturn(ReturnReasonNoRoot, "")
+	switch {
+	case lowValue == 0:
+		return low, ""
+	case highValue == 0:
+		return high, ""
 	}
 	for range 200 {
 		mid := low + (high-low)/2
 		value := npv(mid)
 		if value == 0 {
-			low, high = mid, mid
-			break
+			return mid, ""
 		}
 		if (value > 0) == (lowValue > 0) {
 			low, lowValue = mid, value
@@ -179,8 +204,17 @@ func moneyWeightedReturn(flows []returnsCashflow) (float64, ReturnFigure) {
 			high = mid
 		}
 	}
-	rate := low + (high-low)/2
-	return rate, availableReturn(formatReturnFloat(rate))
+	return low + (high-low)/2, ""
+}
+
+// growthReturn restates a period log growth u as a return over ratio periods:
+// 1 for the period figure, 365/days for the annual one.
+func growthReturn(u float64, ratio float64) ReturnFigure {
+	value := math.Expm1(u * ratio)
+	if math.IsInf(value, 0) || math.IsNaN(value) {
+		return unavailableReturn(ReturnReasonNumericalLimit, "")
+	}
+	return availableReturn(formatReturnFloat(value))
 }
 
 func mergeReturnsCashflows(flows []returnsCashflow) []returnsCashflow {
@@ -201,18 +235,11 @@ func mergeReturnsCashflows(flows []returnsCashflow) []returnsCashflow {
 	return merged
 }
 
-// signChanges counts sign changes in the amounts, or in their running sum
-// when cumulative is set, ignoring zeros.
-func signChanges(flows []returnsCashflow, cumulative bool) int {
+// signChanges counts sign changes in the time-ordered amounts, ignoring zeros.
+func signChanges(flows []returnsCashflow) int {
 	changes, last := 0, 0
-	running := new(big.Rat)
 	for _, flow := range flows {
-		value := flow.Amount
-		if cumulative {
-			running.Add(running, flow.Amount)
-			value = running
-		}
-		sign := value.Sign()
+		sign := flow.Amount.Sign()
 		if sign == 0 {
 			continue
 		}
@@ -222,17 +249,6 @@ func signChanges(flows []returnsCashflow, cumulative bool) int {
 		last = sign
 	}
 	return changes
-}
-
-// norstromUnique is Norström's sufficient condition: the running sum starts
-// non-zero and changes sign exactly once.
-func norstromUnique(flows []returnsCashflow) bool {
-	return len(flows) > 0 && flows[0].Amount.Sign() != 0 && signChanges(flows, true) == 1
-}
-
-// periodMoneyWeightedReturn restates an annual IRR over the period's days.
-func periodMoneyWeightedReturn(rate float64, days int) ReturnFigure {
-	return availableReturn(formatReturnFloat(math.Pow(1+rate, float64(days)/365) - 1))
 }
 
 // formatReturnRat rounds an exact fraction half away from zero to the

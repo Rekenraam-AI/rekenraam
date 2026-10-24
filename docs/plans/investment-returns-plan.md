@@ -1,7 +1,9 @@
 # R13 investment returns contract (`returns_v1`)
 
 Status: **contract accepted by the owner 2026-10-24 (four policy answers
-recorded below); slice 1 (backend read) delivered 2026-10-24. Later slices pending.**
+recorded below); slice 1 (backend read) delivered 2026-10-24 and corrected
+the same day after review of `e30413a5` (seven findings, recorded inline as
+"finding N"). Later slices pending.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
 0017 (provider independence, honest incomplete data) govern this plan.
@@ -19,7 +21,7 @@ figure work.
 |---|---|
 | Income whose cash lands on the other side of the portfolio boundary | **Classify by the position the facts name, not by the cash account; fall back to the cash side only when no position can be named, and disclose the fallback.** See *Why not cash side alone* below. |
 | Annualization | **Only for periods of at least 365 days.** Shorter periods show the period figure; the p.a. figure is unavailable with reason `period_shorter_than_year`. |
-| Money-weighted roots | **Only a proven unique root.** Otherwise unavailable with `root_not_unique`; no root is ever chosen silently. |
+| Money-weighted roots | **Only a proven unique root** (Descartes' rule; see the IRR section). Otherwise unavailable with `root_not_unique`; no root is ever chosen silently. |
 | First implementation | **Backend read + tests** (slice 1). Screen, chart, allocation, benchmark and saved runs are later slices. |
 
 ### Why not cash side alone (checked 2026-10-24)
@@ -120,11 +122,25 @@ anchor*:
 
 The entry's external flow, in the reporting currency at the entry date:
 
-| Belongs? | Flow `F` (positive = into the portfolio) |
+| Entry | Flow `F` (positive = into the portfolio) |
 |---|---|
-| Yes (anchored in, mixed, or cash side with a B posting) | `F = −Σ value(O)` |
+| **Delivery**: belongs, and is an external transfer in/out (or its correction), or has an O posting on an equity-class account | `F = Σ value(B) + Σ value(P)` |
+| Belongs otherwise (anchored in, mixed, or cash side with a B posting) | `F = −Σ value(O)` |
 | No, anchored out, but has B postings | `F = +Σ value(B)` (the cash entering is a contribution, not return) |
 | No and no B posting | not examined |
+
+**Why deliveries differ (review 2026-10-24, finding 1).** Equity-class
+counterparts (`opening_balance`, `external_investment_transfer_equity`, owner
+equity) record *book* value, not what crossed the boundary. An external
+transfer-in posts units against `commodity_trading` and, only when basis is
+known, the carried basis against the equity bridge; a transfer-out posts units
+against `commodity_trading` alone. `−Σ value(O)` would therefore count a
+security worth 100 with carried basis 1 as a contribution of 1 (and 99 of
+gain), unknown basis as 0, and a transfer-out as a loss. A delivery is
+instead recognised at the dated **market value** of what entered or left the
+portfolio, `Σ value(B)`, less any performance posted in the same entry. R13
+stays independent of cost basis. A security delivery that cannot be priced on
+its date is `flow_unavailable`.
 
 Consequences, each covered by an expected case:
 
@@ -132,6 +148,8 @@ Consequences, each covered by an expected case:
 - A buy inside the portfolio: only B, P, T → `F = 0`. A buy paid from
   checking into a portfolio holding: `F = +cash paid` (the trade-versus-close
   difference is return, as it should be).
+- An external transfer-in of one unit priced 100: `F = +100` whatever its
+  carried basis, known or unknown. A transfer-out is a withdrawal at market.
 - A dividend into broker cash: B and P only → `F = 0`; the income is return.
 - A dividend for a portfolio holding paid into checking: anchored in,
   `O = checking +20` → `F = −20` — a same-day withdrawal, so the dividend
@@ -145,12 +163,21 @@ Consequences, each covered by an expected case:
   side and is disclosed; one into checking is not part of the portfolio and
   is disclosed.
 
-Every cash-side fallback for an investment operation is disclosed with its
+**Every** cash-side fallback for an investment operation is disclosed with its
 transaction, date, reason (`unassigned_instrument`, `held_inside_and_outside`,
-`not_held`) and whether it was counted. Per day, positive entry flows sum to
-`In(d)` and the magnitudes of negative ones to `Out(d)`; an entry's flow is
-netted before that split. A flow that cannot be converted makes every figure
-depending on it unavailable.
+`not_held`) and whether it was counted — including `not_held` cash that landed
+outside the portfolio (finding 7). A counted fallback marks the figures as
+resting on a provisional attribution; the list is how a reader sees it.
+
+**Correction cancellation before splitting (finding 3).** Flows are first
+netted per *economic identity* and date: all entries of one investment
+operation correction chain (the original, its reversals and replacements)
+dated the same day form one net flow, and every other journal entry is its
+own identity. Only then is each net flow split by sign into `In(d)` or
+`Out(d)`. An erroneous payment and its same-day reversal therefore leave no
+flow at all, and genuine, independent same-day flows keep the
+inflow-at-start / outflow-at-end convention. A flow that cannot be converted
+makes every figure depending on it unavailable.
 
 ## Time-weighted return (TTWROR)
 
@@ -162,17 +189,33 @@ start of the day, outflows at its end), adopted explicitly:
 R_twr    = Π_{d=from..to} (1 + r(d)) − 1
 ```
 
-Days with no flow telescope, so the calculator values only the *breakpoints*:
-the opening day, the closing day, `d − 1` for every day with an inflow and
-`d` for every day with an outflow. This is algebraically identical to the
-daily product; it is not an approximation.
-
 - A factor whose denominator and numerator are both zero (no capital, nothing
   happening) is 1.
 - A denominator `≤ 0` otherwise makes TTWROR unavailable:
   `non_positive_capital`, with the date.
 - Arithmetic is exact (`big.Rat`) over values already rounded to the reporting
   currency's scale by `RateTable`; only the final ratio is rounded.
+
+**Evaluation days.** A run of days whose factors are all valid telescopes to
+the ratio of its end values, so the calculator values only the days the
+product and its validity checks actually need (finding 4: compressing over a
+day whose denominator would be non-positive hides it). Prices are positive
+(a trigger rejects `price_value <= 0`), so if every per-commodity portfolio
+balance is non-negative and at least one is positive, `V > 0` with no price
+needed. The evaluation days are:
+
+1. the opening and closing days;
+2. `d − 1` for every inflow day and `d` for every outflow day;
+3. for every day `d` with a portfolio posting whose balances at the end of
+   `d − 1` or `d` are not *safe* (some commodity negative, or all zero):
+   `d − 1` and `d`;
+4. every day of a run with constant but unsafe balances (a short, negative
+   cash, a margin liability), because prices alone can turn the value's sign.
+
+All-zero balances value at exactly 0 without prices. Every other evaluation
+day needs its own valuation; a gap is `valuation_unavailable` for TTWROR only.
+This is exactly the daily product for every portfolio, and as cheap as the
+original breakpoint set for long-only portfolios.
 
 ## Money-weighted return (IRR)
 
@@ -187,17 +230,25 @@ days `t` from the opening boundary, Actual/365:
 Σ c_i (1 + irr)^(−t_i / 365) = 0
 ```
 
-- Uniqueness must be **proven** before solving: Descartes' rule (one sign
-  change in the time-ordered flows) or Norström's criterion (the running sum
-  starts non-zero and changes sign exactly once). Otherwise
-  `root_not_unique`.
+- Uniqueness is accepted **only** under Descartes' rule of signs: exactly one
+  sign change in the time-ordered, same-offset-merged flows proves exactly one
+  root with `irr > −1`. Norström's criterion is **not** used (finding 2): it
+  proves a unique *non-negative* rate, and `−1800, +2270, −309, +10` has
+  roots at −95 %, −90 % and +11.1111 %. Anything else is `root_not_unique`.
+  Interleaved contributions and withdrawals are therefore unavailable in v1;
+  that is the conservative cost of never choosing among roots.
 - All flows of one sign (nothing invested or nothing returned): `no_root`.
-- Solver: deterministic bisection on `irr ∈ (−0.999999, 1e6)`, 200
-  iterations in `float64` over flows scaled by their largest magnitude. If
-  the bracket does not straddle zero: `no_root`. These are ratios, not
-  money: floating evaluation is allowed here, rounded to six places, and
-  never stored as a monetary value.
-- The period money-weighted return is `(1 + irr)^(days/365) − 1`.
+- Solver (finding 6): solve in log-growth space over the period,
+  `u = ln(1 + period MWR)`, so terms are `c_i · exp(−u · t_i / days)`.
+  Bracket from `[−1, 1]`, doubling outward until the NPV changes sign; under
+  Descartes the sign change must exist, so failing to bracket before
+  `|u| > 700` is `numerical_limit`, never `no_root`. Then 200 deterministic
+  bisection steps in `float64` over flows scaled by their largest magnitude.
+  These are ratios, not money: floating evaluation is allowed here, rounded
+  to six places, and never stored as a monetary value.
+- The period money-weighted return is `exp(u) − 1`; the annual IRR is
+  `exp(u · 365 / days) − 1`, shown only for `days ≥ 365`, and
+  `numerical_limit` if it overflows.
 
 ## Presentation, annualization and day count
 
@@ -218,11 +269,11 @@ missing input (ADR 0017).
 
 | Reason | Removes |
 |---|---|
-| `valuation_unavailable` (rate/price gap at a breakpoint, with date) | figures needing that `V(d)` (opening/closing values, absolute gain, TTWROR, IRR) |
+| `valuation_unavailable` / `unclassified_short` at the opening or closing day (with date) | that value, absolute gain, TTWROR, IRR |
+| `valuation_unavailable` / `unclassified_short` at any other evaluation day | TTWROR only (finding 5: gain and IRR need only the boundary values and the flows) |
 | `flow_unavailable` (a flow could not be converted) | contributions/withdrawals, gain, TTWROR, IRR |
-| `unclassified_short` (with date) | as `valuation_unavailable` |
 | `non_positive_capital` (with date) | TTWROR |
-| `no_root`, `root_not_unique` | IRR |
+| `no_root`, `root_not_unique`, `numerical_limit` | IRR |
 | `period_shorter_than_year` | annualized TTWROR/IRR only |
 | `non_positive_growth` (period return ≤ −100 %) | annualized TTWROR only |
 | `no_capital` (opening value zero and no flows) | TTWROR and IRR |
@@ -258,9 +309,17 @@ is outside.
 | S6 short period | S1 over 2026-02-01..2026-06-30 | — | period figure only, p.a. `period_shorter_than_year` | likewise |
 | E1 solver | flows −1000, +2300, −1320 | — | — | `root_not_unique` |
 | E2 solver | flows −1000 (t=0), +1100 (t=365) | — | — | `0.100000` |
+| R1 delivery at market | S1 base, prices 100 on 07-30, 07-31, close; external transfer-in of 1 ACME on 07-31, carried basis 1.00 **or** unknown | 1100 (07-30), 1200 (close) | `0.000000` = 1100/1100 · 1200/1200 − 1; contribution 100, gain 0 | — |
+| R2 solver, three roots | −1800, +2270 (t=365), −309 (t=730), +10 (t=1095) | — | — | `root_not_unique` (Norström would accept +11.1111 %) |
+| R3 reversal neutrality | S1 base, prices 100 (07-30), 110 (07-31, close); dividend 20 for ACME into Checking on 07-31, reversed | as if neither existed | `0.090909`, no flows | `0.090909` |
+| R4 hidden negative capital | broker cash only: 100 → −100 (fee 200 on 07-30) → 100 (income 200 on 07-31) | 100, −100 (07-30) | `non_positive_capital` on 2026-07-30 | — |
+| R5 missing intermediate price | S1 base; deposit 500 on 05-02; no price within 7 days of 05-01; price 100 at close | open 1100, close 1600 | `valuation_unavailable` (2026-05-01) | gain 0, IRR `0.000000` |
+| R6 one-day IRR | −100 (t=0), +110 (t=1) | — | — | period `0.100000`; annual not shown |
+| R7 not-held disclosure | S1 base; all ACME sold 07-01; ACME dividend into Checking 07-31, no ex date | — | — | fallback `not_held`, not counted, disclosed |
 
 Slice 1 tests pin these literals; they never derive expected values from the
-calculator.
+calculator. R1–R7 are the reproducers from the 2026-10-24 review of
+`e30413a5`; they failed before the corrections recorded here.
 
 ## Slices
 

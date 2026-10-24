@@ -586,15 +586,19 @@ TWR/IRR and jurisdiction tax rules remain outside the delivered contract.
 **R13 returns, slice 1 (#119, 2026-10-24).** `GET /api/v1/investments/returns`
 is a read-only live returns read under the accepted
 [returns_v1 contract](plans/investment-returns-plan.md): TTWROR (daily
-linking, inflows at day start, outflows at day end, evaluated exactly at the
-minimal breakpoint set) and IRR (Actual/365, solved only when Descartes or
-Norström proves a unique root), period and annualized (periods of 365+ days
-only), with opening/closing values, contributions, withdrawals and gain in one
-reporting currency. Scope is selected account subtrees or the default
-investment accounts. Investment-operation cash is classified by the holding or
-instrument its facts name, so a dividend paid to checking is income plus a
-same-day withdrawal without any posting; unattributable cash falls back to
-the cash side and is listed. Missing price/FX, unclassified shorts,
+linking, inflows at day start, outflows at day end, valued on every day the
+daily product's validity needs) and IRR (Actual/365, solved in log-growth
+space only when Descartes' rule proves a unique root), period and annualized
+(periods of 365+ days only), with opening/closing values, contributions,
+withdrawals and gain in one reporting currency. Scope is selected account
+subtrees or the default investment accounts. Investment-operation cash is
+classified by the holding or instrument its facts name, so a dividend paid to
+checking is income plus a same-day withdrawal without any posting;
+unattributable cash falls back to the cash side and every fallback is listed.
+External security transfers count at market value, and correction chains net
+before flows split into inflows and outflows. A same-day review of
+`e30413a5` found seven contract/formula defects, all corrected with
+regression cases R1–R7. Missing price/FX, unclassified shorts,
 non-positive capital and unproven roots make only the dependent figures null
 with a reason. No screen, chart, allocation, benchmark or saved run yet.
 

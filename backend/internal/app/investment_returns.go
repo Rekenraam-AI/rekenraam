@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"maps"
 	"math/big"
 	"slices"
 	"sort"
@@ -169,10 +170,20 @@ type returnsReader struct {
 }
 
 // returnsEntryFlow is one journal entry's external flow, or why it has none.
+// identity groups entries whose flows must cancel before they are split into
+// inflows and outflows: one investment correction chain, or else the entry.
 type returnsEntryFlow struct {
-	date   string
-	amount *big.Rat
-	ok     bool
+	identity string
+	date     string
+	amount   *big.Rat
+	ok       bool
+}
+
+// returnsDeliveryKinds move units across the portfolio boundary against a
+// book-value bridge, so their flow is the market value of what moved.
+var returnsDeliveryKinds = map[string]bool{
+	"external_transfer_in":  true,
+	"external_transfer_out": true,
 }
 
 func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness int, boundary db.ObservationBoundary, result *ReturnsResult) error {
@@ -326,17 +337,35 @@ func (r *returnsReader) classify(anchors []db.ReturnsOperationAnchor) ([]returns
 		case "out":
 			belongs = false
 		}
-		if fallback != "" && (touches || fallback != ReturnsFallbackNotHeld) {
+		// Every fallback is disclosed, counted or not: it is where the read
+		// stopped knowing whose income this was.
+		if fallback != "" {
 			fallbacks = append(fallbacks, ReturnsAttributionFallback{TransactionID: first.TransactionID, OperationID: anchor.OperationID,
 				OperationKind: anchor.OperationKind, Date: first.EntryDate, Reason: fallback, Counted: touches})
 		}
 		if !belongs && !touches {
 			continue
 		}
-		flow := returnsEntryFlow{date: first.EntryDate, amount: new(big.Rat), ok: true}
+		identity := fmt.Sprintf("entry:%d", first.JournalEntryID)
+		if isOperation {
+			identity = fmt.Sprintf("operation:%d", anchor.RootOperationID)
+		}
+		delivery := belongs && isOperation && returnsDeliveryKinds[anchor.SourceKind]
+		for _, posting := range entry {
+			if belongs && !r.inScope[posting.AccountID] && r.accounts[posting.AccountID].AccountClass == "equity" {
+				delivery = true
+			}
+		}
+		flow := returnsEntryFlow{identity: identity, date: first.EntryDate, amount: new(big.Rat), ok: true}
 		for _, posting := range entry {
 			var sign int64
 			switch {
+			case delivery && (r.inScope[posting.AccountID] || r.isPerformance(posting.AccountID)):
+				// What entered or left, at market, less performance booked
+				// with it; equity counterparts carry book value only.
+				sign = 1
+			case delivery:
+				continue
 			case belongs && !r.inScope[posting.AccountID] && r.isOutsideBalance(posting.AccountID):
 				sign = -1
 			case !belongs && r.inScope[posting.AccountID]:
@@ -354,6 +383,12 @@ func (r *returnsReader) classify(anchors []db.ReturnsOperationAnchor) ([]returns
 		flows = append(flows, flow)
 	}
 	return flows, fallbacks
+}
+
+// isPerformance is a P posting's account: income or expense.
+func (r *returnsReader) isPerformance(accountID int64) bool {
+	account := r.accounts[accountID]
+	return account.AccountClass == "income" || account.AccountClass == "expense"
 }
 
 // isOutsideBalance is an O posting's account: anything that is neither income
@@ -503,29 +538,40 @@ func (r *returnsReader) valuations(dates []string) map[string]returnsValuation {
 }
 
 func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult) {
-	type dayFlow struct{ in, out *big.Rat }
-	byDay := map[string]*dayFlow{}
+	// Net each correction chain (or entry) per day before splitting by sign,
+	// so an erroneous payment and its same-day reversal leave no flow, while
+	// independent same-day flows keep the inflow-start / outflow-end timing.
+	type flowKey struct{ identity, date string }
+	netted := map[flowKey]*big.Rat{}
 	flowsKnown := true
-	contributions, withdrawals := new(big.Rat), new(big.Rat)
 	for _, flow := range flows {
 		if !flow.ok {
 			flowsKnown = false
 			continue
 		}
-		if flow.amount.Sign() == 0 {
+		key := flowKey{flow.identity, flow.date}
+		if netted[key] == nil {
+			netted[key] = new(big.Rat)
+		}
+		netted[key].Add(netted[key], flow.amount)
+	}
+	byDay := map[string]returnsDayFlow{}
+	contributions, withdrawals := new(big.Rat), new(big.Rat)
+	for key, amount := range netted {
+		if amount.Sign() == 0 {
 			continue
 		}
-		day := byDay[flow.date]
-		if day == nil {
-			day = &dayFlow{in: new(big.Rat), out: new(big.Rat)}
-			byDay[flow.date] = day
+		day, ok := byDay[key.date]
+		if !ok {
+			day = returnsDayFlow{In: new(big.Rat), Out: new(big.Rat)}
+			byDay[key.date] = day
 		}
-		if flow.amount.Sign() > 0 {
-			day.in.Add(day.in, flow.amount)
-			contributions.Add(contributions, flow.amount)
+		if amount.Sign() > 0 {
+			day.In.Add(day.In, amount)
+			contributions.Add(contributions, amount)
 		} else {
-			magnitude := new(big.Rat).Neg(flow.amount)
-			day.out.Add(day.out, magnitude)
+			magnitude := new(big.Rat).Neg(amount)
+			day.Out.Add(day.Out, magnitude)
 			withdrawals.Add(withdrawals, magnitude)
 		}
 	}
@@ -535,16 +581,17 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 	}
 	sort.Strings(dates)
 
-	needed := []string{r.openDate, r.to}
+	breakpoints := []string{r.openDate, r.to}
 	for _, date := range dates {
-		if byDay[date].in.Sign() > 0 {
-			needed = append(needed, previousDay(date))
+		if byDay[date].In.Sign() > 0 {
+			breakpoints = append(breakpoints, previousDay(date))
 		}
-		if byDay[date].out.Sign() > 0 {
-			needed = append(needed, date)
+		if byDay[date].Out.Sign() > 0 {
+			breakpoints = append(breakpoints, date)
 		}
 	}
-	values := r.valuations(needed)
+	evaluation := r.evaluationDays(breakpoints)
+	values := r.valuations(evaluation)
 
 	result.OpeningValue = r.amount(values[r.openDate], r.openDate)
 	result.ClosingValue = r.amount(values[r.to], r.to)
@@ -556,74 +603,151 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 		result.Withdrawals = ReturnsAmount{Reason: ReturnReasonFlowUnavailable}
 	}
 
-	// Every figure below needs the flows and every breakpoint value.
-	blocked := ReturnFigure{}
-	if !flowsKnown {
-		blocked = unavailableReturn(ReturnReasonFlowUnavailable, "")
+	// Each figure has its own dependencies: gain and IRR need the flows and
+	// the two boundary values; TTWROR also needs every evaluation day.
+	var boundaryBlock ReturnFigure
+	switch {
+	case !flowsKnown:
+		boundaryBlock = unavailableReturn(ReturnReasonFlowUnavailable, "")
+	case values[r.openDate].reason != "":
+		boundaryBlock = unavailableReturn(values[r.openDate].reason, r.openDate)
+	case values[r.to].reason != "":
+		boundaryBlock = unavailableReturn(values[r.to].reason, r.to)
 	}
-	for _, date := range slices.Compact(slices.Sorted(slices.Values(needed))) {
-		if blocked.Reason == "" && values[date].reason != "" {
-			blocked = unavailableReturn(values[date].reason, date)
+	twrBlock := boundaryBlock
+	if twrBlock.Reason == "" {
+		for _, date := range slices.Sorted(maps.Keys(values)) {
+			if values[date].reason != "" {
+				twrBlock = unavailableReturn(values[date].reason, date)
+				break
+			}
 		}
 	}
-	if blocked.Reason != "" {
-		result.Gain = ReturnsAmount{Reason: blocked.Reason, Date: blocked.Date}
-		result.TimeWeighted, result.TimeWeightedAnnualized = blocked, blocked
-		result.MoneyWeighted, result.MoneyWeightedPeriod = blocked, blocked
-		return
+
+	if twrBlock.Reason != "" {
+		result.TimeWeighted, result.TimeWeightedAnnualized = twrBlock, twrBlock
+	} else {
+		known := make(map[string]*big.Rat, len(values))
+		for date, valuation := range values {
+			known[date] = valuation.value
+		}
+		growth, twr := timeWeightedReturn(r.openDate, known, byDay)
+		result.TimeWeighted, result.TimeWeightedAnnualized = twr, twr
+		if growth != nil {
+			result.TimeWeightedAnnualized = annualizedReturn(growth, result.Days)
+		}
 	}
 
+	if boundaryBlock.Reason != "" {
+		result.Gain = ReturnsAmount{Reason: boundaryBlock.Reason, Date: boundaryBlock.Date}
+		result.MoneyWeighted, result.MoneyWeightedPeriod = boundaryBlock, boundaryBlock
+		return
+	}
 	open, closing := values[r.openDate].value, values[r.to].value
 	gain := new(big.Rat).Sub(closing, open)
 	gain.Sub(gain, contributions)
 	gain.Add(gain, withdrawals)
 	result.Gain = ReturnsAmount{Amount: r.quantity(gain)}
 
-	openTime, _ := time.Parse(time.DateOnly, r.openDate)
-	offset := func(date string) int {
-		parsed, _ := time.Parse(time.DateOnly, date)
-		return int(parsed.Sub(openTime).Hours() / 24)
-	}
-	chain := make([]returnsFlowDay, 0, len(dates))
-	cashflows := []returnsCashflow{{Offset: 0, Amount: new(big.Rat).Neg(open)}}
-	for _, date := range dates {
-		day := returnsFlowDay{Date: date, In: byDay[date].in, Out: byDay[date].out}
-		if day.In.Sign() > 0 {
-			day.Before = values[previousDay(date)].value
-			cashflows = append(cashflows, returnsCashflow{Offset: offset(date) - 1, Amount: new(big.Rat).Neg(day.In)})
-		}
-		if day.Out.Sign() > 0 {
-			day.After = values[date].value
-			cashflows = append(cashflows, returnsCashflow{Offset: offset(date), Amount: day.Out})
-		}
-		chain = append(chain, day)
-	}
-	cashflows = append(cashflows, returnsCashflow{Offset: result.Days, Amount: closing})
-
-	growth, twr := timeWeightedReturn(r.openDate, open, chain, closing)
-	result.TimeWeighted = twr
-	if growth != nil {
-		result.TimeWeightedAnnualized = annualizedReturn(growth, result.Days)
-	} else {
-		result.TimeWeightedAnnualized = twr
-	}
-
 	if open.Sign() == 0 && len(dates) == 0 {
 		result.MoneyWeighted = unavailableReturn(ReturnReasonNoCapital, "")
 		result.MoneyWeightedPeriod = result.MoneyWeighted
 		return
 	}
-	rate, irr := moneyWeightedReturn(cashflows)
-	if irr.Reason != "" {
-		result.MoneyWeighted, result.MoneyWeightedPeriod = irr, irr
+	openTime, _ := time.Parse(time.DateOnly, r.openDate)
+	offset := func(date string) int {
+		parsed, _ := time.Parse(time.DateOnly, date)
+		return int(parsed.Sub(openTime).Hours() / 24)
+	}
+	cashflows := []returnsCashflow{{Offset: 0, Amount: new(big.Rat).Neg(open)}}
+	for _, date := range dates {
+		if byDay[date].In.Sign() > 0 {
+			cashflows = append(cashflows, returnsCashflow{Offset: offset(date) - 1, Amount: new(big.Rat).Neg(byDay[date].In)})
+		}
+		if byDay[date].Out.Sign() > 0 {
+			cashflows = append(cashflows, returnsCashflow{Offset: offset(date), Amount: byDay[date].Out})
+		}
+	}
+	cashflows = append(cashflows, returnsCashflow{Offset: result.Days, Amount: closing})
+	growth, reason := moneyWeightedGrowth(cashflows, result.Days)
+	if reason != "" {
+		result.MoneyWeighted = unavailableReturn(reason, "")
+		result.MoneyWeightedPeriod = result.MoneyWeighted
 		return
 	}
-	result.MoneyWeightedPeriod = periodMoneyWeightedReturn(rate, result.Days)
+	result.MoneyWeightedPeriod = growthReturn(growth, 1)
 	if result.Days < 365 {
 		result.MoneyWeighted = unavailableReturn(ReturnReasonPeriodShorterThanYear, "")
 	} else {
-		result.MoneyWeighted = irr
+		result.MoneyWeighted = growthReturn(growth, 365/float64(result.Days))
 	}
+}
+
+// evaluationDays adds to the flow breakpoints every day the daily product's
+// validity cannot be proven without a price (the plan's "Evaluation days").
+// Prices are positive, so non-negative per-commodity balances with at least
+// one positive are a positive value; anything else is checked by valuing.
+func (r *returnsReader) evaluationDays(breakpoints []string) []string {
+	totals := map[int64]*exact.ScaledInt{}
+	state := func() (safe, negative bool) {
+		positive := false
+		for _, total := range totals {
+			switch total.Sign() {
+			case -1:
+				negative = true
+			case 1:
+				positive = true
+			}
+		}
+		return positive && !negative, negative
+	}
+	days := append([]string(nil), breakpoints...)
+	addRun := func(after, before string) {
+		for day := nextDay(after); day < before && day <= r.to; day = nextDay(day) {
+			days = append(days, day)
+		}
+	}
+
+	next := 0
+	fold := func(through string) bool {
+		changed := false
+		for next < len(r.postings) && r.postings[next].EntryDate <= through {
+			posting := r.postings[next]
+			next++
+			if !r.inScope[posting.AccountID] {
+				continue
+			}
+			if totals[posting.CommodityID] == nil {
+				totals[posting.CommodityID] = exact.NewScaledInt()
+			}
+			totals[posting.CommodityID].AddCoefficient(posting.QuantityValue, posting.QuantityScale)
+			changed = true
+		}
+		return changed
+	}
+	fold(r.openDate)
+	prevDay := r.openDate
+	prevSafe, prevNegative := state()
+	for next < len(r.postings) {
+		date := r.postings[next].EntryDate
+		if !fold(date) {
+			continue
+		}
+		if prevNegative {
+			// Constant balances that include a negative: prices alone can
+			// turn the value's sign on any day of the run.
+			addRun(prevDay, date)
+		}
+		nowSafe, nowNegative := state()
+		if !prevSafe || !nowSafe {
+			days = append(days, previousDay(date), date)
+		}
+		prevDay, prevSafe, prevNegative = date, nowSafe, nowNegative
+	}
+	if prevNegative {
+		addRun(prevDay, nextDay(r.to))
+	}
+	return days
 }
 
 func (r *returnsReader) amount(valuation returnsValuation, date string) ReturnsAmount {
@@ -643,6 +767,14 @@ func (r *returnsReader) quantity(value *big.Rat) *BalanceQuantity {
 	}
 	return &BalanceQuantity{CommodityID: r.rates.QuoteCommodityID(), QuantityValue: coefficient,
 		QuantityScale: r.rates.Scale(), NormalQuantityValue: coefficient}
+}
+
+func nextDay(date string) string {
+	parsed, err := time.Parse(time.DateOnly, date)
+	if err != nil {
+		return date
+	}
+	return parsed.AddDate(0, 0, 1).Format(time.DateOnly)
 }
 
 func previousDay(date string) string {

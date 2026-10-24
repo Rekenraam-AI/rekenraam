@@ -16,6 +16,12 @@ type ReturnsOperationAnchor struct {
 	TransactionID int64
 	OperationID   int64
 	OperationKind string
+	// RootOperationID is the uncorrected original of the operation's
+	// correction chain: an operation, its reversals and replacements share it.
+	RootOperationID int64
+	// SourceKind is the operation kind nearest in the chain that is not a
+	// reversal, so a reversal of a transfer still reads as a transfer.
+	SourceKind string
 	// HoldingAccountID is the holding a capital-return or payment-in-lieu
 	// fact names.
 	HoldingAccountID sql.NullInt64
@@ -124,6 +130,18 @@ func (r *TransactionRepository) ReturnsOperationAnchors(ctx context.Context, boo
 			continue
 		}
 		anchor.OperationKind = operation.kind
+		anchor.RootOperationID, anchor.SourceKind = anchor.OperationID, ""
+		for id, current, depth := anchor.OperationID, operation, 0; current != nil && depth < 64; depth++ {
+			if anchor.SourceKind == "" && current.kind != "reversal" {
+				anchor.SourceKind = current.kind
+			}
+			anchor.RootOperationID = id
+			if !current.correctionOf.Valid {
+				break
+			}
+			id = current.correctionOf.Int64
+			current = operations[id]
+		}
 		// A reversal or replacement may carry no facts of its own; its
 		// predecessor's facts describe the same position.
 		source := operation

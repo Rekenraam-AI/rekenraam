@@ -20,9 +20,20 @@ func requireReturn(t *testing.T, expected string, figure ReturnFigure) {
 	require.Equal(t, expected, *figure.Value)
 }
 
+func values(pairs ...any) map[string]*big.Rat {
+	result := map[string]*big.Rat{}
+	for i := 0; i < len(pairs); i += 2 {
+		result[pairs[i].(string)] = rat(int64(pairs[i+1].(int)))
+	}
+	return result
+}
+
+func inflow(amount int64) returnsDayFlow  { return returnsDayFlow{In: rat(amount), Out: rat(0)} }
+func outflow(amount int64) returnsDayFlow { return returnsDayFlow{In: rat(0), Out: rat(amount)} }
+
 func TestTimeWeightedReturnWithoutFlowsIsTheValueRatio(t *testing.T) {
 	t.Parallel()
-	growth, figure := timeWeightedReturn("2026-01-31", rat(1100), nil, rat(1200))
+	growth, figure := timeWeightedReturn("2026-01-31", values("2026-01-31", 1100, "2027-01-31", 1200), nil)
 	requireReturn(t, "0.090909", figure)
 	requireReturn(t, "0.090909", annualizedReturn(growth, 365))
 }
@@ -30,14 +41,11 @@ func TestTimeWeightedReturnWithoutFlowsIsTheValueRatio(t *testing.T) {
 func TestTimeWeightedReturnLinksInflowAtStartAndOutflowAtEnd(t *testing.T) {
 	t.Parallel()
 	// S2: inflow 500 on 05-02 (V(05-01) = 1150), outflow 300 on 11-01
-	// (V(11-01) = 1515). Only the breakpoints the convention needs are given.
-	days := []returnsFlowDay{
-		{Date: "2026-05-02", In: rat(500), Out: rat(0), Before: rat(1150)},
-		{Date: "2026-11-01", In: rat(0), Out: rat(300), After: rat(1515)},
-	}
-	growth, figure := timeWeightedReturn("2026-01-31", rat(1100), days, rat(1565))
-	// The middle run 1650 → 1815 is not a breakpoint: it telescopes away,
-	// because V(05-02) and V(10-31) cancel in the daily product.
+	// (V(11-01) = 1515). The run 1650 → 1815 is not evaluated: V(05-02) and
+	// V(10-31) cancel in the daily product.
+	growth, figure := timeWeightedReturn("2026-01-31",
+		values("2026-01-31", 1100, "2026-05-01", 1150, "2026-11-01", 1515, "2027-01-31", 1565),
+		map[string]returnsDayFlow{"2026-05-02": inflow(500), "2026-11-01": outflow(300)})
 	require.Equal(t, 0, growth.Cmp(new(big.Rat).Mul(new(big.Rat).Mul(big.NewRat(1150, 1100), big.NewRat(1815, 1650)), big.NewRat(1565, 1515))))
 	requireReturn(t, "0.187954", figure)
 }
@@ -45,33 +53,32 @@ func TestTimeWeightedReturnLinksInflowAtStartAndOutflowAtEnd(t *testing.T) {
 func TestTimeWeightedReturnOutflowOnlyDay(t *testing.T) {
 	t.Parallel()
 	// S3: a 20 withdrawal at the end of 07-31, V(07-31) = 1150.
-	days := []returnsFlowDay{{Date: "2026-07-31", In: rat(0), Out: rat(20), After: rat(1150)}}
-	_, figure := timeWeightedReturn("2026-01-31", rat(1100), days, rat(1200))
+	_, figure := timeWeightedReturn("2026-01-31", values("2026-01-31", 1100, "2026-07-31", 1150, "2027-01-31", 1200),
+		map[string]returnsDayFlow{"2026-07-31": outflow(20)})
 	requireReturn(t, "0.109881", figure)
 }
 
 func TestTimeWeightedReturnFromNothingStartsAtTheFirstInflow(t *testing.T) {
 	t.Parallel()
-	days := []returnsFlowDay{{Date: "2026-03-01", In: rat(1000), Out: rat(0), Before: rat(0)}}
-	_, figure := timeWeightedReturn("2026-01-31", rat(0), days, rat(1050))
+	_, figure := timeWeightedReturn("2026-01-31", values("2026-01-31", 0, "2026-02-28", 0, "2027-01-31", 1050),
+		map[string]returnsDayFlow{"2026-03-01": inflow(1000)})
 	requireReturn(t, "0.050000", figure)
 }
 
 func TestTimeWeightedReturnFailureStates(t *testing.T) {
 	t.Parallel()
-	_, figure := timeWeightedReturn("2026-01-31", rat(0), nil, rat(0))
+	_, figure := timeWeightedReturn("2026-01-31", values("2026-01-31", 0, "2027-01-31", 0), nil)
 	require.Equal(t, ReturnReasonNoCapital, figure.Reason)
 
-	_, figure = timeWeightedReturn("2026-01-31", rat(-100), nil, rat(50))
+	_, figure = timeWeightedReturn("2026-01-31", values("2026-01-31", -100, "2027-01-31", 50), nil)
 	require.Equal(t, ReturnReasonNonPositiveCapital, figure.Reason)
 	require.Equal(t, "2026-01-31", figure.Date)
 
-	// A loss beyond the capital (a short) is a defined period return, but the
-	// next sub-period starts from negative capital and is not.
-	days := []returnsFlowDay{{Date: "2026-06-01", In: rat(0), Out: rat(10), After: rat(-50)}}
-	_, figure = timeWeightedReturn("2026-01-31", rat(100), days, rat(-40))
+	// R4: an evaluated day with negative capital is the denominator of the
+	// next factor, whatever the boundary values say.
+	_, figure = timeWeightedReturn("2026-01-31", values("2026-01-31", 100, "2026-07-29", 100, "2026-07-30", -100, "2026-07-31", 100, "2027-01-31", 100), nil)
 	require.Equal(t, ReturnReasonNonPositiveCapital, figure.Reason)
-	require.Equal(t, "2026-06-01", figure.Date)
+	require.Equal(t, "2026-07-30", figure.Date)
 }
 
 func TestAnnualizationNeedsAYearAndPositiveGrowth(t *testing.T) {
@@ -85,43 +92,51 @@ func TestAnnualizationNeedsAYearAndPositiveGrowth(t *testing.T) {
 func TestMoneyWeightedReturnLiteralCases(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name     string
-		flows    []returnsCashflow
-		expected string
+		name           string
+		flows          []returnsCashflow
+		days           int
+		annual, period string
 	}{
-		{"E2 one year", []returnsCashflow{{0, rat(-1000)}, {365, rat(1100)}}, "0.100000"},
-		{"S1", []returnsCashflow{{0, rat(-1100)}, {365, rat(1200)}}, "0.090909"},
-		{"S2", []returnsCashflow{{0, rat(-1100)}, {90, rat(-500)}, {274, rat(300)}, {365, rat(1565)}}, "0.189483"},
-		{"S3", []returnsCashflow{{0, rat(-1100)}, {181, rat(20)}, {365, rat(1200)}}, "0.110074"},
+		{"E2 one year", []returnsCashflow{{0, rat(-1000)}, {365, rat(1100)}}, 365, "0.100000", "0.100000"},
+		{"S1", []returnsCashflow{{0, rat(-1100)}, {365, rat(1200)}}, 365, "0.090909", "0.090909"},
+		{"S2", []returnsCashflow{{0, rat(-1100)}, {90, rat(-500)}, {274, rat(300)}, {365, rat(1565)}}, 365, "0.189483", "0.189483"},
+		{"S3", []returnsCashflow{{0, rat(-1100)}, {181, rat(20)}, {365, rat(1200)}}, 365, "0.110074", "0.110074"},
+		// R6: the annual equivalent of 10 % in a day (~1.3e15) is far beyond
+		// the old fixed annual bracket, but the period figure exists. The
+		// service withholds the annual figure below 365 days anyway.
+		{"R6 one day", []returnsCashflow{{0, rat(-100)}, {1, rat(110)}}, 1, "", "0.100000"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, figure := moneyWeightedReturn(tc.flows)
-			requireReturn(t, tc.expected, figure)
+			growth, reason := moneyWeightedGrowth(tc.flows, tc.days)
+			require.Empty(t, reason)
+			requireReturn(t, tc.period, growthReturn(growth, 1))
+			if tc.annual != "" {
+				requireReturn(t, tc.annual, growthReturn(growth, 365/float64(tc.days)))
+			}
 		})
 	}
 }
 
 func TestMoneyWeightedReturnRefusesUnprovenRoots(t *testing.T) {
 	t.Parallel()
-	// E1: two sign changes in both the flows and their running sum.
-	_, figure := moneyWeightedReturn([]returnsCashflow{{0, rat(-1000)}, {180, rat(2300)}, {365, rat(-1320)}})
-	require.Equal(t, ReturnReasonRootNotUnique, figure.Reason)
+	// E1: two sign changes.
+	_, reason := moneyWeightedGrowth([]returnsCashflow{{0, rat(-1000)}, {180, rat(2300)}, {365, rat(-1320)}}, 365)
+	require.Equal(t, ReturnReasonRootNotUnique, reason)
 
-	_, figure = moneyWeightedReturn([]returnsCashflow{{0, rat(-1000)}, {365, rat(0)}})
-	require.Equal(t, ReturnReasonNoRoot, figure.Reason)
+	// R2: roots at −95 %, −90 % and +11.1111 %. Norström's running-sum
+	// criterion holds here (it proves only the non-negative root unique), so
+	// it must not be the uniqueness proof.
+	_, reason = moneyWeightedGrowth([]returnsCashflow{{0, rat(-1800)}, {365, rat(2270)}, {730, rat(-309)}, {1095, rat(10)}}, 1095)
+	require.Equal(t, ReturnReasonRootNotUnique, reason)
 
-	// Two sign changes in the flows, but one in the running sum: Norström
-	// proves the root unique, so it is solved.
-	_, figure = moneyWeightedReturn([]returnsCashflow{{0, rat(-1000)}, {100, rat(200)}, {200, rat(-100)}, {365, rat(1000)}})
-	require.Empty(t, figure.Reason)
-}
+	_, reason = moneyWeightedGrowth([]returnsCashflow{{0, rat(-1000)}, {365, rat(0)}}, 365)
+	require.Equal(t, ReturnReasonNoRoot, reason)
 
-func TestPeriodMoneyWeightedReturnRestatesOverDays(t *testing.T) {
-	t.Parallel()
-	requireReturn(t, "0.100000", periodMoneyWeightedReturn(0.1, 365))
-	requireReturn(t, "0.048672", periodMoneyWeightedReturn(0.1, 182))
+	// A root beyond float64's exp range is a numerical limit, not absence.
+	_, reason = moneyWeightedGrowth([]returnsCashflow{{0, rat(-1)}, {1, big.NewRat(1, 1).SetFrac(big.NewInt(1), big.NewInt(1).Exp(big.NewInt(10), big.NewInt(400), nil))}}, 1)
+	require.Equal(t, ReturnReasonNumericalLimit, reason)
 }
 
 func TestFormatReturnRoundsHalfAwayFromZero(t *testing.T) {

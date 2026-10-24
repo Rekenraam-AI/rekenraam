@@ -26817,7 +26817,7 @@ export interface paths {
         };
         /**
          * Portfolio returns under returns_v1
-         * @description R13 slice 1 (#119, docs/plans/investment-returns-plan.md). Time-weighted (TTWROR: daily linking, inflows at the start of the day, outflows at its end) and money-weighted (IRR, Actual/365, solved only when a unique root is proven) returns of a set of accounts over `from`..`to`, in one reporting currency. The opening valuation is at the end of the day before `from`. External flows are postings outside the portfolio; income and expense are performance, so returns are net of fees and taxes. An investment operation's cash is classified by the position its facts name (holding, or instrument held only inside or only outside), else by where its cash landed, and every such fallback is listed. Read-only: nothing is posted, transferred or audited, and reconciliation is unaffected. One consistent disposable input snapshot; subsequent requests may restate the result. A figure missing an input is null with its reason, never zero.
+         * @description R13 slice 1 (#119, docs/plans/investment-returns-plan.md). Time-weighted (TTWROR: daily linking, inflows at the start of the day, outflows at its end, valued on every day its validity needs) and money-weighted (IRR, Actual/365, solved only when Descartes' rule proves a unique root) returns of a set of accounts over `from`..`to`, in one reporting currency. The opening valuation is at the end of the day before `from`. External flows are postings outside the portfolio, netted per correction chain and day; external security transfers count at market value, never carried basis. Income and expense are performance, so returns are net of fees and taxes. An investment operation's cash is classified by the position its facts name (holding, or instrument held only inside or only outside), else by where its cash landed, and every such fallback is listed. A missing intermediate valuation removes only the time-weighted figures. Read-only: nothing is posted, transferred or audited, and reconciliation is unaffected. One consistent disposable input snapshot; subsequent requests may restate the result. A figure missing an input is null with its reason, never zero.
          */
         get: {
             parameters: {
@@ -33827,7 +33827,7 @@ export interface components {
         ReturnFigure: {
             value: string | null;
             /** @enum {string|null} */
-            reason: "valuation_unavailable" | "flow_unavailable" | "unclassified_short" | "non_positive_capital" | "no_capital" | "no_root" | "root_not_unique" | "period_shorter_than_year" | "non_positive_growth" | null;
+            reason: "valuation_unavailable" | "flow_unavailable" | "unclassified_short" | "non_positive_capital" | "no_capital" | "no_root" | "root_not_unique" | "numerical_limit" | "period_shorter_than_year" | "non_positive_growth" | null;
             /** Format: date */
             date: string | null;
         };
