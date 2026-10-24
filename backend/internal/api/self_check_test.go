@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -87,6 +88,35 @@ func TestRunSelfCheckPassesOnALiveBookAndExplainsEachCheck(t *testing.T) {
 	require.NotNil(t, status.LatestRun)
 	assert.Equal(t, run.ID, status.LatestRun.ID)
 	assert.Len(t, status.LatestRun.Results, len(run.Results))
+}
+
+// #403: the server's read pool outlives a run. Entries added between runs write
+// the search index, and the next run on that reader must still pass.
+func TestRepeatedSelfCheckRunsPassAfterNewEntries(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newSetupTestHandler(t)
+	f := newBundleFixture(t, handler)
+
+	for day := 1; day <= 3; day++ {
+		// Searchable text: a row without tokens leaves the FTS5 index unchanged.
+		body := strings.Replace(balancedBody(fmt.Sprintf("2026-06-%02d", day),
+			posting(f.checking.ID, 200000, 2, f.usdID),
+			posting(f.salary.ID, -200000, 2, f.usdID),
+		), `{`, fmt.Sprintf(`{"description":"Salary run %d",`, day), 1)
+		createTransactionForSession(t, handler, f.sessionCookie, f.csrfToken, body, http.StatusCreated)
+
+		response := mutateBackup(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost,
+			"/api/v1/maintenance/self-check", ``, http.StatusOK)
+		var run selfCheckRunResponse
+		require.NoError(t, json.Unmarshal(response, &run))
+		for _, result := range run.Results {
+			if result.Status != "not_applicable" {
+				assert.Equalf(t, "passed", result.Status, "run %d %s: %s", day, result.CheckID, result.Summary)
+			}
+		}
+		require.Equal(t, "passed", run.Status, "run %d", day)
+	}
 }
 
 func TestSelfCheckEndpointsRequireAuthenticationAndSameOrigin(t *testing.T) {

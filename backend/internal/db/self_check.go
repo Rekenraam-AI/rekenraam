@@ -632,17 +632,34 @@ func (r *SelfCheckRepository) CountStructuralAnomaly(ctx context.Context, transa
 const SelfCheckSampleLimit = 20
 
 // SQLiteIntegrity runs the two PRAGMA checks against the live database through
-// the read pool.
+// the read pool, in one read transaction.
+//
+// The pool outlives each run, and SQLite 3.53.4's FTS5 part of integrity_check
+// trusts a connection's cached FTS5 structure without the freshness check an
+// ordinary FTS5 read makes. After another connection writes transaction_search,
+// a connection that already ran the check reports a checksum mismatch the file
+// does not have (#403). Reading each FTS5 table first in the same transaction
+// refreshes that cache; real FTS5 damage still fails the check.
 func (r *SelfCheckRepository) SQLiteIntegrity(ctx context.Context) (string, error) {
+	transaction, err := r.readOnly.BeginTx(ctx, nil)
+	if err != nil {
+		return "", fmt.Errorf("begin integrity read: %w", err)
+	}
+	defer rollbackTx(ctx, transaction)
+
+	if err := refreshFTS5StructuresTx(ctx, transaction); err != nil {
+		return "", err
+	}
+
 	var result string
-	if err := r.readOnly.QueryRowContext(ctx, "PRAGMA integrity_check").Scan(&result); err != nil {
+	if err := transaction.QueryRowContext(ctx, "PRAGMA integrity_check").Scan(&result); err != nil {
 		return "", fmt.Errorf("run integrity_check: %w", err)
 	}
 	if !strings.EqualFold(result, "ok") {
 		return result, nil
 	}
 
-	rows, err := r.readOnly.QueryContext(ctx, "PRAGMA foreign_key_check")
+	rows, err := transaction.QueryContext(ctx, "PRAGMA foreign_key_check")
 	if err != nil {
 		return "", fmt.Errorf("run foreign_key_check: %w", err)
 	}
@@ -662,6 +679,37 @@ func (r *SelfCheckRepository) SQLiteIntegrity(ctx context.Context) (string, erro
 	}
 
 	return "ok", nil
+}
+
+func refreshFTS5StructuresTx(ctx context.Context, transaction *sql.Tx) error {
+	rows, err := transaction.QueryContext(ctx, `SELECT name FROM sqlite_schema
+		WHERE type = 'table' AND sql LIKE 'CREATE VIRTUAL TABLE%USING fts5%' ORDER BY name`)
+	if err != nil {
+		return fmt.Errorf("list fts5 tables: %w", err)
+	}
+	var names []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			_ = rows.Close()
+			return fmt.Errorf("scan fts5 table: %w", err)
+		}
+		names = append(names, name)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return fmt.Errorf("iterate fts5 tables: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("close fts5 tables: %w", err)
+	}
+	// A read that fails on real damage is deliberately not an error here: the
+	// integrity_check that follows reports that damage as the finding.
+	for _, name := range names {
+		var rowid int64
+		_ = transaction.QueryRowContext(ctx, `SELECT rowid FROM "`+strings.ReplaceAll(name, `"`, `""`)+`" LIMIT 1`).Scan(&rowid)
+	}
+	return nil
 }
 
 // --- Run records: the only thing the self-check writes ---

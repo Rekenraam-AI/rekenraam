@@ -768,6 +768,16 @@ non-trivial diff (yours or reviewed):
     Retain startup limits and cache inheritance; verify with an empty `GOCACHE`.
     Keep `global-setup.test.mjs` and `owner-current-reference.spec.ts` green.
 
+66. **A fresh connection per call hiding connection-lifetime state** — tests
+    opened a new read-only pool per self-check, while the server keeps one for
+    its lifetime. SQLite 3.53.4's FTS5 `integrity_check` hook then reported a
+    false checksum mismatch on the reused reader after new searchable entries
+    (#403). Test helpers reuse a pool for a test's lifetime, as production does.
+    Lifetime tests need writes that change the state: a transaction without
+    payee or description leaves the FTS5 index unchanged. Keep
+    `TestSQLiteIntegrityOnAReusedReaderAfterSearchWrites` (with its canary)
+    and `TestRepeatedSelfCheckRunsPassAfterNewEntries` green.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 
