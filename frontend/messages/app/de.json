@@ -890,5 +890,19 @@
   "returns_chart_coverage_stale": "Einige Punkte verwenden Kurse oder Wechselkurse früherer Tage: {dates}.",
   "returns_chart_data": "Punkttabelle",
   "returns_chart_column_date": "Tagesende",
-  "returns_chart_column_return": "Zeitgewichtete Rendite"
+  "returns_chart_column_return": "Zeitgewichtete Rendite",
+  "returns_allocation_title": "Aufteilung am Ende von {date}",
+  "returns_allocation_help": "Anteile am Wert des Portfolios am letzten Tag des Zeitraums. Long- und Short-Positionen werden getrennt gezeigt und nie verrechnet.",
+  "returns_allocation_group_by": "Gruppieren nach",
+  "returns_allocation_by_account": "Konto",
+  "returns_allocation_by_asset_type": "Anlageart",
+  "returns_allocation_by_currency": "Währung",
+  "returns_allocation_cash": "Bargeld",
+  "returns_allocation_unclassified": "Nicht eingeordnet",
+  "returns_allocation_no_currency": "Keine Notierungswährung",
+  "returns_allocation_short": "Short",
+  "returns_allocation_known_only": "Für einige Positionen gibt es an diesem Tag keinen nutzbaren Kurs, daher beziehen sich die Anteile nur auf den bewerteten Wert.",
+  "returns_allocation_unknown_title": "Ohne nutzbaren Kurs an diesem Tag",
+  "returns_allocation_non_positive": "Der Wert des Portfolios ist null oder negativ, daher können keine Anteile gezeigt werden.",
+  "returns_allocation_empty": "Am Ende dieses Tages wurde nichts gehalten."
 }

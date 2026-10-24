@@ -26817,7 +26817,7 @@ export interface paths {
         };
         /**
          * Portfolio returns under returns_v1
-         * @description R13 slices 1 and 3 (#119, docs/plans/investment-returns-plan.md). Time-weighted (TTWROR: daily linking, inflows at the start of the day, outflows at its end, valued on every day its validity needs) and money-weighted (IRR, Actual/365, solved only when Descartes' rule proves a unique root) returns of a set of accounts over `from`..`to`, in one reporting currency. The opening valuation is at the end of the day before `from`. External flows are postings outside the portfolio, netted per correction chain and day; external security transfers count at market value, never carried basis. Income and expense are performance, so returns are net of fees and taxes. An investment operation's cash is classified by the position its facts name (holding, or instrument held only inside or only outside), else by where its cash landed, and every such fallback is listed. A missing intermediate valuation removes only the time-weighted figures. The cumulative time-weighted series comes from the same chain, each point with its own reason. Read-only: nothing is posted, transferred or audited, and reconciliation is unaffected. One consistent disposable input snapshot; subsequent requests may restate the result. A figure missing an input is null with its reason, never zero.
+         * @description R13 slices 1, 3 and 4 (#119, docs/plans/investment-returns-plan.md). Time-weighted (TTWROR: daily linking, inflows at the start of the day, outflows at its end, valued on every day its validity needs) and money-weighted (IRR, Actual/365, solved only when Descartes' rule proves a unique root) returns of a set of accounts over `from`..`to`, in one reporting currency. The opening valuation is at the end of the day before `from`. External flows are postings outside the portfolio, netted per correction chain and day; external security transfers count at market value, never carried basis. Income and expense are performance, so returns are net of fees and taxes. An investment operation's cash is classified by the position its facts name (holding, or instrument held only inside or only outside), else by where its cash landed, and every such fallback is listed. A missing intermediate valuation removes only the time-weighted figures. The cumulative time-weighted series comes from the same chain, each point with its own reason. `allocation` splits the closing value by account, asset type and currency, long and short never netted. Read-only: nothing is posted, transferred or audited, and reconciliation is unaffected. One consistent disposable input snapshot; subsequent requests may restate the result. A figure missing an input is null with its reason, never zero.
          */
         get: {
             parameters: {
@@ -33859,6 +33859,42 @@ export interface components {
             /** @description Coverage of the prices and rates only the chart points needed, apart from the headline `valuation`. */
             valuation: components["schemas"]["Valuation"];
         };
+        /** @description One side of one group. By dimension exactly one key is meaningful: `account_id` (the outermost portfolio account), `asset_type`, or `currency_id` (null in the currency dimension for a security with no quote currency that day). Long and short balances are separate rows, never netted. */
+        ReturnsAllocationRow: {
+            /** Format: int64 */
+            account_id: number | null;
+            /** @enum {string|null} */
+            asset_type: "cash" | "stock" | "etf" | "fund" | "bond" | "option" | "future" | "crypto" | "other" | "unclassified" | null;
+            /** Format: int64 */
+            currency_id: number | null;
+            /** @enum {string} */
+            side: "long" | "short";
+            value: components["schemas"]["BalanceQuantity"];
+            /** @description Share of `denominator` (six places, short rows negative); null when `weights_reason` is set. */
+            weight: string | null;
+        };
+        /** @description A balance with no usable price or rate on the day. Its units are known; it is in no weight. */
+        ReturnsAllocationUnknown: {
+            /** Format: int64 */
+            account_id: number;
+            quantity: components["schemas"]["BalanceQuantity"];
+        };
+        /** @description R13 slice 4. The closing value at `to` split by account, asset type and currency, from the same snapshot, scope and rates as `closing_value`. With every balance valued the denominator is the closing value (`basis: closing_value`); otherwise unpriced balances are listed in `unknown` and weights are of the known values only (`known_only`). A denominator of zero or less leaves every weight null. An unclassified short makes the whole allocation unavailable (`reason`). */
+        ReturnsAllocation: {
+            /** Format: date */
+            date: string;
+            /** @enum {string|null} */
+            reason: "unclassified_short" | null;
+            /** @enum {string|null} */
+            basis: "closing_value" | "known_only" | null;
+            denominator: components["schemas"]["BalanceQuantity"] | null;
+            /** @enum {string|null} */
+            weights_reason: "non_positive_value" | null;
+            by_account: components["schemas"]["ReturnsAllocationRow"][];
+            by_asset_type: components["schemas"]["ReturnsAllocationRow"][];
+            by_currency: components["schemas"]["ReturnsAllocationRow"][];
+            unknown: components["schemas"]["ReturnsAllocationUnknown"][];
+        };
         InvestmentReturnsResponse: {
             /** @enum {string} */
             policy: "returns_v1";
@@ -33888,6 +33924,7 @@ export interface components {
             money_weighted: components["schemas"]["ReturnFigure"];
             money_weighted_period: components["schemas"]["ReturnFigure"];
             time_weighted_series: components["schemas"]["ReturnsSeries"];
+            allocation: components["schemas"]["ReturnsAllocation"];
             attribution_fallbacks: components["schemas"]["ReturnsAttributionFallback"][];
             valuation: components["schemas"]["Valuation"];
         };

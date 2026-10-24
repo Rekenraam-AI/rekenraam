@@ -215,3 +215,35 @@ export function returnsChartModel(points: ReturnsSeriesPoint[]): ReturnsChart {
   if (run.length > 0) segments.push(run);
   return { segments, minimum, maximum, zeroY: y(0), available: values.length, total: points.length };
 }
+
+export type AllocationDimension = 'account' | 'asset_type' | 'currency';
+
+/** Width of a weight's bar, as a percentage of the track: the magnitude,
+ * capped at the full track (a long leg of a shorted portfolio can exceed
+ * 100 %; the figure beside the bar says by how much). */
+export function allocationBarPercent(weight: string | null): number {
+  if (weight === null) return 0;
+  return Math.min(100, Math.abs(Number(weight)) * 100);
+}
+
+/** Asset types as stable codes; instrument types reuse the instrument labels. */
+export function assetTypeText(assetType: string | null): string {
+  switch (assetType) {
+    case 'cash': return m.returns_allocation_cash();
+    case 'stock': return m.quotes_type_stock();
+    case 'etf': return m.quotes_type_etf();
+    case 'fund': return m.quotes_type_fund();
+    case 'bond': return m.quotes_type_bond();
+    case 'option': return m.quotes_type_option();
+    case 'future': return m.quotes_type_future();
+    case 'crypto': return m.quotes_type_crypto();
+    case 'other': return m.quotes_type_other();
+    default: return m.returns_allocation_unclassified();
+  }
+}
+
+/** A share of the whole ("0.687500") as a percentage: no "+" on a long
+ * share, a minus on a short one. */
+export function formatWeight(value: string, locale: string): string {
+  return new Intl.NumberFormat(locale, { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value));
+}

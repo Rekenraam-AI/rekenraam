@@ -4,8 +4,9 @@ Status: **contract accepted by the owner 2026-10-24 (four policy answers
 recorded below); slice 1 (backend read) delivered 2026-10-24 and corrected
 the same day after two reviews (`e30413a5`: seven findings, recorded inline
 as "finding N"; `ae084c4d`: two, recorded under the expected cases). Slice 2
-(returns screen) and slice 3 (cumulative TTWROR series and chart, contract
-below) delivered the same day; slices 4–6 pending.**
+(returns screen) slice 3 (cumulative TTWROR series and chart) and slice 4
+(allocation at the closing day), contracts below, delivered the same day;
+slices 5–6 pending.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
 0017 (provider independence, honest incomplete data) govern this plan.
@@ -266,6 +267,45 @@ rounded values.
   every missing point; it never interpolates or fills a gap. A table of every
   point, with its reason in words, is the exact and accessible alternative.
 
+## Allocation at the closing day (slice 4)
+
+The response's `allocation` splits the closing value at `to`. It reads the
+same image, scope and `RateTable` as `closing_value`, so with every balance
+valued its denominator **is** the closing value (exact conversion is linear;
+the tests assert equality). No separate request, date or scope exists.
+
+- **Rows.** Each in-scope (account, commodity) ledger balance at the end of
+  `to` is valued exactly at `to`. Its sign makes it **long** or **short**: a
+  negative cash balance, a margin liability or a named short is short. A
+  group sums its long balances and its short balances as *separate rows*;
+  long and short are never netted inside one label. A single account's
+  balance in one commodity is the ledger's own net and is not split.
+- **Dimensions.**
+  - *Account*: the outermost in-scope ancestor (the brokerage container a
+    holding sits under), else the account itself.
+  - *Asset type*: `cash` for a currency commodity; otherwise the instrument
+    version's `instrument_type` effective on `to`; `unclassified` when no
+    version is effective that day (never borrowed from a later version).
+  - *Currency*: a currency is its own; otherwise the effective instrument
+    version's quote currency, else none (`currency_id` null).
+- **Weights.** `value / denominator`, exact, six places half away from zero;
+  short weights are negative and each dimension's exact weights sum to 1
+  (shown weights and values are each rounded once, so their sums may differ
+  in the last place).
+- **Unknown values.** A balance with no usable price or rate is listed in
+  `unknown` by its units and is in no row or weight. `basis` is then
+  `known_only` and the denominator is the sum of the known values; with
+  everything valued it is `closing_value`.
+- **Undefined shares.** A denominator `≤ 0` keeps every value and sets every
+  weight null with `weights_reason: non_positive_value`.
+- **Unclassified short** (the net-worth rule, as for `closing_value`) makes
+  the whole allocation unavailable (`reason: unclassified_short`): its value
+  is no better defined than the closing value's.
+- **Presentation.** One dimension at a time (account, asset type, currency),
+  each row with value, share and a bar; a short row says "Short" in words.
+  Shares carry no "+" sign, a short share a minus. Known-only basis,
+  undefined shares and the unknown list are disclosed beside the rows.
+
 ## Money-weighted return (IRR)
 
 Investor-perspective flows with the same intraday convention, measured in
@@ -378,6 +418,18 @@ is outside.
 | C7 closing gap over capital | prices 100 on 07-29..07-31; fee 1,200 from broker cash 07-30, income 1,200 on 07-31; no closing price | 08-01 `non_positive_capital` dated 07-30; headline and closing point `valuation_unavailable` dated the closing day |
 | C8 chart-only staleness | prices only at the boundaries (01-31, 02-05), period 02-01..02-05 | headline quotes all exact; series coverage marks 02-01..02-04 stale |
 
+**Allocation cases (slice 4).** S1 base with TEST classified as a stock
+quoted in EUR (unless stated), closing price 110:
+
+| Case | Ledger | Allocation |
+|---|---|---|
+| A1 | holding under a brokerage container | denominator 1200 = closing value; account: container 1100 `0.916667`, broker cash 100 `0.083333`; asset type: stock `0.916667`, cash `0.083333`; currency: EUR long `1.000000` |
+| A2 | fee 150 from broker cash 12-01 | denominator 1050; EUR long 1100 `1.047619` and EUR short −50 `−0.047619`, two rows; cash short `−0.047619` |
+| A3 | no closing price | `known_only`, denominator 100, cash `1.000000`; unknown: holding, 10 TEST |
+| A4 | fee 1,200 from broker cash | denominator 0; `non_positive_value`; rows 1100 long and −1100 short, no weights |
+| A5 | TEST without an instrument version | asset type `unclassified` `0.916667`; currency none 1100 `0.916667` beside EUR 100 |
+| A6 | −1 TEST posted to broker cash, no short lot | closing value and allocation `unclassified_short` |
+
 Slice 1 tests pin these literals; they never derive expected values from the
 calculator. R1–R7 are the reproducers from the 2026-10-24 review of
 `e30413a5`; they failed before the corrections recorded here.
@@ -431,7 +483,9 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
 4. **Allocation at a date** — weights by account, instrument type and
    currency; denominator = closing portfolio value; unpriced holdings in an
    explicit unknown group and weights labelled known-only. Long and short
-   are never netted inside a group label.
+   are never netted inside a group label. *Delivered 2026-10-24* as
+   `allocation` on the returns read at `to` (see *Allocation at the closing
+   day*) and an allocation panel on the returns screen.
 5. **Benchmarks** — an owner-selected price series (manual observations are
    valid); price-return unless the series is declared total-return;
    benchmark TTWROR over the same breakpoints; no live provider required.

@@ -890,5 +890,19 @@
   "returns_chart_coverage_stale": "Некоторые точки используют цены или курсы за более ранние дни: {dates}.",
   "returns_chart_data": "Таблица точек",
   "returns_chart_column_date": "Конец дня",
-  "returns_chart_column_return": "Доходность, взвешенная по времени"
+  "returns_chart_column_return": "Доходность, взвешенная по времени",
+  "returns_allocation_title": "Распределение на конец {date}",
+  "returns_allocation_help": "Доли в стоимости портфеля в последний день периода. Длинные и короткие позиции показаны отдельно и никогда не взаимозачитываются.",
+  "returns_allocation_group_by": "Группировать по",
+  "returns_allocation_by_account": "Счёт",
+  "returns_allocation_by_asset_type": "Тип актива",
+  "returns_allocation_by_currency": "Валюта",
+  "returns_allocation_cash": "Денежные средства",
+  "returns_allocation_unclassified": "Без классификации",
+  "returns_allocation_no_currency": "Нет валюты котировки",
+  "returns_allocation_short": "Короткая",
+  "returns_allocation_known_only": "Для некоторых позиций нет пригодной цены на этот день, поэтому доли рассчитаны только от оценённой стоимости.",
+  "returns_allocation_unknown_title": "Без пригодной цены на этот день",
+  "returns_allocation_non_positive": "Стоимость портфеля нулевая или отрицательная, поэтому доли показать нельзя.",
+  "returns_allocation_empty": "На конец этого дня ничего не было."
 }

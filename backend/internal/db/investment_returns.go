@@ -183,3 +183,45 @@ func (r *TransactionRepository) AccountBaseKinds(ctx context.Context) (map[strin
 	}
 	return kinds, nil
 }
+
+// ReturnsInstrumentClass is how R13 allocation groups a commodity's units:
+// the instrument version's type and quote currency effective on a date.
+type ReturnsInstrumentClass struct {
+	InstrumentType   string
+	QuoteCommodityID sql.NullInt64
+}
+
+// ReturnsInstrumentClassesAsOf returns, per instrument commodity, the version
+// effective on asOf. A commodity with no version effective that day is absent:
+// its classification on that date is unknown, not borrowed from a later one.
+func (r *TransactionRepository) ReturnsInstrumentClassesAsOf(ctx context.Context, bookID int64, asOf string) (map[int64]ReturnsInstrumentClass, error) {
+	rows, err := r.database.QueryContext(ctx, `
+		SELECT i.commodity_id, v.instrument_type, v.quote_commodity_id
+		FROM investment_instruments i
+		JOIN investment_instrument_versions v ON v.id = (
+			SELECT asof_v.id
+			FROM investment_instrument_versions asof_v
+			WHERE asof_v.instrument_id = i.id AND asof_v.effective_from <= ?
+			ORDER BY asof_v.effective_from DESC, asof_v.version_seq DESC
+			LIMIT 1
+		)
+		WHERE i.book_id = ?
+	`, asOf, bookID)
+	if err != nil {
+		return nil, fmt.Errorf("read returns instrument classes: %w", err)
+	}
+	defer rows.Close()
+	classes := map[int64]ReturnsInstrumentClass{}
+	for rows.Next() {
+		var commodityID int64
+		var class ReturnsInstrumentClass
+		if err := rows.Scan(&commodityID, &class.InstrumentType, &class.QuoteCommodityID); err != nil {
+			return nil, fmt.Errorf("scan returns instrument class: %w", err)
+		}
+		classes[commodityID] = class
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate returns instrument classes: %w", err)
+	}
+	return classes, nil
+}

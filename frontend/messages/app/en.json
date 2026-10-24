@@ -890,5 +890,19 @@
   "returns_chart_coverage_stale": "Some points use prices or rates from earlier days: {dates}.",
   "returns_chart_data": "Table of points",
   "returns_chart_column_date": "End of day",
-  "returns_chart_column_return": "Time-weighted return"
+  "returns_chart_column_return": "Time-weighted return",
+  "returns_allocation_title": "Allocation at end of {date}",
+  "returns_allocation_help": "Shares of the portfolio's value on the last day of the period. Long and short positions are shown separately, never netted.",
+  "returns_allocation_group_by": "Group by",
+  "returns_allocation_by_account": "Account",
+  "returns_allocation_by_asset_type": "Asset type",
+  "returns_allocation_by_currency": "Currency",
+  "returns_allocation_cash": "Cash",
+  "returns_allocation_unclassified": "Unclassified",
+  "returns_allocation_no_currency": "No quote currency",
+  "returns_allocation_short": "Short",
+  "returns_allocation_known_only": "Some holdings have no usable price on this day, so shares are of the priced value only.",
+  "returns_allocation_unknown_title": "Without a usable price on this day",
+  "returns_allocation_non_positive": "The portfolio's value is zero or negative, so shares cannot be shown.",
+  "returns_allocation_empty": "Nothing was held at the end of this day."
 }

@@ -171,14 +171,14 @@ below is execution order, not a chain of hard dependencies.
    correction feature [#395](https://github.com/sergeyfarin/rekenraam/issues/395)
    remain distinct from behavior-preserving maintenance; do not restore
    retired attribution blockers.
-3. **Implement R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119) slices 4–6.**
+3. **Implement R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119) slices 5–6.**
    The [returns_v1 contract](plans/investment-returns-plan.md) was accepted by
    the owner on 2026-10-24 (position-anchored income classification with
    disclosed cash-side fallback, annualization only for 365+ days, proven
    unique IRR roots only). Slice 1 (backend live read, corrected after two
-   reviews), slice 2 (returns screen) and slice 3 (TTWROR series and chart)
-   are delivered. Next: allocation, then manual benchmarks and saved runs, in
-   the contract's slice order.
+   reviews), slice 2 (returns screen), slice 3 (TTWROR series and chart) and
+   slice 4 (allocation at the closing day) are delivered. Next: manual
+   benchmarks, then saved runs, in the contract's slice order.
    #284's owner-reviewed investment/reporting dispositions are now complete.
    If the accepted contract consumes native realized totals, it reuses
    `app.NativeRealizedTotals`, delivered by

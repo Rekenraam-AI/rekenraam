@@ -612,7 +612,12 @@ points (by period length), its closing point equal to the headline figure.
 Each point is available or carries its own reason; a price gap only a point
 needs removes that point alone and is disclosed in the series' own coverage.
 The screen draws it as a line that breaks at gaps (never filled in), with a
-table of every point. No allocation, benchmark or saved run yet.
+table of every point. Slice 4 adds `allocation`: the closing value split by
+outermost portfolio account, asset type (instrument type as of the day, or
+cash/unclassified) and currency, from the same snapshot and rates so the
+denominator is the closing value. Long and short are separate rows, unpriced
+balances are listed by units with known-only weights, and a non-positive
+total keeps values without shares. No benchmark or saved run yet.
 
 Period capital-return disclosure (#238) adds per-currency payment-date receipts,
 associated basis reductions, excluded excess and receipt/unknown-effect counts,
@@ -867,8 +872,8 @@ hand-derived budget, recurring, forecast and learned-spending evidence.
 
 XLSX/OFX/QFX import adapters, per-split import mapping and batch rollback,
 a second online bank/broker import connection, loan/liability helpers,
-R13 returns allocation/benchmarks/saved runs (the returns read, screen
-and TTWROR chart ship) and general report snapshots beyond R18
+R13 returns benchmarks/saved runs (the returns read, screen, TTWROR chart
+and allocation ship) and general report snapshots beyond R18
 operational gains/statement documents. Multiple quote adapters and the
 Twelve Data reviewed dividend producer already ship.
 The [roadmap](roadmap.md) owns sequencing; GitHub Issues own delivery status.

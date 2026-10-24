@@ -890,5 +890,19 @@
   "returns_chart_coverage_stale": "Certains points utilisent des cours ou des taux de jours antérieurs : {dates}.",
   "returns_chart_data": "Tableau des points",
   "returns_chart_column_date": "Fin de journée",
-  "returns_chart_column_return": "Rendement pondéré par le temps"
+  "returns_chart_column_return": "Rendement pondéré par le temps",
+  "returns_allocation_title": "Répartition à la fin du {date}",
+  "returns_allocation_help": "Parts de la valeur du portefeuille le dernier jour de la période. Les positions longues et courtes sont présentées séparément, jamais compensées.",
+  "returns_allocation_group_by": "Regrouper par",
+  "returns_allocation_by_account": "Compte",
+  "returns_allocation_by_asset_type": "Type d’actif",
+  "returns_allocation_by_currency": "Devise",
+  "returns_allocation_cash": "Liquidités",
+  "returns_allocation_unclassified": "Non classé",
+  "returns_allocation_no_currency": "Pas de devise de cotation",
+  "returns_allocation_short": "Courte",
+  "returns_allocation_known_only": "Certaines positions n’ont pas de cours utilisable ce jour-là ; les parts ne portent que sur la valeur évaluée.",
+  "returns_allocation_unknown_title": "Sans cours utilisable ce jour-là",
+  "returns_allocation_non_positive": "La valeur du portefeuille est nulle ou négative ; les parts ne peuvent pas être affichées.",
+  "returns_allocation_empty": "Rien n’était détenu à la fin de ce jour."
 }

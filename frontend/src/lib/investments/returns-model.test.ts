@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  fallbackReasonText, formatReturn, lastYear, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
+  allocationBarPercent, assetTypeText, fallbackReasonText, formatReturn, formatWeight, lastYear, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
   returnsChartModel, returnsCoverage, returnsSelectionParams, unavailableAccountIDs, validRange, yearToDate
 } from './returns-model';
 import type { ReturnFigure, ReturnsSeriesPoint } from '#lib/api/investments.ts';
@@ -176,5 +176,24 @@ describe('returns chart model', () => {
     const chart = returnsChartModel([point('2026-01-31', null, 'no_capital'), point('2026-02-01', null, 'no_capital')]);
     expect(chart.segments).toEqual([]);
     expect(chart.available).toBe(0);
+  });
+});
+
+describe('allocation presentation', () => {
+  it('draws a weight by its magnitude, capped at the track', () => {
+    expect(allocationBarPercent('0.250000')).toBe(25);
+    expect(allocationBarPercent('-0.047619')).toBeCloseTo(4.7619);
+    expect(allocationBarPercent('1.047619')).toBe(100);
+    expect(allocationBarPercent(null)).toBe(0);
+  });
+
+  it('formats shares without a forced plus sign', () => {
+    expect(formatWeight('0.687500', 'en')).toBe('68.75%');
+    expect(formatWeight('-0.047619', 'en')).toBe('-4.76%');
+  });
+
+  it('names unknown asset types as unclassified rather than showing a code', () => {
+    expect(assetTypeText('unclassified')).toBe(assetTypeText('something_new'));
+    expect(assetTypeText('cash')).not.toBe(assetTypeText('unclassified'));
   });
 });

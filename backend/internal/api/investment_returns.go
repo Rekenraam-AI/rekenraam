@@ -43,6 +43,32 @@ type returnsSeriesResponse struct {
 	Valuation *valuationResponse           `json:"valuation"`
 }
 
+type returnsAllocationRowResponse struct {
+	AccountID  *int64                   `json:"account_id"`
+	AssetType  *string                  `json:"asset_type"`
+	CurrencyID *int64                   `json:"currency_id"`
+	Side       string                   `json:"side"`
+	Value      *balanceQuantityResponse `json:"value"`
+	Weight     *string                  `json:"weight"`
+}
+
+type returnsAllocationUnknownResponse struct {
+	AccountID int64                   `json:"account_id"`
+	Quantity  balanceQuantityResponse `json:"quantity"`
+}
+
+type returnsAllocationResponse struct {
+	Date          string                             `json:"date"`
+	Reason        *string                            `json:"reason"`
+	Basis         *string                            `json:"basis"`
+	Denominator   *balanceQuantityResponse           `json:"denominator"`
+	WeightsReason *string                            `json:"weights_reason"`
+	ByAccount     []returnsAllocationRowResponse     `json:"by_account"`
+	ByAssetType   []returnsAllocationRowResponse     `json:"by_asset_type"`
+	ByCurrency    []returnsAllocationRowResponse     `json:"by_currency"`
+	Unknown       []returnsAllocationUnknownResponse `json:"unknown"`
+}
+
 type investmentReturnsResponse struct {
 	Policy                 string                    `json:"policy"`
 	From                   string                    `json:"from"`
@@ -62,6 +88,7 @@ type investmentReturnsResponse struct {
 	MoneyWeighted          returnFigureResponse      `json:"money_weighted"`
 	MoneyWeightedPeriod    returnFigureResponse      `json:"money_weighted_period"`
 	TimeWeightedSeries     returnsSeriesResponse     `json:"time_weighted_series"`
+	Allocation             returnsAllocationResponse `json:"allocation"`
 	AttributionFallbacks   []returnsFallbackResponse `json:"attribution_fallbacks"`
 	Valuation              *valuationResponse        `json:"valuation"`
 }
@@ -132,6 +159,7 @@ func toInvestmentReturnsResponse(result app.ReturnsResult) investmentReturnsResp
 		MoneyWeighted: toReturnFigureResponse(result.MoneyWeighted), MoneyWeightedPeriod: toReturnFigureResponse(result.MoneyWeightedPeriod),
 		TimeWeightedSeries: returnsSeriesResponse{Interval: result.TimeWeightedSeries.Interval, Points: points,
 			Valuation: toValuationResponse(&result.TimeWeightedSeries.Valuation)},
+		Allocation:           toReturnsAllocationResponse(result.Allocation),
 		AttributionFallbacks: fallbacks, Valuation: toValuationResponse(&result.Valuation),
 	}
 }
@@ -147,4 +175,41 @@ func toReturnsAmountResponse(amount app.ReturnsAmount) returnsAmountResponse {
 
 func toReturnFigureResponse(figure app.ReturnFigure) returnFigureResponse {
 	return returnFigureResponse{Value: figure.Value, Reason: optionalText(figure.Reason), Date: optionalText(figure.Date)}
+}
+
+func toReturnsAllocationResponse(allocation app.ReturnsAllocation) returnsAllocationResponse {
+	rows := func(rows []app.ReturnsAllocationRow) []returnsAllocationRowResponse {
+		response := make([]returnsAllocationRowResponse, 0, len(rows))
+		for _, row := range rows {
+			item := returnsAllocationRowResponse{AssetType: optionalText(row.AssetType), Side: row.Side, Weight: row.Weight,
+				Value: optionalBalanceQuantity(row.Value)}
+			if row.AccountID != 0 {
+				item.AccountID = &row.AccountID
+			}
+			// A currency row with no id is a security without a quote currency.
+			if row.AssetType == "" && row.AccountID == 0 && row.CurrencyID != 0 {
+				item.CurrencyID = &row.CurrencyID
+			}
+			response = append(response, item)
+		}
+		return response
+	}
+	unknown := make([]returnsAllocationUnknownResponse, 0, len(allocation.Unknown))
+	for _, item := range allocation.Unknown {
+		unknown = append(unknown, returnsAllocationUnknownResponse{AccountID: item.AccountID, Quantity: toBalanceQuantityResponse(item.Quantity)})
+	}
+	return returnsAllocationResponse{
+		Date: allocation.Date, Reason: optionalText(allocation.Reason), Basis: optionalText(allocation.Basis),
+		Denominator: optionalBalanceQuantity(allocation.Denominator), WeightsReason: optionalText(allocation.WeightsReason),
+		ByAccount: rows(allocation.ByAccount), ByAssetType: rows(allocation.ByAssetType), ByCurrency: rows(allocation.ByCurrency),
+		Unknown: unknown,
+	}
+}
+
+func optionalBalanceQuantity(quantity *app.BalanceQuantity) *balanceQuantityResponse {
+	if quantity == nil {
+		return nil
+	}
+	response := toBalanceQuantityResponse(*quantity)
+	return &response
 }

@@ -96,6 +96,7 @@ type ReturnsResult struct {
 	MoneyWeightedPeriod    ReturnFigure
 
 	TimeWeightedSeries ReturnsSeries
+	Allocation         ReturnsAllocation
 
 	AttributionFallbacks []ReturnsAttributionFallback
 	Valuation            ValuationCoverage
@@ -188,6 +189,8 @@ type returnsReader struct {
 	// seriesRates values the days only chart points need, keeping their
 	// coverage apart from the headline figures'.
 	seriesRates *RateTable
+	// closing is V(to), kept for the allocation that splits it.
+	closing returnsValuation
 }
 
 // returnsEntryFlow is one journal entry's external flow, or why it has none.
@@ -225,6 +228,10 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 	if err != nil {
 		return err
 	}
+	classes, err := r.ledger.ReturnsInstrumentClassesAsOf(ctx, BookID, r.to)
+	if err != nil {
+		return err
+	}
 
 	commodities := []int64{}
 	for _, posting := range r.postings {
@@ -249,6 +256,7 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 	flows, fallbacks := r.classify(anchors)
 	result.AttributionFallbacks = fallbacks
 	r.compute(flows, result)
+	result.Allocation = r.allocation(r.closing, classes)
 	return nil
 }
 
@@ -620,6 +628,7 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 	}
 	evaluation := r.evaluationDays(breakpoints)
 	values := r.valuations(evaluation, r.rates)
+	r.closing = values[r.to]
 	var twrGrowth *big.Rat
 	result.TimeWeightedSeries, twrGrowth = r.series(byDay, flowsKnown, values, result.Days)
 

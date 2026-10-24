@@ -83,9 +83,91 @@ ReturnsSeries:
     valuation:
       description: Coverage of the prices and rates only the chart points needed, apart from the headline `valuation`.
       $ref: "../../openapi.yaml#/components/schemas/Valuation"
+ReturnsAllocationRow:
+  type: object
+  description: >
+    One side of one group. By dimension exactly one key is meaningful:
+    `account_id` (the outermost portfolio account), `asset_type`, or
+    `currency_id` (null in the currency dimension for a security with no
+    quote currency that day). Long and short balances are separate rows,
+    never netted.
+  required: [account_id, asset_type, currency_id, side, value, weight]
+  properties:
+    account_id:
+      type: [integer, "null"]
+      format: int64
+    asset_type:
+      type: [string, "null"]
+      enum: [cash, stock, etf, fund, bond, option, future, crypto, other, unclassified, null]
+    currency_id:
+      type: [integer, "null"]
+      format: int64
+    side:
+      type: string
+      enum: [long, short]
+    value:
+      $ref: "../../openapi.yaml#/components/schemas/BalanceQuantity"
+    weight:
+      type: [string, "null"]
+      pattern: "^-?[0-9]+\\.[0-9]{6}$"
+      description: Share of `denominator` (six places, short rows negative); null when `weights_reason` is set.
+ReturnsAllocationUnknown:
+  type: object
+  description: A balance with no usable price or rate on the day. Its units are known; it is in no weight.
+  required: [account_id, quantity]
+  properties:
+    account_id:
+      type: integer
+      format: int64
+    quantity:
+      $ref: "../../openapi.yaml#/components/schemas/BalanceQuantity"
+ReturnsAllocation:
+  type: object
+  description: >
+    R13 slice 4. The closing value at `to` split by account, asset type and
+    currency, from the same snapshot, scope and rates as `closing_value`.
+    With every balance valued the denominator is the closing value
+    (`basis: closing_value`); otherwise unpriced balances are listed in
+    `unknown` and weights are of the known values only (`known_only`). A
+    denominator of zero or less leaves every weight null. An unclassified
+    short makes the whole allocation unavailable (`reason`).
+  required: [date, reason, basis, denominator, weights_reason, by_account, by_asset_type, by_currency, unknown]
+  properties:
+    date:
+      type: string
+      format: date
+    reason:
+      type: [string, "null"]
+      enum: [unclassified_short, null]
+    basis:
+      type: [string, "null"]
+      enum: [closing_value, known_only, null]
+    denominator:
+      oneOf:
+        - $ref: "../../openapi.yaml#/components/schemas/BalanceQuantity"
+        - type: "null"
+    weights_reason:
+      type: [string, "null"]
+      enum: [non_positive_value, null]
+    by_account:
+      type: array
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/ReturnsAllocationRow"
+    by_asset_type:
+      type: array
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/ReturnsAllocationRow"
+    by_currency:
+      type: array
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/ReturnsAllocationRow"
+    unknown:
+      type: array
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/ReturnsAllocationUnknown"
 InvestmentReturnsResponse:
   type: object
-  required: [policy, from, to, opening_date, days, account_scope, resolved_account_ids, knowledge_cutoff, opening_value, closing_value, contributions, withdrawals, gain, time_weighted, time_weighted_annualized, money_weighted, money_weighted_period, time_weighted_series, attribution_fallbacks, valuation]
+  required: [policy, from, to, opening_date, days, account_scope, resolved_account_ids, knowledge_cutoff, opening_value, closing_value, contributions, withdrawals, gain, time_weighted, time_weighted_annualized, money_weighted, money_weighted_period, time_weighted_series, allocation, attribution_fallbacks, valuation]
   properties:
     policy:
       type: string
@@ -134,6 +216,8 @@ InvestmentReturnsResponse:
       $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
     time_weighted_series:
       $ref: "../../openapi.yaml#/components/schemas/ReturnsSeries"
+    allocation:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAllocation"
     attribution_fallbacks:
       type: array
       items:

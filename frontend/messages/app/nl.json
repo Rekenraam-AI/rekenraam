@@ -890,5 +890,19 @@
   "returns_chart_coverage_stale": "Sommige punten gebruiken koersen of wisselkoersen van eerdere dagen: {dates}.",
   "returns_chart_data": "Tabel met punten",
   "returns_chart_column_date": "Einde van de dag",
-  "returns_chart_column_return": "Tijdgewogen rendement"
+  "returns_chart_column_return": "Tijdgewogen rendement",
+  "returns_allocation_title": "Verdeling aan het einde van {date}",
+  "returns_allocation_help": "Aandelen in de waarde van de portefeuille op de laatste dag van de periode. Lange en korte posities staan apart en worden nooit verrekend.",
+  "returns_allocation_group_by": "Groeperen op",
+  "returns_allocation_by_account": "Rekening",
+  "returns_allocation_by_asset_type": "Soort bezit",
+  "returns_allocation_by_currency": "Valuta",
+  "returns_allocation_cash": "Contanten",
+  "returns_allocation_unclassified": "Niet ingedeeld",
+  "returns_allocation_no_currency": "Geen noteringsvaluta",
+  "returns_allocation_short": "Kort",
+  "returns_allocation_known_only": "Voor sommige posities is er op deze dag geen bruikbare koers, dus de aandelen gaan alleen over de gewaardeerde waarde.",
+  "returns_allocation_unknown_title": "Zonder bruikbare koers op deze dag",
+  "returns_allocation_non_positive": "De waarde van de portefeuille is nul of negatief, dus aandelen kunnen niet worden getoond.",
+  "returns_allocation_empty": "Aan het einde van deze dag werd niets aangehouden."
 }

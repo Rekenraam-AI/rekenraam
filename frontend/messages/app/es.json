@@ -890,5 +890,19 @@
   "returns_chart_coverage_stale": "Algunos puntos usan precios o tipos de cambio de días anteriores: {dates}.",
   "returns_chart_data": "Tabla de puntos",
   "returns_chart_column_date": "Fin del día",
-  "returns_chart_column_return": "Rentabilidad ponderada por el tiempo"
+  "returns_chart_column_return": "Rentabilidad ponderada por el tiempo",
+  "returns_allocation_title": "Distribución al final del {date}",
+  "returns_allocation_help": "Partes del valor de la cartera el último día del período. Las posiciones largas y cortas se muestran por separado, nunca compensadas.",
+  "returns_allocation_group_by": "Agrupar por",
+  "returns_allocation_by_account": "Cuenta",
+  "returns_allocation_by_asset_type": "Tipo de activo",
+  "returns_allocation_by_currency": "Divisa",
+  "returns_allocation_cash": "Efectivo",
+  "returns_allocation_unclassified": "Sin clasificar",
+  "returns_allocation_no_currency": "Sin divisa de cotización",
+  "returns_allocation_short": "Corta",
+  "returns_allocation_known_only": "Algunas posiciones no tienen precio utilizable ese día, así que las partes son solo del valor valorado.",
+  "returns_allocation_unknown_title": "Sin precio utilizable ese día",
+  "returns_allocation_non_positive": "El valor de la cartera es cero o negativo, así que no se pueden mostrar partes.",
+  "returns_allocation_empty": "No se mantenía nada al final de ese día."
 }

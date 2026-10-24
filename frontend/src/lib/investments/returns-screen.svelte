@@ -19,6 +19,7 @@
     returnsCoverage, returnsSelectionParams, unavailableAccountIDs, validRange, type ReturnsPreset
   } from './returns-model';
   import ReturnsChart from './returns-chart.svelte';
+  import ReturnsAllocation from './returns-allocation.svelte';
 
   // R13 portfolio returns (#119, slice 2): a read-only view of the returns_v1
   // live read. Every missing figure says why; nothing here posts or moves money.
@@ -310,6 +311,12 @@
               </div>
             {/each}
           </dl>
+        </Panel>
+
+        <Panel>
+          <ReturnsAllocation allocation={result.allocation} {locale} formatDate={day}
+            formatAmount={(amount) => amountText({ amount, reason: null, date: null })}
+            {accountName} {currencyCode} commodityLabel={currencyOrCommodity} />
         </Panel>
 
         {#if coverage.missing.length > 0}
