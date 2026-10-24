@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"strings"
 
 	"rekenraam/backend/internal/db"
 )
@@ -101,9 +100,7 @@ func (s *InvestmentService) prepareShareExchangeReversalWrite(ctx context.Contex
 	if err != nil {
 		return db.ShareExchangeOperationRecord{}, db.CreateTransactionParams{}, err
 	}
-	params.InvestmentCorrectionOfOperationID = operation.OperationID
-	params.InvestmentCorrectionMode = "reverse"
-	params.InvestmentCorrectionReason = planned.ChangeReason
+	linkCorrection(&params, operation.OperationID, "reverse", planned.ChangeReason)
 	params.GainImpact = gainImpactPolicy(input.GainImpactAcknowledgement)
 	return operation, params, nil
 }
@@ -115,13 +112,7 @@ func (s *InvestmentService) shareExchangeInversePlan(ctx context.Context, ownerU
 	fail := func(err error) (db.ShareExchangeOperationRecord, CreateTransactionInput, error) {
 		return db.ShareExchangeOperationRecord{}, CreateTransactionInput{}, err
 	}
-	if ownerUserID <= 0 || transactionID <= 0 {
-		return fail(ValidationError{Message: "owner and exchange id are required"})
-	}
-	if strings.TrimSpace(rawReason) == "" {
-		return fail(ValidationError{Message: "exchange correction reason is required"})
-	}
-	reason, err := cleanChangeReason(rawReason, "")
+	reason, err := shareExchangeCorrection.admit(ownerUserID, transactionID > 0, rawReason)
 	if err != nil {
 		return fail(err)
 	}
@@ -129,32 +120,15 @@ func (s *InvestmentService) shareExchangeInversePlan(ctx context.Context, ownerU
 	if err != nil {
 		return fail(mapShareExchangeCorrectionError(err))
 	}
-	if operation.AlreadyCorrected {
-		return fail(ErrShareExchangeAlreadyCorrected)
-	}
-	if operation.ImportedLineage {
-		linked, err := s.repository.HasCommittedImportSource(ctx, BookID, operation.OperationID)
-		if err != nil {
-			return fail(err)
-		}
-		if !linked {
-			return fail(ErrInvestmentImportedTransfer)
-		}
-	}
-	original, err := s.transactionService.Transaction(ctx, operation.TransactionID)
+	original, err := s.verifyCorrectionTarget(ctx, shareExchangeCorrection, correctionTarget{
+		OperationID: operation.OperationID, TransactionID: operation.TransactionID, CurrentVersionID: operation.CurrentVersionID,
+		EventDate: operation.EventDate, AlreadyCorrected: operation.AlreadyCorrected, ImportedLineage: operation.ImportedLineage,
+	})
 	if err != nil {
 		return fail(err)
 	}
-	if original.VersionID != operation.CurrentVersionID || original.Status != "posted" ||
-		original.TransactionKind != "investment" || original.DeletedAt != "" ||
-		original.TransactionDate != operation.EventDate {
-		return fail(ErrShareExchangeChanged)
-	}
-	return operation, CreateTransactionInput{
-		OwnerUserID: ownerUserID, AuthSessionID: authSessionID, RequestID: requestID, OriginType: "browser_api",
-		Operation: auditOperation, CorrectionOfTransactionID: &operation.TransactionID,
-		Spec: invertedInvestmentTransactionSpec(original), ChangeReason: reason, ReconciliationOverride: override.Allowed, ReconciliationOverrideCheckpointIDs: override.Reviewed,
-	}, nil
+	return operation, correctionInverseInput(ownerUserID, authSessionID, requestID, auditOperation, &operation.TransactionID,
+		invertedInvestmentTransactionSpec(original), reason, override), nil
 }
 
 // ReplaceShareExchange reverses the exchange and records corrected terms as
@@ -247,9 +221,7 @@ func (s *InvestmentService) prepareShareExchangeReplacementWrite(ctx context.Con
 		return fail(ValidationError{Message: "an exchange replacement must change the date, ratio, new instrument, receiving holding or source evidence"})
 	}
 	replacement.CorrectionOfTransactionID = sql.NullInt64{Int64: operation.TransactionID, Valid: true}
-	replacement.InvestmentCorrectionOfOperationID = operation.OperationID
-	replacement.InvestmentCorrectionMode = "replace"
-	replacement.InvestmentCorrectionReason = plannedInverse.ChangeReason
+	linkCorrection(&replacement, operation.OperationID, "replace", plannedInverse.ChangeReason)
 	replacement.CreatedAt = inverse.CreatedAt
 	replacement.GainImpact = nil
 	return operation, inverse, replacement, exchange, nil

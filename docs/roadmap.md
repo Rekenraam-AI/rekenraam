@@ -23,8 +23,9 @@ The cross-app engineering audit is delivered; owner/release follow-ups remain
 explicit below. **#402 is delivered with the owner's disposition: ADR 0016
 thresholds amended, and #404 (statement compilation cost) follows.
 #403, found on the way, is fixed; #284's owner review is complete. #399
-(app-owned native realized totals) and #400 (shared browser review
-lifecycles) were delivered early at the owner's request on 2026-10-24.** Earlier milestone detail lives in the
+(app-owned native realized totals), #400 (shared browser review
+lifecycles) and #401 (corporate-action correction preparation) were delivered
+early at the owner's request on 2026-10-24.** Earlier milestone detail lives in the
 [completed roadmap record](reviews/completed-roadmap-2026-09-27.md)
 and the [capability ledger](implemented.md).
 
@@ -191,9 +192,11 @@ below is execution order, not a chain of hard dependencies.
    extracted controller where applicable. #395 extends existing controllers;
    it does not add four controllers. This is scheduling, not a technical
    blocker inferred from four product families.
-   Next deliver independent corporate-action preparation
-   [#401](https://github.com/sergeyfarin/rekenraam/issues/401).
-   [#399](https://github.com/sergeyfarin/rekenraam/issues/399) is already
+   Independent corporate-action preparation
+   [#401](https://github.com/sergeyfarin/rekenraam/issues/401) is delivered
+   (2026-10-24, owner-requested ahead of this slot): one leaf owns the
+   admission and verification the four corporate-action correction families
+   share. [#399](https://github.com/sergeyfarin/rekenraam/issues/399) is already
    delivered (2026-10-24, owner-requested ahead of this slot). Each accepted refactor remains a separate bounded slice.
    Original candidates 7–13 are **explicitly deferred without issues** in the
    [deferred inventory](reviews/maintainability-audit-2026-10-24.md#explicitly-deferred-inventory-original-ranks-713).

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 
 	"rekenraam/backend/internal/db"
 )
@@ -113,9 +112,7 @@ func (s *InvestmentService) prepareSplitReversalWrite(ctx context.Context, input
 	if err != nil {
 		return db.SplitOperationRecord{}, db.CreateTransactionParams{}, err
 	}
-	params.InvestmentCorrectionOfOperationID = operation.OperationID
-	params.InvestmentCorrectionMode = "reverse"
-	params.InvestmentCorrectionReason = planned.ChangeReason
+	linkCorrection(&params, operation.OperationID, "reverse", planned.ChangeReason)
 	params.GainImpact = gainImpactPolicy(input.GainImpactAcknowledgement)
 	return operation, params, nil
 }
@@ -125,13 +122,7 @@ func (s *InvestmentService) prepareSplitReversalWrite(ctx context.Context, input
 // primary journal plus every adjustment (T-129).
 func (s *InvestmentService) splitInversePlan(ctx context.Context, ownerUserID, authSessionID int64, requestID string,
 	transactionID, operationID int64, rawReason string, override CheckpointOverride, auditOperation string) (db.SplitOperationRecord, CreateTransactionInput, error) {
-	if ownerUserID <= 0 || (transactionID <= 0) == (operationID <= 0) {
-		return db.SplitOperationRecord{}, CreateTransactionInput{}, ValidationError{Message: "owner and split id are required"}
-	}
-	if strings.TrimSpace(rawReason) == "" {
-		return db.SplitOperationRecord{}, CreateTransactionInput{}, ValidationError{Message: "split correction reason is required"}
-	}
-	reason, err := cleanChangeReason(rawReason, "")
+	reason, err := splitCorrection.admit(ownerUserID, (transactionID <= 0) != (operationID <= 0), rawReason)
 	if err != nil {
 		return db.SplitOperationRecord{}, CreateTransactionInput{}, err
 	}
@@ -144,29 +135,12 @@ func (s *InvestmentService) splitInversePlan(ctx context.Context, ownerUserID, a
 	if err != nil {
 		return db.SplitOperationRecord{}, CreateTransactionInput{}, mapSplitCorrectionError(err)
 	}
-	if operation.AlreadyCorrected {
-		return db.SplitOperationRecord{}, CreateTransactionInput{}, ErrInvestmentSplitAlreadyCorrected
-	}
-	if operation.ImportedLineage {
-		linked, err := s.repository.HasCommittedImportSource(ctx, BookID, operation.OperationID)
-		if err != nil {
-			return db.SplitOperationRecord{}, CreateTransactionInput{}, err
-		}
-		if !linked {
-			return db.SplitOperationRecord{}, CreateTransactionInput{}, ErrInvestmentImportedSplit
-		}
-	}
-	var original Transaction
-	if operation.TransactionID > 0 {
-		original, err = s.transactionService.Transaction(ctx, operation.TransactionID)
-		if err != nil {
-			return db.SplitOperationRecord{}, CreateTransactionInput{}, err
-		}
-		if original.VersionID != operation.CurrentVersionID || original.Status != "posted" ||
-			original.TransactionKind != "investment" || original.DeletedAt != "" ||
-			original.TransactionDate != operation.EventDate {
-			return db.SplitOperationRecord{}, CreateTransactionInput{}, ErrInvestmentSplitChanged
-		}
+	original, err := s.verifyCorrectionTarget(ctx, splitCorrection, correctionTarget{
+		OperationID: operation.OperationID, TransactionID: operation.TransactionID, CurrentVersionID: operation.CurrentVersionID,
+		EventDate: operation.EventDate, AlreadyCorrected: operation.AlreadyCorrected, ImportedLineage: operation.ImportedLineage,
+	})
+	if err != nil {
+		return db.SplitOperationRecord{}, CreateTransactionInput{}, err
 	}
 	tradingID, err := s.repository.CommodityTradingAccountID(ctx, BookID)
 	if err != nil {
@@ -176,11 +150,8 @@ func (s *InvestmentService) splitInversePlan(ctx context.Context, ownerUserID, a
 	if len(original.JournalEntries) > 0 {
 		memo = original.JournalEntries[0].Memo
 	}
-	return operation, CreateTransactionInput{
-		OwnerUserID: ownerUserID, AuthSessionID: authSessionID, RequestID: requestID, OriginType: "browser_api",
-		Operation: auditOperation, CorrectionOfTransactionID: splitPrimaryTransactionID(operation.TransactionID),
-		ChangeReason: reason, ReconciliationOverride: override.Allowed, ReconciliationOverrideCheckpointIDs: override.Reviewed,
-		Spec: TransactionInput{
+	return operation, correctionInverseInput(ownerUserID, authSessionID, requestID, auditOperation,
+		splitPrimaryTransactionID(operation.TransactionID), TransactionInput{
 			Status: "posted", TransactionKind: "investment", TransactionDate: operation.EventDate,
 			Description: original.Description,
 			JournalEntries: []JournalEntryInput{{EntryDate: operation.EventDate, EntryKind: "investment", Memo: memo,
@@ -190,8 +161,7 @@ func (s *InvestmentService) splitInversePlan(ctx context.Context, ownerUserID, a
 					{AccountID: tradingID, CommodityID: operation.CommodityID,
 						QuantityValue: operation.JournalDeltaValue, QuantityScale: operation.JournalDeltaScale, Memo: memo},
 				}}},
-		},
-	}, nil
+		}, reason, override), nil
 }
 
 // ReplaceSplit reverses the split and records corrected terms as its
@@ -276,9 +246,7 @@ func (s *InvestmentService) prepareSplitReplacementWrite(ctx context.Context, in
 		inverse.AuditMetadataJSON = replacement.Spec.MetadataJSON
 	}
 	replacement.CorrectionOfTransactionID = sql.NullInt64{Int64: operation.TransactionID, Valid: operation.TransactionID > 0}
-	replacement.InvestmentCorrectionOfOperationID = operation.OperationID
-	replacement.InvestmentCorrectionMode = "replace"
-	replacement.InvestmentCorrectionReason = plannedInverse.ChangeReason
+	linkCorrection(&replacement, operation.OperationID, "replace", plannedInverse.ChangeReason)
 	return operation, inverse, replacement, split, plan, nil
 }
 

@@ -221,6 +221,11 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   historical parents. Keep original type/book/holding/instrument/date integrity;
   a replacement retains that exact reference. Current ancestry/mismatch is
   read-only attribution; missing/broken facts remain integrity failures. Never drop quantity or specific-lot guards.
+  Those four families' correction preparation has one owner (#401,
+  `app/investment_corporate_action_correction.go`): admission, the
+  already-corrected and imported-lineage fences and the posted-original check
+  run after each family's typed lookup; the writer rechecks them in its
+  transaction. Change a shared correction policy there, not per family.
   Return-of-capital cash/entitlement stay exact; unknown reduction and excess
   remain NULL. Known explicit entitlement beside independent unknown lots is
   supported; an established unknown average pool never supplies a known rate

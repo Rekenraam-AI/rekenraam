@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"strings"
 
 	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/exact"
@@ -111,9 +110,7 @@ func (s *InvestmentService) prepareCashStockMergerReversalWrite(ctx context.Cont
 	if err != nil {
 		return db.CashStockMergerOperationRecord{}, db.CreateTransactionParams{}, err
 	}
-	params.InvestmentCorrectionOfOperationID = operation.OperationID
-	params.InvestmentCorrectionMode = "reverse"
-	params.InvestmentCorrectionReason = planned.ChangeReason
+	linkCorrection(&params, operation.OperationID, "reverse", planned.ChangeReason)
 	params.GainImpact = gainImpactPolicy(input.GainImpactAcknowledgement)
 	return operation, params, nil
 }
@@ -126,13 +123,7 @@ func (s *InvestmentService) cashStockMergerInversePlan(ctx context.Context, owne
 	fail := func(err error) (db.CashStockMergerOperationRecord, CreateTransactionInput, error) {
 		return db.CashStockMergerOperationRecord{}, CreateTransactionInput{}, err
 	}
-	if ownerUserID <= 0 || transactionID <= 0 {
-		return fail(ValidationError{Message: "owner and merger id are required"})
-	}
-	if strings.TrimSpace(rawReason) == "" {
-		return fail(ValidationError{Message: "merger correction reason is required"})
-	}
-	reason, err := cleanChangeReason(rawReason, "")
+	reason, err := cashStockMergerCorrection.admit(ownerUserID, transactionID > 0, rawReason)
 	if err != nil {
 		return fail(err)
 	}
@@ -140,32 +131,15 @@ func (s *InvestmentService) cashStockMergerInversePlan(ctx context.Context, owne
 	if err != nil {
 		return fail(mapCashStockMergerCorrectionError(err))
 	}
-	if operation.AlreadyCorrected {
-		return fail(ErrCashStockMergerAlreadyCorrected)
-	}
-	if operation.ImportedLineage {
-		linked, err := s.repository.HasCommittedImportSource(ctx, BookID, operation.OperationID)
-		if err != nil {
-			return fail(err)
-		}
-		if !linked {
-			return fail(ErrInvestmentImportedTransfer)
-		}
-	}
-	original, err := s.transactionService.Transaction(ctx, operation.TransactionID)
+	original, err := s.verifyCorrectionTarget(ctx, cashStockMergerCorrection, correctionTarget{
+		OperationID: operation.OperationID, TransactionID: operation.TransactionID, CurrentVersionID: operation.CurrentVersionID,
+		EventDate: operation.EventDate, AlreadyCorrected: operation.AlreadyCorrected, ImportedLineage: operation.ImportedLineage,
+	})
 	if err != nil {
 		return fail(err)
 	}
-	if original.VersionID != operation.CurrentVersionID || original.Status != "posted" ||
-		original.TransactionKind != "investment" || original.DeletedAt != "" ||
-		original.TransactionDate != operation.EventDate {
-		return fail(ErrShareExchangeChanged)
-	}
-	return operation, CreateTransactionInput{
-		OwnerUserID: ownerUserID, AuthSessionID: authSessionID, RequestID: requestID, OriginType: "browser_api",
-		Operation: auditOperation, CorrectionOfTransactionID: &operation.TransactionID,
-		Spec: invertedInvestmentTransactionSpec(original), ChangeReason: reason, ReconciliationOverride: override.Allowed, ReconciliationOverrideCheckpointIDs: override.Reviewed,
-	}, nil
+	return operation, correctionInverseInput(ownerUserID, authSessionID, requestID, auditOperation, &operation.TransactionID,
+		invertedInvestmentTransactionSpec(original), reason, override), nil
 }
 
 // ReplaceCashStockMerger reverses the merger and records corrected terms as
@@ -267,9 +241,7 @@ func (s *InvestmentService) prepareCashStockMergerReplacementWrite(ctx context.C
 		return fail(ValidationError{Message: "a merger replacement must change the dates, ratio, election, cash, new instrument, receiving holding or source evidence"})
 	}
 	replacement.CorrectionOfTransactionID = sql.NullInt64{Int64: operation.TransactionID, Valid: true}
-	replacement.InvestmentCorrectionOfOperationID = operation.OperationID
-	replacement.InvestmentCorrectionMode = "replace"
-	replacement.InvestmentCorrectionReason = plannedInverse.ChangeReason
+	linkCorrection(&replacement, operation.OperationID, "replace", plannedInverse.ChangeReason)
 	replacement.CreatedAt = inverse.CreatedAt
 	replacement.GainImpact = nil
 	return operation, inverse, replacement, merger, nil

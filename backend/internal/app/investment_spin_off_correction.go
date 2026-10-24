@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"strings"
 
 	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/exact"
@@ -103,9 +102,7 @@ func (s *InvestmentService) prepareSpinOffReversalWrite(ctx context.Context, inp
 	if err != nil {
 		return db.SpinOffOperationRecord{}, db.CreateTransactionParams{}, err
 	}
-	params.InvestmentCorrectionOfOperationID = operation.OperationID
-	params.InvestmentCorrectionMode = "reverse"
-	params.InvestmentCorrectionReason = planned.ChangeReason
+	linkCorrection(&params, operation.OperationID, "reverse", planned.ChangeReason)
 	params.GainImpact = gainImpactPolicy(input.GainImpactAcknowledgement)
 	return operation, params, nil
 }
@@ -117,13 +114,7 @@ func (s *InvestmentService) spinOffInversePlan(ctx context.Context, ownerUserID,
 	fail := func(err error) (db.SpinOffOperationRecord, CreateTransactionInput, error) {
 		return db.SpinOffOperationRecord{}, CreateTransactionInput{}, err
 	}
-	if ownerUserID <= 0 || transactionID <= 0 {
-		return fail(ValidationError{Message: "owner and spin-off id are required"})
-	}
-	if strings.TrimSpace(rawReason) == "" {
-		return fail(ValidationError{Message: "spin-off correction reason is required"})
-	}
-	reason, err := cleanChangeReason(rawReason, "")
+	reason, err := spinOffCorrection.admit(ownerUserID, transactionID > 0, rawReason)
 	if err != nil {
 		return fail(err)
 	}
@@ -131,32 +122,15 @@ func (s *InvestmentService) spinOffInversePlan(ctx context.Context, ownerUserID,
 	if err != nil {
 		return fail(mapSpinOffCorrectionError(err))
 	}
-	if operation.AlreadyCorrected {
-		return fail(ErrSpinOffAlreadyCorrected)
-	}
-	if operation.ImportedLineage {
-		linked, err := s.repository.HasCommittedImportSource(ctx, BookID, operation.OperationID)
-		if err != nil {
-			return fail(err)
-		}
-		if !linked {
-			return fail(ErrInvestmentImportedTransfer)
-		}
-	}
-	original, err := s.transactionService.Transaction(ctx, operation.TransactionID)
+	original, err := s.verifyCorrectionTarget(ctx, spinOffCorrection, correctionTarget{
+		OperationID: operation.OperationID, TransactionID: operation.TransactionID, CurrentVersionID: operation.CurrentVersionID,
+		EventDate: operation.EventDate, AlreadyCorrected: operation.AlreadyCorrected, ImportedLineage: operation.ImportedLineage,
+	})
 	if err != nil {
 		return fail(err)
 	}
-	if original.VersionID != operation.CurrentVersionID || original.Status != "posted" ||
-		original.TransactionKind != "investment" || original.DeletedAt != "" ||
-		original.TransactionDate != operation.EventDate {
-		return fail(ErrSpinOffChanged)
-	}
-	return operation, CreateTransactionInput{
-		OwnerUserID: ownerUserID, AuthSessionID: authSessionID, RequestID: requestID, OriginType: "browser_api",
-		Operation: auditOperation, CorrectionOfTransactionID: &operation.TransactionID,
-		Spec: invertedInvestmentTransactionSpec(original), ChangeReason: reason, ReconciliationOverride: override.Allowed, ReconciliationOverrideCheckpointIDs: override.Reviewed,
-	}, nil
+	return operation, correctionInverseInput(ownerUserID, authSessionID, requestID, auditOperation, &operation.TransactionID,
+		invertedInvestmentTransactionSpec(original), reason, override), nil
 }
 
 // ReplaceSpinOff reverses the spin-off and records corrected terms as its
@@ -253,20 +227,10 @@ func (s *InvestmentService) prepareSpinOffReplacementWrite(ctx context.Context, 
 		return fail(ValidationError{Message: "a spin-off replacement must change the date, ratio, basis fraction, new instrument, receiving holding or source evidence"})
 	}
 	replacement.CorrectionOfTransactionID = sql.NullInt64{Int64: operation.TransactionID, Valid: true}
-	replacement.InvestmentCorrectionOfOperationID = operation.OperationID
-	replacement.InvestmentCorrectionMode = "replace"
-	replacement.InvestmentCorrectionReason = plannedInverse.ChangeReason
+	linkCorrection(&replacement, operation.OperationID, "replace", plannedInverse.ChangeReason)
 	replacement.CreatedAt = inverse.CreatedAt
 	replacement.GainImpact = nil
 	return operation, inverse, replacement, spinOff, nil
-}
-
-// sameSourceEvidence reports whether corrected evidence is the recorded
-// evidence as a JSON object (the correction form pre-fills it). Compare exact
-// number tokens, as for basis provenance, so adjacent large source IDs do not
-// become a false no-op through float rounding (#309).
-func sameSourceEvidence(corrected, recorded string) bool {
-	return sameBasisResolutionEvidence(corrected, recorded)
 }
 
 // mapSpinOffCorrectionError adds the correction fences to the spin-off
