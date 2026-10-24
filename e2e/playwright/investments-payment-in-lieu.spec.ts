@@ -4,6 +4,7 @@ import { readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
 import { expectNoAccessibilityViolations } from './support/a11y';
 import { readFileSync } from 'node:fs';
+import { test as ownedBookTest } from './support/owned-book';
 
 /**
  * #255: a short holder's payment in lieu of a dividend is recorded, corrected
@@ -172,8 +173,11 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
   });
 }
 
+// The journey ends on the book-wide self-check, so it owns its book (#398):
+// the cleared payment is the run's only unavailable record, and the run's
+// sample, count and link name it whatever other specs have written.
 for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
-  test(`optional payment attribution is recorded, repaired and cleared in ${locale}`, async ({ page }) => {
+  ownedBookTest(`optional payment attribution is recorded, repaired and cleared in ${locale}`, async ({ page }) => {
     const s = await setup(page);
     const copy = JSON.parse(readFileSync(new URL(`../../frontend/messages/settings/${locale}.json`, import.meta.url), 'utf8')) as Record<string, string>;
     await page.evaluate(value => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
@@ -218,8 +222,41 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     await page.goto('/app/settings/data');
     const ran = page.waitForResponse(response => response.url().endsWith('/api/v1/maintenance/self-check') && response.request().method() === 'POST');
     await page.getByTestId('selfcheck-run').click();
-    const run = await (await ran).json() as { results: Array<{ check_id: string; unavailable_sample: number[] }> };
-    expect(run.results.find(row => row.check_id === 'investment_attribution')?.unavailable_sample).toContain(cleared);
-    await expect(page.locator(`a[href="/app/transactions?transaction_id=${cleared}"]`)).toBeVisible();
+    const run = await (await ran).json() as { results: Array<{ check_id: string; unavailable_count: number; unavailable_sample: number[] }> };
+    const attribution = run.results.find(row => row.check_id === 'investment_attribution');
+    expect(attribution?.unavailable_count).toBe(1);
+    expect(attribution?.unavailable_sample).toEqual([cleared]);
+    await expect(page.getByTestId('selfcheck-unavailable')).toHaveText(copy.settings_data_selfcheck_unavailable.replace('{count}', '1'));
+    await page.locator(`a[href="/app/transactions?transaction_id=${cleared}"]`).click();
+    await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText(copy.investments_attribution_unavailable);
   });
 }
+
+// #398: self-check samples stop at 20 records in operation order, so in a book
+// with earlier unrelated findings a new record's own sample entry is not
+// guaranteed. Saturate an owned book on purpose: the count still covers the
+// journey's payment, the sample does not reach it, and the per-transaction
+// diagnostic — which shared-book specs assert instead — still names it.
+ownedBookTest('a saturated self-check sample leaves the per-transaction diagnostic owned', async ({ page }) => {
+  const s = await setup(page);
+  const unattributed = (days: number) => apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/payment-in-lieu', s.csrfToken, {
+    transaction_date: daysFromTodayISO(days), cash_account_id: s.cashID, cash_commodity_id: s.currencyID,
+    expense_account_id: s.expenseID, amount_value: '100', amount_scale: 2
+  });
+  const unrelated: number[] = [];
+  for (let index = 0; index < 21; index++) unrelated.push((await unattributed(-25)).id);
+  const own = await unattributed(-5);
+
+  await page.goto('/app/settings/data');
+  const ran = page.waitForResponse(response => response.url().endsWith('/api/v1/maintenance/self-check') && response.request().method() === 'POST');
+  await page.getByTestId('selfcheck-run').click();
+  const run = await (await ran).json() as { results: Array<{ check_id: string; unavailable_count: number; unavailable_sample: number[] }> };
+  const attribution = run.results.find(row => row.check_id === 'investment_attribution');
+  expect(attribution?.unavailable_count).toBe(22);
+  expect(attribution?.unavailable_sample).toEqual(unrelated.slice(0, 20));
+  await expect(page.getByTestId('selfcheck-unavailable')).toHaveText('Not verified: 22 items with unknown information.');
+  await expect(page.locator(`a[href="/app/transactions?transaction_id=${own.id}"]`)).toHaveCount(0);
+
+  await page.goto(`/app/transactions?transaction_id=${own.id}`);
+  await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText('Some attribution context is missing');
+});

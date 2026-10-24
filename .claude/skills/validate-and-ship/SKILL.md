@@ -787,6 +787,15 @@ non-trivial diff (yours or reviewed):
     link. Follow every cursor, then assert on that record's detail view. Use
     `--repeat-each` to verify, since it fills the same worker book.
 
+68. **A book-wide self-check read in a shared worker book** — the cash-in-lieu
+    and payment-in-lieu journeys required their own transaction in a sample
+    capped at 20, and the unknown-basis status journey branched on whether the
+    run came back `incomplete` or `failed` (#398). Other files' findings
+    decide both. Assert run status, counts and samples in a book the test owns
+    (`support/owned-book.ts`); assert a transaction's attribution through its
+    own diagnostic. `investments-payment-in-lieu.spec.ts` saturates an owned
+    book with 21 unrelated records to keep that evidence.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

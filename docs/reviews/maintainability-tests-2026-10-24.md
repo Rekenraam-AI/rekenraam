@@ -251,6 +251,10 @@ worker book:
   dependence. The owned alternative already exists: the per-transaction
   `investment-attribution-diagnostic` the same specs assert.
 
+  *Resolved by #398 (2026-10-24):* these assertions now run in a per-test
+  owned book (`support/owned-book.ts`) with exact outcomes; see
+  `docs/implemented.md` → Browser-suite ordering.
+
 **Investment setup is duplicated but stable.** 41 specs create an instrument
 and holding through their own setup functions; `support/` has ledger builders
 but no investment builder. Since 2026-10-01 only two commits touched five or

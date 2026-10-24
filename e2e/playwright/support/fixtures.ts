@@ -61,41 +61,14 @@ export const test = base.extend<object, { backend: Backend }>({
       const key = `${workerInfo.project.name}-${workerInfo.parallelIndex}`;
       const directory = path.join(workerStateRoot, key);
       mkdirSync(directory, { recursive: true });
-      const databasePath = path.join(directory, 'rekenraam.sqlite');
       const port = firstWorkerPort + workerInfo.parallelIndex;
-      const url = `http://127.0.0.1:${port}`;
-      const log = createWriteStream(path.join(directory, 'app.log'), { flags: 'a' });
-
-      const app = spawn(path.join(repoRoot, 'dist/rekenraam'), [], {
-        cwd: repoRoot,
-        env: {
-          ...process.env,
-          APP_ENV: 'development',
-          DATABASE_URL: `file:${databasePath}`,
-          HTTP_ADDR: `127.0.0.1:${port}`,
-          REKENRAAM_SECRET_KEY: e2eSecretKey,
-          // The Trading 212 stub (stubs/trading212.mjs), shared by every
-          // worker: its accounts are keyed by API key and each spec registers
-          // its own. The backend honors these overrides only in development,
-          // so no real API key can be redirected (T-128). MARKET_DATA_BASE_URL
-          // points every quote/FX provider at the stub, whose unknown paths
-          // return 404, so background FX coverage never imports a live rate
-          // that would change what a journey expects (#226).
-          TRADING212_BASE_URL: `http://127.0.0.1:${trading212StubPort}/api/v0`,
-          MARKET_DATA_BASE_URL: `http://127.0.0.1:${trading212StubPort}/market-data`,
-          // Only the stub ever sees this key (MARKET_DATA_BASE_URL above).
-          TWELVE_DATA_API_KEY: 'e2e-twelve-data'
-        },
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
-      app.stdout?.pipe(log);
-      app.stderr?.pipe(log);
+      const { app, url, databasePath, log, logPath } = launchApp(directory, port);
       // Support code that edits the database directly (legacy-dividend.ts)
       // runs in this worker process and finds the file here.
       process.env.E2E_DATABASE_PATH = databasePath;
 
       try {
-        await waitForHealthy(app, url, path.join(directory, 'app.log'));
+        await waitForHealthy(app, url, logPath);
         await use({ url, databasePath });
       } finally {
         await stop(app);
@@ -109,7 +82,44 @@ export const test = base.extend<object, { backend: Backend }>({
   }
 });
 
-async function waitForHealthy(app: ChildProcess, url: string, logPath: string): Promise<void> {
+/**
+ * Starts `dist/rekenraam` on `port` against `directory/rekenraam.sqlite`, with
+ * its log in `directory/app.log`. Backups land beside the database. Callers
+ * wait for health and stop the process.
+ */
+export function launchApp(directory: string, port: number) {
+  const databasePath = path.join(directory, 'rekenraam.sqlite');
+  const url = `http://127.0.0.1:${port}`;
+  const logPath = path.join(directory, 'app.log');
+  const log = createWriteStream(logPath, { flags: 'a' });
+  const app = spawn(path.join(repoRoot, 'dist/rekenraam'), [], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      APP_ENV: 'development',
+      DATABASE_URL: `file:${databasePath}`,
+      HTTP_ADDR: `127.0.0.1:${port}`,
+      REKENRAAM_SECRET_KEY: e2eSecretKey,
+      // The Trading 212 stub (stubs/trading212.mjs), shared by every
+      // worker: its accounts are keyed by API key and each spec registers
+      // its own. The backend honors these overrides only in development,
+      // so no real API key can be redirected (T-128). MARKET_DATA_BASE_URL
+      // points every quote/FX provider at the stub, whose unknown paths
+      // return 404, so background FX coverage never imports a live rate
+      // that would change what a journey expects (#226).
+      TRADING212_BASE_URL: `http://127.0.0.1:${trading212StubPort}/api/v0`,
+      MARKET_DATA_BASE_URL: `http://127.0.0.1:${trading212StubPort}/market-data`,
+      // Only the stub ever sees this key (MARKET_DATA_BASE_URL above).
+      TWELVE_DATA_API_KEY: 'e2e-twelve-data'
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  app.stdout?.pipe(log);
+  app.stderr?.pipe(log);
+  return { app, url, databasePath, log, logPath };
+}
+
+export async function waitForHealthy(app: ChildProcess, url: string, logPath: string): Promise<void> {
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
     if (app.exitCode !== null) throw new Error(`e2e app exited with ${app.exitCode} before it was healthy; see ${logPath}`);
@@ -123,7 +133,7 @@ async function waitForHealthy(app: ChildProcess, url: string, logPath: string): 
   throw new Error(`e2e app at ${url} was not healthy within 30s; see ${logPath}`);
 }
 
-async function stop(app: ChildProcess): Promise<void> {
+export async function stop(app: ChildProcess): Promise<void> {
   if (app.exitCode !== null || app.signalCode !== null) return;
   const exited = once(app, 'exit');
   app.kill('SIGTERM');

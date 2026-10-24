@@ -4,6 +4,7 @@ import { readyForLedger, ensureCurrency } from './support/ledger';
 import { todayISO } from './support/dates';
 import { expectNoAccessibilityViolations } from './support/a11y';
 import { readFileSync } from 'node:fs';
+import { test as ownedBookTest } from './support/owned-book';
 
 test.use({ viewport: { width: 390, height: 844 } });
 function ago(days:number) { const date=new Date();date.setDate(date.getDate()-days);return todayISO(date); }
@@ -146,8 +147,10 @@ test('a specific-lot cash-in-lieu correction changes currency without hidden old
   }
 });
 
+// The journey ends on the book-wide self-check sample, so it owns its book
+// (#398): no earlier spec's warnings can push the corrected payment out.
 for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
-  test(`cash-in-lieu parent lineage, warning and correction remain usable in ${locale}`, async ({ page }) => {
+  ownedBookTest(`cash-in-lieu parent lineage, warning and correction remain usable in ${locale}`, async ({ page }) => {
     const p = await setup(page);
     const copy = JSON.parse(readFileSync(new URL(`../../frontend/messages/settings/${locale}.json`, import.meta.url), 'utf8')) as Record<string, string>;
     const cash = await apiJSON<{transaction:{id:number}}>(page,'POST','/api/v1/investments/cash-in-lieu',p.csrfToken,{
@@ -196,8 +199,10 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     await page.goto(`/app/transactions?transaction_id=${corrected.replacement.transaction.id}`);
     await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText(copy.investments_attribution_cash_parent_unresolved);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-    const run=await apiJSON<{results:Array<{check_id:string;warning_sample:Array<{transaction_id:number;reason:string}>}>}>(page,'POST','/api/v1/maintenance/self-check',p.csrfToken,{});
-    expect(run.results.find(result=>result.check_id==='investment_attribution')?.warning_sample).toContainEqual({transaction_id:corrected.replacement.transaction.id,reason:'cash_in_lieu_parent_unresolved'});
+    const run=await apiJSON<{results:Array<{check_id:string;warning_count:number;warning_sample:Array<{transaction_id:number;reason:string}>}>}>(page,'POST','/api/v1/maintenance/self-check',p.csrfToken,{});
+    const attribution=run.results.find(result=>result.check_id==='investment_attribution');
+    expect(attribution?.warning_count).toBe(1);
+    expect(attribution?.warning_sample).toEqual([{transaction_id:corrected.replacement.transaction.id,reason:'cash_in_lieu_parent_unresolved'}]);
   });
 }
 

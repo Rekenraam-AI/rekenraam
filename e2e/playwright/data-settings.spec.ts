@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { apiJSON } from './support/api';
 import { createCashAccount, readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
+import { test as ownedBookTest } from './support/owned-book';
 
 // [acceptance] R3 slice 7 — the Settings → Data screen, mapped to the
 // validation matrix in docs/plans/data-portability-plan.md. Run this subset
@@ -151,17 +152,15 @@ function ago(days: number) {
 
 // #313: supported unknown investment basis is disclosed as incomplete
 // coverage, never as an all-green pass, in every locale and on a phone. The
-// e2e book is shared, so the run may also be failed by another spec's state;
-// either way the unavailable scope must be named and "everything checks out"
-// must not be claimed.
+// run status is book-wide, so the test owns its book (#398): the unknown-basis
+// lots below are the only thing the run can report, and the result is exactly
+// incomplete rather than whatever another spec's state makes it.
 for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
-  test(`[acceptance] the health check discloses unknown basis as incomplete in ${locale}`, async ({ page }) => {
+  ownedBookTest(`[acceptance] the health check discloses unknown basis as incomplete in ${locale}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const settings = JSON.parse(
       readFileSync(new URL(`../../frontend/messages/settings/${locale}.json`, import.meta.url), 'utf8')
     ) as Record<string, string>;
-    const withCount = (message: string) =>
-      new RegExp(message.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace('\\{count\\}', '\\d+'));
     const { csrfToken, currencyID } = await readyForLedger(page);
     const suffix = `sc${locale}${Date.now()}`;
     const instrument = await apiJSON<{ id: number; commodity_id: number }>(
@@ -209,26 +208,23 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
       results: Array<{ check_id: string; status: string; unavailable_count: number; unavailable_sample: number[] }>;
     };
     const lots = run.results.find((result) => result.check_id === 'lot_reconciliation');
-    expect(run.status).not.toBe('passed');
-    expect(run.incomplete_check_count).toBeGreaterThan(0);
-    expect(lots?.status).not.toBe('passed');
-    expect(lots?.unavailable_count).toBeGreaterThan(0);
+    expect(run.status).toBe('incomplete');
+    expect(run.incomplete_check_count).toBe(1);
+    expect(lots?.status).toBe('incomplete');
+    expect(lots?.unavailable_count).toBe(1);
+    expect(run.results.filter((result) => result.unavailable_count > 0).map((result) => result.check_id)).toEqual([
+      'lot_reconciliation'
+    ]);
 
     const summary = page.getByTestId('selfcheck-summary');
     await expect(summary).not.toContainText(settings.settings_data_selfcheck_passed);
-    if (run.status === 'incomplete') {
-      await expect(summary).toHaveText(withCount(settings.settings_data_selfcheck_incomplete));
-    } else {
-      await expect(summary).toContainText(withCount(settings.settings_data_selfcheck_failed_unavailable));
-    }
-    await expect(page.getByTestId('selfcheck-unavailable').first()).toHaveText(
-      withCount(settings.settings_data_selfcheck_unavailable)
+    await expect(summary).toHaveText(settings.settings_data_selfcheck_incomplete.replace('{count}', '1'));
+    await expect(page.getByTestId('selfcheck-unavailable')).toHaveText(
+      settings.settings_data_selfcheck_unavailable.replace('{count}', '1')
     );
-    if (lots?.status === 'incomplete') {
-      await expect(
-        page.getByTestId('selfcheck-result').filter({ has: page.getByTestId('selfcheck-unavailable') }).first()
-      ).toContainText(settings.settings_data_status_incomplete);
-    }
+    await expect(
+      page.getByTestId('selfcheck-result').filter({ has: page.getByTestId('selfcheck-unavailable') })
+    ).toContainText(settings.settings_data_status_incomplete);
     const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(pageWidth).toBeLessThanOrEqual(390);
   });

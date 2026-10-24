@@ -560,6 +560,12 @@ pnpm test:release-preflight
   cold compilation cannot consume its unchanged 45-second readiness budget.
   Normal backend tests skip that server test; no clock override is present in
   the production binary.
+- A test that asserts a book-wide read — self-check run status, counts or the
+  20-record samples — imports `test` from `support/owned-book.ts` instead (#398).
+  Each case starts its own `dist/rekenraam` on a free port against a fresh
+  database under `backend/var/e2e/owned-*/`, so every finding in the run is the
+  test's own. Facts about one transaction stay on the worker book and read that
+  transaction's own diagnostic. Owned-book cases skip against `E2E_BASE_URL`.
 - Run browser invocations sequentially: global setup clears the shared worker
   directory even with `E2E_SKIP_BUILD=1`.
 - Set `E2E_SKIP_BUILD=1` to reuse the existing `dist/rekenraam` while iterating on specs, e.g. `E2E_SKIP_BUILD=1 pnpm --dir e2e exec playwright test investments-split`.

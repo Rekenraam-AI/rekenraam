@@ -817,6 +817,7 @@ has actual installations, its migration files are immutable.
 - Frontend logic gets Svelte checks and focused component or unit tests when introduced.
 - Bruno covers important API workflows.
 - Playwright covers critical user journeys.
+- A Playwright assertion owns what it reads. A worker's book is shared by every file the worker runs, so a book-wide read (self-check status, counts, capped samples, unfiltered list pages) runs in a book the test owns (`e2e/playwright/support/owned-book.ts`) or is narrowed to the test's own records; a fact about one transaction is read from that transaction (its detail or diagnostic). Never branch on an outcome another spec's data can change (#398).
 - Playwright specs must never hard-code a ledger date. Accounts created during a run get `effective_from` set to the run date, and `PostingAccountRule` resolves the account version as-of the posting's entry date, so a fixed posting date starts failing with a `VALIDATION_FAILED` date rejection (`posting date is before account opened date`, or `posting account has no version effective on …`) the moment wall-clock time passes it. Derive dates from `todayISO()` / `todayQIF()` / `monthStartISO()` in `e2e/playwright/support/dates.ts`.
 - Synthetic provider dates are explicit calendar facts: capture one reference
   per scenario, derive related dates with calendar arithmetic and register the
