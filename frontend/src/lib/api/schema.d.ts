@@ -26817,7 +26817,7 @@ export interface paths {
         };
         /**
          * Portfolio returns under returns_v1
-         * @description R13 slice 1 (#119, docs/plans/investment-returns-plan.md). Time-weighted (TTWROR: daily linking, inflows at the start of the day, outflows at its end, valued on every day its validity needs) and money-weighted (IRR, Actual/365, solved only when Descartes' rule proves a unique root) returns of a set of accounts over `from`..`to`, in one reporting currency. The opening valuation is at the end of the day before `from`. External flows are postings outside the portfolio, netted per correction chain and day; external security transfers count at market value, never carried basis. Income and expense are performance, so returns are net of fees and taxes. An investment operation's cash is classified by the position its facts name (holding, or instrument held only inside or only outside), else by where its cash landed, and every such fallback is listed. A missing intermediate valuation removes only the time-weighted figures. Read-only: nothing is posted, transferred or audited, and reconciliation is unaffected. One consistent disposable input snapshot; subsequent requests may restate the result. A figure missing an input is null with its reason, never zero.
+         * @description R13 slices 1 and 3 (#119, docs/plans/investment-returns-plan.md). Time-weighted (TTWROR: daily linking, inflows at the start of the day, outflows at its end, valued on every day its validity needs) and money-weighted (IRR, Actual/365, solved only when Descartes' rule proves a unique root) returns of a set of accounts over `from`..`to`, in one reporting currency. The opening valuation is at the end of the day before `from`. External flows are postings outside the portfolio, netted per correction chain and day; external security transfers count at market value, never carried basis. Income and expense are performance, so returns are net of fees and taxes. An investment operation's cash is classified by the position its facts name (holding, or instrument held only inside or only outside), else by where its cash landed, and every such fallback is listed. A missing intermediate valuation removes only the time-weighted figures. The cumulative time-weighted series comes from the same chain, each point with its own reason. Read-only: nothing is posted, transferred or audited, and reconciliation is unaffected. One consistent disposable input snapshot; subsequent requests may restate the result. A figure missing an input is null with its reason, never zero.
          */
         get: {
             parameters: {
@@ -33845,6 +33845,20 @@ export interface components {
             /** @description Whether the cash entered the portfolio's return (it landed in a portfolio account). */
             counted: boolean;
         };
+        /** @description The time-weighted return from the opening boundary through the end of `date`, or why it is unavailable. */
+        ReturnsSeriesPoint: {
+            /** Format: date */
+            date: string;
+            time_weighted: components["schemas"]["ReturnFigure"];
+        };
+        /** @description Cumulative time-weighted return at chart points, from the same exact chain as `time_weighted`; the last point is the closing day and equals it, or carries its reason. Points are the opening day, then every day (periods up to 92 days), every seventh day counted from the opening day (up to 731 days) or every calendar month end, and the closing day. A point needing a price no headline figure needs is unavailable on its own date and never removes another figure; once the chain fails (a required valuation, non-positive capital, an unknown flow) every later point carries that reason. */
+        ReturnsSeries: {
+            /** @enum {string} */
+            interval: "day" | "week" | "month";
+            points: components["schemas"]["ReturnsSeriesPoint"][];
+            /** @description Coverage of the prices and rates only the chart points needed, apart from the headline `valuation`. */
+            valuation: components["schemas"]["Valuation"];
+        };
         InvestmentReturnsResponse: {
             /** @enum {string} */
             policy: "returns_v1";
@@ -33873,6 +33887,7 @@ export interface components {
             time_weighted_annualized: components["schemas"]["ReturnFigure"];
             money_weighted: components["schemas"]["ReturnFigure"];
             money_weighted_period: components["schemas"]["ReturnFigure"];
+            time_weighted_series: components["schemas"]["ReturnsSeries"];
             attribution_fallbacks: components["schemas"]["ReturnsAttributionFallback"][];
             valuation: components["schemas"]["Valuation"];
         };

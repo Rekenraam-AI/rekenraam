@@ -1,7 +1,7 @@
 get:
   summary: Portfolio returns under returns_v1
   description: >
-    R13 slice 1 (#119, docs/plans/investment-returns-plan.md). Time-weighted
+    R13 slices 1 and 3 (#119, docs/plans/investment-returns-plan.md). Time-weighted
     (TTWROR: daily linking, inflows at the start of the day, outflows at its
     end, valued on every day its validity needs) and money-weighted (IRR,
     Actual/365, solved only when Descartes' rule proves a unique root)
@@ -14,7 +14,9 @@ get:
     investment operation's cash is classified by the position its facts name
     (holding, or instrument held only inside or only outside), else by where
     its cash landed, and every such fallback is listed. A missing intermediate
-    valuation removes only the time-weighted figures. Read-only: nothing
+    valuation removes only the time-weighted figures. The cumulative
+    time-weighted series comes from the same chain, each point with its own
+    reason. Read-only: nothing
     is posted, transferred or audited, and reconciliation is unaffected. One
     consistent disposable input snapshot; subsequent requests may restate the
     result. A figure missing an input is null with its reason, never zero.

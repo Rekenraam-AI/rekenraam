@@ -5,7 +5,7 @@ import { readyForLedger } from './support/ledger';
 import { daysFromTodayISO, todayISO } from './support/dates';
 import { expectNoAccessibilityViolations } from './support/a11y';
 
-// R13 slice 2 (#119): the returns screen over the returns_v1 read. The
+// R13 slices 2 and 3 (#119): the returns screen and its chart over the returns_v1 read. The
 // default scope is every investment account in the book, so each test owns
 // its book and the figures are exact.
 test.use({ viewport: { width: 390, height: 844 } });
@@ -57,6 +57,21 @@ test('[acceptance] returns show an empty book, then exact figures and reasons on
   await expect(summary.getByText('Shown only for periods of at least a year.').first()).toBeVisible();
   await expect(summary.getByText('Every investment account, with its sub-accounts.', { exact: true })).toBeVisible();
   await expect(summary.getByText('Returns holding', { exact: true })).toBeVisible();
+
+  // Slice 3: 46 days is a daily series of 47 points. 0.00 % before and after
+  // the purchase while its fill price is within 7 days; the 32 days from -32
+  // to -1 have no price, so the line breaks there; today's point is the
+  // headline figure.
+  const chart = summary.getByTestId('returns-chart');
+  await expect(chart.getByRole('img')).toBeVisible();
+  await expect(chart.getByTestId('returns-chart-gaps')).toHaveText('32 of 47 points have no value.');
+  await chart.getByText('Table of points', { exact: true }).click();
+  const points = chart.getByTestId('returns-chart-table').locator('tbody tr');
+  await expect(points).toHaveCount(47);
+  await expect(points.nth(13)).toContainText('0.00%');
+  await expect(points.nth(14)).toContainText('Needs a price or exchange rate for');
+  await expect(points.last()).toContainText('+10.00%');
+
   expect(await noHorizontalScroll(page)).toBe(true);
   await expectNoAccessibilityViolations(page, 'Returns on a phone');
 

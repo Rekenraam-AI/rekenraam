@@ -49,9 +49,43 @@ ReturnsAttributionFallback:
     counted:
       type: boolean
       description: Whether the cash entered the portfolio's return (it landed in a portfolio account).
+ReturnsSeriesPoint:
+  type: object
+  description: The time-weighted return from the opening boundary through the end of `date`, or why it is unavailable.
+  required: [date, time_weighted]
+  properties:
+    date:
+      type: string
+      format: date
+    time_weighted:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
+ReturnsSeries:
+  type: object
+  description: >
+    Cumulative time-weighted return at chart points, from the same exact
+    chain as `time_weighted`; the last point is the closing day and equals
+    it, or carries its reason. Points are the opening day, then every day
+    (periods up to 92 days), every seventh day counted from the opening day
+    (up to 731 days) or every calendar month end, and the closing day. A
+    point needing a price no headline figure needs is unavailable on its own
+    date and never removes another figure; once the chain fails (a required
+    valuation, non-positive capital, an unknown flow) every later point
+    carries that reason.
+  required: [interval, points, valuation]
+  properties:
+    interval:
+      type: string
+      enum: [day, week, month]
+    points:
+      type: array
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/ReturnsSeriesPoint"
+    valuation:
+      description: Coverage of the prices and rates only the chart points needed, apart from the headline `valuation`.
+      $ref: "../../openapi.yaml#/components/schemas/Valuation"
 InvestmentReturnsResponse:
   type: object
-  required: [policy, from, to, opening_date, days, account_scope, resolved_account_ids, knowledge_cutoff, opening_value, closing_value, contributions, withdrawals, gain, time_weighted, time_weighted_annualized, money_weighted, money_weighted_period, attribution_fallbacks, valuation]
+  required: [policy, from, to, opening_date, days, account_scope, resolved_account_ids, knowledge_cutoff, opening_value, closing_value, contributions, withdrawals, gain, time_weighted, time_weighted_annualized, money_weighted, money_weighted_period, time_weighted_series, attribution_fallbacks, valuation]
   properties:
     policy:
       type: string
@@ -98,6 +132,8 @@ InvestmentReturnsResponse:
       $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
     money_weighted_period:
       $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
+    time_weighted_series:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsSeries"
     attribution_fallbacks:
       type: array
       items:

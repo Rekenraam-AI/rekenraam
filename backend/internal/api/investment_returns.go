@@ -32,6 +32,17 @@ type returnsFallbackResponse struct {
 	Counted       bool   `json:"counted"`
 }
 
+type returnsSeriesPointResponse struct {
+	Date         string               `json:"date"`
+	TimeWeighted returnFigureResponse `json:"time_weighted"`
+}
+
+type returnsSeriesResponse struct {
+	Interval  string                       `json:"interval"`
+	Points    []returnsSeriesPointResponse `json:"points"`
+	Valuation *valuationResponse           `json:"valuation"`
+}
+
 type investmentReturnsResponse struct {
 	Policy                 string                    `json:"policy"`
 	From                   string                    `json:"from"`
@@ -50,6 +61,7 @@ type investmentReturnsResponse struct {
 	TimeWeightedAnnualized returnFigureResponse      `json:"time_weighted_annualized"`
 	MoneyWeighted          returnFigureResponse      `json:"money_weighted"`
 	MoneyWeightedPeriod    returnFigureResponse      `json:"money_weighted_period"`
+	TimeWeightedSeries     returnsSeriesResponse     `json:"time_weighted_series"`
 	AttributionFallbacks   []returnsFallbackResponse `json:"attribution_fallbacks"`
 	Valuation              *valuationResponse        `json:"valuation"`
 }
@@ -102,6 +114,10 @@ func toInvestmentReturnsResponse(result app.ReturnsResult) investmentReturnsResp
 	for _, fallback := range result.AttributionFallbacks {
 		fallbacks = append(fallbacks, returnsFallbackResponse(fallback))
 	}
+	points := make([]returnsSeriesPointResponse, 0, len(result.TimeWeightedSeries.Points))
+	for _, point := range result.TimeWeightedSeries.Points {
+		points = append(points, returnsSeriesPointResponse{Date: point.Date, TimeWeighted: toReturnFigureResponse(point.TimeWeighted)})
+	}
 	accountIDs := result.ResolvedAccountIDs
 	if accountIDs == nil {
 		accountIDs = []int64{}
@@ -114,6 +130,8 @@ func toInvestmentReturnsResponse(result app.ReturnsResult) investmentReturnsResp
 		Gain:         toReturnsAmountResponse(result.Gain),
 		TimeWeighted: toReturnFigureResponse(result.TimeWeighted), TimeWeightedAnnualized: toReturnFigureResponse(result.TimeWeightedAnnualized),
 		MoneyWeighted: toReturnFigureResponse(result.MoneyWeighted), MoneyWeightedPeriod: toReturnFigureResponse(result.MoneyWeightedPeriod),
+		TimeWeightedSeries: returnsSeriesResponse{Interval: result.TimeWeightedSeries.Interval, Points: points,
+			Valuation: toValuationResponse(&result.TimeWeightedSeries.Valuation)},
 		AttributionFallbacks: fallbacks, Valuation: toValuationResponse(&result.Valuation),
 	}
 }

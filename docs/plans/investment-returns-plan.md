@@ -4,7 +4,8 @@ Status: **contract accepted by the owner 2026-10-24 (four policy answers
 recorded below); slice 1 (backend read) delivered 2026-10-24 and corrected
 the same day after two reviews (`e30413a5`: seven findings, recorded inline
 as "finding N"; `ae084c4d`: two, recorded under the expected cases). Slice 2
-(returns screen) delivered the same day; slices 3–6 pending.**
+(returns screen) and slice 3 (cumulative TTWROR series and chart, contract
+below) delivered the same day; slices 4–6 pending.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
 0017 (provider independence, honest incomplete data) govern this plan.
@@ -224,6 +225,39 @@ day needs its own valuation; a gap is `valuation_unavailable` for TTWROR only.
 This is exactly the daily product for every portfolio, and as cheap as the
 original breakpoint set for long-only portfolios.
 
+## Time-weighted series (slice 3)
+
+The response's `time_weighted_series` is the cumulative TTWROR from the
+opening boundary through the end of each point's day, read from **the same
+exact chain** as the headline figure, never recomputed per point or from
+rounded values.
+
+- **Points.** The opening day (always `0` when the chain is defined), then
+  every day for periods of at most 92 days (`day`), every seventh day counted
+  from the opening day for at most 731 days (`week`; no locale week start),
+  or every calendar month end otherwise (`month`), and always the closing
+  day. The interval is echoed. A long period therefore needs at most a few
+  hundred valuations.
+- **Why extra points are safe.** A point that is not already an evaluation
+  day lies in a run whose validity the evaluation days proved, so its value
+  only splits a telescoping run: it changes no factor, cannot introduce
+  non-positive capital, and the closing point equals `time_weighted` (or
+  carries its reason) by construction. Every ledger test asserts this.
+- **Coverage per point.** The chain is defined only before its first failure:
+  an unknown flow (every point `flow_unavailable`), a required evaluation day
+  without a valuation, or a non-positive denominator. Every point from that
+  day on carries the headline's reason and date. A point that needs a price
+  no headline figure needs is unavailable on its own date (its own reason)
+  and removes nothing else. The series' `valuation` covers only those
+  point-only days, so a chart gap never reads as a gap behind the headline
+  figures, whose `valuation` is unchanged.
+- **No capital** (zero opening value and no flows) makes every point
+  `no_capital`. Before the first inflow of a portfolio that starts empty,
+  factors are 0/0 and the points read `0`, as the chain does.
+- **Presentation.** The chart draws calendar time on x and breaks the line at
+  every missing point; it never interpolates or fills a gap. A table of every
+  point, with its reason in words, is the exact and accessible alternative.
+
 ## Money-weighted return (IRR)
 
 Investor-perspective flows with the same intraday convention, measured in
@@ -324,6 +358,15 @@ is outside.
 | R6 one-day IRR | −100 (t=0), +110 (t=1) | — | — | period `0.100000`; annual not shown |
 | R7 not-held disclosure | S1 base; all ACME sold 07-01; ACME dividend into Checking 07-31, no ex date | — | — | fallback `not_held`, not counted, disclosed |
 
+**Series cases (slice 3).** S1 base (ACME 100 at the opening boundary):
+
+| Case | Ledger | Points |
+|---|---|---|
+| C1 daily | period 02-01..02-05; prices 105 (02-02), 110 (02-04); deposit 500 into broker cash 02-03 | 01-31 `0`, 02-01 `0`, 02-02 `0.045455`, 02-03 `0.045455`, 02-04 `0.077135` = 1150/1100 · 1700/1650 − 1, 02-05 `0.077135` = headline |
+| C2 weekly, local gap | full year; prices 105 (07-31), 110 (close) | 54 points; 02-07 `0` (7-day-old price); 02-14 and 07-25 `valuation_unavailable` on their own dates; 08-01 `0.045455`; close `0.090909`; headline coverage complete, series coverage names ACME |
+| C4 chain stop | R4 ledger (broker cash only) | 07-25 `0`; 08-01 and close `non_positive_capital` dated 07-30 |
+| C5 required gap | R5 ledger | 02-07 `0`; 05-02 and close `valuation_unavailable` dated 05-01 |
+
 Slice 1 tests pin these literals; they never derive expected values from the
 calculator. R1–R7 are the reproducers from the 2026-10-24 review of
 `e30413a5`; they failed before the corrections recorded here.
@@ -370,9 +413,10 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
    labelled with their status; a selected id that is not a selectable account
    is listed, removable and never sent, with a reset to every investment
    account; and missing and stale coverage are disclosed independently.
-3. **Cumulative TTWROR series and chart** — daily or bucketed points derived
-   from the same chain (requires valuations at each point, so coverage is per
-   point).
+3. **Cumulative TTWROR series and chart** — points from the same chain,
+   coverage per point (see *Time-weighted series*). *Delivered 2026-10-24*:
+   `time_weighted_series` on the returns read, and a line chart with a table
+   of points on the returns screen.
 4. **Allocation at a date** — weights by account, instrument type and
    currency; denominator = closing portfolio value; unpriced holdings in an
    explicit unknown group and weights labelled known-only. Long and short

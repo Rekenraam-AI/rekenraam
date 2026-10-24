@@ -877,5 +877,17 @@
   "returns_accounts_unavailable": "Deze gekozen rekeningen zijn geen portefeuillerekeningen in dit boek en worden weggelaten:",
   "returns_accounts_remove_unavailable": "{account} verwijderen",
   "returns_accounts_reset": "Alle beleggingsrekeningen gebruiken",
-  "returns_updating": "Bijwerken met het nieuwste grootboek en de nieuwste koersen…"
+  "returns_updating": "Bijwerken met het nieuwste grootboek en de nieuwste koersen…",
+  "returns_chart_title": "Tijdgewogen rendement door de periode",
+  "returns_chart_help": "Cumulatief vanaf het begin van de periode tot het einde van elke getoonde dag. Waar een punt geen waarde heeft, is de lijn onderbroken en nooit opgevuld.",
+  "returns_chart_interval_day": "Eén punt per dag.",
+  "returns_chart_interval_week": "Eén punt per 7 dagen, en de laatste dag.",
+  "returns_chart_interval_month": "Eén punt per maandeinde, en de laatste dag.",
+  "returns_chart_accessible_label": "Lijngrafiek van het cumulatieve tijdgewogen rendement van {from} tot {to}. De tabel met punten hieronder bevat elke waarde.",
+  "returns_chart_empty": "Geen enkel punt heeft een waarde, dus er is geen lijn. De tabel met punten zegt waarom.",
+  "returns_chart_gaps": "{missing} van {total} punten hebben geen waarde.",
+  "returns_chart_coverage": "Punten zonder bruikbare koers of wisselkoers voor: {commodities}. De cijfers hierboven hebben die niet nodig.",
+  "returns_chart_data": "Tabel met punten",
+  "returns_chart_column_date": "Einde van de dag",
+  "returns_chart_column_return": "Tijdgewogen rendement"
 }

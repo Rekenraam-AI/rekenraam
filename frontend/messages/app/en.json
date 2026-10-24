@@ -877,5 +877,17 @@
   "returns_accounts_unavailable": "These selected accounts are not portfolio accounts in this book and will be left out:",
   "returns_accounts_remove_unavailable": "Remove {account}",
   "returns_accounts_reset": "Use every investment account",
-  "returns_updating": "Updating with the latest ledger and prices…"
+  "returns_updating": "Updating with the latest ledger and prices…",
+  "returns_chart_title": "Time-weighted return through the period",
+  "returns_chart_help": "Cumulative from the start of the period to the end of each day shown. Where a point has no value the line is broken, never filled in.",
+  "returns_chart_interval_day": "One point per day.",
+  "returns_chart_interval_week": "One point every 7 days, and the last day.",
+  "returns_chart_interval_month": "One point per month end, and the last day.",
+  "returns_chart_accessible_label": "Line chart of the cumulative time-weighted return from {from} to {to}. The table of points below lists every value.",
+  "returns_chart_empty": "No point has a value, so there is no line to draw. The table of points says why.",
+  "returns_chart_gaps": "{missing} of {total} points have no value.",
+  "returns_chart_coverage": "Points without a usable price or exchange rate for: {commodities}. The figures above do not need them.",
+  "returns_chart_data": "Table of points",
+  "returns_chart_column_date": "End of day",
+  "returns_chart_column_return": "Time-weighted return"
 }

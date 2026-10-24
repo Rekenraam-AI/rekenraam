@@ -4,6 +4,7 @@ import (
 	"math"
 	"math/big"
 	"sort"
+	"time"
 )
 
 // R13 returns_v1 arithmetic (docs/plans/investment-returns-plan.md). The
@@ -62,8 +63,28 @@ type returnsDayFlow struct {
 // is exactly the daily one. A 0/0 factor is 1; any other non-positive
 // denominator makes the figure unavailable, dated at the capital it measured.
 func timeWeightedReturn(openDate string, values map[string]*big.Rat, flows map[string]returnsDayFlow) (*big.Rat, ReturnFigure) {
+	growth, _, failure := timeWeightedChain(openDate, values, flows)
+	if failure.Reason != "" {
+		return nil, failure
+	}
+	last := openDate
+	for date := range values {
+		last = max(last, date)
+	}
+	product := growth[last]
+	return product, availableReturn(formatReturnRat(new(big.Rat).Sub(product, big.NewRat(1, 1))))
+}
+
+// timeWeightedChain is the linked product through each evaluated day: the
+// cumulative growth factor a series point reads. Extra evaluated days whose
+// validity was already proven change nothing, because exact runs telescope.
+// On failure the chain stops; failedOn is the first evaluated day whose
+// factor is undefined (the opening day for no capital), so cumulative growth
+// is known only before it.
+func timeWeightedChain(openDate string, values map[string]*big.Rat, flows map[string]returnsDayFlow) (map[string]*big.Rat, string, ReturnFigure) {
+	growth := map[string]*big.Rat{openDate: big.NewRat(1, 1)}
 	if values[openDate].Sign() == 0 && len(flows) == 0 {
-		return nil, unavailableReturn(ReturnReasonNoCapital, "")
+		return growth, openDate, unavailableReturn(ReturnReasonNoCapital, "")
 	}
 	dates := make([]string, 0, len(values)+len(flows))
 	for date := range values {
@@ -72,7 +93,7 @@ func timeWeightedReturn(openDate string, values map[string]*big.Rat, flows map[s
 		}
 	}
 	for date := range flows {
-		if _, ok := values[date]; !ok {
+		if _, ok := values[date]; !ok && date > openDate {
 			dates = append(dates, date)
 		}
 	}
@@ -100,13 +121,14 @@ func timeWeightedReturn(openDate string, values map[string]*big.Rat, flows map[s
 		switch {
 		case start.Sign() == 0 && numerator.Sign() == 0:
 		case start.Sign() <= 0:
-			return nil, unavailableReturn(ReturnReasonNonPositiveCapital, prevDate)
+			return growth, date, unavailableReturn(ReturnReasonNonPositiveCapital, prevDate)
 		default:
-			product.Mul(product, new(big.Rat).Quo(numerator, start))
+			product = new(big.Rat).Mul(product, new(big.Rat).Quo(numerator, start))
 		}
+		growth[date] = product
 		prev, prevDate = value, date
 	}
-	return product, availableReturn(formatReturnRat(new(big.Rat).Sub(product, big.NewRat(1, 1))))
+	return growth, "", ReturnFigure{}
 }
 
 // annualizedReturn compounds a period growth factor to 365 days. Shorter
@@ -290,4 +312,58 @@ func formatScaledReturn(scaled *big.Int) string {
 		text = "-" + text
 	}
 	return text
+}
+
+// Series intervals: how far apart the cumulative time-weighted points are.
+const (
+	ReturnsSeriesDaily   = "day"
+	ReturnsSeriesWeekly  = "week"
+	ReturnsSeriesMonthly = "month"
+)
+
+// Interval thresholds in period days: about a quarter is daily, up to two
+// years weekly, anything longer monthly, so a chart never needs more than a
+// few hundred valuations however long the period.
+const (
+	returnsSeriesDailyMaxDays  = 92
+	returnsSeriesWeeklyMaxDays = 731
+)
+
+// returnsSeriesDates chooses the interval for a period and lists its points:
+// the opening day, then every day, every seventh day counted from the opening
+// day (no locale's week start), or every calendar month end, and always the
+// closing day.
+func returnsSeriesDates(openDate, to string, days int) (string, []string) {
+	open, err := time.Parse(time.DateOnly, openDate)
+	if err != nil {
+		return ReturnsSeriesDaily, []string{openDate, to}
+	}
+	interval := ReturnsSeriesMonthly
+	switch {
+	case days <= returnsSeriesDailyMaxDays:
+		interval = ReturnsSeriesDaily
+	case days <= returnsSeriesWeeklyMaxDays:
+		interval = ReturnsSeriesWeekly
+	}
+	dates := []string{openDate}
+	for step := 0; ; step++ {
+		var point time.Time
+		switch interval {
+		case ReturnsSeriesDaily:
+			point = open.AddDate(0, 0, step)
+		case ReturnsSeriesWeekly:
+			point = open.AddDate(0, 0, 7*step)
+		default:
+			// The last day of the step-th month from the opening day's own.
+			point = time.Date(open.Year(), open.Month()+time.Month(step)+1, 0, 0, 0, 0, 0, time.UTC)
+		}
+		date := point.Format(time.DateOnly)
+		if date >= to {
+			break
+		}
+		if date > openDate {
+			dates = append(dates, date)
+		}
+	}
+	return interval, append(dates, to)
 }

@@ -18,6 +18,7 @@
     fallbackReasonText, formatReturn, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
     returnsCoverage, returnsSelectionParams, unavailableAccountIDs, validRange, type ReturnsPreset
   } from './returns-model';
+  import ReturnsChart from './returns-chart.svelte';
 
   // R13 portfolio returns (#119, slice 2): a read-only view of the returns_v1
   // live read. Every missing figure says why; nothing here posts or moves money.
@@ -79,6 +80,7 @@
   const referencesLoading = $derived(accounts.isPending || currencies.isPending || book.isPending);
   const referenceError = $derived(accounts.error ?? currencies.error ?? book.error);
   const coverage = $derived(returnsCoverage(result?.valuation));
+  const seriesCoverage = $derived(returnsCoverage(result?.time_weighted_series.valuation));
 
   function apply(range?: { from: string; to: string }) {
     const from = range?.from ?? fromDraft;
@@ -286,6 +288,11 @@
             </Panel>
           {/each}
         </div>
+
+        <Panel>
+          <ReturnsChart series={result.time_weighted_series} {locale} formatDate={day}
+            missingCommodities={seriesCoverage.missing.map(currencyOrCommodity)} />
+        </Panel>
 
         <Panel>
           <h3 class="text-sm font-semibold text-foreground">{m.returns_values_title()}</h3>

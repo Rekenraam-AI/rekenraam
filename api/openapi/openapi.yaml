@@ -1620,6 +1620,10 @@ components:
       $ref: "./components/schemas/investment-returns.yaml#/ReturnFigure"
     ReturnsAttributionFallback:
       $ref: "./components/schemas/investment-returns.yaml#/ReturnsAttributionFallback"
+    ReturnsSeriesPoint:
+      $ref: "./components/schemas/investment-returns.yaml#/ReturnsSeriesPoint"
+    ReturnsSeries:
+      $ref: "./components/schemas/investment-returns.yaml#/ReturnsSeries"
     InvestmentReturnsResponse:
       $ref: "./components/schemas/investment-returns.yaml#/InvestmentReturnsResponse"
     GainsStatementValuation:

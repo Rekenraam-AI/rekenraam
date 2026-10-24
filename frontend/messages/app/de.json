@@ -877,5 +877,17 @@
   "returns_accounts_unavailable": "Diese gewählten Konten sind keine Portfoliokonten in diesem Buch und werden ausgelassen:",
   "returns_accounts_remove_unavailable": "{account} entfernen",
   "returns_accounts_reset": "Alle Anlagekonten verwenden",
-  "returns_updating": "Wird mit dem aktuellen Hauptbuch und den aktuellen Kursen aktualisiert…"
+  "returns_updating": "Wird mit dem aktuellen Hauptbuch und den aktuellen Kursen aktualisiert…",
+  "returns_chart_title": "Zeitgewichtete Rendite im Zeitraum",
+  "returns_chart_help": "Kumuliert vom Beginn des Zeitraums bis zum Ende jedes gezeigten Tages. Wo ein Punkt keinen Wert hat, ist die Linie unterbrochen und wird nie aufgefüllt.",
+  "returns_chart_interval_day": "Ein Punkt pro Tag.",
+  "returns_chart_interval_week": "Ein Punkt alle 7 Tage und der letzte Tag.",
+  "returns_chart_interval_month": "Ein Punkt pro Monatsende und der letzte Tag.",
+  "returns_chart_accessible_label": "Liniendiagramm der kumulierten zeitgewichteten Rendite von {from} bis {to}. Die Punkttabelle darunter enthält jeden Wert.",
+  "returns_chart_empty": "Kein Punkt hat einen Wert, daher gibt es keine Linie. Die Punkttabelle nennt den Grund.",
+  "returns_chart_gaps": "{missing} von {total} Punkten haben keinen Wert.",
+  "returns_chart_coverage": "Punkte ohne nutzbaren Kurs oder Wechselkurs für: {commodities}. Die Werte oben benötigen sie nicht.",
+  "returns_chart_data": "Punkttabelle",
+  "returns_chart_column_date": "Tagesende",
+  "returns_chart_column_return": "Zeitgewichtete Rendite"
 }

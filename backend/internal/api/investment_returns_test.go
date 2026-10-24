@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// R13 slice 1: the returns read is wired, echoes its policy and scope, and
+// R13 slices 1 and 3: the returns read is wired, echoes its policy and scope, and
 // keeps a reason beside every missing figure. Calculation literals live in
 // the app package's tests.
 func TestInvestmentReturnsAPI(t *testing.T) {
@@ -43,6 +43,12 @@ func TestInvestmentReturnsAPI(t *testing.T) {
 	require.NotNil(t, body.Valuation)
 	assert.Equal(t, f.commodityID, body.Valuation.CommodityID)
 	assert.NotNil(t, body.AttributionFallbacks)
+	// Slice 3: the one-day series is the opening point and the closing day.
+	assert.Equal(t, "day", body.TimeWeightedSeries.Interval)
+	require.Len(t, body.TimeWeightedSeries.Points, 2)
+	assert.Equal(t, "2026-01-31", body.TimeWeightedSeries.Points[0].Date)
+	assert.Equal(t, body.TimeWeighted, body.TimeWeightedSeries.Points[1].TimeWeighted)
+	require.NotNil(t, body.TimeWeightedSeries.Valuation)
 
 	for _, query := range []string{
 		"?from=2026-02-01&to=2026-02-01",

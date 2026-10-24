@@ -877,5 +877,17 @@
   "returns_accounts_unavailable": "Ces comptes sélectionnés ne sont pas des comptes de portefeuille de ce livre et seront ignorés :",
   "returns_accounts_remove_unavailable": "Retirer {account}",
   "returns_accounts_reset": "Utiliser tous les comptes d'investissement",
-  "returns_updating": "Mise à jour avec le grand livre et les cours les plus récents…"
+  "returns_updating": "Mise à jour avec le grand livre et les cours les plus récents…",
+  "returns_chart_title": "Rendement pondéré par le temps sur la période",
+  "returns_chart_help": "Cumulé depuis le début de la période jusqu’à la fin de chaque jour affiché. Là où un point n’a pas de valeur, la ligne est interrompue, jamais complétée.",
+  "returns_chart_interval_day": "Un point par jour.",
+  "returns_chart_interval_week": "Un point tous les 7 jours, et le dernier jour.",
+  "returns_chart_interval_month": "Un point par fin de mois, et le dernier jour.",
+  "returns_chart_accessible_label": "Graphique linéaire du rendement cumulé pondéré par le temps du {from} au {to}. Le tableau des points ci-dessous donne chaque valeur.",
+  "returns_chart_empty": "Aucun point n’a de valeur, il n’y a donc pas de ligne. Le tableau des points indique pourquoi.",
+  "returns_chart_gaps": "{missing} points sur {total} n’ont pas de valeur.",
+  "returns_chart_coverage": "Points sans cours ni taux de change utilisable pour : {commodities}. Les chiffres ci-dessus n’en ont pas besoin.",
+  "returns_chart_data": "Tableau des points",
+  "returns_chart_column_date": "Fin de journée",
+  "returns_chart_column_return": "Rendement pondéré par le temps"
 }

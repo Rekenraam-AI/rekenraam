@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   fallbackReasonText, formatReturn, lastYear, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
-  returnsCoverage, returnsSelectionParams, unavailableAccountIDs, validRange, yearToDate
+  returnsChartModel, returnsCoverage, returnsSelectionParams, unavailableAccountIDs, validRange, yearToDate
 } from './returns-model';
+import type { ReturnFigure, ReturnsSeriesPoint } from '#lib/api/investments.ts';
 import type { Valuation } from '#lib/reports/reporting-currency.ts';
 
 const today = '2026-10-24';
@@ -134,5 +135,46 @@ describe('unavailableAccountIDs', () => {
   it('lists selected ids that are not selectable accounts, in selection order', () => {
     expect(unavailableAccountIDs([999999, 4, 12], [4, 9])).toEqual([999999, 12]);
     expect(unavailableAccountIDs([4], [4, 9])).toEqual([]);
+  });
+});
+
+describe('returns chart model', () => {
+  const point = (date: string, value: string | null, reason: ReturnFigure['reason'] = null): ReturnsSeriesPoint =>
+    ({ date, time_weighted: { value, reason, date: null } });
+
+  it('breaks the line at a missing point instead of interpolating', () => {
+    const chart = returnsChartModel([
+      point('2026-01-31', '0.000000'),
+      point('2026-02-07', '0.050000'),
+      point('2026-02-14', null, 'valuation_unavailable'),
+      point('2026-02-21', '-0.050000'),
+      point('2026-02-22', '0.100000')
+    ]);
+    expect(chart.segments.map((segment) => segment.map((p) => p.date))).toEqual([
+      ['2026-01-31', '2026-02-07'], ['2026-02-21', '2026-02-22']
+    ]);
+    expect(chart.available).toBe(4);
+    expect(chart.total).toBe(5);
+    expect(chart.minimum).toBe(-0.05);
+    expect(chart.maximum).toBe(0.1);
+    expect(chart.zeroY).toBeCloseTo(2 / 3);
+    // Calendar time: 7 of 22 days, and the 1-day closing interval is short.
+    expect(chart.segments[0][1].x).toBeCloseTo(7 / 22);
+    expect(chart.segments[1][1].x).toBe(1);
+    expect(chart.segments[1][1].y).toBe(0);
+  });
+
+  it('keeps 0 % in range and centres a flat line', () => {
+    const rising = returnsChartModel([point('2026-01-31', '0.000000'), point('2026-02-01', '0.020000')]);
+    expect(rising.minimum).toBe(0);
+    expect(rising.zeroY).toBe(1);
+    const flat = returnsChartModel([point('2026-01-31', '0.000000'), point('2026-02-01', '0.000000')]);
+    expect(flat.zeroY).toBe(0.5);
+  });
+
+  it('has no segments when no point has a value', () => {
+    const chart = returnsChartModel([point('2026-01-31', null, 'no_capital'), point('2026-02-01', null, 'no_capital')]);
+    expect(chart.segments).toEqual([]);
+    expect(chart.available).toBe(0);
   });
 });

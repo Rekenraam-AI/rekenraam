@@ -146,3 +146,51 @@ func TestFormatReturnRoundsHalfAwayFromZero(t *testing.T) {
 	require.Equal(t, "0.000000", formatReturnRat(big.NewRat(4, 10_000_000)))
 	require.Equal(t, "-1.250000", formatReturnRat(big.NewRat(-5, 4)))
 }
+
+func TestReturnsSeriesDatesChooseTheIntervalByPeriodLength(t *testing.T) {
+	t.Parallel()
+	interval, dates := returnsSeriesDates("2026-01-31", "2026-02-03", 3)
+	require.Equal(t, ReturnsSeriesDaily, interval)
+	require.Equal(t, []string{"2026-01-31", "2026-02-01", "2026-02-02", "2026-02-03"}, dates)
+
+	// 92 days is the last daily period; 93 is weekly.
+	interval, dates = returnsSeriesDates("2026-01-31", "2026-05-03", 92)
+	require.Equal(t, ReturnsSeriesDaily, interval)
+	require.Len(t, dates, 93)
+	interval, dates = returnsSeriesDates("2026-01-31", "2026-05-04", 93)
+	require.Equal(t, ReturnsSeriesWeekly, interval)
+	require.Equal(t, []string{"2026-01-31", "2026-02-07", "2026-02-14"}, dates[:3])
+	require.Equal(t, "2026-05-02", dates[len(dates)-2])
+	require.Equal(t, "2026-05-04", dates[len(dates)-1])
+
+	// A weekly point on the closing day is not repeated.
+	_, dates = returnsSeriesDates("2026-01-31", "2026-05-09", 98)
+	require.Equal(t, []string{"2026-05-02", "2026-05-09"}, dates[len(dates)-2:])
+
+	// Monthly from a mid-month opening day: that month's end comes first;
+	// February ends on its own last day.
+	interval, dates = returnsSeriesDates("2024-01-15", "2026-03-10", 786)
+	require.Equal(t, ReturnsSeriesMonthly, interval)
+	require.Equal(t, []string{"2024-01-15", "2024-01-31", "2024-02-29", "2024-03-31"}, dates[:4])
+	require.Equal(t, []string{"2026-01-31", "2026-02-28", "2026-03-10"}, dates[len(dates)-3:])
+}
+
+func TestTimeWeightedChainRecordsCumulativeGrowthUntilItFails(t *testing.T) {
+	t.Parallel()
+	growth, failedOn, failure := timeWeightedChain("2026-01-31",
+		values("2026-01-31", 1100, "2026-05-01", 1150, "2026-11-01", 1515, "2027-01-31", 1565),
+		map[string]returnsDayFlow{"2026-05-02": inflow(500), "2026-11-01": outflow(300)})
+	require.Empty(t, failedOn)
+	require.Empty(t, failure.Reason)
+	require.Equal(t, "0.045455", formatReturnRat(new(big.Rat).Sub(growth["2026-05-01"], rat(1))))
+	require.Equal(t, "0.187954", formatReturnRat(new(big.Rat).Sub(growth["2027-01-31"], rat(1))))
+
+	// R4: the factor ending 07-31 divides by V(07-30) < 0; growth stops there.
+	growth, failedOn, failure = timeWeightedChain("2026-01-31",
+		values("2026-01-31", 100, "2026-07-29", 100, "2026-07-30", -100, "2026-07-31", 100, "2027-01-31", 100), nil)
+	require.Equal(t, "2026-07-31", failedOn)
+	require.Equal(t, ReturnReasonNonPositiveCapital, failure.Reason)
+	require.Equal(t, "2026-07-30", failure.Date)
+	require.Contains(t, growth, "2026-07-29")
+	require.NotContains(t, growth, "2026-07-31")
+}

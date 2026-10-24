@@ -95,8 +95,26 @@ type ReturnsResult struct {
 	MoneyWeighted          ReturnFigure
 	MoneyWeightedPeriod    ReturnFigure
 
+	TimeWeightedSeries ReturnsSeries
+
 	AttributionFallbacks []ReturnsAttributionFallback
 	Valuation            ValuationCoverage
+}
+
+// ReturnsSeries is the cumulative time-weighted return at each chart point.
+// Valuation covers only the prices and rates the points alone needed, so a
+// gap that removes a point never reads as a gap behind the headline figures.
+type ReturnsSeries struct {
+	Interval  string
+	Points    []ReturnsSeriesPoint
+	Valuation ValuationCoverage
+}
+
+// ReturnsSeriesPoint is the time-weighted return from the opening day
+// through the end of Date, or why it is unknown.
+type ReturnsSeriesPoint struct {
+	Date         string
+	TimeWeighted ReturnFigure
 }
 
 // ReadReturns computes one live returns read from one disposable image of
@@ -167,6 +185,9 @@ type returnsReader struct {
 	postings []db.LedgerPostingRecord
 	shorts   []db.ShortLotQuantityEvent
 	rates    *RateTable
+	// seriesRates values the days only chart points need, keeping their
+	// coverage apart from the headline figures'.
+	seriesRates *RateTable
 }
 
 // returnsEntryFlow is one journal entry's external flow, or why it has none.
@@ -209,9 +230,11 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 	for _, posting := range r.postings {
 		commodities = append(commodities, posting.CommodityID)
 	}
-	r.rates, err = newRateTableAtBoundary(ctx, r.pricing, ReportingCurrencyInput{CommodityID: input.ReportingCommodityID, MaxStalenessDay: staleness},
-		commodities, r.openDate, r.to, boundary)
-	if err != nil {
+	reporting := ReportingCurrencyInput{CommodityID: input.ReportingCommodityID, MaxStalenessDay: staleness}
+	if r.rates, err = newRateTableAtBoundary(ctx, r.pricing, reporting, commodities, r.openDate, r.to, boundary); err != nil {
+		return err
+	}
+	if r.seriesRates, err = newRateTableAtBoundary(ctx, r.pricing, reporting, commodities, r.openDate, r.to, boundary); err != nil {
 		return err
 	}
 	defer func() {
@@ -220,6 +243,7 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 			code = currency.Code
 		}
 		result.Valuation = r.rates.Coverage(code)
+		result.TimeWeightedSeries.Valuation = r.seriesRates.Coverage(code)
 	}()
 
 	flows, fallbacks := r.classify(anchors)
@@ -476,9 +500,9 @@ type returnsValuation struct {
 	reason string
 }
 
-// valuations values the portfolio at the end of each date, folding the
-// ledger forward once.
-func (r *returnsReader) valuations(dates []string) map[string]returnsValuation {
+// valuations values the portfolio at the end of each date with one rate
+// table, folding the ledger forward once.
+func (r *returnsReader) valuations(dates []string, rates *RateTable) map[string]returnsValuation {
 	sort.Strings(dates)
 	dates = slices.Compact(dates)
 	running := map[int64]map[int64]*exact.ScaledInt{}
@@ -525,7 +549,7 @@ func (r *returnsReader) valuations(dates []string) map[string]returnsValuation {
 					valuation.reason = ReturnReasonValuationUnavailable
 					break
 				}
-				value, ok := r.convert(coefficient, total.Scale(), id, date)
+				value, ok := rates.ConvertExact(coefficient, total.Scale(), id, date)
 				if !ok {
 					valuation.reason = ReturnReasonValuationUnavailable
 					continue
@@ -595,7 +619,8 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 		}
 	}
 	evaluation := r.evaluationDays(breakpoints)
-	values := r.valuations(evaluation)
+	values := r.valuations(evaluation, r.rates)
+	result.TimeWeightedSeries = r.series(byDay, flowsKnown, values, result.Days)
 
 	result.OpeningValue = r.amount(values[r.openDate], r.openDate)
 	result.ClosingValue = r.amount(values[r.to], r.to)
@@ -685,6 +710,69 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 	} else {
 		result.MoneyWeighted = growthReturn(growth, 365/float64(result.Days))
 	}
+}
+
+// series reads the cumulative time-weighted return at each chart point from
+// the same chain as the headline figure (the plan's slice 3). A point that is
+// not already an evaluation day lies in a run the chain proved valid, so its
+// value only splits a telescoping run and changes no factor. The chain is
+// defined only before its first failure (a required valuation, non-positive
+// capital, an unknown flow); a point's own missing valuation removes only
+// that point.
+func (r *returnsReader) series(byDay map[string]returnsDayFlow, flowsKnown bool, required map[string]returnsValuation, days int) ReturnsSeries {
+	interval, dates := returnsSeriesDates(r.openDate, r.to, days)
+	extra := make([]string, 0, len(dates))
+	for _, date := range dates {
+		if _, ok := required[date]; !ok {
+			extra = append(extra, date)
+		}
+	}
+	own := r.valuations(extra, r.seriesRates)
+
+	failedOn, failure := "", ReturnFigure{}
+	if !flowsKnown {
+		failedOn, failure = r.openDate, unavailableReturn(ReturnReasonFlowUnavailable, "")
+	} else {
+		for _, date := range slices.Sorted(maps.Keys(required)) {
+			if required[date].reason != "" {
+				failedOn, failure = date, unavailableReturn(required[date].reason, date)
+				break
+			}
+		}
+	}
+	before := func(date string) bool { return failedOn == "" || date < failedOn }
+	growth := map[string]*big.Rat{}
+	if failedOn != r.openDate {
+		known := map[string]*big.Rat{}
+		for _, valuations := range []map[string]returnsValuation{required, own} {
+			for date, valuation := range valuations {
+				if valuation.reason == "" && before(date) {
+					known[date] = valuation.value
+				}
+			}
+		}
+		var chainFailedOn string
+		var chainFailure ReturnFigure
+		growth, chainFailedOn, chainFailure = timeWeightedChain(r.openDate, known, byDay)
+		if chainFailedOn != "" && before(chainFailedOn) {
+			failedOn, failure = chainFailedOn, chainFailure
+		}
+	}
+
+	series := ReturnsSeries{Interval: interval, Points: make([]ReturnsSeriesPoint, 0, len(dates))}
+	for _, date := range dates {
+		point := ReturnsSeriesPoint{Date: date}
+		switch valuation, isOwn := own[date]; {
+		case !before(date):
+			point.TimeWeighted = failure
+		case isOwn && valuation.reason != "":
+			point.TimeWeighted = unavailableReturn(valuation.reason, date)
+		default:
+			point.TimeWeighted = availableReturn(formatReturnRat(new(big.Rat).Sub(growth[date], big.NewRat(1, 1))))
+		}
+		series.Points = append(series.Points, point)
+	}
+	return series
 }
 
 // evaluationDays adds to the flow breakpoints every day the daily product's

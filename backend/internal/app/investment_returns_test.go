@@ -88,6 +88,11 @@ func (f *returnsFixture) read(t *testing.T, from, to string) ReturnsResult {
 	t.Helper()
 	result, err := f.investmentService.ReadReturns(context.Background(), ReturnsInput{From: from, To: to, ReportingCommodityID: f.eurCommodityID})
 	require.NoError(t, err)
+	// The series is the same chain: its closing point is the headline
+	// figure, or missing for the same reason.
+	last := result.TimeWeightedSeries.Points[len(result.TimeWeightedSeries.Points)-1]
+	require.Equal(t, to, last.Date)
+	require.Equal(t, result.TimeWeighted, last.TimeWeighted)
 	return result
 }
 
@@ -477,4 +482,98 @@ func TestReturnsDivideExactValuesNotRoundedOnes(t *testing.T) {
 		requireReturnsAmount(t, 0, result.Withdrawals) // €0.00001, shown at cent scale
 		requireReturnsAmount(t, 900, result.ClosingValue)
 	})
+}
+
+// requireSeriesPoint pins one series point to a literal or a dated reason.
+func requireSeriesPoint(t *testing.T, series ReturnsSeries, date, expected, reason, reasonDate string) {
+	t.Helper()
+	for _, point := range series.Points {
+		if point.Date != date {
+			continue
+		}
+		if reason != "" {
+			require.Nil(t, point.TimeWeighted.Value, date)
+			require.Equal(t, reason, point.TimeWeighted.Reason, date)
+			require.Equal(t, reasonDate, point.TimeWeighted.Date, date)
+			return
+		}
+		requireReturn(t, expected, point.TimeWeighted)
+		return
+	}
+	t.Fatalf("no series point on %s", date)
+}
+
+// C1: a daily series over a deposit, ending at the headline figure.
+func TestReturnsSeriesDailyFollowsTheChain(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.price(t, "2026-02-02", 10500)
+	f.post(t, "2026-02-03", f.brokerCashID, f.cashAccountID, 50000)
+	f.price(t, "2026-02-04", 11000)
+
+	result := f.read(t, "2026-02-01", "2026-02-05")
+	series := result.TimeWeightedSeries
+	require.Equal(t, ReturnsSeriesDaily, series.Interval)
+	require.Len(t, series.Points, 6)
+	for date, expected := range map[string]string{"2026-01-31": "0.000000", "2026-02-01": "0.000000", "2026-02-02": "0.045455",
+		"2026-02-03": "0.045455", "2026-02-04": "0.077135", "2026-02-05": "0.077135"} {
+		requireSeriesPoint(t, series, date, expected, "", "")
+	}
+	requireReturn(t, "0.077135", result.TimeWeighted)
+	require.True(t, series.Valuation.Complete)
+}
+
+// C2: weekly points without a price in the window are missing on their own
+// dates; the headline figures and their coverage are untouched.
+func TestReturnsSeriesPointGapsStayLocal(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.price(t, "2026-07-31", 10500)
+	f.price(t, "2027-01-31", 11000)
+
+	result := f.read(t, "2026-02-01", "2027-01-31")
+	series := result.TimeWeightedSeries
+	require.Equal(t, ReturnsSeriesWeekly, series.Interval)
+	require.Len(t, series.Points, 54)
+	requireSeriesPoint(t, series, "2026-01-31", "0.000000", "", "")
+	requireSeriesPoint(t, series, "2026-02-07", "0.000000", "", "")
+	requireSeriesPoint(t, series, "2026-02-14", "", ReturnReasonValuationUnavailable, "2026-02-14")
+	requireSeriesPoint(t, series, "2026-07-25", "", ReturnReasonValuationUnavailable, "2026-07-25")
+	requireSeriesPoint(t, series, "2026-08-01", "0.045455", "", "")
+	requireSeriesPoint(t, series, "2027-01-31", "0.090909", "", "")
+	requireReturn(t, "0.090909", result.TimeWeighted)
+	require.True(t, result.Valuation.Complete, "a chart gap is not a headline gap")
+	require.False(t, series.Valuation.Complete)
+	require.Equal(t, f.stockCommodityID, series.Valuation.Gaps[0].CommodityID)
+}
+
+// C4 (R4 base): points before non-positive capital keep their value; every
+// later point carries the headline's reason and date.
+func TestReturnsSeriesStopsAtNonPositiveCapital(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.post(t, "2026-07-30", f.feeID, f.brokerCashID, 20000)
+	f.post(t, "2026-07-31", f.brokerCashID, f.incomeAccountID, 20000)
+
+	result, err := f.investmentService.ReadReturns(context.Background(), ReturnsInput{From: "2026-02-01", To: "2027-01-31",
+		ReportingCommodityID: f.eurCommodityID, AccountIDs: []int64{f.brokerCashID}})
+	require.NoError(t, err)
+	series := result.TimeWeightedSeries
+	requireSeriesPoint(t, series, "2026-07-25", "0.000000", "", "")
+	requireSeriesPoint(t, series, "2026-08-01", "", ReturnReasonNonPositiveCapital, "2026-07-30")
+	requireSeriesPoint(t, series, "2027-01-31", "", ReturnReasonNonPositiveCapital, "2026-07-30")
+}
+
+// R5 base: a required intermediate valuation gap removes the points from
+// that day on, as it removes the headline TTWROR.
+func TestReturnsSeriesStopsAtARequiredValuationGap(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.post(t, "2026-05-02", f.brokerCashID, f.cashAccountID, 50000)
+	f.price(t, "2027-01-31", 10000)
+
+	series := f.read(t, "2026-02-01", "2027-01-31").TimeWeightedSeries
+	requireSeriesPoint(t, series, "2026-02-07", "0.000000", "", "")
+	requireSeriesPoint(t, series, "2026-05-02", "", ReturnReasonValuationUnavailable, "2026-05-01")
+	requireSeriesPoint(t, series, "2027-01-31", "", ReturnReasonValuationUnavailable, "2026-05-01")
 }

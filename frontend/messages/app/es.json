@@ -877,5 +877,17 @@
   "returns_accounts_unavailable": "Estas cuentas seleccionadas no son cuentas de cartera de este libro y se omitirán:",
   "returns_accounts_remove_unavailable": "Quitar {account}",
   "returns_accounts_reset": "Usar todas las cuentas de inversión",
-  "returns_updating": "Actualizando con el libro mayor y los precios más recientes…"
+  "returns_updating": "Actualizando con el libro mayor y los precios más recientes…",
+  "returns_chart_title": "Rentabilidad ponderada por el tiempo durante el período",
+  "returns_chart_help": "Acumulada desde el inicio del período hasta el final de cada día mostrado. Donde un punto no tiene valor, la línea se interrumpe y nunca se rellena.",
+  "returns_chart_interval_day": "Un punto por día.",
+  "returns_chart_interval_week": "Un punto cada 7 días y el último día.",
+  "returns_chart_interval_month": "Un punto por fin de mes y el último día.",
+  "returns_chart_accessible_label": "Gráfico de líneas de la rentabilidad acumulada ponderada por el tiempo del {from} al {to}. La tabla de puntos de abajo recoge cada valor.",
+  "returns_chart_empty": "Ningún punto tiene valor, así que no hay línea. La tabla de puntos indica por qué.",
+  "returns_chart_gaps": "{missing} de {total} puntos no tienen valor.",
+  "returns_chart_coverage": "Puntos sin precio ni tipo de cambio utilizable para: {commodities}. Las cifras de arriba no los necesitan.",
+  "returns_chart_data": "Tabla de puntos",
+  "returns_chart_column_date": "Fin del día",
+  "returns_chart_column_return": "Rentabilidad ponderada por el tiempo"
 }

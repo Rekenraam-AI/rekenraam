@@ -1,4 +1,5 @@
 import type { ReadonlyURLSearchParams } from '$app/state';
+import type { ReturnsSeriesPoint } from '#lib/api/investments.ts';
 import { adjacentCalendarDate, isCalendarDate } from '#lib/dates/calendar-date.ts';
 import { m } from '#lib/paraglide/messages.js';
 import { staleObservationDates, type Valuation } from '#lib/reports/reporting-currency.ts';
@@ -165,4 +166,52 @@ export function returnsCoverage(valuation: Valuation | null | undefined): Return
 export function unavailableAccountIDs(selected: number[], selectable: number[]): number[] {
   const known = new Set(selectable);
   return selected.filter((id) => !known.has(id));
+}
+
+export type ReturnsChartPoint = { date: string; value: number; x: number; y: number };
+
+export type ReturnsChart = {
+  /** Runs of consecutive points with a value. A missing point breaks the
+   * line; nothing is interpolated across it. */
+  segments: ReturnsChartPoint[][];
+  /** The plotted range, always including 0 so the baseline is visible. */
+  minimum: number;
+  maximum: number;
+  /** Vertical position of 0 %, as a fraction of the plot height from the top. */
+  zeroY: number;
+  available: number;
+  total: number;
+};
+
+function dayNumber(date: string): number {
+  return Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))) / 86_400_000;
+}
+
+/**
+ * Places the cumulative time-weighted series on a unit square. x is calendar
+ * time from the opening day, so the shorter last interval is drawn shorter;
+ * y runs top (maximum) to bottom (minimum). Returns are ratios, not money,
+ * so Numbers are fine for drawing.
+ */
+export function returnsChartModel(points: ReturnsSeriesPoint[]): ReturnsChart {
+  const values = points.flatMap((point) => point.time_weighted.value === null ? [] : [Number(point.time_weighted.value)]);
+  const minimum = Math.min(0, ...values);
+  const maximum = Math.max(0, ...values);
+  const span = maximum - minimum;
+  const y = (value: number) => span === 0 ? 0.5 : (maximum - value) / span;
+  const first = points.length > 0 ? dayNumber(points[0].date) : 0;
+  const width = points.length > 1 ? dayNumber(points[points.length - 1].date) - first : 0;
+  const segments: ReturnsChartPoint[][] = [];
+  let run: ReturnsChartPoint[] = [];
+  for (const point of points) {
+    if (point.time_weighted.value === null) {
+      if (run.length > 0) segments.push(run);
+      run = [];
+      continue;
+    }
+    const value = Number(point.time_weighted.value);
+    run.push({ date: point.date, value, x: width === 0 ? 0 : (dayNumber(point.date) - first) / width, y: y(value) });
+  }
+  if (run.length > 0) segments.push(run);
+  return { segments, minimum, maximum, zeroY: y(0), available: values.length, total: points.length };
 }

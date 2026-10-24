@@ -598,6 +598,7 @@ unattributable cash falls back to the cash side and every fallback is listed.
 External security transfers count at market value (trading legs stay
 internal), correction chains net before flows split into inflows and
 outflows, and the chain divides exact values, rounding only shown amounts.
+
 Two same-day reviews (`e30413a5`, `ae084c4d`) found nine contract/formula
 defects, all corrected with regression cases. Missing price/FX, unclassified shorts,
 non-positive capital and unproven roots make only the dependent figures null
@@ -605,7 +606,13 @@ with a reason. Slice 2 adds the `/app/investments/returns` screen (linked
 from Investments): URL-held period, account and reporting-currency
 selection, both returns with period and annual figures, values and flows,
 coverage and attribution-fallback disclosure, and loading, empty, error and
-success states on a phone. No chart, allocation, benchmark or saved run yet.
+success states on a phone. Slice 3 adds `time_weighted_series` to the read:
+the cumulative TTWROR from the same exact chain at daily, 7-day or month-end
+points (by period length), its closing point equal to the headline figure.
+Each point is available or carries its own reason; a price gap only a point
+needs removes that point alone and is disclosed in the series' own coverage.
+The screen draws it as a line that breaks at gaps (never filled in), with a
+table of every point. No allocation, benchmark or saved run yet.
 
 Period capital-return disclosure (#238) adds per-currency payment-date receipts,
 associated basis reductions, excluded excess and receipt/unknown-effect counts,
@@ -860,8 +867,8 @@ hand-derived budget, recurring, forecast and learned-spending evidence.
 
 XLSX/OFX/QFX import adapters, per-split import mapping and batch rollback,
 a second online bank/broker import connection, loan/liability helpers,
-R13 returns chart/allocation/benchmarks/saved runs (the returns read and
-screen ship) and general report snapshots beyond R18
+R13 returns allocation/benchmarks/saved runs (the returns read, screen
+and TTWROR chart ship) and general report snapshots beyond R18
 operational gains/statement documents. Multiple quote adapters and the
 Twelve Data reviewed dividend producer already ship.
 The [roadmap](roadmap.md) owns sequencing; GitHub Issues own delivery status.
