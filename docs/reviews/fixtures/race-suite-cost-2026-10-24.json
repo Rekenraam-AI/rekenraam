@@ -1,0 +1,345 @@
+{
+ "issue": 402,
+ "source": {
+  "base": "935ccdb7cfea729c6ad0fb133350f7fecc441ff8",
+  "head": "935ccdb7 plus this change (#403 fix, reader-per-test helper, two regression tests)",
+  "cache_experiment": "head plus _stmt_cache_size=128 in internal/db/sqlite.go; measurement only, not adopted"
+ },
+ "host": {
+  "cpus": 10,
+  "cpu": "AMD EPYC 3251 8-Core Processor (10 vCPU, 1 thread/core)",
+  "memory_gib": 17,
+  "kernel": "6.8.0-147-generic",
+  "go": "go1.27.3 linux/amd64",
+  "gomaxprocs": "unset",
+  "sqlite": "3.53.4 bundled by github.com/mattn/go-sqlite3 v1.14.52",
+  "flags": "scripts/native-sqlite-env.sh: CGO_ENABLED=1, -tags=fts5,netgo,osusergo; FULL synchronous; race"
+ },
+ "leaf_definition": "tests/subtests with no subtests of their own; parent elapsed includes parallel-slot queueing and is excluded",
+ "single_package": {
+  "command": "go test -race -count=1 -timeout=10m -json ./internal/app, sequential, test binaries pre-built with -exec /bin/true",
+  "order": "base head cache head cache base cache base head (three rotations)",
+  "runs": {
+   "m1-base": {
+    "wall_s": 219.381,
+    "leaves": 2301,
+    "leaf_work_s": 2148.4,
+    "lexical_chain_leaves": 81,
+    "lexical_chain_work_s": 375.1,
+    "failures": [],
+    "order": 1
+   },
+   "m2-head": {
+    "wall_s": 238.978,
+    "leaves": 2301,
+    "leaf_work_s": 2326.9,
+    "lexical_chain_leaves": 81,
+    "lexical_chain_work_s": 376.9,
+    "failures": [],
+    "order": 2
+   },
+   "m3-cache": {
+    "wall_s": 206.888,
+    "leaves": 2301,
+    "leaf_work_s": 2016.5,
+    "lexical_chain_leaves": 81,
+    "lexical_chain_work_s": 339.1,
+    "failures": [
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget/device/failure",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget/device/success",
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals",
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals/100"
+    ],
+    "order": 3
+   },
+   "m4-head": {
+    "wall_s": 232.111,
+    "leaves": 2301,
+    "leaf_work_s": 2257.6,
+    "lexical_chain_leaves": 81,
+    "lexical_chain_work_s": 365.5,
+    "failures": [],
+    "order": 4
+   },
+   "m5-cache": {
+    "wall_s": 204.106,
+    "leaves": 2301,
+    "leaf_work_s": 1995.9,
+    "lexical_chain_leaves": 81,
+    "lexical_chain_work_s": 309.5,
+    "failures": [
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget/device/failure",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget/device/success",
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals",
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals/100"
+    ],
+    "order": 5
+   },
+   "m6-base": {
+    "wall_s": 232.155,
+    "leaves": 2301,
+    "leaf_work_s": 2258.4,
+    "lexical_chain_leaves": 81,
+    "lexical_chain_work_s": 368.0,
+    "failures": [],
+    "order": 6
+   },
+   "m7-cache": {
+    "wall_s": 212.166,
+    "leaves": 2301,
+    "leaf_work_s": 2073.4,
+    "lexical_chain_leaves": 81,
+    "lexical_chain_work_s": 344.3,
+    "failures": [
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget/device/failure",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget/device/success",
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals",
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals/100"
+    ],
+    "order": 7
+   },
+   "m8-base": {
+    "wall_s": 225.742,
+    "leaves": 2301,
+    "leaf_work_s": 2200.3,
+    "lexical_chain_leaves": 81,
+    "lexical_chain_work_s": 366.3,
+    "failures": [],
+    "order": 8
+   },
+   "m9-head": {
+    "wall_s": 221.419,
+    "leaves": 2301,
+    "leaf_work_s": 2150.4,
+    "lexical_chain_leaves": 81,
+    "lexical_chain_work_s": 342.4,
+    "failures": [],
+    "order": 9
+   }
+  },
+  "case_name_sha256": {
+   "m1-base": "37d87a9432505f80db2444babdc5b88d8ce297ac83e45681f34aed13f6e00196",
+   "m2-head": "37d87a9432505f80db2444babdc5b88d8ce297ac83e45681f34aed13f6e00196",
+   "m3-cache": "37d87a9432505f80db2444babdc5b88d8ce297ac83e45681f34aed13f6e00196",
+   "m4-head": "37d87a9432505f80db2444babdc5b88d8ce297ac83e45681f34aed13f6e00196",
+   "m5-cache": "37d87a9432505f80db2444babdc5b88d8ce297ac83e45681f34aed13f6e00196",
+   "m6-base": "37d87a9432505f80db2444babdc5b88d8ce297ac83e45681f34aed13f6e00196",
+   "m7-cache": "37d87a9432505f80db2444babdc5b88d8ce297ac83e45681f34aed13f6e00196",
+   "m8-base": "37d87a9432505f80db2444babdc5b88d8ce297ac83e45681f34aed13f6e00196",
+   "m9-head": "37d87a9432505f80db2444babdc5b88d8ce297ac83e45681f34aed13f6e00196"
+  },
+  "base_wall_median_s": 225.742,
+  "base_wall_range_s": [
+   219.381,
+   232.155
+  ],
+  "head_wall_median_s": 232.111,
+  "head_wall_range_s": [
+   221.419,
+   238.978
+  ],
+  "cache_wall_median_s": 206.888,
+  "cache_wall_range_s": [
+   204.106,
+   212.166
+  ]
+ },
+ "full_gate": {
+  "command": "GO_PHASE_TIMINGS=1 scripts/test-backend.sh (race, -p 2, -timeout=5m); runs 3-5 add GOFLAGS=-count=1 because runs 3-4 first hit the test cache",
+  "runs": [
+   {
+    "order": 1,
+    "variant": "base",
+    "race_phase_wall_s": 383.48,
+    "app_s": 277.7,
+    "api_s": 145.064,
+    "db_s": 216.463,
+    "passed": true
+   },
+   {
+    "order": 2,
+    "variant": "head",
+    "race_phase_wall_s": 386.11,
+    "app_s": 269.985,
+    "api_s": 158.738,
+    "db_s": 212.28,
+    "passed": true
+   },
+   {
+    "order": 3,
+    "variant": "head",
+    "race_phase_wall_s": 378.05,
+    "app_s": 278.17,
+    "api_s": 144.468,
+    "db_s": 212.722,
+    "passed": true
+   },
+   {
+    "order": 4,
+    "variant": "base",
+    "race_phase_wall_s": 397.17,
+    "app_s": 276.55,
+    "api_s": 159.24,
+    "db_s": 225.366,
+    "passed": true
+   },
+   {
+    "order": 5,
+    "variant": "cache",
+    "race_phase_wall_s": 367.6,
+    "app_s": 246.696,
+    "api_s": 145.88,
+    "db_s": 209.433,
+    "passed": false,
+    "failures": [
+     "TestMutationResponseEnrichmentFailurePreservesCompoundCorrection",
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget",
+     "TestWithRequiredPragmasPreservesExistingQuery"
+    ]
+   }
+  ]
+ },
+ "cpu_profile": {
+  "command": "go test -race -count=1 -timeout=10m -json -cpuprofile ./internal/app at base; wall 222.7 s",
+  "total_samples_s": 1375.99,
+  "buckets_cumulative_s": {
+   "sqlite3_prepare_v2 (statement compile)": 449.81,
+   "driver Open: per-connection PRAGMAs incl. schema load": 267.6,
+   "SelfCheckService.RunSelfCheck": 152.17,
+   "testdb.Open (copy + open + ping)": 140.36,
+   "db.OpenReadOnly": 85.34,
+   "  of which selfCheckOver": 81.25,
+   "sql.DB.Close (close_v2, WAL checkpoint)": 63.93,
+   "pressly/goose (all up/down, incl. parse)": 62.12,
+   "  of which db.Migrate": 24.04,
+   "  of which goose SQL parse": 14.52,
+   "db.OnlineBackupSQLiteDatabase": 13.57,
+   "db.RestoreSQLiteDatabase": 12.78,
+   "export bundle reads": 9.73
+  },
+  "note": "buckets overlap (cumulative); C time is attributed to the calling Go stack"
+ },
+ "goose_cpu_by_test_s": {
+  "TestGainsRunMigrationPreservesFinancialFactsAndRefusesPopulatedDowngrade": 9.16,
+  "TestCapitalReturnUnknownAmountPairsAndDowngradeRefusal": 6.7,
+  "TestCapitalReturnForwardMigrationPreservesPopulatedKnownHistory": 5.9,
+  "TestConsecutiveRestoresEachKeepTheirOwnSafetyCopy": 4.53,
+  "TestPaymentAttributionMigrationPreservesHistoryAndRefusesLossyDowngrade": 3.46,
+  "TestCashInLieuParentMigrationPreservesHistoryAndRefusesMisleadingDowngrade": 2.66,
+  "TestRestorePreservesUncheckpointedWALContent": 2.34,
+  "TestRestoreDrillMatchesSourceTrialBalance": 2.32,
+  "TestRestoreRefusesNewerSchema": 2.26,
+  "TestCryptoMigrationRefusesLossyDowngradeAtomically": 1.8,
+  "TestDividendAttributionMigrationPreservesHistoryBackfillsOnlyRecordedShapeAndRefusesLoss": 1.46,
+  "TestRestoreRefusesSourceEqualsDestination": 1.36,
+  "TestSealedDataDecryptsAfterRestoreWithRetainedKey": 1.01,
+  "TestDividendAttributionMigrationPreservesAndDiagnosesLegacyDuplicateSourceClaims": 0.92
+ },
+ "serial_migration_probe_race": {
+  "fresh_0001_incl_parse_s": [
+   0.578,
+   0.521,
+   0.539
+  ],
+  "up_0002_to_0026_s": [
+   1.088,
+   0.531,
+   0.538
+  ],
+  "down_0026_to_0002_s": [
+   0.787,
+   0.394,
+   0.402
+  ],
+  "noop_migrate_s": 0.0007
+ },
+ "connection_open_probe_race": {
+  "migrated_db_open_close_ms": 8.1,
+  "readonly_open_close_ms": 7.3,
+  "testdb_open_close_ms": 11.5,
+  "empty_db_open_close_ms": 0.75,
+  "schema_objects": {
+   "index": 205,
+   "table": 119,
+   "trigger": 162,
+   "view": 21
+  },
+  "schema_sql_bytes": 215736
+ },
+ "schema_growth_probe_race": [
+  {
+   "version": 26,
+   "objects": 507,
+   "triggers": 162,
+   "sql_bytes": 215736,
+   "open_close_ms": 8.91
+  },
+  {
+   "version": 20,
+   "objects": 499,
+   "triggers": 160,
+   "sql_bytes": 205958,
+   "open_close_ms": 7.88
+  },
+  {
+   "version": 13,
+   "objects": 495,
+   "triggers": 160,
+   "sql_bytes": 203036,
+   "open_close_ms": 7.87
+  },
+  {
+   "version": 1,
+   "objects": 457,
+   "triggers": 142,
+   "sql_bytes": 190610,
+   "open_close_ms": 7.31
+  }
+ ],
+ "app_migration_path_map": [
+  {
+   "test": "TestInvestmentSlice1FreshAndSeededBundleContract/{fresh,seeded}",
+   "path": "fresh 0001->0026 on a new file, then bundle contract"
+  },
+  {
+   "test": "restore_test.go (Drill, UncheckpointedWAL, RefusesSourceEqualsDestination, RefusesNewerSchema, SealedData, ConsecutiveRestores)",
+   "path": "fresh 0001->0026 per source/live file; Migrate on restored copy is a no-op upgrade check"
+  },
+  {
+   "test": "TestCapitalReturnForwardMigrationPreservesPopulatedKnownHistory",
+   "path": "populated 0026->0002 down, 0002->0026 up"
+  },
+  {
+   "test": "TestCapitalReturnUnknownAmountPairsAndDowngradeRefusal",
+   "path": "populated 0026->0003 down until 0003 refuses, then up"
+  },
+  {
+   "test": "TestGainsRunMigrationPreservesFinancialFactsAndRefusesPopulatedDowngrade",
+   "path": "populated 0026->0006 down, up; second down refuses at 0007"
+  },
+  {
+   "test": "TestCryptoMigrationRefusesLossyDowngradeAtomically",
+   "path": "0026->0006 down until 0006 refuses"
+  },
+  {
+   "test": "TestDividendInstrumentFactsAreImmutableAndValidatePayer",
+   "path": "0026->0009 down until 0009 refuses"
+  },
+  {
+   "test": "TestPaymentAttributionMigration...",
+   "path": "0026->0022 down/up cycles"
+  },
+  {
+   "test": "TestCashInLieuParentMigration... / TestHistoricalCashEntryMigration...",
+   "path": "0026->0023 and 0026->0025 down/up cycles"
+  },
+  {
+   "test": "TestDividendAttributionMigration... (2)",
+   "path": "0026->0024 down/up cycles; final down refuses at 0025"
+  }
+ ]
+}

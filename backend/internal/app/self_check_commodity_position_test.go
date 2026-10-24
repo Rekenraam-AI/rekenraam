@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -30,15 +31,42 @@ import (
 // needs its own read-only connection: taking it from the writer's pool would
 // hold a read transaction open on the same pool the run writes its results
 // through, and the two would wait for each other.
+//
+// Like the server's one process-wide reader, the pool is opened once per test
+// and database and closed when that test ends, so repeated runs exercise the
+// connection reuse production has. A pool per run hid #403's stale FTS5 state.
 func selfCheckOver(t *testing.T, database *sql.DB) *SelfCheckService {
 	t.Helper()
+	return NewSelfCheckService(db.NewSelfCheckRepository(database, selfCheckReader(t, database)))
+}
+
+type selfCheckReaderKey struct {
+	t        *testing.T
+	database *sql.DB
+}
+
+var selfCheckReaders sync.Map // selfCheckReaderKey -> *sql.DB
+
+func selfCheckReader(t *testing.T, database *sql.DB) *sql.DB {
+	t.Helper()
+	key := selfCheckReaderKey{t: t, database: database}
+	if readOnly, ok := selfCheckReaders.Load(key); ok {
+		return readOnly.(*sql.DB)
+	}
 	var path string
 	require.NoError(t, database.QueryRowContext(context.Background(),
 		`SELECT file FROM pragma_database_list WHERE name = 'main'`).Scan(&path))
 	readOnly, err := db.OpenReadOnly(context.Background(), db.SQLiteFileURL(path))
 	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, readOnly.Close()) })
-	return NewSelfCheckService(db.NewSelfCheckRepository(database, readOnly))
+	if existing, loaded := selfCheckReaders.LoadOrStore(key, readOnly); loaded {
+		require.NoError(t, readOnly.Close())
+		return existing.(*sql.DB)
+	}
+	t.Cleanup(func() {
+		selfCheckReaders.Delete(key)
+		require.NoError(t, readOnly.Close())
+	})
+	return readOnly
 }
 
 func commodityPositionResult(t *testing.T, f *investmentsTestFixture) SelfCheckResult {
