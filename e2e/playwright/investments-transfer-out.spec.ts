@@ -46,10 +46,11 @@ async function setup(page: Page) {
 
 test('part of a lot transfers out of the book with its computed cost basis on mobile', async ({ page }) => {
   const s = await setup(page);
+  const transferDate = daysFromTodayISO(-10);
   await page.goto('/app/investments');
   await page.getByRole('button', { name: 'Transfer out investments' }).click();
   const dialog = page.getByRole('dialog', { name: 'Transfer investments out' });
-  await dialog.getByLabel('Transfer date in this book').fill(daysFromTodayISO(-10));
+  await dialog.getByLabel('Transfer date in this book').fill(transferDate);
   await dialog.getByLabel('Source position').selectOption({ label: s.sourceLabel });
   await dialog.getByRole('textbox', { name: /Quantity to move/ }).fill('2');
   await dialog.getByLabel('Basis reported by the broker (optional)').fill('19.50');
@@ -60,7 +61,12 @@ test('part of a lot transfers out of the book with its computed cost basis on mo
   await expect(preview).toContainText('Cost basis transferred out: 20.00');
   await expect(preview).toContainText('separate entry labelled');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const recorded = page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/v1/investments/transfers/external/out');
   await dialog.getByRole('button', { name: 'Record transfer' }).click();
+  const response = await recorded;
+  expect(response.status()).toBe(201);
+  const transfer = (await response.json()) as { transaction: { id: number } };
   await expect(dialog).toBeHidden();
 
   await expect.poll(async () => {
@@ -69,9 +75,47 @@ test('part of a lot transfers out of the book with its computed cost basis on mo
     return positions.positions.find((position) =>
       position.account_id === s.holdingID && position.commodity_id === s.commodityID)?.quantity_value ?? null;
   }).toBe('1');
-  await page.goto('/app/transactions');
-  await expect(page.getByText('Cost basis transferred out').first()).toBeVisible();
+  await expectOwnTransferBridge(page, transfer.transaction.id, transferDate, '2000');
 });
+
+// #406: the worker's book is shared by every spec it runs, so the bridge is
+// found through this transfer's own operation, never by scanning a list page
+// that later-dated entries from other specs can fill.
+type ListedTransaction = { id: number; system_label?: string;
+  metadata: { transfer_bridge_of_operation_id?: number; caused_by_operation_id?: number } | null;
+  journal_entries: Array<{ postings: Array<{ quantity_value: string; quantity_scale: number }> }> };
+
+async function expectOwnTransferBridge(page: Page, transferID: number, transferDate: string, basisCents: string) {
+  const chain = await apiJSON<{ root_operation_id: number }>(page, 'GET',
+    `/api/v1/investments/transactions/${transferID}/correction-chain`);
+  const onDate: ListedTransaction[] = [];
+  let cursor: string | null = null;
+  do {
+    const query: string = `after_date=${transferDate}&before_date=${transferDate}&kind=investment&limit=200`
+      + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : '');
+    const listed = await apiJSON<{ transactions: ListedTransaction[]; next_cursor: string | null }>(
+      page, 'GET', `/api/v1/transactions?${query}`);
+    onDate.push(...listed.transactions);
+    cursor = listed.next_cursor;
+  } while (cursor);
+  const bridges = onDate.filter((transaction) =>
+    transaction.metadata?.transfer_bridge_of_operation_id === chain.root_operation_id
+    && transaction.metadata?.caused_by_operation_id === undefined);
+  expect(bridges).toHaveLength(1);
+  const bridge = bridges[0];
+  expect(bridge.system_label).toBe('transfer_bridge');
+  // Exact at whatever scale the basis is stored: value / 10^scale = ±basis.
+  const postings = bridge.journal_entries.flatMap((entry) => entry.postings);
+  const signs = postings.map((posting) => {
+    const value = BigInt(posting.quantity_value) * BigInt(100);
+    const basis = BigInt(basisCents) * BigInt(10) ** BigInt(posting.quantity_scale);
+    return value === basis ? 1 : value === -basis ? -1 : 0;
+  }).sort();
+  expect(signs).toEqual([-1, 1]);
+
+  await page.goto(`/app/transactions?transaction_id=${bridge.id}`);
+  await expect(page.getByRole('heading', { level: 2, name: 'Cost basis transferred out' })).toBeVisible();
+}
 
 // T-144: an outbound transfer is corrected, then the correction is reversed,
 // from the transaction detail on a phone.

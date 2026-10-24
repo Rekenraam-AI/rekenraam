@@ -778,6 +778,15 @@ non-trivial diff (yours or reviewed):
     `TestSQLiteIntegrityOnAReusedReaderAfterSearchWrites` (with its canary)
     and `TestRepeatedSelfCheckRunsPassAfterNewEntries` green.
 
+67. **A spec finding its own entry by scanning a shared list page** — the
+    transfer-out journey looked for its bridge anywhere on `/app/transactions`
+    (#406). A worker's book is shared by every spec it runs, and the list's
+    first page holds 100 rows. Once other specs add later-dated entries, the
+    bridge moves to page 2 and the check fails. Locate the spec's own record
+    through an owned link: the POST response, then an operation or metadata
+    link. Follow every cursor, then assert on that record's detail view. Use
+    `--repeat-each` to verify, since it fills the same worker book.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 
