@@ -26869,6 +26869,16 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description LEDGER_OVERFLOW — an amount the read must report exceeds the coefficient range at every scale that keeps it exact. It is refused rather than returned as a null figure without a reason. */
+                422: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Internal server error */
                 500: {
                     headers: {

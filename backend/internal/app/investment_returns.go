@@ -191,6 +191,9 @@ type returnsReader struct {
 	seriesRates *RateTable
 	// closing is V(to), kept for the allocation that splits it.
 	closing returnsValuation
+	// overflow is the first amount no coefficient can carry. It fails the
+	// read: a null figure without a reason would read as missing data.
+	overflow error
 }
 
 // returnsEntryFlow is one journal entry's external flow, or why it has none.
@@ -257,7 +260,7 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 	result.AttributionFallbacks = fallbacks
 	r.compute(flows, result)
 	result.Allocation = r.allocation(r.closing, classes)
-	return nil
+	return r.overflow
 }
 
 // resolveScope fixes the portfolio accounts once, as of the period end.
@@ -552,12 +555,12 @@ func (r *returnsReader) valuations(dates []string, rates *RateTable) map[string]
 				if total.Sign() == 0 {
 					continue
 				}
-				coefficient, err := exact.FromBig(total.BigInt())
-				if err != nil {
+				coefficient, scale, ok := r.fit(total.BigInt(), total.Scale(), id)
+				if !ok {
 					valuation.reason = ReturnReasonValuationUnavailable
 					break
 				}
-				value, ok := rates.ConvertExact(coefficient, total.Scale(), id, date)
+				value, ok := rates.ConvertExact(coefficient, scale, id, date)
 				if !ok {
 					valuation.reason = ReturnReasonValuationUnavailable
 					continue
@@ -857,12 +860,35 @@ func (r *returnsReader) amount(valuation returnsValuation, date string) ReturnsA
 // quantity rounds an exact reporting-currency figure once, half away from
 // zero, to the currency's scale.
 func (r *returnsReader) quantity(value *big.Rat) *BalanceQuantity {
-	coefficient, err := exact.FromBig(roundRatToScale(value, r.rates.Scale()))
-	if err != nil {
+	coefficient, scale, ok := r.fit(roundRatToScale(value, r.rates.Scale()), r.rates.Scale(), r.rates.QuoteCommodityID())
+	if !ok {
 		return nil
 	}
 	return &BalanceQuantity{CommodityID: r.rates.QuoteCommodityID(), QuantityValue: coefficient,
-		QuantityScale: r.rates.Scale(), NormalQuantityValue: coefficient}
+		QuantityScale: scale, NormalQuantityValue: coefficient}
+}
+
+// fit restates value × 10^−scale as a coefficient. When the full scale has
+// more digits than a coefficient carries, trailing fractional zeros are
+// dropped: the amount is unchanged, only written at a shallower scale. An
+// amount that still does not fit records a LedgerOverflowError for the read.
+func (r *returnsReader) fit(value *big.Int, scale int, commodityID int64) (exact.Coefficient, int, bool) {
+	value = new(big.Int).Set(value)
+	ten, remainder := big.NewInt(10), new(big.Int)
+	for {
+		if coefficient, err := exact.FromBig(value); err == nil {
+			return coefficient, scale, true
+		}
+		quotient, _ := new(big.Int).QuoRem(value, ten, remainder)
+		if scale == 0 || remainder.Sign() != 0 {
+			break
+		}
+		value, scale = quotient, scale-1
+	}
+	if r.overflow == nil {
+		r.overflow = LedgerOverflowError{CommodityID: commodityID}
+	}
+	return "", 0, false
 }
 
 func nextDay(date string) string {

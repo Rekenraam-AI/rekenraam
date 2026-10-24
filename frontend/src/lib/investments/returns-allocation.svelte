@@ -69,7 +69,10 @@
       <p role="status" class="text-sm text-warning">{m.returns_allocation_known_only()}</p>
     {/if}
     {#if allocation.weights_reason}
-      <p role="status" class="text-sm text-warning">{m.returns_allocation_non_positive()}</p>
+      <!-- On a known-only basis only the priced part is non-positive; the whole is unknown. -->
+      <p role="status" class="text-sm text-warning" data-testid="returns-allocation-non-positive">
+        {allocation.basis === 'known_only' ? m.returns_allocation_non_positive_known_only() : m.returns_allocation_non_positive()}
+      </p>
     {/if}
 
     <ul class="space-y-3" data-testid="returns-allocation-rows">

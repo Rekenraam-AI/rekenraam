@@ -904,5 +904,6 @@
   "returns_allocation_known_only": "Für einige Positionen gibt es an diesem Tag keinen nutzbaren Kurs, daher beziehen sich die Anteile nur auf den bewerteten Wert.",
   "returns_allocation_unknown_title": "Ohne nutzbaren Kurs an diesem Tag",
   "returns_allocation_non_positive": "Der Wert des Portfolios ist null oder negativ, daher können keine Anteile gezeigt werden.",
+  "returns_allocation_non_positive_known_only": "Die bewerteten Positionen sind null oder weniger wert, daher können keine Anteile gezeigt werden. Der Gesamtwert des Portfolios ist unbekannt.",
   "returns_allocation_empty": "Am Ende dieses Tages wurde nichts gehalten."
 }

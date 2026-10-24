@@ -93,16 +93,16 @@ func (r *returnsReader) allocation(closing returnsValuation, classes map[int64]d
 			if balance.Sign() == 0 {
 				continue
 			}
-			coefficient, err := exact.FromBig(balance.BigInt())
-			if err != nil {
-				result.Basis = AllocationBasisKnownOnly
+			coefficient, scale, ok := r.fit(balance.BigInt(), balance.Scale(), commodityID)
+			if !ok {
+				// The read fails with the overflow; nothing here is reported.
 				continue
 			}
-			value, ok := r.rates.ConvertExact(coefficient, balance.Scale(), commodityID, r.to)
+			value, ok := r.rates.ConvertExact(coefficient, scale, commodityID, r.to)
 			if !ok {
 				result.Basis = AllocationBasisKnownOnly
 				result.Unknown = append(result.Unknown, ReturnsAllocationUnknown{AccountID: accountID, Quantity: BalanceQuantity{
-					CommodityID: commodityID, QuantityValue: coefficient, QuantityScale: balance.Scale(), NormalQuantityValue: coefficient}})
+					CommodityID: commodityID, QuantityValue: coefficient, QuantityScale: scale, NormalQuantityValue: coefficient}})
 				continue
 			}
 			denominator.Add(denominator, value)

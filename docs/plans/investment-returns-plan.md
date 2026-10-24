@@ -301,10 +301,21 @@ the tests assert equality). No separate request, date or scope exists.
 - **Unclassified short** (the net-worth rule, as for `closing_value`) makes
   the whole allocation unavailable (`reason: unclassified_short`): its value
   is no better defined than the closing value's.
+- **Coefficient range (review of `62f9201d`, finding 1).** Every reported
+  amount, and every balance valued along the way, is written at the
+  reporting (or posting) scale or, when that exceeds 38 digits, at a
+  shallower scale that drops only trailing fractional zeros, so its value is
+  unchanged. An amount that fits at no exact scale fails the whole read with
+  `LEDGER_OVERFLOW` (422), as ledger balances do; it is never a null figure
+  without a reason, and never relabelled a missing price. Offsetting 10^37
+  balances therefore show as ±10^37 rows at scale 0.
 - **Presentation.** One dimension at a time (account, asset type, currency),
   each row with value, share and a bar; a short row says "Short" in words.
   Shares carry no "+" sign, a short share a minus. Known-only basis,
-  undefined shares and the unknown list are disclosed beside the rows.
+  undefined shares and the unknown list are disclosed beside the rows. On a
+  known-only basis a non-positive denominator says the *priced* holdings are
+  worth zero or less and the total is unknown (finding 2): an unpriced
+  portfolio's value is not zero.
 
 ## Money-weighted return (IRR)
 
@@ -429,6 +440,8 @@ quoted in EUR (unless stated), closing price 110:
 | A4 | fee 1,200 from broker cash | denominator 0; `non_positive_value`; rows 1100 long and −1100 short, no weights |
 | A5 | TEST without an instrument version | asset type `unclassified` `0.916667`; currency none 1100 `0.916667` beside EUR 100 |
 | A6 | −1 TEST posted to broker cash, no short lot | closing value and allocation `unclassified_short` |
+| A7 | two extra broker-cash accounts at +10^37 and −10^37 EUR (scale 0) | denominator 1200; those rows exactly ±10^37, written at scale 0 |
+| A8 | +10^37 TEST in broker cash, closing price 10.01 | value 1.001 × 10^38 fits no exact scale: the read fails `LEDGER_OVERFLOW` |
 
 Slice 1 tests pin these literals; they never derive expected values from the
 calculator. R1–R7 are the reproducers from the 2026-10-24 review of

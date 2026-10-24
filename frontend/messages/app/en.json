@@ -904,5 +904,6 @@
   "returns_allocation_known_only": "Some holdings have no usable price on this day, so shares are of the priced value only.",
   "returns_allocation_unknown_title": "Without a usable price on this day",
   "returns_allocation_non_positive": "The portfolio's value is zero or negative, so shares cannot be shown.",
+  "returns_allocation_non_positive_known_only": "The priced holdings are worth zero or less, so shares cannot be shown. The portfolio's total value is unknown.",
   "returns_allocation_empty": "Nothing was held at the end of this day."
 }

@@ -904,5 +904,6 @@
   "returns_allocation_known_only": "Voor sommige posities is er op deze dag geen bruikbare koers, dus de aandelen gaan alleen over de gewaardeerde waarde.",
   "returns_allocation_unknown_title": "Zonder bruikbare koers op deze dag",
   "returns_allocation_non_positive": "De waarde van de portefeuille is nul of negatief, dus aandelen kunnen niet worden getoond.",
+  "returns_allocation_non_positive_known_only": "De gewaardeerde posities zijn nul of minder waard, dus aandelen kunnen niet worden getoond. De totale waarde van de portefeuille is onbekend.",
   "returns_allocation_empty": "Aan het einde van deze dag werd niets aangehouden."
 }

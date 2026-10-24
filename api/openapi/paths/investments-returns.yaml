@@ -93,6 +93,15 @@ get:
         application/json:
           schema:
             $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "422":
+      description: LEDGER_OVERFLOW — an amount the read must report exceeds the coefficient range at every scale that keeps it exact. It is refused rather than returned as a null figure without a reason.
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     "503":
       description: Consistent input capture exceeded its deadline; RESOURCE_BUSY is retryable.
       headers:

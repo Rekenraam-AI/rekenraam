@@ -904,5 +904,6 @@
   "returns_allocation_known_only": "Algunas posiciones no tienen precio utilizable ese día, así que las partes son solo del valor valorado.",
   "returns_allocation_unknown_title": "Sin precio utilizable ese día",
   "returns_allocation_non_positive": "El valor de la cartera es cero o negativo, así que no se pueden mostrar partes.",
+  "returns_allocation_non_positive_known_only": "Las posiciones valoradas valen cero o menos, así que no se pueden mostrar partes. El valor total de la cartera es desconocido.",
   "returns_allocation_empty": "No se mantenía nada al final de ese día."
 }

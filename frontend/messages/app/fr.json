@@ -904,5 +904,6 @@
   "returns_allocation_known_only": "Certaines positions n’ont pas de cours utilisable ce jour-là ; les parts ne portent que sur la valeur évaluée.",
   "returns_allocation_unknown_title": "Sans cours utilisable ce jour-là",
   "returns_allocation_non_positive": "La valeur du portefeuille est nulle ou négative ; les parts ne peuvent pas être affichées.",
+  "returns_allocation_non_positive_known_only": "Les positions évaluées valent zéro ou moins ; les parts ne peuvent pas être affichées. La valeur totale du portefeuille est inconnue.",
   "returns_allocation_empty": "Rien n’était détenu à la fin de ce jour."
 }

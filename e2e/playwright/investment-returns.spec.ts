@@ -192,3 +192,34 @@ test('a gap and stale quotes are disclosed together', async ({ page }) => {
   await expect(summary.getByText(/No usable price or exchange rate for: RGAP/)).toBeVisible();
   await expect(summary.getByText(/Some prices or rates come from earlier days/)).toBeVisible();
 });
+
+// Review of 62f9201d, finding 2: a portfolio whose only holding has no
+// usable closing price has an unknown value, not a zero one.
+test('allocation of an unpriced portfolio says its value is unknown', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const opened = daysFromTodayISO(-60);
+  const checking = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: 'Unpriced checking', account_class: 'asset', account_kind: 'checking', default_commodity_id: currencyID,
+    allows_postings: true, opened_on: opened, effective_from: opened
+  });
+  const instrument = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
+    commodity_code: 'RUNP', instrument_type: 'stock', display_name: 'Returns unpriced', symbol: 'RUNP',
+    quote_commodity_id: currencyID, trading_commodity_id: currencyID, quantity_scale: 0, price_scale: 2, effective_from: opened
+  });
+  const holding = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/holding-accounts', csrfToken, {
+    instrument_id: instrument.id, name: 'Unpriced holding', opened_on: opened, effective_from: opened
+  });
+  // The fill price is 40 days old today: outside the 7-day window.
+  await apiJSON(page, 'POST', '/api/v1/investments/buy', csrfToken, {
+    transaction_date: daysFromTodayISO(-40), commodity_id: instrument.commodity_id, holding_account_id: holding.id,
+    cash_account_id: checking.id, quantity_value: '10', quantity_scale: 0, cash_amount_value: '100000', cash_amount_scale: 2,
+    cash_commodity_id: currencyID, cost_basis_method: 'fifo'
+  });
+
+  await page.goto(`/app/investments/returns?from=${daysFromTodayISO(-45)}&to=${todayISO()}&reporting_currency_id=${currencyID}`);
+  const allocation = page.getByTestId('returns-allocation');
+  await expect(allocation.getByTestId('returns-allocation-non-positive')).toHaveText(
+    "The priced holdings are worth zero or less, so shares cannot be shown. The portfolio's total value is unknown.");
+  await expect(allocation.getByText("The portfolio's value is zero or negative, so shares cannot be shown.")).toHaveCount(0);
+  await expect(allocation.getByTestId('returns-allocation-unknown')).toContainText('Unpriced holding');
+});

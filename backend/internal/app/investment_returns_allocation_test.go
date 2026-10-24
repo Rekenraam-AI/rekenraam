@@ -181,3 +181,64 @@ func TestReturnsAllocationRefusesAnUnclassifiedShort(t *testing.T) {
 	require.Empty(t, result.Allocation.ByAccount)
 	require.Nil(t, result.Allocation.Denominator)
 }
+
+// Review of 62f9201d, finding 1: offsetting 38-digit cash balances net to
+// nothing, but each row is 10^37 EUR: written at scale 0, its exact value
+// fits a coefficient, so it is never null.
+func TestReturnsAllocationWritesLargeRowsAtAShallowerScale(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.classify(t)
+	f.price(t, "2027-01-31", 11000)
+	longID := seedTestAccountWithClass(t, f.database, "active", true, "asset", "brokerage_cash")
+	shortID := seedTestAccountWithClass(t, f.database, "active", true, "asset", "brokerage_cash")
+	quantity := exact.MustParse("10000000000000000000000000000000000000")
+	_, err := f.transactionService.CreateTransaction(context.Background(), CreateTransactionInput{
+		OwnerUserID: f.ownerUserID, OriginType: "browser_api",
+		Spec: TransactionInput{TransactionDate: "2026-12-01", JournalEntries: []JournalEntryInput{{Postings: []PostingInput{
+			{AccountID: longID, CommodityID: f.eurCommodityID, QuantityValue: quantity, QuantityScale: 0},
+			{AccountID: shortID, CommodityID: f.eurCommodityID, QuantityValue: quantity.Negated(), QuantityScale: 0},
+		}}}},
+	})
+	require.NoError(t, err)
+
+	result := f.read(t, "2026-02-01", "2027-01-31")
+	requireReturnsAmount(t, 1200, result.ClosingValue)
+	requireReturnsAmount(t, 1200, ReturnsAmount{Amount: result.Allocation.Denominator})
+	expected := exact.ScaledIntFromCoefficient(quantity, 0)
+	sides := map[string]bool{}
+	for _, row := range result.Allocation.ByAccount {
+		if row.AccountID != longID && row.AccountID != shortID {
+			continue
+		}
+		require.NotNil(t, row.Value)
+		value := exact.ScaledIntFromCoefficient(row.Value.QuantityValue, row.Value.QuantityScale)
+		if row.Side == AllocationSideShort {
+			value = value.Negated()
+		}
+		require.Zero(t, value.Cmp(expected), "%s %se-%d", row.Side, row.Value.QuantityValue, row.Value.QuantityScale)
+		sides[row.Side] = true
+	}
+	require.Equal(t, map[string]bool{AllocationSideLong: true, AllocationSideShort: true}, sides)
+}
+
+// Review of 62f9201d, finding 1: an amount no coefficient can carry at any
+// scale fails the read with LEDGER_OVERFLOW instead of reading as missing.
+// 10^37 units at 10.01 are 1.001 × 10^38 EUR: 39 digits at scale 0.
+func TestReturnsFailWithLedgerOverflowBeyondCoefficientRange(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.price(t, "2027-01-31", 1001)
+	_, err := f.transactionService.CreateTransaction(context.Background(), CreateTransactionInput{
+		OwnerUserID: f.ownerUserID, OriginType: "browser_api",
+		Spec: TransactionInput{TransactionDate: "2026-12-01", JournalEntries: []JournalEntryInput{{Postings: []PostingInput{
+			{AccountID: f.brokerCashID, CommodityID: f.stockCommodityID, QuantityValue: exact.MustParse("10000000000000000000000000000000000000"), QuantityScale: 0},
+			{AccountID: f.equityID, CommodityID: f.stockCommodityID, QuantityValue: exact.MustParse("-10000000000000000000000000000000000000"), QuantityScale: 0},
+		}}}},
+	})
+	require.NoError(t, err)
+
+	_, err = f.investmentService.ReadReturns(context.Background(), ReturnsInput{From: "2026-02-01", To: "2027-01-31", ReportingCommodityID: f.eurCommodityID})
+	var overflow LedgerOverflowError
+	require.ErrorAs(t, err, &overflow)
+}
