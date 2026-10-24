@@ -1,0 +1,55 @@
+{
+  "assertions": {
+    "by_provenance": {
+      "literal-or-test->literal-or-test": 4754,
+      "literal-or-test->production": 1584,
+      "production->literal-or-test": 105,
+      "production->production": 224
+    },
+    "equality_assertions": 6667,
+    "financial_differential_functions": 28,
+    "zero_anchor_functions": 6
+  },
+  "base": "13d15eabd68ed2d3b6177512c9c8fe56c528bbf0",
+  "e2e": {
+    "exact_counts": {
+      "nonzero/named-variable": 48,
+      "nonzero/page-rows": 2,
+      "nonzero/scoped-locator": 17,
+      "zero/named-variable": 36,
+      "zero/scoped-locator": 61
+    },
+    "specs": 86,
+    "specs_with_class": {
+      "accessibility": 36,
+      "api_calls": 74,
+      "direct_database_edit": 2,
+      "exact_count": 47,
+      "financial_literal": 50,
+      "keyboard_focus": 17,
+      "route_landing": 47,
+      "route_stub": 18,
+      "self_check": 3,
+      "unique_fixture_names": 69
+    }
+  },
+  "head": "a514e188951178b54ca9b43b901c92e725a215e7",
+  "raw_sql_statements": {
+    "base": 538,
+    "head": 575
+  },
+  "runtime_functions": {
+    "base": 3336,
+    "head": 3364,
+    "states": {
+      "added": 36,
+      "changed": 223,
+      "removed": 8,
+      "unchanged": 3093
+    }
+  },
+  "tools": {
+    "assertions": "8a2501dc5418daef0601025f613b93ec1e2f50ec88a3e44c58c7c1faae271b48",
+    "hashes": "bf13f21924c926273cb6db0e7681790bd555c03f697711e02e417dbb2dfb19d6"
+  }
+}

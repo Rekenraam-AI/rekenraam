@@ -40,6 +40,16 @@ through a dated boundary; a production saved-run path also reaches the existing
 valuation is unused or that snapshot/transaction boundaries can be removed.
 Their possible retirement belongs with the remaining fixture/oracle disposition.
 
+The [sixth slice](../reviews/maintainability-tests-2026-10-24.md) finds no Go
+test that derives expected gains or valuation from replay/valuation helpers.
+The #266 literal register, however, has no rows for payment in lieu, cash in
+lieu, withholding, spin-off, share exchange, cash-and-stock merger, capital
+return, write-off or reinvestment: the cash-flow families R13 must classify.
+R13's calculation contract should add independent literal figures for them
+(tests only) before implementation. Whole-portfolio browser journeys need a
+dedicated book or per-transaction assertions, not containment in the capped
+book-wide self-check sample.
+
 ## Live observation selection: `live_raw_v1`
 
 One SQL owner, `backend/internal/db/observation_selection.go`, supplies daily

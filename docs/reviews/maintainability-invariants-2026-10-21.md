@@ -197,3 +197,7 @@ native realized-total policy in the API response builder, residual frontend
 numeric leaves/adapters and the confirmed forecast-date admission issue #380.
 The matrix remains source evidence; its historical remaining-work list does
 not undo the later delivery. Final dispositions and test/dead-code work remain.
+The [sixth slice](maintainability-tests-2026-10-24.md#source-reconciliation-since-13d15eab)
+records which owners named here changed by `a514e188`: I10's entitlement owners
+are removed, I7's four correction checks lost one shared guard, and M5 gained
+the reference-date context owner. The rows above are not rewritten.

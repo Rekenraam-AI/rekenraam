@@ -1,7 +1,8 @@
 # Maintainability audit — 2026-10-21
 
-**Status: slices 1–5 of [#284](https://github.com/sergeyfarin/rekenraam/issues/284),
-partial.** This first-slice record reconciles the earlier proposals, inventories
+**Status: slices 1–6 of [#284](https://github.com/sergeyfarin/rekenraam/issues/284),
+partial.** The [sixth slice](maintainability-tests-2026-10-24.md) (source
+`a514e188`) reconciles later commits and reviews test ownership. This first-slice record reconciles the earlier proposals, inventories
 the audit inputs and records reproducible history measurements. The
 [second slice](maintainability-duplication-2026-10-21.md) adds runtime duplication
 scans and bounded triage, narrows correction preparation and adds the frontend
@@ -321,11 +322,13 @@ handler/repository/frontend arithmetic/date and fan-out review, records policy
 in the native gains response builder and confirms #380's calendar mismatch.
 The [fifth slice](maintainability-reachability-2026-10-21.md) delivers the bounded
 dead-code and named-interface/options analysis with separate production/test
-roots and export-visibility dispositions. Still unverified: a repository-wide
-test-fixture/oracle and test-duplication
-survey; and final
-investment/reporting dispositions. The provisional ranking can change with
-that evidence; later passes must extend the rule map for uncovered sites.
+roots and export-visibility dispositions. The
+[sixth slice](maintainability-tests-2026-10-24.md) pins `a514e188`, reconciles
+the intervening commits against these fixed-SHA reports (I10 retired, I7's
+four-site guard removal, M5's reference-date owner), and delivers the bounded
+test-fixture/oracle/duplication and race-cost review. It splits candidate 3,
+adds an R13 cross-family register gap and leaves the remaining rows unchanged.
+Still unverified: final investment/reporting dispositions and owner review.
 No refactor issues are accepted; #379 tracks measurement and #380 a confirmed
 frontend admission defect.
 

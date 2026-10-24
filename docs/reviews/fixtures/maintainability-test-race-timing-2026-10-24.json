@@ -1,0 +1,463 @@
+{
+ "adr_0016": {
+  "deadline_s": 300,
+  "max_admitted_s": 210,
+  "required_headroom": 0.3
+ },
+ "ci_backend_tests_app_package": {
+  "runs": [
+   {
+    "api_s": 230.669,
+    "app_s": 732.259,
+    "created_at": "2026-10-11T07:49:45Z",
+    "db_s": 147.237,
+    "head_sha": "4bd0d097",
+    "run_id": 38122687937
+   },
+   {
+    "api_s": 175.269,
+    "app_s": 549.536,
+    "created_at": "2026-10-11T17:54:25Z",
+    "db_s": 108.534,
+    "head_sha": "3a848374",
+    "run_id": 38161588484
+   },
+   {
+    "api_s": 209.982,
+    "app_s": 676.992,
+    "created_at": "2026-10-11T20:06:06Z",
+    "db_s": 118.449,
+    "head_sha": "16ea7035",
+    "run_id": 38170782091
+   },
+   {
+    "api_s": 224.955,
+    "app_s": 757.286,
+    "created_at": "2026-10-12T06:03:01Z",
+    "db_s": 139.146,
+    "head_sha": "d0032efb",
+    "run_id": 38210673231
+   },
+   {
+    "api_s": 57.605,
+    "app_s": 103.592,
+    "created_at": "2026-10-12T21:06:30Z",
+    "db_s": 55.172,
+    "head_sha": "46a61f76",
+    "run_id": 38308534811
+   },
+   {
+    "api_s": 60.314,
+    "app_s": 111.506,
+    "created_at": "2026-10-13T08:57:33Z",
+    "db_s": 59.34,
+    "head_sha": "e56c3d5b",
+    "run_id": 38372878662
+   },
+   {
+    "api_s": 39.077,
+    "app_s": 68.418,
+    "created_at": "2026-10-13T15:34:46Z",
+    "db_s": 35.698,
+    "head_sha": "56075c66",
+    "run_id": 38423268641
+   },
+   {
+    "api_s": 44.914,
+    "app_s": 76.497,
+    "created_at": "2026-10-13T19:30:46Z",
+    "db_s": 36.706,
+    "head_sha": "252d0727",
+    "run_id": 38455412377
+   },
+   {
+    "api_s": 65.73,
+    "app_s": 122.573,
+    "created_at": "2026-10-14T07:50:04Z",
+    "db_s": 67.677,
+    "head_sha": "765c775b",
+    "run_id": 38530937974
+   },
+   {
+    "api_s": 36.819,
+    "app_s": 86.883,
+    "created_at": "2026-10-14T15:37:44Z",
+    "db_s": 62.882,
+    "head_sha": "ec007b4c",
+    "run_id": 38591007391
+   },
+   {
+    "api_s": 79.209,
+    "app_s": 121.501,
+    "created_at": "2026-10-14T18:55:11Z",
+    "db_s": 74.728,
+    "head_sha": "31f5aff0",
+    "run_id": 38619246044
+   },
+   {
+    "api_s": 84.607,
+    "app_s": 139.236,
+    "created_at": "2026-10-15T05:55:29Z",
+    "db_s": 89.889,
+    "head_sha": "dce8b7bc",
+    "run_id": 38689442104
+   },
+   {
+    "api_s": 52.332,
+    "app_s": 81.883,
+    "created_at": "2026-10-15T08:22:54Z",
+    "db_s": 54.881,
+    "head_sha": "5f53ab55",
+    "run_id": 38705244930
+   },
+   {
+    "api_s": 91.067,
+    "app_s": 140.24,
+    "created_at": "2026-10-15T11:58:12Z",
+    "db_s": 82.651,
+    "head_sha": "2e32114f",
+    "run_id": 38731137890
+   },
+   {
+    "api_s": 83.378,
+    "app_s": 129.531,
+    "created_at": "2026-10-15T18:00:32Z",
+    "db_s": 78.867,
+    "head_sha": "5430ced4",
+    "run_id": 38782036195
+   },
+   {
+    "api_s": 81.983,
+    "app_s": 128.205,
+    "created_at": "2026-10-15T19:38:41Z",
+    "db_s": 65.817,
+    "head_sha": "3cc875d8",
+    "run_id": 38795577358
+   },
+   {
+    "api_s": 90.858,
+    "app_s": 138.208,
+    "created_at": "2026-10-16T04:47:26Z",
+    "db_s": 82.688,
+    "head_sha": "3038ab3a",
+    "run_id": 38852422539
+   },
+   {
+    "api_s": 88.852,
+    "app_s": 144.941,
+    "created_at": "2026-10-16T10:00:49Z",
+    "db_s": 67.456,
+    "head_sha": "c5996183",
+    "run_id": 38884363195
+   },
+   {
+    "api_s": 56.036,
+    "app_s": 84.572,
+    "created_at": "2026-10-16T19:04:40Z",
+    "db_s": 54.648,
+    "head_sha": "a56149f3",
+    "run_id": 38952211883
+   },
+   {
+    "api_s": 54.15,
+    "app_s": 84.558,
+    "created_at": "2026-10-16T20:13:45Z",
+    "db_s": 53.566,
+    "head_sha": "82e0744d",
+    "run_id": 38960706287
+   },
+   {
+    "api_s": 86.567,
+    "app_s": 137.112,
+    "created_at": "2026-10-17T05:11:31Z",
+    "db_s": 82.889,
+    "head_sha": "8b734b8c",
+    "run_id": 39005351026
+   },
+   {
+    "api_s": 87.22,
+    "app_s": 138.413,
+    "created_at": "2026-10-17T06:19:25Z",
+    "db_s": 83.416,
+    "head_sha": "fd06bd43",
+    "run_id": 39009477276
+   },
+   {
+    "api_s": 92.102,
+    "app_s": 140.413,
+    "created_at": "2026-10-17T07:12:06Z",
+    "db_s": 85.89,
+    "head_sha": "d1e844de",
+    "run_id": 39012746427
+   },
+   {
+    "api_s": 92.243,
+    "app_s": 144.48,
+    "created_at": "2026-10-17T11:06:29Z",
+    "db_s": 86.883,
+    "head_sha": "a9c71967",
+    "run_id": 39027429381
+   },
+   {
+    "api_s": 93.948,
+    "app_s": 149.381,
+    "created_at": "2026-10-17T12:17:16Z",
+    "db_s": 96.135,
+    "head_sha": "c3744981",
+    "run_id": 39031927889
+   },
+   {
+    "api_s": 81.194,
+    "app_s": 134.427,
+    "created_at": "2026-10-17T13:13:00Z",
+    "db_s": 65.595,
+    "head_sha": "9fd174db",
+    "run_id": 39035644124
+   },
+   {
+    "api_s": 91.95,
+    "app_s": 148.462,
+    "created_at": "2026-10-17T14:14:59Z",
+    "db_s": 93.842,
+    "head_sha": "cf745bdb",
+    "run_id": 39039933141
+   },
+   {
+    "api_s": 60.618,
+    "app_s": 93.642,
+    "created_at": "2026-10-17T17:44:33Z",
+    "db_s": 60.105,
+    "head_sha": "7476ca0b",
+    "run_id": 39055075192
+   },
+   {
+    "api_s": 101.417,
+    "app_s": 150.314,
+    "created_at": "2026-10-17T21:11:00Z",
+    "db_s": 87.742,
+    "head_sha": "d4628eb2",
+    "run_id": 39069854346
+   },
+   {
+    "api_s": 100.909,
+    "app_s": 156.297,
+    "created_at": "2026-10-18T10:30:13Z",
+    "db_s": 97.724,
+    "head_sha": "ae206ba4",
+    "run_id": 39119503961
+   },
+   {
+    "api_s": 101.234,
+    "app_s": 159.236,
+    "created_at": "2026-10-18T11:21:59Z",
+    "db_s": 96.891,
+    "head_sha": "cdfcc7c3",
+    "run_id": 39122937683
+   },
+   {
+    "api_s": 105.572,
+    "app_s": 172.764,
+    "created_at": "2026-10-18T16:32:31Z",
+    "db_s": 106.352,
+    "head_sha": "17bc40e1",
+    "run_id": 39145466456
+   },
+   {
+    "api_s": 65.04,
+    "app_s": 105.453,
+    "created_at": "2026-10-18T19:55:52Z",
+    "db_s": 72.69,
+    "head_sha": "3471a65d",
+    "run_id": 39160980572
+   },
+   {
+    "api_s": 106.831,
+    "app_s": 171.596,
+    "created_at": "2026-10-20T05:27:21Z",
+    "db_s": 105.694,
+    "head_sha": "244db3b4",
+    "run_id": 39374981419
+   },
+   {
+    "api_s": 69.265,
+    "app_s": 111.263,
+    "created_at": "2026-10-20T07:15:07Z",
+    "db_s": 79.857,
+    "head_sha": "834e9c29",
+    "run_id": 39385292162
+   },
+   {
+    "api_s": 111.216,
+    "app_s": 192.693,
+    "created_at": "2026-10-20T20:10:11Z",
+    "db_s": 135.106,
+    "head_sha": "e2fa0b0f",
+    "run_id": 39489672069
+   },
+   {
+    "api_s": 100.481,
+    "app_s": 152.575,
+    "created_at": "2026-10-21T05:24:37Z",
+    "db_s": 100.383,
+    "head_sha": "13d15eab",
+    "run_id": 39549389877
+   },
+   {
+    "api_s": 127.334,
+    "app_s": 196.475,
+    "created_at": "2026-10-21T10:05:59Z",
+    "db_s": 125.355,
+    "head_sha": "6cb8b044",
+    "run_id": 39582058509
+   },
+   {
+    "api_s": 120.69,
+    "app_s": 190.807,
+    "created_at": "2026-10-21T12:15:43Z",
+    "db_s": 125.066,
+    "head_sha": "c25e7e34",
+    "run_id": 39598194451
+   },
+   {
+    "api_s": 118.2,
+    "app_s": 179.084,
+    "created_at": "2026-10-22T04:36:24Z",
+    "db_s": 116.565,
+    "head_sha": "b10e8f9c",
+    "run_id": 39723309289
+   },
+   {
+    "api_s": 127.34,
+    "app_s": 162.706,
+    "created_at": "2026-10-22T09:52:09Z",
+    "db_s": 76.45,
+    "head_sha": "24e042f5",
+    "run_id": 39758731042
+   },
+   {
+    "api_s": 129.835,
+    "app_s": 186.081,
+    "created_at": "2026-10-22T14:03:20Z",
+    "db_s": 134.923,
+    "head_sha": "41732da8",
+    "run_id": 39792390828
+   },
+   {
+    "api_s": 122.529,
+    "app_s": 186.094,
+    "created_at": "2026-10-23T11:03:02Z",
+    "db_s": 147.944,
+    "head_sha": "9e5b8a26",
+    "run_id": 39943354341
+   },
+   {
+    "api_s": 79.56,
+    "app_s": 139.086,
+    "created_at": "2026-10-23T19:03:29Z",
+    "db_s": 113.543,
+    "head_sha": "ec837aaf",
+    "run_id": 40008365420
+   },
+   {
+    "api_s": 122.081,
+    "app_s": 203.681,
+    "created_at": "2026-10-24T04:41:01Z",
+    "db_s": 159.051,
+    "head_sha": "a514e188",
+    "run_id": 40063309058
+   }
+  ],
+  "source": "Backend Tests job logs, every third successful CI run on main since 2026-10-11 (45 runs)"
+ },
+ "critical_parent_artifact": {
+  "parent_elapsed_s": 130.84,
+  "scenario_leaf_elapsed_s": [
+   1.32,
+   1.32,
+   1.67,
+   1.72,
+   1.82
+  ],
+  "test": "TestEveryOperationKindExportsItsRowsAndPassesSelfCheck"
+ },
+ "fixture_probe": {
+  "forty_investment_fixtures_serial_race_s": {
+   "base": [
+    4.34,
+    4.62,
+    4.5,
+    4.49
+   ],
+   "head": [
+    5.19,
+    4.91,
+    4.61,
+    4.63
+   ]
+  },
+  "testdb_open_ns_per_op_race": {
+   "base": 13617964,
+   "head": 13055676
+  }
+ },
+ "host": {
+  "base_run1_cpu_percent": 558,
+  "base_run1_max_rss_kb": 2241928,
+  "command": "go test -race -count=1 -timeout=10m -json ./internal/app (native SQLite env from scripts/native-sqlite-env.sh); one package at a time, runs sequential: base1, head1 (clean checkout), head2, base2 (extracted trees)",
+  "cpus": 10,
+  "head_run1_cpu_percent": 528,
+  "head_run1_max_rss_kb": 2010492
+ },
+ "leaf_definition": "tests/subtests with no subtests of their own; parent elapsed includes parallel-slot queueing and is excluded",
+ "local_runs": {
+  "base_run1": {
+   "leaf_work_s": 1704.5,
+   "leaves": 2195,
+   "wall_s": 171.574
+  },
+  "base_run2": {
+   "leaf_work_s": 1976.1,
+   "leaves": 2195,
+   "wall_s": 198.447
+  },
+  "head_run1": {
+   "leaf_work_s": 1976.7,
+   "leaves": 2316,
+   "wall_s": 197.977
+  },
+  "head_run2": {
+   "leaf_work_s": 2203.3,
+   "leaves": 2316,
+   "wall_s": 219.802
+  },
+  "pair1": {
+   "chain": [
+    256.2,
+    296.1
+   ],
+   "new_leaves": 135,
+   "new_work": 137.9,
+   "other": [
+    1435.7,
+    1542.7
+   ]
+  },
+  "pair2": {
+   "chain": [
+    297.5,
+    353.1
+   ],
+   "new_leaves": 135,
+   "new_work": 164.9,
+   "other": [
+    1664.0,
+    1685.3
+   ]
+  }
+ },
+ "migration_chain_pattern": "(?i)migrat|downgrade|restore|backup|bundle over common leaves",
+ "refs": {
+  "base": "13d15eabd68ed2d3b6177512c9c8fe56c528bbf0",
+  "head": "a514e188951178b54ca9b43b901c92e725a215e7"
+ }
+}

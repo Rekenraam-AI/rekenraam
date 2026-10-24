@@ -1,0 +1,528 @@
+{
+ "duplicates": [
+  {
+   "firstFile": {
+    "end": 307,
+    "name": "frontend/src/lib/reports/cashflow.test.ts",
+    "start": 294
+   },
+   "format": "typescript",
+   "lines": 14,
+   "secondFile": {
+    "end": 242,
+    "name": "frontend/src/lib/reports/cashflow.test.ts",
+    "start": 230
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 39,
+    "name": "e2e/playwright/support/api.ts",
+    "start": 28
+   },
+   "format": "typescript",
+   "lines": 12,
+   "secondFile": {
+    "end": 97,
+    "name": "e2e/playwright/support/reference-book.ts",
+    "start": 86
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 35,
+    "name": "e2e/playwright/transactions-lifecycle-reconciliation.spec.ts",
+    "start": 23
+   },
+   "format": "typescript",
+   "lines": 13,
+   "secondFile": {
+    "end": 41,
+    "name": "e2e/playwright/trash-restore-reconciliation.spec.ts",
+    "start": 29
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 50,
+    "name": "e2e/playwright/transactions-lifecycle-reconciliation.spec.ts",
+    "start": 34
+   },
+   "format": "typescript",
+   "lines": 17,
+   "secondFile": {
+    "end": 58,
+    "name": "e2e/playwright/trash-restore-reconciliation.spec.ts",
+    "start": 42
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 82,
+    "name": "e2e/playwright/reports.spec.ts",
+    "start": 71
+   },
+   "format": "typescript",
+   "lines": 12,
+   "secondFile": {
+    "end": 24,
+    "name": "e2e/playwright/reports.spec.ts",
+    "start": 14
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 157,
+    "name": "e2e/playwright/reports.spec.ts",
+    "start": 146
+   },
+   "format": "typescript",
+   "lines": 12,
+   "secondFile": {
+    "end": 24,
+    "name": "e2e/playwright/reports.spec.ts",
+    "start": 14
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 211,
+    "name": "e2e/playwright/reports.spec.ts",
+    "start": 200
+   },
+   "format": "typescript",
+   "lines": 12,
+   "secondFile": {
+    "end": 24,
+    "name": "e2e/playwright/reports.spec.ts",
+    "start": 14
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 327,
+    "name": "e2e/playwright/reports.spec.ts",
+    "start": 316
+   },
+   "format": "typescript",
+   "lines": 12,
+   "secondFile": {
+    "end": 157,
+    "name": "e2e/playwright/reports.spec.ts",
+    "start": 14
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 377,
+    "name": "e2e/playwright/reports.spec.ts",
+    "start": 365
+   },
+   "format": "typescript",
+   "lines": 13,
+   "secondFile": {
+    "end": 25,
+    "name": "e2e/playwright/reports.spec.ts",
+    "start": 14
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 466,
+    "name": "e2e/playwright/reports.spec.ts",
+    "start": 456
+   },
+   "format": "typescript",
+   "lines": 11,
+   "secondFile": {
+    "end": 24,
+    "name": "e2e/playwright/reports.spec.ts",
+    "start": 14
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 31,
+    "name": "e2e/playwright/investments-unknown-non-sale.spec.ts",
+    "start": 22
+   },
+   "format": "typescript",
+   "lines": 10,
+   "secondFile": {
+    "end": 29,
+    "name": "e2e/playwright/investments-write-off-entry.spec.ts",
+    "start": 20
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 30,
+    "name": "e2e/playwright/investments-transfer-reversal.spec.ts",
+    "start": 12
+   },
+   "format": "typescript",
+   "lines": 19,
+   "secondFile": {
+    "end": 30,
+    "name": "e2e/playwright/investments-write-off-correction.spec.ts",
+    "start": 12
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 30,
+    "name": "e2e/playwright/investments-trade-field-correction.spec.ts",
+    "start": 20
+   },
+   "format": "typescript",
+   "lines": 11,
+   "secondFile": {
+    "end": 30,
+    "name": "e2e/playwright/investments-write-off-correction.spec.ts",
+    "start": 20
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 152,
+    "name": "e2e/playwright/investments-split.spec.ts",
+    "start": 145
+   },
+   "format": "typescript",
+   "lines": 8,
+   "secondFile": {
+    "end": 74,
+    "name": "e2e/playwright/investments-split.spec.ts",
+    "start": 66
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 173,
+    "name": "e2e/playwright/investments-split.spec.ts",
+    "start": 163
+   },
+   "format": "typescript",
+   "lines": 11,
+   "secondFile": {
+    "end": 153,
+    "name": "e2e/playwright/investments-split.spec.ts",
+    "start": 143
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 112,
+    "name": "e2e/playwright/investments-short.spec.ts",
+    "start": 104
+   },
+   "format": "typescript",
+   "lines": 9,
+   "secondFile": {
+    "end": 61,
+    "name": "e2e/playwright/investments-split.spec.ts",
+    "start": 53
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 38,
+    "name": "e2e/playwright/investments-share-exchange.spec.ts",
+    "start": 24
+   },
+   "format": "typescript",
+   "lines": 15,
+   "secondFile": {
+    "end": 39,
+    "name": "e2e/playwright/investments-spin-off.spec.ts",
+    "start": 25
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 24,
+    "name": "e2e/playwright/investments-pooled-transfer.spec.ts",
+    "start": 12
+   },
+   "format": "typescript",
+   "lines": 13,
+   "secondFile": {
+    "end": 24,
+    "name": "e2e/playwright/investments-transfer-out.spec.ts",
+    "start": 12
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 40,
+    "name": "e2e/playwright/investments-payment-in-lieu.spec.ts",
+    "start": 34
+   },
+   "format": "typescript",
+   "lines": 7,
+   "secondFile": {
+    "end": 36,
+    "name": "e2e/playwright/investments-transfer-out.spec.ts",
+    "start": 30
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 50,
+    "name": "e2e/playwright/investments-historical-entry.spec.ts",
+    "start": 42
+   },
+   "format": "typescript",
+   "lines": 9,
+   "secondFile": {
+    "end": 45,
+    "name": "e2e/playwright/investments-split.spec.ts",
+    "start": 37
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 65,
+    "name": "e2e/playwright/investments-historical-entry.spec.ts",
+    "start": 54
+   },
+   "format": "typescript",
+   "lines": 12,
+   "secondFile": {
+    "end": 61,
+    "name": "e2e/playwright/investments-split.spec.ts",
+    "start": 50
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 34,
+    "name": "e2e/playwright/investments-gain-review.spec.ts",
+    "start": 28
+   },
+   "format": "typescript",
+   "lines": 7,
+   "secondFile": {
+    "end": 36,
+    "name": "e2e/playwright/investments-transfer-out.spec.ts",
+    "start": 30
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 122,
+    "name": "e2e/playwright/investments-cash-in-lieu.spec.ts",
+    "start": 114
+   },
+   "format": "typescript",
+   "lines": 9,
+   "secondFile": {
+    "end": 54,
+    "name": "e2e/playwright/investments-cash-in-lieu.spec.ts",
+    "start": 46
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 41,
+    "name": "e2e/playwright/investments-cash-and-stock-merger.spec.ts",
+    "start": 27
+   },
+   "format": "typescript",
+   "lines": 15,
+   "secondFile": {
+    "end": 39,
+    "name": "e2e/playwright/investments-spin-off.spec.ts",
+    "start": 25
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 36,
+    "name": "e2e/playwright/investments-capital-return.spec.ts",
+    "start": 30
+   },
+   "format": "typescript",
+   "lines": 7,
+   "secondFile": {
+    "end": 36,
+    "name": "e2e/playwright/investments-transfer-out.spec.ts",
+    "start": 30
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 13,
+    "name": "e2e/playwright/investments-capital-return-reads.spec.ts",
+    "start": 1
+   },
+   "format": "typescript",
+   "lines": 13,
+   "secondFile": {
+    "end": 18,
+    "name": "e2e/playwright/investments-unknown-non-sale.spec.ts",
+    "start": 1
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 27,
+    "name": "e2e/playwright/investments-capital-return-reads.spec.ts",
+    "start": 17
+   },
+   "format": "typescript",
+   "lines": 11,
+   "secondFile": {
+    "end": 34,
+    "name": "e2e/playwright/investments-write-off-entry.spec.ts",
+    "start": 22
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 53,
+    "name": "e2e/playwright/investments-backdated-transfer-in.spec.ts",
+    "start": 47
+   },
+   "format": "typescript",
+   "lines": 7,
+   "secondFile": {
+    "end": 47,
+    "name": "e2e/playwright/investments-unknown-basis.spec.ts",
+    "start": 41
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 68,
+    "name": "e2e/playwright/investments-backdated-transfer-in.spec.ts",
+    "start": 62
+   },
+   "format": "typescript",
+   "lines": 7,
+   "secondFile": {
+    "end": 145,
+    "name": "e2e/playwright/investments-dividend-correction.spec.ts",
+    "start": 139
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 105,
+    "name": "e2e/playwright/forecast.spec.ts",
+    "start": 98
+   },
+   "format": "typescript",
+   "lines": 8,
+   "secondFile": {
+    "end": 52,
+    "name": "e2e/playwright/recurring.spec.ts",
+    "start": 46
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 51,
+    "name": "e2e/playwright/dialog-focus.spec.ts",
+    "start": 45
+   },
+   "format": "typescript",
+   "lines": 7,
+   "secondFile": {
+    "end": 51,
+    "name": "e2e/playwright/trash-restore-reconciliation.spec.ts",
+    "start": 45
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 200,
+    "name": "e2e/playwright/data-settings.spec.ts",
+    "start": 166
+   },
+   "format": "typescript",
+   "lines": 35,
+   "secondFile": {
+    "end": 38,
+    "name": "e2e/playwright/investments-unknown-non-sale.spec.ts",
+    "start": 26
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 93,
+    "name": "e2e/playwright/csv-import.spec.ts",
+    "start": 86
+   },
+   "format": "typescript",
+   "lines": 8,
+   "secondFile": {
+    "end": 40,
+    "name": "e2e/playwright/csv-import.spec.ts",
+    "start": 33
+   },
+   "tokens": 0
+  },
+  {
+   "firstFile": {
+    "end": 189,
+    "name": "e2e/playwright/csv-import.spec.ts",
+    "start": 182
+   },
+   "format": "typescript",
+   "lines": 8,
+   "secondFile": {
+    "end": 116,
+    "name": "e2e/playwright/csv-import.spec.ts",
+    "start": 110
+   },
+   "tokens": 0
+  }
+ ],
+ "statistics": {
+  "total": {
+   "clones": 34,
+   "duplicatedLines": 360,
+   "duplicatedTokens": 6476,
+   "lines": 19876,
+   "newClones": 0,
+   "newDuplicatedLines": 0,
+   "percentage": 1.81,
+   "percentageTokens": 2.09,
+   "sources": 163,
+   "tokens": 309936
+  }
+ }
+}

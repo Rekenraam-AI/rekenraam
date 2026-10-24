@@ -1,0 +1,165 @@
+spec,line,expected,scope,expression
+e2e/playwright/accessibility.spec.ts,145,zero,scoped-locator,await expect(page.getByLabel(`Target for ${name}`)).toHaveCount(0);
+e2e/playwright/accessibility.spec.ts,146,zero,named-variable,await expect(row.getByRole('button')).toHaveCount(0);
+e2e/playwright/crypto-instruments.spec.ts,45,nonzero,scoped-locator,"await expect(page.getByRole('button', { name: 'Disable quotes', exact: true })).toHaveCount(1);"
+e2e/playwright/crypto-instruments.spec.ts,48,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'Disable quotes', exact: true })).toHaveCount(0);"
+e2e/playwright/csp.spec.ts,51,nonzero,named-variable,await expect(announcer).toHaveCount(1);
+e2e/playwright/csv-import.spec.ts,125,zero,scoped-locator,"await expect(page.getByRole('row', { name: /Bakker/ }).locator('select')).toHaveCount(0);"
+e2e/playwright/csv-investment-income.spec.ts,109,nonzero,scoped-locator,"await expect(row.getByRole('option', { name: 'Unassigned', exact: true })).toHaveCount(1);"
+e2e/playwright/currency-provider-accessibility.spec.ts,20,nonzero,named-variable,await expect(row.locator('select')).toHaveCount(1);
+e2e/playwright/dialog-focus.spec.ts,70,zero,named-variable,await expect(reasonDialog).toHaveCount(0);
+e2e/playwright/dialog-focus.spec.ts,84,zero,named-variable,await expect(warning).toHaveCount(0);
+e2e/playwright/dialog-focus.spec.ts,96,zero,named-variable,await expect(warning.getByRole('listitem')).not.toHaveCount(0);
+e2e/playwright/dialog-focus.spec.ts,100,zero,named-variable,await expect(warning).toHaveCount(0);
+e2e/playwright/dialog-focus.spec.ts,116,zero,named-variable,await expect(warning).toHaveCount(0);
+e2e/playwright/dialog-focus.spec.ts,149,zero,scoped-locator,await expect(dialog).toHaveCount(0);
+e2e/playwright/forecast-learning.spec.ts,85,zero,scoped-locator,await expect(page.getByTestId('forecast-learning-status')).toHaveCount(0);
+e2e/playwright/forecast-learning.spec.ts,86,zero,scoped-locator,"await expect(table.getByRole('columnheader', { name: 'With estimated spending' })).toHaveCount(0);"
+e2e/playwright/forecast-learning.spec.ts,109,zero,named-variable,await expect(page.getByText(/confidence|probability|95%/i)).toHaveCount(0);
+e2e/playwright/forecast-learning.spec.ts,127,zero,scoped-locator,await expect(page.getByTestId('forecast-learning-status')).toHaveCount(0);
+e2e/playwright/forecast-learning.spec.ts,128,zero,scoped-locator,"await expect(page.getByRole('table').first().getByRole('columnheader', { name: 'With estimated spending' })).toHaveCount(0);"
+e2e/playwright/forecast-learning.spec.ts,157,zero,scoped-locator,"await expect(sparseTable.getByRole('columnheader', { name: 'With estimated spending' })).toHaveCount(0);"
+e2e/playwright/forecast.spec.ts,57,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'Close details' })).toHaveCount(0);"
+e2e/playwright/forecast.spec.ts,110,nonzero,named-variable,"await expect(changedDetails.getByText('USD -15.67', { exact: true })).toHaveCount(1);"
+e2e/playwright/forecast.spec.ts,111,nonzero,named-variable,"await expect(changedDetails.getByText(name, { exact: true })).toHaveCount(1);"
+e2e/playwright/forecast.spec.ts,165,zero,named-variable,"await expect(page.getByText('old event that must be cleared', { exact: true })).toHaveCount(0);"
+e2e/playwright/forecast.spec.ts,166,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'Load more movements' })).toHaveCount(0);"
+e2e/playwright/forecast.spec.ts,290,zero,named-variable,"await expect(page.getByText('USD 12.34', { exact: true })).toHaveCount(0);"
+e2e/playwright/import-gain-review.spec.ts,124,zero,named-variable,await expect(page.getByText(/were not committed yet/)).toHaveCount(0);
+e2e/playwright/import-gain-review.spec.ts,158,zero,named-variable,await expect(page.getByText(/were not committed yet/)).toHaveCount(0);
+e2e/playwright/import-gain-review.spec.ts,201,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'Correct buy from source' })).toHaveCount(0);"
+e2e/playwright/import-gain-review.spec.ts,221,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'Correct buy from source' })).toHaveCount(0);"
+e2e/playwright/import-short-link.spec.ts,84,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'Link to recorded short', exact: true })).toHaveCount(0);"
+e2e/playwright/investment-entry-context.spec.ts,46,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'New transaction' })).toHaveCount(0);"
+e2e/playwright/investment-entry-context.spec.ts,67,zero,scoped-locator,"await expect(page.getByRole('heading', { name: 'Edit transaction' })).toHaveCount(0);"
+e2e/playwright/investment-entry-context.spec.ts,86,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'New transaction' })).toHaveCount(0);"
+e2e/playwright/investment-entry-context.spec.ts,137,zero,named-variable,"await expect(page.getByText('Cash dividends move no units', { exact: false })).toHaveCount(0);"
+e2e/playwright/investment-entry-context.spec.ts,158,nonzero,named-variable,"await expect(page.getByText(memo, { exact: true })).toHaveCount(3);"
+e2e/playwright/investment-entry-context.spec.ts,174,zero,scoped-locator,await expect(entry.locator('#div-income-account')).toHaveCount(0);
+e2e/playwright/investment-gains-display.spec.ts,41,nonzero,page-rows,await expect(page.locator('tbody tr')).toHaveCount(5);
+e2e/playwright/investment-gains-display.spec.ts,42,nonzero,scoped-locator,"await expect(page.getByRole('cell', { name: '1.234567', exact: true })).toHaveCount(5);"
+e2e/playwright/investment-gains-display.spec.ts,52,nonzero,page-rows,await expect(page.locator('tbody tr')).toHaveCount(3);
+e2e/playwright/investment-gains-display.spec.ts,53,nonzero,scoped-locator,"await expect(page.getByRole('cell', { name: '1.234567', exact: true })).toHaveCount(3);"
+e2e/playwright/investments-alternative-gains.spec.ts,55,zero,named-variable,await expect(comparison.getByRole('table')).toHaveCount(0);
+e2e/playwright/investments-capital-return-reads.spec.ts,50,nonzero,named-variable,await expect(history.getByRole('article')).toHaveCount(2);
+e2e/playwright/investments-capital-return-reads.spec.ts,58,nonzero,named-variable,await expect(history.getByRole('article')).toHaveCount(3);
+e2e/playwright/investments-capital-return-reads.spec.ts,63,nonzero,scoped-locator,await expect(summary.getByRole('article').filter({ hasText: suffix })).toHaveCount(1);
+e2e/playwright/investments-capital-return-reads.spec.ts,73,nonzero,named-variable,await expect(history.getByRole('article')).toHaveCount(3);
+e2e/playwright/investments-capital-return-reads.spec.ts,88,zero,scoped-locator,await expect(summary.getByRole('article').filter({ hasText: `Holding ${suffix}` })).toHaveCount(0);
+e2e/playwright/investments-capital-return.spec.ts,103,zero,scoped-locator,await expect(results.getByRole('article').filter({ hasText: name })).toHaveCount(0);
+e2e/playwright/investments-capital-return.spec.ts,157,nonzero,named-variable,await expect(history.getByRole('article')).toHaveCount(2);
+e2e/playwright/investments-cash-in-lieu.spec.ts,140,nonzero,named-variable,await expect(positionRows).toHaveCount(2);
+e2e/playwright/investments-cash-in-lieu.spec.ts,144,nonzero,named-variable,"await expect(detail.getByText('Original qty',{exact:true})).toHaveCount(1);"
+e2e/playwright/investments-cash-in-lieu.spec.ts,185,nonzero,named-variable,"await expect(repair.locator('input[id^=""cil-lot-""]')).toHaveCount(1);"
+e2e/playwright/investments-cash-in-lieu.spec.ts,253,nonzero,scoped-locator,"await expect(form.locator('input[id^=""cil-lot-""]')).toHaveCount(1);"
+e2e/playwright/investments-gains-runs.spec.ts,57,nonzero,named-variable,await expect(position).toHaveCount(2);
+e2e/playwright/investments-gains-runs.spec.ts,69,zero,scoped-locator,await expect(saved.getByLabel('Period start')).toHaveCount(0);
+e2e/playwright/investments-historical-entry.spec.ts,75,nonzero,scoped-locator,"await expect(holding.locator('option', { hasText: s.holdingLabel })).toHaveCount(1);"
+e2e/playwright/investments-historical-entry.spec.ts,77,nonzero,scoped-locator,"await expect(holding.locator('option', { hasText: s.holdingLabel })).toHaveCount(1);"
+e2e/playwright/investments-historical-entry.spec.ts,128,nonzero,named-variable,await expect(lots).toHaveCount(2);
+e2e/playwright/investments-historical-entry.spec.ts,169,nonzero,named-variable,await expect(lots).toHaveCount(2);
+e2e/playwright/investments-person-pooled-gains.spec.ts,79,nonzero,named-variable,await expect(positions).toHaveCount(2);
+e2e/playwright/investments-provider-dividends.spec.ts,70,zero,scoped-locator,"await expect(card.getByRole('button', { name: 'Accept', exact: true })).toHaveCount(0);"
+e2e/playwright/investments-provider-dividends.spec.ts,89,zero,scoped-locator,await expect(card).toHaveCount(0);
+e2e/playwright/investments-provider-dividends.spec.ts,105,zero,scoped-locator,await expect(card.getByTestId('event-suggestion-revisions')).toHaveCount(0);
+e2e/playwright/investments-provider-dividends.spec.ts,113,nonzero,scoped-locator,await expect(page.getByTestId('event-suggestion').filter({ hasText: name })).toHaveCount(1);
+e2e/playwright/investments-provider-dividends.spec.ts,145,nonzero,named-variable,await expect(candidate).toHaveCount(1);
+e2e/playwright/investments-provider-dividends.spec.ts,155,zero,scoped-locator,await expect(card).toHaveCount(0);
+e2e/playwright/investments-reference-audit.spec.ts,34,nonzero,named-variable,await expect(row).toHaveCount(1);
+e2e/playwright/investments-share-exchange.spec.ts,92,nonzero,named-variable,await expect(lots.getByText(`Exchanged from ${s.old.name}`)).toHaveCount(2);
+e2e/playwright/investments-share-exchange.spec.ts,93,nonzero,named-variable,"await expect(lots.getByText('Acquired', { exact: true })).toHaveCount(2);"
+e2e/playwright/investments-short.spec.ts,86,zero,scoped-locator,"await expect(page.getByRole('button', { name: new RegExp(s.name) })).toHaveCount(0);"
+e2e/playwright/investments-spin-off.spec.ts,98,nonzero,named-variable,await expect(lots.getByText(`Spun off from ${s.parent.name}`)).toHaveCount(2);
+e2e/playwright/investments-transfer-out.spec.ts,104,zero,scoped-locator,await expect(form.getByLabel('Destination holding account')).toHaveCount(0);
+e2e/playwright/investments-transfer-reversal.spec.ts,95,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'Reverse transfer…' })).toHaveCount(0);"
+e2e/playwright/investments-unknown-basis.spec.ts,61,nonzero,scoped-locator,await expect(realized.filter({ hasText: 'Unresolved — cost basis unknown' })).toHaveCount(1);
+e2e/playwright/investments-unknown-basis.spec.ts,172,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'Resolve cost basis…' })).toHaveCount(0);"
+e2e/playwright/investments-unknown-basis.spec.ts,211,nonzero,named-variable,await expect(history.getByRole('listitem')).toHaveCount(2);
+e2e/playwright/investments-unknown-basis.spec.ts,225,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'Withdraw cost basis' })).toHaveCount(0);"
+e2e/playwright/investments-unknown-basis.spec.ts,289,zero,scoped-locator,await expect(page.getByRole('alertdialog')).toHaveCount(0);
+e2e/playwright/investments-write-off-entry.spec.ts,137,nonzero,named-variable,await expect(lots).toHaveCount(2);
+e2e/playwright/investments-write-off-entry.spec.ts,194,zero,scoped-locator,"await expect(dialog.getByRole('button', { name: 'Record write-off', exact: true })).toHaveCount(0);"
+e2e/playwright/mfa.spec.ts,77,zero,named-variable,await expect(page.getByText(/needs REKENRAAM_SECRET_KEY/)).toHaveCount(0);
+e2e/playwright/panel-focus.spec.ts,70,zero,named-variable,await expect(panel).toHaveCount(0);
+e2e/playwright/panel-focus.spec.ts,90,zero,named-variable,await expect(panel).toHaveCount(0);
+e2e/playwright/panel-focus.spec.ts,104,zero,named-variable,await expect(panel).toHaveCount(0);
+e2e/playwright/panel-focus.spec.ts,111,zero,named-variable,await expect(panel).toHaveCount(0);
+e2e/playwright/personal-access-tokens.spec.ts,45,zero,named-variable,await expect(secretField).toHaveCount(0);
+e2e/playwright/personal-access-tokens.spec.ts,46,zero,named-variable,"await expect(page.getByText(secret, { exact: true })).toHaveCount(0);"
+e2e/playwright/personal-access-tokens.spec.ts,48,zero,scoped-locator,"await expect(page.getByLabel('Your new token', { exact: true })).toHaveCount(0);"
+e2e/playwright/personal-access-tokens.spec.ts,61,zero,scoped-locator,await expect(dialog).toHaveCount(0);
+e2e/playwright/personal-access-tokens.spec.ts,94,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'Try again', exact: true })).toHaveCount(0);"
+e2e/playwright/personal-access-tokens.spec.ts,100,zero,scoped-locator,"await expect(page.getByLabel('Your new token', { exact: true })).toHaveCount(0);"
+e2e/playwright/personal-access-tokens.spec.ts,118,zero,named-variable,await expect(secretField).toHaveCount(0);
+e2e/playwright/personal-access-tokens.spec.ts,149,zero,scoped-locator,"await expect(page.getByLabel('Your new token', { exact: true })).toHaveCount(0);"
+e2e/playwright/pricing-management.spec.ts,139,nonzero,scoped-locator,await expect(page.locator('[data-price-id]')).toHaveCount(50);
+e2e/playwright/pricing-management.spec.ts,140,zero,scoped-locator,"await expect(page.locator(`[data-price-id=""${ids[0]}""]`)).toHaveCount(0);"
+e2e/playwright/pricing-management.spec.ts,142,nonzero,scoped-locator,await expect(page.locator('[data-price-id]')).toHaveCount(53);
+e2e/playwright/reconciliation-void-checkpoint.spec.ts,88,zero,scoped-locator,"await expect(page.getByRole('button', { name: /^Void the statement/ })).toHaveCount(0);"
+e2e/playwright/recurring.spec.ts,17,nonzero,scoped-locator,"await expect(dialog.getByRole('region',{name:'Next five scheduled dates'}).locator('time')).toHaveCount(5);"
+e2e/playwright/recurring.spec.ts,147,zero,scoped-locator,"await expect(dialog.getByText(`${name} first`,{exact:false})).toHaveCount(0);"
+e2e/playwright/register-correction-chain.spec.ts,49,nonzero,named-variable,await expect(histories).toHaveCount(3);
+e2e/playwright/register-correction-chain.spec.ts,92,nonzero,named-variable,await expect(page.locator('summary')).toHaveCount(3);
+e2e/playwright/reports.spec.ts,42,nonzero,named-variable,await expect(rows).toHaveCount(2);
+e2e/playwright/reports.spec.ts,91,nonzero,named-variable,await expect(table.locator('tbody tr')).toHaveCount(3);
+e2e/playwright/reports.spec.ts,99,nonzero,named-variable,await expect(table.locator('tbody tr')).toHaveCount(1);
+e2e/playwright/reports.spec.ts,109,nonzero,named-variable,await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
+e2e/playwright/reports.spec.ts,118,nonzero,named-variable,await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
+e2e/playwright/reports.spec.ts,126,zero,scoped-locator,"await expect(page.getByRole('checkbox', { name: 'Include sub-accounts of the selected accounts' })).toHaveCount(0);"
+e2e/playwright/reports.spec.ts,183,nonzero,scoped-locator,await expect(ownRows.filter({ hasText: '42.00' })).toHaveCount(1);
+e2e/playwright/reports.spec.ts,184,zero,scoped-locator,await expect(ownRows.filter({ hasText: '31.00' })).toHaveCount(0);
+e2e/playwright/reports.spec.ts,190,nonzero,named-variable,).toHaveCount(1);
+e2e/playwright/reports.spec.ts,350,nonzero,named-variable,await expect(spendingRows).toHaveCount(2);
+e2e/playwright/reports.spec.ts,403,zero,named-variable,await expect(page.getByRole('img')).toHaveCount(0);
+e2e/playwright/reports.spec.ts,412,zero,named-variable,await expect(page.getByRole('img')).toHaveCount(0);
+e2e/playwright/reports.spec.ts,425,nonzero,named-variable,await expect(netWorthRows).toHaveCount(2);
+e2e/playwright/reports.spec.ts,436,nonzero,named-variable,await expect(page.getByRole('img')).toHaveCount(1);
+e2e/playwright/reports.spec.ts,887,nonzero,named-variable,await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(2);
+e2e/playwright/reports.spec.ts,890,zero,named-variable,await expect(page.getByRole('img')).toHaveCount(0);
+e2e/playwright/reports.spec.ts,897,nonzero,named-variable,await expect(spendingRows).toHaveCount(3);
+e2e/playwright/reports.spec.ts,901,nonzero,named-variable,await expect(restated).toHaveCount(1);
+e2e/playwright/reports.spec.ts,906,nonzero,named-variable,await expect(page.getByRole('img')).toHaveCount(1);
+e2e/playwright/reports.spec.ts,922,nonzero,named-variable,await expect(cashflowRestated).toHaveCount(1);
+e2e/playwright/reports.spec.ts,927,nonzero,named-variable,await expect(netWorthRestated).toHaveCount(1);
+e2e/playwright/reports.spec.ts,936,nonzero,named-variable,await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(2);
+e2e/playwright/route-sweep.spec.ts,81,zero,scoped-locator,"await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toHaveCount(0);"
+e2e/playwright/subview-sweep.spec.ts,302,zero,scoped-locator,await expect(dialog.getByRole('textbox')).toHaveCount(0);
+e2e/playwright/subview-sweep.spec.ts,527,zero,scoped-locator,"await expect(c.page.getByRole('button', { name: c.t('import_commit_button') })).toHaveCount(0);"
+e2e/playwright/transaction-row-actions.spec.ts,43,zero,scoped-locator,"await expect(entry.getByRole('button', { name: 'Approve', exact: true })).toHaveCount(0);"
+e2e/playwright/transaction-row-actions.spec.ts,45,zero,scoped-locator,"await expect(page.getByRole('complementary', { name: 'Actions' })).toHaveCount(0);"
+e2e/playwright/transaction-row-actions.spec.ts,74,zero,scoped-locator,"await expect(entry.getByRole('button', { name: 'Unvoid', exact: true })).toHaveCount(0);"
+e2e/playwright/transaction-row-actions.spec.ts,154,zero,scoped-locator,"await expect(entry.getByRole('button', { name: 'Approve', exact: true })).toHaveCount(0);"
+e2e/playwright/transaction-row-actions.spec.ts,155,zero,named-variable,await expect(page.getByRole('alert')).toHaveCount(0);
+e2e/playwright/transaction-row-actions.spec.ts,160,zero,scoped-locator,"await expect(page.getByRole('heading', { name: 'Edit transaction', exact: true })).toHaveCount(0);"
+e2e/playwright/transaction-row-actions.spec.ts,259,zero,scoped-locator,"await expect(entry.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);"
+e2e/playwright/transaction-row-actions.spec.ts,260,zero,scoped-locator,"await expect(entry.getByRole('button', { name: 'Create correction', exact: true })).toHaveCount(0);"
+e2e/playwright/transaction-row-actions.spec.ts,275,zero,scoped-locator,await expect(page.getByRole('dialog')).toHaveCount(0);
+e2e/playwright/transaction-row-actions.spec.ts,298,zero,scoped-locator,"await expect(row(page, voidedDescription)).toHaveCount(0);"
+e2e/playwright/transaction-row-actions.spec.ts,302,zero,scoped-locator,"await expect(row(page, s.description)).toHaveCount(0);"
+e2e/playwright/transaction-row-actions.spec.ts,312,zero,scoped-locator,"await expect(row(page, voidedDescription)).toHaveCount(0);"
+e2e/playwright/transactions-lifecycle-reconciliation.spec.ts,73,nonzero,named-variable,await expect(warning.getByRole('listitem')).toHaveCount(2);
+e2e/playwright/transactions-lifecycle-reconciliation.spec.ts,78,zero,named-variable,await expect(warning).toHaveCount(0);
+e2e/playwright/transactions-lifecycle-reconciliation.spec.ts,99,nonzero,named-variable,await expect(warning.getByRole('listitem')).toHaveCount(1);
+e2e/playwright/transactions-posted-on.spec.ts,152,zero,scoped-locator,"await expect(row.getByRole('button', { name: 'Move later in the day' })).toHaveCount(0);"
+e2e/playwright/transactions-reorder.spec.ts,58,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'Move earlier in the day' })).toHaveCount(0);"
+e2e/playwright/transactions-reorder.spec.ts,67,zero,scoped-locator,"await expect(page.getByRole('button', { name: 'Move earlier in the day' })).toHaveCount(0);"
+e2e/playwright/transactions-reorder.spec.ts,94,zero,scoped-locator,await expect(page.getByLabel('Only in this account')).toHaveCount(0);
+e2e/playwright/transactions-reorder.spec.ts,120,nonzero,named-variable,await expect(rows).toHaveCount(3);
+e2e/playwright/transactions-reorder.spec.ts,121,nonzero,scoped-locator,"for (const amount of ['1.01', '2.02', '4.04']) await expect(rows.filter({ hasText: amount })).toHaveCount(1);"
+e2e/playwright/transactions-reorder.spec.ts,129,nonzero,named-variable,await expect(rows).toHaveCount(3);
+e2e/playwright/trash-restore-reconciliation.spec.ts,98,nonzero,named-variable,await expect(warning.getByRole('listitem')).toHaveCount(2);
+e2e/playwright/trash-restore-reconciliation.spec.ts,103,zero,named-variable,await expect(warning).toHaveCount(0);
+e2e/playwright/trash-restore-reconciliation.spec.ts,108,nonzero,named-variable,await expect(warning.getByRole('listitem')).toHaveCount(2);
+e2e/playwright/trash-restore-reconciliation.spec.ts,110,zero,named-variable,await expect(warning).toHaveCount(0);
+e2e/playwright/trash-restore-reconciliation.spec.ts,113,zero,scoped-locator,await expect(page.getByRole('row').filter({ hasText: description })).toHaveCount(0);
+e2e/playwright/trash-restore-reconciliation.spec.ts,129,nonzero,named-variable,await expect(warning.getByRole('listitem')).toHaveCount(2);
+e2e/playwright/trash-restore-reconciliation.spec.ts,160,zero,named-variable,"await expect(row.getByText('voided', { exact: true })).toHaveCount(0);"
+e2e/playwright/url-selection.spec.ts,42,nonzero,scoped-locator,"await expect(page.getByRole('combobox', { name: 'Currency', exact: true }).getByRole('option', { name: 'USD', exact: true })).toHaveCount(1);"
+e2e/playwright/url-selection.spec.ts,117,nonzero,scoped-locator,await expect(target.getByRole('row').filter({ hasText: description })).toHaveCount(1);
+e2e/proxy-audit/personal-access-token-audit.spec.ts,46,zero,named-variable,await expect(field).toHaveCount(0);
+e2e/proxy-audit/personal-access-token-audit.spec.ts,66,zero,named-variable,await expect(field).toHaveCount(0);
+e2e/proxy-audit/proxy-deployment.spec.ts,182,zero,named-variable,await expect(page.getByText(/needs REKENRAAM_SECRET_KEY/)).toHaveCount(0);
+e2e/proxy-audit/proxy-deployment.spec.ts,234,zero,named-variable,await expect(other.getByText(SENTINEL_ACCOUNT)).toHaveCount(0);
+e2e/proxy-audit/proxy-deployment.spec.ts,250,zero,named-variable,await expect(page.getByText(SENTINEL_ACCOUNT)).toHaveCount(0);
+e2e/proxy-audit/proxy-deployment.spec.ts,252,zero,named-variable,await expect(page.getByText(SENTINEL_ACCOUNT)).toHaveCount(0);
+e2e/proxy-audit/proxy-deployment.spec.ts,303,zero,named-variable,await expect(page.getByText(SENTINEL_ACCOUNT)).toHaveCount(0);

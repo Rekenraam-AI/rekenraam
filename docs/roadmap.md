@@ -155,8 +155,10 @@ below is execution order, not a chain of hard dependencies.
    total/leaf ownership candidates. The
    [fifth slice](reviews/maintainability-reachability-2026-10-21.md) delivers
    Go production/test reachability, frontend file/export triage and 25 named
-   Go abstraction dispositions. Complete test-ownership/duplication inventories
-   and final investment/reporting
+   Go abstraction dispositions. The
+   [sixth slice](reviews/maintainability-tests-2026-10-24.md) pins `a514e188`,
+   reconciles the intervening commits and delivers the test fixture/oracle/
+   duplication and race-cost review. Complete the final investment/reporting
    dispositions. Use the
    measured duplication, change amplification and repeated invariant enforcement
    to publish a ranked list with
