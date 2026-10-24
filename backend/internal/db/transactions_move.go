@@ -329,7 +329,7 @@ func (r *TransactionRepository) MovePosting(ctx context.Context, params MovePost
 // new version row was inserted. We cannot use current_transaction_versions here
 // because the new version row is already inserted (but has no postings yet),
 // so the view would return no rows for this posting.
-func allocateOrInheritAccountDaySeq(ctx context.Context, tx *sql.Tx, bookID int64, prevVersionID int64, postingLineID int64, accountID int64, entryDate string) (int64, error) {
+func allocateOrInheritAccountDaySeq(ctx context.Context, tx statementExecQueryer, bookID int64, prevVersionID int64, postingLineID int64, accountID int64, entryDate string) (int64, error) {
 	if prevVersionID > 0 {
 		var inherited int64
 		err := tx.QueryRowContext(ctx, `

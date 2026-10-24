@@ -3,7 +3,7 @@
 ## Status
 
 Accepted (2026-10-12); amended 2026-10-24 by #402 (monitoring thresholds and
-escalation order). Supersedes ADR 0015 decision 5's retained serial-package
+escalation order); remedy 1 measured and closed by #404 the same day. Supersedes ADR 0015 decision 5's retained serial-package
 schedule and 20-minute deadline. FULL durability and native-driver admission
 remain unchanged.
 
@@ -105,6 +105,15 @@ Do not recover headroom by:
 At `935ccdb7` the single-package and full-gate thresholds have fired; the CI
 threshold has not. #404 is the response.
 
+**#404 result (2026-10-24).** Remedy 1 is done. Explicit statement reuse in
+five hot loops lowered the single-package median from 223.3 s to 219.4 s and
+moved the full-gate pair from 280.2/276.6 s to 255.5/274.1 s. The act
+threshold no longer fires, by a thin margin; the investigate threshold still
+does. The native statement cache measured −4.4% here, about 2.7% beyond
+explicit reuse, and the owner declined it: `_stmt_cache_size=0` stays. Remedy
+2, schema slimming in #405, is next. See the
+[#404 record](../reviews/statement-compilation-2026-10-24.md).
+
 ## References
 
 - [ADR 0014](0014-native-sqlite-driver.md), native driver admission.
@@ -112,3 +121,4 @@ threshold has not. #404 is the response.
 - [FULL timing evidence](../reviews/sqlite-full-durability-2026-10-12.md).
 - [#164](https://github.com/sergeyfarin/rekenraam/issues/164), development feedback.
 - [Race-suite cost investigation](../reviews/race-suite-cost-2026-10-24.md), #402 amendment.
+- [Statement compilation cost](../reviews/statement-compilation-2026-10-24.md), #404 result.

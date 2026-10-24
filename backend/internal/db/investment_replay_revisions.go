@@ -175,8 +175,10 @@ func persistInvestmentReplayPositionTx(ctx context.Context, tx *sql.Tx, bookID, 
 			return err
 		}
 	}
+	lotStatements := newStatementSet(tx)
+	defer lotStatements.Close()
 	for _, lot := range projection.Lots {
-		result, err := tx.ExecContext(ctx, `INSERT INTO investment_lot_state (status,
+		result, err := lotStatements.ExecContext(ctx, `INSERT INTO investment_lot_state (status,
 		remaining_quantity_value, remaining_quantity_scale, remaining_cost_basis_value, remaining_cost_basis_scale,
 		basis_knowledge, updated_at, updated_by_user_id, updated_audit_event_id, lot_id, book_id)
 		SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, id, book_id FROM investment_lots

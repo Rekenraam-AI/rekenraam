@@ -49,7 +49,9 @@ current CGO-disabled artifact. Pin the final feature set in shared commands.
 Keep the native statement cache disabled for the first comparison (the
 candidate defaults to zero). Cache tuning, explicit statement reuse and
 fixture-pool reuse are separately measured changes, so their gains are not
-confused with the engine switch.
+confused with the engine switch. #404 measured the first two: explicit reuse in
+hot loops shipped, and the cache stays at zero
+([record](../reviews/statement-compilation-2026-10-24.md)).
 
 ### Connections, transactions and values
 

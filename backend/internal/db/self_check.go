@@ -808,8 +808,11 @@ func (r *SelfCheckRepository) SaveSelfCheckResults(ctx context.Context, runID in
 	}
 	defer rollbackTx(ctx, tx)
 
+	// One result per check, all through the same upsert (#404).
+	statements := newStatementSet(tx)
+	defer statements.Close()
 	for _, result := range results {
-		if _, err := tx.ExecContext(ctx, `
+		if _, err := statements.ExecContext(ctx, `
 			INSERT INTO self_check_results (run_id, check_id, status, finding_count, sample_json,
 				unavailable_count, unavailable_sample_json, warning_count, warning_sample_json, summary)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

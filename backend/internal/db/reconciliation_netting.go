@@ -87,6 +87,8 @@ func netCheckpointInvalidationRefs(ctx context.Context, queryer interface {
 		return order[i].commodityID < order[j].commodityID
 	})
 
+	queryer, release := reuseTxStatements(queryer)
+	defer release()
 	var refs []CheckpointInvalidationRef
 	for _, key := range order {
 		group := grouped[key]

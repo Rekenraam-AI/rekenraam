@@ -1028,7 +1028,9 @@ Normal local commands omit the extra precompile passes unless opted in.
 
 **Race-suite cost thresholds.** Thresholds are defined in the
 [ADR 0016 amendment](adrs/0016-native-backend-test-resources.md#amendment--race-suite-cost-thresholds-2026-10-24),
-and #402's [record](reviews/race-suite-cost-2026-10-24.md) has the baseline.
+and #402's [record](reviews/race-suite-cost-2026-10-24.md) has the baseline;
+#404's [record](reviews/statement-compilation-2026-10-24.md) has the latest
+matched runs.
 Measure against them uncached, with matched runs:
 
 ```sh

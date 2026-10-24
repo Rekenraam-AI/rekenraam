@@ -224,6 +224,8 @@ func insertTransactionWithAuditEventTx(ctx context.Context, tx *sql.Tx, params C
 // facts they were decided on still hold.
 func requireAccountRuleDependenciesTx(ctx context.Context, tx *sql.Tx, spec TransactionSpec, dependencies []AccountRuleDependency) error {
 	prepared := make(map[int64]int64, len(dependencies))
+	statements := newStatementSet(tx)
+	defer statements.Close()
 	for _, dependency := range dependencies {
 		if dependency.AccountID <= 0 || dependency.LatestVersionID <= 0 {
 			return fmt.Errorf("%w: account %d was prepared without a version", ErrPostingAccountVersionStale, dependency.AccountID)
@@ -232,7 +234,7 @@ func requireAccountRuleDependenciesTx(ctx context.Context, tx *sql.Tx, spec Tran
 		// An audit-only investment header has no postings, but its account
 		// role checks still depend on the version the service read (#146).
 		var latestVersionID sql.NullInt64
-		if err := tx.QueryRowContext(ctx, `SELECT MAX(id) FROM account_versions WHERE account_id = ?`,
+		if err := statements.QueryRowContext(ctx, `SELECT MAX(id) FROM account_versions WHERE account_id = ?`,
 			dependency.AccountID).Scan(&latestVersionID); err != nil {
 			return fmt.Errorf("read account version for posting dependency: %w", err)
 		}
@@ -788,6 +790,10 @@ func (r *TransactionRepository) DeleteDraftTransaction(ctx context.Context, para
 }
 
 func (r *TransactionRepository) insertTransactionVersion(ctx context.Context, tx *sql.Tx, params insertTransactionVersionParams) (TransactionRecord, error) {
+	// Each journal entry and posting runs the same statements; compile them
+	// once per version (#404).
+	statements := newStatementSet(tx)
+	defer statements.Close()
 	txDaySeq := params.TransactionDaySequence
 	if txDaySeq <= 0 {
 		// Allocate the next sequence position in (book_id, transaction_date).
@@ -833,14 +839,14 @@ func (r *TransactionRepository) insertTransactionVersion(ctx context.Context, tx
 	}
 
 	if params.ReplaceTags {
-		if err := replaceTransactionTags(ctx, tx, params.BookID, params.TransactionID, params.Spec.TagIDs, params.RecordedAt, params.ChangedByUserID, params.ChangeAuditEventID); err != nil {
+		if err := replaceTransactionTags(ctx, statements, params.BookID, params.TransactionID, params.Spec.TagIDs, params.RecordedAt, params.ChangedByUserID, params.ChangeAuditEventID); err != nil {
 			return TransactionRecord{}, err
 		}
 	}
 
 	postingLineIDs := make(map[int64]bool)
 	for entryIndex, entry := range params.Spec.JournalEntries {
-		entryResult, err := tx.ExecContext(ctx, `
+		entryResult, err := statements.ExecContext(ctx, `
 			INSERT INTO journal_entries (
 				book_id,
 				transaction_version_id,
@@ -861,7 +867,7 @@ func (r *TransactionRepository) insertTransactionVersion(ctx context.Context, tx
 		}
 
 		for postingIndex, posting := range entry.Postings {
-			postingLineID, err := ensurePostingLine(ctx, tx, params.BookID, params.TransactionID, posting.LineKey, params.RecordedAt, params.ChangedByUserID, params.RequestID, params.ChangeAuditEventID)
+			postingLineID, err := ensurePostingLine(ctx, statements, params.BookID, params.TransactionID, posting.LineKey, params.RecordedAt, params.ChangedByUserID, params.RequestID, params.ChangeAuditEventID)
 			if err != nil {
 				return TransactionRecord{}, err
 			}
@@ -869,13 +875,13 @@ func (r *TransactionRepository) insertTransactionVersion(ctx context.Context, tx
 
 			acctDaySeq, overridden := params.PostingSeqOverrides[postingLineID]
 			if !overridden {
-				acctDaySeq, err = allocateOrInheritAccountDaySeq(ctx, tx, params.BookID, params.SupersedesVersionID.Int64, postingLineID, posting.AccountID, entry.EntryDate)
+				acctDaySeq, err = allocateOrInheritAccountDaySeq(ctx, statements, params.BookID, params.SupersedesVersionID.Int64, postingLineID, posting.AccountID, entry.EntryDate)
 				if err != nil {
 					return TransactionRecord{}, err
 				}
 			}
 
-			postingResult, err := tx.ExecContext(ctx, `
+			postingResult, err := statements.ExecContext(ctx, `
 				INSERT INTO posting_versions (
 					book_id,
 					transaction_version_id,
@@ -902,7 +908,7 @@ func (r *TransactionRepository) insertTransactionVersion(ctx context.Context, tx
 			}
 
 			if params.ReplaceTags {
-				if err := replacePostingTags(ctx, tx, params.BookID, postingLineID, posting.TagIDs, params.RecordedAt, params.ChangedByUserID, params.ChangeAuditEventID); err != nil {
+				if err := replacePostingTags(ctx, statements, params.BookID, postingLineID, posting.TagIDs, params.RecordedAt, params.ChangedByUserID, params.ChangeAuditEventID); err != nil {
 					return TransactionRecord{}, err
 				}
 			}
@@ -926,7 +932,7 @@ func (r *TransactionRepository) insertTransactionVersion(ctx context.Context, tx
 	return records[0], nil
 }
 
-func replaceTransactionTags(ctx context.Context, tx *sql.Tx, bookID int64, transactionID int64, tagIDs []int64, recordedAt string, actorUserID int64, auditEventID int64) error {
+func replaceTransactionTags(ctx context.Context, tx statementExecQueryer, bookID int64, transactionID int64, tagIDs []int64, recordedAt string, actorUserID int64, auditEventID int64) error {
 	if _, err := tx.ExecContext(ctx, "DELETE FROM transaction_tags WHERE book_id = ? AND transaction_id = ?", bookID, transactionID); err != nil {
 		return fmt.Errorf("delete transaction tags: %w", err)
 	}
@@ -948,7 +954,7 @@ func replaceTransactionTags(ctx context.Context, tx *sql.Tx, bookID int64, trans
 	return nil
 }
 
-func replacePostingTags(ctx context.Context, tx *sql.Tx, bookID int64, postingLineID int64, tagIDs []int64, recordedAt string, actorUserID int64, auditEventID int64) error {
+func replacePostingTags(ctx context.Context, tx statementExecQueryer, bookID int64, postingLineID int64, tagIDs []int64, recordedAt string, actorUserID int64, auditEventID int64) error {
 	if _, err := tx.ExecContext(ctx, "DELETE FROM posting_tags WHERE book_id = ? AND posting_line_id = ?", bookID, postingLineID); err != nil {
 		return fmt.Errorf("delete posting tags: %w", err)
 	}
@@ -1003,7 +1009,7 @@ func clearUnusedPostingLineTags(ctx context.Context, tx *sql.Tx, bookID int64, t
 	return nil
 }
 
-func ensurePostingLine(ctx context.Context, tx *sql.Tx, bookID int64, transactionID int64, lineKey string, createdAt string, actorUserID int64, requestID string, auditEventID int64) (int64, error) {
+func ensurePostingLine(ctx context.Context, tx statementExecQueryer, bookID int64, transactionID int64, lineKey string, createdAt string, actorUserID int64, requestID string, auditEventID int64) (int64, error) {
 	var postingLineID int64
 	err := tx.QueryRowContext(ctx, `
 		SELECT id

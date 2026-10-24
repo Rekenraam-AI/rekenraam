@@ -1,0 +1,159 @@
+{
+ "issue": "#404",
+ "base": "fa0f13bf871f5418fe33fdc821df152087067988",
+ "host": "10 vCPU AMD EPYC 3251, 17 GiB, Linux 6.8.0-147, go1.27.3, SQLite 3.53.4 (mattn/go-sqlite3 v1.14.52)",
+ "variants": {
+  "base": "main at base",
+  "head": "base + Track A statement sets",
+  "cache": "base + _stmt_cache_size=128 (comparator only)"
+ },
+ "single_package": {
+  "command": "scripts/go-backend.sh test -race -count=1 -timeout=10m -json ./internal/app, sequential, prebuilt with -exec /bin/true",
+  "case_name_digest": "b12beb7b09973dddac9cc6c7b9108b179bfc52c59ced1b9ca6f37534379bc1db",
+  "runs": {
+   "m1-base": {
+    "order": 1,
+    "wall_s": 218.361,
+    "leaves": 2320,
+    "leaf_work_s": 2136.6,
+    "failures": []
+   },
+   "m2-head": {
+    "order": 2,
+    "wall_s": 215.126,
+    "leaves": 2320,
+    "leaf_work_s": 2092.8,
+    "failures": []
+   },
+   "m3-cache": {
+    "order": 3,
+    "wall_s": 210.28,
+    "leaves": 2320,
+    "leaf_work_s": 2045.2,
+    "failures": [
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals/100",
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget/device/success",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget/device/failure",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget"
+    ]
+   },
+   "m4-head": {
+    "order": 4,
+    "wall_s": 219.35,
+    "leaves": 2320,
+    "leaf_work_s": 2131.8,
+    "failures": []
+   },
+   "m5-cache": {
+    "order": 5,
+    "wall_s": 214.587,
+    "leaves": 2320,
+    "leaf_work_s": 2092.8,
+    "failures": [
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals/100",
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget/device/failure",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget/device/success",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget"
+    ]
+   },
+   "m6-base": {
+    "order": 6,
+    "wall_s": 224.646,
+    "leaves": 2320,
+    "leaf_work_s": 2195.0,
+    "failures": []
+   },
+   "m7-cache": {
+    "order": 7,
+    "wall_s": 213.41,
+    "leaves": 2320,
+    "leaf_work_s": 2083.6,
+    "failures": [
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals/100",
+     "TestTransactionResponseEnrichmentBatchesCompoundAndRepeatedJournals",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget/device/failure",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget/device/success",
+     "TestThrottleRolloverRealConsumersPreserveReplacementBudget"
+    ]
+   },
+   "m8-base": {
+    "order": 8,
+    "wall_s": 223.301,
+    "leaves": 2320,
+    "leaf_work_s": 2180.0,
+    "failures": []
+   },
+   "m9-head": {
+    "order": 9,
+    "wall_s": 231.051,
+    "leaves": 2320,
+    "leaf_work_s": 2247.4,
+    "failures": []
+   }
+  }
+ },
+ "full_gate": {
+  "command": "GOFLAGS=-count=1 GO_PHASE_TIMINGS=1 scripts/test-backend.sh",
+  "runs": [
+   {
+    "order": 1,
+    "variant": "head",
+    "race_phase_wall_s": 353.1,
+    "passed": true,
+    "app_s": 0.001,
+    "api_s": 0.001,
+    "db_s": 0.001
+   },
+   {
+    "order": 2,
+    "variant": "base",
+    "race_phase_wall_s": 387.38,
+    "passed": true,
+    "app_s": 0.001,
+    "api_s": 0.001,
+    "db_s": 0.001
+   },
+   {
+    "order": 3,
+    "variant": "base",
+    "race_phase_wall_s": 393.25,
+    "passed": true,
+    "app_s": 0.001,
+    "api_s": 0.001,
+    "db_s": 0.001
+   },
+   {
+    "order": 4,
+    "variant": "head",
+    "race_phase_wall_s": 391.59,
+    "passed": true,
+    "app_s": 0.001,
+    "api_s": 0.001,
+    "db_s": 0.001
+   }
+  ]
+ },
+ "base_cpu_profile": {
+  "wall_s": 186.2,
+  "cpu_s": 1127.7,
+  "sqlite3_prepare_v2_cum_s": 361.6,
+  "share": 0.321
+ },
+ "compilation_probe": {
+  "method": "non-race app run at base with SQLITE_TRACE_STMT on every connection (sqlite_trace tag); each top-level statement execution is one compilation at cache size 0; classified per connection as repeated inside the same write/read transaction, repeated on the connection in a later transaction, or first on that connection; weighted by each distinct SQL text's measured prepare time on a migrated database (non-race, mean of 5)",
+  "distinct_sql": 2708,
+  "executions": 977697,
+  "counts": {
+   "TxRepeat": 243419,
+   "ConnRepeat": 488333,
+   "Miss": 245945
+  },
+  "weighted_compile_s": {
+   "TxRepeat": 12.03,
+   "ConnRepeat": 25.47,
+   "Miss": 16.57
+  }
+ }
+}

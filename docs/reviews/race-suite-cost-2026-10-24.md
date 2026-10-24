@@ -264,6 +264,8 @@ scheduling or budget.
      - an ADR note.
    - Prefer Track A if it recovers most of Track B's gain. Adopt Track B only
      after its review.
+   - **Result, 2026-10-24:** Track A delivered; Track B declined. See the
+     [#404 record](statement-compilation-2026-10-24.md).
 3. **Tripwire.** If the full-gate threshold still fires after #404, the next
    choices are option 4 (schema slimming, before v0.1.0) or option 8 (a
    deadline change), through an ADR 0016 amendment with matched evidence.

@@ -72,6 +72,11 @@ strings to the client.
   hook install FULL on initial and replacement connections, including direct
   driver opens. Keep the separate read-only pool capped at four connections;
   this is a pool limit, not a node or CPU requirement.
+- The statement cache is off (`_stmt_cache_size=0`, #404). A loop that runs
+  the same SQL per row inside one transaction goes through a `statementSet`
+  (`internal/db/statement_reuse.go`) so it compiles once per call; prove it
+  with an authorizer count and a negative control, as
+  `TestTransactionVersionCompilesItsPostingInsertOnce` does.
 - Treat `SQLITE_BUSY` as possible even with `busy_timeout`; exhausted timeout →
   retryable server error (`RESOURCE_BUSY`), never a partial apply.
 - Mutations that must be atomic go in **one** DB transaction, including their

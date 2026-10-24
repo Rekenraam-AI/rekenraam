@@ -446,6 +446,13 @@ When a feature introduces a durable new rule, update one of those documents in t
   also installs FULL on direct opens and replacement connections. Read-only
   connections share the setting, though reads gain no additional durability.
 - Startup must validate effective SQLite PRAGMA state before serving requests.
+- The native statement cache stays off (`_stmt_cache_size=0`, pinned by
+  `TestWithRequiredPragmasPreservesExistingQuery`); #404 measured it and the
+  owner declined it. Every plain `ExecContext`/`QueryContext` therefore
+  compiles its SQL, and an `INSERT` compiles every trigger on its table. A
+  write-path loop that runs the same SQL per row inside one transaction uses a
+  `statementSet` (`internal/db/statement_reuse.go`), closed when the call
+  returns; pool calls keep per-call preparation.
 - Early runtime uses one application `*sql.DB` pool with `SetMaxOpenConns(1)`; revisit only when real workload pressure justifies more concurrency.
 - Database access uses repository-style methods over raw `database/sql`. Introduce **`sqlc`** only when the query surface is large enough to justify code generation, and document the generation command before generated files land.
 

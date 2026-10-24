@@ -678,6 +678,12 @@ converting coefficients to `Number`.
   latter runs in the weekly `large-book.yml` workflow, separately from push CI.
   Historical native-driver timings are measurements of their recorded inputs,
   not guarantees for every report or present-day large book.
+- Statement compilation (#404, 2026-10-24): write-path loops that run the same
+  SQL per row inside one transaction compile it once per call through
+  `statementSet` — the posting writer, self-check result save, account-rule
+  dependency check, checkpoint selection and replay lot-state install. The
+  native statement cache stays off. The [record](reviews/statement-compilation-2026-10-24.md)
+  has the matched timings and ADR 0016 threshold status.
 - Browser validation timing and scheduling (#381) retain successful/failed
   run timings, use independent app/audit CI jobs and preserve the complete
   smoke matrices and event frequency. Worker-scoped sweep seeds and explicit

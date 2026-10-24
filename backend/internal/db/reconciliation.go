@@ -1438,6 +1438,8 @@ func (r *TransactionRepository) PeriodScopedCheckpointInvalidationRefs(ctx conte
 func periodScopedCheckpointInvalidationRefs(ctx context.Context, queryer interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }, bookID int64, candidates []PeriodScopedCheckpointRef) ([]CheckpointInvalidationRef, error) {
+	queryer, release := reuseTxStatements(queryer)
+	defer release()
 	seen := map[PeriodScopedCheckpointRef]bool{}
 	checkpointIndexes := map[int64]int{}
 	var refs []CheckpointInvalidationRef
