@@ -6,13 +6,14 @@ post:
     an ordinary long disposal under the holding's election, with the cash as
     proceeds. The security legs post on disposal_on and the cash on
     payment_on, as separate dated journal entries of one transaction. The
-    disposal is linked to the operation it settles, which must be effective
-    and dated on or before disposal_on. A split's fraction is in its own
-    holding; the other actions' fraction is the new instrument in their
-    destination holding (INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE
-    otherwise). That operation cannot then be corrected until the cash in
-    lieu is. The realized result comes from replay at the disposal slot; it is
-    never a dividend.
+    disposal preserves the explicit original typed parent, dated on or before
+    disposal_on, even if that parent was replaced or reversed. A split pins
+    its original holding/instrument; other actions pin their original
+    destination holding/instrument. Current parent context is advisory;
+    actual dated quantity, basis and specific elections must replay successfully.
+    Parent edits and disposal entry/correction retain gain and checkpoint review.
+    The realized result comes from replay at the disposal slot; it is never
+    a dividend. Invalid provenance is INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE.
   parameters:
     - in: header
       name: X-CSRF-Token

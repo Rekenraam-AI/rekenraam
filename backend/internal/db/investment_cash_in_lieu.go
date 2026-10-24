@@ -16,7 +16,7 @@ import (
 // or spin-off) is written inside the same transaction, after the disposal,
 // where the facts trigger validates provenance and the typed correction chain.
 
-var ErrCashInLieuSplitUnavailable = errors.New("the operation this cash in lieu settles is no longer effective or does not match the holding")
+var ErrCashInLieuSplitUnavailable = errors.New("the operation this cash in lieu settles was not found or does not match the original holding")
 
 // CashInLieuSettledRecord is the operation whose fraction a cash in lieu
 // settles: the holding and instrument the fraction is in, and the date from

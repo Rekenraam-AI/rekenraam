@@ -30,7 +30,9 @@ entry through actual replay; #395 accepts typed cash/reinvestment field
 corrections through the existing writer and acquisition replay. #393 also owns
 dividend source identity across correction ancestry and visible source/payer
 mismatch, now delivered with migration 25 and bundle schema 17. #394/#395 are
-accepted contracts, not shipped runtime changes. Other typed allocation, source,
+accepted contracts; #394 now ships historical-parent entry/preview/lot selection
+with migration 26 and localized existing-history discovery, while #395 remains
+a runtime follow-up. Other typed allocation, source,
 derivation, snapshot and reconciliation dependencies are retained with concrete
 counterexamples; the review adds no relationship engine or loan subsystem.
 

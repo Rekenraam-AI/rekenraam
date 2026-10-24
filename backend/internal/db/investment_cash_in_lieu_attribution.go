@@ -35,6 +35,7 @@ func cashInLieuAttributions(ctx context.Context, source queryer, bookID, transac
 			rows.Close()
 			return nil, err
 		}
+		record.Unavailable = reason == AttributionCashParentUnresolved
 		if reason != "" {
 			record.WarningReasons = append(record.WarningReasons, reason)
 		}

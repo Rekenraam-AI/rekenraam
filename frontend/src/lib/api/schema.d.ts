@@ -17763,7 +17763,7 @@ export interface paths {
         };
         /**
          * Read lots available at a cash-in-lieu disposal slot
-         * @description Composed dated lot quantities for specific-lot entry. With replacing_transaction_id, exclude that cash in lieu and retain its correction-root slot, even after its original parent was corrected or reversed. This is a read-only rolled-back replay, never an authorization for a later write.
+         * @description Composed dated lot quantities for specific-lot entry against a current or explicitly selected historical parent, including after replacement or reversal. With replacing_transaction_id, exclude that cash in lieu and retain its correction-root slot, even after its original parent was corrected or reversed. This is a read-only rolled-back replay, never an authorization for a later write.
          */
         get: {
             parameters: {
@@ -18217,7 +18217,7 @@ export interface paths {
         put?: never;
         /**
          * Record cash in lieu of a fraction
-         * @description Disposes the fractional share (quantity below one) that a split, share exchange, cash-and-stock merger or spin-off left, for cash (T-147, #181): an ordinary long disposal under the holding's election, with the cash as proceeds. The security legs post on disposal_on and the cash on payment_on, as separate dated journal entries of one transaction. The disposal is linked to the operation it settles, which must be effective and dated on or before disposal_on. A split's fraction is in its own holding; the other actions' fraction is the new instrument in their destination holding (INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE otherwise). That operation cannot then be corrected until the cash in lieu is. The realized result comes from replay at the disposal slot; it is never a dividend.
+         * @description Disposes the fractional share (quantity below one) that a split, share exchange, cash-and-stock merger or spin-off left, for cash (T-147, #181): an ordinary long disposal under the holding's election, with the cash as proceeds. The security legs post on disposal_on and the cash on payment_on, as separate dated journal entries of one transaction. The disposal preserves the explicit original typed parent, dated on or before disposal_on, even if that parent was replaced or reversed. A split pins its original holding/instrument; other actions pin their original destination holding/instrument. Current parent context is advisory; actual dated quantity, basis and specific elections must replay successfully. Parent edits and disposal entry/correction retain gain and checkpoint review. The realized result comes from replay at the disposal slot; it is never a dividend. Invalid provenance is INVESTMENT_CASH_IN_LIEU_SPLIT_UNAVAILABLE.
          */
         post: {
             parameters: {
@@ -27185,7 +27185,7 @@ export interface paths {
         };
         /**
          * Read lots available at a cash-in-lieu disposal slot
-         * @description Composed dated lot quantities for specific-lot entry. With replacing_transaction_id, exclude that cash in lieu and retain its correction-root slot, even after its original parent was corrected or reversed. This is a read-only rolled-back replay, never an authorization for a later write.
+         * @description Composed dated lot quantities for specific-lot entry against a current or explicitly selected historical parent, including after replacement or reversal. With replacing_transaction_id, exclude that cash in lieu and retain its correction-root slot, even after its original parent was corrected or reversed. This is a read-only rolled-back replay, never an authorization for a later write.
          */
         get: {
             parameters: {
@@ -27196,7 +27196,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description Split, share exchange, cash-and-stock merger or spin-off transaction being settled. */
+                    /** @description Split, share exchange, cash-and-stock merger or spin-off operation being settled, including historical parents. */
                     operation_id: number;
                 };
                 cookie?: never;
@@ -31265,12 +31265,12 @@ export interface components {
         CashInLieuRequest: {
             /**
              * Format: int64
-             * @description Operation being settled, including an initially journal-free split; supply this or settled_transaction_id.
+             * @description Original typed operation being settled, including historical actions and initially journal-free splits; supply this or settled_transaction_id. Current parent standing is advisory; actual dated disposal replay must succeed.
              */
             settled_operation_id?: number;
             /**
              * Format: int64
-             * @description The posted split, share exchange, cash-and-stock merger or spin-off this fraction comes from. The holding and security are the split's own, or the other action's destination holding and new instrument.
+             * @description The original posted split, share exchange, cash-and-stock merger or spin-off selected as provenance, even after replacement or reversal. The holding and security are the split's own, or the other action's destination holding and new instrument.
              */
             settled_transaction_id?: number;
             /** Format: date */
@@ -32608,6 +32608,19 @@ export interface components {
             /** @description Whether the effective posted split can be reversed or replaced (T-129). Dependent replay may still refuse the command. */
             can_correct_split: boolean;
             effective_split?: components["schemas"]["InvestmentCorrectionSplitTerms"];
+            /** @description Original scope of the selected transaction's split, exchange, spin-off or merger, including historical parents. Absent for inverse journals and other operation types. This is provenance, not disposal authorization. */
+            cash_in_lieu_parent?: {
+                /** Format: int64 */
+                operation_id: number;
+                /** Format: int64 */
+                holding_account_id: number;
+                /** Format: int64 */
+                commodity_id: number;
+                /** Format: date */
+                effective_on: string;
+                /** @description The selected original action has a replacement or reversal. */
+                historical: boolean;
+            };
             cash_in_lieu_attribution?: components["schemas"]["InvestmentAttributionDiagnostic"];
             /** @description Effective cash in lieu may attempt native reversal or replacement; dependent replay remains guarded. */
             can_correct_cash_in_lieu: boolean;

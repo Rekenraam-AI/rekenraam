@@ -200,3 +200,78 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     expect(run.results.find(result=>result.check_id==='investment_attribution')?.warning_sample).toContainEqual({transaction_id:corrected.replacement.transaction.id,reason:'cash_in_lieu_parent_unresolved'});
   });
 }
+
+// #394: use existing transaction/history discovery, then preview and commit
+// against the exact selected original action in every supported parent family.
+for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
+  for (const kind of locale === 'en' ? ['split', 'share-exchange', 'spin-off', 'cash-and-stock-merger'] : ['split']) {
+    for (const reversed of [false, true]) {
+      test(`historical ${kind} ${reversed ? 'reversal' : 'replacement'} admits mobile cash entry in ${locale}`, async ({page}) => {
+        const p = await setup(page);
+        const copy = JSON.parse(readFileSync(new URL(`../../frontend/messages/settings/${locale}.json`, import.meta.url), 'utf8')) as Record<string,string>;
+        let parentID = p.splitID;
+        let terms: Record<string,unknown> = {effective_on:ago(30),ratio_numerator:3,ratio_denominator:2};
+        if (kind !== 'split') {
+          // Return to the original 3 units before constructing the other family.
+          await apiJSON(page,'POST',`/api/v1/investments/transactions/${p.splitID}/reverse-split`,p.csrfToken,{reason:'Use another corporate action'});
+          const suffix=`hist${Date.now()}`;
+          const successor=await apiJSON<{id:number;commodity_id:number}>(page,'POST','/api/v1/investments/instruments',p.csrfToken,{commodity_code:suffix.toUpperCase(),instrument_type:'stock',display_name:suffix,symbol:suffix.toUpperCase(),quote_commodity_id:p.currencyID,trading_commodity_id:p.currencyID,quantity_scale:3,price_scale:2,effective_from:ago(60)});
+          const holding=await apiJSON<{id:number}>(page,'POST','/api/v1/investments/holding-accounts',p.csrfToken,{instrument_id:successor.id,name:`Historical ${suffix}`,opened_on:ago(60),effective_from:ago(60)});
+          if(reversed) await apiJSON(page,'POST','/api/v1/investments/buy',p.csrfToken,{transaction_date:ago(39),commodity_id:successor.commodity_id,holding_account_id:holding.id,cash_account_id:p.cash.id,quantity_value:'2',quantity_scale:0,cash_amount_value:'2000',cash_amount_scale:2,cash_commodity_id:p.currencyID,cost_basis_method:'fifo'});
+          terms={...terms,destination_holding_account_id:holding.id,destination_commodity_id:successor.commodity_id};
+          if(kind==='spin-off') terms={...terms,basis_fraction_value:'2',basis_fraction_scale:1};
+          if(kind==='cash-and-stock-merger') terms={...terms,payable_on:ago(25),cash_account_id:p.cash.id,currency_id:p.currencyID,cash_value:'300',cash_scale:2,cash_basis_fraction_value:'25',cash_basis_fraction_scale:2};
+          const resource={ 'share-exchange':'share-exchanges','spin-off':'spin-offs','cash-and-stock-merger':'cash-and-stock-mergers' }[kind];
+          const parent=await apiJSON<{transaction:{id:number}}>(page,'POST',`/api/v1/investments/${resource}`,p.csrfToken,{...terms,holding_account_id:p.holding.id,commodity_id:p.instrument.commodity_id});
+          parentID=parent.transaction.id;
+        }
+        const changePath=`/api/v1/investments/transactions/${parentID}/${reversed?'reverse':'replace'}-${kind}`;
+        if(reversed) {
+          const impact=await apiJSON<{gain_impact?:{acknowledgement:string}}>(page,'POST',`${changePath}/reconciliation-impact`,p.csrfToken,{reason:'Withdraw parent'});
+          await apiJSON(page,'POST',changePath,p.csrfToken,{reason:'Withdraw parent',gain_impact_acknowledgement:impact.gain_impact?.acknowledgement});
+        } else await apiJSON(page,'POST',changePath,p.csrfToken,{...terms,ratio_numerator:5,reason:'Replace parent'});
+        const chain=await apiJSON<{cash_in_lieu_parent:{operation_id:number}}>(page,'GET',`/api/v1/investments/transactions/${parentID}/correction-chain`);
+        const originalID=chain.cash_in_lieu_parent.operation_id;
+        await page.evaluate(value=>localStorage.setItem('PARAGLIDE_LOCALE',value),locale);
+        // The split history is also a direct entry path for retired operations.
+        if(kind==='split' && !reversed) {
+          await page.goto(`/app/investments?tab=splits&split_operation_id=${originalID}`);
+          await page.getByRole('article').getByRole('button',{name:copy.investments_cash_in_lieu_title,exact:true}).click();
+        } else {
+          await page.goto(`/app/transactions?transaction_id=${parentID}`);
+          await page.getByRole('button',{name:copy.investments_cash_in_lieu_entry_action,exact:true}).click();
+        }
+        const form=page.getByRole('dialog',{name:copy.investments_cash_in_lieu_title,exact:true});
+        await expect(form).toContainText(copy.investments_cash_in_lieu_historical_parent);
+        const numeric=new Intl.NumberFormat(locale);
+        await form.locator('#cil-quantity').fill(numeric.format(0.5));
+        await form.locator('#cil-disposal').fill(ago(30));
+        await form.locator('#cil-payment').fill(ago(25));
+        await form.locator('#cil-cash').selectOption(String(p.cash.id));
+        await form.locator('#cil-proceeds').fill(numeric.format(8));
+        await form.locator('#cil-method').selectOption('specific_lot');
+        await expect(form.locator('input[id^="cil-lot-"]')).toHaveCount(1);
+        await form.locator('input[id^="cil-lot-"]').fill(numeric.format(0.5));
+        const previewResponse=page.waitForResponse(r=>r.url().endsWith('/api/v1/investments/cash-in-lieu/preview')&&r.request().method()==='POST');
+        await form.getByRole('button',{name:copy.investments_cash_in_lieu_preview,exact:true}).click();
+        const preview=await(await previewResponse).json();
+        const expected=reversed ? '500' : ({split:'200','share-exchange':'200','spin-off':'40','cash-and-stock-merger':'150'}[kind]);
+        expect(BigInt(preview.disposed_basis_value)*100n/10n**BigInt(preview.disposed_basis_scale)).toBe(BigInt(expected!));
+        expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+        if(kind==='split') await expectNoAccessibilityViolations(page,'historical-parent cash entry');
+        const postedResponse=page.waitForResponse(r=>r.url().endsWith('/api/v1/investments/cash-in-lieu')&&r.request().method()==='POST');
+        await form.getByRole('button',{name:copy.investments_cash_in_lieu_submit,exact:true}).click();
+        const posted=await(await postedResponse).json();
+        expect(posted.allocations).toEqual(preview.allocations);
+        await expect(form).toBeHidden();
+        const source=await apiJSON<{settled_operation_id:number;effective_settled_operation_id?:number}>(page,'GET',`/api/v1/investments/transactions/${posted.transaction.id}/trade-correction-context`);
+        expect(source.settled_operation_id).toBe(originalID);
+        if(reversed) {
+          expect(source.effective_settled_operation_id).toBeFalsy();
+          await page.goto(`/app/transactions?transaction_id=${posted.transaction.id}`);
+          await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText(copy.investments_attribution_cash_parent_unresolved);
+        }
+      });
+    }
+  }
+}

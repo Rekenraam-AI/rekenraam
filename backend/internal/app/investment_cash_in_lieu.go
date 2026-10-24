@@ -15,10 +15,10 @@ import (
 // the holding's election, with the cash as proceeds: the security legs post
 // on the disposal date and the cash on the payment date. The realized result
 // comes from replay at the disposal slot; it is never a dividend. The
-// operation it settles is pinned and rechecked.
+// original operation is pinned as provenance; dated disposal replay validates the financial effects.
 
 var (
-	ErrCashInLieuSplitNotFound = errors.New("the split, exchange or spin-off this cash in lieu settles was not found or is no longer effective")
+	ErrCashInLieuSplitNotFound = errors.New("the split, exchange or spin-off this cash in lieu settles was not found or does not match the original holding")
 	ErrCashInLieuNotFraction   = errors.New("cash in lieu settles a fraction of one share")
 
 	ErrInvestmentCashInLieuNotFound         = errors.New("cash in lieu operation not found")
@@ -56,7 +56,7 @@ type CashInLieuInput struct {
 	GainImpactAcknowledgement string
 }
 
-func (s *InvestmentService) cashInLieuTrade(ctx context.Context, input CashInLieuInput, replacing bool) (InvestmentTradeInput, int64, string, error) {
+func (s *InvestmentService) cashInLieuTrade(ctx context.Context, input CashInLieuInput) (InvestmentTradeInput, int64, string, error) {
 	if (input.SettledTransactionID <= 0) == (input.SettledOperationID <= 0) {
 		return InvestmentTradeInput{}, 0, "", ValidationError{Message: "the operation this cash in lieu settles is required"}
 	}
@@ -92,9 +92,6 @@ func (s *InvestmentService) cashInLieuTrade(ctx context.Context, input CashInLie
 	}
 	if err != nil {
 		return InvestmentTradeInput{}, 0, "", fmt.Errorf("read operation for cash in lieu: %w", err)
-	}
-	if settled.AlreadyCorrected && !replacing {
-		return InvestmentTradeInput{}, 0, "", ErrCashInLieuSplitNotFound
 	}
 	if disposal < settled.EventDate {
 		return InvestmentTradeInput{}, 0, "", ValidationError{Message: "cash in lieu cannot be disposed before the operation it settles"}
@@ -136,7 +133,7 @@ func cashInLieuPreviewResult(allocations []db.LotDisposalRecord, record db.Dispo
 
 func (s *InvestmentService) PreviewCashInLieu(ctx context.Context, input CashInLieuInput) (CashInLieuPreviewResult, ReconciliationImpact, error) {
 	input.ReconciliationOverride = unboundOverride
-	trade, settledOperationID, payment, err := s.cashInLieuTrade(ctx, input, false)
+	trade, settledOperationID, payment, err := s.cashInLieuTrade(ctx, input)
 	if err != nil {
 		return CashInLieuPreviewResult{}, ReconciliationImpact{}, err
 	}
@@ -167,7 +164,7 @@ func mapCashInLieuPreviewError(err error) error {
 // CashInLieu records the fraction's disposal and its cash under one audit
 // event, linked to the operation it settles.
 func (s *InvestmentService) CashInLieu(ctx context.Context, input CashInLieuInput) (InvestmentTradeResult, error) {
-	trade, settledOperationID, payment, err := s.cashInLieuTrade(ctx, input, false)
+	trade, settledOperationID, payment, err := s.cashInLieuTrade(ctx, input)
 	if err != nil {
 		return InvestmentTradeResult{}, err
 	}
@@ -221,7 +218,7 @@ func (s *InvestmentService) cashInLieuReplacement(ctx context.Context, input Rep
 		return ReplaceInvestmentSaleInput{}, 0, "", ValidationError{Message: "a cash in lieu replacement must keep the operation it settles"}
 	}
 	replacement.OwnerUserID, replacement.SettledTransactionID, replacement.SettledOperationID = input.OwnerUserID, 0, settledID
-	trade, settledOperationID, payment, err := s.cashInLieuTrade(ctx, replacement, true)
+	trade, settledOperationID, payment, err := s.cashInLieuTrade(ctx, replacement)
 	if err != nil {
 		return ReplaceInvestmentSaleInput{}, 0, "", err
 	}
@@ -302,7 +299,7 @@ func (s *InvestmentService) cashInLieuAvailableLots(ctx context.Context, ownerUs
 	} else {
 		settled, err = s.repository.CashInLieuSettledOperation(ctx, BookID, settledTransactionID)
 	}
-	if errors.Is(err, db.ErrNotFound) || (settled.AlreadyCorrected && replacingTransactionID == 0) {
+	if errors.Is(err, db.ErrNotFound) {
 		return nil, ErrCashInLieuSplitNotFound
 	}
 	if err != nil {

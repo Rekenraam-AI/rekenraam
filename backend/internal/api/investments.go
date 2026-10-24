@@ -309,7 +309,16 @@ type investmentCorrectionNodeResponse struct {
 	Effective               bool   `json:"effective"`
 }
 
+type cashInLieuParentResponse struct {
+	OperationID      int64  `json:"operation_id"`
+	HoldingAccountID int64  `json:"holding_account_id"`
+	CommodityID      int64  `json:"commodity_id"`
+	EffectiveOn      string `json:"effective_on"`
+	Historical       bool   `json:"historical"`
+}
+
 type investmentCorrectionChainResponse struct {
+	CashInLieuParent        *cashInLieuParentResponse               `json:"cash_in_lieu_parent,omitempty"`
 	CashInLieuAttribution   *investmentAttributionResponse          `json:"cash_in_lieu_attribution,omitempty"`
 	CapitalReturns          []capitalReturnReadResponse             `json:"capital_returns"`
 	RootOperationID         int64                                   `json:"root_operation_id"`
@@ -1266,9 +1275,15 @@ func investmentCorrectionChain(logger *slog.Logger, authService *app.AuthService
 				AuditEventID: node.AuditEventID, Imported: node.Imported, Effective: node.Effective,
 			})
 		}
+		var parent *cashInLieuParentResponse
+		if p := chain.CashInLieuParent; p != nil {
+			parent = &cashInLieuParentResponse{OperationID: p.OperationID, HoldingAccountID: p.AccountID,
+				CommodityID: p.CommodityID, EffectiveOn: p.EventDate, Historical: p.AlreadyCorrected}
+		}
 		writeJSON(w, http.StatusOK, investmentCorrectionChainResponse{
-			CapitalReturns:  toCapitalReturnReads(chain.CapitalReturns),
-			RootOperationID: chain.RootOperationID, EffectiveTransactionID: chain.EffectiveTransactionID,
+			CashInLieuParent: parent,
+			CapitalReturns:   toCapitalReturnReads(chain.CapitalReturns),
+			RootOperationID:  chain.RootOperationID, EffectiveTransactionID: chain.EffectiveTransactionID,
 			CanReverseManualSale: chain.CanReverseManualSale, CanReverseManualBuy: chain.CanReverseManualBuy,
 			CanReverseSale: chain.CanReverseSale, CanReverseBuy: chain.CanReverseBuy,
 			CanCorrectSplit: chain.CanCorrectSplit, EffectiveSplit: toInvestmentCorrectionSplitTerms(chain.EffectiveSplit),

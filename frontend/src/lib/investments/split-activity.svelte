@@ -114,9 +114,9 @@
           <div class="flex flex-wrap gap-2">
             <button type="button" disabled={!csrfToken} onclick={()=>open(row,'replace')} class="rounded-(--radius-control) border border-border px-3 py-2 text-sm text-foreground disabled:opacity-60">{m.transactions_investment_replace_split_action()}</button>
             <button type="button" disabled={!csrfToken} onclick={()=>open(row,'reverse')} class="rounded-(--radius-control) border border-border px-3 py-2 text-sm text-danger disabled:opacity-60">{m.transactions_investment_reverse_split_action()}</button>
-            <button type="button" disabled={!csrfToken} onclick={()=>open(row,'settle')} class="rounded-(--radius-control) border border-border px-3 py-2 text-sm text-foreground disabled:opacity-60">{m.investments_cash_in_lieu_title()}</button>
           </div>
         {/if}
+        <button type="button" disabled={!csrfToken} onclick={()=>open(row,'settle')} class="rounded-(--radius-control) border border-border px-3 py-2 text-sm text-foreground disabled:opacity-60">{m.investments_cash_in_lieu_title()}</button>
       </article>
     {/each}
     {#if query.hasNextPage}<button type="button" disabled={query.isFetchingNextPage} onclick={()=>query.fetchNextPage()} class="rounded-(--radius-control) border border-border px-4 py-2 text-sm text-foreground disabled:opacity-60">{m.transactions_load_more()}</button>{/if}
@@ -129,7 +129,7 @@
     {#if mode === 'replace'}
       <SplitForm {csrfToken} correction={{operationID:selected.operation_id,terms:selected}} onSaved={saved} onCancel={close}/>
     {:else if mode === 'settle'}
-      <CashInLieuForm {csrfToken} split={{operationID:selected.operation_id,holdingAccountID:selected.holding_account_id,commodityID:selected.commodity_id,effectiveOn:selected.effective_on}} onSaved={saved} onCancel={close}/>
+      <CashInLieuForm {csrfToken} split={{operationID:selected.operation_id,holdingAccountID:selected.holding_account_id,commodityID:selected.commodity_id,effectiveOn:selected.effective_on,historical:selected.standing !== 'effective'}} onSaved={saved} onCancel={close}/>
     {:else}
       {#if impact && impactNeedsReview(impact)}
         <ReconciliationConfirm impacts={impact.affected_checkpoints} {gainRows} {gainRefreshed} {pending} onCancel={()=>impact=null} onConfirm={commitReversal}/>

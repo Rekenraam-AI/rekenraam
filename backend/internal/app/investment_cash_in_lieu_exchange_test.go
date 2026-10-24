@@ -127,15 +127,20 @@ func TestExchangeSettledByCashInLieuReplaysReplacementAndRefusesImpossibleRevers
 	requireInvestmentSelfCheckPasses(t, f)
 }
 
-func TestCashInLieuRefusesSettlingAReversedExchange(t *testing.T) {
+func TestCashInLieuOfReversedExchangeRefusesMissingUnits(t *testing.T) {
 	t.Parallel()
 	f, _, exchange := exchangeCashInLieuSetup(t)
 	ctx := context.Background()
 	_, err := f.investmentService.ReverseShareExchange(ctx, ReverseShareExchangeInput{OwnerUserID: f.ownerUserID,
 		TransactionID: exchange.Transaction.ID, Reason: "wrong ratio"})
 	require.NoError(t, err)
-	_, err = f.investmentService.CashInLieu(ctx, cashInLieuInput(f, exchange.Transaction.ID))
-	require.ErrorIs(t, err, ErrCashInLieuSplitNotFound)
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	input := cashInLieuInput(f, exchange.Transaction.ID)
+	_, _, err = f.investmentService.PreviewCashInLieu(ctx, input)
+	require.ErrorIs(t, err, ErrInvestmentLotsInsufficient)
+	_, err = f.investmentService.CashInLieu(ctx, input)
+	require.ErrorIs(t, err, ErrInvestmentLotsInsufficient)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "no destination units remain after reversal")
 }
 
 // A transaction that is not a split, exchange or spin-off settles nothing.

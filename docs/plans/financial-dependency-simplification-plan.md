@@ -4,7 +4,7 @@ Owner direction: 2026-10-23, governed by
 [ADR 0019](../adrs/0019-financial-effects-and-repairable-attribution.md).
 This is a design and delivery-boundary plan. #391's cross-family inventory and
 contracts are complete at `4ad8373f772eb02b40126f5e9d746f0eb50c9e79`;
-runtime follow-ups #394/#395 remain open. #388/#389/#392/#393 are delivered.
+runtime follow-up #395 remains open. #388/#389/#392/#393/#394 are delivered.
 The earlier comparative baseline is `8549045a4484f01e6e9b28e4f0a5fd6aa8213985`.
 
 Delivery acceptance and progress live in
@@ -42,7 +42,7 @@ complete the design review; open implementation issues own their own validation.
 |---|---|---|
 | Cash dividend, embedded/separate withholding | Exact cash/gross/tax and payment shape remain required; payer is optional/clearable, without historical share authorization. Preserve known tax independently of payer and unknown imported economics. | #393 delivers nullable facts, audited assign/clear/omit semantics and missing-payer CSV income. #395 owns actual date/account/currency correction, distinct from neutral attribution repair. |
 | Dividend payment in lieu | Cash/expense/recovery is authoritative; holding/instrument/ex-date are optional audited explanation, with warning/unavailable support rather than write permission. | #388/#389 delivered; retain diagnostics/source controls. #395 owns remaining financial date/account/currency correction. |
-| Fractional cash in lieu, all four parents | Real dated disposal/elections remain required. Original typed parent is immutable provenance; its current standing is advisory on both entry and correction. | #392 delivered correction replay. **Accept #394** for remaining entry/lot-lookup/insert standing gates; probes show valid entry after reversal, impossible quantity still refuses. Keep historical reference/type/book integrity, no nullable-parent redesign. |
+| Fractional cash in lieu, all four parents | Real dated disposal/elections remain required. Original typed parent is immutable provenance; its current standing is advisory on both entry and correction. | #392 delivered correction replay. **#394 delivered** entry, dated lot lookup and insert admission for historical parents; actual disposal replay still refuses impossible quantities. Keep historical reference/type/book integrity, no nullable-parent redesign. |
 | Reinvested dividend | Retain real income-funded acquisition and required position/date/currency facts. Their values can change through typed old/new-position replay; required presence does not justify permanently fixed values. | **Accept #395**, consistently across cash dividend/payment and reinvestment fixed fields; valid isolated field-change probes pass, dependent-sale date control refuses. Keep typed identity and actual source/election/checkpoint constraints. |
 | Ordinary fees/interest and trade charges | Ordinary postings need no trade/loan link. Retain a trade charge's actual settlement, treatment, dated cash and clearing-component identity; recompute affected allocations. | Keep existing typed policy; no new issue or common related-payment mechanism. |
 | Capital return | Receipt, dated entitlement cohort, exact per-lot reduction/excess and basis knowledge are real calculation inputs. Preserve explicit elections; replay supported changes. | Keep allocation lineage. No optional-lot reinterpretation or invented zero basis. |
@@ -80,11 +80,12 @@ Saved reports retain their bytes while live reports recompute. Each runtime
 follow-up owns forward migration/downgrade, API presence decoding, localized
 mobile repair/discovery, actual preview/commit and failure controls where affected.
 
-The original policy test `TestCashInLieuOfReversedSplitIsRefused` stays until
-#394 changes that policy with all-four-parent accounting controls. #395 adds
+#394 replaces the original policy test `TestCashInLieuOfReversedSplitIsRefused`
+with `TestCashInLieuOfReversedSplitUsesActualDisposalReplay` and all-four-parent
+entry controls for both replacement and reversal. #395 adds
 field-change controls without removing family/election safeguards. #393 turns
 the audit's observed duplicate-provider-link characterization into a refusal
-regression across replacement ancestry. This audit changes no production tests.
+regression across replacement ancestry. The #391 design audit itself changed no production tests.
 #379's historical evidence stays intact; #390 and #284 keep their separate scope.
 
 ## Family Coverage And Starting Hypotheses (Historical Baseline)
@@ -394,3 +395,26 @@ probe only to decide a concrete hypothesis. Keep a concise set of retained
 complexity and rejected simplifications. Do not build a universal rule engine,
 require zero warnings, measure success by deleted LOC, or make an exhaustive
 new audit a prerequisite to every local improvement.
+
+### Historical Cash-In-Lieu Entry Delivery (#394, 2026-10-24)
+
+Entry, preview and dated specific-lot lookup now accept an explicitly selected
+historical split, exchange, spin-off or cash-and-stock merger. They keep the
+original operation reference and original book/type/holding/instrument/date
+integrity. Actual disposal replay enforces fractional quantities, available units,
+basis, elections and chronological order, with unchanged atomic gain/checkpoint
+review. Existing parent ancestry remains advisory; missing current context is
+also explicitly unavailable, never evidence that the action supports the disposal.
+
+Migration 26 removes only migration 24's insert standing gate. Facts, history
+views and bundle schema/columns do not change. Downgrade to 25 safely restores
+the former admission rule because those readers already understand historical
+references; migration 24's earlier loss-of-meaning downgrade guard remains.
+The composed correction-chain response exposes the selected original action's
+scope for entry, including after replacement/reversal, while inverse journals
+remain ineligible. Existing transaction/history and split-activity entry paths
+show the original parent and a six-locale historical-context notice. No nullable
+parent, automatic sale reinterpretation, picker framework or repair queue is added.
+
+[Delivery evidence](../reviews/cash-in-lieu-historical-entry-2026-10-24.md)
+records independent accounting, controls and the retired-policy test disposition.

@@ -174,15 +174,28 @@ func TestSplitReversalKeepsValidCashInLieuAndRevisesItsBasis(t *testing.T) {
 	require.Equal(t, int64(-2200), accountBalance(t, f, f.cashAccountID))
 }
 
-func TestCashInLieuOfReversedSplitIsRefused(t *testing.T) {
+func TestCashInLieuOfReversedSplitUsesActualDisposalReplay(t *testing.T) {
 	t.Parallel()
 	f, split := cashInLieuSetup(t)
 	ctx := context.Background()
 	_, err := acknowledgedReverseSplit(ctx, f.investmentService, ReverseInvestmentSplitInput{
 		OwnerUserID: f.ownerUserID, TransactionID: split.Transaction.ID, Reason: "entered in error"})
 	require.NoError(t, err)
-	_, err = f.investmentService.CashInLieu(ctx, cashInLieuInput(f, split.Transaction.ID))
-	require.ErrorIs(t, err, ErrCashInLieuSplitNotFound)
+	input := cashInLieuInput(f, split.Transaction.ID)
+	preview, _, err := f.investmentService.PreviewCashInLieu(ctx, input)
+	require.NoError(t, err)
+	result, err := f.investmentService.CashInLieu(ctx, input)
+	require.NoError(t, err)
+	require.Equal(t, preview.Allocations, result.Allocations)
+	quantity, basis := openPositionBasis(t, f, f.holdingAccountID)
+	requireScaled(t, 25, 1, quantity, "3 original units less 0.5")
+	requireScaled(t, 2500, 2, basis, "30 less disposed basis 5")
+	requireScaled(t, 500, 2, saleEffectiveBasis(t, f, result.Transaction.ID), "actual original basis")
+	requireScaled(t, 300, 2, exact.ScaledIntFromCoefficient(preview.RealizedGainValue, preview.RealizedGainScale), "8 proceeds less 5 basis")
+	require.Equal(t, int64(-2200), accountBalance(t, f, f.cashAccountID))
+	run := mustRunInvestmentSelfCheck(t, f)
+	require.Equal(t, SelfCheckPassed, resultFor(t, run, CheckInvestmentFoundation).Status)
+	require.Equal(t, SelfCheckWarning, resultFor(t, run, CheckInvestmentAttribution).Status)
 }
 
 // T-150: reversing a cash in lieu restores the fraction and frees its split

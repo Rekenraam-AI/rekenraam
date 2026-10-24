@@ -1,7 +1,7 @@
 get:
   summary: Read lots available at a cash-in-lieu disposal slot
   description: >-
-    Composed dated lot quantities for specific-lot entry. With replacing_transaction_id,
+    Composed dated lot quantities for specific-lot entry against a current or explicitly selected historical parent, including after replacement or reversal. With replacing_transaction_id,
     exclude that cash in lieu and retain its correction-root slot, even after
     its original parent was corrected or reversed. This is a read-only
     rolled-back replay, never an authorization for a later write.
@@ -10,7 +10,7 @@ get:
       name: operation_id
       required: true
       schema: { type: integer, format: int64 }
-      description: Split, share exchange, cash-and-stock merger or spin-off transaction being settled.
+      description: Split, share exchange, cash-and-stock merger or spin-off operation being settled, including historical parents.
     - in: query
       name: currency_id
       required: true

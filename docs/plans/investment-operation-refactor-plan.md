@@ -1016,8 +1016,9 @@ settles: a split, an exchange of either kind, or a spin-off.
 
 - **Representation.** `investment_cash_in_lieu_facts.settled_operation_id`
   (formerly `split_operation_id`) names that operation. The trigger requires
-  a current parent for new entry; native correction retains the original
-  reference even after parent correction/reversal (#392). The disposal's holding and instrument must
+  original typed same-book provenance for both entry and correction, even
+  after parent replacement/reversal (#392/#394). Actual dated disposal replay
+  admits quantities, basis and elections. The disposal's holding and instrument must
   be the split's, or the destination holding and new instrument of the
   exchange or spin-off, on or after its effective date.
 - **Disposal.** The fraction is strictly less than one unit of the new

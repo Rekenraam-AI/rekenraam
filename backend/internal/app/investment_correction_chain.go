@@ -25,6 +25,9 @@ type InvestmentCorrectionNode struct {
 }
 
 type InvestmentCorrectionChain struct {
+	// CashInLieuParent carries the selected historical action's original scope,
+	// independent of the chain's current correction capabilities (#394).
+	CashInLieuParent       *db.CashInLieuSettledRecord
 	RootOperationID        int64
 	EffectiveTransactionID *int64
 	CanReverseManualSale   bool
@@ -237,6 +240,19 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 	chain := InvestmentCorrectionChain{
 		RootOperationID: records[0].OperationID,
 		Operations:      make([]InvestmentCorrectionNode, 0, len(records)),
+	}
+	for _, record := range records {
+		if record.TransactionID.Int64 != transactionID || record.CorrectionMode.String == "reverse" {
+			continue
+		}
+		switch record.OperationKind {
+		case "split", "share_exchange", "spin_off", "cash_and_stock_merger":
+			parent, err := s.repository.CashInLieuSettledOperationByID(ctx, BookID, record.OperationID)
+			if err != nil {
+				return InvestmentCorrectionChain{}, err
+			}
+			chain.CashInLieuParent = &parent
+		}
 	}
 	capitalReturnIDs := make([]int64, 0)
 	for _, record := range records {

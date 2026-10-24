@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/exact"
 )
 
@@ -484,6 +485,233 @@ func TestCashInLieuCurrentParentInstrumentMayDifferWhenActualUnitsRemainValid(t 
 			run := mustRunInvestmentSelfCheck(t, f)
 			require.Equal(t, SelfCheckPassed, resultFor(t, run, CheckInvestmentFoundation).Status)
 			require.Equal(t, SelfCheckPassed, resultFor(t, run, CheckInvestmentReplay).Status)
+		})
+	}
+}
+
+// #394: entry and correction use the same actual dated disposal, regardless
+// of the historical parent's standing. Expected quantities and basis below
+// are hand-derived, rather than taken from the replay implementation.
+func TestCashInLieuHistoricalParentEntryAllFamilies(t *testing.T) {
+	t.Parallel()
+	for _, kind := range []string{"split", "share_exchange", "spin_off", "cash_and_stock_merger"} {
+		for _, reversed := range []bool{false, true} {
+			name := kind + "/replaced"
+			if reversed {
+				name = kind + "/reversed"
+			}
+			t.Run(name, func(t *testing.T) {
+				c := newCashParentCase(t, kind, reversed)
+				f, ctx := c.f, context.Background()
+				if reversed {
+					impact, err := c.reverse("", true)
+					require.NoError(t, err)
+					ack := ""
+					if impact.GainImpact != nil {
+						ack = impact.GainImpact.Acknowledgement
+					}
+					_, err = c.reverse(ack, false)
+					require.NoError(t, err)
+				} else {
+					_, _, err := c.replace("2026-06-01", 5, 2, "", false)
+					require.NoError(t, err)
+				}
+				before := buyReplacementPreviewSnapshot(t, f.database)
+				// Both public identity shapes must read the actual historical scope.
+				parentID := transferOperationID(t, f, c.parent)
+				lots, err := f.investmentService.CashInLieuAvailableLotsForOperation(ctx, f.ownerUserID, parentID, f.eurCommodityID, "2026-06-01", 0)
+				require.NoError(t, err)
+				require.Len(t, lots, 1)
+				byJournal, err := f.investmentService.CashInLieuAvailableLots(ctx, f.ownerUserID, c.parent, f.eurCommodityID, "2026-06-01", 0)
+				require.NoError(t, err)
+				require.Equal(t, lots, byJournal)
+				input := cashInLieuInput(f, 0)
+				input.SettledOperationID, input.CostBasisMethod = parentID, "specific_lot"
+				input.LotAllocations = []InvestmentLotAllocationInput{{LotID: lots[0].LotID, QuantityValue: exact.New(5), QuantityScale: 1}}
+				preview, _, err := f.investmentService.PreviewCashInLieu(ctx, input)
+				require.NoError(t, err)
+				require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "lots and preview leave no durable changes")
+				result, err := f.investmentService.CashInLieu(ctx, input)
+				require.NoError(t, err)
+				require.Equal(t, preview.Allocations, result.Allocations)
+				disposed := map[string]int64{"split": 240, "share_exchange": 240, "spin_off": 48, "cash_and_stock_merger": 180}[kind]
+				totalBasis := map[string]int64{"split": 3600, "share_exchange": 3600, "spin_off": 720, "cash_and_stock_merger": 2700}[kind]
+				remainingUnits, scale := int64(7), 0
+				expectedCash := int64(-2800)
+				if kind == "cash_and_stock_merger" {
+					expectedCash += 300
+				}
+				if reversed {
+					disposed, totalBasis, remainingUnits, scale = 600, 3600, 25, 1
+					if kind != "split" {
+						disposed, totalBasis, remainingUnits = 500, 2000, 15
+						expectedCash -= 2000
+					}
+					if kind == "cash_and_stock_merger" {
+						expectedCash -= 300
+					}
+				}
+				quantity, basis := openCommodityPosition(t, f, f.holdingAccountID, c.commodity)
+				requireScaled(t, remainingUnits, scale, quantity, "actual remaining units")
+				requireScaled(t, totalBasis-disposed, 2, basis, "basis conservation")
+				requireScaled(t, disposed, 2, saleEffectiveBasis(t, f, result.Transaction.ID), "actual disposal basis")
+				requireScaled(t, 800-disposed, 2, exact.ScaledIntFromCoefficient(preview.RealizedGainValue, preview.RealizedGainScale), "proceeds less disposed basis")
+				require.Equal(t, expectedCash, accountBalance(t, f, f.cashAccountID))
+				source, err := f.investmentService.repository.TradeCorrectionContext(ctx, BookID, result.Transaction.ID)
+				require.NoError(t, err)
+				require.Equal(t, parentID, source.SettledOperationID)
+				chain, err := f.investmentService.CorrectionChain(ctx, f.ownerUserID, result.Transaction.ID)
+				require.NoError(t, err)
+				if reversed {
+					require.Zero(t, source.EffectiveSettledOperationID)
+					require.True(t, chain.CashInLieuAttribution.Unavailable)
+					require.Equal(t, []string{"cash_in_lieu_parent_unresolved"}, chain.CashInLieuAttribution.Reasons)
+				} else {
+					require.NotEqual(t, parentID, source.EffectiveSettledOperationID)
+					require.Equal(t, SelfCheckPassed, chain.CashInLieuAttribution.Status)
+				}
+				facts := exportedBundle(t, f)["investment-cash-in-lieu-facts.csv"]
+				require.Len(t, facts, 1)
+				require.Equal(t, strconv.FormatInt(parentID, 10), facts[0]["settled_operation_id"])
+				require.Equal(t, "2026-06-05", facts[0]["payment_on"])
+				run := mustRunInvestmentSelfCheck(t, f)
+				require.Equal(t, SelfCheckPassed, resultFor(t, run, CheckInvestmentFoundation).Status)
+			})
+		}
+	}
+}
+
+func TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure(t *testing.T) {
+	t.Parallel()
+	for _, kind := range []string{"split", "share_exchange", "spin_off", "cash_and_stock_merger"} {
+		t.Run(kind, func(t *testing.T) {
+			c := newCashParentCase(t, kind, false)
+			f, ctx := c.f, context.Background()
+			_, _, err := c.replace("2026-06-01", 1, 6, "", false)
+			require.NoError(t, err) // Exactly 0.5 units remain, without a disposal.
+			input := cashInLieuInput(f, c.parent)
+			before := buyReplacementPreviewSnapshot(t, f.database)
+			for _, invalid := range []struct {
+				name string
+				edit func(*CashInLieuInput)
+			}{
+				{"insufficient 0.75", func(i *CashInLieuInput) { i.QuantityValue, i.QuantityScale = exact.New(75), 2 }},
+				{"whole unit", func(i *CashInLieuInput) { i.QuantityValue, i.QuantityScale = exact.New(1), 0 }},
+				{"zero", func(i *CashInLieuInput) { i.QuantityValue = exact.New(0) }},
+				{"negative", func(i *CashInLieuInput) { i.QuantityValue = exact.New(-5) }},
+				{"original date", func(i *CashInLieuInput) { i.DisposalOn = "2026-05-31" }},
+				{"payment date", func(i *CashInLieuInput) { i.PaymentOn = "2026-05-31" }},
+				{"invalid election", func(i *CashInLieuInput) {
+					i.CostBasisMethod = "specific_lot"
+					i.LotAllocations = []InvestmentLotAllocationInput{{LotID: 999999, QuantityValue: exact.New(5), QuantityScale: 1}}
+				}},
+				{"wrong type", func(i *CashInLieuInput) { i.SettledTransactionID = 1 }},
+			} {
+				t.Run(invalid.name, func(t *testing.T) {
+					bad := input
+					invalid.edit(&bad)
+					_, _, err := f.investmentService.PreviewCashInLieu(ctx, bad)
+					require.Error(t, err)
+					_, err = f.investmentService.CashInLieu(ctx, bad)
+					require.Error(t, err)
+					require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+				})
+			}
+			_, err = f.database.Exec(`CREATE TRIGGER reject_historical_cash_fact BEFORE INSERT ON investment_cash_in_lieu_facts BEGIN SELECT RAISE(ABORT,'late historical entry failure'); END`)
+			require.NoError(t, err)
+			_, err = f.investmentService.CashInLieu(ctx, input)
+			require.ErrorContains(t, err, "late historical entry failure")
+			require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "journal, disposal, lots, observation, source and audit roll back")
+			_, err = f.database.Exec(`DROP TRIGGER reject_historical_cash_fact`)
+			require.NoError(t, err)
+			_, err = f.investmentService.CashInLieu(ctx, input)
+			require.NoError(t, err)
+			requireInvestmentSelfCheckPasses(t, f)
+		})
+	}
+}
+
+func TestHistoricalCashEntryBindsActualGainAndCheckpointImpact(t *testing.T) {
+	t.Parallel()
+	f, split := cashInLieuSetup(t)
+	ctx := context.Background()
+	buyOn(t, f, "2026-05-02", 3, 7200)
+	_, err := acknowledgedReverseSplit(ctx, f.investmentService, ReverseInvestmentSplitInput{OwnerUserID: f.ownerUserID, TransactionID: split.Transaction.ID, Reason: "Withdraw parent"})
+	require.NoError(t, err)
+	sold, err := f.investmentService.Sell(ctx, sellInput(f, "2026-06-10", 4))
+	require.NoError(t, err)
+	reconcileInstrument(t, f, f.stockCommodityID, "2026-06-10", 2)
+	input := cashInLieuInput(f, split.Transaction.ID)
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	_, impact, err := f.investmentService.PreviewCashInLieu(ctx, input)
+	require.NoError(t, err)
+	require.Len(t, impact.AffectedCheckpoints, 1)
+	require.NotNil(t, impact.GainImpact)
+	require.Len(t, impact.GainImpact.Changes, 1)
+	require.Equal(t, sold.Transaction.ID, impact.GainImpact.Changes[0].TransactionID)
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+	_, err = f.investmentService.CashInLieu(ctx, input)
+	require.ErrorIs(t, err, ErrReconciliationOverrideRequired)
+	input.ReconciliationOverride = CheckpointOverride{Allowed: true, Reviewed: []int64{987654}}
+	_, err = f.investmentService.CashInLieu(ctx, input)
+	require.ErrorIs(t, err, ErrReconciliationImpactStale)
+	input.ReconciliationOverride.Reviewed = []int64{impact.AffectedCheckpoints[0].CheckpointID}
+	_, err = f.investmentService.CashInLieu(ctx, input)
+	require.ErrorIs(t, err, ErrGainImpactAcknowledgementRequired)
+	input.GainImpactAcknowledgement = impact.GainImpact.Acknowledgement
+	input.QuantityValue, input.QuantityScale = exact.New(25), 2
+	_, err = f.investmentService.CashInLieu(ctx, input)
+	require.ErrorIs(t, err, ErrGainImpactAcknowledgementStale)
+	input.QuantityValue, input.QuantityScale = exact.New(5), 1
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "every refused impact leaves all durable rows unchanged")
+	_, err = f.investmentService.CashInLieu(ctx, input)
+	require.NoError(t, err)
+	require.Empty(t, activeCheckpointIDs(t, f))
+	requireScaled(t, 6100, 2, saleEffectiveBasis(t, f, sold.Transaction.ID), "2.5 units at 10 and 1.5 units at 24")
+}
+
+func TestHistoricalCashEntryStorageKeepsOriginalParentIntegrity(t *testing.T) {
+	t.Parallel()
+	c := newCashParentCase(t, "share_exchange", true)
+	f, ctx := c.f, context.Background()
+	_, err := c.reverse("", false)
+	require.NoError(t, err)
+	input := cashInLieuInput(f, c.parent)
+	trade, parentID, payment, err := f.investmentService.cashInLieuTrade(ctx, input)
+	require.NoError(t, err)
+	other := seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
+	acquisition := tradeOn(f, other, "2026-05-02", 2, 2000)
+	acquisition.CommodityID = c.commodity
+	_, err = f.investmentService.Buy(ctx, acquisition)
+	require.NoError(t, err)
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	for _, invalid := range []struct {
+		name            string
+		bookID, parent  int64
+		wrongInstrument bool
+		wrongHolding    bool
+	}{
+		{"missing parent", BookID, 999999, false, false},
+		{"wrong book", 2, parentID, false, false},
+		{"wrong type", BookID, transferOperationID(t, f, 1), false, false},
+		{"wrong instrument", BookID, parentID, true, false},
+		{"wrong holding", BookID, parentID, false, true},
+	} {
+		t.Run(invalid.name, func(t *testing.T) {
+			command := trade
+			if invalid.wrongInstrument {
+				command.CommodityID = f.stockCommodityID
+			}
+			if invalid.wrongHolding {
+				command.HoldingAccountID = other
+			}
+			_, err := f.investmentService.sell(ctx, command, db.CashInLieuFactWriter(ctx, invalid.bookID, invalid.parent, payment))
+			if invalid.bookID != BookID {
+				require.Error(t, err)
+			} else {
+				require.ErrorIs(t, err, db.ErrCashInLieuSplitUnavailable)
+			}
+			require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database), "late original-scope guard rolls back the whole disposal")
 		})
 	}
 }

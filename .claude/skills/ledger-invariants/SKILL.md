@@ -216,10 +216,11 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   a primary transaction.
   #392 keeps that original parent as provenance across all four corporate-action
   families. Validate corrections through actual disposal replay, gain review and
-  checkpoint commitments; parent standing alone never vetoes them. New entry
-  requires a current matching parent; existing correction retains its original
-  reference. Current ancestry/mismatch is read-only attribution; missing/broken
-  facts remain integrity failures. Never drop quantity or specific-lot guards.
+  checkpoint commitments; parent standing alone never vetoes them. #394 applies
+  the same rule to entry and dated lot selection against explicitly selected
+  historical parents. Keep original type/book/holding/instrument/date integrity;
+  a replacement retains that exact reference. Current ancestry/mismatch is
+  read-only attribution; missing/broken facts remain integrity failures. Never drop quantity or specific-lot guards.
   Return-of-capital cash/entitlement stay exact; unknown reduction and excess
   remain NULL. Known explicit entitlement beside independent unknown lots is
   supported; an established unknown average pool never supplies a known rate

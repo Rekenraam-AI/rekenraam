@@ -188,8 +188,10 @@ below is execution order, not a chain of hard dependencies.
    #393 now delivers payer/shape consistency, missing-payer CSV income and the
    dividend source-ancestry fix with visible source mismatch/unavailable support
    ([evidence](reviews/dividend-attribution-repair-2026-10-23.md)).
-   Accepted follow-ups #394/#395 cover historical-parent
-   fractional entry and typed cash/reinvestment field correction through
+   #394 now delivers historical-parent fractional entry, dated lot selection
+   and preview/commit through actual replay, with original provenance preserved
+   ([evidence](reviews/cash-in-lieu-historical-entry-2026-10-24.md)). Accepted
+   follow-up #395 covers typed cash/reinvestment field correction through
    existing replay.
    These do not expand #284's closure checklist, reorder
    initiatives or introduce a blanket R13 prerequisite.

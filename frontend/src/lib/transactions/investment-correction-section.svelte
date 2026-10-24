@@ -175,12 +175,12 @@
   const merger = $derived(chainQuery.data?.effective_transaction_id === transactionID
     ? chainQuery.data.effective_cash_and_stock_merger ?? null : null);
   const mergerCorrectable = $derived(merger !== null && chainQuery.data?.can_correct_cash_and_stock_merger === true);
-  // Cash in lieu may settle the fraction an exchange, merger or spin-off
-  // leaves in its new holding (#181).
+  // Entry pins the selected action's original scope, including historical parents.
   const cashInLieuSettles = $derived.by(() => {
-    const terms = shareExchange ?? merger ?? spinOff;
-    return terms ? { transactionID, holdingAccountID: terms.destination_holding_account_id,
-      commodityID: terms.destination_commodity_id, effectiveOn: terms.effective_on } : null;
+    const parent = chainQuery.data?.cash_in_lieu_parent;
+    return parent ? { transactionID, operationID: parent.operation_id,
+      holdingAccountID: parent.holding_account_id, commodityID: parent.commodity_id,
+      effectiveOn: parent.effective_on, historical: parent.historical } : null;
   });
   const compoundAction = $derived(shareExchange !== null || spinOff !== null || merger !== null);
   const instrumentsQuery = createQuery(() => ({ ...investmentInstrumentsQueryOptions(), enabled: compoundAction }));
@@ -610,7 +610,7 @@
         {/if}
       </div>
     {/if}
-    {#if cashInLieuSettles && (shareExchangeCorrectable || mergerCorrectable || spinOffCorrectable)}
+    {#if cashInLieuSettles}
       <div class="flex flex-wrap gap-2">
         <button type="button" disabled={!csrfToken} onclick={() => (replacementKind = 'cash_in_lieu_entry')}
           class="inline-flex min-h-10 items-center rounded-[var(--radius-control)] border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground disabled:opacity-60">{m.investments_cash_in_lieu_entry_action()}</button>
@@ -636,8 +636,6 @@
           onclick={() => { replacementKind = 'split'; }}>
           {m.transactions_investment_replace_split_action()}
         </button>
-        <button type="button" disabled={!csrfToken} onclick={() => (replacementKind = 'cash_in_lieu_entry')}
-          class="inline-flex min-h-10 items-center rounded-[var(--radius-control)] border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground disabled:opacity-60">{m.investments_cash_in_lieu_entry_action()}</button>
       </div>
     {/if}
     {#if cashInLieuCorrectable}
@@ -830,9 +828,7 @@
 {#if (replacementKind === 'cash_in_lieu' || replacementKind === 'cash_in_lieu_entry') && csrfToken}
   <ModalDialog label={replacementKind === 'cash_in_lieu' ? m.investments_cash_in_lieu_correct() : m.investments_cash_in_lieu_title()}
     onCancel={() => (replacementKind = null)} class="max-w-2xl p-4 sm:p-6">
-  {#if replacementKind === 'cash_in_lieu_entry' && chainQuery.data?.effective_split}
-    <CashInLieuForm {csrfToken} split={{ transactionID, holdingAccountID: chainQuery.data.effective_split.holding_account_id, commodityID: chainQuery.data.effective_split.commodity_id, effectiveOn: chainQuery.data.effective_split.effective_on }} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
-  {:else if replacementKind === 'cash_in_lieu_entry' && cashInLieuSettles}
+  {#if replacementKind === 'cash_in_lieu_entry' && cashInLieuSettles}
     <CashInLieuForm {csrfToken} split={cashInLieuSettles} onSaved={replacementSaved} onCancel={() => (replacementKind = null)} />
   {:else if replacementQuery.isPending}<p role="status" class="text-sm text-muted">{m.investments_loading()}</p>
   {:else if replacementQuery.isError}<APIFormError error={replacementQuery.error} />

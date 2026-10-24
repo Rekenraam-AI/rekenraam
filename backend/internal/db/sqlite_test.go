@@ -1277,7 +1277,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(25), version, "the head preserves payment shape independently of payer")
+	assert.Equal(t, int64(26), version, "the head admits historical cash-in-lieu provenance")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))
