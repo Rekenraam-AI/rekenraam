@@ -2,7 +2,9 @@
 
 **Status: slices 1–6 of [#284](https://github.com/sergeyfarin/rekenraam/issues/284),
 partial.** The [sixth slice](maintainability-tests-2026-10-24.md) (source
-`a514e188`) reconciles later commits and reviews test ownership. This first-slice record reconciles the earlier proposals, inventories
+`a514e188`) reconciles later commits and reviews test ownership. The
+[final ranking](maintainability-audit-2026-10-24.md) supersedes the provisional
+shortlist below and awaits owner review. This first-slice record reconciles the earlier proposals, inventories
 the audit inputs and records reproducible history measurements. The
 [second slice](maintainability-duplication-2026-10-21.md) adds runtime duplication
 scans and bounded triage, narrows correction preparation and adds the frontend
@@ -235,6 +237,9 @@ generic revision header and typed intents remain conditional proposals; this
 slice supplies no new amount divergence or workload benchmark to promote them.
 
 ## Provisional ranked shortlist
+
+> Superseded by the [final ranking](maintainability-audit-2026-10-24.md) of
+> 2026-10-24. This provisional table remains the slice 1 record.
 
 The criterion numbers are #284's: 1 = demonstrated divergence history;
 2 = named upcoming change with counted edit sites; 3 = repeated financial or

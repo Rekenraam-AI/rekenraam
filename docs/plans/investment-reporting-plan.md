@@ -50,6 +50,14 @@ R13's calculation contract should add independent literal figures for them
 dedicated book or per-transaction assertions, not containment in the capped
 book-wide self-check sample.
 
+The [final #284 ranking](../reviews/maintainability-audit-2026-10-24.md#investment-and-reporting-dispositions-for-r13)
+records a disposition for every investment/reporting hotspot. R13 reuses the
+existing valuation, movement and writer owners. Its #284 prerequisites are the
+strict self-check assertion family and owned browser assertions, plus an
+application-owned native realized-total read model if the R13 contract consumes
+native realized totals. Corporate-action correction preparation is not an R13
+prerequisite.
+
 ## Live observation selection: `live_raw_v1`
 
 One SQL owner, `backend/internal/db/observation_selection.go`, supplies daily

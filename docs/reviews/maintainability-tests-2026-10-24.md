@@ -325,7 +325,9 @@ CI's per-package time and from these single-package runs.
 
 ## Consequences for the provisional ranking
 
-These refine, not finalise, the [provisional shortlist](maintainability-audit-2026-10-21.md#provisional-ranked-shortlist):
+These refine, not finalise, the [provisional shortlist](maintainability-audit-2026-10-21.md#provisional-ranked-shortlist).
+The [final ranking](maintainability-audit-2026-10-24.md) later moves candidate 1
+to "later", because #119 requires a concrete R13 conflict:
 
 | Candidate | New evidence | Criterion | Cost | Recommendation |
 |---|---|---|---|---|

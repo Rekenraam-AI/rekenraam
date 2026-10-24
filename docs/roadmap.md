@@ -158,14 +158,14 @@ below is execution order, not a chain of hard dependencies.
    Go abstraction dispositions. The
    [sixth slice](reviews/maintainability-tests-2026-10-24.md) pins `a514e188`,
    reconciles the intervening commits and delivers the test fixture/oracle/
-   duplication and race-cost review. Complete the final investment/reporting
-   dispositions. Use the
-   measured duplication, change amplification and repeated invariant enforcement
-   to publish a ranked list with
-   the rejected candidates; each accepted refactor gets its own issue and
-   preserves behavior. Refactoring only to change style or file length is
-   out of scope. R13 specification can proceed in parallel, but R13
-   implementation waits for #284's investment/reporting dispositions.
+   duplication and race-cost review. The
+   [final ranking](reviews/maintainability-audit-2026-10-24.md) publishes 13
+   ranked candidates, the investment/reporting dispositions and the consolidated
+   rejected list; **owner review is next**. Each accepted refactor gets its own
+   issue and preserves behavior. R13 specification can proceed. R13
+   implementation's #284 prerequisites are limited to the self-check assertion
+   family and owned browser assertions for book-wide reads, plus
+   application-owned native realized totals if its contract uses them.
    The separate P3 payment-density audit
    [#379](https://github.com/sergeyfarin/rekenraam/issues/379) measured the
    payment-density workload
