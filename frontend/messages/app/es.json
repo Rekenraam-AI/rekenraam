@@ -871,5 +871,11 @@
   "returns_reason_numerical_limit": "La tasa es demasiado extrema para calcularla con fiabilidad.",
   "returns_reason_period_shorter_than_year": "Solo se muestra para períodos de al menos un año.",
   "returns_reason_non_positive_growth": "Una pérdida del 100 % o más no puede expresarse por año.",
-  "returns_reason_unknown": "No disponible."
+  "returns_reason_unknown": "No disponible.",
+  "returns_account_archived": "{name} (archivada)",
+  "returns_account_closed": "{name} (cerrada)",
+  "returns_accounts_unavailable": "Estas cuentas seleccionadas no son cuentas de cartera de este libro y se omitirán:",
+  "returns_accounts_remove_unavailable": "Quitar {account}",
+  "returns_accounts_reset": "Usar todas las cuentas de inversión",
+  "returns_updating": "Actualizando con el libro mayor y los precios más recientes…"
 }

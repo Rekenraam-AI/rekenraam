@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   fallbackReasonText, formatReturn, lastYear, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
-  returnsSelectionParams, validRange, yearToDate
+  returnsCoverage, returnsSelectionParams, unavailableAccountIDs, validRange, yearToDate
 } from './returns-model';
+import type { Valuation } from '#lib/reports/reporting-currency.ts';
 
 const today = '2026-10-24';
 const params = (query: string) => new URLSearchParams(query);
@@ -94,5 +95,36 @@ describe('reason text', () => {
   it('explains every attribution fallback', () => {
     const texts = ['unassigned_instrument', 'held_inside_and_outside', 'not_held'].map(fallbackReasonText);
     expect(new Set(texts).size).toBe(3);
+  });
+});
+
+describe('returnsCoverage', () => {
+  const base = {
+    selection_policy: 'live_raw_v1', valuation_as_of: '2026-10-24', knowledge_cutoff: '2026-10-24T12:00:00Z',
+    commodity_id: 1, scale: 2, method: 'observed_on_or_before', max_staleness_days: 7
+  };
+  const use = (commodity: number, date: string, stale: boolean) => ({
+    observation_id: commodity, approximate: false, commodity_id: commodity, observation_date: date,
+    requested_date: '2026-10-24', stale, derived: false
+  });
+
+  it('reports a gap and stale quotes together, never one instead of the other', () => {
+    const valuation = { ...base, complete: false,
+      rates_used: [use(7, '2026-10-22', true), use(8, '2026-10-24', false), use(9, '2026-10-22', true)],
+      gaps: [{ commodity_id: 7, reason: 'no_observation_in_window' }] } as Valuation;
+    expect(returnsCoverage(valuation)).toEqual({ missing: [7], staleDates: ['2026-10-22'] });
+  });
+
+  it('is empty without a valuation block or when everything is current', () => {
+    expect(returnsCoverage(undefined)).toEqual({ missing: [], staleDates: [] });
+    expect(returnsCoverage({ ...base, complete: true, rates_used: [use(8, '2026-10-24', false)], gaps: [] } as Valuation))
+      .toEqual({ missing: [], staleDates: [] });
+  });
+});
+
+describe('unavailableAccountIDs', () => {
+  it('lists selected ids that are not selectable accounts, in selection order', () => {
+    expect(unavailableAccountIDs([999999, 4, 12], [4, 9])).toEqual([999999, 12]);
+    expect(unavailableAccountIDs([4], [4, 9])).toEqual([]);
   });
 });

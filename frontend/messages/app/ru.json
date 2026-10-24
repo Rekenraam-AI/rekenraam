@@ -871,5 +871,11 @@
   "returns_reason_numerical_limit": "Ставка слишком экстремальна для надёжного расчёта.",
   "returns_reason_period_shorter_than_year": "Показывается только для периодов не короче года.",
   "returns_reason_non_positive_growth": "Убыток 100 % и более нельзя выразить в годовых.",
-  "returns_reason_unknown": "Недоступно."
+  "returns_reason_unknown": "Недоступно.",
+  "returns_account_archived": "{name} (в архиве)",
+  "returns_account_closed": "{name} (закрыт)",
+  "returns_accounts_unavailable": "Эти выбранные счета не являются счетами портфеля в этой книге и будут пропущены:",
+  "returns_accounts_remove_unavailable": "Убрать {account}",
+  "returns_accounts_reset": "Использовать все инвестиционные счета",
+  "returns_updating": "Обновление по последним данным книги учёта и цен…"
 }

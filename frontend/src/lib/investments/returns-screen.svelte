@@ -12,12 +12,11 @@
   import { investmentInstrumentsQueryOptions, investmentReturnsQueryOptions, type ReturnFigure, type ReturnsAmount } from '#lib/api/investments.ts';
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { formatMoney, joinCommodityAmount } from '#lib/money/format.ts';
-  import { valuationNotice } from '#lib/reports/reporting-currency.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import {
     fallbackReasonText, formatReturn, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
-    returnsSelectionParams, validRange, type ReturnsPreset
+    returnsCoverage, returnsSelectionParams, unavailableAccountIDs, validRange, type ReturnsPreset
   } from './returns-model';
 
   // R13 portfolio returns (#119, slice 2): a read-only view of the returns_v1
@@ -28,7 +27,8 @@
   const dates = $derived(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }));
   const instants = $derived(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }));
 
-  const accounts = createQuery(() => accountsQueryOptions());
+  // Archived accounts stay selectable: a past period can need them.
+  const accounts = createQuery(() => accountsQueryOptions(true));
   const currencies = createQuery(() => currenciesQueryOptions());
   const book = createQuery(() => currentBookQueryOptions());
   const instruments = createQuery(() => investmentInstrumentsQueryOptions());
@@ -64,6 +64,7 @@
     currencyDraft = reportingCurrencyID === null ? '' : String(reportingCurrencyID);
   });
   const rangeInvalid = $derived(!validRange(fromDraft, toDraft, today));
+  const unavailableDraft = $derived(unavailableAccountIDs(accountDraft, portfolioAccounts.map((account) => account.id)));
 
   const returns = createQuery(() => ({
     ...investmentReturnsQueryOptions({
@@ -77,14 +78,17 @@
   const result = $derived(returns.data);
   const referencesLoading = $derived(accounts.isPending || currencies.isPending || book.isPending);
   const referenceError = $derived(accounts.error ?? currencies.error ?? book.error);
-  const notice = $derived(valuationNotice(result?.valuation));
+  const coverage = $derived(returnsCoverage(result?.valuation));
 
   function apply(range?: { from: string; to: string }) {
     const from = range?.from ?? fromDraft;
     const to = range?.to ?? toDraft;
     if (!validRange(from, to, today) || currencyDraft === '') return;
+    // An id that is not a selectable account here would fail every request;
+    // it is listed as unavailable above the button and left out.
+    const selectable = accountDraft.filter((id) => !unavailableDraft.includes(id));
     const params = returnsSelectionParams({
-      from, to, reportingCurrencyID: Number(currencyDraft), accountIDs: [...accountDraft].sort((a, b) => a - b)
+      from, to, reportingCurrencyID: Number(currencyDraft), accountIDs: [...selectable].sort((a, b) => a - b)
     });
     void goto(`/app/investments/returns?${params.toString()}`, { reset: false });
   }
@@ -98,7 +102,10 @@
   }
 
   function accountLabel(account: AccountResponse): string {
-    return account.name || account.code || `#${account.id}`;
+    const name = account.name || account.code || `#${account.id}`;
+    if (account.status === 'archived') return m.returns_account_archived({ name });
+    if (account.status === 'closed') return m.returns_account_closed({ name });
+    return name;
   }
 
   function accountName(id: number): string {
@@ -208,6 +215,22 @@
               {/each}
             </ul>
           {/if}
+          {#if unavailableDraft.length > 0}
+            <div role="status" class="space-y-1 text-sm text-warning">
+              <p>{m.returns_accounts_unavailable()}</p>
+              <ul class="flex flex-wrap gap-2">
+                {#each unavailableDraft as id (id)}
+                  <li>
+                    <button type="button" class="min-h-11 rounded-(--radius-control) border border-border bg-control px-3 text-foreground hover:bg-control-hover"
+                      onclick={() => toggleAccount(id, false)}>{m.returns_accounts_remove_unavailable({ account: `#${id}` })}</button>
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+          {#if accountDraft.length > 0}
+            <button type="button" class="min-h-11 text-sm text-foreground underline underline-offset-2" onclick={() => { accountDraft = []; }}>{m.returns_accounts_reset()}</button>
+          {/if}
         </fieldset>
 
         <button type="submit" disabled={rangeInvalid || currencyDraft === ''}
@@ -229,7 +252,10 @@
         <a href="/app/accounts" class="inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-2">{m.returns_empty_action()}</a>
       </StatePanel>
     {:else if result}
-      <section aria-labelledby="returns-summary-title" class="space-y-3" data-testid="returns-summary">
+      <section aria-labelledby="returns-summary-title" class="space-y-3" data-testid="returns-summary" aria-busy={returns.isFetching}>
+        {#if returns.isFetching}
+          <p role="status" class="text-sm text-muted">{m.returns_updating()}</p>
+        {/if}
         <h2 id="returns-summary-title" class="text-base font-semibold text-foreground">
           {m.returns_period({ from: day(result.from), to: day(result.to), currency: currencyCode(reportingCurrencyID ?? 0), days: result.days })}
         </h2>
@@ -279,10 +305,11 @@
           </dl>
         </Panel>
 
-        {#if notice.kind === 'incomplete'}
-          <p role="status" class="text-sm text-warning">{m.returns_coverage_incomplete({ commodities: notice.commodityIDs.map(currencyOrCommodity).join(', ') })}</p>
-        {:else if notice.kind === 'stale'}
-          <p class="text-sm text-muted">{m.returns_coverage_stale({ dates: notice.dates.map(day).join(', ') })}</p>
+        {#if coverage.missing.length > 0}
+          <p role="status" class="text-sm text-warning">{m.returns_coverage_incomplete({ commodities: coverage.missing.map(currencyOrCommodity).join(', ') })}</p>
+        {/if}
+        {#if coverage.staleDates.length > 0}
+          <p class="text-sm text-muted">{m.returns_coverage_stale({ dates: coverage.staleDates.map(day).join(', ') })}</p>
         {/if}
 
         {#if result.attribution_fallbacks.length > 0}

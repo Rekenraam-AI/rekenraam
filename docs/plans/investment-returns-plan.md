@@ -362,7 +362,14 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
    currency for new UI (shown and changeable, never a hidden base currency);
    presets are year to date and the last 12 months (the shortest period with
    annual figures); every unavailable figure shows its reason in words, and
-   attribution fallbacks link to their transactions.
+   attribution fallbacks link to their transactions. A review of
+   `f0b3b8ec` (four findings, all accepted) added: returns are invalidated by
+   price corrections and are always refetched on a visit (`staleTime` 0,
+   with an "updating" note), because the ledger writers that change them have
+   no single invalidation hook; archived and closed accounts stay selectable,
+   labelled with their status; a selected id that is not a selectable account
+   is listed, removable and never sent, with a reset to every investment
+   account; and missing and stale coverage are disclosed independently.
 3. **Cumulative TTWROR series and chart** — daily or bucketed points derived
    from the same chain (requires valuations at each point, so coverage is per
    point).

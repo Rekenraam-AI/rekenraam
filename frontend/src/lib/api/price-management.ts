@@ -4,7 +4,7 @@ import type { QueryClient } from '@tanstack/svelte-query';
 import { currencySettingsPageQueryKey } from '#lib/api/settings.ts';
 import { reportsQueryKey } from '#lib/api/reports.ts';
 import { forecastQueryKey } from '#lib/api/forecast.ts';
-import { investmentPositionsQueryKey, investmentGainsQueryKey } from '#lib/api/investments.ts';
+import { investmentPositionsQueryKey, investmentGainsQueryKey, investmentReturnsQueryKey } from '#lib/api/investments.ts';
 
 export type PricingWorkspace = components['schemas']['PricingWorkspaceResponse'];
 export type PricingCommodity = components['schemas']['PricingCommodityResponse'];
@@ -63,5 +63,5 @@ export function withdrawPrice(id: number, reason: string, expectedImpact: string
 }
 export async function invalidatePriceReads(client: QueryClient) {
   await Promise.all([priceManagementQueryKey, currencySettingsPageQueryKey, reportsQueryKey, forecastQueryKey,
-    investmentPositionsQueryKey, investmentGainsQueryKey].map(queryKey => client.invalidateQueries({ queryKey })));
+    investmentPositionsQueryKey, investmentGainsQueryKey, investmentReturnsQueryKey].map(queryKey => client.invalidateQueries({ queryKey })));
 }

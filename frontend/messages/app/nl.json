@@ -871,5 +871,11 @@
   "returns_reason_numerical_limit": "De rente is te extreem om betrouwbaar te berekenen.",
   "returns_reason_period_shorter_than_year": "Alleen getoond voor periodes van minstens een jaar.",
   "returns_reason_non_positive_growth": "Een verlies van 100 % of meer is niet per jaar uit te drukken.",
-  "returns_reason_unknown": "Niet beschikbaar."
+  "returns_reason_unknown": "Niet beschikbaar.",
+  "returns_account_archived": "{name} (gearchiveerd)",
+  "returns_account_closed": "{name} (gesloten)",
+  "returns_accounts_unavailable": "Deze gekozen rekeningen zijn geen portefeuillerekeningen in dit boek en worden weggelaten:",
+  "returns_accounts_remove_unavailable": "{account} verwijderen",
+  "returns_accounts_reset": "Alle beleggingsrekeningen gebruiken",
+  "returns_updating": "Bijwerken met het nieuwste grootboek en de nieuwste koersen…"
 }

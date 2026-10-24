@@ -80,3 +80,82 @@ test('returns keep the form usable when a period is invalid', async ({ page }) =
   await expect(page.getByText('Choose a start on or before the end, and an end no later than today.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Show returns', exact: true })).toBeDisabled();
 });
+
+// Review of f0b3b8ec (adapted from its browser probes).
+
+test('archived accounts stay selectable, labelled, for historical returns', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const opened = daysFromTodayISO(-400);
+  const account = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: 'Retired returns broker', account_class: 'asset', account_kind: 'brokerage_cash',
+    default_commodity_id: currencyID, allows_postings: true, opened_on: opened, effective_from: opened
+  });
+  await apiJSON(page, 'POST', `/api/v1/accounts/${account.id}/close`, csrfToken, { closed_on: todayISO() });
+  await apiJSON(page, 'POST', `/api/v1/accounts/${account.id}/archive`, csrfToken, { effective_from: todayISO() });
+
+  await page.goto(`/app/investments/returns?from=${daysFromTodayISO(-390)}&to=${daysFromTodayISO(-10)}&reporting_currency_id=${currencyID}&account_id=${account.id}`);
+  const summary = page.getByTestId('returns-summary');
+  await expect(summary).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Retired returns broker (archived)', exact: true })).toBeChecked();
+  await expect(summary.getByText('Retired returns broker (archived)', { exact: true })).toBeVisible();
+});
+
+test('an unavailable account in a link is shown, left out, and removable', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const opened = daysFromTodayISO(-60);
+  const account = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: 'Valid returns checking', account_class: 'asset', account_kind: 'checking',
+    default_commodity_id: currencyID, allows_postings: true, opened_on: opened, effective_from: opened
+  });
+  await page.goto(`/app/investments/returns?from=${daysFromTodayISO(-45)}&to=${todayISO()}&reporting_currency_id=${currencyID}&account_id=999999`);
+  await expect(page.getByText('Returns could not be loaded', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remove #999999', exact: true })).toBeVisible();
+
+  // Ticking a valid account and applying drops the unavailable one.
+  await page.getByRole('checkbox', { name: 'Valid returns checking', exact: true }).check();
+  await page.getByRole('button', { name: 'Show returns', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`account_id=${account.id}`));
+  await expect(page).not.toHaveURL(/account_id=999999/);
+  await expect(page.getByTestId('returns-summary')).toBeVisible();
+
+  // The reset returns to every investment account.
+  await page.getByRole('button', { name: 'Use every investment account', exact: true }).click();
+  await page.getByRole('button', { name: 'Show returns', exact: true }).click();
+  await expect(page).not.toHaveURL(/account_id=/);
+});
+
+test('a gap and stale quotes are disclosed together', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const opened = daysFromTodayISO(-60);
+  const cash = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: 'Gap checking', account_class: 'asset', account_kind: 'checking', default_commodity_id: currencyID,
+    allows_postings: true, opened_on: opened, effective_from: opened
+  });
+  const instrument = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
+    commodity_code: 'RGAP', instrument_type: 'stock', display_name: 'Returns gap', symbol: 'RGAP',
+    quote_commodity_id: currencyID, trading_commodity_id: currencyID, quantity_scale: 0, price_scale: 2, effective_from: opened
+  });
+  const holding = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/holding-accounts', csrfToken, {
+    instrument_id: instrument.id, name: 'Gap holding', opened_on: opened, effective_from: opened
+  });
+  // The second purchase needs V the day before it, 21 days after the first
+  // fill price: a gap for TTWROR only. Closing uses a two-day-old quote.
+  for (const [offset, units, cents] of [[-40, '10', 100000], [-20, '1', 10000]] as const) {
+    await apiJSON(page, 'POST', '/api/v1/investments/buy', csrfToken, {
+      transaction_date: daysFromTodayISO(offset), commodity_id: instrument.commodity_id,
+      holding_account_id: holding.id, cash_account_id: cash.id, quantity_value: units, quantity_scale: 0,
+      cash_amount_value: cents, cash_amount_scale: 2, cash_commodity_id: currencyID, cost_basis_method: 'fifo'
+    });
+  }
+  await apiJSON(page, 'POST', '/api/v1/pricing/prices', csrfToken, {
+    base_commodity_id: instrument.commodity_id, quote_commodity_id: currencyID, quote_type: 'close', adjustment_basis: 'raw',
+    price_value: 11000, price_scale: 2, valuation_date: daysFromTodayISO(-2), is_manual: true
+  });
+
+  await page.goto(`/app/investments/returns?from=${daysFromTodayISO(-45)}&to=${todayISO()}&reporting_currency_id=${currencyID}`);
+  const summary = page.getByTestId('returns-summary');
+  await expect(summary.getByTestId('returns-closing')).toContainText('1,210.00');
+  await expect(summary.getByTestId('returns-twr-period')).toHaveText('—');
+  await expect(summary.getByText(/No usable price or exchange rate for: RGAP/)).toBeVisible();
+  await expect(summary.getByText(/Some prices or rates come from earlier days/)).toBeVisible();
+});

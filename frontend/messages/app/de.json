@@ -871,5 +871,11 @@
   "returns_reason_numerical_limit": "Der Zinssatz ist zu extrem für eine verlässliche Berechnung.",
   "returns_reason_period_shorter_than_year": "Nur für Zeiträume von mindestens einem Jahr angezeigt.",
   "returns_reason_non_positive_growth": "Ein Verlust von 100 % oder mehr lässt sich nicht pro Jahr ausdrücken.",
-  "returns_reason_unknown": "Nicht verfügbar."
+  "returns_reason_unknown": "Nicht verfügbar.",
+  "returns_account_archived": "{name} (archiviert)",
+  "returns_account_closed": "{name} (geschlossen)",
+  "returns_accounts_unavailable": "Diese gewählten Konten sind keine Portfoliokonten in diesem Buch und werden ausgelassen:",
+  "returns_accounts_remove_unavailable": "{account} entfernen",
+  "returns_accounts_reset": "Alle Anlagekonten verwenden",
+  "returns_updating": "Wird mit dem aktuellen Hauptbuch und den aktuellen Kursen aktualisiert…"
 }

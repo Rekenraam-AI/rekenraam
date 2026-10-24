@@ -1,6 +1,7 @@
 import type { ReadonlyURLSearchParams } from '$app/state';
 import { adjacentCalendarDate, isCalendarDate } from '#lib/dates/calendar-date.ts';
 import { m } from '#lib/paraglide/messages.js';
+import type { Valuation } from '#lib/reports/reporting-currency.ts';
 
 // R13 returns screen (docs/plans/investment-returns-plan.md, slice 2). The
 // selection lives in the URL like every report control, so a link reopens
@@ -136,4 +137,32 @@ export function returnDirection(value: string): 'up' | 'down' | 'flat' {
   if (number > 0) return 'up';
   if (number < 0) return 'down';
   return 'flat';
+}
+
+export type ReturnsCoverage = {
+  /** Commodities with no usable price or rate: figures needing them are absent. */
+  missing: number[];
+  /** Earlier-dated observations behind figures that are shown. */
+  staleDates: string[];
+};
+
+/**
+ * What the valuation block discloses. Missing and stale coverage are
+ * independent: a gap can remove the time-weighted return while the closing
+ * value and money-weighted return still rest on an earlier-dated quote, and
+ * the reader needs to know both.
+ */
+export function returnsCoverage(valuation: Valuation | null | undefined): ReturnsCoverage {
+  if (!valuation) return { missing: [], staleDates: [] };
+  return {
+    missing: [...new Set(valuation.gaps.map((gap) => gap.commodity_id))].sort((a, b) => a - b),
+    staleDates: [...new Set(valuation.rates_used.filter((use) => use.stale).map((use) => use.observation_date))].sort()
+  };
+}
+
+/** Selected ids that are not selectable portfolio accounts in this book: a
+ * stale or hand-edited link. They are shown, removable, and never sent. */
+export function unavailableAccountIDs(selected: number[], selectable: number[]): number[] {
+  const known = new Set(selectable);
+  return selected.filter((id) => !known.has(id));
 }

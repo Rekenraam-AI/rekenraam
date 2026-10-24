@@ -871,5 +871,11 @@
   "returns_reason_numerical_limit": "Le taux est trop extrême pour être calculé de façon fiable.",
   "returns_reason_period_shorter_than_year": "Affiché seulement pour des périodes d'au moins un an.",
   "returns_reason_non_positive_growth": "Une perte de 100 % ou plus ne peut pas s'exprimer par an.",
-  "returns_reason_unknown": "Non disponible."
+  "returns_reason_unknown": "Non disponible.",
+  "returns_account_archived": "{name} (archivé)",
+  "returns_account_closed": "{name} (clôturé)",
+  "returns_accounts_unavailable": "Ces comptes sélectionnés ne sont pas des comptes de portefeuille de ce livre et seront ignorés :",
+  "returns_accounts_remove_unavailable": "Retirer {account}",
+  "returns_accounts_reset": "Utiliser tous les comptes d'investissement",
+  "returns_updating": "Mise à jour avec le grand livre et les cours les plus récents…"
 }

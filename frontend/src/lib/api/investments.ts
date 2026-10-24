@@ -1067,11 +1067,15 @@ export type InvestmentReturnsInput = {
   accountIDs: number[];
 };
 
+// Always stale: returns read every posted ledger entry and price, and the
+// writers that change them (transactions, imports, reconciliation, prices,
+// investment commands) have no single invalidation hook. Each visit refetches
+// while the screen keeps showing, and labelling, the cached figures.
 export function investmentReturnsQueryOptions(input: InvestmentReturnsInput) {
   return {
     queryKey: [...investmentReturnsQueryKey, input] as const,
     queryFn: () => getInvestmentReturns(input),
-    staleTime: 30_000
+    staleTime: 0
   };
 }
 

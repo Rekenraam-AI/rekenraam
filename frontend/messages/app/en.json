@@ -871,5 +871,11 @@
   "returns_reason_numerical_limit": "The rate is too extreme to calculate reliably.",
   "returns_reason_period_shorter_than_year": "Shown only for periods of at least a year.",
   "returns_reason_non_positive_growth": "A loss of 100 % or more cannot be expressed per year.",
-  "returns_reason_unknown": "Not available."
+  "returns_reason_unknown": "Not available.",
+  "returns_account_archived": "{name} (archived)",
+  "returns_account_closed": "{name} (closed)",
+  "returns_accounts_unavailable": "These selected accounts are not portfolio accounts in this book and will be left out:",
+  "returns_accounts_remove_unavailable": "Remove {account}",
+  "returns_accounts_reset": "Use every investment account",
+  "returns_updating": "Updating with the latest ledger and prices…"
 }
