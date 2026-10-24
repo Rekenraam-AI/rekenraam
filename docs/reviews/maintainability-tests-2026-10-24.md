@@ -326,8 +326,12 @@ CI's per-package time and from these single-package runs.
 ## Consequences for the provisional ranking
 
 These refine, not finalise, the [provisional shortlist](maintainability-audit-2026-10-21.md#provisional-ranked-shortlist).
-The [final ranking](maintainability-audit-2026-10-24.md) later moves candidate 1
-to "later", because #119 requires a concrete R13 conflict:
+The owner-reviewed [final ranking](maintainability-audit-2026-10-24.md)
+supersedes the recommendations below: corporate-action preparation is accepted
+as independent later work in #401, existing browser repairs are not an R13
+gate, and timing investigation starts in #402 because the retained 219.8-second
+matched run already crosses the proposed 200-second trigger. This table remains
+the historical slice-6 recommendation, not the current execution queue:
 
 | Candidate | New evidence | Criterion | Cost | Recommendation |
 |---|---|---|---|---|

@@ -14,14 +14,15 @@ Other questions have exactly one home each:
 Do not restate shipped detail here; when a focus item ships, delete it and
 record the capability in `implemented.md`.
 
-Last reviewed: 2026-10-21 against local `13d15eab` and live GitHub issue
-state. The documentation and competitor review is recorded in the
+Last reviewed: 2026-10-24 against local `40e29fe9`, owner acceptance and live
+GitHub issue state. The documentation and competitor review is recorded in the
 [app-state review and audit brief](reviews/app-state-and-audit-plan-2026-10-17.md).
 R16, R11, R17 and R18 have met their bounded delivery bars. **R13 remains the
 next feature initiative; its calculation contract is not yet implementation-ready.**
 The cross-app engineering audit is delivered; owner/release follow-ups remain
-explicit below. **#284 is the current engineering focus.** Earlier milestone
-detail lives in the [completed roadmap record](reviews/completed-roadmap-2026-09-27.md)
+explicit below. **#397 is the current engineering focus; #284's owner review
+is complete.** Earlier milestone detail lives in the
+[completed roadmap record](reviews/completed-roadmap-2026-09-27.md)
 and the [capability ledger](implemented.md).
 
 ## Slice index
@@ -140,69 +141,58 @@ below is execution order, not a chain of hard dependencies.
    recorded upstream driver-release prerequisite
    [#356](https://github.com/sergeyfarin/rekenraam/issues/356).
    Adoption assets [#335](https://github.com/sergeyfarin/rekenraam/issues/335)
-   remain P3 for later. These retained gates do not block #284; release remains
-   on hold and #260 is not closed by this sequencing update.
-2. **Rank evidence-gated refactoring candidates in
-   [#284](https://github.com/sergeyfarin/rekenraam/issues/284) — current.** The
-   [first slice](reviews/maintainability-audit-2026-10-21.md) records the fixed-SHA
-   input reconciliation, history measurements and provisional shortlist. The
-   [second slice](reviews/maintainability-duplication-2026-10-21.md) delivers Go
-   and frontend runtime clone scans with bounded triage. The
-   [third slice](reviews/maintainability-invariants-2026-10-21.md) maps 34 named
-   invariant groups and narrows consolidation around existing shared owners.
-   The [fourth slice](reviews/maintainability-layers-2026-10-21.md) reviews layer,
-   frontend arithmetic/date and request-composition boundaries, adding bounded
-   total/leaf ownership candidates. The
-   [fifth slice](reviews/maintainability-reachability-2026-10-21.md) delivers
-   Go production/test reachability, frontend file/export triage and 25 named
-   Go abstraction dispositions. The
-   [sixth slice](reviews/maintainability-tests-2026-10-24.md) pins `a514e188`,
-   reconciles the intervening commits and delivers the test fixture/oracle/
-   duplication and race-cost review. The
-   [final ranking](reviews/maintainability-audit-2026-10-24.md) publishes 13
-   ranked candidates, the investment/reporting dispositions and the consolidated
-   rejected list; **owner review is next**. Each accepted refactor gets its own
-   issue and preserves behavior. R13 specification can proceed. R13
-   implementation's #284 prerequisites are limited to the self-check assertion
-   family and owned browser assertions for book-wide reads, plus
-   application-owned native realized totals if its contract uses them.
-   The separate P3 payment-density audit
-   [#379](https://github.com/sergeyfarin/rekenraam/issues/379) measured the
-   payment-density workload
-   ([report](reviews/payment-in-lieu-density-2026-10-23.md)). Owner direction
-   (2026-10-23) separates product-rule necessity in
-   [#390](https://github.com/sergeyfarin/rekenraam/issues/390) from #284's
-   behavior-preserving refactors. The cross-family dependency contract in
-   [#391](https://github.com/sergeyfarin/rekenraam/issues/391), governed by
-   [ADR 0019](adrs/0019-financial-effects-and-repairable-attribution.md) and its
-   [plan](plans/financial-dependency-simplification-plan.md), reframes
-   [#388](https://github.com/sergeyfarin/rekenraam/issues/388) as cash-only
-   payment attribution and [#389](https://github.com/sergeyfarin/rekenraam/issues/389)
-   as its diagnostic. The owner-directed
-   [four-case comparative slice](reviews/financial-dependency-comparison-2026-10-23.md)
-   specifies their targeted contract, with #392/#393 covering cash-in-lieu
-   parent corrections and dividend/withholding payer attribution. The completed
-   [#391 family inventory](reviews/financial-dependency-inventory-2026-10-23.md)
-   records cross-family contracts and the concrete reasons for retained
-   allocation/source/reconciliation dependencies. #388/#389 now deliver optional
-   payment attribution, audited repair and diagnostics, removing the cash-only write
-   blockers. #392 now delivers parent replay for all four cash-in-lieu families.
-   #393 now delivers payer/shape consistency, missing-payer CSV income and the
-   dividend source-ancestry fix with visible source mismatch/unavailable support
-   ([evidence](reviews/dividend-attribution-repair-2026-10-23.md)).
-   #394 now delivers historical-parent fractional entry, dated lot selection
-   and preview/commit through actual replay, with original provenance preserved
-   ([evidence](reviews/cash-in-lieu-historical-entry-2026-10-24.md)). Accepted
-   follow-up #395 covers typed cash/reinvestment field correction through
-   existing replay.
-   These do not expand #284's closure checklist, reorder
-   initiatives or introduce a blanket R13 prerequisite.
-3. **Specify R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
-   Use the delivered R18 valuation contracts; resolve portfolio scope,
+   remain P3 for later. These retained gates do not block the accepted
+   maintenance; release remains on hold and #260 is not closed by this
+   sequencing update.
+2. **Deliver the immediate accepted maintainability slices, one at a time.**
+   [#284](https://github.com/sergeyfarin/rekenraam/issues/284)'s six measurement
+   slices and [final owner-reviewed dispositions](reviews/maintainability-audit-2026-10-24.md)
+   complete the bounded audit. The owner accepted original candidates 1–6 and
+   deferred 7–13. The immediate execution queue is:
+
+   | Order | Issue | Bounded outcome |
+   |---:|---|---|
+   | 1 — current | [#397](https://github.com/sergeyfarin/rekenraam/issues/397) | One strict self-check assertion owner; keep the unknown-basis variant and independent oracles. |
+   | 2 | [#402](https://github.com/sergeyfarin/rekenraam/issues/402) | Investigate race-suite/migration-chain cost now: the retained matched 219.8 s run already crosses the proposed 200 s trigger. Optimize only with preserved upgrade coverage and unchanged ADR 0016 resources. |
+   | 3 | [#398](https://github.com/sergeyfarin/rekenraam/issues/398) | Own browser self-check assertions by dedicated book or transaction; preserve diagnostic and navigation coverage. |
+
+   These are the chosen maintenance slots, not technical blockers for R13.
+   R13 specification may proceed in parallel. The separate product-policy
+   audit [#390](https://github.com/sergeyfarin/rekenraam/issues/390), delivered
+   #391/#388/#389/#392/#393/#394 contracts, and accepted financial-field
+   correction feature [#395](https://github.com/sergeyfarin/rekenraam/issues/395)
+   remain distinct from behavior-preserving maintenance; do not restore
+   retired attribution blockers.
+3. **Specify and then implement R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119).**
+   Use the delivered R18 valuation contracts; accept portfolio scope,
    external-flow classification, return equations, numerical failure states,
-   coverage and reproducibility before implementation. The reporting/investment
-   audit informs this contract; unrelated provider evidence is not a prerequisite.
-4. **Continue independent readiness work.**
+   coverage, reproducibility and independent expected cases before implementation.
+   #284's owner-reviewed investment/reporting dispositions are now complete.
+   If the accepted contract consumes native realized totals, deliver
+   [#399](https://github.com/sergeyfarin/rekenraam/issues/399) before that R13
+   implementation slice so it reuses app-owned totals. Otherwise #399 stays
+   accepted in the later slot below. R13 tests must own their fixtures and
+   expected figures; completion of existing browser repairs is not a gate.
+   No other accepted cleanup, provider evidence, #390 or #395 is a blanket
+   R13 prerequisite. A new dependency must name its concrete conflict and
+   smallest resolution.
+4. **Continue the remaining accepted maintenance after R13 core.**
+   Deliver [#400](https://github.com/sergeyfarin/rekenraam/issues/400) first:
+   characterize and share genuinely compatible browser review lifecycles.
+   Then deliver [#395](https://github.com/sergeyfarin/rekenraam/issues/395)'s
+   separate financial-field correction feature using the existing forms and
+   extracted controller where applicable. #395 extends existing controllers;
+   it does not add four controllers. This is scheduling, not a technical
+   blocker inferred from four product families.
+   Next deliver independent corporate-action preparation
+   [#401](https://github.com/sergeyfarin/rekenraam/issues/401), then
+   [#399](https://github.com/sergeyfarin/rekenraam/issues/399) if R13 did not
+   consume it. Each accepted refactor remains a separate bounded slice.
+   Original candidates 7–13 are **explicitly deferred without issues** in the
+   [deferred inventory](reviews/maintainability-audit-2026-10-24.md#explicitly-deferred-inventory-original-ranks-713).
+   Revisit only on the recorded trigger and refreshed evidence; open a bounded
+   issue then if justified. They are outside this accepted execution queue.
+5. **Continue independent readiness work.**
    [#102](https://github.com/sergeyfarin/rekenraam/issues/102) needs native
    terminology review, not another catalog-parity implementation. Recheck
    [#112](https://github.com/sergeyfarin/rekenraam/issues/112)'s upstream

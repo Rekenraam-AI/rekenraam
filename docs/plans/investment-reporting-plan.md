@@ -31,7 +31,8 @@ records native realized-gain totals/unknown counts in the API response builder.
 That is a bounded candidate for application ownership, not a requirement to
 replace the existing valuation owner or merge FX/statement semantics. Any move
 must preserve mixed-scale totals, unavailable/null disclosures, range failures
-and immutable saved output. No incorrect total or accepted refactor is claimed.
+and immutable saved output. No incorrect total was reproduced. Owner review
+later accepted this bounded refactor as [#399](https://github.com/sergeyfarin/rekenraam/issues/399).
 
 The [fifth slice](../reviews/maintainability-reachability-2026-10-21.md) separates
 standalone test-root wrappers from production consumers. Current reads resolve
@@ -52,11 +53,18 @@ book-wide self-check sample.
 
 The [final #284 ranking](../reviews/maintainability-audit-2026-10-24.md#investment-and-reporting-dispositions-for-r13)
 records a disposition for every investment/reporting hotspot. R13 reuses the
-existing valuation, movement and writer owners. Its #284 prerequisites are the
-strict self-check assertion family and owned browser assertions, plus an
-application-owned native realized-total read model if the R13 contract consumes
-native realized totals. Corporate-action correction preparation is not an R13
-prerequisite.
+existing valuation, movement and writer owners. Owner review is complete:
+candidates 1–6 are accepted follow-up issues, and 7–13 are explicitly deferred.
+The only conditional refactor prerequisite is [#399](https://github.com/sergeyfarin/rekenraam/issues/399)
+if R13's accepted contract consumes native realized totals. R13 still needs
+its own accepted calculation/input/coverage/reproducibility contract and
+independent expected cases. Its tests must use strict health assertions and
+owned fixtures, but completion of the existing-helper/browser cleanup in
+[#397](https://github.com/sergeyfarin/rekenraam/issues/397) and
+[#398](https://github.com/sergeyfarin/rekenraam/issues/398) is not a blanket
+implementation gate. Corporate-action preparation, browser lifecycle extraction
+and timing investigation are separate accepted maintenance. The roadmap owns
+their order.
 
 ## Live observation selection: `live_raw_v1`
 

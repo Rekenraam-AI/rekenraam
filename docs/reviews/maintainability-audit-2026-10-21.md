@@ -4,8 +4,10 @@
 partial.** The [sixth slice](maintainability-tests-2026-10-24.md) (source
 `a514e188`) reconciles later commits and reviews test ownership. The
 [final ranking](maintainability-audit-2026-10-24.md) supersedes the provisional
-shortlist below and awaits owner review. This first-slice record reconciles the earlier proposals, inventories
-the audit inputs and records reproducible history measurements. The
+shortlist below; owner review on 2026-10-24 accepts original candidates 1–6
+and explicitly defers 7–13. This first-slice record reconciles the earlier
+proposals, inventories the audit inputs and records reproducible history
+measurements. The
 [second slice](maintainability-duplication-2026-10-21.md) adds runtime duplication
 scans and bounded triage, narrows correction preparation and adds the frontend
 review-lifecycle candidate. The [third slice](maintainability-invariants-2026-10-21.md)
