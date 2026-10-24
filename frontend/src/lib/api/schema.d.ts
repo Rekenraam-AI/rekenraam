@@ -26808,6 +26808,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/investments/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Portfolio returns under returns_v1
+         * @description R13 slice 1 (#119, docs/plans/investment-returns-plan.md). Time-weighted (TTWROR: daily linking, inflows at the start of the day, outflows at its end) and money-weighted (IRR, Actual/365, solved only when a unique root is proven) returns of a set of accounts over `from`..`to`, in one reporting currency. The opening valuation is at the end of the day before `from`. External flows are postings outside the portfolio; income and expense are performance, so returns are net of fees and taxes. An investment operation's cash is classified by the position its facts name (holding, or instrument held only inside or only outside), else by where its cash landed, and every such fallback is listed. Read-only: nothing is posted, transferred or audited, and reconciliation is unaffected. One consistent disposable input snapshot; subsequent requests may restate the result. A figure missing an input is null with its reason, never zero.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description First day of the period (ISO date, inclusive). */
+                    from: string;
+                    /** @description Last day of the period (ISO date, inclusive, not after owner-local today). */
+                    to: string;
+                    /** @description Currency every value and flow is converted into. */
+                    reporting_currency_id: number;
+                    /** @description Portfolio account (repeatable), expanded to its subtree as of `to`; each must be a non-system asset or liability. Omitted selects every investment container, investment cash, security holding and digital asset account with descendants. */
+                    account_id?: number[];
+                    /** @description Inclusive on-or-before window for prices and FX. */
+                    max_staleness_days?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The returns read */
+                200: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InvestmentReturnsResponse"];
+                    };
+                };
+                /** @description A date or currency is missing or malformed, `from` is after `to`, `to` is after owner-local today, an account is not a balance-sheet account, or max_staleness_days is out of range */
+                400: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication is required */
+                401: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Consistent input capture exceeded its deadline; RESOURCE_BUSY is retryable. */
+                503: {
+                    headers: {
+                        "X-Request-ID": components["headers"]["XRequestID"];
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/investments/operations/{operation_id}/reverse-split": {
         parameters: {
             query?: never;
@@ -33723,6 +33814,67 @@ export interface components {
         GainsStatementUnclassifiedDividends: {
             payment_count: number;
             cash: components["schemas"]["GainsFXAmount"];
+        };
+        /** @description A reporting-currency amount, or the reason (and dated breakpoint) it is unavailable. */
+        ReturnsAmount: {
+            amount: components["schemas"]["BalanceQuantity"] | null;
+            /** @enum {string|null} */
+            reason: "valuation_unavailable" | "flow_unavailable" | "unclassified_short" | null;
+            /** Format: date */
+            date: string | null;
+        };
+        /** @description A return as a decimal fraction string rounded half away from zero to six places (0.090909 = 9.0909 %), or why it is unavailable. */
+        ReturnFigure: {
+            value: string | null;
+            /** @enum {string|null} */
+            reason: "valuation_unavailable" | "flow_unavailable" | "unclassified_short" | "non_positive_capital" | "no_capital" | "no_root" | "root_not_unique" | "period_shorter_than_year" | "non_positive_growth" | null;
+            /** Format: date */
+            date: string | null;
+        };
+        /** @description Investment-operation cash the facts could not tie to one position, decided by where its cash landed. Nothing is written. */
+        ReturnsAttributionFallback: {
+            /** Format: int64 */
+            transaction_id: number;
+            /** Format: int64 */
+            operation_id: number;
+            operation_kind: string;
+            /** Format: date */
+            date: string;
+            /** @enum {string} */
+            reason: "unassigned_instrument" | "held_inside_and_outside" | "not_held";
+            /** @description Whether the cash entered the portfolio's return (it landed in a portfolio account). */
+            counted: boolean;
+        };
+        InvestmentReturnsResponse: {
+            /** @enum {string} */
+            policy: "returns_v1";
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /**
+             * Format: date
+             * @description The day whose end is the opening valuation (from − 1).
+             */
+            opening_date: string;
+            /** @description Calendar days from the opening boundary to `to`. */
+            days: number;
+            /** @enum {string} */
+            account_scope: "default_investment_accounts" | "selected_accounts";
+            resolved_account_ids: number[];
+            /** Format: date-time */
+            knowledge_cutoff: string;
+            opening_value: components["schemas"]["ReturnsAmount"];
+            closing_value: components["schemas"]["ReturnsAmount"];
+            contributions: components["schemas"]["ReturnsAmount"];
+            withdrawals: components["schemas"]["ReturnsAmount"];
+            gain: components["schemas"]["ReturnsAmount"];
+            time_weighted: components["schemas"]["ReturnFigure"];
+            time_weighted_annualized: components["schemas"]["ReturnFigure"];
+            money_weighted: components["schemas"]["ReturnFigure"];
+            money_weighted_period: components["schemas"]["ReturnFigure"];
+            attribution_fallbacks: components["schemas"]["ReturnsAttributionFallback"][];
+            valuation: components["schemas"]["Valuation"];
         };
         /** @description Unrealized gain of one currency's positions at a valuation date, with the price dates that produced it. */
         GainsStatementValuation: {

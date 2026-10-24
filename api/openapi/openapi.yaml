@@ -573,6 +573,8 @@ paths:
     $ref: "./paths/investments-gains-run.yaml"
   /api/v1/investments/gains/statement:
     $ref: "./paths/investments-gains-statement.yaml"
+  /api/v1/investments/returns:
+    $ref: "./paths/investments-returns.yaml"
   /api/v1/investments/operations/{operation_id}/reverse-split:
     $ref: "./paths/investments-operation-reverse-split.yaml"
 
@@ -1612,6 +1614,14 @@ components:
       $ref: "./components/schemas/investments.yaml#/GainsStatementCapitalReturn"
     GainsStatementUnclassifiedDividends:
       $ref: "./components/schemas/investments.yaml#/GainsStatementUnclassifiedDividends"
+    ReturnsAmount:
+      $ref: "./components/schemas/investment-returns.yaml#/ReturnsAmount"
+    ReturnFigure:
+      $ref: "./components/schemas/investment-returns.yaml#/ReturnFigure"
+    ReturnsAttributionFallback:
+      $ref: "./components/schemas/investment-returns.yaml#/ReturnsAttributionFallback"
+    InvestmentReturnsResponse:
+      $ref: "./components/schemas/investment-returns.yaml#/InvestmentReturnsResponse"
     GainsStatementValuation:
       $ref: "./components/schemas/investments.yaml#/GainsStatementValuation"
     ErrorBody:

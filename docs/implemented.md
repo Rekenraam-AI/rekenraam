@@ -583,6 +583,21 @@ return-of-capital excess in period statements (delivered 2026-10-15). Saved oper
 use a consistent snapshot; saved alternative/FX runs, broker-basis comparisons,
 TWR/IRR and jurisdiction tax rules remain outside the delivered contract.
 
+**R13 returns, slice 1 (#119, 2026-10-24).** `GET /api/v1/investments/returns`
+is a read-only live returns read under the accepted
+[returns_v1 contract](plans/investment-returns-plan.md): TTWROR (daily
+linking, inflows at day start, outflows at day end, evaluated exactly at the
+minimal breakpoint set) and IRR (Actual/365, solved only when Descartes or
+Norström proves a unique root), period and annualized (periods of 365+ days
+only), with opening/closing values, contributions, withdrawals and gain in one
+reporting currency. Scope is selected account subtrees or the default
+investment accounts. Investment-operation cash is classified by the holding or
+instrument its facts name, so a dividend paid to checking is income plus a
+same-day withdrawal without any posting; unattributable cash falls back to
+the cash side and is listed. Missing price/FX, unclassified shorts,
+non-positive capital and unproven roots make only the dependent figures null
+with a reason. No screen, chart, allocation, benchmark or saved run yet.
+
 Period capital-return disclosure (#238) adds per-currency payment-date receipts,
 associated basis reductions, excluded excess and receipt/unknown-effect counts,
 with complete effective allocation evidence. Native and reporting-currency totals
@@ -836,7 +851,8 @@ hand-derived budget, recurring, forecast and learned-spending evidence.
 
 XLSX/OFX/QFX import adapters, per-split import mapping and batch rollback,
 a second online bank/broker import connection, loan/liability helpers,
-TWR/MWR/allocation analytics and general report snapshots beyond R18
+R13 returns screen/chart/allocation/benchmarks/saved runs (the backend
+returns read ships) and general report snapshots beyond R18
 operational gains/statement documents. Multiple quote adapters and the
 Twelve Data reviewed dividend producer already ship.
 The [roadmap](roadmap.md) owns sequencing; GitHub Issues own delivery status.

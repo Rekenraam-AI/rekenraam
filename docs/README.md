@@ -161,6 +161,7 @@ cost, and repository strategy. It is analysis only; native desktop remains out
 of scope until an accepted ADR changes the product decision.
 
 - [R18 reporting policy](plans/investment-reporting-plan.md) — live observation selection (#203), named basis/valuation profiles, research recommendations and delivery slices (#118, #230–#235).
+- [R13 returns contract](plans/investment-returns-plan.md) — returns_v1: portfolio boundary, position-anchored flow classification, TTWROR/IRR equations, failure states, expected cases and slices (#119).
 - [R18 completion audit](reviews/r18-completion-audit-2026-10-15.md) — delivery evidence, date-default fix and independent follow-ups #237/#238.
 
 ## Folders

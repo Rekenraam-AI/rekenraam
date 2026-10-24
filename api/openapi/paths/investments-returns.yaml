@@ -1,0 +1,106 @@
+get:
+  summary: Portfolio returns under returns_v1
+  description: >
+    R13 slice 1 (#119, docs/plans/investment-returns-plan.md). Time-weighted
+    (TTWROR: daily linking, inflows at the start of the day, outflows at its
+    end) and money-weighted (IRR, Actual/365, solved only when a unique root
+    is proven) returns of a set of accounts over `from`..`to`, in one
+    reporting currency. The opening valuation is at the end of the day before
+    `from`. External flows are postings outside the portfolio; income and
+    expense are performance, so returns are net of fees and taxes. An
+    investment operation's cash is classified by the position its facts name
+    (holding, or instrument held only inside or only outside), else by where
+    its cash landed, and every such fallback is listed. Read-only: nothing
+    is posted, transferred or audited, and reconciliation is unaffected. One
+    consistent disposable input snapshot; subsequent requests may restate the
+    result. A figure missing an input is null with its reason, never zero.
+  parameters:
+    - name: from
+      in: query
+      required: true
+      description: First day of the period (ISO date, inclusive).
+      schema:
+        type: string
+        format: date
+    - name: to
+      in: query
+      required: true
+      description: Last day of the period (ISO date, inclusive, not after owner-local today).
+      schema:
+        type: string
+        format: date
+    - name: reporting_currency_id
+      in: query
+      required: true
+      description: Currency every value and flow is converted into.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    - name: account_id
+      in: query
+      required: false
+      description: Portfolio account (repeatable), expanded to its subtree as of `to`; each must be a non-system asset or liability. Omitted selects every investment container, investment cash, security holding and digital asset account with descendants.
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: integer
+          format: int64
+          minimum: 1
+    - name: max_staleness_days
+      in: query
+      required: false
+      description: Inclusive on-or-before window for prices and FX.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 31
+        default: 7
+  responses:
+    "200":
+      description: The returns read
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/InvestmentReturnsResponse"
+    "400":
+      description: A date or currency is missing or malformed, `from` is after `to`, `to` is after owner-local today, an account is not a balance-sheet account, or max_staleness_days is out of range
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "401":
+      description: Authentication is required
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "503":
+      description: Consistent input capture exceeded its deadline; RESOURCE_BUSY is retryable.
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
+    "500":
+      description: Internal server error
+      headers:
+        X-Request-ID:
+          $ref: "../openapi.yaml#/components/headers/XRequestID"
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/ErrorResponse"

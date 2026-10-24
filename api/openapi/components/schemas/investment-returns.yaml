@@ -1,0 +1,106 @@
+ReturnsAmount:
+  type: object
+  description: A reporting-currency amount, or the reason (and dated breakpoint) it is unavailable.
+  required: [amount, reason, date]
+  properties:
+    amount:
+      oneOf:
+        - $ref: "../../openapi.yaml#/components/schemas/BalanceQuantity"
+        - type: "null"
+    reason:
+      type: [string, "null"]
+      enum: [valuation_unavailable, flow_unavailable, unclassified_short, null]
+    date:
+      type: [string, "null"]
+      format: date
+ReturnFigure:
+  type: object
+  description: A return as a decimal fraction string rounded half away from zero to six places (0.090909 = 9.0909 %), or why it is unavailable.
+  required: [value, reason, date]
+  properties:
+    value:
+      type: [string, "null"]
+      pattern: "^-?[0-9]+\\.[0-9]{6}$"
+    reason:
+      type: [string, "null"]
+      enum: [valuation_unavailable, flow_unavailable, unclassified_short, non_positive_capital, no_capital, no_root, root_not_unique, period_shorter_than_year, non_positive_growth, null]
+    date:
+      type: [string, "null"]
+      format: date
+ReturnsAttributionFallback:
+  type: object
+  description: Investment-operation cash the facts could not tie to one position, decided by where its cash landed. Nothing is written.
+  required: [transaction_id, operation_id, operation_kind, date, reason, counted]
+  properties:
+    transaction_id:
+      type: integer
+      format: int64
+    operation_id:
+      type: integer
+      format: int64
+    operation_kind:
+      type: string
+    date:
+      type: string
+      format: date
+    reason:
+      type: string
+      enum: [unassigned_instrument, held_inside_and_outside, not_held]
+    counted:
+      type: boolean
+      description: Whether the cash entered the portfolio's return (it landed in a portfolio account).
+InvestmentReturnsResponse:
+  type: object
+  required: [policy, from, to, opening_date, days, account_scope, resolved_account_ids, knowledge_cutoff, opening_value, closing_value, contributions, withdrawals, gain, time_weighted, time_weighted_annualized, money_weighted, money_weighted_period, attribution_fallbacks, valuation]
+  properties:
+    policy:
+      type: string
+      enum: [returns_v1]
+    from:
+      type: string
+      format: date
+    to:
+      type: string
+      format: date
+    opening_date:
+      type: string
+      format: date
+      description: The day whose end is the opening valuation (from − 1).
+    days:
+      type: integer
+      description: Calendar days from the opening boundary to `to`.
+    account_scope:
+      type: string
+      enum: [default_investment_accounts, selected_accounts]
+    resolved_account_ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+    knowledge_cutoff:
+      type: string
+      format: date-time
+    opening_value:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAmount"
+    closing_value:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAmount"
+    contributions:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAmount"
+    withdrawals:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAmount"
+    gain:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAmount"
+    time_weighted:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
+    time_weighted_annualized:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
+    money_weighted:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
+    money_weighted_period:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
+    attribution_fallbacks:
+      type: array
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/ReturnsAttributionFallback"
+    valuation:
+      $ref: "../../openapi.yaml#/components/schemas/Valuation"
