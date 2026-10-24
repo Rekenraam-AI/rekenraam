@@ -1,7 +1,7 @@
 import type { ReadonlyURLSearchParams } from '$app/state';
 import { adjacentCalendarDate, isCalendarDate } from '#lib/dates/calendar-date.ts';
 import { m } from '#lib/paraglide/messages.js';
-import type { Valuation } from '#lib/reports/reporting-currency.ts';
+import { staleObservationDates, type Valuation } from '#lib/reports/reporting-currency.ts';
 
 // R13 returns screen (docs/plans/investment-returns-plan.md, slice 2). The
 // selection lives in the URL like every report control, so a link reopens
@@ -156,7 +156,7 @@ export function returnsCoverage(valuation: Valuation | null | undefined): Return
   if (!valuation) return { missing: [], staleDates: [] };
   return {
     missing: [...new Set(valuation.gaps.map((gap) => gap.commodity_id))].sort((a, b) => a - b),
-    staleDates: [...new Set(valuation.rates_used.filter((use) => use.stale).map((use) => use.observation_date))].sort()
+    staleDates: staleObservationDates(valuation.rates_used)
   };
 }
 

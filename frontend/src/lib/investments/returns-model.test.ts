@@ -115,6 +115,14 @@ describe('returnsCoverage', () => {
     expect(returnsCoverage(valuation)).toEqual({ missing: [7], staleDates: ['2026-10-22'] });
   });
 
+  it('reports the stale FX leg when the instrument quote is current', () => {
+    const valuation = { ...base, complete: true, gaps: [], rates_used: [{
+      ...use(7, '2026-10-24', true), derived: true,
+      via_commodity_id: 2, via_observation_id: 11, via_observation_date: '2026-10-22'
+    }] } as Valuation;
+    expect(returnsCoverage(valuation)).toEqual({ missing: [], staleDates: ['2026-10-22'] });
+  });
+
   it('is empty without a valuation block or when everything is current', () => {
     expect(returnsCoverage(undefined)).toEqual({ missing: [], staleDates: [] });
     expect(returnsCoverage({ ...base, complete: true, rates_used: [use(8, '2026-10-24', false)], gaps: [] } as Valuation))

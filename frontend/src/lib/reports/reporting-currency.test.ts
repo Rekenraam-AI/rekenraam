@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   conversionAddsInformation,
   parseReportingCurrency,
+  staleObservationDates,
   valuationNotice,
   withReportingCurrency,
   type Valuation
@@ -62,6 +63,18 @@ describe('valuationNotice', () => {
       ]
     });
     expect(notice).toEqual({ kind: 'stale', dates: ['2026-06-01'] });
+  });
+
+  // #281 chains a security's quote through its quote currency's rate; the
+  // stale leg can be either one.
+  it('reports the stale FX leg of a chained conversion, not its current quote', () => {
+    const chained = {
+      commodity_id: 7, observation_date: '2026-10-24', requested_date: '2026-10-24', stale: true, derived: true,
+      via_commodity_id: 2, via_observation_id: 11, via_observation_date: '2026-10-22'
+    };
+    expect(valuationNotice({ ...baseValuation, rates_used: [chained] })).toEqual({ kind: 'stale', dates: ['2026-10-22'] });
+    expect(staleObservationDates([{ ...chained, observation_date: '2026-10-20' }])).toEqual(['2026-10-20', '2026-10-22']);
+    expect(staleObservationDates([{ ...chained, stale: false, via_observation_date: '2026-10-24' }])).toEqual([]);
   });
 
   it('reports a missing figure ahead of a stale one', () => {

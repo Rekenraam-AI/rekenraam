@@ -62,6 +62,24 @@ export type ValuationNotice =
   | { kind: 'stale'; dates: string[] }
   | { kind: 'incomplete'; commodityIDs: number[] };
 
+/**
+ * The earlier-dated observations behind converted figures, sorted and
+ * deduplicated. A chained conversion (#281) has two legs — the commodity's
+ * price and its quote currency's rate — and either can be the stale one, so
+ * each leg's date counts only when it precedes the date the conversion asked
+ * for. Reading the first leg alone reported a current quote's date for a
+ * stale FX rate.
+ */
+export function staleObservationDates(ratesUsed: Valuation['rates_used']): string[] {
+  const dates = new Set<string>();
+  for (const use of ratesUsed) {
+    for (const observed of [use.observation_date, use.via_observation_date]) {
+      if (observed && observed < use.requested_date) dates.add(observed);
+    }
+  }
+  return [...dates].sort();
+}
+
 export function valuationNotice(valuation: Valuation | undefined): ValuationNotice {
   if (!valuation) return { kind: 'none' };
 
@@ -72,9 +90,9 @@ export function valuationNotice(valuation: Valuation | undefined): ValuationNoti
     };
   }
 
-  const stale = valuation.rates_used.filter((use) => use.stale).map((use) => use.observation_date);
+  const stale = staleObservationDates(valuation.rates_used);
   if (stale.length > 0) {
-    return { kind: 'stale', dates: [...new Set(stale)].sort() };
+    return { kind: 'stale', dates: stale };
   }
 
   return { kind: 'none' };
