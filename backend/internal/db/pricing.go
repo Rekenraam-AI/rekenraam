@@ -28,6 +28,25 @@ var ErrPriceDerivationSourceNotFound = errors.New("price derivation names an obs
 type PricingRepository struct {
 	database *sql.DB
 	*BackgroundWorkRepository
+	// selection is the observation-selection CTE the reporting-rate reads use;
+	// empty is live_raw_v1.
+	selection string
+}
+
+// WithTotalReturnSecurities reads reporting rates that price securities and
+// crypto only from total_return observations (an R13 benchmark declared
+// total-return). Currency legs are unchanged.
+func (r *PricingRepository) WithTotalReturnSecurities() *PricingRepository {
+	variant := *r
+	variant.selection = totalReturnSelectionCTE
+	return &variant
+}
+
+func (r *PricingRepository) selectionCTE() string {
+	if r.selection == "" {
+		return observationSelectionCTE
+	}
+	return r.selection
 }
 
 type MarketDataSourceRecord struct {
@@ -1476,7 +1495,7 @@ func (r *PricingRepository) ReportingRates(ctx context.Context, bookID int64, qu
 	queryArgs := append([]any{bookID, boundary.AsOf, boundary.RecordedAt, quoteCommodityID}, args...)
 	queryArgs = append(queryArgs, fromDate, toDate, fromDate)
 
-	rows, err := r.database.QueryContext(ctx, observationSelectionCTE+`
+	rows, err := r.database.QueryContext(ctx, r.selectionCTE()+`
   SELECT po.base_commodity_id, po.quote_commodity_id, po.price_value, po.price_scale,
    po.base_quantity_value, po.base_quantity_scale, po.valuation_date, po.is_derived,
    po.id, po.is_approximate
@@ -1509,7 +1528,7 @@ func (r *PricingRepository) ReportingChainQuotes(ctx context.Context, bookID int
 	queryArgs := append([]any{bookID, boundary.AsOf, boundary.RecordedAt, reportingCommodityID}, args...)
 	queryArgs = append(queryArgs, fromDate, toDate, fromDate)
 
-	rows, err := r.database.QueryContext(ctx, observationSelectionCTE+`
+	rows, err := r.database.QueryContext(ctx, r.selectionCTE()+`
   SELECT po.base_commodity_id, po.quote_commodity_id, po.price_value, po.price_scale,
    po.base_quantity_value, po.base_quantity_scale, po.valuation_date, po.is_derived,
    po.id, po.is_approximate

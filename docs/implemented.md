@@ -617,7 +617,15 @@ outermost portfolio account, asset type (instrument type as of the day, or
 cash/unclassified) and currency, from the same snapshot and rates so the
 denominator is the closing value. Long and short are separate rows, unpriced
 balances are listed by units with known-only weights, and a non-positive
-total keeps values without shares. No benchmark or saved run yet.
+total keeps values without shares. Slice 5 adds an optional `benchmark`: one
+security or crypto commodity read as a unit held through the period, valued
+in the reporting currency by its own rates (manual prices count), on a
+declared basis — price return from raw observations, or total return from
+`total_return` observations only (`live_total_return_v1`), never inferred or
+substituted. Its points are the series' dates and its headline the closing
+point; requesting it changes no portfolio figure. The screen picks it from
+the instruments, shows its figures beside the portfolio's and draws it
+dashed on the same chart. No saved run yet.
 
 Period capital-return disclosure (#238) adds per-currency payment-date receipts,
 associated basis reductions, excluded excess and receipt/unknown-effect counts,
@@ -872,8 +880,8 @@ hand-derived budget, recurring, forecast and learned-spending evidence.
 
 XLSX/OFX/QFX import adapters, per-split import mapping and batch rollback,
 a second online bank/broker import connection, loan/liability helpers,
-R13 returns benchmarks/saved runs (the returns read, screen, TTWROR chart
-and allocation ship) and general report snapshots beyond R18
+R13 saved return runs (the returns read, screen, TTWROR chart, allocation
+and benchmark ship) and general report snapshots beyond R18
 operational gains/statement documents. Multiple quote adapters and the
 Twelve Data reviewed dividend producer already ship.
 The [roadmap](roadmap.md) owns sequencing; GitHub Issues own delivery status.

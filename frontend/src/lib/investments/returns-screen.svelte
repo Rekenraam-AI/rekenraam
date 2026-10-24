@@ -9,13 +9,15 @@
   import { accountsQueryOptions, type AccountResponse } from '#lib/api/accounts.ts';
   import { currentBookQueryOptions } from '#lib/api/books.ts';
   import { currenciesQueryOptions } from '#lib/api/currencies.ts';
-  import { investmentInstrumentsQueryOptions, investmentReturnsQueryOptions, type ReturnFigure, type ReturnsAmount } from '#lib/api/investments.ts';
+  import {
+    investmentInstrumentsQueryOptions, investmentReturnsQueryOptions, type BenchmarkBasis, type InvestmentInstrumentResponse, type ReturnFigure, type ReturnsAmount
+  } from '#lib/api/investments.ts';
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { formatMoney, joinCommodityAmount } from '#lib/money/format.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import {
-    fallbackReasonText, formatReturn, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
+    benchmarkBasisText, fallbackReasonText, formatReturn, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
     returnsCoverage, returnsSelectionParams, unavailableAccountIDs, validRange, type ReturnsPreset
   } from './returns-model';
   import ReturnsChart from './returns-chart.svelte';
@@ -51,16 +53,34 @@
       .sort((a, b) => accountLabel(a).localeCompare(accountLabel(b), locale))
   );
 
+  // Any instrument with a price series can be a benchmark, held or not.
+  const benchmarkOptions = $derived(
+    (instruments.data?.instruments ?? []).toSorted((a, b) => instrumentLabel(a).localeCompare(instrumentLabel(b), locale))
+  );
+  // A linked benchmark that is not an instrument here would fail the read; it
+  // is disclosed and left out, like an unavailable account.
+  const benchmarkUnavailable = $derived(
+    selection.benchmarkCommodityID !== null && instruments.isSuccess
+      && !benchmarkOptions.some((instrument) => instrument.commodity_id === selection.benchmarkCommodityID)
+  );
+  const benchmarkCommodityID = $derived(
+    instruments.isSuccess && !benchmarkUnavailable ? selection.benchmarkCommodityID : null
+  );
+
   // Draft controls, applied to the URL on submit; reset when the URL moves
   // (back/forward, a link), so the form always describes what is shown.
   let fromDraft = $state('');
   let toDraft = $state('');
   let currencyDraft = $state('');
   let accountDraft = $state<number[]>([]);
+  let benchmarkDraft = $state('');
+  let basisDraft = $state<BenchmarkBasis>('price_return');
   $effect(() => {
     fromDraft = selection.from;
     toDraft = selection.to;
     accountDraft = [...selection.accountIDs];
+    benchmarkDraft = selection.benchmarkCommodityID === null ? '' : String(selection.benchmarkCommodityID);
+    basisDraft = selection.benchmarkBasis;
   });
   $effect(() => {
     currencyDraft = reportingCurrencyID === null ? '' : String(reportingCurrencyID);
@@ -73,15 +93,20 @@
       from: selection.from,
       to: selection.to,
       reportingCurrencyID: reportingCurrencyID ?? 0,
-      accountIDs: selection.accountIDs
+      accountIDs: selection.accountIDs,
+      benchmarkCommodityID,
+      benchmarkBasis: selection.benchmarkBasis
     }),
-    enabled: reportingCurrencyID !== null
+    // A linked benchmark waits for the instruments that confirm it exists.
+    enabled: reportingCurrencyID !== null && (selection.benchmarkCommodityID === null || !instruments.isPending)
   }));
   const result = $derived(returns.data);
   const referencesLoading = $derived(accounts.isPending || currencies.isPending || book.isPending);
   const referenceError = $derived(accounts.error ?? currencies.error ?? book.error);
   const coverage = $derived(returnsCoverage(result?.valuation));
   const seriesCoverage = $derived(returnsCoverage(result?.time_weighted_series.valuation));
+  const benchmarkCoverage = $derived(returnsCoverage(result?.benchmark?.valuation));
+  const benchmarkName = $derived(result?.benchmark ? currencyOrCommodity(result.benchmark.commodity_id) : '');
 
   function apply(range?: { from: string; to: string }) {
     const from = range?.from ?? fromDraft;
@@ -90,8 +115,11 @@
     // An id that is not a selectable account here would fail every request;
     // it is listed as unavailable above the button and left out.
     const selectable = accountDraft.filter((id) => !unavailableDraft.includes(id));
+    const benchmark = benchmarkDraft === '' ? null : Number(benchmarkDraft);
     const params = returnsSelectionParams({
-      from, to, reportingCurrencyID: Number(currencyDraft), accountIDs: [...selectable].sort((a, b) => a - b)
+      from, to, reportingCurrencyID: Number(currencyDraft), accountIDs: [...selectable].sort((a, b) => a - b),
+      benchmarkCommodityID: benchmark !== null && benchmarkOptions.some((instrument) => instrument.commodity_id === benchmark) ? benchmark : null,
+      benchmarkBasis: basisDraft
     });
     void goto(`/app/investments/returns?${params.toString()}`, { reset: false });
   }
@@ -114,6 +142,11 @@
   function accountName(id: number): string {
     const account = accounts.data?.accounts.find((candidate) => candidate.id === id);
     return account ? accountLabel(account) : `#${id}`;
+  }
+
+  function instrumentLabel(instrument: InvestmentInstrumentResponse): string {
+    const symbol = instrument.symbol || instrument.commodity_code;
+    return instrument.display_name && instrument.display_name !== symbol ? `${symbol} · ${instrument.display_name}` : symbol;
   }
 
   function currencyCode(id: number): string {
@@ -199,6 +232,39 @@
         {#if rangeInvalid}
           <p id="returns-range-error" class="text-sm text-danger">{m.returns_range_invalid()}</p>
         {/if}
+
+        <fieldset class="space-y-2" data-testid="returns-benchmark-controls">
+          <legend class="text-sm font-medium text-foreground">{m.returns_benchmark_label()}</legend>
+          <p id="returns-benchmark-help" class="text-xs text-muted">{m.returns_benchmark_help()}</p>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label class="flex flex-col gap-1 text-sm text-muted">
+              {m.returns_benchmark_instrument()}
+              <select bind:value={benchmarkDraft} aria-describedby="returns-benchmark-help" disabled={instruments.isPending}
+                class="min-h-11 rounded border border-border bg-control px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-foreground/30">
+                <option value="">{m.returns_benchmark_none()}</option>
+                {#each benchmarkOptions as instrument (instrument.commodity_id)}
+                  <option value={String(instrument.commodity_id)}>{instrumentLabel(instrument)}</option>
+                {/each}
+              </select>
+            </label>
+            {#if benchmarkDraft !== ''}
+              <label class="flex flex-col gap-1 text-sm text-muted">
+                {m.returns_benchmark_basis_label()}
+                <select bind:value={basisDraft}
+                  class="min-h-11 rounded border border-border bg-control px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-foreground/30">
+                  <option value="price_return">{m.returns_benchmark_basis_price()}</option>
+                  <option value="total_return">{m.returns_benchmark_basis_total()}</option>
+                </select>
+              </label>
+            {/if}
+          </div>
+          {#if instruments.isError}
+            <p role="status" class="text-sm text-warning">{m.returns_benchmark_instruments_error()}</p>
+          {/if}
+          {#if benchmarkUnavailable}
+            <p role="status" class="text-sm text-warning">{m.returns_benchmark_unavailable({ benchmark: `#${selection.benchmarkCommodityID}` })}</p>
+          {/if}
+        </fieldset>
 
         <fieldset class="space-y-2">
           <legend class="text-sm font-medium text-foreground">{m.returns_accounts_title()}</legend>
@@ -290,8 +356,41 @@
           {/each}
         </div>
 
+        {#if result.benchmark}
+          {@const benchmark = result.benchmark}
+          <Panel>
+            <section aria-labelledby="returns-benchmark-title" data-testid="returns-benchmark">
+              <h3 id="returns-benchmark-title" class="text-sm font-semibold text-foreground">{m.returns_benchmark_title({ name: benchmarkName })}</h3>
+              <p class="mt-1 text-xs text-muted">{benchmarkBasisText(benchmark.basis)} · {m.returns_benchmark_card_help()}</p>
+              <dl class="mt-3 grid grid-cols-2 gap-3">
+                {#each [
+                  { key: 'period', label: m.returns_figure_period(), figure: benchmark.time_weighted },
+                  { key: 'annual', label: m.returns_figure_annual(), figure: benchmark.time_weighted_annualized }
+                ] as line (line.key)}
+                  <div>
+                    <dt class="text-xs text-muted">{line.label}</dt>
+                    <dd class="text-xl font-semibold tabular-nums {directionClass(line.figure)}" data-testid="returns-benchmark-{line.key}">
+                      {line.figure.value !== null ? formatReturn(line.figure.value, locale) : '—'}
+                    </dd>
+                    {#if line.figure.value === null}<dd class="text-xs text-muted">{returnReasonText(line.figure.reason, line.figure.date, day)}</dd>{/if}
+                  </div>
+                {/each}
+              </dl>
+              {#if benchmarkCoverage.missing.length > 0}
+                <p role="status" class="mt-3 text-sm text-warning">
+                  {benchmark.basis === 'total_return' ? m.returns_benchmark_coverage_total({ name: benchmarkName }) : m.returns_benchmark_coverage({ name: benchmarkName })}
+                </p>
+              {/if}
+              {#if benchmarkCoverage.staleDates.length > 0}
+                <p class="mt-2 text-sm text-muted">{m.returns_benchmark_coverage_stale({ dates: benchmarkCoverage.staleDates.map(day).join(', ') })}</p>
+              {/if}
+            </section>
+          </Panel>
+        {/if}
+
         <Panel>
           <ReturnsChart series={result.time_weighted_series} {locale} formatDate={day}
+            benchmark={result.benchmark ? { name: benchmarkName, points: result.benchmark.points } : null}
             missingCommodities={seriesCoverage.missing.map(currencyOrCommodity)} staleDates={seriesCoverage.staleDates} />
         </Panel>
 

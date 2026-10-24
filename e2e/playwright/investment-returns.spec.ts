@@ -223,3 +223,67 @@ test('allocation of an unpriced portfolio says its value is unknown', async ({ p
   await expect(allocation.getByText("The portfolio's value is zero or negative, so shares cannot be shown.")).toHaveCount(0);
   await expect(allocation.getByTestId('returns-allocation-unknown')).toContainText('Unpriced holding');
 });
+
+// Slice 5: a benchmark read over the same points, price return unless the
+// owner declares the series total-return.
+test('a benchmark compares over the same period, on its declared basis', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const opened = daysFromTodayISO(-60);
+  await apiJSON(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: 'Benchmark broker', account_class: 'asset', account_kind: 'brokerage_cash',
+    default_commodity_id: currencyID, allows_postings: true, opened_on: opened, effective_from: opened
+  });
+  const index = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
+    commodity_code: 'BIDX', instrument_type: 'other', display_name: 'Benchmark index', symbol: 'BIDX',
+    quote_commodity_id: currencyID, trading_commodity_id: currencyID, quantity_scale: 0, price_scale: 2, effective_from: opened
+  });
+  // Raw 200 → 210 (+5 %); total return 100 → 115 (+15 %), at the opening
+  // boundary (the day before the period) and today.
+  for (const [basis, date, cents] of [
+    ['raw', daysFromTodayISO(-46), 20000], ['raw', todayISO(), 21000],
+    ['total_return', daysFromTodayISO(-46), 10000], ['total_return', todayISO(), 11500]
+  ] as const) {
+    await apiJSON(page, 'POST', '/api/v1/pricing/prices', csrfToken, {
+      base_commodity_id: index.commodity_id, quote_commodity_id: currencyID, quote_type: 'close',
+      adjustment_basis: basis, price_value: cents, price_scale: 2, valuation_date: date, is_manual: true
+    });
+  }
+
+  await page.goto(`/app/investments/returns?from=${daysFromTodayISO(-45)}&to=${todayISO()}&reporting_currency_id=${currencyID}`);
+  const summary = page.getByTestId('returns-summary');
+  await expect(summary).toBeVisible();
+  await expect(summary.getByTestId('returns-benchmark')).toHaveCount(0);
+
+  await page.getByRole('combobox', { name: 'Instrument', exact: true }).selectOption({ label: 'BIDX · Benchmark index' });
+  await page.getByRole('button', { name: 'Show returns', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`benchmark_commodity_id=${index.commodity_id}`));
+  const benchmark = summary.getByTestId('returns-benchmark');
+  await expect(benchmark.getByRole('heading', { name: 'Benchmark: BIDX' })).toBeVisible();
+  await expect(benchmark.getByText(/^Price return \(distributions excluded\)/)).toBeVisible();
+  await expect(benchmark.getByTestId('returns-benchmark-period')).toHaveText('+5.00%');
+  await expect(benchmark.getByTestId('returns-benchmark-annual')).toHaveText('—');
+  // Days −38 to −1 have no price within 7 days: those benchmark points are
+  // missing and the line breaks there.
+  const chart = summary.getByTestId('returns-chart');
+  await expect(chart.getByTestId('returns-chart-legend')).toContainText('Benchmark (BIDX), dashed');
+  await expect(chart.getByTestId('returns-chart-benchmark-gaps')).toHaveText(
+    'The benchmark has no value at 38 of 47 points; its line breaks there.');
+  await chart.getByText('Table of points', { exact: true }).click();
+  await expect(chart.getByRole('columnheader', { name: 'Benchmark (BIDX)' })).toBeVisible();
+  await expect(chart.getByTestId('returns-chart-table').locator('tbody tr').last()).toContainText('+5.00%');
+
+  expect(await noHorizontalScroll(page)).toBe(true);
+  await expectNoAccessibilityViolations(page, 'Returns with a benchmark on a phone');
+
+  await page.getByRole('combobox', { name: 'Series', exact: true }).selectOption('total_return');
+  await page.getByRole('button', { name: 'Show returns', exact: true }).click();
+  await expect(page).toHaveURL(/benchmark_basis=total_return/);
+  await expect(benchmark.getByText(/^Total return \(only prices recorded as total return\)/)).toBeVisible();
+  await expect(benchmark.getByTestId('returns-benchmark-period')).toHaveText('+15.00%');
+
+  // Removing the benchmark drops it from the link and the screen.
+  await page.getByRole('combobox', { name: 'Instrument', exact: true }).selectOption('');
+  await page.getByRole('button', { name: 'Show returns', exact: true }).click();
+  await expect(page).not.toHaveURL(/benchmark_/);
+  await expect(summary.getByTestId('returns-benchmark')).toHaveCount(0);
+});

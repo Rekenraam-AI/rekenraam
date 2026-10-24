@@ -41,6 +41,15 @@ import (
 // changing what an existing figure means.
 const ValuationMethodObservedOnOrBefore = "observed_on_or_before"
 
+// Observation selection policies a coverage can report. live_total_return_v1
+// is live_raw_v1 with securities and crypto priced only by total_return
+// observations; it values an R13 benchmark declared total-return, never a
+// ledger balance.
+const (
+	SelectionPolicyLiveRaw         = "live_raw_v1"
+	SelectionPolicyLiveTotalReturn = "live_total_return_v1"
+)
+
 // DefaultRateStalenessDays bounds how far back the nearest-earlier search
 // looks. A week covers weekends and public holidays — the ordinary reasons a
 // date has no observation — without letting a month-old rate masquerade as
@@ -132,6 +141,9 @@ type RateTable struct {
 
 	used map[rateUseKey]RateUse
 	gaps map[int64]RateGap
+	// selectionPolicy names the observation selection behind byCommodity and
+	// chainQuotes; empty is live_raw_v1.
+	selectionPolicy string
 }
 
 // NewRateTable loads every rate that could be needed to convert the given
@@ -480,8 +492,12 @@ func (t *RateTable) pairGap(commodityID, rateCommodityID int64, onDate string) R
 
 // Coverage reports what the table actually did, for the response to carry.
 func (t *RateTable) Coverage(code string) ValuationCoverage {
+	policy := t.selectionPolicy
+	if policy == "" {
+		policy = SelectionPolicyLiveRaw
+	}
 	coverage := ValuationCoverage{
-		SelectionPolicy: "live_raw_v1", ValuationAsOf: t.boundary.AsOf, KnowledgeCutoff: t.boundary.RecordedAt,
+		SelectionPolicy: policy, ValuationAsOf: t.boundary.AsOf, KnowledgeCutoff: t.boundary.RecordedAt,
 		CommodityID:      t.quoteCommodityID,
 		Code:             code,
 		Scale:            t.quoteScale,

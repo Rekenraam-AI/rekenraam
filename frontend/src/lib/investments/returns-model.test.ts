@@ -28,7 +28,7 @@ describe('returns period presets', () => {
 describe('parseReturnsSelection', () => {
   it('reads a complete selection, deduplicating and sorting accounts', () => {
     expect(parseReturnsSelection(params('from=2026-02-01&to=2026-06-30&reporting_currency_id=3&account_id=9&account_id=4&account_id=9'), today))
-      .toEqual({ from: '2026-02-01', to: '2026-06-30', reportingCurrencyID: 3, accountIDs: [4, 9] });
+      .toEqual({ from: '2026-02-01', to: '2026-06-30', reportingCurrencyID: 3, accountIDs: [4, 9], benchmarkCommodityID: null, benchmarkBasis: 'price_return' });
   });
 
   it('falls back to year to date for any range the server would refuse', () => {
@@ -44,10 +44,22 @@ describe('parseReturnsSelection', () => {
   });
 
   it('round-trips through the URL parameters it writes', () => {
-    const selection = { from: '2026-02-01', to: '2026-06-30', reportingCurrencyID: 3, accountIDs: [4, 9] };
+    const selection = { from: '2026-02-01', to: '2026-06-30', reportingCurrencyID: 3, accountIDs: [4, 9],
+      benchmarkCommodityID: 7, benchmarkBasis: 'total_return' as const };
     expect(parseReturnsSelection(returnsSelectionParams(selection), today)).toEqual(selection);
-    expect(returnsSelectionParams({ ...selection, reportingCurrencyID: null, accountIDs: [] }).toString())
+    expect(returnsSelectionParams({ ...selection, reportingCurrencyID: null, accountIDs: [], benchmarkCommodityID: null }).toString())
       .toBe('from=2026-02-01&to=2026-06-30');
+    // Price return is the default and is not written.
+    expect(returnsSelectionParams({ ...selection, benchmarkBasis: 'price_return' }).get('benchmark_basis')).toBeNull();
+  });
+
+  it('reads a benchmark basis only with a valid benchmark, and only as declared', () => {
+    expect(parseReturnsSelection(params('benchmark_basis=total_return'), today))
+      .toMatchObject({ benchmarkCommodityID: null, benchmarkBasis: 'price_return' });
+    expect(parseReturnsSelection(params('benchmark_commodity_id=0&benchmark_basis=total_return'), today))
+      .toMatchObject({ benchmarkCommodityID: null, benchmarkBasis: 'price_return' });
+    expect(parseReturnsSelection(params('benchmark_commodity_id=5&benchmark_basis=adjusted'), today))
+      .toMatchObject({ benchmarkCommodityID: 5, benchmarkBasis: 'price_return' });
   });
 });
 
@@ -170,6 +182,21 @@ describe('returns chart model', () => {
     expect(rising.zeroY).toBe(1);
     const flat = returnsChartModel([point('2026-01-31', '0.000000'), point('2026-02-01', '0.000000')]);
     expect(flat.zeroY).toBe(0.5);
+  });
+
+  it('draws a benchmark on the same scale, with its own gaps', () => {
+    const chart = returnsChartModel(
+      [point('2026-01-31', '0.000000'), point('2026-02-07', '0.050000'), point('2026-02-14', '0.020000')],
+      [point('2026-01-31', '0.000000'), point('2026-02-07', null, 'valuation_unavailable'), point('2026-02-14', '-0.100000')]
+    );
+    expect(chart.minimum).toBe(-0.1);
+    expect(chart.maximum).toBe(0.05);
+    expect(chart.segments).toHaveLength(1);
+    expect(chart.benchmarkSegments.map((segment) => segment.map((p) => p.date))).toEqual([['2026-01-31'], ['2026-02-14']]);
+    expect(chart.benchmarkSegments[1][0].y).toBe(1);
+    expect(chart.benchmarkSegments[1][0].x).toBe(1);
+    expect(chart.available).toBe(3);
+    expect(chart.benchmarkAvailable).toBe(2);
   });
 
   it('has no segments when no point has a value', () => {

@@ -37,13 +37,25 @@ func (r *PricingRepository) observationBoundary(ctx context.Context, bookID int6
 // source; within a date manual/override > exact > approximate, then time/ID.
 // Adjusted series cannot value unadjusted ledger units. Bid/ask and security
 // closes used as FX are deliberately incompatible, rather than fallback data.
-const observationSelectionCTE = `WITH
+var observationSelectionCTE = observationSelection(rawSecurityQuotes)
+
+// totalReturnSelectionCTE is the same selection with one change: a security or
+// crypto unit is priced only by observations declared total_return. It values
+// an R13 benchmark declared total-return, never a ledger balance; currency
+// legs stay raw.
+var totalReturnSelectionCTE = observationSelection(`po.adjustment_basis = 'total_return'`)
+
+// rawSecurityQuotes admits a non-currency commodity's unadjusted prices.
+const rawSecurityQuotes = `(po.adjustment_basis = 'raw' OR (po.quote_type = 'trade_implied' AND po.adjustment_basis = 'not_applicable'))`
+
+func observationSelection(securityQuotes string) string {
+	return `WITH
  selection_input(book_id, as_of, recorded_at) AS (VALUES (?, ?, ?)),
  selection_candidates AS (
   SELECT po.*, CASE WHEN
    (c.kind = 'currency' AND po.adjustment_basis IN ('raw','not_applicable')
     AND po.quote_type IN ('manual','valuation_override','official_fixing','spot_mid','trade_implied'))
-   OR (c.kind <> 'currency' AND (po.adjustment_basis = 'raw' OR (po.quote_type = 'trade_implied' AND po.adjustment_basis = 'not_applicable'))
+   OR (c.kind <> 'currency' AND ` + securityQuotes + `
     AND po.quote_type IN ('manual','valuation_override','close','nav','spot_mid','trade_implied'))
    THEN 1 ELSE 0 END AS compatible
   FROM price_observations po
@@ -80,6 +92,7 @@ const observationSelectionCTE = `WITH
   FROM selection_candidates po CROSS JOIN selection_input si
   GROUP BY base_commodity_id, quote_commodity_id
  ) `
+}
 
 func (r *PricingRepository) ObservationDiagnostics(ctx context.Context, bookID int64, pairs [][2]int64, boundary ObservationBoundary) (map[[2]int64]string, error) {
 	result := map[[2]int64]string{}
@@ -88,7 +101,7 @@ func (r *PricingRepository) ObservationDiagnostics(ctx context.Context, bookID i
 	}
 	clause, args := observationPairClause(pairs)
 	params := append([]any{bookID, boundary.AsOf, boundary.RecordedAt}, args...)
-	rows, err := r.database.QueryContext(ctx, observationSelectionCTE+`SELECT base_commodity_id, quote_commodity_id, reason FROM selection_diagnostics WHERE `+clause, params...)
+	rows, err := r.database.QueryContext(ctx, r.selectionCTE()+`SELECT base_commodity_id, quote_commodity_id, reason FROM selection_diagnostics WHERE `+clause, params...)
 	if err != nil {
 		return nil, fmt.Errorf("read observation diagnostics: %w", err)
 	}

@@ -165,9 +165,40 @@ ReturnsAllocation:
       type: array
       items:
         $ref: "../../openapi.yaml#/components/schemas/ReturnsAllocationUnknown"
+ReturnsBenchmark:
+  type: object
+  description: >
+    One security or crypto commodity read as a single unit held through the
+    period, valued in the reporting currency by its own rate table (its gaps
+    never mark the portfolio's coverage incomplete). It has no flows, so its
+    time-weighted return telescopes to the ratio of its end values; points are
+    the portfolio series' dates. A missing opening value removes every point
+    (dated the opening day); a missing point value removes that point. The
+    headline is the closing point. `price_return` reads raw observations and
+    excludes distributions; `total_return` reads only observations recorded
+    with adjustment basis total_return. The basis is the request's
+    declaration, never inferred.
+  required: [commodity_id, basis, time_weighted, time_weighted_annualized, points, valuation]
+  properties:
+    commodity_id:
+      type: integer
+      format: int64
+    basis:
+      type: string
+      enum: [price_return, total_return]
+    time_weighted:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
+    time_weighted_annualized:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
+    points:
+      type: array
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/ReturnsSeriesPoint"
+    valuation:
+      $ref: "../../openapi.yaml#/components/schemas/Valuation"
 InvestmentReturnsResponse:
   type: object
-  required: [policy, from, to, opening_date, days, account_scope, resolved_account_ids, knowledge_cutoff, opening_value, closing_value, contributions, withdrawals, gain, time_weighted, time_weighted_annualized, money_weighted, money_weighted_period, time_weighted_series, allocation, attribution_fallbacks, valuation]
+  required: [policy, from, to, opening_date, days, account_scope, resolved_account_ids, knowledge_cutoff, opening_value, closing_value, contributions, withdrawals, gain, time_weighted, time_weighted_annualized, money_weighted, money_weighted_period, time_weighted_series, allocation, benchmark, attribution_fallbacks, valuation]
   properties:
     policy:
       type: string
@@ -218,6 +249,11 @@ InvestmentReturnsResponse:
       $ref: "../../openapi.yaml#/components/schemas/ReturnsSeries"
     allocation:
       $ref: "../../openapi.yaml#/components/schemas/ReturnsAllocation"
+    benchmark:
+      description: The requested benchmark, or null when none was requested.
+      oneOf:
+        - $ref: "../../openapi.yaml#/components/schemas/ReturnsBenchmark"
+        - type: "null"
     attribution_fallbacks:
       type: array
       items:

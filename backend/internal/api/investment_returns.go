@@ -43,6 +43,15 @@ type returnsSeriesResponse struct {
 	Valuation *valuationResponse           `json:"valuation"`
 }
 
+type returnsBenchmarkResponse struct {
+	CommodityID            int64                        `json:"commodity_id"`
+	Basis                  string                       `json:"basis"`
+	TimeWeighted           returnFigureResponse         `json:"time_weighted"`
+	TimeWeightedAnnualized returnFigureResponse         `json:"time_weighted_annualized"`
+	Points                 []returnsSeriesPointResponse `json:"points"`
+	Valuation              *valuationResponse           `json:"valuation"`
+}
+
 type returnsAllocationRowResponse struct {
 	AccountID  *int64                   `json:"account_id"`
 	AssetType  *string                  `json:"asset_type"`
@@ -89,6 +98,7 @@ type investmentReturnsResponse struct {
 	MoneyWeightedPeriod    returnFigureResponse      `json:"money_weighted_period"`
 	TimeWeightedSeries     returnsSeriesResponse     `json:"time_weighted_series"`
 	Allocation             returnsAllocationResponse `json:"allocation"`
+	Benchmark              *returnsBenchmarkResponse `json:"benchmark"`
 	AttributionFallbacks   []returnsFallbackResponse `json:"attribution_fallbacks"`
 	Valuation              *valuationResponse        `json:"valuation"`
 }
@@ -115,6 +125,11 @@ func investmentReturns(logger *slog.Logger, authService *app.AuthService, invest
 			writeAPIError(w, http.StatusBadRequest, "VALIDATION_FAILED", "account_id must be a positive integer")
 			return
 		}
+		if input.BenchmarkCommodityID, err = optionalPositiveInt64(query.Get("benchmark_commodity_id")); err != nil {
+			writeAPIError(w, http.StatusBadRequest, "VALIDATION_FAILED", "benchmark_commodity_id must be a positive integer")
+			return
+		}
+		input.BenchmarkBasis = strings.TrimSpace(query.Get("benchmark_basis"))
 		result, err := investmentService.ReadReturns(r.Context(), input)
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "investment returns", err)
@@ -141,9 +156,14 @@ func toInvestmentReturnsResponse(result app.ReturnsResult) investmentReturnsResp
 	for _, fallback := range result.AttributionFallbacks {
 		fallbacks = append(fallbacks, returnsFallbackResponse(fallback))
 	}
-	points := make([]returnsSeriesPointResponse, 0, len(result.TimeWeightedSeries.Points))
-	for _, point := range result.TimeWeightedSeries.Points {
-		points = append(points, returnsSeriesPointResponse{Date: point.Date, TimeWeighted: toReturnFigureResponse(point.TimeWeighted)})
+	points := toReturnsSeriesPointsResponse(result.TimeWeightedSeries.Points)
+	var benchmark *returnsBenchmarkResponse
+	if result.Benchmark != nil {
+		benchmark = &returnsBenchmarkResponse{CommodityID: result.Benchmark.CommodityID, Basis: result.Benchmark.Basis,
+			TimeWeighted:           toReturnFigureResponse(result.Benchmark.TimeWeighted),
+			TimeWeightedAnnualized: toReturnFigureResponse(result.Benchmark.TimeWeightedAnnualized),
+			Points:                 toReturnsSeriesPointsResponse(result.Benchmark.Points),
+			Valuation:              toValuationResponse(&result.Benchmark.Valuation)}
 	}
 	accountIDs := result.ResolvedAccountIDs
 	if accountIDs == nil {
@@ -160,8 +180,17 @@ func toInvestmentReturnsResponse(result app.ReturnsResult) investmentReturnsResp
 		TimeWeightedSeries: returnsSeriesResponse{Interval: result.TimeWeightedSeries.Interval, Points: points,
 			Valuation: toValuationResponse(&result.TimeWeightedSeries.Valuation)},
 		Allocation:           toReturnsAllocationResponse(result.Allocation),
+		Benchmark:            benchmark,
 		AttributionFallbacks: fallbacks, Valuation: toValuationResponse(&result.Valuation),
 	}
+}
+
+func toReturnsSeriesPointsResponse(points []app.ReturnsSeriesPoint) []returnsSeriesPointResponse {
+	response := make([]returnsSeriesPointResponse, 0, len(points))
+	for _, point := range points {
+		response = append(response, returnsSeriesPointResponse{Date: point.Date, TimeWeighted: toReturnFigureResponse(point.TimeWeighted)})
+	}
+	return response
 }
 
 func toReturnsAmountResponse(amount app.ReturnsAmount) returnsAmountResponse {

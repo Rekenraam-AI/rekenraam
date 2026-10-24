@@ -1630,6 +1630,8 @@ components:
       $ref: "./components/schemas/investment-returns.yaml#/ReturnsAllocationUnknown"
     ReturnsAllocation:
       $ref: "./components/schemas/investment-returns.yaml#/ReturnsAllocation"
+    ReturnsBenchmark:
+      $ref: "./components/schemas/investment-returns.yaml#/ReturnsBenchmark"
     InvestmentReturnsResponse:
       $ref: "./components/schemas/investment-returns.yaml#/InvestmentReturnsResponse"
     GainsStatementValuation:

@@ -26817,7 +26817,7 @@ export interface paths {
         };
         /**
          * Portfolio returns under returns_v1
-         * @description R13 slices 1, 3 and 4 (#119, docs/plans/investment-returns-plan.md). Time-weighted (TTWROR: daily linking, inflows at the start of the day, outflows at its end, valued on every day its validity needs) and money-weighted (IRR, Actual/365, solved only when Descartes' rule proves a unique root) returns of a set of accounts over `from`..`to`, in one reporting currency. The opening valuation is at the end of the day before `from`. External flows are postings outside the portfolio, netted per correction chain and day; external security transfers count at market value, never carried basis. Income and expense are performance, so returns are net of fees and taxes. An investment operation's cash is classified by the position its facts name (holding, or instrument held only inside or only outside), else by where its cash landed, and every such fallback is listed. A missing intermediate valuation removes only the time-weighted figures. The cumulative time-weighted series comes from the same chain, each point with its own reason. `allocation` splits the closing value by account, asset type and currency, long and short never netted. Read-only: nothing is posted, transferred or audited, and reconciliation is unaffected. One consistent disposable input snapshot; subsequent requests may restate the result. A figure missing an input is null with its reason, never zero.
+         * @description R13 slices 1, 3, 4 and 5 (#119, docs/plans/investment-returns-plan.md). Time-weighted (TTWROR: daily linking, inflows at the start of the day, outflows at its end, valued on every day its validity needs) and money-weighted (IRR, Actual/365, solved only when Descartes' rule proves a unique root) returns of a set of accounts over `from`..`to`, in one reporting currency. The opening valuation is at the end of the day before `from`. External flows are postings outside the portfolio, netted per correction chain and day; external security transfers count at market value, never carried basis. Income and expense are performance, so returns are net of fees and taxes. An investment operation's cash is classified by the position its facts name (holding, or instrument held only inside or only outside), else by where its cash landed, and every such fallback is listed. A missing intermediate valuation removes only the time-weighted figures. The cumulative time-weighted series comes from the same chain, each point with its own reason. `allocation` splits the closing value by account, asset type and currency, long and short never netted. An optional `benchmark` (one security or crypto commodity, manual observations included) is read over the same series points. Read-only: nothing is posted, transferred or audited, and reconciliation is unaffected. One consistent disposable input snapshot; subsequent requests may restate the result. A figure missing an input is null with its reason, never zero.
          */
         get: {
             parameters: {
@@ -26832,6 +26832,10 @@ export interface paths {
                     account_id?: number[];
                     /** @description Inclusive on-or-before window for prices and FX. */
                     max_staleness_days?: number;
+                    /** @description Security or crypto commodity to compare against, read as one unit held through the period and valued in the reporting currency. */
+                    benchmark_commodity_id?: number;
+                    /** @description Which observations price the benchmark — `price_return` (raw prices, distributions excluded) or `total_return` (only observations recorded with adjustment basis total_return). Requires `benchmark_commodity_id`. */
+                    benchmark_basis?: "price_return" | "total_return";
                 };
                 header?: never;
                 path?: never;
@@ -26849,7 +26853,7 @@ export interface paths {
                         "application/json": components["schemas"]["InvestmentReturnsResponse"];
                     };
                 };
-                /** @description A date or currency is missing or malformed, `from` is after `to`, `to` is after owner-local today, an account is not a balance-sheet account, or max_staleness_days is out of range */
+                /** @description A date or currency is missing or malformed, `from` is after `to`, `to` is after owner-local today, an account is not a balance-sheet account, max_staleness_days is out of range, the benchmark is not a security or crypto commodity, or benchmark_basis is invalid or given without a benchmark */
                 400: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
@@ -28800,8 +28804,11 @@ export interface components {
         };
         /** @description How a response's converted figures were produced and what they could not cover. Present only when a reporting currency was asked for. A converted figure without this block would be a number with no provenance. */
         Valuation: {
-            /** @enum {string} */
-            selection_policy?: "live_raw_v1";
+            /**
+             * @description live_total_return_v1 is live_raw_v1 with securities and crypto priced only by total_return observations; it appears only on an R13 benchmark declared total-return.
+             * @enum {string}
+             */
+            selection_policy?: "live_raw_v1" | "live_total_return_v1";
             /**
              * Format: date
              * @description Upper observation date, capped at the owner-local date at read start.
@@ -33905,6 +33912,17 @@ export interface components {
             by_currency: components["schemas"]["ReturnsAllocationRow"][];
             unknown: components["schemas"]["ReturnsAllocationUnknown"][];
         };
+        /** @description One security or crypto commodity read as a single unit held through the period, valued in the reporting currency by its own rate table (its gaps never mark the portfolio's coverage incomplete). It has no flows, so its time-weighted return telescopes to the ratio of its end values; points are the portfolio series' dates. A missing opening value removes every point (dated the opening day); a missing point value removes that point. The headline is the closing point. `price_return` reads raw observations and excludes distributions; `total_return` reads only observations recorded with adjustment basis total_return. The basis is the request's declaration, never inferred. */
+        ReturnsBenchmark: {
+            /** Format: int64 */
+            commodity_id: number;
+            /** @enum {string} */
+            basis: "price_return" | "total_return";
+            time_weighted: components["schemas"]["ReturnFigure"];
+            time_weighted_annualized: components["schemas"]["ReturnFigure"];
+            points: components["schemas"]["ReturnsSeriesPoint"][];
+            valuation: components["schemas"]["Valuation"];
+        };
         InvestmentReturnsResponse: {
             /** @enum {string} */
             policy: "returns_v1";
@@ -33935,6 +33953,8 @@ export interface components {
             money_weighted_period: components["schemas"]["ReturnFigure"];
             time_weighted_series: components["schemas"]["ReturnsSeries"];
             allocation: components["schemas"]["ReturnsAllocation"];
+            /** @description The requested benchmark, or null when none was requested. */
+            benchmark: components["schemas"]["ReturnsBenchmark"] | null;
             attribution_fallbacks: components["schemas"]["ReturnsAttributionFallback"][];
             valuation: components["schemas"]["Valuation"];
         };

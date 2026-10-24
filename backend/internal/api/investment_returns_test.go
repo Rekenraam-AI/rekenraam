@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// R13 slices 1, 3 and 4: the returns read is wired, echoes its policy and scope, and
+// R13 slices 1, 3, 4 and 5: the returns read is wired, echoes its policy and scope, and
 // keeps a reason beside every missing figure. Calculation literals live in
 // the app package's tests.
 func TestInvestmentReturnsAPI(t *testing.T) {
@@ -62,8 +62,27 @@ func TestInvestmentReturnsAPI(t *testing.T) {
 		assert.Nil(t, row.AccountID)
 	}
 
+	// Slice 5: no benchmark unless asked; one is read at the series' dates.
+	assert.Nil(t, body.Benchmark)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet,
+		path+fmt.Sprintf("&benchmark_commodity_id=%d&benchmark_basis=total_return", instrument.CommodityID), nil, http.StatusOK)
+	var compared investmentReturnsResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&compared))
+	require.NotNil(t, compared.Benchmark)
+	assert.Equal(t, instrument.CommodityID, compared.Benchmark.CommodityID)
+	assert.Equal(t, "total_return", compared.Benchmark.Basis)
+	require.Len(t, compared.Benchmark.Points, 2)
+	assert.Equal(t, compared.Benchmark.TimeWeighted, compared.Benchmark.Points[1].TimeWeighted)
+	require.NotNil(t, compared.Benchmark.Valuation)
+	assert.Equal(t, "live_total_return_v1", compared.Benchmark.Valuation.SelectionPolicy)
+	assert.Equal(t, body.TimeWeighted, compared.TimeWeighted)
+
 	for _, query := range []string{
 		"?from=2026-02-01&to=2026-02-01",
+		fmt.Sprintf("?from=2026-02-01&to=2026-02-01&reporting_currency_id=%d&benchmark_commodity_id=%d", f.commodityID, f.commodityID),
+		fmt.Sprintf("?from=2026-02-01&to=2026-02-01&reporting_currency_id=%d&benchmark_commodity_id=x", f.commodityID),
+		fmt.Sprintf("?from=2026-02-01&to=2026-02-01&reporting_currency_id=%d&benchmark_basis=total_return", f.commodityID),
+		fmt.Sprintf("?from=2026-02-01&to=2026-02-01&reporting_currency_id=%d&benchmark_commodity_id=%d&benchmark_basis=adjusted", f.commodityID, instrument.CommodityID),
 		fmt.Sprintf("?from=2026-02-02&to=2026-02-01&reporting_currency_id=%d", f.commodityID),
 		fmt.Sprintf("?from=2026-02-01&to=2026-02-01&reporting_currency_id=%d&account_id=%d", f.commodityID, f.incomeAccount.ID),
 		fmt.Sprintf("?from=2026-02-01&to=2026-02-01&reporting_currency_id=%d&max_staleness_days=40", f.commodityID),

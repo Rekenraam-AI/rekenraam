@@ -53,6 +53,10 @@ type ReturnsInput struct {
 	ReportingCommodityID int64
 	AccountIDs           []int64
 	MaxStalenessDays     int
+	// BenchmarkCommodityID selects an optional benchmark; BenchmarkBasis is
+	// price_return (the default) or total_return.
+	BenchmarkCommodityID int64
+	BenchmarkBasis       string
 }
 
 // ReturnsAmount is a reporting-currency amount, or why it is missing.
@@ -97,6 +101,8 @@ type ReturnsResult struct {
 
 	TimeWeightedSeries ReturnsSeries
 	Allocation         ReturnsAllocation
+	// Benchmark is nil unless one was requested.
+	Benchmark *ReturnsBenchmark
 
 	AttributionFallbacks []ReturnsAttributionFallback
 	Valuation            ValuationCoverage
@@ -141,6 +147,14 @@ func (s *InvestmentService) ReadReturns(ctx context.Context, input ReturnsInput)
 	}
 	if staleness < 1 || staleness > returnsMaxStalenessDays {
 		return ReturnsResult{}, ValidationError{Message: fmt.Sprintf("max_staleness_days must be between 1 and %d", returnsMaxStalenessDays)}
+	}
+	switch {
+	case input.BenchmarkCommodityID == 0 && input.BenchmarkBasis != "":
+		return ReturnsResult{}, ValidationError{Message: "benchmark_basis requires a benchmark"}
+	case input.BenchmarkCommodityID != 0 && input.BenchmarkBasis == "":
+		input.BenchmarkBasis = BenchmarkBasisPriceReturn
+	case input.BenchmarkBasis != "" && input.BenchmarkBasis != BenchmarkBasisPriceReturn && input.BenchmarkBasis != BenchmarkBasisTotalReturn:
+		return ReturnsResult{}, ValidationError{Message: "benchmark_basis must be price_return or total_return"}
 	}
 
 	snapshot, cleanup, err := s.repository.LiveGainsSnapshot(ctx)
@@ -247,6 +261,15 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 	if r.seriesRates, err = newRateTableAtBoundary(ctx, r.pricing, reporting, commodities, r.openDate, r.to, boundary); err != nil {
 		return err
 	}
+	var benchmarkRates *RateTable
+	if input.BenchmarkCommodityID != 0 {
+		if kind := r.kinds[input.BenchmarkCommodityID]; kind != "security" && kind != "crypto" {
+			return ValidationError{Message: "benchmark must be a security or crypto commodity"}
+		}
+		if benchmarkRates, err = r.newBenchmarkRates(ctx, input.BenchmarkCommodityID, input.BenchmarkBasis, reporting, boundary); err != nil {
+			return err
+		}
+	}
 	defer func() {
 		code := ""
 		if currency, err := r.pricing.ReportingCurrency(ctx, BookID, input.ReportingCommodityID); err == nil {
@@ -254,12 +277,23 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 		}
 		result.Valuation = r.rates.Coverage(code)
 		result.TimeWeightedSeries.Valuation = r.seriesRates.Coverage(code)
+		if result.Benchmark != nil {
+			result.Benchmark.Valuation = benchmarkRates.Coverage(code)
+		}
 	}()
 
 	flows, fallbacks := r.classify(anchors)
 	result.AttributionFallbacks = fallbacks
 	r.compute(flows, result)
 	result.Allocation = r.allocation(r.closing, classes)
+	if benchmarkRates != nil {
+		dates := make([]string, 0, len(result.TimeWeightedSeries.Points))
+		for _, point := range result.TimeWeightedSeries.Points {
+			dates = append(dates, point.Date)
+		}
+		benchmark := benchmarkSeries(input.BenchmarkCommodityID, input.BenchmarkBasis, benchmarkRates, r.openDate, dates, result.Days)
+		result.Benchmark = &benchmark
+	}
 	return r.overflow
 }
 

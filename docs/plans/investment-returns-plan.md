@@ -6,7 +6,7 @@ the same day after two reviews (`e30413a5`: seven findings, recorded inline
 as "finding N"; `ae084c4d`: two, recorded under the expected cases). Slice 2
 (returns screen) slice 3 (cumulative TTWROR series and chart) and slice 4
 (allocation at the closing day), contracts below, delivered the same day;
-slices 5–6 pending.**
+slice 5 (benchmarks) delivered the same day; slice 6 pending.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
 0017 (provider independence, honest incomplete data) govern this plan.
@@ -317,6 +317,64 @@ the tests assert equality). No separate request, date or scope exists.
   worth zero or less and the total is unknown (finding 2): an unpriced
   portfolio's value is not zero.
 
+## Benchmark (slice 5)
+
+The response's `benchmark` (null unless requested) compares the portfolio
+with **one owner-selected security or crypto commodity**
+(`benchmark_commodity_id`), read as a hypothetical single unit held from the
+opening boundary through `to`. Any commodity with observations qualifies,
+held or not; manual observations are as valid as provider ones, and no live
+provider is needed.
+
+- **Value.** One unit is valued exactly in the reporting currency on each
+  day by its own `RateTable` over the read's window and staleness rule, so a
+  benchmark quoted in another currency includes the FX change, as the
+  portfolio's figures do (#281 chain). Its gaps and stale quotes are reported
+  in `benchmark.valuation` and never mark the portfolio's coverage incomplete.
+- **Basis, declared, never inferred.** `benchmark_basis` is `price_return`
+  (the default: raw observations under `live_raw_v1`, distributions
+  excluded) or `total_return`: only observations recorded with
+  `adjustment_basis = total_return` price the unit, under
+  `live_total_return_v1` (`live_raw_v1` with that one change; currency legs
+  stay raw). A raw price never stands in for a total-return one; a
+  total-return request without such observations is unavailable, and the gap
+  reads `incompatible_quote_basis`. `dividend_adjusted` and `split_adjusted`
+  series are not accepted in v1.
+- **Return over the same breakpoints.** A benchmark has no flows, so its
+  daily chain telescopes exactly to `V(d) / V(open)` (prices are positive);
+  requiring the portfolio's evaluation days would add failures that change no
+  figure. `benchmark.points` are the portfolio series' dates; the headline
+  `time_weighted` is the closing point and is annualized under the same
+  365-day rule.
+- **Failure policy.** A missing opening value makes every point
+  `valuation_unavailable` dated the opening day; a missing point value removes
+  that point alone, dated itself (the closing point is the headline).
+- **No other figure changes.** Requesting a benchmark leaves every portfolio
+  figure, series point, allocation and coverage byte-identical (tested).
+  No excess-return figure is computed in v1: the reader compares the two
+  returns side by side; an arithmetic or geometric difference is a separate
+  choice.
+- **Presentation.** The screen offers instruments as benchmarks, keeps the
+  choice and basis in the URL (an id that is not an instrument is disclosed
+  and never sent), shows the benchmark's period and annual figures with its
+  basis in words, and draws it on the chart's axes as a dashed line (a
+  non-colour cue) with a legend and its own column in the table of points.
+- **Recording total-return observations.** The general price API accepts any
+  adjustment basis; the browser's manual price form records `raw` only, so a
+  total-return series is entered through the API until that form offers the
+  basis.
+
+**Benchmark cases (slice 5).** S1 portfolio; benchmark IDX priced in EUR.
+
+| Case | Observations | Benchmark |
+|---|---|---|
+| B1 price return | raw 200 (01-31), 220 (07-31), 210 (close); total_return 100 (01-31), 999 (02-14), 115 (close) | `0.050000`, p.a. `0.050000`; 02-07 `0` (7-day-old price); 02-14 `valuation_unavailable` on its own date (the total_return 999 is not read); 08-01 `0.100000`; portfolio `0.090909`, its coverage complete |
+| B2 total return | B1 observations | `0.150000`; 02-14 `8.990000`; 08-01 unavailable (no raw price is borrowed); policy `live_total_return_v1` |
+| B3 basis refused | raw only, 50 → 55 | total return: headline, p.a. and every point `valuation_unavailable` dated 01-31; gap `incompatible_quote_basis` |
+| B4 FX | SPX 100 USD × 0.90 → 110 USD × 0.80 | 90 → 88 EUR: `−0.022222`; coverage names the USD leg |
+| B5 closing gap | raw 200 (01-31), 210 (06-30) | full year: headline and p.a. unavailable dated the closing day; 02-07 `0` |
+| B6 short period | B5, 02-01..06-30 | `0.050000`; p.a. `period_shorter_than_year` |
+
 ## Money-weighted return (IRR)
 
 Investor-perspective flows with the same intraday convention, measured in
@@ -502,6 +560,8 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
 5. **Benchmarks** — an owner-selected price series (manual observations are
    valid); price-return unless the series is declared total-return;
    benchmark TTWROR over the same breakpoints; no live provider required.
+   *Delivered 2026-10-24* as `benchmark` on the returns read (see
+   *Benchmark*), a benchmark card and a dashed chart line on the screen.
 6. **Saved return runs** — immutable output and input fingerprint, as R18.
 
 Targets and rebalancing are **deferred** (no trade execution is implied,

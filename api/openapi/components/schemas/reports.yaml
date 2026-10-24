@@ -59,7 +59,8 @@ Valuation:
   properties:
     selection_policy:
       type: string
-      enum: [live_raw_v1]
+      enum: [live_raw_v1, live_total_return_v1]
+      description: live_total_return_v1 is live_raw_v1 with securities and crypto priced only by total_return observations; it appears only on an R13 benchmark declared total-return.
     valuation_as_of:
       type: string
       format: date

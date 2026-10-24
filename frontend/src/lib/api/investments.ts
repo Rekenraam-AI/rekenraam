@@ -82,6 +82,8 @@ export type ReturnsAllocation = components['schemas']['ReturnsAllocation'];
 export type ReturnsAllocationRow = components['schemas']['ReturnsAllocationRow'];
 export type ReturnsSeriesPoint = components['schemas']['ReturnsSeriesPoint'];
 export type ReturnsAttributionFallback = components['schemas']['ReturnsAttributionFallback'];
+export type ReturnsBenchmark = components['schemas']['ReturnsBenchmark'];
+export type BenchmarkBasis = ReturnsBenchmark['basis'];
 export type GainsStatementRow = components['schemas']['GainsStatementRow'];
 export type GainsStatementValuation = components['schemas']['GainsStatementValuation'];
 export type RealizedGainEntry = components['schemas']['RealizedGainEntry'];
@@ -1069,6 +1071,9 @@ export type InvestmentReturnsInput = {
   to: string;
   reportingCurrencyID: number;
   accountIDs: number[];
+  /** Null reads no benchmark (slice 5). */
+  benchmarkCommodityID: number | null;
+  benchmarkBasis: BenchmarkBasis;
 };
 
 // Always stale: returns read every posted ledger entry and price, and the
@@ -1091,7 +1096,9 @@ export async function getInvestmentReturns(input: InvestmentReturnsInput): Promi
           from: input.from,
           to: input.to,
           reporting_currency_id: input.reportingCurrencyID,
-          account_id: input.accountIDs.length > 0 ? input.accountIDs : undefined
+          account_id: input.accountIDs.length > 0 ? input.accountIDs : undefined,
+          benchmark_commodity_id: input.benchmarkCommodityID ?? undefined,
+          benchmark_basis: input.benchmarkCommodityID !== null ? input.benchmarkBasis : undefined
         }
       }
     });

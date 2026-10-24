@@ -1,5 +1,5 @@
 import type { ReadonlyURLSearchParams } from '$app/state';
-import type { ReturnsSeriesPoint } from '#lib/api/investments.ts';
+import type { BenchmarkBasis, ReturnsSeriesPoint } from '#lib/api/investments.ts';
 import { adjacentCalendarDate, isCalendarDate } from '#lib/dates/calendar-date.ts';
 import { m } from '#lib/paraglide/messages.js';
 import { staleObservationDates, type Valuation } from '#lib/reports/reporting-currency.ts';
@@ -15,6 +15,10 @@ export type ReturnsSelection = {
   reportingCurrencyID: number | null;
   /** Empty selects the server's default investment accounts. */
   accountIDs: number[];
+  /** Null compares against nothing (slice 5). */
+  benchmarkCommodityID: number | null;
+  /** Declared by the owner, never inferred: price return unless stated. */
+  benchmarkBasis: BenchmarkBasis;
 };
 
 export type ReturnsPreset = 'ytd' | 'last_year';
@@ -56,10 +60,16 @@ export function parseReturnsSelection(params: ReadonlyURLSearchParams, today: st
     .map(Number)
     .filter((id) => Number.isSafeInteger(id) && id > 0))].sort((a, b) => a - b);
 
+  const rawBenchmark = params.get('benchmark_commodity_id');
+  const benchmark = rawBenchmark !== null && /^\d+$/.test(rawBenchmark) ? Number(rawBenchmark) : NaN;
+  const benchmarkCommodityID = Number.isSafeInteger(benchmark) && benchmark > 0 ? benchmark : null;
+
   return {
     ...range,
     reportingCurrencyID: Number.isSafeInteger(currency) && currency > 0 ? currency : null,
-    accountIDs
+    accountIDs,
+    benchmarkCommodityID,
+    benchmarkBasis: benchmarkCommodityID !== null && params.get('benchmark_basis') === 'total_return' ? 'total_return' : 'price_return'
   };
 }
 
@@ -67,6 +77,10 @@ export function returnsSelectionParams(selection: ReturnsSelection): URLSearchPa
   const params = new URLSearchParams({ from: selection.from, to: selection.to });
   if (selection.reportingCurrencyID !== null) params.set('reporting_currency_id', String(selection.reportingCurrencyID));
   for (const id of selection.accountIDs) params.append('account_id', String(id));
+  if (selection.benchmarkCommodityID !== null) {
+    params.set('benchmark_commodity_id', String(selection.benchmarkCommodityID));
+    if (selection.benchmarkBasis === 'total_return') params.set('benchmark_basis', 'total_return');
+  }
   return params;
 }
 
@@ -103,6 +117,10 @@ export function returnReasonText(reason: string | null | undefined, date: string
     default:
       return m.returns_reason_unknown();
   }
+}
+
+export function benchmarkBasisText(basis: BenchmarkBasis): string {
+  return basis === 'total_return' ? m.returns_benchmark_basis_total() : m.returns_benchmark_basis_price();
 }
 
 export function fallbackReasonText(reason: string): string {
@@ -174,46 +192,62 @@ export type ReturnsChart = {
   /** Runs of consecutive points with a value. A missing point breaks the
    * line; nothing is interpolated across it. */
   segments: ReturnsChartPoint[][];
-  /** The plotted range, always including 0 so the baseline is visible. */
+  /** The benchmark's runs on the same axes; empty without a benchmark. */
+  benchmarkSegments: ReturnsChartPoint[][];
+  /** The plotted range of both lines, always including 0 so the baseline is visible. */
   minimum: number;
   maximum: number;
   /** Vertical position of 0 %, as a fraction of the plot height from the top. */
   zeroY: number;
+  /** Portfolio points with a value, of all portfolio points. */
   available: number;
   total: number;
+  benchmarkAvailable: number;
 };
 
 function dayNumber(date: string): number {
   return Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))) / 86_400_000;
 }
 
+function chartValues(points: ReturnsSeriesPoint[]): number[] {
+  return points.flatMap((point) => point.time_weighted.value === null ? [] : [Number(point.time_weighted.value)]);
+}
+
 /**
- * Places the cumulative time-weighted series on a unit square. x is calendar
- * time from the opening day, so the shorter last interval is drawn shorter;
- * y runs top (maximum) to bottom (minimum). Returns are ratios, not money,
- * so Numbers are fine for drawing.
+ * Places the cumulative time-weighted series (and a benchmark read at the
+ * same dates) on a unit square. x is calendar time from the opening day, so
+ * the shorter last interval is drawn shorter; y runs top (maximum) to bottom
+ * (minimum) over both lines, so they compare on one scale. Returns are
+ * ratios, not money, so Numbers are fine for drawing.
  */
-export function returnsChartModel(points: ReturnsSeriesPoint[]): ReturnsChart {
-  const values = points.flatMap((point) => point.time_weighted.value === null ? [] : [Number(point.time_weighted.value)]);
-  const minimum = Math.min(0, ...values);
-  const maximum = Math.max(0, ...values);
+export function returnsChartModel(points: ReturnsSeriesPoint[], benchmark: ReturnsSeriesPoint[] = []): ReturnsChart {
+  const values = chartValues(points);
+  const benchmarkValues = chartValues(benchmark);
+  const minimum = Math.min(0, ...values, ...benchmarkValues);
+  const maximum = Math.max(0, ...values, ...benchmarkValues);
   const span = maximum - minimum;
   const y = (value: number) => span === 0 ? 0.5 : (maximum - value) / span;
   const first = points.length > 0 ? dayNumber(points[0].date) : 0;
   const width = points.length > 1 ? dayNumber(points[points.length - 1].date) - first : 0;
-  const segments: ReturnsChartPoint[][] = [];
-  let run: ReturnsChartPoint[] = [];
-  for (const point of points) {
-    if (point.time_weighted.value === null) {
-      if (run.length > 0) segments.push(run);
-      run = [];
-      continue;
+  const segmentsOf = (line: ReturnsSeriesPoint[]) => {
+    const segments: ReturnsChartPoint[][] = [];
+    let run: ReturnsChartPoint[] = [];
+    for (const point of line) {
+      if (point.time_weighted.value === null) {
+        if (run.length > 0) segments.push(run);
+        run = [];
+        continue;
+      }
+      const value = Number(point.time_weighted.value);
+      run.push({ date: point.date, value, x: width === 0 ? 0 : (dayNumber(point.date) - first) / width, y: y(value) });
     }
-    const value = Number(point.time_weighted.value);
-    run.push({ date: point.date, value, x: width === 0 ? 0 : (dayNumber(point.date) - first) / width, y: y(value) });
-  }
-  if (run.length > 0) segments.push(run);
-  return { segments, minimum, maximum, zeroY: y(0), available: values.length, total: points.length };
+    if (run.length > 0) segments.push(run);
+    return segments;
+  };
+  return {
+    segments: segmentsOf(points), benchmarkSegments: segmentsOf(benchmark), minimum, maximum, zeroY: y(0),
+    available: values.length, total: points.length, benchmarkAvailable: benchmarkValues.length
+  };
 }
 
 export type AllocationDimension = 'account' | 'asset_type' | 'currency';

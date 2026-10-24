@@ -1,19 +1,23 @@
 <script lang="ts">
-  import type { ReturnsSeries } from '#lib/api/investments.ts';
+  import type { ReturnFigure, ReturnsSeries, ReturnsSeriesPoint } from '#lib/api/investments.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { formatReturn, returnReasonText, returnsChartModel } from './returns-model';
 
   // R13 slice 3: the cumulative time-weighted series as a line. The plot
   // stretches to the panel width; labels are HTML so they stay legible on a
-  // phone. The table of points is the accessible, exact alternative.
+  // phone. The table of points is the accessible, exact alternative. A
+  // benchmark (slice 5) shares the axes, dashed so it reads without colour.
   let {
     series,
+    benchmark = null,
     locale,
     formatDate,
     missingCommodities,
     staleDates
   }: {
     series: ReturnsSeries;
+    /** The benchmark's points at the series' dates, and its name. */
+    benchmark?: { name: string; points: ReturnsSeriesPoint[] } | null;
     locale: string;
     formatDate: (date: string) => string;
     /** Commodities only the chart points lacked a price or rate for. */
@@ -22,7 +26,8 @@
     staleDates: string[];
   } = $props();
 
-  const chart = $derived(returnsChartModel(series.points));
+  const chart = $derived(returnsChartModel(series.points, benchmark?.points ?? []));
+  const benchmarkByDate = $derived(new Map((benchmark?.points ?? []).map((point) => [point.date, point.time_weighted])));
   const first = $derived(series.points[0]);
   const last = $derived(series.points.at(-1));
   const width = 100;
@@ -38,13 +43,34 @@
   );
 </script>
 
+{#snippet figureCell(figure: ReturnFigure)}
+  {#if figure.value !== null}
+    <td class="py-1 pr-3 tabular-nums text-foreground">{formatReturn(figure.value, locale)}</td>
+  {:else}
+    <td class="py-1 pr-3 text-muted">{returnReasonText(figure.reason, figure.date, formatDate)}</td>
+  {/if}
+{/snippet}
+
 <figure class="space-y-2" data-testid="returns-chart">
   <figcaption>
     <span class="block text-sm font-semibold text-foreground">{m.returns_chart_title()}</span>
     <span class="mt-1 block text-xs text-muted">{m.returns_chart_help()} {intervalText}</span>
   </figcaption>
 
-  {#if chart.available === 0}
+  {#if benchmark}
+    <ul class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" data-testid="returns-chart-legend">
+      <li class="flex items-center gap-2">
+        <svg width="24" height="8" aria-hidden="true"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--color-accent)" stroke-width="2.5" /></svg>
+        {m.returns_chart_legend_portfolio()}
+      </li>
+      <li class="flex items-center gap-2">
+        <svg width="24" height="8" aria-hidden="true"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--color-chart-4)" stroke-width="2.5" stroke-dasharray="5 3" /></svg>
+        {m.returns_chart_legend_benchmark({ name: benchmark.name })}
+      </li>
+    </ul>
+  {/if}
+
+  {#if chart.available === 0 && chart.benchmarkAvailable === 0}
     <p class="text-sm text-muted" data-testid="returns-chart-empty">{m.returns_chart_empty()}</p>
   {:else if first && last}
     <div class="flex gap-2">
@@ -65,6 +91,14 @@
               <polyline points={path(segment)} fill="none" stroke="var(--color-accent)" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
             {/if}
           {/each}
+          {#each chart.benchmarkSegments as segment, index (index)}
+            {#if segment.length === 1}
+              <line x1={segment[0].x * width} x2={segment[0].x * width} y1={plotY(segment[0].y)} y2={plotY(segment[0].y)}
+                stroke="var(--color-chart-4)" stroke-width="6" stroke-linecap="square" vector-effect="non-scaling-stroke" />
+            {:else}
+              <polyline points={path(segment)} fill="none" stroke="var(--color-chart-4)" stroke-width="2.5" stroke-dasharray="5 3" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+            {/if}
+          {/each}
         </svg>
         <div class="mt-1 flex justify-between text-xs text-muted" aria-hidden="true">
           <span>{formatDate(first.date)}</span>
@@ -76,6 +110,9 @@
 
   {#if chart.available < chart.total && chart.available > 0}
     <p class="text-sm text-warning" data-testid="returns-chart-gaps">{m.returns_chart_gaps({ missing: chart.total - chart.available, total: chart.total })}</p>
+  {/if}
+  {#if benchmark && chart.benchmarkAvailable < chart.total && chart.benchmarkAvailable > 0}
+    <p class="text-sm text-warning" data-testid="returns-chart-benchmark-gaps">{m.returns_chart_benchmark_gaps({ missing: chart.total - chart.benchmarkAvailable, total: chart.total })}</p>
   {/if}
   {#if missingCommodities.length > 0}
     <p class="text-sm text-muted">{m.returns_chart_coverage({ commodities: missingCommodities.join(', ') })}</p>
@@ -92,17 +129,20 @@
         <thead>
           <tr class="text-xs text-muted">
             <th scope="col" class="py-1 pr-3 font-medium">{m.returns_chart_column_date()}</th>
-            <th scope="col" class="py-1 font-medium">{m.returns_chart_column_return()}</th>
+            <th scope="col" class="py-1 pr-3 font-medium">{m.returns_chart_column_return()}</th>
+            {#if benchmark}
+              <th scope="col" class="py-1 font-medium">{m.returns_chart_column_benchmark({ name: benchmark.name })}</th>
+            {/if}
           </tr>
         </thead>
         <tbody>
           {#each series.points as point (point.date)}
             <tr class="border-t border-border">
               <td class="py-1 pr-3 text-foreground">{formatDate(point.date)}</td>
-              {#if point.time_weighted.value !== null}
-                <td class="py-1 tabular-nums text-foreground">{formatReturn(point.time_weighted.value, locale)}</td>
-              {:else}
-                <td class="py-1 text-muted">{returnReasonText(point.time_weighted.reason, point.time_weighted.date, formatDate)}</td>
+              {@render figureCell(point.time_weighted)}
+              {#if benchmark}
+                {@const compared = benchmarkByDate.get(point.date)}
+                {#if compared}{@render figureCell(compared)}{:else}<td class="py-1 text-muted">—</td>{/if}
               {/if}
             </tr>
           {/each}

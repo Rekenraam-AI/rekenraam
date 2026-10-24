@@ -11,7 +11,7 @@ const { QueryClient } = createRequire(localRequire.resolve('@tanstack/svelte-que
 
 // Returns value every holding at its price, so a quote correction restates them.
 describe('price corrections and cached returns', () => {
-  const input = { from: '2026-01-01', to: '2026-10-24', reportingCurrencyID: 1, accountIDs: [] };
+  const input = { from: '2026-01-01', to: '2026-10-24', reportingCurrencyID: 1, accountIDs: [], benchmarkCommodityID: null, benchmarkBasis: 'price_return' as const };
 
   it('invalidates a cached return', async () => {
     const client = new QueryClient();
