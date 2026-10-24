@@ -18,8 +18,8 @@ Last reviewed: 2026-10-24 against local `40e29fe9`, owner acceptance and live
 GitHub issue state. The documentation and competitor review is recorded in the
 [app-state review and audit brief](reviews/app-state-and-audit-plan-2026-10-17.md).
 R16, R11, R17 and R18 have met their bounded delivery bars. **R13 is the
-current feature initiative: its returns_v1 contract is accepted and slice 1
-(backend returns read) is delivered (2026-10-24).**
+current feature initiative: its returns_v1 contract is accepted and slices 1
+(backend returns read) and 2 (returns screen) are delivered (2026-10-24).**
 The cross-app engineering audit is delivered; owner/release follow-ups remain
 explicit below. **#402 is delivered with the owner's disposition: ADR 0016
 thresholds amended. #404 followed the same day: explicit statement reuse
@@ -171,13 +171,14 @@ below is execution order, not a chain of hard dependencies.
    correction feature [#395](https://github.com/sergeyfarin/rekenraam/issues/395)
    remain distinct from behavior-preserving maintenance; do not restore
    retired attribution blockers.
-3. **Implement R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119) slices 2–6.**
+3. **Implement R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119) slices 3–6.**
    The [returns_v1 contract](plans/investment-returns-plan.md) was accepted by
    the owner on 2026-10-24 (position-anchored income classification with
    disclosed cash-side fallback, annualization only for 365+ days, proven
-   unique IRR roots only) and slice 1, the backend live read, is delivered.
-   Next: the returns screen, then the TTWROR series/chart, allocation,
-   manual benchmarks and saved runs, in the contract's slice order.
+   unique IRR roots only). Slice 1 (backend live read, corrected after two
+   reviews) and slice 2 (returns screen) are delivered. Next: the TTWROR
+   series/chart, then allocation, manual benchmarks and saved runs, in the
+   contract's slice order.
    #284's owner-reviewed investment/reporting dispositions are now complete.
    If the accepted contract consumes native realized totals, it reuses
    `app.NativeRealizedTotals`, delivered by

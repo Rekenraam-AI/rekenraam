@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { forecastQueryKey } from '#lib/api/forecast.ts';
 import {
   cashInLieuLotsQueryKey, incomeCoverageQueryKey, investmentCorrectionChainQueryKey, investmentGainsQueryKey, investmentInstrumentsQueryKey,
-  investmentLotsQueryKey, investmentPositionsQueryKey, investmentSplitsQueryKey
+  investmentLotsQueryKey, investmentPositionsQueryKey, investmentReturnsQueryKey, investmentSplitsQueryKey
 } from '#lib/api/investments.ts';
 import { accountRegisterQueryKey, transactionsQueryKey } from '#lib/api/transactions.ts';
 import { invalidateInvestmentReads } from './invalidate';
@@ -20,7 +20,7 @@ describe('invalidateInvestmentReads', () => {
     expect(invalidated).toEqual(expect.arrayContaining([
       cashInLieuLotsQueryKey, investmentGainsQueryKey, investmentPositionsQueryKey, investmentLotsQueryKey,
       investmentInstrumentsQueryKey, investmentCorrectionChainQueryKey, investmentSplitsQueryKey,
-      forecastQueryKey, transactionsQueryKey, accountRegisterQueryKey, incomeCoverageQueryKey
+      forecastQueryKey, transactionsQueryKey, accountRegisterQueryKey, incomeCoverageQueryKey, investmentReturnsQueryKey
     ]));
   });
 });

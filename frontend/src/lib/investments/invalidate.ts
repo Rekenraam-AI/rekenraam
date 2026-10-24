@@ -3,7 +3,7 @@ import { priceManagementQueryKey } from '#lib/api/price-management.ts';
 import { forecastQueryKey } from '#lib/api/forecast.ts';
 import {
   cashInLieuLotsQueryKey, datedHoldingsQueryKey, incomeCoverageQueryKey, investmentCorrectionChainQueryKey, investmentGainsQueryKey, investmentInstrumentsQueryKey,
-  investmentLotsQueryKey, investmentPositionsQueryKey, investmentSplitsQueryKey
+  investmentLotsQueryKey, investmentPositionsQueryKey, investmentReturnsQueryKey, investmentSplitsQueryKey
 } from '#lib/api/investments.ts';
 import { accountRegisterQueryKey, transactionsQueryKey } from '#lib/api/transactions.ts';
 
@@ -23,7 +23,8 @@ export const investmentMutationQueryKeys = [
   investmentGainsQueryKey,
   investmentInstrumentsQueryKey,
   investmentCorrectionChainQueryKey,
-  incomeCoverageQueryKey
+  incomeCoverageQueryKey,
+  investmentReturnsQueryKey
 ] as const;
 
 export async function invalidateInvestmentReads(queryClient: QueryClient): Promise<void> {

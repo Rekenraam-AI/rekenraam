@@ -74,6 +74,10 @@ export type GainsFXFigure = components['schemas']['GainsFXFigure'];
 export type GainsFXComponent = components['schemas']['GainsFXComponent'];
 export type InvestmentGainsResponse = components['schemas']['InvestmentGainsResponse'];
 export type InvestmentGainsStatementResponse = components['schemas']['InvestmentGainsStatementResponse'];
+export type InvestmentReturnsResponse = components['schemas']['InvestmentReturnsResponse'];
+export type ReturnFigure = components['schemas']['ReturnFigure'];
+export type ReturnsAmount = components['schemas']['ReturnsAmount'];
+export type ReturnsAttributionFallback = components['schemas']['ReturnsAttributionFallback'];
 export type GainsStatementRow = components['schemas']['GainsStatementRow'];
 export type GainsStatementValuation = components['schemas']['GainsStatementValuation'];
 export type RealizedGainEntry = components['schemas']['RealizedGainEntry'];
@@ -127,6 +131,7 @@ export const investmentLotsQueryKey = ['api', 'investments', 'lots'] as const;
 export const investmentInstrumentsQueryKey = ['api', 'investments', 'instruments'] as const;
 export const investmentGainsQueryKey = ['api', 'investments', 'gains'] as const;
 export const investmentGainsStatementQueryKey = ['api', 'investments', 'gains', 'statement'] as const;
+export const investmentReturnsQueryKey = ['api', 'investments', 'returns'] as const;
 export const investmentEventSuggestionsQueryKey = ['api', 'investments', 'event-suggestions'] as const;
 export const investmentAutomationRulesQueryKey = ['api', 'investments', 'automation-rules'] as const;
 export const investmentCorrectionChainQueryKey = ['api', 'investments', 'correction-chain'] as const;
@@ -1053,6 +1058,43 @@ export async function getInvestmentGains(
 
 // The R18 period statement (#231): opening and closing unrealized, realized
 // and income per currency for from..to, composed in one backend read.
+/** What a returns read asks for (R13 returns_v1, #119). Empty accountIDs
+ * selects the server's default investment accounts. */
+export type InvestmentReturnsInput = {
+  from: string;
+  to: string;
+  reportingCurrencyID: number;
+  accountIDs: number[];
+};
+
+export function investmentReturnsQueryOptions(input: InvestmentReturnsInput) {
+  return {
+    queryKey: [...investmentReturnsQueryKey, input] as const,
+    queryFn: () => getInvestmentReturns(input),
+    staleTime: 30_000
+  };
+}
+
+export async function getInvestmentReturns(input: InvestmentReturnsInput): Promise<InvestmentReturnsResponse> {
+  try {
+    const { data, error, response } = await apiClient.GET('/api/v1/investments/returns', {
+      params: {
+        query: {
+          from: input.from,
+          to: input.to,
+          reporting_currency_id: input.reportingCurrencyID,
+          account_id: input.accountIDs.length > 0 ? input.accountIDs : undefined
+        }
+      }
+    });
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
 export async function getInvestmentGainsStatement(
   from: string,
   to: string,

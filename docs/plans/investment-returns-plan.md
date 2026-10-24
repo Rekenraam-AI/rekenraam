@@ -3,8 +3,8 @@
 Status: **contract accepted by the owner 2026-10-24 (four policy answers
 recorded below); slice 1 (backend read) delivered 2026-10-24 and corrected
 the same day after two reviews (`e30413a5`: seven findings, recorded inline
-as "finding N"; `ae084c4d`: two, recorded under the expected cases). Later
-slices pending.**
+as "finding N"; `ae084c4d`: two, recorded under the expected cases). Slice 2
+(returns screen) delivered the same day; slices 3–6 pending.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
 0017 (provider independence, honest incomplete data) govern this plan.
@@ -357,6 +357,12 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
    calculator and ledger/attribution reads, the cases above. *Delivered.*
 2. **Returns screen** — period/account/currency selection, figures with
    reasons, fallback disclosure; loading/empty/error/success; mobile.
+   *Delivered 2026-10-24* at `/app/investments/returns`: the selection lives
+   in the URL; the reporting currency defaults to the book's default
+   currency for new UI (shown and changeable, never a hidden base currency);
+   presets are year to date and the last 12 months (the shortest period with
+   annual figures); every unavailable figure shows its reason in words, and
+   attribution fallbacks link to their transactions.
 3. **Cumulative TTWROR series and chart** — daily or bucketed points derived
    from the same chain (requires valuations at each point, so coverage is per
    point).

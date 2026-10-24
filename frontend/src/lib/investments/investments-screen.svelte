@@ -139,6 +139,7 @@
   <div class="p-4 sm:p-6 lg:p-8">
     <a href="/app/pricing" class="mb-3 inline-block min-h-11 text-sm font-semibold underline underline-offset-4">{m.pricing_title()}</a>
     <a href="/app/investments/income" class="mb-3 ml-4 inline-block min-h-11 text-sm font-semibold underline underline-offset-4">{m.income_coverage_title()}</a>
+    <a href="/app/investments/returns" class="mb-3 ml-4 inline-block min-h-11 text-sm font-semibold underline underline-offset-4">{m.returns_open()}</a>
     <p class="mb-3 text-sm text-muted"><a href="https://www.coingecko.com/en/api" target="_blank" rel="noreferrer" class="underline">{m.quotes_attribution()}</a></p>
     <!-- Tab navigation -->
     <div class="mb-5 flex items-center gap-1 overflow-x-auto border-b border-border">

@@ -47,6 +47,7 @@ const routes: Route[] = [
   { name: 'investments', path: () => '/app/investments', data: true },
   { name: 'instrument', path: (ids) => `/app/investments/instruments/${ids.get('REF')}`, data: true },
   { name: 'income coverage', path: () => '/app/investments/income', data: true },
+  { name: 'returns', path: () => '/app/investments/returns', data: true },
   { name: 'pricing', path: () => '/app/pricing', data: true },
   { name: 'reports', path: () => '/app/reports?view=net-worth&start_date=2026-01-01&end_date=2026-03-31&bucket=month', data: true },
   { name: 'budgets', path: () => '/app/budgets', data: true },
