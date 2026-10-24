@@ -79,7 +79,7 @@ export function gainImpactCurrency(currencies: Map<number, CurrencyLike>) {
 /** A preview needs the user's decision when it would invalidate checkpoints
  * or change committed disposal gains (T-114/T-126). */
 export function impactNeedsReview(impact: {
-  affected_checkpoints: unknown[];
+  affected_checkpoints: readonly unknown[];
   gain_impact?: GainImpact | null;
 }): boolean {
   return impact.affected_checkpoints.length > 0 || hasGainChanges(impact.gain_impact);

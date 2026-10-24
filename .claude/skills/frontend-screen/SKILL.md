@@ -99,6 +99,11 @@ description: SvelteKit frontend rules for Rekenraam - static adapter constraints
   only is a known bug class, backlog T-05); query keys include search strings.
 - `minisearch` only for small in-memory sets (dropdowns, autocomplete); full
   transaction search is a backend FTS5 `search` param.
+- Investment checkpoint/gain review reuses a lifecycle controller (#400):
+  `previewReview` (`#lib/investments/preview-review.ts`) for preview-then-record
+  forms, `commitReview` (`commit-review.ts`, `protocol: 'gains'` or
+  `'checkpoints'`) for forms that ask for the impact at commit. Do not copy the
+  stale-refusal/re-preview transitions into a new form; see `docs/conventions.md`.
 
 ## Every new screen must define
 

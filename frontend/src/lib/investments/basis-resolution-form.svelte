@@ -9,16 +9,9 @@
   import { parseMoneyMagnitude } from '#lib/investments/form-amounts.ts';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
   import { TranslatedFormError } from '#lib/form-errors.ts';
-  import {
-    gainAcknowledgement,
-    gainImpactCurrency,
-    gainImpactRows,
-    hasGainChanges,
-    impactNeedsReview,
-    isStaleImpactRefusal,
-    checkpointOverride,
-    type ReviewedCheckpoints
-  } from '#lib/investments/gain-impact.ts';
+  import { gainImpactCurrency, gainImpactRows } from '#lib/investments/gain-impact.ts';
+  import { commitReview, type CommitReviewState } from '#lib/investments/commit-review.ts';
+  import type { ReviewGuards } from '#lib/investments/preview-review.ts';
   import { formatEditableAmount } from '#lib/money/amount.ts';
   import {
     previewBasisResolutionReplacement,
@@ -26,9 +19,7 @@
     replaceBasisResolution,
     resolveTransferBasis,
     type InvestmentCorrectionBasisResolutionTerms,
-    type GainImpact,
-    type InvestmentBasisResolutionRequest,
-    type ReconciliationImpactResponse
+    type InvestmentBasisResolutionRequest
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
   import { basisSourceDeclaration, basisSourceFields, basisSourceTextMaxLength, basisSourceTextTooLong } from './basis-provenance';
@@ -70,12 +61,7 @@
   let formError = $state<unknown>(undefined);
 
 
-  let review = $state<{
-    impacts: ReconciliationImpactResponse['affected_checkpoints'];
-    gainImpact: GainImpact | null;
-    gainRefreshed: boolean;
-    payload: InvestmentBasisResolutionRequest;
-  } | null>(null);
+  let review = $state<CommitReviewState<InvestmentBasisResolutionRequest> | null>(null);
 
   const currenciesByID = $derived(new Map<number, CurrencyResponse>(
     (currenciesQuery.data?.currencies ?? []).map((currency: CurrencyResponse) => [currency.id, currency])));
@@ -113,65 +99,40 @@
     if (!payload) return;
     pending = true;
     try {
-      if (!(await reviewImpact(payload, false))) await commit(payload, [], '');
+      if (!(await impactReview.open(payload, false))) await commit(payload, {});
     } catch (error) {
-      await recover(error, payload);
+      await impactReview.recover(error, payload);
     } finally {
       pending = false;
     }
   }
 
-  // Preview through the actual resolution writer; checkpoints or the gains it
-  // resolves go to the confirmation.
-  async function reviewImpact(payload: InvestmentBasisResolutionRequest, refreshed: boolean): Promise<boolean> {
-    const impact = correcting
-      ? await previewBasisResolutionReplacement(transactionID, payload)
-      : await previewTransferBasisResolution(transactionID, payload);
-    if (!impactNeedsReview(impact)) return false;
-    const gainImpact = hasGainChanges(impact.gain_impact) ? impact.gain_impact : null;
-    review = { impacts: impact.affected_checkpoints, gainImpact, gainRefreshed: refreshed && !!gainImpact, payload };
-    return true;
-  }
-
-  async function commit(payload: InvestmentBasisResolutionRequest, reviewed: ReviewedCheckpoints, acknowledgement: string) {
-    const body = {
-      ...payload,
-      ...checkpointOverride(reviewed),
-      ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
-    };
+  async function commit(payload: InvestmentBasisResolutionRequest, guards: ReviewGuards) {
+    const body = { ...payload, ...guards };
     if (correcting) await replaceBasisResolution(transactionID, body, csrfToken);
     else await resolveTransferBasis(transactionID, body, csrfToken);
     await invalidateInvestmentReads(queryClient);
     onSaved();
   }
 
-  async function recover(error: unknown, payload: InvestmentBasisResolutionRequest) {
-    try {
-      if (!isStaleImpactRefusal(error) || !(await reviewImpact(payload, true))) formError = error;
-    } catch (previewError) {
-      formError = previewError;
-    }
-  }
-
-  async function confirmReview() {
-    if (!review) return;
-    const { payload, impacts, gainImpact } = review;
-    review = null;
-    pending = true;
-    formError = undefined;
-    try {
-      await commit(payload, impacts, gainAcknowledgement(gainImpact));
-    } catch (error) {
-      await recover(error, payload);
-    } finally {
-      pending = false;
-    }
-  }
+  // Preview through the actual resolution writer; checkpoints or the gains it
+  // resolves go to the confirmation.
+  const impactReview = commitReview({
+    protocol: 'gains',
+    get review() { return review; },
+    impact: (payload: InvestmentBasisResolutionRequest) => correcting
+      ? previewBasisResolutionReplacement(transactionID, payload)
+      : previewTransferBasisResolution(transactionID, payload),
+    write: commit,
+    setReview: (value) => { review = value; },
+    setPending: (value) => { pending = value; },
+    setError: (error) => { formError = error; }
+  });
 </script>
 
 {#if review}
   <ReconciliationConfirm impacts={review.impacts} {gainRows} gainRefreshed={review.gainRefreshed}
-    {pending} onCancel={() => (review = null)} onConfirm={confirmReview} />
+    {pending} onCancel={impactReview.cancel} onConfirm={impactReview.confirm} />
 {/if}
 
 <form onsubmit={handleSubmit} class="space-y-4" aria-busy={pending}>

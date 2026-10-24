@@ -9,21 +9,13 @@
     externalTransferInReconciliationImpact,
     investmentInstrumentsQueryOptions,
     recordExternalTransferIn,
-    type ExternalTransferInRequest,
-    type GainImpact,
-    type ReconciliationImpactResponse
+    type ExternalTransferInRequest
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
   import { parseTransferInAmounts } from '#lib/investments/form-amounts.ts';
-  import {
-    gainAcknowledgement,
-    gainImpactCurrency,
-    gainImpactRows,
-    hasGainChanges,
-    impactNeedsReview,
-    isStaleImpactRefusal,
-    checkpointOverride
-  } from '#lib/investments/gain-impact.ts';
+  import { gainImpactCurrency, gainImpactRows } from '#lib/investments/gain-impact.ts';
+  import { commitReview, type CommitReviewState } from '#lib/investments/commit-review.ts';
+  import type { ReviewGuards } from '#lib/investments/preview-review.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
   import { m } from '#lib/paraglide/messages.js';
@@ -58,12 +50,7 @@
   let formError = $state<unknown>(undefined);
   // A transfer dated behind later sales replays them (T-117); checkpoint and
   // gain consequences are confirmed together.
-  let reconciliationModal = $state<{
-    impacts: ReconciliationImpactResponse['affected_checkpoints'];
-    gainImpact: GainImpact | null;
-    gainRefreshed: boolean;
-    payload: ExternalTransferInRequest;
-  } | null>(null);
+  let reconciliationModal = $state<CommitReviewState<ExternalTransferInRequest> | null>(null);
 
   const instruments = $derived((instrumentsQuery.data?.instruments ?? []).filter((instrument) => instrument.status === 'active'));
   const selectedInstrument = $derived(instruments.find((instrument) => String(instrument.commodity_id) === instrumentID));
@@ -84,8 +71,8 @@
   );
 
 
-  async function post(payload: ExternalTransferInRequest) {
-    await recordExternalTransferIn(payload, csrfToken);
+  async function submit(payload: ExternalTransferInRequest, guards: ReviewGuards) {
+    await recordExternalTransferIn({ ...payload, ...guards }, csrfToken);
     await invalidateInvestmentReads(queryClient);
     onSaved();
   }
@@ -126,58 +113,31 @@
     pending = true;
     formError = undefined;
     try {
-      if (await reviewImpact(payload, false)) return;
-      await post(payload);
+      if (await impactReview.open(payload, false)) return;
+      await submit(payload, {});
     } catch (error) {
-      await recoverFromRefusal(error, payload);
+      await impactReview.recover(error, payload);
     } finally {
       pending = false;
     }
-  }
-
-  async function reviewImpact(payload: ExternalTransferInRequest, refreshed: boolean): Promise<boolean> {
-    const impact = await externalTransferInReconciliationImpact(payload);
-    if (!impactNeedsReview(impact)) return false;
-    const gainImpact = hasGainChanges(impact.gain_impact) ? impact.gain_impact : null;
-    reconciliationModal = { impacts: impact.affected_checkpoints, gainImpact,
-      gainRefreshed: refreshed && !!gainImpact, payload };
-    return true;
   }
 
   // A stale or missing gain acknowledgement re-previews the current set.
-  async function recoverFromRefusal(error: unknown, payload: ExternalTransferInRequest) {
-    try {
-      if (!isStaleImpactRefusal(error) || !(await reviewImpact(payload, true))) formError = error;
-    } catch (previewError) {
-      formError = previewError;
-    }
-  }
-
-  async function confirmOverride() {
-    if (!reconciliationModal) return;
-    const { payload, impacts, gainImpact } = reconciliationModal;
-    reconciliationModal = null;
-    pending = true;
-    formError = undefined;
-    const acknowledgement = gainAcknowledgement(gainImpact);
-    try {
-      await post({
-        ...payload,
-        ...checkpointOverride(impacts),
-        ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
-      });
-    } catch (error) {
-      await recoverFromRefusal(error, payload);
-    } finally {
-      pending = false;
-    }
-  }
+  const impactReview = commitReview({
+    protocol: 'gains',
+    get review() { return reconciliationModal; },
+    impact: externalTransferInReconciliationImpact,
+    write: submit,
+    setReview: (value) => { reconciliationModal = value; },
+    setPending: (value) => { pending = value; },
+    setError: (error) => { formError = error; }
+  });
 </script>
 
 {#if reconciliationModal}
   <ReconciliationConfirm impacts={reconciliationModal.impacts} gainRows={modalGainRows}
     gainRefreshed={reconciliationModal.gainRefreshed} {pending}
-    onCancel={() => (reconciliationModal = null)} onConfirm={confirmOverride} />
+    onCancel={impactReview.cancel} onConfirm={impactReview.confirm} />
 {/if}
 
 <form onsubmit={handleSubmit} class="space-y-4" aria-busy={pending}>

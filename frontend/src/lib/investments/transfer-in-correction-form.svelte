@@ -11,23 +11,14 @@
   import { parseTransferInAmounts } from '#lib/investments/form-amounts.ts';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
   import { TranslatedFormError } from '#lib/form-errors.ts';
-  import {
-    gainAcknowledgement,
-    gainImpactCurrency,
-    gainImpactRows,
-    hasGainChanges,
-    impactNeedsReview,
-    isStaleImpactRefusal,
-    checkpointOverride,
-    type ReviewedCheckpoints
-  } from '#lib/investments/gain-impact.ts';
+  import { gainImpactCurrency, gainImpactRows } from '#lib/investments/gain-impact.ts';
+  import { commitReview, type CommitReviewState } from '#lib/investments/commit-review.ts';
+  import type { ReviewGuards } from '#lib/investments/preview-review.ts';
   import {
     previewTransferInReplacement,
     replaceTransferIn,
     type ExternalTransferInRequest,
-    type GainImpact,
-    type InvestmentCorrectionTransferTerms,
-    type ReconciliationImpactResponse
+    type InvestmentCorrectionTransferTerms
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
 
@@ -70,12 +61,7 @@
   let formError = $state<unknown>(undefined);
 
 
-  let review = $state<{
-    impacts: ReconciliationImpactResponse['affected_checkpoints'];
-    gainImpact: GainImpact | null;
-    gainRefreshed: boolean;
-    payload: ExternalTransferInRequest;
-  } | null>(null);
+  let review = $state<CommitReviewState<ExternalTransferInRequest> | null>(null);
 
   const holdingAccounts = $derived((accountsQuery.data?.accounts ?? []).filter((account: AccountResponse) =>
     (account.account_kind === 'security_holding' || account.account_kind === 'fund_holding') &&
@@ -124,62 +110,35 @@
     if (!payload) return;
     pending = true;
     try {
-      if (!(await reviewImpact(payload, false))) await commit(payload, [], '');
+      if (!(await impactReview.open(payload, false))) await commit(payload, {});
     } catch (error) {
-      await recover(error, payload);
+      await impactReview.recover(error, payload);
     } finally {
       pending = false;
     }
   }
 
-  // Preview through the actual replacement writer; checkpoints or changed
-  // gains go to the confirmation.
-  async function reviewImpact(payload: ExternalTransferInRequest, refreshed: boolean): Promise<boolean> {
-    const impact = await previewTransferInReplacement(transactionID, { reason: reason.trim(), replacement: payload });
-    if (!impactNeedsReview(impact)) return false;
-    const gainImpact = hasGainChanges(impact.gain_impact) ? impact.gain_impact : null;
-    review = { impacts: impact.affected_checkpoints, gainImpact, gainRefreshed: refreshed && !!gainImpact, payload };
-    return true;
-  }
-
-  async function commit(payload: ExternalTransferInRequest, reviewed: ReviewedCheckpoints, acknowledgement: string) {
-    await replaceTransferIn(transactionID, {
-      reason: reason.trim(), replacement: payload,
-      ...checkpointOverride(reviewed),
-      ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
-    }, csrfToken);
+  async function commit(payload: ExternalTransferInRequest, guards: ReviewGuards) {
+    await replaceTransferIn(transactionID, { reason: reason.trim(), replacement: payload, ...guards }, csrfToken);
     await invalidateInvestmentReads(queryClient);
     onSaved();
   }
 
   // The gain set changed since review: show the current set, not a dead end.
-  async function recover(error: unknown, payload: ExternalTransferInRequest) {
-    try {
-      if (!isStaleImpactRefusal(error) || !(await reviewImpact(payload, true))) formError = error;
-    } catch (previewError) {
-      formError = previewError;
-    }
-  }
-
-  async function confirmReview() {
-    if (!review) return;
-    const { payload, impacts, gainImpact } = review;
-    review = null;
-    pending = true;
-    formError = undefined;
-    try {
-      await commit(payload, impacts, gainAcknowledgement(gainImpact));
-    } catch (error) {
-      await recover(error, payload);
-    } finally {
-      pending = false;
-    }
-  }
+  const impactReview = commitReview({
+    protocol: 'gains',
+    get review() { return review; },
+    impact: (payload: ExternalTransferInRequest) => previewTransferInReplacement(transactionID, { reason: reason.trim(), replacement: payload }),
+    write: commit,
+    setReview: (value) => { review = value; },
+    setPending: (value) => { pending = value; },
+    setError: (error) => { formError = error; }
+  });
 </script>
 
 {#if review}
   <ReconciliationConfirm impacts={review.impacts} {gainRows} gainRefreshed={review.gainRefreshed}
-    {pending} onCancel={() => (review = null)} onConfirm={confirmReview} />
+    {pending} onCancel={impactReview.cancel} onConfirm={impactReview.confirm} />
 {/if}
 
 <form onsubmit={handleSubmit} class="space-y-4" aria-busy={pending}>

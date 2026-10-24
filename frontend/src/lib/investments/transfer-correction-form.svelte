@@ -11,26 +11,17 @@
   import { parseMagnitude } from '#lib/investments/form-amounts.ts';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
   import { TranslatedFormError } from '#lib/form-errors.ts';
-  import {
-    gainAcknowledgement,
-    gainImpactCurrency,
-    gainImpactRows,
-    hasGainChanges,
-    impactNeedsReview,
-    isStaleImpactRefusal,
-    checkpointOverride,
-    type ReviewedCheckpoints
-  } from '#lib/investments/gain-impact.ts';
+  import { gainImpactCurrency, gainImpactRows } from '#lib/investments/gain-impact.ts';
+  import { commitReview, type CommitReviewState } from '#lib/investments/commit-review.ts';
+  import type { ReviewGuards } from '#lib/investments/preview-review.ts';
   import {
     previewTransferOutReplacement,
     previewTransferReplacement,
     replaceTransfer,
     replaceTransferOut,
     type ExternalTransferOutRequest,
-    type GainImpact,
     type InternalTransferRequest,
-    type InvestmentCorrectionTransferTerms,
-    type ReconciliationImpactResponse
+    type InvestmentCorrectionTransferTerms
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
 
@@ -78,12 +69,7 @@
 
   type TransferPayload = InternalTransferRequest | ExternalTransferOutRequest;
 
-  let review = $state<{
-    impacts: ReconciliationImpactResponse['affected_checkpoints'];
-    gainImpact: GainImpact | null;
-    gainRefreshed: boolean;
-    payload: TransferPayload;
-  } | null>(null);
+  let review = $state<CommitReviewState<TransferPayload> | null>(null);
 
   const accounts = $derived(accountsQuery.data?.accounts ?? []);
   const sourceAccount = $derived(accounts.find((account: AccountResponse) => account.id === sourceAccountID));
@@ -143,70 +129,43 @@
     if (!payload) return;
     pending = true;
     try {
-      if (!(await reviewImpact(payload, false))) await commit(payload, [], '');
+      if (!(await impactReview.open(payload, false))) await commit(payload, {});
     } catch (error) {
-      await recover(error, payload);
+      await impactReview.recover(error, payload);
     } finally {
       pending = false;
     }
   }
 
-  // Preview through the actual replacement writer; checkpoints or changed
-  // gains go to the confirmation.
-  async function reviewImpact(payload: TransferPayload, refreshed: boolean): Promise<boolean> {
-    const preview = outbound
-      ? await previewTransferOutReplacement(transactionID, { reason: reason.trim(), replacement: payload as ExternalTransferOutRequest })
-      : await previewTransferReplacement(transactionID, { reason: reason.trim(), replacement: payload as InternalTransferRequest });
-    if (!impactNeedsReview(preview.impact)) return false;
-    const gainImpact = hasGainChanges(preview.impact.gain_impact) ? preview.impact.gain_impact : null;
-    review = { impacts: preview.impact.affected_checkpoints, gainImpact, gainRefreshed: refreshed && !!gainImpact, payload };
-    return true;
-  }
-
-  async function commit(payload: TransferPayload, reviewed: ReviewedCheckpoints, acknowledgement: string) {
-    const confirmations = {
-      ...checkpointOverride(reviewed),
-      ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
-    };
+  async function commit(payload: TransferPayload, guards: ReviewGuards) {
     if (outbound) {
       await replaceTransferOut(transactionID, { reason: reason.trim(),
-        replacement: payload as ExternalTransferOutRequest, ...confirmations }, csrfToken);
+        replacement: payload as ExternalTransferOutRequest, ...guards }, csrfToken);
     } else {
       await replaceTransfer(transactionID, { reason: reason.trim(),
-        replacement: payload as InternalTransferRequest, ...confirmations }, csrfToken);
+        replacement: payload as InternalTransferRequest, ...guards }, csrfToken);
     }
     await invalidateInvestmentReads(queryClient);
     onSaved();
   }
 
   // The gain set changed since review: show the current set, not a dead end.
-  async function recover(error: unknown, payload: TransferPayload) {
-    try {
-      if (!isStaleImpactRefusal(error) || !(await reviewImpact(payload, true))) formError = error;
-    } catch (previewError) {
-      formError = previewError;
-    }
-  }
-
-  async function confirmReview() {
-    if (!review) return;
-    const { payload, impacts, gainImpact } = review;
-    review = null;
-    pending = true;
-    formError = undefined;
-    try {
-      await commit(payload, impacts, gainAcknowledgement(gainImpact));
-    } catch (error) {
-      await recover(error, payload);
-    } finally {
-      pending = false;
-    }
-  }
+  const impactReview = commitReview({
+    protocol: 'gains',
+    get review() { return review; },
+    impact: async (payload: TransferPayload) => (outbound
+      ? await previewTransferOutReplacement(transactionID, { reason: reason.trim(), replacement: payload as ExternalTransferOutRequest })
+      : await previewTransferReplacement(transactionID, { reason: reason.trim(), replacement: payload as InternalTransferRequest })).impact,
+    write: commit,
+    setReview: (value) => { review = value; },
+    setPending: (value) => { pending = value; },
+    setError: (error) => { formError = error; }
+  });
 </script>
 
 {#if review}
   <ReconciliationConfirm impacts={review.impacts} {gainRows} gainRefreshed={review.gainRefreshed}
-    {pending} onCancel={() => (review = null)} onConfirm={confirmReview} />
+    {pending} onCancel={impactReview.cancel} onConfirm={impactReview.confirm} />
 {/if}
 
 <form onsubmit={handleSubmit} class="space-y-4" aria-busy={pending}>

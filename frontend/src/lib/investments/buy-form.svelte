@@ -7,16 +7,9 @@
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
-  import {
-    gainAcknowledgement,
-    gainImpactCurrency,
-    gainImpactRows,
-    hasGainChanges,
-    impactNeedsReview,
-    isStaleImpactRefusal,
-    checkpointOverride,
-    type ReviewedCheckpoints
-  } from '#lib/investments/gain-impact.ts';
+  import { gainImpactCurrency, gainImpactRows } from '#lib/investments/gain-impact.ts';
+  import { commitReview, type CommitReviewState } from '#lib/investments/commit-review.ts';
+  import type { ReviewGuards } from '#lib/investments/preview-review.ts';
   import { parseTradeAmounts, type AmountFieldError } from '#lib/investments/form-amounts.ts';
   import TradeEconomicsFields from '#lib/investments/trade-economics-fields.svelte';
   import { correctionTradeDraft, exactTradeFields, type TradeChargeDraft } from '#lib/investments/trade-economics.ts';
@@ -31,9 +24,7 @@
     replaceManualBuy,
     type InvestmentInstrumentResponse,
     type InvestmentTradeRequest,
-    type InvestmentTradeCorrectionContextResponse,
-    type GainImpact,
-    type ReconciliationImpactResponse
+    type InvestmentTradeCorrectionContextResponse
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
@@ -124,13 +115,8 @@
   // earlier sales without touching a reconciled balance (T-114/T-126). The
   // same confirmation lists those changes, and the commit echoes the token
   // for exactly that set.
-  let reconciliationModal = $state<{
-    impacts: ReconciliationImpactResponse['affected_checkpoints'];
-    gainImpact: GainImpact | null;
-    gainRefreshed: boolean;
-    payload: InvestmentTradeRequest;
-    reason: string;
-  } | null>(null);
+  type TradeSubject = { payload: InvestmentTradeRequest; reason: string };
+  let reconciliationModal = $state<CommitReviewState<TradeSubject> | null>(null);
 
   // Holding accounts: security_holding or fund_holding kinds
   const holdingAccounts = $derived(
@@ -238,16 +224,12 @@
     pending = true;
     formError = undefined;
 
+    const subject = { payload, reason: reason.trim() };
     try {
-      const correctionReason = reason.trim();
-      if (await reviewImpact(payload, correctionReason, false)) return;
-      await submitBuy(payload, [], correctionReason, '');
+      if (await impactReview.open(subject, false)) return;
+      await submitBuy(subject, {});
     } catch (err) {
-      try {
-        if (!(await reviewAfterGainRefusal(err, payload, reason.trim()))) formError = err;
-      } catch (previewErr) {
-        formError = previewErr;
-      }
+      await impactReview.recover(err, subject);
     } finally {
       pending = false;
     }
@@ -255,60 +237,30 @@
 
   // Preview the buy and, when it would invalidate checkpoints or change
   // committed gains, hand the decision to the user rather than proceeding.
-  async function reviewImpact(payload: InvestmentTradeRequest, correctionReason: string, refreshed: boolean): Promise<boolean> {
-    const impact = correction
-      ? await previewBuyReplacementReconciliation(correction.transaction_id, { reason: correctionReason,
+  // The server recomputes the change set at commit; when it differs from what
+  // the user reviewed, the current set is shown again.
+  const impactReview = commitReview({
+    protocol: 'gains',
+    get review() { return reconciliationModal; },
+    impact: ({ payload, reason: correctionReason }: TradeSubject) => correction
+      ? previewBuyReplacementReconciliation(correction.transaction_id, { reason: correctionReason,
           replacement: { ...payload, charges: payload.charges?.map((charge) => ({ ...charge, treatment: charge.treatment! })) } })
-      : await buyReconciliationImpact(payload);
-    if (!impactNeedsReview(impact)) return false;
-    const gainImpact = hasGainChanges(impact.gain_impact) ? impact.gain_impact : null;
-    reconciliationModal = { impacts: impact.affected_checkpoints, gainImpact, gainRefreshed: refreshed && !!gainImpact,
-      payload, reason: correctionReason };
-    return true;
-  }
+      : buyReconciliationImpact(payload),
+    write: submitBuy,
+    setReview: (value) => { reconciliationModal = value; },
+    setPending: (value) => { pending = value; },
+    setError: (error) => { formError = error; }
+  });
 
-  // The server recomputes the change set at commit. When it differs from what
-  // the user reviewed, show the current set again instead of a dead-end error.
-  async function reviewAfterGainRefusal(err: unknown, payload: InvestmentTradeRequest, correctionReason: string): Promise<boolean> {
-    if (!isStaleImpactRefusal(err)) return false;
-    return reviewImpact(payload, correctionReason, true);
-  }
-
-  async function confirmOverride() {
-    if (!reconciliationModal) return;
-    const { payload, reason: correctionReason, impacts, gainImpact } = reconciliationModal;
-    reconciliationModal = null;
-    pending = true;
-    formError = undefined;
-
-    try {
-      await submitBuy(payload, impacts, correctionReason, gainAcknowledgement(gainImpact));
-    } catch (err) {
-      try {
-        if (!(await reviewAfterGainRefusal(err, payload, correctionReason))) formError = err;
-      } catch (previewErr) {
-        formError = previewErr;
-      }
-    } finally {
-      pending = false;
-    }
-  }
-
-  async function submitBuy(payload: InvestmentTradeRequest, reviewed: ReviewedCheckpoints, correctionReason: string, acknowledgement: string) {
-    const gainFields = acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {};
+  async function submitBuy({ payload, reason: correctionReason }: TradeSubject, guards: ReviewGuards) {
     if (correction) {
       await replaceManualBuy(correction.transaction_id, {
         reason: correctionReason,
         replacement: { ...payload, charges: payload.charges?.map((charge) => ({ ...charge, treatment: charge.treatment! })) },
-        ...checkpointOverride(reviewed),
-        ...gainFields
+        ...guards
       }, csrfToken);
     } else {
-      await recordBuy({
-        ...payload,
-        ...checkpointOverride(reviewed),
-        ...gainFields
-      }, csrfToken);
+      await recordBuy({ ...payload, ...guards }, csrfToken);
     }
 
     await invalidateInvestmentReads(queryClient);
@@ -322,8 +274,8 @@
     gainRows={modalGainRows}
     gainRefreshed={reconciliationModal.gainRefreshed}
     {pending}
-    onCancel={() => (reconciliationModal = null)}
-    onConfirm={confirmOverride}
+    onCancel={impactReview.cancel}
+    onConfirm={impactReview.confirm}
   />
 {/if}
 

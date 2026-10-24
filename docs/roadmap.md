@@ -23,8 +23,8 @@ The cross-app engineering audit is delivered; owner/release follow-ups remain
 explicit below. **#402 is delivered with the owner's disposition: ADR 0016
 thresholds amended, and #404 (statement compilation cost) follows.
 #403, found on the way, is fixed; #284's owner review is complete. #399
-(app-owned native realized totals) was delivered early at the owner's request
-on 2026-10-24, so R13 can consume it either way.** Earlier milestone detail lives in the
+(app-owned native realized totals) and #400 (shared browser review
+lifecycles) were delivered early at the owner's request on 2026-10-24.** Earlier milestone detail lives in the
 [completed roadmap record](reviews/completed-roadmap-2026-09-27.md)
 and the [capability ledger](implemented.md).
 
@@ -182,9 +182,11 @@ below is execution order, not a chain of hard dependencies.
    R13 prerequisite. A new dependency must name its concrete conflict and
    smallest resolution.
 4. **Continue the remaining accepted maintenance after R13 core.**
-   Deliver [#400](https://github.com/sergeyfarin/rekenraam/issues/400) first:
-   characterize and share genuinely compatible browser review lifecycles.
-   Then deliver [#395](https://github.com/sergeyfarin/rekenraam/issues/395)'s
+   [#400](https://github.com/sergeyfarin/rekenraam/issues/400) is delivered
+   (2026-10-24, owner-requested ahead of this slot): `previewReview` and
+   `commitReview` own the compatible browser review lifecycles, including
+   #395's dividend-correction and payment-in-lieu sites.
+   Deliver [#395](https://github.com/sergeyfarin/rekenraam/issues/395)'s
    separate financial-field correction feature using the existing forms and
    extracted controller where applicable. #395 extends existing controllers;
    it does not add four controllers. This is scheduling, not a technical

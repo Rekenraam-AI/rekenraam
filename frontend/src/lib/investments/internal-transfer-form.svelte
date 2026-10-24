@@ -15,15 +15,11 @@
   import { invalidateInvestmentReads } from './invalidate';
   import { parseInternalTransferAllocations, parsePooledTransferQuantity } from './internal-transfer-amounts';
   import {
-    gainAcknowledgement,
     gainImpactCurrency,
     gainImpactRows,
-    hasGainChanges,
-    impactNeedsReview,
-    isStaleImpactRefusal,
-    checkpointOverride,
-    type ReviewedCheckpoints
+    hasGainChanges
   } from './gain-impact';
+  import { previewReview, type ReviewGuards } from './preview-review';
   import ReconciliationConfirm from './reconciliation-confirm.svelte';
   import { TranslatedFormError } from '#lib/form-errors.ts';
   import { coefficientSign } from '#lib/money/amount.ts';
@@ -192,66 +188,33 @@
     }
   }
 
-  async function record(reviewed: ReviewedCheckpoints) {
-    if (!preview) return;
-    const acknowledgement = gainAcknowledgement(preview.gainImpact);
+  async function record(current: NonNullable<typeof preview>, confirmations: ReviewGuards) {
     await recordInternalTransfer({
-      ...preview.payload,
-      ...checkpointOverride(reviewed),
-      ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
+      ...current.payload,
+      ...confirmations
     }, csrfToken);
     await invalidateInvestmentReads(queryClient);
     onSaved();
   }
 
-  // The server recomputes everything at commit. A changed gain set re-opens
-  // the review with the current figures instead of a dead-end error.
-  async function commit(reviewed: ReviewedCheckpoints) {
-    if (!preview) return;
-    pending = true;
-    formError = undefined;
-    try {
-      await record(reviewed);
-    } catch (error) {
-      if (isStaleImpactRefusal(error) && preview) {
-        try {
-          await runPreview(preview.payload);
-          if (preview && impactNeedsReview({ affected_checkpoints: preview.impacts, gain_impact: preview.gainImpact })) {
-            reviewModal = { gainRefreshed: !!preview.gainImpact };
-          }
-        } catch (previewError) {
-          preview = null;
-          formError = previewError;
-        }
-      } else {
-        formError = error;
-      }
-    } finally {
-      pending = false;
-    }
-  }
-
-  function handleRecord() {
-    if (!preview) return;
-    if (impactNeedsReview({ affected_checkpoints: preview.impacts, gain_impact: preview.gainImpact })) {
-      reviewModal = { gainRefreshed: false };
-      return;
-    }
-    void commit([]);
-  }
-
-  function confirmReview() {
-    if (!preview) return;
-    const reviewed = preview.impacts;
-    reviewModal = null;
-    void commit(reviewed);
-  }
+  // The server recomputes everything at commit. A changed gain or checkpoint
+  // set re-opens the review with the current figures instead of a dead-end
+  // error, and the write is never retried on its own (#400).
+  const review = previewReview<InternalTransferRequest, NonNullable<typeof preview>>({
+    get preview() { return preview; },
+    refresh: runPreview,
+    write: record,
+    discardPreview: () => { preview = null; },
+    setPending: (value) => { pending = value; },
+    setError: (error) => { formError = error; },
+    setModal: (modal) => { reviewModal = modal; }
+  });
 </script>
 
 {#if reviewModal && preview}
   <ReconciliationConfirm impacts={preview.impacts} gainRows={modalGainRows}
     gainRefreshed={reviewModal.gainRefreshed} {pending}
-    onCancel={() => (reviewModal = null)} onConfirm={confirmReview} />
+    onCancel={review.cancel} onConfirm={review.confirm} />
 {/if}
 
 <form onsubmit={handlePreview} class="space-y-4" aria-busy={pending}>
@@ -392,7 +355,7 @@
       {m.investments_form_cancel()}
     </button>
     {#if preview}
-      <button type="button" onclick={handleRecord} disabled={pending || !csrfToken}
+      <button type="button" onclick={review.record} disabled={pending || !csrfToken}
         class="rounded-(--radius-control) bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
         {pending ? m.investments_transfer_pending() : m.investments_transfer_submit()}
       </button>

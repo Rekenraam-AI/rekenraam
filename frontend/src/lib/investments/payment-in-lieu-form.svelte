@@ -3,7 +3,8 @@
   import { untrack } from 'svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { parseISO } from 'date-fns';
-  import { checkpointOverride, isStaleImpactRefusal, type ReviewedCheckpoints } from '#lib/investments/gain-impact.ts';
+  import { commitReview, type CommitReviewState } from '#lib/investments/commit-review.ts';
+  import type { ReviewGuards } from '#lib/investments/preview-review.ts';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
@@ -18,8 +19,7 @@
     recordPaymentInLieu,
     replacePaymentInLieu,
     type InvestmentCorrectionPaymentInLieuTerms,
-    type PaymentInLieuRequest,
-    type ReconciliationImpactResponse
+    type PaymentInLieuRequest
   } from '#lib/api/investments.ts';
   import { formatEditableAmount } from '#lib/money/amount.ts';
   import { parseDividendAmounts, type AmountFieldError } from '#lib/investments/form-amounts.ts';
@@ -69,7 +69,7 @@
   let reason = $state('');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
-  let review = $state.raw<{ impacts: ReconciliationImpactResponse['affected_checkpoints']; payload: PaymentInLieuRequest } | null>(null);
+  let review = $state.raw<CommitReviewState<PaymentInLieuRequest> | null>(null);
 
 
   const accounts = $derived(accountsQuery.data?.accounts ?? []);
@@ -132,8 +132,8 @@
     pending = true;
     formError = undefined;
     try {
-      if (await reviewImpact(payload)) return;
-      await commit(payload, []);
+      if (await impactReview.open(payload, false)) return;
+      await commit(payload, {});
     } catch (error) {
       formError = error;
     } finally {
@@ -141,53 +141,37 @@
     }
   }
 
-  // Show the checkpoints the write would invalidate, if any, for an override.
-  async function reviewImpact(payload: PaymentInLieuRequest): Promise<boolean> {
-    const impact = initial
-      ? await previewPaymentInLieuReplacementReconciliation(initial.transactionID, { reason: reason.trim(), replacement: payload })
-      : await paymentInLieuReconciliationImpact(payload);
-    if (impact.affected_checkpoints.length === 0) return false;
-    review = { impacts: impact.affected_checkpoints, payload };
-    return true;
-  }
-
-  async function commit(payload: PaymentInLieuRequest, reviewed: ReviewedCheckpoints) {
+  async function commit(payload: PaymentInLieuRequest, guards: ReviewGuards) {
     if (initial) {
       await replacePaymentInLieu(initial.transactionID,
-        { reason: reason.trim(), replacement: payload, ...checkpointOverride(reviewed) }, csrfToken);
+        { reason: reason.trim(), replacement: payload, ...guards }, csrfToken);
     } else {
-      await recordPaymentInLieu({ ...payload, ...checkpointOverride(reviewed) }, csrfToken);
+      await recordPaymentInLieu({ ...payload, ...guards }, csrfToken);
     }
     await invalidateInvestmentReads(queryClient);
     onSaved();
   }
 
-  async function confirmOverride() {
-    if (!review) return;
-    const { payload, impacts } = review;
-    review = null;
-    pending = true;
-    formError = undefined;
-    try {
-      await commit(payload, impacts);
-    } catch (error) {
-      // A statement finished since the review: show the current set (#304).
-      try {
-        if (!isStaleImpactRefusal(error) || !(await reviewImpact(payload))) formError = error;
-      } catch (previewError) {
-        formError = previewError;
-      }
-    } finally {
-      pending = false;
-    }
-  }
+  // Show the checkpoints the write would invalidate, if any, for an override.
+  // Checkpoint-only: this flow never acquires a gain requirement (#400).
+  const impactReview = commitReview({
+    protocol: 'checkpoints',
+    get review() { return review; },
+    impact: (payload: PaymentInLieuRequest) => initial
+      ? previewPaymentInLieuReplacementReconciliation(initial.transactionID, { reason: reason.trim(), replacement: payload })
+      : paymentInLieuReconciliationImpact(payload),
+    write: commit,
+    setReview: (value) => { review = value; },
+    setPending: (value) => { pending = value; },
+    setError: (error) => { formError = error; }
+  });
 
   const inputClass = 'min-h-11 w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground';
 </script>
 
 {#if review}
   <ReconciliationConfirm impacts={review.impacts} gainRows={[]} gainRefreshed={false} {pending}
-    onCancel={() => (review = null)} onConfirm={confirmOverride} />
+    onCancel={impactReview.cancel} onConfirm={impactReview.confirm} />
 {/if}
 
 <form onsubmit={handleSubmit} aria-busy={pending} class="space-y-4" aria-describedby="pil-copy">

@@ -15,15 +15,11 @@
   import { parseMoneyMagnitude, parseMagnitude } from './form-amounts';
   import { evidenceText, newSourceEvidence, sourceEvidenceEdits } from './source-evidence';
   import {
-    gainAcknowledgement,
     gainImpactCurrency,
     gainImpactRows,
-    hasGainChanges,
-    impactNeedsReview,
-    isStaleImpactRefusal,
-    checkpointOverride,
-    type ReviewedCheckpoints
+    hasGainChanges
   } from './gain-impact';
+  import { previewReview, type ReviewGuards } from './preview-review';
   import ReconciliationConfirm from './reconciliation-confirm.svelte';
   import { TranslatedFormError } from '#lib/form-errors.ts';
   import { coefficientSign, formatEditableAmount } from '#lib/money/amount.ts';
@@ -218,64 +214,32 @@
     }
   }
 
-  async function commit(reviewed: ReviewedCheckpoints) {
-    if (!preview) return;
-    pending = true;
-    formError = undefined;
-    try {
-      const acknowledgement = gainAcknowledgement(preview.gainImpact);
-      const payload = {
-        ...preview.payload,
-        ...checkpointOverride(reviewed),
-        ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
-      };
-      if (correction) {
-        await replaceCapitalReturn(correction.transactionID, { ...replacementRequest(preview.payload),
-          ...checkpointOverride(reviewed),
-          ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {}) }, csrfToken);
-      } else { await recordCapitalReturn(payload, csrfToken); }
-      await invalidateInvestmentReads(queryClient);
-      onSaved();
-    } catch (error) {
-      if (isStaleImpactRefusal(error) && preview) {
-        try {
-          await runPreview(preview.payload);
-          if (preview && impactNeedsReview({ affected_checkpoints: preview.impacts, gain_impact: preview.gainImpact })) {
-            reviewModal = { gainRefreshed: !!preview.gainImpact };
-          }
-        } catch (previewError) {
-          preview = null;
-          formError = previewError;
-        }
-      } else {
-        formError = error;
-      }
-    } finally {
-      pending = false;
-    }
+  async function record(current: NonNullable<typeof preview>, confirmations: ReviewGuards) {
+    if (correction) {
+      await replaceCapitalReturn(correction.transactionID, { ...replacementRequest(current.payload), ...confirmations }, csrfToken);
+    } else { await recordCapitalReturn({ ...current.payload, ...confirmations }, csrfToken); }
+    await invalidateInvestmentReads(queryClient);
+    onSaved();
   }
 
-  function handleRecord() {
-    if (!preview) return;
-    if (impactNeedsReview({ affected_checkpoints: preview.impacts, gain_impact: preview.gainImpact })) {
-      reviewModal = { gainRefreshed: false };
-      return;
-    }
-    void commit([]);
-  }
-
-  function confirmReview() {
-    if (!preview) return;
-    const reviewed = preview.impacts;
-    reviewModal = null;
-    void commit(reviewed);
-  }
+  // The server recomputes everything at commit. A changed gain or checkpoint
+  // set re-opens the review with the current figures instead of a dead-end
+  // error, and the write is never retried on its own (#400).
+  const review = previewReview<CapitalReturnPayload, NonNullable<typeof preview>>({
+    get preview() { return preview; },
+    refresh: runPreview,
+    write: record,
+    discardPreview: () => { preview = null; },
+    setPending: (value) => { pending = value; },
+    setError: (error) => { formError = error; },
+    setModal: (modal) => { reviewModal = modal; }
+  });
 </script>
 
 {#if reviewModal && preview}
   <ReconciliationConfirm impacts={preview.impacts} gainRows={modalGainRows}
     gainRefreshed={reviewModal.gainRefreshed} {pending}
-    onCancel={() => (reviewModal = null)} onConfirm={confirmReview} />
+    onCancel={review.cancel} onConfirm={review.confirm} />
 {/if}
 
 <form onsubmit={handlePreview} class="space-y-4" aria-busy={pending}>
@@ -404,7 +368,7 @@
       {m.investments_form_cancel()}
     </button>
     {#if preview}
-      <button type="button" onclick={handleRecord} disabled={pending || !csrfToken}
+      <button type="button" onclick={review.record} disabled={pending || !csrfToken}
         class="rounded-(--radius-control) bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
         {pending ? m.investments_transfer_pending() : (correction ? m.investments_capital_return_correct_submit() : m.investments_capital_return_submit())}
       </button>

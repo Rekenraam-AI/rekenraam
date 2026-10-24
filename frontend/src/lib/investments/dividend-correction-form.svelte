@@ -12,26 +12,17 @@
   import { formatEditableAmount } from '#lib/money/amount.ts';
   import { parseDividendAmounts, type AmountFieldError } from '#lib/investments/form-amounts.ts';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
-  import {
-    gainAcknowledgement,
-    gainImpactCurrency,
-    gainImpactRows,
-    hasGainChanges,
-    impactNeedsReview,
-    isStaleImpactRefusal,
-    checkpointOverride,
-    type ReviewedCheckpoints
-  } from '#lib/investments/gain-impact.ts';
+  import { gainImpactCurrency, gainImpactRows } from '#lib/investments/gain-impact.ts';
+  import { commitReview, type CommitReviewState } from '#lib/investments/commit-review.ts';
+  import type { ReviewGuards } from '#lib/investments/preview-review.ts';
   import {
     previewDividendReplacementReconciliation,
     previewReinvestmentReplacementReconciliation,
     replaceDividend,
     replaceReinvestedDividend,
     type DividendRequest,
-    type GainImpact,
     type InvestmentCorrectionDividendTerms,
     type InvestmentCorrectionReinvestmentTerms,
-    type ReconciliationImpactResponse,
     type ReinvestedDividendRequest
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
@@ -88,12 +79,7 @@
   type Pending =
     | { kind: 'cash'; payload: DividendRequest }
     | { kind: 'reinvested'; payload: ReinvestedDividendRequest };
-  let review = $state<{
-    impacts: ReconciliationImpactResponse['affected_checkpoints'];
-    gainImpact: GainImpact | null;
-    gainRefreshed: boolean;
-    pending: Pending;
-  } | null>(null);
+  let review = $state<CommitReviewState<Pending> | null>(null);
 
   const accounts = $derived(accountsQuery.data?.accounts ?? []);
   const accountName = (id: number) => accounts.find((account: AccountResponse) => account.id === id)?.name ?? `#${id}`;
@@ -163,29 +149,19 @@
     pending = true;
     formError = undefined;
     try {
-      if (!(await reviewImpact(target, false))) await commit(target, [], '');
+      if (!(await impactReview.open(target, false))) await commit(target, {});
     } catch (error) {
-      await recover(error, target);
+      await impactReview.recover(error, target);
     } finally {
       pending = false;
     }
   }
 
-  // Preview through the actual replacement writer; checkpoints or changed
-  // gains go to the confirmation instead of committing.
-  async function reviewImpact(target: Pending, refreshed: boolean): Promise<boolean> {
-    const body = { reason: reason.trim() };
-    const impact = target.kind === 'reinvested'
-      ? await previewReinvestmentReplacementReconciliation(transactionID, { ...body, replacement: target.payload })
-      : await previewDividendReplacementReconciliation(transactionID, { ...body, replacement: target.payload });
-    if (!impactNeedsReview(impact)) return false;
-    const gainImpact = hasGainChanges(impact.gain_impact) ? impact.gain_impact : null;
-    review = { impacts: impact.affected_checkpoints, gainImpact, gainRefreshed: refreshed && !!gainImpact, pending: target };
-    return true;
-  }
-
-  async function commit(target: Pending, reviewed: ReviewedCheckpoints, acknowledgement: string) {
-    const body = { reason: reason.trim(), ...checkpointOverride(reviewed) };
+  // Only a reinvestment can change committed gains; a cash replacement sends
+  // the reviewed checkpoints alone.
+  async function commit(target: Pending, guards: ReviewGuards) {
+    const { gain_impact_acknowledgement: acknowledgement, ...checkpoints } = guards;
+    const body = { reason: reason.trim(), ...checkpoints };
     if (target.kind === 'reinvested') {
       await replaceReinvestedDividend(transactionID, { ...body, replacement: target.payload,
         ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {}) }, csrfToken);
@@ -197,33 +173,22 @@
   }
 
   // The gain set changed since review: show the current set, not a dead end.
-  async function recover(error: unknown, target: Pending) {
-    try {
-      if (!isStaleImpactRefusal(error) || !(await reviewImpact(target, true))) formError = error;
-    } catch (previewError) {
-      formError = previewError;
-    }
-  }
-
-  async function confirmReview() {
-    if (!review) return;
-    const { pending: target, impacts, gainImpact } = review;
-    review = null;
-    pending = true;
-    formError = undefined;
-    try {
-      await commit(target, impacts, gainAcknowledgement(gainImpact));
-    } catch (error) {
-      await recover(error, target);
-    } finally {
-      pending = false;
-    }
-  }
+  const impactReview = commitReview({
+    protocol: 'gains',
+    get review() { return review; },
+    impact: (target: Pending) => target.kind === 'reinvested'
+      ? previewReinvestmentReplacementReconciliation(transactionID, { reason: reason.trim(), replacement: target.payload })
+      : previewDividendReplacementReconciliation(transactionID, { reason: reason.trim(), replacement: target.payload }),
+    write: commit,
+    setReview: (value) => { review = value; },
+    setPending: (value) => { pending = value; },
+    setError: (error) => { formError = error; }
+  });
 </script>
 
 {#if review}
   <ReconciliationConfirm impacts={review.impacts} gainRows={gainRows} gainRefreshed={review.gainRefreshed}
-    {pending} onCancel={() => (review = null)} onConfirm={confirmReview} />
+    {pending} onCancel={impactReview.cancel} onConfirm={impactReview.confirm} />
 {/if}
 
 <form onsubmit={handleSubmit} aria-busy={pending} class="space-y-4">

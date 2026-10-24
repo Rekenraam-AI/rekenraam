@@ -29,23 +29,14 @@
     type InvestmentTradeCorrectionContextResponse,
     type InvestmentInstrumentResponse,
     type InvestmentTradeRequest,
-    type ReconciliationImpactResponse,
     type SellPreviewResponse,
-    type CostBasisMethod,
-    type GainImpact
+    type CostBasisMethod
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
-  import {
-    gainAcknowledgement,
-    gainImpactCurrency,
-    gainImpactRows,
-    hasGainChanges,
-    impactNeedsReview,
-    isStaleImpactRefusal,
-    checkpointOverride,
-    type ReviewedCheckpoints
-  } from '#lib/investments/gain-impact.ts';
+  import { gainImpactCurrency, gainImpactRows } from '#lib/investments/gain-impact.ts';
+  import { commitReview, type CommitReviewState } from '#lib/investments/commit-review.ts';
+  import type { ReviewGuards } from '#lib/investments/preview-review.ts';
   import { formatScaledValue, costBasisMethodLabel } from '#lib/investments/investment-labels.ts';
   import { coefficientSign, negateCoefficient } from '#lib/money/amount.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
@@ -138,12 +129,7 @@
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
 
-  let reconciliationModal = $state<{
-    impacts: ReconciliationImpactResponse['affected_checkpoints'];
-    gainImpact: GainImpact | null;
-    gainRefreshed: boolean;
-    payload: InvestmentTradeRequest;
-  } | null>(null);
+  let reconciliationModal = $state<CommitReviewState<InvestmentTradeRequest> | null>(null);
 
   let preview = $state.raw<SellPreviewResponse | null>(null);
   let previewPending = $state(false);
@@ -270,10 +256,10 @@
     pending = true;
     formError = undefined;
     try {
-      if (await reviewImpact(built.payload, false)) return;
-      await submit(built.payload, [], '');
+      if (await impactReview.open(built.payload, false)) return;
+      await submit(built.payload, {});
     } catch (err) {
-      await recoverFromRefusal(err, built.payload);
+      await impactReview.recover(err, built.payload);
     } finally {
       pending = false;
     }
@@ -284,47 +270,22 @@
       charges: payload.charges?.map((charge) => ({ ...charge, treatment: charge.treatment! })) } };
   }
 
-  async function reviewImpact(payload: InvestmentTradeRequest, refreshed: boolean): Promise<boolean> {
-    const impact = correction
+  const impactReview = commitReview({
+    protocol: 'gains',
+    get review() { return reconciliationModal; },
+    impact: (payload: InvestmentTradeRequest) => correction
       ? cover
-        ? await previewShortCoverReplacement(correction.transaction_id, { ...replacementRequest(payload),
+        ? previewShortCoverReplacement(correction.transaction_id, { ...replacementRequest(payload),
           replacement: { ...replacementRequest(payload).replacement, cost_basis_method: costBasisMethod } })
-        : await previewShortSaleReplacement(correction.transaction_id, replacementRequest(payload))
-      : cover ? await shortCoverReconciliationImpact(payload) : await shortSaleReconciliationImpact(payload);
-    if (!impactNeedsReview(impact)) return false;
-    const gainImpact = hasGainChanges(impact.gain_impact) ? impact.gain_impact : null;
-    reconciliationModal = { impacts: impact.affected_checkpoints, gainImpact, gainRefreshed: refreshed && !!gainImpact, payload };
-    return true;
-  }
+        : previewShortSaleReplacement(correction.transaction_id, replacementRequest(payload))
+      : cover ? shortCoverReconciliationImpact(payload) : shortSaleReconciliationImpact(payload),
+    write: submit,
+    setReview: (value) => { reconciliationModal = value; },
+    setPending: (value) => { pending = value; },
+    setError: (error) => { formError = error; }
+  });
 
-  async function recoverFromRefusal(err: unknown, payload: InvestmentTradeRequest) {
-    try {
-      if (!isStaleImpactRefusal(err) || !(await reviewImpact(payload, true))) formError = err;
-    } catch (previewErr) {
-      formError = previewErr;
-    }
-  }
-
-  async function confirmOverride() {
-    if (!reconciliationModal) return;
-    const { payload, impacts, gainImpact } = reconciliationModal;
-    reconciliationModal = null;
-    pending = true;
-    formError = undefined;
-    try {
-      await submit(payload, impacts, gainAcknowledgement(gainImpact));
-    } catch (err) {
-      await recoverFromRefusal(err, payload);
-    } finally {
-      pending = false;
-    }
-  }
-
-  async function submit(payload: InvestmentTradeRequest, reviewed: ReviewedCheckpoints, acknowledgement: string) {
-    const flags = {
-      ...checkpointOverride(reviewed),
-      ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
-    };
+  async function submit(payload: InvestmentTradeRequest, flags: ReviewGuards) {
     const body = { ...payload, ...flags };
     if (correction) {
       const request = { ...replacementRequest(payload), ...flags };
@@ -352,8 +313,8 @@
     gainRows={modalGainRows}
     gainRefreshed={reconciliationModal.gainRefreshed}
     {pending}
-    onCancel={() => (reconciliationModal = null)}
-    onConfirm={confirmOverride}
+    onCancel={impactReview.cancel}
+    onConfirm={impactReview.confirm}
   />
 {/if}
 

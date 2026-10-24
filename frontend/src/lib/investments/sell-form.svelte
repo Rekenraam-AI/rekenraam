@@ -24,23 +24,15 @@
     replaceManualSale,
     type InvestmentInstrumentResponse,
     type InvestmentTradeRequest,
-    type ReconciliationImpactResponse,
     type SellPreviewResponse,
     type CostBasisMethod,
     type InvestmentTradeCorrectionContextResponse
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
-  import {
-    gainAcknowledgement,
-    gainImpactCurrency,
-    gainImpactRows,
-    hasGainChanges,
-    impactNeedsReview,
-    isStaleImpactRefusal,
-    checkpointOverride,
-    type ReviewedCheckpoints
-  } from '#lib/investments/gain-impact.ts';
+  import { gainImpactCurrency, gainImpactRows } from '#lib/investments/gain-impact.ts';
+  import { commitReview, type CommitReviewState } from '#lib/investments/commit-review.ts';
+  import type { ReviewGuards } from '#lib/investments/preview-review.ts';
   import type { GainImpact } from '#lib/api/investments.ts';
   import { formatScaledValue, costBasisMethodLabel } from '#lib/investments/investment-labels.ts';
   import { coefficientSign } from '#lib/money/amount.ts';
@@ -133,13 +125,8 @@
   // than being refused with no way forward (T-53).
   // A sale correction can also change the gain of the corrected sale and of
   // later sales that replay behind it (T-126); one confirmation covers both.
-  let reconciliationModal = $state<{
-    impacts: ReconciliationImpactResponse['affected_checkpoints'];
-    gainImpact: GainImpact | null;
-    gainRefreshed: boolean;
-    payload: InvestmentTradeRequest;
-    reason: string;
-  } | null>(null);
+  type TradeSubject = { payload: InvestmentTradeRequest; reason: string };
+  let reconciliationModal = $state<CommitReviewState<TradeSubject> | null>(null);
 
   // Sell preview state
   let preview = $state.raw<SellPreviewResponse | null>(null);
@@ -350,73 +337,46 @@
     pending = true;
     formError = undefined;
 
-    const correctionReason = reason.trim();
+    const subject = { payload, reason: reason.trim() };
     try {
-      if (await reviewImpact(payload, correctionReason, false)) return;
-      await submitSell(payload, [], correctionReason, '');
+      if (await impactReview.open(subject, false)) return;
+      await submitSell(subject, {});
     } catch (err) {
-      await recoverFromRefusal(err, payload, correctionReason);
+      await impactReview.recover(err, subject);
     } finally {
       pending = false;
     }
   }
 
-  // Hand any checkpoint or gain consequence to the user rather than deciding.
-  async function reviewImpact(payload: InvestmentTradeRequest, correctionReason: string, refreshed: boolean): Promise<boolean> {
-    const impact = correction
-      ? await previewSaleReplacementReconciliation(correction.transaction_id, {
+  // Hand any checkpoint or gain consequence to the user rather than deciding;
+  // a stale or missing gain acknowledgement re-previews the current set.
+  const impactReview = commitReview({
+    protocol: 'gains',
+    get review() { return reconciliationModal; },
+    impact: ({ payload, reason: correctionReason }: TradeSubject) => correction
+      ? previewSaleReplacementReconciliation(correction.transaction_id, {
         reason: correctionReason,
         replacement: { ...payload, cost_basis_method: payload.cost_basis_method!,
           charges: payload.charges?.map((charge) => ({ ...charge, treatment: charge.treatment! })) }
       })
-      : await sellReconciliationImpact(payload);
-    if (!impactNeedsReview(impact)) return false;
-    const gainImpact = hasGainChanges(impact.gain_impact) ? impact.gain_impact : null;
-    reconciliationModal = { impacts: impact.affected_checkpoints, gainImpact,
-      gainRefreshed: refreshed && !!gainImpact, payload, reason: correctionReason };
-    return true;
-  }
+      : sellReconciliationImpact(payload),
+    write: submitSell,
+    setReview: (value) => { reconciliationModal = value; },
+    setPending: (value) => { pending = value; },
+    setError: (error) => { formError = error; }
+  });
 
-  // A stale or missing gain acknowledgement re-previews the current set.
-  async function recoverFromRefusal(err: unknown, payload: InvestmentTradeRequest, correctionReason: string) {
-    try {
-      if (!isStaleImpactRefusal(err) || !(await reviewImpact(payload, correctionReason, true))) formError = err;
-    } catch (previewErr) {
-      formError = previewErr;
-    }
-  }
-
-  async function confirmOverride() {
-    if (!reconciliationModal) return;
-    const { payload, reason: correctionReason, impacts, gainImpact } = reconciliationModal;
-    reconciliationModal = null;
-    pending = true;
-    formError = undefined;
-
-    try {
-      await submitSell(payload, impacts, correctionReason, gainAcknowledgement(gainImpact));
-    } catch (err) {
-      await recoverFromRefusal(err, payload, correctionReason);
-    } finally {
-      pending = false;
-    }
-  }
-
-  async function submitSell(payload: InvestmentTradeRequest, reviewed: ReviewedCheckpoints, correctionReason: string, acknowledgement: string) {
+  async function submitSell({ payload, reason: correctionReason }: TradeSubject, guards: ReviewGuards) {
     if (correction) {
       await replaceManualSale(correction.transaction_id, {
-        reason: correctionReason, ...checkpointOverride(reviewed),
+        reason: correctionReason,
         replacement: { ...payload, cost_basis_method: payload.cost_basis_method!,
           charges: payload.charges?.map((charge) => ({ ...charge, treatment: charge.treatment! })) },
-        ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
+        ...guards
       }, csrfToken);
     } else {
       // A sale dated behind a later one replays it (T-117); echo the accepted gains.
-      await recordSell({
-        ...payload,
-        ...checkpointOverride(reviewed),
-        ...(acknowledgement ? { gain_impact_acknowledgement: acknowledgement } : {})
-      }, csrfToken);
+      await recordSell({ ...payload, ...guards }, csrfToken);
     }
 
     await invalidateInvestmentReads(queryClient);
@@ -466,8 +426,8 @@
     gainRows={modalGainRows}
     gainRefreshed={reconciliationModal.gainRefreshed}
     {pending}
-    onCancel={() => (reconciliationModal = null)}
-    onConfirm={confirmOverride}
+    onCancel={impactReview.cancel}
+    onConfirm={impactReview.confirm}
   />
 {/if}
 

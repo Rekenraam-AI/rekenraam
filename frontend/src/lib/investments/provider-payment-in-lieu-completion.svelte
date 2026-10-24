@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { checkpointOverride, isStaleImpactRefusal } from '#lib/investments/gain-impact.ts';
+  import { commitReview, type CommitReviewState } from '#lib/investments/commit-review.ts';
   import { createQuery } from '@tanstack/svelte-query';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
@@ -13,8 +13,7 @@
   import {
     acceptEventSuggestion,
     paymentInLieuReconciliationImpact,
-    type EventSuggestionCompletion,
-    type ReconciliationImpactResponse
+    type EventSuggestionCompletion
   } from '#lib/api/investments.ts';
   import { grossPrefill, type PaymentInLieuProposal, type ProviderDividendEvidence } from './provider-dividend.ts';
 
@@ -53,7 +52,7 @@
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
   let prefilled = $state(false);
-  let reconciliation = $state.raw<{ impacts: ReconciliationImpactResponse['affected_checkpoints']; completion: EventSuggestionCompletion } | null>(null);
+  let reconciliation = $state.raw<CommitReviewState<EventSuggestionCompletion> | null>(null);
 
   const accounts = $derived(accountsQuery.data?.accounts ?? []);
   const accountName = (id: number) => accounts.find((account: AccountResponse) => account.id === id)?.name ?? `#${id}`;
@@ -125,7 +124,7 @@
     pending = true;
     formError = undefined;
     try {
-      if (await reviewImpact(completion)) return;
+      if (await impactReview.open(completion, false)) return;
       await post(completion);
     } catch (err) {
       formError = err;
@@ -134,40 +133,22 @@
     }
   }
 
-  async function reviewImpact(completion: EventSuggestionCompletion): Promise<boolean> {
-    const impact = await paymentInLieuReconciliationImpact({
+  // Checkpoint-only: this flow never acquires a gain requirement (#400).
+  const impactReview = commitReview({
+    protocol: 'checkpoints',
+    get review() { return reconciliation; },
+    impact: (completion: EventSuggestionCompletion) => paymentInLieuReconciliationImpact({
       holding_account_id: Number(holdingAccountID), commodity_id: initial.commodityID, ex_date: initial.exDate,
       transaction_date: paymentDate, cash_account_id: completion.cash_account_id, cash_commodity_id: completion.cash_commodity_id,
       expense_account_id: Number(expenseAccountID), amount_value: completion.amount_value, amount_scale: completion.amount_scale,
       recovery_value: completion.recovery_value, recovery_scale: completion.recovery_scale,
       recovery_account_id: completion.recovery_account_id, memo: completion.memo
-    });
-    if (impact.affected_checkpoints.length > 0) {
-      reconciliation = { impacts: impact.affected_checkpoints, completion };
-      return true;
-    }
-    return false;
-  }
-
-  async function confirmOverride() {
-    if (!reconciliation) return;
-    const { completion, impacts } = reconciliation;
-    reconciliation = null;
-    pending = true;
-    formError = undefined;
-    try {
-      await post({ ...completion, ...checkpointOverride(impacts) });
-    } catch (err) {
-      // A statement finished since the review: show the current set (#304).
-      try {
-        if (!isStaleImpactRefusal(err) || !(await reviewImpact(completion))) formError = err;
-      } catch (previewErr) {
-        formError = previewErr;
-      }
-    } finally {
-      pending = false;
-    }
-  }
+    }),
+    write: (completion, guards) => post({ ...completion, ...guards }),
+    setReview: (value) => { reconciliation = value; },
+    setPending: (value) => { pending = value; },
+    setError: (error) => { formError = error; }
+  });
 
   const fieldClass = 'min-h-11 w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground';
   const idPrefix = $derived(`suggestion-${suggestionID}`);
@@ -175,7 +156,7 @@
 
 {#if reconciliation}
   <ReconciliationConfirm impacts={reconciliation.impacts} gainRows={[]} gainRefreshed={false} {pending}
-    onCancel={() => (reconciliation = null)} onConfirm={confirmOverride} />
+    onCancel={impactReview.cancel} onConfirm={impactReview.confirm} />
 {/if}
 
 <form onsubmit={handleSubmit} aria-busy={pending} class="mt-3 space-y-3 rounded-(--radius-panel) border border-border p-3" aria-labelledby="{idPrefix}-complete-title">
