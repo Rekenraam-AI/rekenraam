@@ -22,7 +22,9 @@ next feature initiative; its calculation contract is not yet implementation-read
 The cross-app engineering audit is delivered; owner/release follow-ups remain
 explicit below. **#402 is delivered with the owner's disposition: ADR 0016
 thresholds amended, and #404 (statement compilation cost) follows.
-#403, found on the way, is fixed; #284's owner review is complete.** Earlier milestone detail lives in the
+#403, found on the way, is fixed; #284's owner review is complete. #399
+(app-owned native realized totals) was delivered early at the owner's request
+on 2026-10-24, so R13 can consume it either way.** Earlier milestone detail lives in the
 [completed roadmap record](reviews/completed-roadmap-2026-09-27.md)
 and the [capability ledger](implemented.md).
 
@@ -171,10 +173,10 @@ below is execution order, not a chain of hard dependencies.
    external-flow classification, return equations, numerical failure states,
    coverage, reproducibility and independent expected cases before implementation.
    #284's owner-reviewed investment/reporting dispositions are now complete.
-   If the accepted contract consumes native realized totals, deliver
-   [#399](https://github.com/sergeyfarin/rekenraam/issues/399) before that R13
-   implementation slice so it reuses app-owned totals. Otherwise #399 stays
-   accepted in the later slot below. R13 tests must own their fixtures and
+   If the accepted contract consumes native realized totals, it reuses
+   `app.NativeRealizedTotals`, delivered by
+   [#399](https://github.com/sergeyfarin/rekenraam/issues/399) on 2026-10-24
+   at the owner's request; it must not copy HTTP totals policy. R13 tests must own their fixtures and
    expected figures; completion of existing browser repairs is not a gate.
    No other accepted cleanup, provider evidence, #390 or #395 is a blanket
    R13 prerequisite. A new dependency must name its concrete conflict and
@@ -188,9 +190,9 @@ below is execution order, not a chain of hard dependencies.
    it does not add four controllers. This is scheduling, not a technical
    blocker inferred from four product families.
    Next deliver independent corporate-action preparation
-   [#401](https://github.com/sergeyfarin/rekenraam/issues/401), then
-   [#399](https://github.com/sergeyfarin/rekenraam/issues/399) if R13 did not
-   consume it. Each accepted refactor remains a separate bounded slice.
+   [#401](https://github.com/sergeyfarin/rekenraam/issues/401).
+   [#399](https://github.com/sergeyfarin/rekenraam/issues/399) is already
+   delivered (2026-10-24, owner-requested ahead of this slot). Each accepted refactor remains a separate bounded slice.
    Original candidates 7–13 are **explicitly deferred without issues** in the
    [deferred inventory](reviews/maintainability-audit-2026-10-24.md#explicitly-deferred-inventory-original-ranks-713).
    Revisit only on the recorded trigger and refreshed evidence; open a bounded

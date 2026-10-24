@@ -32,7 +32,13 @@ That is a bounded candidate for application ownership, not a requirement to
 replace the existing valuation owner or merge FX/statement semantics. Any move
 must preserve mixed-scale totals, unavailable/null disclosures, range failures
 and immutable saved output. No incorrect total was reproduced. Owner review
-later accepted this bounded refactor as [#399](https://github.com/sergeyfarin/rekenraam/issues/399).
+later accepted this bounded refactor as [#399](https://github.com/sergeyfarin/rekenraam/issues/399),
+delivered 2026-10-24: `app.NativeRealizedTotals` groups disposals by cost
+currency in first-appearance order with exact sums, disposal and unresolved
+counts. Its `Gain` is the operational figure (full scale, int64 range checked
+before an unresolved total is withheld); the statement restates the same
+grouped sum with its own trailing-zero policy. The API and saved gains runs
+only format the result; FX and statement contracts stay separate.
 
 The [fifth slice](../reviews/maintainability-reachability-2026-10-21.md) separates
 standalone test-root wrappers from production consumers. Current reads resolve
@@ -55,8 +61,9 @@ The [final #284 ranking](../reviews/maintainability-audit-2026-10-24.md#investme
 records a disposition for every investment/reporting hotspot. R13 reuses the
 existing valuation, movement and writer owners. Owner review is complete:
 candidates 1–6 are accepted follow-up issues, and 7–13 are explicitly deferred.
-The only conditional refactor prerequisite is [#399](https://github.com/sergeyfarin/rekenraam/issues/399)
-if R13's accepted contract consumes native realized totals. R13 still needs
+The only conditional refactor prerequisite, [#399](https://github.com/sergeyfarin/rekenraam/issues/399),
+is delivered: if R13's accepted contract consumes native realized totals it
+reads `app.NativeRealizedTotals`. R13 still needs
 its own accepted calculation/input/coverage/reproducibility contract and
 independent expected cases. Its tests must use strict health assertions and
 owned fixtures, but completion of the existing-helper/browser cleanup in

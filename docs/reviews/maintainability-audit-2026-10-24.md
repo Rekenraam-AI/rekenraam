@@ -79,7 +79,7 @@ calculation contract is accepted. Each named hotspot now has one:
 | `db/investments.go:valuePositions`, `DatedPositionsWithGains`, observation selection | **Retain and reuse** | R13 valuation reads build on these owners; no new valuation engine |
 | Side/knowledge-aware projection policy (shortlist candidate 2) | **Reject** the broad consolidation; reuse `valuePositions`, `InternalTransferAllocation` and `EffectiveLotMovements` | Any smaller helper needs identical-input characterization first |
 | Native, FX, statement and saved reporting contracts | **Reject** merging | R13 keeps original-currency figures and labelled coverage separate |
-| `api/investments.go:gainsProjectionResponse` | Accepted candidate 3, [#399](https://github.com/sergeyfarin/rekenraam/issues/399) | Before R13 only if its accepted contract consumes native realized totals |
+| `api/investments.go:gainsProjectionResponse` | Accepted candidate 3, [#399](https://github.com/sergeyfarin/rekenraam/issues/399) — **delivered 2026-10-24** | Totals now come from `app.NativeRealizedTotals`; R13 reuses it if its contract consumes native realized totals |
 | Shared investment writer (`runInvestmentJournalsWithGuardTx`) | **Retain** | R13 adds no investment journal writer; any saved-run storage follows the existing gains-run contract |
 | Corporate-action correction preparation | Accepted candidate 5, [#401](https://github.com/sergeyfarin/rekenraam/issues/401), later | Not an R13 conflict |
 | `app/self_check.go`, `api/investments.go`, `app/investments.go`, `db/investments.go` size | **Reject** splitting by length | No R13 effect |

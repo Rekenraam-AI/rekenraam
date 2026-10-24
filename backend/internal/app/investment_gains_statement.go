@@ -174,14 +174,9 @@ func (s *InvestmentService) GainsStatement(ctx context.Context, from, to string)
 	for _, position := range closing {
 		get(position.CostCommodityID).closing.add(position)
 	}
-	for _, disposal := range realized {
-		row := get(disposal.CostCommodityID)
-		row.disposals++
-		if disposal.BasisKnowledge == "unknown" {
-			row.unresolved++
-			continue
-		}
-		row.realized.AddInt64(disposal.RealizedGainValue, disposal.RealizedGainScale)
+	for _, total := range NativeRealizedTotals(realized) {
+		row := get(total.CostCommodityID)
+		row.realized, row.disposals, row.unresolved = total.Known, total.DisposalCount, total.UnresolvedCount
 	}
 	for _, dividend := range income {
 		row := get(dividend.CommodityID)

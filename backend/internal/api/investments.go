@@ -2706,46 +2706,19 @@ func gainsProjectionResponse(profile app.GainsProfile, realized []app.RealizedGa
 		})
 	}
 
-	// Realized totals are grouped by cost commodity alone and summed
-	// exactly. Grouping by scale as well used to stand in for "can be added
-	// without loss", but a gain now carries whatever scale its own
-	// subtraction needed (T-101), so two gains in the same currency can
-	// legitimately differ in scale — splitting them into separate totals
-	// would report one currency twice and make neither row the total.
-	// exact.ScaledInt deepens as it adds, so one row per currency holds the
-	// sum without rounding.
-	totalsMap := map[int64]*exact.ScaledInt{}
-	unresolved := map[int64]int{}
-	var totalsOrder []int64
-	for _, e := range realized {
-		if totalsMap[e.CostCommodityID] == nil {
-			totalsMap[e.CostCommodityID] = exact.NewScaledInt()
-			totalsOrder = append(totalsOrder, e.CostCommodityID)
-		}
-		if e.BasisKnowledge == "unknown" {
-			unresolved[e.CostCommodityID]++
-			continue
-		}
-		totalsMap[e.CostCommodityID].AddInt64(e.RealizedGainValue, e.RealizedGainScale)
-	}
-	realizedTotals := make([]realizedGainTotalResponse, 0, len(totalsOrder))
-	for _, commodityID := range totalsOrder {
-		total := totalsMap[commodityID]
-		totalValue, err := total.Int64()
+	totals := app.NativeRealizedTotals(realized)
+	realizedTotals := make([]realizedGainTotalResponse, 0, len(totals))
+	for _, total := range totals {
+		gain, err := total.Gain()
 		if err != nil {
 			return investmentGainsResponse{}, err
 		}
-		knowledge := "known"
-		if unresolved[commodityID] > 0 {
-			knowledge = "unknown"
+		response := realizedGainTotalResponse{CostCommodityID: total.CostCommodityID, BasisKnowledge: db.InvestmentBasisUnknown, UnresolvedCount: total.UnresolvedCount}
+		if gain != nil {
+			value := moneyCoefficient(gain.Value)
+			response.TotalGainValue, response.TotalGainScale, response.BasisKnowledge = &value, &gain.Scale, db.InvestmentBasisKnown
 		}
-		realizedTotals = append(realizedTotals, realizedGainTotalResponse{
-			CostCommodityID: commodityID,
-			TotalGainValue:  projectedBasisValue(totalValue, knowledge),
-			TotalGainScale:  projectedBasisScale(total.Scale(), knowledge),
-			BasisKnowledge:  knowledge,
-			UnresolvedCount: unresolved[commodityID],
-		})
+		realizedTotals = append(realizedTotals, response)
 	}
 	return investmentGainsResponse{
 		Profile:        toGainsProfileResponse(profile),
