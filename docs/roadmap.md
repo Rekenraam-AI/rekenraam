@@ -20,9 +20,9 @@ GitHub issue state. The documentation and competitor review is recorded in the
 R16, R11, R17 and R18 have met their bounded delivery bars. **R13 remains the
 next feature initiative; its calculation contract is not yet implementation-ready.**
 The cross-app engineering audit is delivered; owner/release follow-ups remain
-explicit below. **#402's investigation is delivered and awaits the owner's
-disposition on the measured trend (#403, found on the way, is fixed); #284's
-owner review is complete.** Earlier milestone detail lives in the
+explicit below. **#402 is delivered with the owner's disposition (#404, the
+statement-cache evaluation, follows it). #403, found on the way, is fixed;
+#284's owner review is complete.** Earlier milestone detail lives in the
 [completed roadmap record](reviews/completed-roadmap-2026-09-27.md)
 and the [capability ledger](implemented.md).
 
@@ -154,8 +154,9 @@ below is execution order, not a chain of hard dependencies.
    | Order | Issue | Bounded outcome |
    |---:|---|---|
    | 1 — delivered 2026-10-24 | [#397](https://github.com/sergeyfarin/rekenraam/issues/397) | One strict self-check assertion owner (`requireKnownBasisSelfCheckPasses`); the unknown-basis variant and independent oracles are kept. |
-   | 2 — investigated 2026-10-24; owner disposition pending | [#402](https://github.com/sergeyfarin/rekenraam/issues/402) | [Measured](reviews/race-suite-cost-2026-10-24.md): migration replay is 4.5% of application race CPU; growth is schema size (per-connection load, statement compilation) plus new tests. No coverage-preserving test change is justified. The native statement cache measured 8–11% faster and is a production decision. Explicit thresholds replace the 200 s trigger. |
+   | 2 — delivered 2026-10-24 | [#402](https://github.com/sergeyfarin/rekenraam/issues/402) | [Measured](reviews/race-suite-cost-2026-10-24.md): migration replay is 4.5% of application race CPU; growth is schema size (per-connection load, statement compilation) plus new tests. No coverage-preserving test change is justified. The native statement cache measured 8–11% faster; the owner chose to evaluate it in #404. Explicit thresholds replace the 200 s trigger. |
    | 3 | [#398](https://github.com/sergeyfarin/rekenraam/issues/398) | Own browser self-check assertions by dedicated book or transaction; preserve diagnostic and navigation coverage. |
+   | 4 | [#404](https://github.com/sergeyfarin/rekenraam/issues/404) | Evaluate the native statement cache: authorizer-independent test seams, a long-lived-pool correctness review, a measured size and an ADR note. Adopt only with matched evidence; otherwise keep `_stmt_cache_size=0`. |
 
    These are the chosen maintenance slots, not technical blockers for R13.
    R13 specification may proceed in parallel. The separate product-policy

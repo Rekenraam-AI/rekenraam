@@ -182,9 +182,10 @@ It is not adopted here, for three reasons:
 1. It changes the production DSN policy that `TestWithRequiredPragmasPreservesExistingQuery`
    pins. The [driver plan](../plans/native-sqlite-driver-migration-plan.md)
    deliberately leaves it as a separately measured change.
-2. Three test seams depend on per-call preparation: response enrichment counts
-   statement batches, its failure-injection test, and the throttle-rollover
-   credential barrier. They fail with the cache on.
+2. Three test seams depend on per-call preparation. Response enrichment counts statement
+   batches, its failure-injection test injects at compile time, and the
+   throttle-rollover test has a credential barrier. All three use a SQLite
+   authorizer, which fires only at compilation, so they fail with the cache on.
 3. Cached statements across long-lived pools need their own correctness review.
    Schema changes, read-only pools and the integrity check above are cases where
    connection state has already mattered.
@@ -224,20 +225,24 @@ applied to. These replace it:
 At this base, the single-package and full-gate thresholds have both fired; the
 CI one has not.
 
-## Owner disposition required
+## Owner disposition
 
-#402 closes with an owner disposition on the measured trend. The evidence
-allows these choices:
+**Recorded 2026-10-24: evaluate the statement cache in its own issue,
+[#404](https://github.com/sergeyfarin/rekenraam/issues/404).** The owner chose
+this over accepting the trend unchanged. It is also preferred to reducing
+schema load cost, which is a schema-design question outside test maintenance.
+#404 is a production DSN change, measured here at 8–11%. Its scope:
 
-1. **Statement cache** (recommended to investigate next). It is a separate
-   issue: a production DSN change, measured here at 8–11%. It needs the three
-   seams rewritten to observe behavior rather than preparation count, a review
-   of cached statements against schema changes and long-lived read pools, and
-   an ADR 0014/0016 note. The gain is real but one-off; schema growth continues.
-2. **Accept the trend for now.** CI keeps 30% headroom. The local full gate is
-   tight; use the thresholds above and re-measure per slice.
-3. **Neither of these:** reduce schema load cost (fewer or smaller triggers),
-   which is a schema-design question outside test maintenance.
+- Rewrite the authorizer-based seams so they no longer depend on statement
+  compilation. Three fail with the cache on. Three more authorizer tests passed
+  and must be audited, because they may now pass vacuously.
+- Review cached statements against long-lived pools: schema changes, the
+  read-only pool, transactions, FTS5 and the busy/reset paths.
+- Choose a cache size from measurement.
+- Add an ADR note.
+
+The gain is one-off; schema growth continues. Until #404 lands, the monitoring
+thresholds above apply as written.
 
 Excluded by #402 and ADR 0016: raising the deadline, lowering `-p` or test
 parallelism, faster test-only database settings, and removing assertions or
