@@ -45,6 +45,9 @@ func TestThrottleGenerationMigrationPreservesBudgetsAndRestarts(t *testing.T) {
 	after := captureLedgerState(t, database)
 	delete(before, "count:goose_db_version")
 	delete(after, "count:goose_db_version")
+	// Later migrations on the way to head add empty tables only.
+	assert.Equal(t, "0", after["count:investment_returns_runs"])
+	delete(after, "count:investment_returns_runs")
 	assert.Equal(t, before, after, "no financial, credential, event or other user row changes")
 	assert.Equal(t, original, budgets(database), "no counter/deadline reset on upgrade")
 	var distinct, populated int

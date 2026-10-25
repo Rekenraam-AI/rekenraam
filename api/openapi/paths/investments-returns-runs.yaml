@@ -1,0 +1,79 @@
+get:
+  summary: List saved investment returns runs
+  description: R13 slice 6 (#119). Summaries with inputs only; the frozen output is
+    retrieved by ID. Never recalculates and never writes.
+  parameters:
+  - name: cursor
+    in: query
+    schema:
+      type: string
+      pattern: ^[1-9][0-9]*$
+    description: Exclusive descending run ID from next_cursor.
+  responses:
+    '200':
+      description: Saved run summaries; frozen output is retrieved by ID.
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ReturnsRunListResponse
+    '400':
+      description: Invalid cursor
+      content: &id001
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+    '401':
+      description: Authentication required
+      content: *id001
+    '500':
+      description: Internal server error or saved inputs integrity failure
+      content: *id001
+post:
+  summary: Save an immutable returns_v1 run
+  description: R13 slice 6 (#119, docs/plans/investment-returns-plan.md). Explicit
+    audited save computed from one fingerprinted, isolated SQLite snapshot whose
+    knowledge instant is the run's captured_at. Validated exactly as the live read
+    (GET /api/v1/investments/returns). Retains the resolved request, descriptor,
+    exact output and input/output SHA-256 digests; financial records remain
+    unchanged. Requires the session CSRF token and same-origin policy. Later
+    corrections and price withdrawals cannot restate this run. Saving computes a
+    new run; a previously displayed live read is not retroactively frozen.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../openapi.yaml#/components/schemas/ReturnsRunRequest
+  responses:
+    "413":
+      $ref: "../openapi.yaml#/components/responses/JSONBodyTooLarge"
+    '201':
+      description: New frozen returns document, also available at the Location header.
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ReturnsRunResponse
+    '400':
+      description: Invalid request, dates, accounts, currency or benchmark
+      content: *id001
+    '401':
+      description: Authentication required
+      content: *id001
+    '403':
+      description: CSRF or origin refused
+      content: *id001
+    '422':
+      description: Exact amount exceeds supported precision
+      content: *id001
+    '503':
+      description: Database busy or snapshot deadline exceeded
+      content: *id001
+    '500':
+      description: Internal server error
+      content: *id001
+  parameters:
+  - in: header
+    name: X-CSRF-Token
+    required: true
+    schema:
+      type: string

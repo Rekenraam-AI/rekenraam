@@ -6,7 +6,8 @@ the same day after two reviews (`e30413a5`: seven findings, recorded inline
 as "finding N"; `ae084c4d`: two, recorded under the expected cases). Slice 2
 (returns screen) slice 3 (cumulative TTWROR series and chart) and slice 4
 (allocation at the closing day), contracts below, delivered the same day;
-slice 5 (benchmarks) delivered the same day; slice 6 pending.**
+slice 5 (benchmarks) delivered the same day; slice 6 (saved runs) delivered
+2026-10-25. R13 core is complete.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
 0017 (provider independence, honest incomplete data) govern this plan.
@@ -544,7 +545,67 @@ Slice 1 is a **live read**: one disposable consistent image of the database
 UTC knowledge instant of the read, echoed as `knowledge_cutoff`. A later
 correction restates an earlier period, as every live report does. Saved,
 immutable return runs (input fingerprint, frozen output bytes) are slice 6
-and follow the R18 gains-run pattern; they are not implied by slice 1.
+and follow the R18 gains-run pattern; a live read never saves one.
+
+## Saved return runs (slice 6)
+
+A saved run is an **immutable returns_v1 document**, saved explicitly by the
+owner, so a later correction, price withdrawal or software change can never
+restate a figure the owner kept. It reuses the R18 gains-run mechanism
+(`docs/plans/investment-reporting-plan.md`, *Immutable operational runs
+(#234)*) with its own table, because the request, descriptor and output of a
+returns read are not a gains document; the rejected alternative
+(knowledge-time reconstruction) is rejected here for the same reasons.
+
+- `POST /api/v1/investments/returns/runs` takes the live read's inputs as a
+  JSON body (`from`, `to`, `reporting_currency_id`, optional `account_ids`,
+  `max_staleness_days`, `benchmark_commodity_id`, `benchmark_basis`),
+  validated exactly as the live read. It **computes a fresh run**: it never
+  freezes a response the browser displayed and accepts no client output.
+- The read runs on one fingerprinted online-backup image (the gains-run
+  `GainsSnapshot`), with the knowledge instant fixed at `captured_at`, the UTC
+  copy-completion time, so `knowledge_cutoff` in the output equals the run's
+  `captured_at`. No provider is called. Only the finished document and its
+  `investment.returns_run.create` audit event commit to the live book, in one
+  transaction; a failed read or write leaves neither.
+- The **inputs** document is the resolved request (staleness and benchmark
+  basis defaults filled in), `snapshot_sha256`, and a `descriptor` copied
+  from the output: `policy`, `from`, `to`, `opening_date`, `days`,
+  `account_scope`, `resolved_account_ids`, `knowledge_cutoff`. The
+  **output** is the exact compact `InvestmentReturnsResponse` JSON. Both are
+  hashed (`inputs_sha256`, `output_sha256`); `snapshot_sha256` identifies the
+  full input image, not a portable ledger hash.
+- Integrity (on every read, list and in the `investment_foundation`
+  self-check): schema 1, both digests, `inputs.snapshot_sha256` equal to the
+  row's, `descriptor.policy = returns_v1`, `descriptor.knowledge_cutoff =
+  captured_at`, and the descriptor equal to the same fields of the output.
+  It checks stored bytes and never compares a saved figure with today's
+  book. A damaged run is refused by name, never rebuilt.
+- `GET .../returns/runs` lists 20 summaries (inputs only) per page with a
+  descending-id `next_cursor`; `GET .../returns/runs/{id}` returns the
+  preserved document, `?download=true` as a JSON attachment of the server's
+  exact bytes. UPDATE and DELETE are refused by triggers; there is no
+  update, delete or pruning API. Downgrade refuses while any run exists.
+- Backup and restore keep the rows. Bundle schema 18 adds
+  `investment-returns-runs.csv` with every run (even in a scoped export).
+- The returns screen saves the **applied** selection, lists saved runs and
+  reopens one with the same figure, chart, allocation and benchmark views,
+  labelled as frozen at its knowledge cutoff, with its fingerprints and a
+  download. Figures, dates, ids and coverage come only from the document;
+  account, currency and instrument names and currency display precision are
+  today's reference data (ids and exact coefficients are what the document
+  fixes). Unlike a gains run, no currency metadata is captured: every amount
+  is in the one reporting currency and keeps its exact scale.
+
+Named validation: `TestReturnsRunReproducesAfterBackdatedBuy` saves a run,
+records a backdated buy inside the period, and checks the saved output
+reproduces byte for byte while the live read changes, plus bundle, restore,
+immutability triggers, integrity refusal of a consistently rehashed tampered
+output and the self-check finding.
+`TestReturnsRunValidationPaginationAndReadOnlyRetrieval` covers validation
+(no row or audit on refusal), cursor pagination and that no GET writes. The
+browser case in `investment-returns.spec.ts` saves, restates, reopens and
+downloads at 390px with an accessibility check.
 
 ## Expected cases (independent, hand-derived)
 
@@ -660,6 +721,7 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
    *Delivered 2026-10-24* as `benchmark` on the returns read (see
    *Benchmark*), a benchmark card and a dashed chart line on the screen.
 6. **Saved return runs** — immutable output and input fingerprint, as R18.
+   *Delivered 2026-10-25*; see *Saved return runs (slice 6)*.
 
 Targets and rebalancing are **deferred** (no trade execution is implied,
 per the product direction). Security-level (per-instrument) returns need an

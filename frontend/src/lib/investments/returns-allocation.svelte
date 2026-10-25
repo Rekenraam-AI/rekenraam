@@ -25,6 +25,8 @@
     currencyCode: (id: number) => string;
     commodityLabel: (id: number) => string;
   } = $props();
+  // Unique per instance: a saved run can sit beside the live result.
+  const titleID = $props.id();
 
   let dimension = $state<AllocationDimension>('account');
   const dimensions: { key: AllocationDimension; label: () => string }[] = [
@@ -45,9 +47,9 @@
   }
 </script>
 
-<section aria-labelledby="returns-allocation-title" class="space-y-3" data-testid="returns-allocation">
+<section aria-labelledby={titleID} class="space-y-3" data-testid="returns-allocation">
   <div>
-    <h3 id="returns-allocation-title" class="text-sm font-semibold text-foreground">{m.returns_allocation_title({ date: formatDate(allocation.date) })}</h3>
+    <h3 id={titleID} class="text-sm font-semibold text-foreground">{m.returns_allocation_title({ date: formatDate(allocation.date) })}</h3>
     <p class="mt-1 text-xs text-muted">{m.returns_allocation_help()}</p>
   </div>
 

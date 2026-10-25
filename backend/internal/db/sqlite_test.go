@@ -287,6 +287,9 @@ func TestMigrateSeededBaselineMatchesFreshSchema(t *testing.T) {
 	// #234 adds empty immutable report storage; existing figures stay exact.
 	assert.Equal(t, "0", after["count:investment_gains_runs"])
 	delete(after, "count:investment_gains_runs")
+	// R13 slice 6 adds empty immutable returns-run storage.
+	assert.Equal(t, "0", after["count:investment_returns_runs"])
+	delete(after, "count:investment_returns_runs")
 	// #254 adds empty append-only provider revision evidence.
 	assert.Equal(t, "0", after["count:investment_provider_event_revisions"])
 	delete(after, "count:investment_provider_event_revisions")
@@ -1277,7 +1280,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(26), version, "the head admits historical cash-in-lieu provenance")
+	assert.Equal(t, int64(27), version, "the head stores immutable returns runs")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))
@@ -1306,9 +1309,9 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 		objectCounts[kind]++
 	}
 	assert.Equal(t, map[string]int{
-		"index":   119,
-		"table":   117,
-		"trigger": 162,
+		"index":   120,
+		"table":   118,
+		"trigger": 164,
 		"view":    21,
 	}, objectCounts, "the migrated head must retain every schema object")
 	assert.Equal(t, "view", objects["valid_investment_dividend_facts"])
@@ -1328,6 +1331,9 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 	assert.Equal(t, "trigger", objects["investment_payment_in_lieu_facts_insert_guard"])
 	assert.Equal(t, "trigger", objects["investment_gains_runs_no_update"])
 	assert.Equal(t, "trigger", objects["investment_gains_runs_no_delete"])
+	assert.Equal(t, "table", objects["investment_returns_runs"])
+	assert.Equal(t, "trigger", objects["investment_returns_runs_no_update"])
+	assert.Equal(t, "trigger", objects["investment_returns_runs_no_delete"])
 	assert.Equal(t, "table", objects["price_observation_dependencies"])
 	assert.Equal(t, "index", objects["price_observation_dependencies_source_idx"])
 	assert.Equal(t, "trigger", objects["price_observation_dependencies_valid"])

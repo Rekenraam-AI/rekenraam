@@ -2417,6 +2417,49 @@ export async function getGainsRuns(cursor?: string): Promise<GainsRunListRespons
   }
 }
 
+// Saved returns runs (R13 slice 6, #119): immutable returns_v1 documents.
+// A saved output never changes, so it is cached indefinitely by id.
+export type ReturnsRunRequest = components['schemas']['ReturnsRunRequest'];
+export type ReturnsRunResponse = components['schemas']['ReturnsRunResponse'];
+export type ReturnsRunListResponse = components['schemas']['ReturnsRunListResponse'];
+export const returnsRunsQueryKey = ['investments', 'returns-runs'] as const;
+export const returnsRunQueryKey = (id: number) => ['investments', 'returns-run', id] as const;
+
+export async function saveReturnsRun(body: ReturnsRunRequest, csrfToken: string): Promise<ReturnsRunResponse> {
+  try {
+    const { data, error, response } = await apiClient.POST('/api/v1/investments/returns/runs', {
+      params: { header: { 'X-CSRF-Token': csrfToken } }, body
+    });
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function getReturnsRun(id: number): Promise<ReturnsRunResponse> {
+  try {
+    const { data, error, response } = await apiClient.GET('/api/v1/investments/returns/runs/{id}', { params: { path: { id } } });
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
+export async function getReturnsRuns(cursor?: string): Promise<ReturnsRunListResponse> {
+  try {
+    const { data, error, response } = await apiClient.GET('/api/v1/investments/returns/runs', { params: { query: { cursor } } });
+    if (data !== undefined) return data;
+    throw toAPIClientError(response, error);
+  } catch (error) {
+    if (error instanceof APIClientError) throw error;
+    throw toNetworkError(error);
+  }
+}
+
 // Income attribution coverage (#244): one composed read per view, never a
 // fetch per instrument or payment.
 export type IncomeCoverageResponse = components['schemas']['IncomeCoverageResponse'];

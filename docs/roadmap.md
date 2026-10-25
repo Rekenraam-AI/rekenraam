@@ -17,9 +17,9 @@ record the capability in `implemented.md`.
 Last reviewed: 2026-10-24 against local `40e29fe9`, owner acceptance and live
 GitHub issue state. The documentation and competitor review is recorded in the
 [app-state review and audit brief](reviews/app-state-and-audit-plan-2026-10-17.md).
-R16, R11, R17 and R18 have met their bounded delivery bars. **R13 is the
-current feature initiative: its returns_v1 contract is accepted and slices 1
-(backend returns read) and 2 (returns screen) are delivered (2026-10-24).**
+R16, R11, R17 and R18 have met their bounded delivery bars. **R13's
+returns_v1 core is delivered: all six accepted slices (live read, screen,
+series, allocation, benchmark, saved runs) shipped 2026-10-24..25.**
 The cross-app engineering audit is delivered; owner/release follow-ups remain
 explicit below. **#402 is delivered with the owner's disposition: ADR 0016
 thresholds amended. #404 followed the same day: explicit statement reuse
@@ -54,7 +54,7 @@ Statuses: ✅ shipped · ◐ partly shipped ahead of its slice · ▶ current ·
 | R11 | Pricing/FX management UI | ✅ | `docs/plans/pricing-management-plan.md` |
 | R12 | Investments UI + gains reporting | ✅ | `docs/plans/investments-plan.md` |
 | R12a | Investment journal/subledger integrity correction | ✅ | `docs/plans/investment-integrity-plan.md`, ADR 0012 |
-| R13 | Investment return analytics (TWR/MWR) | ▶ | [returns contract](plans/investment-returns-plan.md) |
+| R13 | Investment return analytics (TWR/MWR) | ✅ | [returns contract](plans/investment-returns-plan.md) |
 | R14 | Receipts & attachments (capture, OCR, inbox) | ⏸ | `docs/plans/receipts-plan.md` |
 | R14a | Attachment storage + manual attach (scope decision still required) | ⏸ | `docs/plans/receipts-plan.md` |
 | R15 | Connections expansion (IBKR Flex → GoCardless; the #111 dividend producer shipped early, 2026-10-17) | ⏸ | `docs/plans/connections-plan.md` |
@@ -171,14 +171,16 @@ below is execution order, not a chain of hard dependencies.
    correction feature [#395](https://github.com/sergeyfarin/rekenraam/issues/395)
    remain distinct from behavior-preserving maintenance; do not restore
    retired attribution blockers.
-3. **Implement R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119) slice 6.**
+3. **R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119) core — delivered 2026-10-25 (slice 6, saved runs, last).**
    The [returns_v1 contract](plans/investment-returns-plan.md) was accepted by
    the owner on 2026-10-24 (position-anchored income classification with
    disclosed cash-side fallback, annualization only for 365+ days, proven
    unique IRR roots only). Slice 1 (backend live read, corrected after two
    reviews), slice 2 (returns screen), slice 3 (TTWROR series and chart) and
    slice 4 (allocation at the closing day) and slice 5 (benchmarks on a
-   declared price- or total-return basis) are delivered. Next: saved runs.
+   declared price- or total-return basis) and slice 6 (immutable saved runs,
+   migration 0027, bundle schema 18) are delivered. Targets/rebalancing and
+   per-instrument returns stay deferred, as the plan records.
    #284's owner-reviewed investment/reporting dispositions are now complete.
    If the accepted contract consumes native realized totals, it reuses
    `app.NativeRealizedTotals`, delivered by

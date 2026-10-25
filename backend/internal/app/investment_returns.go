@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"maps"
 	"math/big"
@@ -127,43 +128,60 @@ type ReturnsSeriesPoint struct {
 // ReadReturns computes one live returns read from one disposable image of
 // the database, so every figure shares a ledger state and knowledge instant.
 func (s *InvestmentService) ReadReturns(ctx context.Context, input ReturnsInput) (ReturnsResult, error) {
-	fromDate, err := time.Parse(time.DateOnly, input.From)
+	input, err := validateReturnsInput(input)
 	if err != nil {
-		return ReturnsResult{}, ValidationError{Message: "from must be a date (YYYY-MM-DD)"}
+		return ReturnsResult{}, err
 	}
-	toDate, err := time.Parse(time.DateOnly, input.To)
-	if err != nil {
-		return ReturnsResult{}, ValidationError{Message: "to must be a date (YYYY-MM-DD)"}
-	}
-	if toDate.Before(fromDate) {
-		return ReturnsResult{}, ValidationError{Message: "from must not be after to"}
-	}
-	if input.ReportingCommodityID <= 0 {
-		return ReturnsResult{}, ValidationError{Message: "reporting currency is required"}
-	}
-	staleness := input.MaxStalenessDays
-	if staleness == 0 {
-		staleness = DefaultRateStalenessDays
-	}
-	if staleness < 1 || staleness > returnsMaxStalenessDays {
-		return ReturnsResult{}, ValidationError{Message: fmt.Sprintf("max_staleness_days must be between 1 and %d", returnsMaxStalenessDays)}
-	}
-	switch {
-	case input.BenchmarkCommodityID == 0 && input.BenchmarkBasis != "":
-		return ReturnsResult{}, ValidationError{Message: "benchmark_basis requires a benchmark"}
-	case input.BenchmarkCommodityID != 0 && input.BenchmarkBasis == "":
-		input.BenchmarkBasis = BenchmarkBasisPriceReturn
-	case input.BenchmarkBasis != "" && input.BenchmarkBasis != BenchmarkBasisPriceReturn && input.BenchmarkBasis != BenchmarkBasisTotalReturn:
-		return ReturnsResult{}, ValidationError{Message: "benchmark_basis must be price_return or total_return"}
-	}
-
 	snapshot, cleanup, err := s.repository.LiveGainsSnapshot(ctx)
 	if err != nil {
 		return ReturnsResult{}, fmt.Errorf("capture returns input: %w", err)
 	}
 	defer cleanup()
+	return readReturnsOn(ctx, snapshot, s.now(), input)
+}
+
+// validateReturnsInput checks a returns request and fills in its defaults
+// (staleness, benchmark basis), so a saved run records what was resolved.
+func validateReturnsInput(input ReturnsInput) (ReturnsInput, error) {
+	fromDate, err := time.Parse(time.DateOnly, input.From)
+	if err != nil {
+		return input, ValidationError{Message: "from must be a date (YYYY-MM-DD)"}
+	}
+	toDate, err := time.Parse(time.DateOnly, input.To)
+	if err != nil {
+		return input, ValidationError{Message: "to must be a date (YYYY-MM-DD)"}
+	}
+	if toDate.Before(fromDate) {
+		return input, ValidationError{Message: "from must not be after to"}
+	}
+	if input.ReportingCommodityID <= 0 {
+		return input, ValidationError{Message: "reporting currency is required"}
+	}
+	if input.MaxStalenessDays == 0 {
+		input.MaxStalenessDays = DefaultRateStalenessDays
+	}
+	if input.MaxStalenessDays < 1 || input.MaxStalenessDays > returnsMaxStalenessDays {
+		return input, ValidationError{Message: fmt.Sprintf("max_staleness_days must be between 1 and %d", returnsMaxStalenessDays)}
+	}
+	switch {
+	case input.BenchmarkCommodityID == 0 && input.BenchmarkBasis != "":
+		return input, ValidationError{Message: "benchmark_basis requires a benchmark"}
+	case input.BenchmarkCommodityID != 0 && input.BenchmarkBasis == "":
+		input.BenchmarkBasis = BenchmarkBasisPriceReturn
+	case input.BenchmarkBasis != "" && input.BenchmarkBasis != BenchmarkBasisPriceReturn && input.BenchmarkBasis != BenchmarkBasisTotalReturn:
+		return input, ValidationError{Message: "benchmark_basis must be price_return or total_return"}
+	}
+	return input, nil
+}
+
+// readReturnsOn computes a returns read from one consistent database image
+// at the knowledge instant now. The input must be validated.
+func readReturnsOn(ctx context.Context, snapshot *sql.DB, now time.Time, input ReturnsInput) (ReturnsResult, error) {
+	fromDate, _ := time.Parse(time.DateOnly, input.From)
+	toDate, _ := time.Parse(time.DateOnly, input.To)
+	staleness := input.MaxStalenessDays
 	pricing := db.NewPricingRepository(snapshot)
-	boundary, err := pricing.CurrentObservationBoundary(ctx, BookID, s.now())
+	boundary, err := pricing.CurrentObservationBoundary(ctx, BookID, now)
 	if err != nil {
 		return ReturnsResult{}, err
 	}

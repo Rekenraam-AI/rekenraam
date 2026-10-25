@@ -1,0 +1,230 @@
+ReturnsRunRequest:
+  type: object
+  additionalProperties: false
+  required:
+  - from
+  - to
+  - reporting_currency_id
+  description: Save a new returns_v1 run. The same inputs as the live returns read,
+    validated the same way. No knowledge cutoff, output or other client-supplied
+    figure is accepted.
+  properties:
+    from:
+      type: string
+      format: date
+    to:
+      type: string
+      format: date
+      description: Not after owner-local today.
+    reporting_currency_id:
+      type: integer
+      format: int64
+      minimum: 1
+    account_ids:
+      type:
+      - array
+      - 'null'
+      items:
+        type: integer
+        format: int64
+        minimum: 1
+      description: Omitted or empty selects the default investment accounts.
+    max_staleness_days:
+      type: integer
+      minimum: 1
+      maximum: 31
+      description: Default 7.
+    benchmark_commodity_id:
+      type:
+      - integer
+      - 'null'
+      format: int64
+      minimum: 1
+    benchmark_basis:
+      type:
+      - string
+      - 'null'
+      enum:
+      - price_return
+      - total_return
+      - null
+      description: Requires benchmark_commodity_id; defaults to price_return.
+ReturnsRunResolvedRequest:
+  type: object
+  required:
+  - from
+  - to
+  - reporting_currency_id
+  - account_ids
+  - max_staleness_days
+  - benchmark_commodity_id
+  - benchmark_basis
+  description: The request as the run resolved it, with defaults filled in.
+  properties:
+    from:
+      type: string
+      format: date
+    to:
+      type: string
+      format: date
+    reporting_currency_id:
+      type: integer
+      format: int64
+    account_ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+    max_staleness_days:
+      type: integer
+    benchmark_commodity_id:
+      type:
+      - integer
+      - 'null'
+      format: int64
+    benchmark_basis:
+      type:
+      - string
+      - 'null'
+      enum:
+      - price_return
+      - total_return
+      - null
+ReturnsRunDescriptor:
+  type: object
+  required:
+  - policy
+  - from
+  - to
+  - opening_date
+  - days
+  - account_scope
+  - resolved_account_ids
+  - knowledge_cutoff
+  description: The same fields of the frozen output, repeated so a summary can be
+    listed without it. Integrity requires them to agree.
+  properties:
+    policy:
+      type: string
+      enum:
+      - returns_v1
+    from:
+      type: string
+      format: date
+    to:
+      type: string
+      format: date
+    opening_date:
+      type: string
+      format: date
+    days:
+      type: integer
+    account_scope:
+      type: string
+      enum:
+      - default_investment_accounts
+      - selected_accounts
+    resolved_account_ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+    knowledge_cutoff:
+      type: string
+      format: date-time
+      description: Equal to the run's captured_at.
+ReturnsRunInputs:
+  type: object
+  required:
+  - request
+  - snapshot_sha256
+  - descriptor
+  properties:
+    request:
+      $ref: '#/ReturnsRunResolvedRequest'
+    snapshot_sha256:
+      type: string
+      pattern: ^[0-9a-f]{64}$
+    descriptor:
+      $ref: '#/ReturnsRunDescriptor'
+ReturnsRunSummary:
+  type: object
+  required:
+  - id
+  - schema_version
+  - captured_at
+  - created_at
+  - created_by_user_id
+  - audit_event_id
+  - snapshot_sha256
+  - inputs_sha256
+  - output_sha256
+  - inputs
+  description: >-
+    Immutable returns_v1 run (schema 1). SHA-256 fingerprints detect corruption;
+    they are not signatures. snapshot_sha256 fingerprints the private full SQLite
+    input image before the read, not a retained backup or a portable logical hash.
+    inputs_sha256/output_sha256 hash the exact compact UTF-8 JSON documents. Only
+    successful saves create rows. captured_at is the UTC copy-completion instant
+    and the output's knowledge_cutoff. Retrieve by ID to reproduce the saved
+    output; no recalculation occurs.
+  properties:
+    id:
+      type: integer
+      format: int64
+    schema_version:
+      type: integer
+      enum:
+      - 1
+    captured_at:
+      type: string
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+    created_by_user_id:
+      type: integer
+      format: int64
+    audit_event_id:
+      type: integer
+      format: int64
+    snapshot_sha256:
+      type: string
+      pattern: ^[0-9a-f]{64}$
+    inputs_sha256:
+      type: string
+      pattern: ^[0-9a-f]{64}$
+    output_sha256:
+      type: string
+      pattern: ^[0-9a-f]{64}$
+    inputs:
+      $ref: '#/ReturnsRunInputs'
+ReturnsRunResponse:
+  allOf:
+  - $ref: '#/ReturnsRunSummary'
+  - type: object
+    required:
+    - output
+    properties:
+      output:
+        description: The frozen returns read, exactly as the live read's wire shape
+          at capture. Ids, dates, figures and coverage are fixed; names and
+          display precision of accounts, currencies and instruments are current
+          reference data.
+        $ref: ../../openapi.yaml#/components/schemas/InvestmentReturnsResponse
+ReturnsRunListResponse:
+  type: object
+  required:
+  - runs
+  - next_cursor
+  properties:
+    runs:
+      type: array
+      maxItems: 20
+      items:
+        $ref: '#/ReturnsRunSummary'
+    next_cursor:
+      type:
+      - string
+      - 'null'
+      description: Exclusive descending run ID cursor; null at the end.

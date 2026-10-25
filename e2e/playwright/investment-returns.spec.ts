@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { expect, test } from './support/owned-book';
 import type { Page } from './support/fixtures';
 import { apiJSON } from './support/api';
@@ -314,4 +315,64 @@ test('a benchmark names a missing exchange rate apart from a missing price', asy
   await page.goto(`/app/investments/returns?${params}`);
   const notice = page.getByTestId('returns-benchmark').getByRole('status');
   await expect(notice).toHaveText('FXIDX has prices in EUR, but EUR has no usable exchange rate on some days; those benchmark figures are left out.');
+});
+
+// R13 slice 6 (#119): a saved run keeps its figures after a backdated change
+// that restates the live read, reopens from its own bytes and downloads them.
+test('a saved returns run keeps its figures after a backdated buy on a phone', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const opened = daysFromTodayISO(-60);
+  const checking = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: 'Saved run checking', account_class: 'asset', account_kind: 'checking',
+    default_commodity_id: currencyID, allows_postings: true, opened_on: opened, effective_from: opened
+  });
+  const instrument = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
+    commodity_code: 'RUNX', instrument_type: 'stock', display_name: 'Saved run example', symbol: 'RUNX',
+    quote_commodity_id: currencyID, trading_commodity_id: currencyID, quantity_scale: 0, price_scale: 2, effective_from: opened
+  });
+  const holding = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/holding-accounts', csrfToken, {
+    instrument_id: instrument.id, name: 'Saved run holding', opened_on: opened, effective_from: opened
+  });
+  const buy = (date: string, quantity: string, cash: string) => apiJSON(page, 'POST', '/api/v1/investments/buy', csrfToken, {
+    transaction_date: date, commodity_id: instrument.commodity_id, holding_account_id: holding.id,
+    cash_account_id: checking.id, quantity_value: quantity, quantity_scale: 0, cash_amount_value: cash, cash_amount_scale: 2,
+    cash_commodity_id: currencyID, cost_basis_method: 'fifo'
+  });
+  await buy(daysFromTodayISO(-40), '10', '100000');
+  await apiJSON(page, 'POST', '/api/v1/pricing/prices', csrfToken, {
+    base_commodity_id: instrument.commodity_id, quote_commodity_id: currencyID, quote_type: 'close',
+    adjustment_basis: 'raw', price_value: 11000, price_scale: 2, valuation_date: todayISO(), is_manual: true
+  });
+
+  await page.goto(`/app/investments/returns?from=${daysFromTodayISO(-45)}&to=${todayISO()}&reporting_currency_id=${currencyID}`);
+  const runs = page.getByTestId('returns-runs');
+  await expect(runs.getByText('No saved runs yet.', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('returns-summary').getByTestId('returns-contributions')).toContainText('1,000.00');
+  const saving = page.waitForResponse((res) => res.url().endsWith('/api/v1/investments/returns/runs') && res.request().method() === 'POST');
+  await runs.getByRole('button', { name: 'Save this run', exact: true }).click();
+  const run = await (await saving).json() as { id: number; captured_at: string };
+  expect(run.id).toBeGreaterThan(0);
+  const saved = page.getByTestId('saved-returns-run');
+  await expect(saved.getByRole('heading', { name: new RegExp(`^Saved run #${run.id} · `) })).toBeVisible();
+  await expect(runs.getByRole('button', { name: new RegExp(`^#${run.id} · saved `) })).toHaveAttribute('aria-pressed', 'true');
+
+  // Five more units bought 20 days ago restate the live period only.
+  await buy(daysFromTodayISO(-20), '5', '50000');
+  await page.reload();
+  await expect(page.getByTestId('returns-summary').getByTestId('returns-contributions')).toContainText('1,500.00');
+  await runs.getByRole('button', { name: new RegExp(`^#${run.id} · saved `) }).click();
+  const frozen = saved.getByTestId('returns-run-summary');
+  await expect(frozen.getByTestId('returns-contributions')).toContainText('1,000.00');
+  await expect(frozen.getByTestId('returns-closing')).toContainText('1,100.00');
+  await expect(frozen.getByTestId('returns-twr-period')).toHaveText('+10.00%');
+  await expect(frozen.getByText(/^Saved from the ledger as known at /)).toBeVisible();
+
+  const downloading = page.waitForEvent('download');
+  await saved.getByRole('link', { name: 'Download saved run (JSON)', exact: true }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe(`rekenraam-returns-run-${run.id}.json`);
+  expect(JSON.parse(await readFile((await download.path())!, 'utf8'))).toEqual(run);
+
+  expect(await noHorizontalScroll(page)).toBe(true);
+  await expectNoAccessibilityViolations(page, 'Saved returns run on a phone');
 });

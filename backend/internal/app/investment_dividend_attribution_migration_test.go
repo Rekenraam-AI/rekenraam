@@ -66,6 +66,10 @@ func TestDividendAttributionMigrationPreservesHistoryBackfillsOnlyRecordedShapeA
 	_, err = provider.DownTo(ctx, 24)
 	require.ErrorContains(t, err, "CHECK constraint failed")
 	require.Equal(t, stable, buyReplacementPreviewSnapshot(t, f.database))
+	// The refused step stops at 0025; later, empty migrations were rolled
+	// back before it. The self-check reads the head schema.
+	_, err = provider.Up(ctx)
+	require.NoError(t, err)
 	requireInvestmentSelfCheckPasses(t, f)
 }
 

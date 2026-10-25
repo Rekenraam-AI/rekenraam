@@ -344,6 +344,17 @@ their original periods and descriptors remain attached, and ledger filters do
 not re-scope or recalculate them. Existing CSV files and columns remain unchanged.
 ADR 0012 and the reporting plan own the saved-run policy and schema lifecycle.
 
+### Immutable returns-run refinement (2026-10-25, #119)
+
+Manifest schema version 18 adds `investment-returns-runs.csv`: `id`,
+`schema_version`, `captured_at`, `created_at`, `created_by_user_id`,
+`audit_event_id`, `snapshot_sha256`, `inputs_sha256`, `output_sha256`,
+`inputs_json`, `output_json`, on the same terms as gains runs above: exact
+compact documents, every run in every (even scoped) archive, fingerprints as
+corruption checks, not signatures. The inputs document holds the resolved
+request, the snapshot fingerprint and the output's descriptor; the returns
+plan owns the saved-run policy. Existing files and columns are unchanged.
+
 ### Resolvable ids (2026-10-18, #322)
 
 Manifest schema version 15 makes every id column in the archive resolve to a

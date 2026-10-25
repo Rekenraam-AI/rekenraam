@@ -575,6 +575,10 @@ paths:
     $ref: "./paths/investments-gains-statement.yaml"
   /api/v1/investments/returns:
     $ref: "./paths/investments-returns.yaml"
+  /api/v1/investments/returns/runs:
+    $ref: "./paths/investments-returns-runs.yaml"
+  /api/v1/investments/returns/runs/{id}:
+    $ref: "./paths/investments-returns-run.yaml"
   /api/v1/investments/operations/{operation_id}/reverse-split:
     $ref: "./paths/investments-operation-reverse-split.yaml"
 
@@ -1634,6 +1638,20 @@ components:
       $ref: "./components/schemas/investment-returns.yaml#/ReturnsBenchmark"
     InvestmentReturnsResponse:
       $ref: "./components/schemas/investment-returns.yaml#/InvestmentReturnsResponse"
+    ReturnsRunRequest:
+      $ref: "./components/schemas/investment-returns-runs.yaml#/ReturnsRunRequest"
+    ReturnsRunResolvedRequest:
+      $ref: "./components/schemas/investment-returns-runs.yaml#/ReturnsRunResolvedRequest"
+    ReturnsRunDescriptor:
+      $ref: "./components/schemas/investment-returns-runs.yaml#/ReturnsRunDescriptor"
+    ReturnsRunInputs:
+      $ref: "./components/schemas/investment-returns-runs.yaml#/ReturnsRunInputs"
+    ReturnsRunSummary:
+      $ref: "./components/schemas/investment-returns-runs.yaml#/ReturnsRunSummary"
+    ReturnsRunResponse:
+      $ref: "./components/schemas/investment-returns-runs.yaml#/ReturnsRunResponse"
+    ReturnsRunListResponse:
+      $ref: "./components/schemas/investment-returns-runs.yaml#/ReturnsRunListResponse"
     GainsStatementValuation:
       $ref: "./components/schemas/investments.yaml#/GainsStatementValuation"
     ErrorBody:

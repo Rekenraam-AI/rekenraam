@@ -13,6 +13,7 @@ func (r *ExportRepository) ExportInvestmentFoundation(ctx context.Context, tx *s
 		"dividend-facts":        `SELECT operation_id, commodity_id, created_audit_event_id, withholding_only FROM investment_dividend_facts WHERE book_id = ? ORDER BY operation_id`,
 		"payment-in-lieu-facts": `SELECT operation_id, holding_account_id, commodity_id, ex_date, created_audit_event_id FROM investment_payment_in_lieu_facts WHERE book_id = ? ORDER BY operation_id`,
 		"gains-runs":            `SELECT id, schema_version, report_type, captured_at, created_at, created_by_user_id, audit_event_id, snapshot_sha256, inputs_sha256, output_sha256, inputs_json, output_json FROM investment_gains_runs WHERE book_id = ? ORDER BY id`,
+		"returns-runs":          `SELECT id, schema_version, captured_at, created_at, created_by_user_id, audit_event_id, snapshot_sha256, inputs_sha256, output_sha256, inputs_json, output_json FROM investment_returns_runs WHERE book_id = ? ORDER BY id`,
 		"disposal-clearing-allocations": `SELECT decision_id, posting_version_id, proceeds_value, proceeds_scale
 			FROM investment_disposal_clearing_allocations WHERE book_id = ? ORDER BY decision_id, posting_version_id`,
 		"journal-links": `SELECT l.operation_id, l.link_seq, l.transaction_version_id, l.role

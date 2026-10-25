@@ -1046,6 +1046,24 @@ func (s *SelfCheckService) investmentFoundationCheck(ctx context.Context, snapsh
 		result.FindingCount += invalidRuns
 		summaries = append(summaries, fmt.Sprintf("%d saved gains runs failed document integrity", invalidRuns))
 	}
+	var invalidReturnsRuns int64
+	if err := db.StreamReturnsRuns(ctx, snapshot, BookID, func(run db.ReturnsRunRecord) error {
+		if !db.ValidReturnsRunDocument(run) {
+			invalidReturnsRuns++
+			if len(result.Sample) < db.SelfCheckSampleLimit {
+				result.Sample = append(result.Sample, run.ID)
+				sampleReferences = append(sampleReferences, fmt.Sprintf("returns run #%d", run.ID))
+			}
+		}
+		return nil
+	}); err != nil {
+		return SelfCheckResult{}, err
+	}
+	if invalidReturnsRuns > 0 {
+		result.Status = SelfCheckFailed
+		result.FindingCount += invalidReturnsRuns
+		summaries = append(summaries, fmt.Sprintf("%d saved returns runs failed document integrity", invalidReturnsRuns))
+	}
 
 	for _, check := range checks {
 		anomaly, err := s.repository.CountStructuralAnomaly(ctx, snapshot, check.query, BookID)

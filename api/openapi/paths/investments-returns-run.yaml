@@ -1,0 +1,41 @@
+get:
+  summary: Retrieve an immutable investment returns run
+  description: R13 slice 6 (#119). Returns the saved schema-1 bytes after verifying document integrity. Never
+    recalculates against current history or prices, and never writes.
+  parameters:
+  - name: id
+    in: path
+    required: true
+    schema:
+      type: integer
+      format: int64
+      minimum: 1
+  - name: download
+    in: query
+    schema:
+      type: boolean
+      default: false
+    description: true adds an attachment filename. Download the server bytes to preserve
+      the exact JSON document fingerprints.
+  responses:
+    '200':
+      description: The frozen returns document and provenance.
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ReturnsRunResponse
+    '400':
+      description: Invalid ID
+      content: &id001
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+    '401':
+      description: Authentication required
+      content: *id001
+    '404':
+      description: Run not found
+      content: *id001
+    '500':
+      description: Internal server error or saved document integrity failure
+      content: *id001

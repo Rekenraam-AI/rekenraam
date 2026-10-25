@@ -26913,6 +26913,239 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/investments/returns/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List saved investment returns runs
+         * @description R13 slice 6 (#119). Summaries with inputs only; the frozen output is retrieved by ID. Never recalculates and never writes.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Exclusive descending run ID from next_cursor. */
+                    cursor?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Saved run summaries; frozen output is retrieved by ID. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReturnsRunListResponse"];
+                    };
+                };
+                /** @description Invalid cursor */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error or saved inputs integrity failure */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Save an immutable returns_v1 run
+         * @description R13 slice 6 (#119, docs/plans/investment-returns-plan.md). Explicit audited save computed from one fingerprinted, isolated SQLite snapshot whose knowledge instant is the run's captured_at. Validated exactly as the live read (GET /api/v1/investments/returns). Retains the resolved request, descriptor, exact output and input/output SHA-256 digests; financial records remain unchanged. Requires the session CSRF token and same-origin policy. Later corrections and price withdrawals cannot restate this run. Saving computes a new run; a previously displayed live read is not retroactively frozen.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CSRF-Token": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReturnsRunRequest"];
+                };
+            };
+            responses: {
+                /** @description New frozen returns document, also available at the Location header. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReturnsRunResponse"];
+                    };
+                };
+                /** @description Invalid request, dates, accounts, currency or benchmark */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description CSRF or origin refused */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                413: components["responses"]["JSONBodyTooLarge"];
+                /** @description Exact amount exceeds supported precision */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Database busy or snapshot deadline exceeded */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investments/returns/runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve an immutable investment returns run
+         * @description R13 slice 6 (#119). Returns the saved schema-1 bytes after verifying document integrity. Never recalculates against current history or prices, and never writes.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description true adds an attachment filename. Download the server bytes to preserve the exact JSON document fingerprints. */
+                    download?: boolean;
+                };
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The frozen returns document and provenance. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReturnsRunResponse"];
+                    };
+                };
+                /** @description Invalid ID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Run not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error or saved document integrity failure */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/investments/operations/{operation_id}/reverse-split": {
         parameters: {
             query?: never;
@@ -33976,6 +34209,97 @@ export interface components {
             benchmark: components["schemas"]["ReturnsBenchmark"] | null;
             attribution_fallbacks: components["schemas"]["ReturnsAttributionFallback"][];
             valuation: components["schemas"]["Valuation"];
+        };
+        /** @description Save a new returns_v1 run. The same inputs as the live returns read, validated the same way. No knowledge cutoff, output or other client-supplied figure is accepted. */
+        ReturnsRunRequest: {
+            /** Format: date */
+            from: string;
+            /**
+             * Format: date
+             * @description Not after owner-local today.
+             */
+            to: string;
+            /** Format: int64 */
+            reporting_currency_id: number;
+            /** @description Omitted or empty selects the default investment accounts. */
+            account_ids?: number[] | null;
+            /** @description Default 7. */
+            max_staleness_days?: number;
+            /** Format: int64 */
+            benchmark_commodity_id?: number | null;
+            /**
+             * @description Requires benchmark_commodity_id; defaults to price_return.
+             * @enum {string|null}
+             */
+            benchmark_basis?: "price_return" | "total_return" | null;
+        };
+        /** @description The request as the run resolved it, with defaults filled in. */
+        ReturnsRunResolvedRequest: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** Format: int64 */
+            reporting_currency_id: number;
+            account_ids: number[];
+            max_staleness_days: number;
+            /** Format: int64 */
+            benchmark_commodity_id: number | null;
+            /** @enum {string|null} */
+            benchmark_basis: "price_return" | "total_return" | null;
+        };
+        /** @description The same fields of the frozen output, repeated so a summary can be listed without it. Integrity requires them to agree. */
+        ReturnsRunDescriptor: {
+            /** @enum {string} */
+            policy: "returns_v1";
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** Format: date */
+            opening_date: string;
+            days: number;
+            /** @enum {string} */
+            account_scope: "default_investment_accounts" | "selected_accounts";
+            resolved_account_ids: number[];
+            /**
+             * Format: date-time
+             * @description Equal to the run's captured_at.
+             */
+            knowledge_cutoff: string;
+        };
+        ReturnsRunInputs: {
+            request: components["schemas"]["ReturnsRunResolvedRequest"];
+            snapshot_sha256: string;
+            descriptor: components["schemas"]["ReturnsRunDescriptor"];
+        };
+        /** @description Immutable returns_v1 run (schema 1). SHA-256 fingerprints detect corruption; they are not signatures. snapshot_sha256 fingerprints the private full SQLite input image before the read, not a retained backup or a portable logical hash. inputs_sha256/output_sha256 hash the exact compact UTF-8 JSON documents. Only successful saves create rows. captured_at is the UTC copy-completion instant and the output's knowledge_cutoff. Retrieve by ID to reproduce the saved output; no recalculation occurs. */
+        ReturnsRunSummary: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {integer} */
+            schema_version: 1;
+            /** Format: date-time */
+            captured_at: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: int64 */
+            created_by_user_id: number;
+            /** Format: int64 */
+            audit_event_id: number;
+            snapshot_sha256: string;
+            inputs_sha256: string;
+            output_sha256: string;
+            inputs: components["schemas"]["ReturnsRunInputs"];
+        };
+        ReturnsRunResponse: components["schemas"]["ReturnsRunSummary"] & {
+            /** @description The frozen returns read, exactly as the live read's wire shape at capture. Ids, dates, figures and coverage are fixed; names and display precision of accounts, currencies and instruments are current reference data. */
+            output: components["schemas"]["InvestmentReturnsResponse"];
+        };
+        ReturnsRunListResponse: {
+            runs: components["schemas"]["ReturnsRunSummary"][];
+            /** @description Exclusive descending run ID cursor; null at the end. */
+            next_cursor: string | null;
         };
         /** @description Unrealized gain of one currency's positions at a valuation date, with the price dates that produced it. */
         GainsStatementValuation: {
