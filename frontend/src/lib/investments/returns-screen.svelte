@@ -17,7 +17,7 @@
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import {
-    benchmarkBasisText, fallbackReasonText, formatReturn, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
+    benchmarkBasisText, benchmarkGaps, fallbackReasonText, formatReturn, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
     returnsCoverage, returnsSelectionParams, unavailableAccountIDs, validRange, type ReturnsPreset
   } from './returns-model';
   import ReturnsChart from './returns-chart.svelte';
@@ -106,6 +106,7 @@
   const coverage = $derived(returnsCoverage(result?.valuation));
   const seriesCoverage = $derived(returnsCoverage(result?.time_weighted_series.valuation));
   const benchmarkCoverage = $derived(returnsCoverage(result?.benchmark?.valuation));
+  const benchmarkMissing = $derived(benchmarkGaps(result?.benchmark?.valuation));
   const benchmarkName = $derived(result?.benchmark ? currencyOrCommodity(result.benchmark.commodity_id) : '');
 
   function apply(range?: { from: string; to: string }) {
@@ -376,11 +377,23 @@
                   </div>
                 {/each}
               </dl>
-              {#if benchmarkCoverage.missing.length > 0}
-                <p role="status" class="mt-3 text-sm text-warning">
-                  {benchmark.basis === 'total_return' ? m.returns_benchmark_coverage_total({ name: benchmarkName }) : m.returns_benchmark_coverage({ name: benchmarkName })}
+              {#if benchmark.splits.length > 0}
+                <p class="mt-3 text-sm text-muted" data-testid="returns-benchmark-splits">
+                  {m.returns_benchmark_splits({ splits: benchmark.splits.map((split) => m.returns_benchmark_split({
+                    ratio: `${split.ratio_numerator}:${split.ratio_denominator}`, date: day(split.effective_on) })).join(', ') })}
                 </p>
               {/if}
+              {#each benchmarkMissing as gap (gap.kind === 'exchange_rate' ? `fx-${gap.currencyID}` : 'price')}
+                <p role="status" class="mt-3 text-sm text-warning">
+                  {#if gap.kind === 'exchange_rate'}
+                    {m.returns_benchmark_coverage_fx({ name: benchmarkName, currency: currencyCode(gap.currencyID) })}
+                  {:else if benchmark.basis === 'total_return'}
+                    {m.returns_benchmark_coverage_total({ name: benchmarkName })}
+                  {:else}
+                    {m.returns_benchmark_coverage({ name: benchmarkName })}
+                  {/if}
+                </p>
+              {/each}
               {#if benchmarkCoverage.staleDates.length > 0}
                 <p class="mt-2 text-sm text-muted">{m.returns_benchmark_coverage_stale({ dates: benchmarkCoverage.staleDates.map(day).join(', ') })}</p>
               {/if}

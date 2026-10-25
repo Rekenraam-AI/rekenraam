@@ -1,7 +1,7 @@
 import { expect, test } from './support/owned-book';
 import type { Page } from './support/fixtures';
 import { apiJSON } from './support/api';
-import { readyForLedger } from './support/ledger';
+import { ensureCurrency, readyForLedger } from './support/ledger';
 import { daysFromTodayISO, todayISO } from './support/dates';
 import { expectNoAccessibilityViolations } from './support/a11y';
 
@@ -286,4 +286,32 @@ test('a benchmark compares over the same period, on its declared basis', async (
   await page.getByRole('button', { name: 'Show returns', exact: true }).click();
   await expect(page).not.toHaveURL(/benchmark_/);
   await expect(summary.getByTestId('returns-benchmark')).toHaveCount(0);
+});
+
+// Review of eeab1a2a, finding 2: a benchmark priced in another currency whose
+// exchange rate is missing says so, rather than blaming the price.
+test('a benchmark names a missing exchange rate apart from a missing price', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const eur = await ensureCurrency(page, csrfToken, 'EUR', 'Euro');
+  expect(eur).not.toBe(currencyID);
+  const opened = daysFromTodayISO(-60);
+  await apiJSON(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: 'FX benchmark broker', account_class: 'asset', account_kind: 'brokerage_cash',
+    default_commodity_id: currencyID, allows_postings: true, opened_on: opened, effective_from: opened
+  });
+  const index = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
+    commodity_code: 'FXIDX', instrument_type: 'other', display_name: 'FX benchmark', symbol: 'FXIDX',
+    quote_commodity_id: eur, trading_commodity_id: eur, quantity_scale: 0, price_scale: 2, effective_from: opened
+  });
+  for (const date of [daysFromTodayISO(-2), todayISO()]) {
+    await apiJSON(page, 'POST', '/api/v1/pricing/prices', csrfToken, {
+      base_commodity_id: index.commodity_id, quote_commodity_id: eur, quote_type: 'close',
+      adjustment_basis: 'total_return', price_value: 10000, price_scale: 2, valuation_date: date, is_manual: true
+    });
+  }
+  const params = new URLSearchParams({ from: daysFromTodayISO(-1), to: todayISO(), reporting_currency_id: String(currencyID),
+    benchmark_commodity_id: String(index.commodity_id), benchmark_basis: 'total_return' });
+  await page.goto(`/app/investments/returns?${params}`);
+  const notice = page.getByTestId('returns-benchmark').getByRole('status');
+  await expect(notice).toHaveText('FXIDX has prices in EUR, but EUR has no usable exchange rate on some days; those benchmark figures are left out.');
 });

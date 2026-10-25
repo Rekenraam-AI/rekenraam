@@ -33844,7 +33844,7 @@ export interface components {
         ReturnFigure: {
             value: string | null;
             /** @enum {string|null} */
-            reason: "valuation_unavailable" | "flow_unavailable" | "unclassified_short" | "non_positive_capital" | "no_capital" | "no_root" | "root_not_unique" | "numerical_limit" | "period_shorter_than_year" | "non_positive_growth" | null;
+            reason: "valuation_unavailable" | "flow_unavailable" | "unclassified_short" | "non_positive_capital" | "no_capital" | "no_root" | "root_not_unique" | "numerical_limit" | "period_shorter_than_year" | "non_positive_growth" | "conflicting_splits" | null;
             /** Format: date */
             date: string | null;
         };
@@ -33912,7 +33912,7 @@ export interface components {
             by_currency: components["schemas"]["ReturnsAllocationRow"][];
             unknown: components["schemas"]["ReturnsAllocationUnknown"][];
         };
-        /** @description One security or crypto commodity read as a single unit held through the period, valued in the reporting currency by its own rate table (its gaps never mark the portfolio's coverage incomplete). It has no flows, so its time-weighted return telescopes to the ratio of its end values; points are the portfolio series' dates. A missing opening value removes every point (dated the opening day); a missing point value removes that point. The headline is the closing point. `price_return` reads raw observations and excludes distributions; `total_return` reads only observations recorded with adjustment basis total_return. The basis is the request's declaration, never inferred. */
+        /** @description One security or crypto commodity read as a single unit held through the period, valued in the reporting currency by its own rate table (its gaps never mark the portfolio's coverage incomplete). It has no flows, so its time-weighted return telescopes to the ratio of its end values; points are the portfolio series' dates. A missing opening value removes every point (dated the opening day); a missing point value removes that point. The headline is the closing point. `price_return` reads raw observations and excludes distributions; raw quotes are per current unit, so the unit count follows the instrument's effective recorded splits (from any holding) and a split is neutral. Holdings recording different ratios on one day make that day and later points `conflicting_splits`. `total_return` reads only observations recorded with adjustment basis total_return, a continuous series that is never split-adjusted. The basis is the request's declaration, never inferred. */
         ReturnsBenchmark: {
             /** Format: int64 */
             commodity_id: number;
@@ -33921,6 +33921,15 @@ export interface components {
             time_weighted: components["schemas"]["ReturnFigure"];
             time_weighted_annualized: components["schemas"]["ReturnFigure"];
             points: components["schemas"]["ReturnsSeriesPoint"][];
+            /** @description Splits applied to a price-return benchmark within the period, one per day, in date order; always empty for total return. */
+            splits: {
+                /** Format: date */
+                effective_on: string;
+                /** Format: int64 */
+                ratio_numerator: number;
+                /** Format: int64 */
+                ratio_denominator: number;
+            }[];
             valuation: components["schemas"]["Valuation"];
         };
         InvestmentReturnsResponse: {

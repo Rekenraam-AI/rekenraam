@@ -73,6 +73,7 @@ func TestInvestmentReturnsAPI(t *testing.T) {
 	assert.Equal(t, "total_return", compared.Benchmark.Basis)
 	require.Len(t, compared.Benchmark.Points, 2)
 	assert.Equal(t, compared.Benchmark.TimeWeighted, compared.Benchmark.Points[1].TimeWeighted)
+	assert.NotNil(t, compared.Benchmark.Splits, "an empty list, never null")
 	require.NotNil(t, compared.Benchmark.Valuation)
 	assert.Equal(t, "live_total_return_v1", compared.Benchmark.Valuation.SelectionPolicy)
 	assert.Equal(t, body.TimeWeighted, compared.TimeWeighted)

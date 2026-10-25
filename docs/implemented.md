@@ -623,7 +623,9 @@ in the reporting currency by its own rates (manual prices count), on a
 declared basis — price return from raw observations, or total return from
 `total_return` observations only (`live_total_return_v1`), never inferred or
 substituted. Its points are the series' dates and its headline the closing
-point; requesting it changes no portfolio figure. The screen picks it from
+point; requesting it changes no portfolio figure. A price-return benchmark
+holds through the instrument's recorded splits (listed in the response;
+conflicting same-day ratios are refused), so a split is neutral. The screen picks it from
 the instruments, shows its figures beside the portfolio's and draws it
 dashed on the same chart. No saved run yet.
 

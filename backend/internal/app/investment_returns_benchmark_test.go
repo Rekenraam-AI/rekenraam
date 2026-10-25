@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"rekenraam/backend/internal/db"
 )
 
 // R13 benchmark cases (docs/plans/investment-returns-plan.md, slice 5). The
@@ -212,4 +214,91 @@ func TestReturnsBenchmarkValidation(t *testing.T) {
 		require.ErrorAs(t, err, &validation, name)
 	}
 	require.NoError(t, read(f.stockCommodityID, BenchmarkBasisTotalReturn), "a held security can be its own benchmark")
+}
+
+// B7–B11: a price-return benchmark holds the units one unit becomes, so a
+// recorded split is neutral, as it is for the holding's ledger units
+// (review of eeab1a2a, finding 1: raw quotes alone read a 2:1 split as −50 %).
+func TestReturnsBenchmarkHoldsThroughRecordedSplits(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	splitFixture := func(t *testing.T) *returnsFixture {
+		f := newReturnsFixture(t)
+		f.price(t, "2026-06-27", 10100)
+		f.price(t, "2026-07-01", 5100)
+		f.price(t, "2027-01-31", 5000)
+		return f
+	}
+
+	t.Run("price return is split-neutral", func(t *testing.T) {
+		t.Parallel()
+		f := splitFixture(t)
+		_, err := acknowledgedSplit(ctx, f.investmentService, splitInput(f.investmentsTestFixture, "2026-07-01", 2, 1))
+		require.NoError(t, err)
+		result := f.readBenchmark(t, "2026-02-01", "2027-01-31", f.stockCommodityID, BenchmarkBasisPriceReturn)
+		requireReturn(t, "0.000000", result.TimeWeighted) // 1,100 → 100 + 20 × 50
+		benchmark := result.Benchmark
+		requireReturn(t, "0.000000", benchmark.TimeWeighted)                     // 100 → 2 × 50
+		requireReturn(t, "0.010000", benchmarkPoint(t, benchmark, "2026-06-27")) // 101 / 100, before the split
+		requireReturn(t, "0.020000", benchmarkPoint(t, benchmark, "2026-07-04")) // 2 × 51 / 100
+		require.Equal(t, []db.ReturnsSplit{{EffectiveOn: "2026-07-01", RatioNumerator: 2, RatioDenominator: 1}}, benchmark.Splits)
+	})
+
+	t.Run("a total-return series is never split-adjusted", func(t *testing.T) {
+		t.Parallel()
+		f := splitFixture(t)
+		_, err := acknowledgedSplit(ctx, f.investmentService, splitInput(f.investmentsTestFixture, "2026-07-01", 2, 1))
+		require.NoError(t, err)
+		f.observe(t, f.stockCommodityID, f.eurCommodityID, "total_return", "2026-01-31", 10000)
+		f.observe(t, f.stockCommodityID, f.eurCommodityID, "total_return", "2027-01-31", 11000)
+		benchmark := f.readBenchmark(t, "2026-02-01", "2027-01-31", f.stockCommodityID, BenchmarkBasisTotalReturn).Benchmark
+		requireReturn(t, "0.100000", benchmark.TimeWeighted) // 110 / 100
+		require.Empty(t, benchmark.Splits)
+	})
+
+	t.Run("one split recorded in two holdings applies once", func(t *testing.T) {
+		t.Parallel()
+		f := splitFixture(t)
+		second := seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
+		for _, holding := range []int64{f.holdingAccountID, second} {
+			input := splitInput(f.investmentsTestFixture, "2026-07-01", 2, 1)
+			input.HoldingAccountID = holding
+			_, err := acknowledgedSplit(ctx, f.investmentService, input)
+			require.NoError(t, err)
+		}
+		benchmark := f.readBenchmark(t, "2026-02-01", "2027-01-31", f.stockCommodityID, "").Benchmark
+		requireReturn(t, "0.000000", benchmark.TimeWeighted)
+		require.Len(t, benchmark.Splits, 1)
+	})
+
+	t.Run("conflicting ratios on one day are refused from that day", func(t *testing.T) {
+		t.Parallel()
+		f := splitFixture(t)
+		second := seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
+		for holding, numerator := range map[int64]int64{f.holdingAccountID: 2, second: 3} {
+			input := splitInput(f.investmentsTestFixture, "2026-07-01", numerator, 1)
+			input.HoldingAccountID = holding
+			_, err := acknowledgedSplit(ctx, f.investmentService, input)
+			require.NoError(t, err)
+		}
+		benchmark := f.readBenchmark(t, "2026-02-01", "2027-01-31", f.stockCommodityID, "").Benchmark
+		requireReturn(t, "0.010000", benchmarkPoint(t, benchmark, "2026-06-27"))
+		requireUnavailableReturn(t, ReturnReasonConflictingSplits, "2026-07-01", benchmarkPoint(t, benchmark, "2026-07-04"))
+		requireUnavailableReturn(t, ReturnReasonConflictingSplits, "2026-07-01", benchmark.TimeWeighted)
+		requireUnavailableReturn(t, ReturnReasonConflictingSplits, "2026-07-01", benchmark.TimeWeightedAnnualized)
+		require.Empty(t, benchmark.Splits)
+	})
+
+	t.Run("a reversed split is not applied", func(t *testing.T) {
+		t.Parallel()
+		f := splitFixture(t)
+		f.price(t, "2026-08-01", 10200)
+		split, err := acknowledgedSplit(ctx, f.investmentService, splitInput(f.investmentsTestFixture, "2026-07-01", 2, 1))
+		require.NoError(t, err)
+		_, err = acknowledgedReverseSplit(ctx, f.investmentService, reverseSplitInput(f.investmentsTestFixture, split.Transaction.ID))
+		require.NoError(t, err)
+		benchmark := f.readBenchmark(t, "2026-02-01", "2026-08-01", f.stockCommodityID, "").Benchmark
+		requireReturn(t, "0.020000", benchmark.TimeWeighted) // 102 / 100, no split
+		require.Empty(t, benchmark.Splits)
+	})
 }

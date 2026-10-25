@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  allocationBarPercent, assetTypeText, fallbackReasonText, formatReturn, formatWeight, lastYear, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
+  allocationBarPercent, assetTypeText, benchmarkGaps, fallbackReasonText, formatReturn, formatWeight, lastYear, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
   returnsChartModel, returnsCoverage, returnsSelectionParams, unavailableAccountIDs, validRange, yearToDate
 } from './returns-model';
 import type { ReturnFigure, ReturnsSeriesPoint } from '#lib/api/investments.ts';
@@ -203,6 +203,18 @@ describe('returns chart model', () => {
     const chart = returnsChartModel([point('2026-01-31', null, 'no_capital'), point('2026-02-01', null, 'no_capital')]);
     expect(chart.segments).toEqual([]);
     expect(chart.available).toBe(0);
+  });
+});
+
+describe('benchmark coverage', () => {
+  const valuation = (gaps: Valuation['gaps']) => ({ gaps, rates_used: [] }) as unknown as Valuation;
+
+  it('names a missing exchange rate apart from a missing price', () => {
+    expect(benchmarkGaps(valuation([{ commodity_id: 9, reason: 'no_observation_in_window', via_commodity_id: 4 }])))
+      .toEqual([{ kind: 'exchange_rate', currencyID: 4 }]);
+    expect(benchmarkGaps(valuation([{ commodity_id: 9, reason: 'incompatible_quote_basis' }])))
+      .toEqual([{ kind: 'price' }]);
+    expect(benchmarkGaps(null)).toEqual([]);
   });
 });
 

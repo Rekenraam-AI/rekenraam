@@ -23,7 +23,7 @@ ReturnFigure:
       pattern: "^-?[0-9]+\\.[0-9]{6}$"
     reason:
       type: [string, "null"]
-      enum: [valuation_unavailable, flow_unavailable, unclassified_short, non_positive_capital, no_capital, no_root, root_not_unique, numerical_limit, period_shorter_than_year, non_positive_growth, null]
+      enum: [valuation_unavailable, flow_unavailable, unclassified_short, non_positive_capital, no_capital, no_root, root_not_unique, numerical_limit, period_shorter_than_year, non_positive_growth, conflicting_splits, null]
     date:
       type: [string, "null"]
       format: date
@@ -175,10 +175,14 @@ ReturnsBenchmark:
     the portfolio series' dates. A missing opening value removes every point
     (dated the opening day); a missing point value removes that point. The
     headline is the closing point. `price_return` reads raw observations and
-    excludes distributions; `total_return` reads only observations recorded
-    with adjustment basis total_return. The basis is the request's
-    declaration, never inferred.
-  required: [commodity_id, basis, time_weighted, time_weighted_annualized, points, valuation]
+    excludes distributions; raw quotes are per current unit, so the unit
+    count follows the instrument's effective recorded splits (from any
+    holding) and a split is neutral. Holdings recording different ratios on
+    one day make that day and later points `conflicting_splits`.
+    `total_return` reads only observations recorded with adjustment basis
+    total_return, a continuous series that is never split-adjusted. The basis
+    is the request's declaration, never inferred.
+  required: [commodity_id, basis, time_weighted, time_weighted_annualized, points, splits, valuation]
   properties:
     commodity_id:
       type: integer
@@ -194,6 +198,22 @@ ReturnsBenchmark:
       type: array
       items:
         $ref: "../../openapi.yaml#/components/schemas/ReturnsSeriesPoint"
+    splits:
+      type: array
+      description: Splits applied to a price-return benchmark within the period, one per day, in date order; always empty for total return.
+      items:
+        type: object
+        required: [effective_on, ratio_numerator, ratio_denominator]
+        properties:
+          effective_on:
+            type: string
+            format: date
+          ratio_numerator:
+            type: integer
+            format: int64
+          ratio_denominator:
+            type: integer
+            format: int64
     valuation:
       $ref: "../../openapi.yaml#/components/schemas/Valuation"
 InvestmentReturnsResponse:

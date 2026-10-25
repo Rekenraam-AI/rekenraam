@@ -49,7 +49,14 @@ type returnsBenchmarkResponse struct {
 	TimeWeighted           returnFigureResponse         `json:"time_weighted"`
 	TimeWeightedAnnualized returnFigureResponse         `json:"time_weighted_annualized"`
 	Points                 []returnsSeriesPointResponse `json:"points"`
+	Splits                 []returnsSplitResponse       `json:"splits"`
 	Valuation              *valuationResponse           `json:"valuation"`
+}
+
+type returnsSplitResponse struct {
+	EffectiveOn      string `json:"effective_on"`
+	RatioNumerator   int64  `json:"ratio_numerator"`
+	RatioDenominator int64  `json:"ratio_denominator"`
 }
 
 type returnsAllocationRowResponse struct {
@@ -159,7 +166,11 @@ func toInvestmentReturnsResponse(result app.ReturnsResult) investmentReturnsResp
 	points := toReturnsSeriesPointsResponse(result.TimeWeightedSeries.Points)
 	var benchmark *returnsBenchmarkResponse
 	if result.Benchmark != nil {
-		benchmark = &returnsBenchmarkResponse{CommodityID: result.Benchmark.CommodityID, Basis: result.Benchmark.Basis,
+		splits := make([]returnsSplitResponse, 0, len(result.Benchmark.Splits))
+		for _, split := range result.Benchmark.Splits {
+			splits = append(splits, returnsSplitResponse(split))
+		}
+		benchmark = &returnsBenchmarkResponse{Splits: splits, CommodityID: result.Benchmark.CommodityID, Basis: result.Benchmark.Basis,
 			TimeWeighted:           toReturnFigureResponse(result.Benchmark.TimeWeighted),
 			TimeWeightedAnnualized: toReturnFigureResponse(result.Benchmark.TimeWeightedAnnualized),
 			Points:                 toReturnsSeriesPointsResponse(result.Benchmark.Points),

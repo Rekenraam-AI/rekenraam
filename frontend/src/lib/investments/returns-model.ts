@@ -114,6 +114,8 @@ export function returnReasonText(reason: string | null | undefined, date: string
       return m.returns_reason_period_shorter_than_year();
     case 'non_positive_growth':
       return m.returns_reason_non_positive_growth();
+    case 'conflicting_splits':
+      return day ? m.returns_reason_conflicting_splits_dated({ date: day }) : m.returns_reason_conflicting_splits();
     default:
       return m.returns_reason_unknown();
   }
@@ -121,6 +123,24 @@ export function returnReasonText(reason: string | null | undefined, date: string
 
 export function benchmarkBasisText(basis: BenchmarkBasis): string {
   return basis === 'total_return' ? m.returns_benchmark_basis_total() : m.returns_benchmark_basis_price();
+}
+
+export type BenchmarkGap =
+  | { kind: 'price' }
+  /** The benchmark has a usable price in its quote currency, but that
+   * currency has no usable rate into the reporting currency. */
+  | { kind: 'exchange_rate'; currencyID: number };
+
+/** What the benchmark's coverage lacks, so the notice names the missing
+ * price or the missing exchange rate rather than always blaming the price. */
+export function benchmarkGaps(valuation: Valuation | null | undefined): BenchmarkGap[] {
+  const gaps: BenchmarkGap[] = [];
+  for (const gap of valuation?.gaps ?? []) {
+    const via = gap.via_commodity_id;
+    const next: BenchmarkGap = via ? { kind: 'exchange_rate', currencyID: via } : { kind: 'price' };
+    if (!gaps.some((known) => JSON.stringify(known) === JSON.stringify(next))) gaps.push(next);
+  }
+  return gaps;
 }
 
 export function fallbackReasonText(reason: string): string {

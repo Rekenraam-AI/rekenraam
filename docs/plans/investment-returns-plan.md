@@ -340,6 +340,21 @@ provider is needed.
   total-return request without such observations is unavailable, and the gap
   reads `incompatible_quote_basis`. `dividend_adjusted` and `split_adjusted`
   series are not accepted in v1.
+- **Splits (review of `eeab1a2a`, finding 1).** Raw quotes are per current
+  unit, so a price-return benchmark holds the units one unit becomes: from
+  each effective recorded split of the instrument (any holding, inside or
+  outside the portfolio; reversed and replaced splits excluded), its unit
+  count is multiplied by the ratio on the split's effective date, exactly as
+  a holding's ledger units change that day. A split is therefore neutral, as
+  it is for the portfolio; reading raw quotes alone turned a 2:1 split into
+  −50 %. The same split recorded in several holdings applies once; different
+  ratios on one day are a conflict, and that day and every later point are
+  `conflicting_splits` (dated the day) rather than a guessed ratio. The
+  applied splits are listed in `benchmark.splits`. An instrument with an
+  unrecorded split cannot be detected; the list shows what was applied. A
+  total-return series is a continuous index level, never split-adjusted, and
+  its list is empty. Other corporate actions (spin-offs, mergers, cash in
+  lieu) are distributions and stay excluded from a price return.
 - **Return over the same breakpoints.** A benchmark has no flows, so its
   daily chain telescopes exactly to `V(d) / V(open)` (prices are positive);
   requiring the portfolio's evaluation days would add failures that change no
@@ -348,7 +363,8 @@ provider is needed.
   365-day rule.
 - **Failure policy.** A missing opening value makes every point
   `valuation_unavailable` dated the opening day; a missing point value removes
-  that point alone, dated itself (the closing point is the headline).
+  that point alone, dated itself; then a split conflict at or before the point
+  (the closing point is the headline).
 - **No other figure changes.** Requesting a benchmark leaves every portfolio
   figure, series point, allocation and coverage byte-identical (tested).
   No excess-return figure is computed in v1: the reader compares the two
@@ -357,8 +373,11 @@ provider is needed.
 - **Presentation.** The screen offers instruments as benchmarks, keeps the
   choice and basis in the URL (an id that is not an instrument is disclosed
   and never sent), shows the benchmark's period and annual figures with its
-  basis in words, and draws it on the chart's axes as a dashed line (a
-  non-colour cue) with a legend and its own column in the table of points.
+  basis in words and the splits it held through, and draws it on the chart's
+  axes as a dashed line (a non-colour cue) with a legend and its own column
+  in the table of points. A coverage gap is named by its missing leg (finding
+  2): a price, a total-return price, or the quote currency's exchange rate
+  when the gap carries `via_commodity_id`.
 - **Recording total-return observations.** The general price API accepts any
   adjustment basis; the browser's manual price form records `raw` only, so a
   total-return series is entered through the API until that form offers the
@@ -374,6 +393,20 @@ provider is needed.
 | B4 FX | SPX 100 USD × 0.90 → 110 USD × 0.80 | 90 → 88 EUR: `−0.022222`; coverage names the USD leg |
 | B5 closing gap | raw 200 (01-31), 210 (06-30) | full year: headline and p.a. unavailable dated the closing day; 02-07 `0` |
 | B6 short period | B5, 02-01..06-30 | `0.050000`; p.a. `period_shorter_than_year` |
+| B7 split | TEST itself; 2:1 split 07-01; raw 101 (06-27), 51 (07-01), 50 (close) | portfolio and benchmark `0.000000`; 06-27 `0.010000`; 07-04 `0.020000` = 2 × 51 / 100; splits `[2:1 on 07-01]` |
+| B8 total return | B7 plus total_return 100 → 110 | `0.100000`, no split applied |
+| B9 recorded twice | B7 split in two holdings | applied once, `0.000000` |
+| B10 conflict | 2:1 and 3:1 on 07-01 in two holdings | 06-27 `0.010000`; 07-04, headline and p.a. `conflicting_splits` dated 07-01 |
+| B11 reversed | B7 split reversed, period to 08-01, 102 on 08-01 | `0.020000`, no split applied |
+
+**Review of `eeab1a2a` (2026-10-25).** Both findings accepted: (1) a
+price-return benchmark read raw quotes for one fixed unit, so a recorded 2:1
+split showed −50 % against a neutral portfolio — now split-adjusted from the
+recorded splits (B7–B11); (2) a missing quote-currency rate was disclosed as a
+missing price — now named as the exchange rate (browser case in
+`investment-returns.spec.ts`). Independent coverage, strict total-return
+selection, FX inclusion, shared chart dates and axes, URL persistence and
+API-only total-return entry were reviewed and kept.
 
 ## Money-weighted return (IRR)
 
