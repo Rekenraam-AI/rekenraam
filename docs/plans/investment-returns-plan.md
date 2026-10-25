@@ -738,6 +738,13 @@ need owner answers; each states the recommended answer and the alternative.
 Until this section is accepted, no code, OpenAPI or test may cite it, and
 the roadmap still lists per-instrument returns as deferred.
 
+A second review (of `e4d0eba3`) judged D1–D7 reasonable to accept, D7's
+trade-date FX choice included. It asked for hand-derived foreign-currency
+settlement and spin-off cases (now I11, I12, I12b). It also noted that
+accepting D5 means accepting **bounded** short detection: named short
+operations and end-of-day balances, not every plain intraday position. The
+owner's acceptance is still pending.
+
 The question: *how did each instrument the portfolio held perform over the
 period, including its income, independently of when it was bought or sold?*
 It answers that inside the existing returns read. It is read-only like the
@@ -1022,6 +1029,9 @@ settlement timing never lands in the residual.
 | I7 unassigned dividend | a dividend with no instrument, paid into broker cash | in no sleeve; listed `unassigned_instrument`; in the portfolio figures and the residual |
 | I8 residual | I1 inside a portfolio of broker cash funded by a 1,005 deposit | portfolio gain 95 = sleeve gain 95; `not_attributed_gain` 0 |
 | I9 two-instrument journal | a plain journal entry: A −10, B +5 | both sleeves' flow-dependent figures `unclassified_exchange`; portfolio unaffected |
+| I11 foreign-currency settlement (D7) | reporting EUR; USD broker cash 1,000 at the opening boundary; USD→EUR 0.90 on 01-31 and 02-01, 0.95 on 02-03, 0.92 on 02-28; buy 10 at 100 USD traded 02-01, settled 02-03 from that cash; price 110 USD on 02-28 | sleeve inflow `1,000 × 0.90 = 900` on 02-01; closing `1,100 × 0.92 = 1,012`; gain 112; TTWROR `1012/900 − 1 = 0.124444`; portfolio gain 112, `not_attributed_gain` 0. Under D7's alternative the inflow would be 950 (gain 62) and the 50 FX move would land in the residual |
+| I12 spin-off (D6) | P 10 units, price 100 on 02-28; on 03-01, 1 C per 2 P (5 C) spun off; P 90 and C 20 on 03-01; P 95 and C 22 on 03-31 | P: outflow `5 × 20 = 100` on 03-01, closing 950, gain 50, TTWROR `(900+100)/1000 · 950/900 − 1 = 0.055556`; C: inflow 100, closing 110, gain 10, TTWROR `0.100000`; portfolio TTWROR `0.060000`, gain 60, `not_attributed_gain` 0 |
+| I12b spin-off, child unpriced | I12 with no C price within the window of 03-01 | P and C: withdrawals (P) / contributions (C), gain, TTWROR and IRR `flow_unavailable` dated 03-01; values present; portfolio figures unchanged (no flow on 03-01, and 03-01 is not an evaluation day) |
 | I10 non-interference | every existing portfolio case (S, R, C, O, B families) with `instruments=true` | portfolio part of the response byte-identical to the read without the flag |
 
 Tests must own these fixtures and pin these literals, as the slice 1 cases
@@ -1031,7 +1041,7 @@ written.
 ### Proposed slices (after acceptance)
 
 8. **Sleeve read**: `instrument_returns` on the returns read, OpenAPI, and
-   cases I1–I10.
+   cases I1–I12.
 9. **Screen panel and saved-run inclusion**, with a browser case on a phone
    and an existing run reopened unchanged.
 
