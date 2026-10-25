@@ -303,18 +303,27 @@ func (t *RateTable) Convert(value exact.Coefficient, scale int, commodityID int6
 // it to the reporting currency's scale. A consumer whose arithmetic needs the
 // true sign or ratio (R13's time-weighted chain) rounds only what it shows.
 func (t *RateTable) ConvertExact(value exact.Coefficient, scale int, commodityID int64, onDate string) (*big.Rat, bool) {
+	amount, _, ok := t.ConvertExactObserved(value, scale, commodityID, onDate)
+	return amount, ok
+}
+
+// ConvertExactObserved is ConvertExact plus the valuation date of the
+// observation that priced the commodity itself (a chain's first leg), which a
+// caller needs when units changed between that date and onDate. It is onDate
+// for the reporting currency.
+func (t *RateTable) ConvertExactObserved(value exact.Coefficient, scale int, commodityID int64, onDate string) (*big.Rat, string, bool) {
 	rate, ok := t.resolve(commodityID, onDate)
 	if !ok {
-		return nil, false
+		return nil, "", false
 	}
 	amount := new(big.Rat).SetFrac(value.BigInt(), pow10(scale))
 	if rate.identity {
-		return amount, true
+		return amount, onDate, true
 	}
 	amount.Mul(amount, new(big.Rat).SetFrac(rate.price, pow10(rate.priceScale)))
 	amount.Quo(amount, new(big.Rat).SetFrac(rate.base, pow10(rate.baseScale)))
 	t.recordUse(commodityID, onDate, rate)
-	return amount, true
+	return amount, rate.use.ObservationDate, true
 }
 
 func pow10(scale int) *big.Int {

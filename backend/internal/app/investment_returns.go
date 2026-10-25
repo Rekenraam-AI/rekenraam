@@ -271,7 +271,13 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 			return err
 		}
 		if input.BenchmarkBasis == BenchmarkBasisPriceReturn {
-			if benchmarkSplitFacts, err = r.ledger.ReturnsInstrumentSplits(ctx, BookID, input.BenchmarkCommodityID, r.openDate, r.to); err != nil {
+			// A stale opening quote can predate a split up to the staleness
+			// window before the opening day; that split rescales it.
+			windowStart, err := shiftISODate(r.openDate, -staleness)
+			if err != nil {
+				return err
+			}
+			if benchmarkSplitFacts, err = r.ledger.ReturnsInstrumentSplits(ctx, BookID, input.BenchmarkCommodityID, windowStart, r.to); err != nil {
 				return err
 			}
 		}

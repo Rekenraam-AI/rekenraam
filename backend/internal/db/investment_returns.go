@@ -227,8 +227,10 @@ func (r *TransactionRepository) ReturnsInstrumentClassesAsOf(ctx context.Context
 }
 
 // ReturnsSplit is one effective split of an instrument: on EffectiveOn each
-// unit became RatioNumerator / RatioDenominator units.
+// unit became RatioNumerator / RatioDenominator units. AccountID is the
+// holding that recorded it (zero once combined per day).
 type ReturnsSplit struct {
+	AccountID        int64
 	EffectiveOn      string
 	RatioNumerator   int64
 	RatioDenominator int64
@@ -236,10 +238,11 @@ type ReturnsSplit struct {
 
 // ReturnsInstrumentSplits returns the effective splits of an instrument
 // recorded in any holding, after `after` and through `through`, in date order.
-// The same split recorded in several holdings appears once per holding.
+// The same split recorded in several holdings appears once per holding; a
+// holding's successive splits on one day each appear.
 func (r *TransactionRepository) ReturnsInstrumentSplits(ctx context.Context, bookID, commodityID int64, after, through string) ([]ReturnsSplit, error) {
 	rows, err := r.database.QueryContext(ctx, `
-		SELECT f.effective_on, f.ratio_numerator, f.ratio_denominator
+		SELECT f.account_id, f.effective_on, f.ratio_numerator, f.ratio_denominator
 		FROM investment_split_facts f
 		JOIN effective_investment_operations o ON o.id = f.operation_id
 		WHERE f.book_id = ? AND f.commodity_id = ? AND f.effective_on > ? AND f.effective_on <= ?
@@ -251,7 +254,7 @@ func (r *TransactionRepository) ReturnsInstrumentSplits(ctx context.Context, boo
 	var splits []ReturnsSplit
 	for rows.Next() {
 		var split ReturnsSplit
-		if err := rows.Scan(&split.EffectiveOn, &split.RatioNumerator, &split.RatioDenominator); err != nil {
+		if err := rows.Scan(&split.AccountID, &split.EffectiveOn, &split.RatioNumerator, &split.RatioDenominator); err != nil {
 			return nil, fmt.Errorf("scan returns instrument split: %w", err)
 		}
 		splits = append(splits, split)

@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"rekenraam/backend/internal/db"
 )
 
 // R13 benchmark cases (docs/plans/investment-returns-plan.md, slice 5). The
@@ -241,7 +239,7 @@ func TestReturnsBenchmarkHoldsThroughRecordedSplits(t *testing.T) {
 		requireReturn(t, "0.000000", benchmark.TimeWeighted)                     // 100 → 2 × 50
 		requireReturn(t, "0.010000", benchmarkPoint(t, benchmark, "2026-06-27")) // 101 / 100, before the split
 		requireReturn(t, "0.020000", benchmarkPoint(t, benchmark, "2026-07-04")) // 2 × 51 / 100
-		require.Equal(t, []db.ReturnsSplit{{EffectiveOn: "2026-07-01", RatioNumerator: 2, RatioDenominator: 1}}, benchmark.Splits)
+		requireBenchmarkSplits(t, benchmark, "2026-07-01 2/1")
 	})
 
 	t.Run("a total-return series is never split-adjusted", func(t *testing.T) {
@@ -300,5 +298,79 @@ func TestReturnsBenchmarkHoldsThroughRecordedSplits(t *testing.T) {
 		benchmark := f.readBenchmark(t, "2026-02-01", "2026-08-01", f.stockCommodityID, "").Benchmark
 		requireReturn(t, "0.020000", benchmark.TimeWeighted) // 102 / 100, no split
 		require.Empty(t, benchmark.Splits)
+	})
+}
+
+// requireBenchmarkSplits compares the disclosed per-day factors with literals
+// such as "2026-07-01 2/1".
+func requireBenchmarkSplits(t *testing.T, benchmark *ReturnsBenchmark, expected ...string) {
+	t.Helper()
+	actual := make([]string, 0, len(benchmark.Splits))
+	for _, split := range benchmark.Splits {
+		actual = append(actual, split.EffectiveOn+" "+split.Factor.String())
+	}
+	require.Equal(t, expected, actual)
+}
+
+// B12–B14, review of 6cfd060d: a quote prices a unit of its own day, so a
+// stale quote on either side of a split is rescaled by the splits between it
+// and the opening day; and a holding's successive same-day splits compound.
+func TestReturnsBenchmarkPricesStaleQuotesInTheirOwnUnitBasis(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("a stale pre-split quote after the split", func(t *testing.T) {
+		t.Parallel()
+		f := newReturnsFixture(t)
+		_, err := acknowledgedSplit(ctx, f.investmentService, splitInput(f.investmentsTestFixture, "2026-02-02", 2, 1))
+		require.NoError(t, err)
+		f.price(t, "2026-02-04", 5000)
+		benchmark := f.readBenchmark(t, "2026-02-01", "2026-02-04", f.stockCommodityID, "").Benchmark
+		// 02-02 and 02-03 reuse the 01-31 quote of 100 for one pre-split unit,
+		// which is what the opening unit still is in that quote's basis.
+		requireReturn(t, "0.000000", benchmarkPoint(t, benchmark, "2026-02-02"))
+		requireReturn(t, "0.000000", benchmarkPoint(t, benchmark, "2026-02-03"))
+		requireReturn(t, "0.000000", benchmark.TimeWeighted) // 2 × 50 / 100
+		requireBenchmarkSplits(t, benchmark, "2026-02-02 2/1")
+	})
+
+	t.Run("a stale opening quote before a split just before the period", func(t *testing.T) {
+		t.Parallel()
+		f := newReturnsFixture(t)
+		f.price(t, "2026-07-29", 10000)
+		_, err := acknowledgedSplit(ctx, f.investmentService, splitInput(f.investmentsTestFixture, "2026-07-30", 2, 1))
+		require.NoError(t, err)
+		f.price(t, "2026-08-03", 5000)
+		benchmark := f.readBenchmark(t, "2026-08-01", "2026-08-03", f.stockCommodityID, "").Benchmark
+		// The opening unit (07-31) is half a 07-29 unit: 100 / 2 = 50, then 50.
+		requireReturn(t, "0.000000", benchmark.TimeWeighted)
+		requireBenchmarkSplits(t, benchmark, "2026-07-30 2/1")
+	})
+
+	t.Run("successive splits in one holding on one day compound", func(t *testing.T) {
+		t.Parallel()
+		f := newReturnsFixture(t)
+		for range 2 {
+			_, err := acknowledgedSplit(ctx, f.investmentService, splitInput(f.investmentsTestFixture, "2026-02-02", 2, 1))
+			require.NoError(t, err)
+		}
+		f.price(t, "2026-02-02", 2500)
+		result := f.readBenchmark(t, "2026-02-01", "2026-02-02", f.stockCommodityID, "")
+		requireReturn(t, "0.000000", result.TimeWeighted)           // 1,100 → 100 + 40 × 25
+		requireReturn(t, "0.000000", result.Benchmark.TimeWeighted) // 4 × 25 / 100
+		requireBenchmarkSplits(t, result.Benchmark, "2026-02-02 4/1")
+	})
+
+	t.Run("a replacement uses only its new ratio", func(t *testing.T) {
+		t.Parallel()
+		f := newReturnsFixture(t)
+		split, err := acknowledgedSplit(ctx, f.investmentService, splitInput(f.investmentsTestFixture, "2026-02-02", 2, 1))
+		require.NoError(t, err)
+		_, err = acknowledgedReplaceSplit(ctx, f.investmentService, replaceSplitInput(f.investmentsTestFixture, split.Transaction.ID, "2026-02-02", 4, 1))
+		require.NoError(t, err)
+		f.price(t, "2026-02-02", 2500)
+		benchmark := f.readBenchmark(t, "2026-02-01", "2026-02-02", f.stockCommodityID, "").Benchmark
+		requireReturn(t, "0.000000", benchmark.TimeWeighted)
+		requireBenchmarkSplits(t, benchmark, "2026-02-02 4/1")
 	})
 }

@@ -33912,7 +33912,7 @@ export interface components {
             by_currency: components["schemas"]["ReturnsAllocationRow"][];
             unknown: components["schemas"]["ReturnsAllocationUnknown"][];
         };
-        /** @description One security or crypto commodity read as a single unit held through the period, valued in the reporting currency by its own rate table (its gaps never mark the portfolio's coverage incomplete). It has no flows, so its time-weighted return telescopes to the ratio of its end values; points are the portfolio series' dates. A missing opening value removes every point (dated the opening day); a missing point value removes that point. The headline is the closing point. `price_return` reads raw observations and excludes distributions; raw quotes are per current unit, so the unit count follows the instrument's effective recorded splits (from any holding) and a split is neutral. Holdings recording different ratios on one day make that day and later points `conflicting_splits`. `total_return` reads only observations recorded with adjustment basis total_return, a continuous series that is never split-adjusted. The basis is the request's declaration, never inferred. */
+        /** @description One security or crypto commodity read as a single unit held through the period, valued in the reporting currency by its own rate table (its gaps never mark the portfolio's coverage incomplete). It has no flows, so its time-weighted return telescopes to the ratio of its end values; points are the portfolio series' dates. A missing opening value removes every point (dated the opening day); a missing point value removes that point. The headline is the closing point. `price_return` reads raw observations and excludes distributions; raw quotes are per unit of their own day, so the unit count follows the instrument's effective recorded splits (from any holding) and each value is priced in the basis of the quote it used, stale or not, so a split is neutral. A value whose quote-to-opening span crosses a day on which holdings record different factors is `conflicting_splits`, dated that day. `total_return` reads only observations recorded with adjustment basis total_return, a continuous series that is never split-adjusted. The basis is the request's declaration, never inferred. */
         ReturnsBenchmark: {
             /** Format: int64 */
             commodity_id: number;
@@ -33921,14 +33921,12 @@ export interface components {
             time_weighted: components["schemas"]["ReturnFigure"];
             time_weighted_annualized: components["schemas"]["ReturnFigure"];
             points: components["schemas"]["ReturnsSeriesPoint"][];
-            /** @description Splits applied to a price-return benchmark within the period, one per day, in date order; always empty for total return. */
+            /** @description Per-day split factors a price-return value used, in date order: splits within the period, and any between a stale quote and the opening day (up to the staleness window before it). A holding's successive splits on one day compound into one factor, in lowest terms. Always empty for total return. */
             splits: {
                 /** Format: date */
                 effective_on: string;
-                /** Format: int64 */
-                ratio_numerator: number;
-                /** Format: int64 */
-                ratio_denominator: number;
+                ratio_numerator: string;
+                ratio_denominator: string;
             }[];
             valuation: components["schemas"]["Valuation"];
         };

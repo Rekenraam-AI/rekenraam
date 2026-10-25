@@ -53,10 +53,12 @@ type returnsBenchmarkResponse struct {
 	Valuation              *valuationResponse           `json:"valuation"`
 }
 
+// A day's split factor as an exact fraction; strings, because a holding's
+// successive same-day splits compound beyond any fixed integer width.
 type returnsSplitResponse struct {
 	EffectiveOn      string `json:"effective_on"`
-	RatioNumerator   int64  `json:"ratio_numerator"`
-	RatioDenominator int64  `json:"ratio_denominator"`
+	RatioNumerator   string `json:"ratio_numerator"`
+	RatioDenominator string `json:"ratio_denominator"`
 }
 
 type returnsAllocationRowResponse struct {
@@ -168,7 +170,8 @@ func toInvestmentReturnsResponse(result app.ReturnsResult) investmentReturnsResp
 	if result.Benchmark != nil {
 		splits := make([]returnsSplitResponse, 0, len(result.Benchmark.Splits))
 		for _, split := range result.Benchmark.Splits {
-			splits = append(splits, returnsSplitResponse(split))
+			splits = append(splits, returnsSplitResponse{EffectiveOn: split.EffectiveOn,
+				RatioNumerator: split.Factor.Num().String(), RatioDenominator: split.Factor.Denom().String()})
 		}
 		benchmark = &returnsBenchmarkResponse{Splits: splits, CommodityID: result.Benchmark.CommodityID, Basis: result.Benchmark.Basis,
 			TimeWeighted:           toReturnFigureResponse(result.Benchmark.TimeWeighted),

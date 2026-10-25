@@ -345,12 +345,24 @@ provider is needed.
   each effective recorded split of the instrument (any holding, inside or
   outside the portfolio; reversed and replaced splits excluded), its unit
   count is multiplied by the ratio on the split's effective date, exactly as
-  a holding's ledger units change that day. A split is therefore neutral, as
-  it is for the portfolio; reading raw quotes alone turned a 2:1 split into
-  −50 %. The same split recorded in several holdings applies once; different
-  ratios on one day are a conflict, and that day and every later point are
-  `conflicting_splits` (dated the day) rather than a guessed ratio. The
-  applied splits are listed in `benchmark.splits`. An instrument with an
+  a holding's ledger units change that day. A split is therefore neutral;
+  reading raw quotes alone turned a 2:1 split into −50 %.
+  - *Quote basis (review of `6cfd060d`, finding 1).* A quote prices a unit of
+    its own day, and a stale quote can sit on either side of a split. With
+    C(x) the product of split factors through x, the opening unit is worth
+    `price(q) × C(q) / C(open)` for the quote date q actually used, so splits
+    are read from the staleness window before the opening day. Multiplying a
+    pre-split quote by a later split had read a 2:1 split as +100 % on the
+    days that reused the old quote, and a stale opening quote before a split
+    just before the period as −50 %.
+  - *One factor per day (finding 2).* A holding's successive splits on one
+    day compound (2:1 twice is 4:1, as its ledger units do); holdings that
+    recorded the same event must agree on the day's factor. Deduplicating
+    by ratio had dropped the second split. A day holdings disagree on is a
+    conflict: a value whose span from q to the opening day crosses it is
+    `conflicting_splits` (dated the day), never a guessed factor.
+  - The factors used are listed in `benchmark.splits` as exact fractions in
+    lowest terms (decimal strings). An instrument with an
   unrecorded split cannot be detected; the list shows what was applied. A
   total-return series is a continuous index level, never split-adjusted, and
   its list is empty. Other corporate actions (spin-offs, mergers, cash in
@@ -398,6 +410,9 @@ provider is needed.
 | B9 recorded twice | B7 split in two holdings | applied once, `0.000000` |
 | B10 conflict | 2:1 and 3:1 on 07-01 in two holdings | 06-27 `0.010000`; 07-04, headline and p.a. `conflicting_splits` dated 07-01 |
 | B11 reversed | B7 split reversed, period to 08-01, 102 on 08-01 | `0.020000`, no split applied |
+| B12 stale quote after a split | 2:1 on 02-02; raw 100 (01-31), 50 (02-04); 02-01..02-04 | 02-02, 02-03 (01-31 quote) and close `0.000000`; factors `[02-02 2/1]` |
+| B13 stale opening before a split | raw 100 (07-29); 2:1 on 07-30; 50 (08-03); 08-01..08-03 | opening 100 / 2 = 50 → 50: `0.000000`; factors `[07-30 2/1]` |
+| B14 compounding | 2:1 twice on 02-02 in one holding; 25 on 02-02 | `0.000000`; factors `[02-02 4/1]` |
 
 **Review of `eeab1a2a` (2026-10-25).** Both findings accepted: (1) a
 price-return benchmark read raw quotes for one fixed unit, so a recorded 2:1
@@ -407,6 +422,13 @@ missing price — now named as the exchange rate (browser case in
 `investment-returns.spec.ts`). Independent coverage, strict total-return
 selection, FX inclusion, shared chart dates and axes, URL persistence and
 API-only total-return entry were reviewed and kept.
+
+**Review of `6cfd060d` (2026-10-25).** Both findings accepted (quote basis,
+same-day compounding; see *Splits*), cases B12–B14, plus the reviewer's
+replacement probe kept as a regression. Out of scope and tracked separately:
+the shared `RateTable` values post-split ledger units with a stale pre-split
+quote too, so the portfolio's own series (and every live valuation) reads a
+split as a jump on days that reuse the old quote.
 
 ## Money-weighted return (IRR)
 

@@ -16,10 +16,11 @@ import (
 // in the reporting currency by its own rate table, so its gaps never mark the
 // portfolio's coverage incomplete. Manual observations are as valid as any.
 //
-// Raw quotes are per current unit, so a price-return benchmark holds the units
-// one unit becomes under the instrument's recorded splits, exactly as a
-// holding's ledger units do; a split is not a loss. A total-return series is
-// a continuous index level and is never split-adjusted.
+// Raw quotes are per unit of their own day, so a price-return benchmark holds
+// the units one unit becomes under the instrument's recorded splits, exactly
+// as a holding's ledger units do, and prices them in the basis of the quote
+// actually used; a split is not a loss, even beside a stale quote. A
+// total-return series is a continuous index level and is never split-adjusted.
 
 // Benchmark bases: which observations price the series. A price-return
 // benchmark excludes distributions; total-return reads only observations the
@@ -29,8 +30,8 @@ const (
 	BenchmarkBasisTotalReturn = "total_return"
 )
 
-// ReturnReasonConflictingSplits: holdings record different split ratios for
-// the benchmark instrument on one day, so its unit count is unknown from then.
+// ReturnReasonConflictingSplits: holdings record different split factors for
+// the benchmark instrument on one day, so a value spanning that day is unknown.
 const ReturnReasonConflictingSplits = "conflicting_splits"
 
 // ReturnsBenchmark is the benchmark's cumulative return at the portfolio
@@ -41,10 +42,18 @@ type ReturnsBenchmark struct {
 	TimeWeighted           ReturnFigure
 	TimeWeightedAnnualized ReturnFigure
 	Points                 []ReturnsSeriesPoint
-	// Splits are the instrument's splits applied to a price-return benchmark,
-	// one per day; empty for total return.
-	Splits    []db.ReturnsSplit
+	// Splits are the per-day split factors a price-return value used, in date
+	// order; empty for total return.
+	Splits    []ReturnsBenchmarkSplit
 	Valuation ValuationCoverage
+}
+
+// ReturnsBenchmarkSplit is one day's split factor: every unit held at the end
+// of the previous day became Factor units (a holding's successive splits that
+// day compounded). Exact, so it is never rounded.
+type ReturnsBenchmarkSplit struct {
+	EffectiveOn string
+	Factor      *big.Rat
 }
 
 // newBenchmarkRates loads the benchmark's observations over the read's
@@ -64,60 +73,92 @@ func (r *returnsReader) newBenchmarkRates(ctx context.Context, commodityID int64
 	return table, nil
 }
 
-// benchmarkSplits keeps one split per day: holdings that recorded the same
-// event agree on its ratio. Different ratios on one day are a conflict, and
-// the first such day is returned instead of guessing.
-func benchmarkSplits(recorded []db.ReturnsSplit) ([]db.ReturnsSplit, string) {
-	var splits []db.ReturnsSplit
-	for _, split := range recorded {
-		if last := len(splits) - 1; last >= 0 && splits[last].EffectiveOn == split.EffectiveOn {
-			if splits[last].RatioNumerator != split.RatioNumerator || splits[last].RatioDenominator != split.RatioDenominator {
-				return splits[:last], split.EffectiveOn
-			}
-			continue
+// benchmarkSplitDays combines recorded splits (in date order) into one factor
+// per day. A holding's successive splits on one day compound (2:1 twice is
+// 4:1, as its ledger units are); holdings that recorded the same event must
+// agree on the day's factor. A day they disagree on has no factor and is a
+// conflict, rather than a guess.
+func benchmarkSplitDays(recorded []db.ReturnsSplit) ([]ReturnsBenchmarkSplit, []string) {
+	var days []ReturnsBenchmarkSplit
+	var conflicts []string
+	for start := 0; start < len(recorded); {
+		end := start
+		for end < len(recorded) && recorded[end].EffectiveOn == recorded[start].EffectiveOn {
+			end++
 		}
-		splits = append(splits, split)
+		byHolding := map[int64]*big.Rat{}
+		for _, split := range recorded[start:end] {
+			if byHolding[split.AccountID] == nil {
+				byHolding[split.AccountID] = big.NewRat(1, 1)
+			}
+			byHolding[split.AccountID].Mul(byHolding[split.AccountID], big.NewRat(split.RatioNumerator, split.RatioDenominator))
+		}
+		var factor *big.Rat
+		agree := true
+		for _, holding := range byHolding {
+			agree = agree && (factor == nil || factor.Cmp(holding) == 0)
+			factor = holding
+		}
+		if agree {
+			days = append(days, ReturnsBenchmarkSplit{EffectiveOn: recorded[start].EffectiveOn, Factor: factor})
+		} else {
+			conflicts = append(conflicts, recorded[start].EffectiveOn)
+		}
+		start = end
 	}
-	return splits, ""
+	return days, conflicts
 }
 
-// benchmarkSeries reads the benchmark's value at each series date: one unit
-// held from the opening day, times the splits applied by then. The opening
-// value outranks a point's own gap, and that outranks a split conflict at or
-// before it, as the portfolio series orders its required gaps; a point-only
+// benchmarkSeries reads the benchmark's value at each series date. One unit
+// held from the opening day is C(d)/C(open) units on d, where C multiplies the
+// split factors through a day. A quote observed on q prices a unit of q's
+// basis, so the holding is worth price(q) × C(q)/C(open), whichever side of
+// the opening day q falls; recorded splits must therefore cover the staleness
+// window before the opening day too. The opening value outranks a point's own
+// gap, as the portfolio series orders its required gaps; a value whose span
+// (q to the opening day) crosses a conflicting day is unknown; a point-only
 // gap removes that point alone. Prices are positive, so the growth factor is.
 func benchmarkSeries(commodityID int64, basis string, rates *RateTable, recorded []db.ReturnsSplit, openDate string, dates []string, days int) ReturnsBenchmark {
-	splits, conflictOn := benchmarkSplits(recorded)
-	unit := func(date string) (*big.Rat, bool) {
-		value, ok := rates.ConvertExact(exact.New(1), 0, commodityID, date)
+	splitDays, conflicts := benchmarkSplitDays(recorded)
+	used := map[string]bool{}
+	value := func(date string) (*big.Rat, ReturnFigure) {
+		price, observed, ok := rates.ConvertExactObserved(exact.New(1), 0, commodityID, date)
 		if !ok {
-			return nil, false
+			return nil, unavailableReturn(ReturnReasonValuationUnavailable, date)
 		}
-		for _, split := range splits {
-			if split.EffectiveOn <= date {
-				value.Mul(value, big.NewRat(split.RatioNumerator, split.RatioDenominator))
+		low, high := min(observed, openDate), max(observed, openDate)
+		for _, conflict := range conflicts {
+			if conflict > low && conflict <= high {
+				return nil, unavailableReturn(ReturnReasonConflictingSplits, conflict)
 			}
 		}
-		return value, true
+		for _, split := range splitDays {
+			if split.EffectiveOn <= low || split.EffectiveOn > high {
+				continue
+			}
+			used[split.EffectiveOn] = true
+			if observed > openDate {
+				price.Mul(price, split.Factor)
+			} else {
+				price.Quo(price, split.Factor)
+			}
+		}
+		return price, ReturnFigure{}
 	}
-	benchmark := ReturnsBenchmark{CommodityID: commodityID, Basis: basis, Splits: splits, Points: make([]ReturnsSeriesPoint, 0, len(dates))}
-	if benchmark.Splits == nil {
-		benchmark.Splits = []db.ReturnsSplit{}
-	}
-	opening, openKnown := unit(openDate)
+
+	benchmark := ReturnsBenchmark{CommodityID: commodityID, Basis: basis, Points: make([]ReturnsSeriesPoint, 0, len(dates))}
+	opening, openFailure := value(openDate)
 	var closingGrowth *big.Rat
 	for i, date := range dates {
 		point := ReturnsSeriesPoint{Date: date}
-		value, known := unit(date)
+		current, failure := value(date)
 		switch {
-		case !openKnown:
-			point.TimeWeighted = unavailableReturn(ReturnReasonValuationUnavailable, openDate)
-		case !known:
-			point.TimeWeighted = unavailableReturn(ReturnReasonValuationUnavailable, date)
-		case conflictOn != "" && date >= conflictOn:
-			point.TimeWeighted = unavailableReturn(ReturnReasonConflictingSplits, conflictOn)
+		case opening == nil:
+			point.TimeWeighted = openFailure
+		case current == nil:
+			point.TimeWeighted = failure
 		default:
-			growth := new(big.Rat).Quo(value, opening)
+			growth := new(big.Rat).Quo(current, opening)
 			point.TimeWeighted = availableReturn(formatReturnRat(new(big.Rat).Sub(growth, big.NewRat(1, 1))))
 			if i == len(dates)-1 {
 				closingGrowth = growth
@@ -129,6 +170,14 @@ func benchmarkSeries(commodityID int64, basis string, rates *RateTable, recorded
 	benchmark.TimeWeightedAnnualized = benchmark.TimeWeighted
 	if closingGrowth != nil {
 		benchmark.TimeWeightedAnnualized = annualizedReturn(closingGrowth, days)
+	}
+
+	// splitDays is in date order, so the disclosure is too.
+	benchmark.Splits = []ReturnsBenchmarkSplit{}
+	for _, split := range splitDays {
+		if used[split.EffectiveOn] {
+			benchmark.Splits = append(benchmark.Splits, split)
+		}
 	}
 	return benchmark
 }
