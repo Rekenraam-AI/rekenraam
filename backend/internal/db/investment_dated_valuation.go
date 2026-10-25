@@ -116,7 +116,7 @@ func priceDatedPositionsTx(ctx context.Context, tx *sql.Tx, bookID int64, bounda
 	rows, err := tx.QueryContext(ctx, observationSelectionCTE+`
 		SELECT d.base_commodity_id, d.quote_commodity_id,
 			po.price_value, po.price_scale, po.valuation_date, po.is_approximate,
-			po.base_quantity_value, po.base_quantity_scale,
+			po.base_quantity_value, po.base_quantity_scale, po.id,
 			CASE WHEN po.id IS NULL THEN d.reason
 				WHEN po.valuation_date < date(si.as_of, '-7 days') THEN 'stale' ELSE 'usable' END
 		FROM selection_diagnostics d
@@ -128,15 +128,15 @@ func priceDatedPositionsTx(ctx context.Context, tx *sql.Tx, bookID int64, bounda
 	}
 	defer rows.Close()
 	type price struct {
-		value, scale, approximate, baseValue, baseScale sql.NullInt64
-		date                                            sql.NullString
-		status                                          string
+		value, scale, approximate, baseValue, baseScale, id sql.NullInt64
+		date                                                sql.NullString
+		status                                              string
 	}
 	prices := map[[2]int64]price{}
 	for rows.Next() {
 		var pair [2]int64
 		var p price
-		if err := rows.Scan(&pair[0], &pair[1], &p.value, &p.scale, &p.date, &p.approximate, &p.baseValue, &p.baseScale, &p.status); err != nil {
+		if err := rows.Scan(&pair[0], &pair[1], &p.value, &p.scale, &p.date, &p.approximate, &p.baseValue, &p.baseScale, &p.id, &p.status); err != nil {
 			return fmt.Errorf("scan dated valuation price: %w", err)
 		}
 		prices[pair] = p
@@ -156,6 +156,7 @@ func priceDatedPositionsTx(ctx context.Context, tx *sql.Tx, bookID int64, bounda
 		position.LatestPriceValue, position.LatestPriceScale, position.LatestPriceDate = p.value, p.scale, p.date
 		position.LatestPriceApproximate = p.approximate
 		position.LatestPriceBaseQuantityValue, position.LatestPriceBaseQuantityScale = p.baseValue, p.baseScale
+		position.latestPriceObservationID = p.id
 	}
 	return splitAdjustPositionPrices(ctx, tx, bookID, positions)
 }

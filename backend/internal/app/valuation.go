@@ -92,7 +92,9 @@ type RateUse struct {
 	// SplitRatio* are the exact factor (lowest terms) of the instrument's
 	// recorded splits between the observation date and the requested date:
 	// the quote priced a unit of its own day, and each such unit is this many
-	// units on the requested date (#407). Empty when no split intervened.
+	// units on the requested date (#407). A trade-implied quote ordered before
+	// a split on its own day also counts that split. Empty when no split
+	// intervened.
 	SplitRatioNumerator   string `json:"split_ratio_numerator,omitempty"`
 	SplitRatioDenominator string `json:"split_ratio_denominator,omitempty"`
 }
@@ -160,6 +162,10 @@ type RateTable struct {
 	// under total-return selection.
 	splitDays      map[int64][]SplitDay
 	splitConflicts map[int64][]string
+	// pendingSplits holds, per trade-implied observation whose trade was
+	// ordered before a split on its own day, the factor still pending after
+	// the trade: that quote priced pre-split units.
+	pendingSplits map[int64]*big.Rat
 }
 
 // NewRateTable loads every rate that could be needed to convert the given
@@ -286,6 +292,9 @@ func newRateTableAtBoundary(ctx context.Context, pricing *db.PricingRepository, 
 			return nil, err
 		}
 		table.splitDays, table.splitConflicts = db.InstrumentSplitDays(splits)
+		if table.pendingSplits, err = pricing.TradeQuotePendingSplits(ctx, BookID, needed, previousDay(windowStart), toDate); err != nil {
+			return nil, err
+		}
 	}
 
 	return table, nil
@@ -391,6 +400,25 @@ type resolvedRate struct {
 	price, base           *big.Int
 	priceScale, baseScale int
 	use                   RateUse
+	// pending is the split factor a same-day trade quote was brought to the
+	// end of its own day by; nil when none.
+	pending *big.Rat
+}
+
+// endOfDay brings a trade-implied quote ordered before a split on its own day
+// to that day's end-of-day units: each unit it priced became the pending
+// factor's units, so the price per unit is divided by it, exactly. Every
+// other quote already prices an end-of-day unit.
+func (t *RateTable) endOfDay(rate resolvedRate, observationID int64) resolvedRate {
+	factor := t.pendingSplits[observationID]
+	if factor == nil {
+		return rate
+	}
+	rate.price = new(big.Int).Mul(rate.price, factor.Denom())
+	rate.base = new(big.Int).Mul(rate.base, factor.Num())
+	rate.pending = factor
+	rate.use.SplitRatioNumerator, rate.use.SplitRatioDenominator = factor.Num().String(), factor.Denom().String()
+	return rate
 }
 
 // resolve selects a commodity's rate on a date and records a gap on a miss.
@@ -401,13 +429,13 @@ func (t *RateTable) resolve(commodityID int64, onDate string) (resolvedRate, boo
 		return resolvedRate{identity: true}, true
 	}
 	if rate, found := t.observationOnOrBefore(t.byCommodity[commodityID], onDate); found {
-		return resolvedRate{
+		return t.endOfDay(resolvedRate{
 			price: big.NewInt(rate.PriceValue), priceScale: rate.PriceScale,
 			base: big.NewInt(rate.BaseQuantityValue), baseScale: rate.BaseQuantityScale,
 			use: RateUse{ObservationID: rate.ObservationID, Approximate: rate.IsApproximate,
 				CommodityID: commodityID, ObservationDate: rate.ValuationDate, RequestedDate: onDate,
 				Stale: rate.ValuationDate != onDate, Derived: rate.IsDerived},
-		}, true
+		}, rate.ObservationID), true
 	}
 	return t.resolveChained(commodityID, onDate)
 }
@@ -433,7 +461,12 @@ func (t *RateTable) resolveUnits(commodityID int64, onDate string) (resolvedRate
 	}
 	rate.price = new(big.Int).Mul(rate.price, factor.Denom())
 	rate.base = new(big.Int).Mul(rate.base, factor.Num())
-	rate.use.SplitRatioNumerator, rate.use.SplitRatioDenominator = factor.Num().String(), factor.Denom().String()
+	// The disclosed factor is the whole one from the quote's units to onDate's.
+	total := new(big.Rat).Set(factor)
+	if rate.pending != nil {
+		total.Mul(total, rate.pending)
+	}
+	rate.use.SplitRatioNumerator, rate.use.SplitRatioDenominator = total.Num().String(), total.Denom().String()
 	return rate, true
 }
 
@@ -489,7 +522,7 @@ func (t *RateTable) resolveChained(commodityID int64, onDate string) (resolvedRa
 		}
 		return resolvedRate{}, false
 	}
-	return resolvedRate{
+	return t.endOfDay(resolvedRate{
 		price:      new(big.Int).Mul(big.NewInt(first.PriceValue), big.NewInt(second.PriceValue)),
 		priceScale: first.PriceScale + second.PriceScale,
 		base:       new(big.Int).Mul(big.NewInt(first.BaseQuantityValue), big.NewInt(second.BaseQuantityValue)),
@@ -498,7 +531,7 @@ func (t *RateTable) resolveChained(commodityID int64, onDate string) (resolvedRa
 			CommodityID: commodityID, ObservationDate: first.ValuationDate, RequestedDate: onDate,
 			Stale:   first.ValuationDate != onDate || second.ValuationDate != onDate,
 			Derived: true, ViaCommodityID: second.BaseCommodityID, ViaObservationID: second.ObservationID, ViaObservationDate: second.ValuationDate},
-	}, true
+	}, first.ObservationID), true
 }
 
 // rateFor finds a commodity's direct reporting rate, recording a gap on a miss.

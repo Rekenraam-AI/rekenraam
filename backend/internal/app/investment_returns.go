@@ -199,7 +199,10 @@ type returnsReader struct {
 	kinds    map[int64]string
 	postings []db.LedgerPostingRecord
 	shorts   []db.ShortLotQuantityEvent
-	rates    *RateTable
+	// splits are the instruments' recorded splits in the period, with their
+	// same-day slots, for flows ordered before a split on their own day.
+	splits []db.InstrumentSplit
+	rates  *RateTable
 	// seriesRates values the days only chart points need, keeping their
 	// coverage apart from the headline figures'.
 	seriesRates *RateTable
@@ -251,8 +254,15 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 	}
 
 	commodities := []int64{}
+	instruments := []int64{}
 	for _, posting := range r.postings {
 		commodities = append(commodities, posting.CommodityID)
+		if r.kinds[posting.CommodityID] != "currency" {
+			instruments = append(instruments, posting.CommodityID)
+		}
+	}
+	if r.splits, err = r.pricing.InstrumentSplits(ctx, BookID, dedupeIDs(instruments), r.openDate, r.to); err != nil {
+		return err
 	}
 	reporting := ReportingCurrencyInput{CommodityID: input.ReportingCommodityID, MaxStalenessDay: staleness}
 	if r.rates, err = newRateTableAtBoundary(ctx, r.pricing, reporting, commodities, r.openDate, r.to, boundary); err != nil {
@@ -450,6 +460,14 @@ func (r *returnsReader) classify(anchors []db.ReturnsOperationAnchor) ([]returns
 			if !ok {
 				flow.ok = false
 				continue
+			}
+			// The day's rate prices its end-of-day units. A delivery ordered
+			// before a split that day moved pre-split units, each of which the
+			// split then multiplied.
+			if isOperation {
+				if pending := db.PendingSplitFactor(r.splits, posting.CommodityID, posting.AccountID, posting.EntryDate, anchor.RootOperationID); pending != nil {
+					value.Mul(value, pending)
+				}
 			}
 			flow.amount.Add(flow.amount, value.Mul(value, big.NewRat(sign, 1)))
 		}

@@ -369,6 +369,15 @@ provider is needed.
     benchmark rate table's own, the ones every ledger valuation applies;
     the benchmark reads its quotes unadjusted (`ConvertExactObserved`) and
     applies `C(q) / C(open)` itself, because its unit is the opening day's.
+  - *Same-day order (combined review of `cae8039d`, `21106562`, `129abf3f`).*
+    On a split day, an event ordered before the split in replay order
+    carried pre-split units (see the reports plan's *Same-day order*). A
+    trade-implied quote from such a trade is brought to end-of-day units
+    before any factor applies (it had valued 22 post-split units at the
+    pre-split 100: +100 %), and a delivery's posted units are multiplied by
+    the factor still pending after its operation before they are valued at
+    the day's end-of-day rate (it had counted a 1-unit pre-split delivery as
+    one post-split unit: a contribution of 50, not 100).
   - The factors used are listed in `benchmark.splits` as exact fractions in
     lowest terms (decimal strings). An instrument with an
   unrecorded split cannot be detected; the list shows what was applied. A
@@ -421,6 +430,9 @@ provider is needed.
 | B12 stale quote after a split | 2:1 on 02-02; raw 100 (01-31), 50 (02-04); 02-01..02-04 | 02-02, 02-03 (01-31 quote) and close `0.000000`; factors `[02-02 2/1]` |
 | B13 stale opening before a split | raw 100 (07-29); 2:1 on 07-30; 50 (08-03); 08-01..08-03 | opening 100 / 2 = 50 → 50: `0.000000`; factors `[07-30 2/1]` |
 | B14 compounding | 2:1 twice on 02-02 in one holding; 25 on 02-02 | `0.000000`; factors `[02-02 4/1]` |
+| O1 trade before split | buy 1 for 100 from broker cash 02-02, then 2:1 that day; 02-01..02-03 | closing 1,100 = 22 × 50; TTWROR `0.000000`; holdings value 1,100 |
+| O2 trade after split | 2:1 on 02-02, then buy 1 for 50 | closing 1,100 = 21 × 50 + 50; `0.000000` |
+| O3 delivery before split | external transfer-in of 1 on 02-02, then 2:1; stale (01-31) or fresh (50 on 02-02) quote | contribution 100, closing 1,200, `0.000000` |
 
 **Review of `eeab1a2a` (2026-10-25).** Both findings accepted: (1) a
 price-return benchmark read raw quotes for one fixed unit, so a recorded 2:1
@@ -441,6 +453,13 @@ split as a jump on days that reuse the old quote. Fixed in
 reproducer (2:1 on 02-02, quotes 100 on 01-31 and 50 on 02-04) read
 `0.909091` on 02-02 and 02-03 and now reads `0.000000`
 (`TestReturnsSeriesRescalesAStalePreSplitQuote`).
+
+**Combined review of `cae8039d`, `21106562` and `129abf3f` (2026-10-25).**
+Both findings accepted: a trade-implied quote from a trade ordered before a
+same-day split, and a delivery posted before one, were read in post-split
+units (cases O1–O3, `investment_returns_split_order_test.go`, including
+holdings through the dated valuation read). The chained-FX benchmark probe
+passed and is kept as a regression.
 
 ## Money-weighted return (IRR)
 

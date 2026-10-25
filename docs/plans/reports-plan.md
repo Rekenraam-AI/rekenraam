@@ -97,7 +97,17 @@ selector, restated rows, coverage notices, charts, and CSV output ship in
   the factor (`split_ratio_numerator` / `split_ratio_denominator`). Holdings
   that recorded different factors for one day make any value whose span
   crosses that day a gap (`conflicting_splits`), never a guessed factor.
-  Total-return series are never split-adjusted. Every `RateTable` consumer
+  Total-return series are never split-adjusted.
+  *Same-day order.* A split splits the lots that exist at its replay slot
+  (the correction root's operation id, the order replay uses), so an event
+  ordered before it that day carried pre-split units. A trade-implied quote
+  from a trade ordered before a split its holding recorded that day is cash
+  per pre-split unit: it is first divided by the factor still pending after
+  the trade (`db.PendingSplitFactor`), which brings it to the end of its own
+  day, and the disclosed factor includes it. Every other quote dated on a
+  split day prices a post-split (end-of-day) unit. The same pending factor
+  multiplies the units an investment operation posted before that day's
+  split when R13 values them as a flow. Every `RateTable` consumer
   (net worth, spending, cashflow, R13) reads this one rule, and so do
   holdings and unrealized gains (current, dated, statement and alternative
   reads, #408), which price positions from the selection directly: their

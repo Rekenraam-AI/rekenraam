@@ -433,6 +433,9 @@ type InvestmentPositionRecord struct {
 	LatestPriceScale        sql.NullInt64
 	LatestPriceDate         sql.NullString
 	LatestPriceApproximate  sql.NullInt64
+	// latestPriceObservationID identifies the latest price, so a trade-implied
+	// quote ordered before a same-day split can be read in its own units.
+	latestPriceObservationID sql.NullInt64
 	// base_quantity fields from price_observations: price is (PriceValue/base_quantity) per unit.
 	// Defaults: base_quantity_value=1, base_quantity_scale=0 (price is per 1 unit).
 	LatestPriceBaseQuantityValue sql.NullInt64
@@ -2281,7 +2284,7 @@ func (r *InvestmentRepository) Positions(ctx context.Context, bookID int64, boun
 			lot.remaining_cost_basis_scale,
 			lot.cost_commodity_id,
    po.price_value,po.price_scale,po.valuation_date,po.is_approximate,
-   po.base_quantity_value,po.base_quantity_scale,lot.basis_knowledge,
+   po.base_quantity_value,po.base_quantity_scale,po.id,lot.basis_knowledge,
    CASE WHEN po.id IS NULL THEN COALESCE(diag.reason,'no_price')
     WHEN po.valuation_date < date(si.as_of,'-7 days') THEN 'stale' ELSE 'usable' END,
    si.as_of,si.recorded_at,
@@ -2320,7 +2323,7 @@ func (r *InvestmentRepository) Positions(ctx context.Context, bookID int64, boun
 		var quantity exact.Coefficient
 		var quantityScale int
 		var costValue, costScale sql.NullInt64
-		if err := rows.Scan(&record.AccountID, &record.CommodityID, &quantity, &quantityScale, &costValue, &costScale, &record.CostCommodityID, &record.LatestPriceValue, &record.LatestPriceScale, &record.LatestPriceDate, &record.LatestPriceApproximate, &record.LatestPriceBaseQuantityValue, &record.LatestPriceBaseQuantityScale, &record.BasisKnowledge, &record.PriceStatus, &record.ValuationAsOf, &record.KnowledgeCutoff, &record.MethodFamily, &record.PositionSide); err != nil {
+		if err := rows.Scan(&record.AccountID, &record.CommodityID, &quantity, &quantityScale, &costValue, &costScale, &record.CostCommodityID, &record.LatestPriceValue, &record.LatestPriceScale, &record.LatestPriceDate, &record.LatestPriceApproximate, &record.LatestPriceBaseQuantityValue, &record.LatestPriceBaseQuantityScale, &record.latestPriceObservationID, &record.BasisKnowledge, &record.PriceStatus, &record.ValuationAsOf, &record.KnowledgeCutoff, &record.MethodFamily, &record.PositionSide); err != nil {
 			return nil, fmt.Errorf("scan investment position: %w", err)
 		}
 		value, scale, err := projectedBasis(costValue, costScale, record.BasisKnowledge)
