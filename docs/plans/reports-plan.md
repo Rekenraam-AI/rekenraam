@@ -223,14 +223,20 @@ their own.
     `unsettled` over the same accounts, which is the change in posted
     balances. Operations whose units post on several days, or on none (a
     dividend), keep their entry dates.
-  - **Edge.** A settling account whose first version is later than the
-    reporting date is not in that date's snapshot, so its unsettled amount is
-    not counted there, as with any balance.
+  - **A settling account not yet open.** An obligation recognised before its
+    settling account's first version still counts. That version classifies
+    the account, so an account opened on the settlement day carries the
+    unpaid 100 from the trade date.
+  - **One snapshot.** Posted balances and unsettled trades are read inside
+    one read transaction (`WithLedgerSnapshot`). A buy committed between two
+    separate reads would pair the old units with the new unsettled cash,
+    a false loss.
   - **Probe, other readers (2026-10-25).** Positions read current units only
     and never cash. The forecast reads currency balances and future posted
     entries. Spending and income never include a settlement leg. None of these
     double counts.
-  - Cases: `ledger_unsettled_test.go` (N1–N6).
+  - Cases: `ledger_unsettled_test.go` (N1–N9); browser
+    `e2e/playwright/reports-unsettled.spec.ts` (390 px, axe).
 - Return separate exact totals per commodity. A combined display is unavailable
   unless the caller selects the shipped reporting currency and named valuation method.
 - An account filter may power full net worth, one account’s historical balance,

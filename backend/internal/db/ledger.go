@@ -49,10 +49,36 @@ type LedgerPostingRecord struct {
 	PayeeName sql.NullString
 }
 
+// WithLedgerSnapshot runs fn over one deferred read transaction, so a report
+// that reads posted balances and the unsettled trades beside them sees one
+// ledger state rather than pairing the two sides of a concurrent commit
+// (#410).
+func (r *TransactionRepository) WithLedgerSnapshot(ctx context.Context, fn func(*LedgerSnapshotReader) error) error {
+	transaction, err := r.database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return fmt.Errorf("begin ledger snapshot: %w", err)
+	}
+	defer rollbackTx(ctx, transaction)
+	return fn(&LedgerSnapshotReader{transaction: transaction})
+}
+
+// LedgerSnapshotReader reads the ledger inside one WithLedgerSnapshot
+// transaction.
+type LedgerSnapshotReader struct {
+	transaction *sql.Tx
+}
+
 // LedgerCommodityKinds returns the stable kind of each commodity in this book.
 // Reports use it to distinguish ordinary negative money from countable units.
 func (r *TransactionRepository) LedgerCommodityKinds(ctx context.Context, bookID int64) (map[int64]string, error) {
-	rows, err := r.database.QueryContext(ctx, `SELECT id, kind FROM commodities WHERE book_id = ?`, bookID)
+	return ledgerCommodityKinds(ctx, r.database, bookID)
+}
+func (s *LedgerSnapshotReader) LedgerCommodityKinds(ctx context.Context, bookID int64) (map[int64]string, error) {
+	return ledgerCommodityKinds(ctx, s.transaction, bookID)
+}
+
+func ledgerCommodityKinds(ctx context.Context, source queryer, bookID int64) (map[int64]string, error) {
+	rows, err := source.QueryContext(ctx, `SELECT id, kind FROM commodities WHERE book_id = ?`, bookID)
 	if err != nil {
 		return nil, fmt.Errorf("read ledger commodity kinds: %w", err)
 	}
@@ -90,7 +116,14 @@ type LedgerAccountVersionRecord struct {
 // version replayed for an account is the one with the greatest
 // (effective_from, version_seq), which is exactly the one that query selects.
 func (r *TransactionRepository) LedgerAccountVersionsThrough(ctx context.Context, bookID int64, asOf string) ([]LedgerAccountVersionRecord, error) {
-	rows, err := r.database.QueryContext(ctx, `
+	return ledgerAccountVersionsThrough(ctx, r.database, bookID, asOf)
+}
+func (s *LedgerSnapshotReader) LedgerAccountVersionsThrough(ctx context.Context, bookID int64, asOf string) ([]LedgerAccountVersionRecord, error) {
+	return ledgerAccountVersionsThrough(ctx, s.transaction, bookID, asOf)
+}
+
+func ledgerAccountVersionsThrough(ctx context.Context, source queryer, bookID int64, asOf string) ([]LedgerAccountVersionRecord, error) {
+	rows, err := source.QueryContext(ctx, `
 		SELECT
 			a.id,
 			a.book_id,
@@ -143,7 +176,14 @@ func (r *TransactionRepository) LedgerAccountVersionsThrough(ctx context.Context
 }
 
 func (r *TransactionRepository) LedgerAccountsAsOf(ctx context.Context, bookID int64, asOf string) ([]LedgerAccountRecord, error) {
-	rows, err := r.database.QueryContext(ctx, `
+	return ledgerAccountsAsOf(ctx, r.database, bookID, asOf)
+}
+func (s *LedgerSnapshotReader) LedgerAccountsAsOf(ctx context.Context, bookID int64, asOf string) ([]LedgerAccountRecord, error) {
+	return ledgerAccountsAsOf(ctx, s.transaction, bookID, asOf)
+}
+
+func ledgerAccountsAsOf(ctx context.Context, source queryer, bookID int64, asOf string) ([]LedgerAccountRecord, error) {
+	rows, err := source.QueryContext(ctx, `
 		SELECT
 			a.id,
 			a.book_id,
@@ -209,6 +249,14 @@ func (r *TransactionRepository) LedgerPostingsThrough(ctx context.Context, bookI
 	})
 }
 
+func (s *LedgerSnapshotReader) LedgerPostingsThrough(ctx context.Context, bookID int64, asOf string, status string) ([]LedgerPostingRecord, error) {
+	return queryLedgerPostings(ctx, s.transaction, ledgerPostingQuery{BookID: bookID, Status: status, BeforeDate: asOf})
+}
+
+func (s *LedgerSnapshotReader) ShortLotQuantityEventsThrough(ctx context.Context, bookID int64, through string) ([]ShortLotQuantityEvent, error) {
+	return shortLotQuantityEvents(ctx, s.transaction, bookID, through)
+}
+
 func (r *TransactionRepository) LedgerCategoryPostings(ctx context.Context, bookID int64, afterDate string, beforeDate string, status string, categoryType string) ([]LedgerPostingRecord, error) {
 	query := ledgerPostingQuery{
 		BookID:       bookID,
@@ -242,11 +290,18 @@ func (r *TransactionRepository) LedgerPostingsInRange(ctx context.Context, bookI
 // after its reporting date too: a trade recognised on its trade date may
 // settle later (#410).
 func (r *TransactionRepository) InvestmentOperationPostings(ctx context.Context, bookID int64) ([]LedgerPostingRecord, map[int64]int64, error) {
-	postings, err := r.ledgerPostings(ctx, ledgerPostingQuery{BookID: bookID, Status: "posted", OperationLinked: true})
+	return investmentOperationPostings(ctx, r.database, bookID)
+}
+func (s *LedgerSnapshotReader) InvestmentOperationPostings(ctx context.Context, bookID int64) ([]LedgerPostingRecord, map[int64]int64, error) {
+	return investmentOperationPostings(ctx, s.transaction, bookID)
+}
+
+func investmentOperationPostings(ctx context.Context, source queryer, bookID int64) ([]LedgerPostingRecord, map[int64]int64, error) {
+	postings, err := queryLedgerPostings(ctx, source, ledgerPostingQuery{BookID: bookID, Status: "posted", OperationLinked: true})
 	if err != nil {
 		return nil, nil, err
 	}
-	rows, err := r.database.QueryContext(ctx, `
+	rows, err := source.QueryContext(ctx, `
 		SELECT tv.transaction_id, l.operation_id
 		FROM investment_operation_journal_links l
 		JOIN current_transaction_versions tv ON tv.id = l.transaction_version_id
@@ -294,6 +349,10 @@ type ledgerPostingQuery struct {
 }
 
 func (r *TransactionRepository) ledgerPostings(ctx context.Context, query ledgerPostingQuery) ([]LedgerPostingRecord, error) {
+	return queryLedgerPostings(ctx, r.database, query)
+}
+
+func queryLedgerPostings(ctx context.Context, source queryer, query ledgerPostingQuery) ([]LedgerPostingRecord, error) {
 	where := []string{"tv.book_id = ?", "t.deleted_at IS NULL"}
 	args := []any{query.BookID}
 	if query.Status != "" {
@@ -359,7 +418,7 @@ func (r *TransactionRepository) ledgerPostings(ctx context.Context, query ledger
 		)`)
 	}
 
-	rows, err := r.database.QueryContext(ctx, `
+	rows, err := source.QueryContext(ctx, `
 		SELECT
 			pv.id,
 			pv.account_id,

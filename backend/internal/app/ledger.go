@@ -272,7 +272,12 @@ func (s *TransactionService) NetWorth(ctx context.Context, input NetWorthInput) 
 	if err != nil {
 		return NetWorthResult{}, err
 	}
-	bucket, err := s.netWorthTotals(ctx, asOf, status)
+	var bucket netWorthBucket
+	err = s.repository.WithLedgerSnapshot(ctx, func(ledger *db.LedgerSnapshotReader) error {
+		var readErr error
+		bucket, readErr = netWorthTotals(ctx, ledger, asOf, status)
+		return readErr
+	})
 	if err != nil {
 		return NetWorthResult{}, err
 	}
@@ -315,7 +320,12 @@ func (s *TransactionService) NetWorthSeries(ctx context.Context, input NetWorthS
 	if err != nil {
 		return NetWorthSeriesResult{}, err
 	}
-	bucketTotals, err := s.netWorthSeriesTotals(ctx, bounds, normalizedFilters)
+	var bucketTotals []netWorthBucket
+	err = s.repository.WithLedgerSnapshot(ctx, func(ledger *db.LedgerSnapshotReader) error {
+		var readErr error
+		bucketTotals, readErr = netWorthSeriesTotals(ctx, ledger, bounds, normalizedFilters)
+		return readErr
+	})
 	if err != nil {
 		return NetWorthSeriesResult{}, err
 	}
@@ -383,16 +393,29 @@ type netWorthBucket struct {
 	unclassifiedShorts []UnclassifiedShortPosition
 }
 
-func (s *TransactionService) netWorthTotals(ctx context.Context, asOf string, status string) (netWorthBucket, error) {
-	accounts, err := s.repository.LedgerAccountsAsOf(ctx, BookID, asOf)
+// netWorthLedger is what net worth reads, all from one snapshot: posted
+// balances and the unsettled trades beside them must be one ledger state, or
+// a commit between the two reads pairs old units with new unsettled cash
+// (#410).
+type netWorthLedger interface {
+	LedgerAccountsAsOf(ctx context.Context, bookID int64, asOf string) ([]db.LedgerAccountRecord, error)
+	LedgerAccountVersionsThrough(ctx context.Context, bookID int64, asOf string) ([]db.LedgerAccountVersionRecord, error)
+	LedgerPostingsThrough(ctx context.Context, bookID int64, asOf string, status string) ([]db.LedgerPostingRecord, error)
+	LedgerCommodityKinds(ctx context.Context, bookID int64) (map[int64]string, error)
+	ShortLotQuantityEventsThrough(ctx context.Context, bookID int64, through string) ([]db.ShortLotQuantityEvent, error)
+	InvestmentOperationPostings(ctx context.Context, bookID int64) ([]db.LedgerPostingRecord, map[int64]int64, error)
+}
+
+func netWorthTotals(ctx context.Context, ledger netWorthLedger, asOf string, status string) (netWorthBucket, error) {
+	accounts, err := ledger.LedgerAccountsAsOf(ctx, BookID, asOf)
 	if err != nil {
 		return netWorthBucket{}, fmt.Errorf("read net worth accounts: %w", err)
 	}
-	postings, err := s.repository.LedgerPostingsThrough(ctx, BookID, asOf, status)
+	postings, err := ledger.LedgerPostingsThrough(ctx, BookID, asOf, status)
 	if err != nil {
 		return netWorthBucket{}, fmt.Errorf("read net worth postings: %w", err)
 	}
-	kinds, err := s.repository.LedgerCommodityKinds(ctx, BookID)
+	kinds, err := ledger.LedgerCommodityKinds(ctx, BookID)
 	if err != nil {
 		return netWorthBucket{}, err
 	}
@@ -401,7 +424,7 @@ func (s *TransactionService) netWorthTotals(ctx context.Context, asOf string, st
 	for _, posting := range postings {
 		foldPosting(running, posting)
 	}
-	shortEvents, err := s.repository.ShortLotQuantityEventsThrough(ctx, BookID, asOf)
+	shortEvents, err := ledger.ShortLotQuantityEventsThrough(ctx, BookID, asOf)
 	if err != nil {
 		return netWorthBucket{}, err
 	}
@@ -411,33 +434,54 @@ func (s *TransactionService) netWorthTotals(ctx context.Context, asOf string, st
 	}
 	unsettled := unsettledTrades{}
 	if status == "posted" {
-		if unsettled, err = s.readUnsettledTrades(ctx, kinds); err != nil {
+		if unsettled, err = readUnsettledTrades(ctx, ledger, kinds); err != nil {
 			return netWorthBucket{}, err
 		}
 	}
-	return netWorthBucketTotals(accounts, running, unsettled.at(asOf), kinds, ReportFilters{}, shorts)
+	return netWorthBucketTotals(accounts, running, unsettled.at(asOf), unsettled.accounts, kinds, ReportFilters{}, shorts)
 }
 
 // unsettledTrades are the postings investment operations recognise on their
 // unit date but post on another: a trade's cash, its clearing leg and any
 // separately paid charge (#410, the returns plan's trade-date recognition).
-type unsettledTrades []unsettledPosting
+type unsettledTrades struct {
+	postings []unsettledPosting
+	// accounts classifies a settling account that has no version yet on a
+	// reporting date: its first version, so an obligation recognised before
+	// the account opens still counts.
+	accounts map[int64]db.LedgerAccountRecord
+}
 
 type unsettledPosting struct {
 	unitDate string
 	posting  db.LedgerPostingRecord
 }
 
-func (s *TransactionService) readUnsettledTrades(ctx context.Context, kinds map[int64]string) (unsettledTrades, error) {
-	postings, operationOf, err := s.repository.InvestmentOperationPostings(ctx, BookID)
+func readUnsettledTrades(ctx context.Context, ledger netWorthLedger, kinds map[int64]string) (unsettledTrades, error) {
+	postings, operationOf, err := ledger.InvestmentOperationPostings(ctx, BookID)
 	if err != nil {
-		return nil, err
+		return unsettledTrades{}, err
 	}
 	unitDates := singleUnitDates(postings, operationOf, kinds)
-	trades := unsettledTrades{}
+	trades := unsettledTrades{accounts: map[int64]db.LedgerAccountRecord{}}
 	for _, posting := range postings {
 		if date, ok := unitDates[operationOf[posting.TransactionID]]; ok && posting.EntryDate != date {
-			trades = append(trades, unsettledPosting{unitDate: date, posting: posting})
+			trades.postings = append(trades.postings, unsettledPosting{unitDate: date, posting: posting})
+			trades.accounts[posting.AccountID] = db.LedgerAccountRecord{}
+		}
+	}
+	if len(trades.postings) == 0 {
+		return trades, nil
+	}
+	versions, err := ledger.LedgerAccountVersionsThrough(ctx, BookID, "9999-12-31")
+	if err != nil {
+		return unsettledTrades{}, fmt.Errorf("read unsettled settlement accounts: %w", err)
+	}
+	opened := map[int64]bool{}
+	for _, version := range versions {
+		if _, settles := trades.accounts[version.ID]; settles && !opened[version.ID] {
+			trades.accounts[version.ID] = version.LedgerAccountRecord
+			opened[version.ID] = true
 		}
 	}
 	return trades, nil
@@ -448,7 +492,7 @@ func (s *TransactionService) readUnsettledTrades(ctx context.Context, kinds map[
 // already posted whose units are not.
 func (u unsettledTrades) at(asOf string) map[int64]map[int64]*exact.ScaledInt {
 	pending := map[int64]map[int64]*exact.ScaledInt{}
-	for _, trade := range u {
+	for _, trade := range u.postings {
 		posting := trade.posting
 		switch {
 		case trade.unitDate <= asOf && asOf < posting.EntryDate:
@@ -504,33 +548,33 @@ func (q namedShortQuantities) unexplainedNegative(accountID, commodityID int64, 
 // excluded system role, and how an account subtree expands are resolved against
 // the snapshot in effect at each bucket's end. Collapsing early would bake one
 // bucket's classification into every later one.
-func (s *TransactionService) netWorthSeriesTotals(ctx context.Context, bounds []calendarBucketBound, filters ReportFilters) ([]netWorthBucket, error) {
+func netWorthSeriesTotals(ctx context.Context, ledger netWorthLedger, bounds []calendarBucketBound, filters ReportFilters) ([]netWorthBucket, error) {
 	if len(bounds) == 0 {
 		return nil, nil
 	}
 	seriesEnd := bounds[len(bounds)-1].endDate
 
-	versions, err := s.repository.LedgerAccountVersionsThrough(ctx, BookID, seriesEnd)
+	versions, err := ledger.LedgerAccountVersionsThrough(ctx, BookID, seriesEnd)
 	if err != nil {
 		return nil, fmt.Errorf("read net worth accounts: %w", err)
 	}
 	// Reports are posted-only: drafts, voided, and soft-deleted transactions are
 	// never part of financial truth.
-	postings, err := s.repository.LedgerPostingsThrough(ctx, BookID, seriesEnd, "posted")
+	postings, err := ledger.LedgerPostingsThrough(ctx, BookID, seriesEnd, "posted")
 	if err != nil {
 		return nil, fmt.Errorf("read net worth postings: %w", err)
 	}
-	kinds, err := s.repository.LedgerCommodityKinds(ctx, BookID)
+	kinds, err := ledger.LedgerCommodityKinds(ctx, BookID)
 	if err != nil {
 		return nil, err
 	}
-	shortEvents, err := s.repository.ShortLotQuantityEventsThrough(ctx, BookID, seriesEnd)
+	shortEvents, err := ledger.ShortLotQuantityEventsThrough(ctx, BookID, seriesEnd)
 	if err != nil {
 		return nil, err
 	}
 	shorts := namedShortQuantities{}
 	nextShort := 0
-	unsettled, err := s.readUnsettledTrades(ctx, kinds)
+	unsettled, err := readUnsettledTrades(ctx, ledger, kinds)
 	if err != nil {
 		return nil, err
 	}
@@ -551,7 +595,7 @@ func (s *TransactionService) netWorthSeriesTotals(ctx context.Context, bounds []
 			shorts.fold(shortEvents[nextShort])
 			nextShort++
 		}
-		totals, err := netWorthBucketTotals(timeline.snapshotThrough(bound.endDate), running, unsettled.at(bound.endDate), kinds, filters, shorts)
+		totals, err := netWorthBucketTotals(timeline.snapshotThrough(bound.endDate), running, unsettled.at(bound.endDate), unsettled.accounts, kinds, filters, shorts)
 		if err != nil {
 			return nil, err
 		}
@@ -567,6 +611,7 @@ func netWorthBucketTotals(
 	accounts []db.LedgerAccountRecord,
 	running map[int64]map[int64]*exact.ScaledInt,
 	pending map[int64]map[int64]*exact.ScaledInt,
+	settling map[int64]db.LedgerAccountRecord,
 	kinds map[int64]string,
 	filters ReportFilters,
 	namedShorts namedShortQuantities,
@@ -574,12 +619,15 @@ func netWorthBucketTotals(
 	filterSet := reportFilterSetFrom(accounts, filters)
 	accountMap := ledgerAccountMap(accounts)
 
-	counts := func(accountID int64) bool {
-		account, ok := accountMap[accountID]
-		if !ok || (account.AccountClass != "asset" && account.AccountClass != "liability") {
+	countsAccount := func(account db.LedgerAccountRecord) bool {
+		if account.AccountClass != "asset" && account.AccountClass != "liability" {
 			return false
 		}
 		return !account.SystemRole.Valid || account.SystemRole.String != "commodity_trading"
+	}
+	counts := func(accountID int64) bool {
+		account, ok := accountMap[accountID]
+		return ok && countsAccount(account)
 	}
 	totals := map[int64]*exact.ScaledInt{}
 	add := func(commodityID int64, amount *exact.ScaledInt) {
@@ -607,7 +655,11 @@ func netWorthBucketTotals(
 	}
 	unsettled := []UnsettledAmount{}
 	for accountID, amounts := range pending {
-		if !counts(accountID) {
+		account, ok := accountMap[accountID]
+		if !ok {
+			account = settling[accountID]
+		}
+		if !countsAccount(account) {
 			continue
 		}
 		included := map[int64]*exact.ScaledInt{}

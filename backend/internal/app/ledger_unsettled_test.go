@@ -2,10 +2,14 @@ package app
 
 import (
 	"context"
+	"sync"
 	"testing"
+	"time"
 
+	sqlite "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 
+	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/exact"
 )
 
@@ -172,4 +176,122 @@ func TestNetWorthUnsettledFollowsTheSettlingAccountOnly(t *testing.T) {
 	requireAmount(t, worth.Totals, f.eurCommodityID, 880000, 2, "both trades recognised")
 	requireAmount(t, worth.Totals, f.stockCommodityID, 12, 0, "both trades' units")
 	requireUnsettled(t, f, worth.Unsettled, map[int64]int64{f.cashAccountID: -100})
+}
+
+// N7: an obligation recognised before its settling account opens still
+// counts on the trade date. Before the fix it was dropped: 9,000 EUR.
+func TestNetWorthCountsUnsettledCashBeforeItsAccountOpens(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.accountService.now = f.transactionService.now
+	account, err := f.accountService.CreateAccount(context.Background(), CreateAccountInput{
+		OwnerUserID: f.ownerUserID, OriginType: "browser_api", Operation: "account.create", Name: "New settlement account", AccountClass: "asset", AccountKind: "brokerage_cash",
+		DefaultCommodityID: &f.eurCommodityID, OpenedOn: "2026-02-02", EffectiveFrom: "2026-02-02",
+	})
+	require.NoError(t, err)
+	f.settledBuy(t, "2026-01-31", "2026-02-02", account.ID)
+	before := f.netWorthAt(t, "2026-01-31")
+	after := f.netWorthAt(t, "2026-02-02")
+	requireUnsettled(t, f, before.Unsettled, map[int64]int64{account.ID: -100})
+	requireAmount(t, before.Totals, f.eurCommodityID, 890000, 2, "cash plus the unpaid 100 obligation")
+	requireAmount(t, before.Totals, f.stockCommodityID, 11, 0, "units acquired on trade day")
+	requireAmount(t, after.Totals, f.eurCommodityID, 890000, 2, "settled cash")
+	requireUnsettled(t, f, after.Unsettled, map[int64]int64{})
+}
+
+// N8: posted balances and unsettled trades come from one snapshot. A buy
+// committed between the two reads used to pair the old units with the new
+// unsettled cash, a false loss of 100.
+func TestNetWorthReadsPostedAndUnsettledFromOneSnapshot(t *testing.T) {
+	t.Parallel()
+	requireNetWorthOneSnapshot(t, false)
+}
+
+// N9: the same for the series.
+func TestNetWorthSeriesReadsPostedAndUnsettledFromOneSnapshot(t *testing.T) {
+	t.Parallel()
+	requireNetWorthOneSnapshot(t, true)
+}
+
+// requireNetWorthOneSnapshot pauses the read at the operation links, the
+// unsettled trades' query, commits a settling buy from another connection,
+// and checks that the read still pairs units with cash from one state.
+func requireNetWorthOneSnapshot(t *testing.T, series bool) {
+	t.Helper()
+	f := newReturnsFixture(t)
+	ctx := context.Background()
+	var sequence int
+	var name, path string
+	require.NoError(t, f.database.QueryRow(`PRAGMA database_list`).Scan(&sequence, &name, &path))
+	other, err := db.Open(ctx, db.SQLiteFileURL(path))
+	require.NoError(t, err)
+	defer other.Close()
+	accounts := db.NewAccountRepository(other)
+	accountService := NewAccountService(accounts, db.NewInstitutionRepository(other), nil)
+	transactions := NewTransactionService(db.NewTransactionRepository(other), db.NewPayeeRepository(other), accounts, db.NewCommodityRepository(other))
+	writer := NewInvestmentService(db.NewInvestmentRepository(other), accountService, transactions, nil)
+	writer.now = f.investmentService.now
+	transactions.now = f.transactionService.now
+	reached, release := make(chan struct{}), make(chan struct{})
+	var once, unblock sync.Once
+	defer unblock.Do(func() { close(release) })
+	conn, err := f.database.Conn(ctx)
+	require.NoError(t, err)
+	require.NoError(t, conn.Raw(func(raw any) error {
+		raw.(*sqlite.SQLiteConn).RegisterAuthorizer(func(op int, table, column, catalog string) int {
+			if op == sqlite.SQLITE_READ && table == "investment_operation_journal_links" {
+				once.Do(func() { close(reached); <-release })
+			}
+			return sqlite.SQLITE_OK
+		})
+		return nil
+	}))
+	require.NoError(t, conn.Close())
+	type readResult struct {
+		worth NetWorthResult
+		err   error
+	}
+	result := make(chan readResult, 1)
+	go func() {
+		if series {
+			read, err := f.transactionService.NetWorthSeries(ctx, NetWorthSeriesInput{StartDate: "2026-01-31", EndDate: "2026-01-31", Bucket: "day"})
+			if err != nil {
+				result <- readResult{err: err}
+				return
+			}
+			result <- readResult{worth: NetWorthResult{Totals: read.Buckets[0].Totals, Unsettled: read.Buckets[0].Unsettled}}
+			return
+		}
+		worth, err := f.transactionService.NetWorth(ctx, NetWorthInput{OwnerUserID: f.ownerUserID, AsOf: "2026-01-31"})
+		result <- readResult{worth, err}
+	}()
+	select {
+	case <-reached:
+	case <-time.After(10 * time.Second):
+		t.Fatal("did not reach pending read")
+	}
+	_, err = writer.Buy(ctx, InvestmentTradeInput{OwnerUserID: f.ownerUserID, TransactionDate: "2026-01-31", SettlementDate: "2026-02-02",
+		CommodityID: f.stockCommodityID, HoldingAccountID: f.holdingAccountID, CashAccountID: f.brokerCashID,
+		CashCommodityID: f.eurCommodityID, QuantityValue: exact.New(1), CashAmountValue: 10000, CashAmountScale: 2})
+	require.NoError(t, err)
+	unblock.Do(func() { close(release) })
+	var got readResult
+	select {
+	case got = <-result:
+	case <-time.After(10 * time.Second):
+		t.Fatal("read did not finish")
+	}
+	require.NoError(t, got.err)
+	// The snapshot began before the buy, so the read sees neither side of it.
+	var euros, units exact.Coefficient
+	for _, amount := range got.worth.Totals {
+		if amount.CommodityID == f.eurCommodityID {
+			euros = amount.QuantityValue
+		}
+		if amount.CommodityID == f.stockCommodityID {
+			units = amount.QuantityValue
+		}
+	}
+	require.Equal(t, "10", units.String(), "first posted read preceded the buy")
+	require.Equal(t, "900000", euros.String(), "old units must pair with old cash; mixed state creates a false 100 loss")
 }
