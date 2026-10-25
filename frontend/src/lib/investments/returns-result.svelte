@@ -2,7 +2,7 @@
   import Panel from '#lib/components/panel.svelte';
   import type { CurrencyResponse } from '#lib/api/currencies.ts';
   import type { InvestmentReturnsResponse, ReturnFigure, ReturnsAmount } from '#lib/api/investments.ts';
-  import { formatMoney, joinCommodityAmount } from '#lib/money/format.ts';
+  import { formatMoney, formatQuantity, joinCommodityAmount } from '#lib/money/format.ts';
   import { m } from '#lib/paraglide/messages.js';
   import {
     benchmarkBasisText, benchmarkGaps, fallbackReasonText, formatReturn, returnDirection, returnReasonText, returnsCoverage
@@ -13,6 +13,9 @@
   // One returns_v1 result, live or saved (R13 slices 2-6). Every figure comes
   // from the result; names come from the lookups, which are today's
   // reference data, so a saved run fixes only ids, dates and figures.
+  // Amounts were rounded to the reporting currency's standard scale when
+  // read, so a saved one is shown at its own stored scale: a later change
+  // to the currency's precision can never round a frozen figure again.
   let {
     result, reportingCurrencyID, currencies, locale, accountName, currencyOrCommodity, fetching = false, saved = false
   }: {
@@ -47,7 +50,8 @@
   function amountText(amount: ReturnsAmount): string {
     if (!amount.amount) return returnReasonText(amount.reason, amount.date, day);
     const currency = currencies.find((candidate) => candidate.id === amount.amount?.commodity_id);
-    const formatted = formatMoney(amount.amount.quantity_value, amount.amount.quantity_scale, currency?.standard_scale ?? amount.amount.quantity_scale, locale);
+    const { quantity_value: value, quantity_scale: scale } = amount.amount;
+    const formatted = saved ? formatQuantity(value, scale, locale) : formatMoney(value, scale, currency?.standard_scale ?? scale, locale);
     return joinCommodityAmount(currency?.code ?? `#${amount.amount.commodity_id}`, formatted);
   }
 

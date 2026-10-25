@@ -44,7 +44,8 @@ func TestReturnsRunReproducesAfterBackdatedBuy(t *testing.T) {
 		SnapshotSHA256 string                `json:"snapshot_sha256"`
 	}
 	require.NoError(t, json.Unmarshal(run.InputsJSON, &inputs))
-	assert.Equal(t, app.DefaultRateStalenessDays, inputs.Request.MaxStalenessDays, "defaults are recorded as resolved")
+	require.NotNil(t, inputs.Request.MaxStalenessDays)
+	assert.Equal(t, app.DefaultRateStalenessDays, *inputs.Request.MaxStalenessDays, "defaults are recorded as resolved")
 	assert.Equal(t, []int64{}, inputs.Request.AccountIDs)
 	assert.Nil(t, inputs.Request.BenchmarkCommodityID)
 	assert.Equal(t, run.SnapshotSHA256, inputs.SnapshotSHA256)
@@ -119,6 +120,10 @@ func TestReturnsRunReproducesAfterBackdatedBuy(t *testing.T) {
 	require.NoError(t, err)
 	_, err = reader.ReturnsRun(ctx, run.ID)
 	require.ErrorIs(t, err, app.ErrReturnsRunIntegrity)
+	// The list verifies whole documents too: it never summarizes a run that
+	// a single read refuses.
+	_, _, err = reader.ListReturnsRuns(ctx, 0)
+	require.ErrorIs(t, err, app.ErrReturnsRunIntegrity)
 	check, err = self.RunSelfCheck(ctx, "manual")
 	require.NoError(t, err)
 	found := false
@@ -142,14 +147,16 @@ func TestReturnsRunValidationPaginationAndReadOnlyRetrieval(t *testing.T) {
 	doInvestmentRequest(t, handler, nil, "", http.MethodGet, base, nil, http.StatusUnauthorized)
 	doInvestmentRequest(t, handler, nil, "", http.MethodPost, base, valid, http.StatusUnauthorized)
 	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, base, valid, http.StatusForbidden)
-	zero, total := int64(0), "total_return"
+	zero, total, stale, none := int64(0), "total_return", 32, 0
 	for _, input := range []any{
 		app.ReturnsRunRequest{},
 		app.ReturnsRunRequest{From: "2026-02-30", To: "2026-03-01", ReportingCurrencyID: f.commodityID},
 		app.ReturnsRunRequest{From: "2026-03-01", To: "2026-02-01", ReportingCurrencyID: f.commodityID},
 		app.ReturnsRunRequest{From: "2026-02-01", To: "2099-01-01", ReportingCurrencyID: f.commodityID},
 		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28"},
-		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, MaxStalenessDays: 32},
+		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, MaxStalenessDays: &stale},
+		// An explicit zero is refused as the live read refuses it, not read as omitted.
+		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, MaxStalenessDays: &none},
 		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, AccountIDs: []int64{0}},
 		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, BenchmarkCommodityID: &zero},
 		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, BenchmarkBasis: &total},
@@ -163,6 +170,8 @@ func TestReturnsRunValidationPaginationAndReadOnlyRetrieval(t *testing.T) {
 	assert.Zero(t, count)
 	require.NoError(t, database.QueryRow(`SELECT COUNT(*) FROM audit_events WHERE operation = 'investment.returns_run.create'`).Scan(&count))
 	assert.Zero(t, count)
+	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet,
+		fmt.Sprintf("/api/v1/investments/returns?from=2026-02-01&to=2026-02-28&reporting_currency_id=%d&max_staleness_days=0", f.commodityID), nil, http.StatusBadRequest)
 	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, base+"/99999", nil, http.StatusNotFound)
 	for _, suffix := range []string{"/0", "/bad", "?cursor=0", "?cursor=", "?cursor=bogus", "?cursor=1&cursor=2"} {
 		doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, base+suffix, nil, http.StatusBadRequest)

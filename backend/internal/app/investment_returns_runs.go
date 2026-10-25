@@ -18,13 +18,14 @@ var ErrReturnsRunNotFound = errors.New("investment returns run not found")
 var ErrReturnsRunIntegrity = errors.New("investment returns run integrity check failed")
 
 // ReturnsRunRequest is the live read's inputs as a saved run records them,
-// with defaults resolved.
+// with defaults resolved. Optional fields are pointers so an explicit value
+// is validated as the live read validates it, never mistaken for omission.
 type ReturnsRunRequest struct {
 	From                 string  `json:"from"`
 	To                   string  `json:"to"`
 	ReportingCurrencyID  int64   `json:"reporting_currency_id"`
 	AccountIDs           []int64 `json:"account_ids"`
-	MaxStalenessDays     int     `json:"max_staleness_days"`
+	MaxStalenessDays     *int    `json:"max_staleness_days"`
 	BenchmarkCommodityID *int64  `json:"benchmark_commodity_id"`
 	BenchmarkBasis       *string `json:"benchmark_basis"`
 }
@@ -42,7 +43,14 @@ type ReturnsRunFormatter func(ReturnsResult) (json.RawMessage, error)
 func (s *InvestmentService) CreateReturnsRun(ctx context.Context, input ReturnsRunInput, format ReturnsRunFormatter) (db.ReturnsRunRecord, error) {
 	request := input.Request
 	read := ReturnsInput{From: request.From, To: request.To, ReportingCommodityID: request.ReportingCurrencyID,
-		AccountIDs: request.AccountIDs, MaxStalenessDays: request.MaxStalenessDays}
+		AccountIDs: request.AccountIDs}
+	if request.MaxStalenessDays != nil {
+		// Zero is the live read's "omitted"; an explicit zero is out of range.
+		if *request.MaxStalenessDays < 1 {
+			return db.ReturnsRunRecord{}, ValidationError{Message: fmt.Sprintf("max_staleness_days must be between 1 and %d", returnsMaxStalenessDays)}
+		}
+		read.MaxStalenessDays = *request.MaxStalenessDays
+	}
 	if request.BenchmarkCommodityID != nil {
 		if *request.BenchmarkCommodityID <= 0 {
 			return db.ReturnsRunRecord{}, ValidationError{Message: "benchmark_commodity_id must be a positive integer"}
@@ -85,7 +93,7 @@ func (s *InvestmentService) CreateReturnsRun(ctx context.Context, input ReturnsR
 		return db.ReturnsRunRecord{}, err
 	}
 	resolved := ReturnsRunRequest{From: read.From, To: read.To, ReportingCurrencyID: read.ReportingCommodityID,
-		AccountIDs: read.AccountIDs, MaxStalenessDays: read.MaxStalenessDays}
+		AccountIDs: read.AccountIDs, MaxStalenessDays: &read.MaxStalenessDays}
 	if resolved.AccountIDs == nil {
 		resolved.AccountIDs = []int64{}
 	}
@@ -134,10 +142,13 @@ func (s *InvestmentService) ListReturnsRuns(ctx context.Context, before int64) (
 	if err != nil {
 		return nil, 0, err
 	}
-	for _, run := range runs {
-		if db.GainsRunDigest(run.InputsJSON) != run.InputsSHA256 {
+	// A summary is listed only for a document a single read would return:
+	// the whole run is verified, then its output is left for selection.
+	for i := range runs {
+		if !db.ValidReturnsRunDocument(runs[i]) {
 			return nil, 0, ErrReturnsRunIntegrity
 		}
+		runs[i].OutputJSON = nil
 	}
 	var next int64
 	if len(runs) > 20 {

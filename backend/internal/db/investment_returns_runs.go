@@ -113,11 +113,10 @@ func (r *InvestmentRepository) ReturnsRun(ctx context.Context, bookID, id int64)
 	return scanReturnsRun(r.database.QueryRowContext(ctx, `SELECT `+returnsRunColumns+` FROM investment_returns_runs WHERE book_id = ? AND id = ?`, bookID, id).Scan)
 }
 
-// ListReturnsRuns is a descending ID cursor; output documents are read only
-// on selection, keeping the list bounded however large a saved read is.
+// ListReturnsRuns is a descending ID cursor over whole documents: the caller
+// verifies each one, as a single read does, before listing its summary.
 func (r *InvestmentRepository) ListReturnsRuns(ctx context.Context, bookID, before int64, limit int) ([]ReturnsRunRecord, error) {
-	rows, err := r.database.QueryContext(ctx, `SELECT id, book_id, schema_version, captured_at, created_at,
- created_by_user_id, audit_event_id, snapshot_sha256, inputs_sha256, output_sha256, inputs_json, '{}'
+	rows, err := r.database.QueryContext(ctx, `SELECT `+returnsRunColumns+`
  FROM investment_returns_runs WHERE book_id = ? AND (? = 0 OR id < ?) ORDER BY id DESC LIMIT ?`, bookID, before, before, limit)
 	if err != nil {
 		return nil, err
@@ -129,7 +128,6 @@ func (r *InvestmentRepository) ListReturnsRuns(ctx context.Context, bookID, befo
 		if err != nil {
 			return nil, err
 		}
-		run.OutputJSON = nil
 		result = append(result, run)
 	}
 	return result, rows.Err()

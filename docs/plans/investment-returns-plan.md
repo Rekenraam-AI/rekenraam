@@ -582,7 +582,8 @@ returns read are not a gains document; the rejected alternative
   It checks stored bytes and never compares a saved figure with today's
   book. A damaged run is refused by name, never rebuilt.
 - `GET .../returns/runs` lists 20 summaries (inputs only) per page with a
-  descending-id `next_cursor`; `GET .../returns/runs/{id}` returns the
+  descending-id `next_cursor`; each listed run is verified as a whole
+  document first, so the list refuses (500) any run a single read refuses; `GET .../returns/runs/{id}` returns the
   preserved document, `?download=true` as a JSON attachment of the server's
   exact bytes. UPDATE and DELETE are refused by triggers; there is no
   update, delete or pruning API. Downgrade refuses while any run exists.
@@ -592,18 +593,23 @@ returns read are not a gains document; the rejected alternative
   reopens one with the same figure, chart, allocation and benchmark views,
   labelled as frozen at its knowledge cutoff, with its fingerprints and a
   download. Figures, dates, ids and coverage come only from the document;
-  account, currency and instrument names and currency display precision are
-  today's reference data (ids and exact coefficients are what the document
-  fixes). Unlike a gains run, no currency metadata is captured: every amount
-  is in the one reporting currency and keeps its exact scale.
+  account, currency and instrument names are today's reference data (ids are
+  what the document fixes). Unlike a gains run, no currency metadata is
+  captured: every amount is in the one reporting currency, already rounded
+  to its standard scale at capture, so a reopened run shows each amount at
+  its own stored scale and a later precision change cannot round it again.
+- An explicit `max_staleness_days: 0` is refused (400), as the live read
+  refuses it; only an omitted field takes the default of 7.
 
 Named validation: `TestReturnsRunReproducesAfterBackdatedBuy` saves a run,
 records a backdated buy inside the period, and checks the saved output
 reproduces byte for byte while the live read changes, plus bundle, restore,
 immutability triggers, integrity refusal of a consistently rehashed tampered
-output and the self-check finding.
+output (refused by both the single read and the list) and the self-check
+finding.
 `TestReturnsRunValidationPaginationAndReadOnlyRetrieval` covers validation
-(no row or audit on refusal), cursor pagination and that no GET writes. The
+(no row or audit on refusal, explicit zero staleness refused like the live
+read), cursor pagination and that no GET writes. The
 browser case in `investment-returns.spec.ts` saves, restates, reopens and
 downloads at 390px with an accessibility check.
 

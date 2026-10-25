@@ -26,7 +26,8 @@ get:
       description: Authentication required
       content: *id001
     '500':
-      description: Internal server error or saved inputs integrity failure
+      description: Internal server error, or a listed run failed whole-document
+        integrity (the same check as a single read)
       content: *id001
 post:
   summary: Save an immutable returns_v1 run

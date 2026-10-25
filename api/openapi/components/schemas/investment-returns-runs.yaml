@@ -33,7 +33,8 @@ ReturnsRunRequest:
       type: integer
       minimum: 1
       maximum: 31
-      description: Default 7.
+      description: Omitted means 7. An explicit value outside 1..31, including 0,
+        is refused, as on the live read.
     benchmark_commodity_id:
       type:
       - integer
@@ -208,9 +209,9 @@ ReturnsRunResponse:
     properties:
       output:
         description: The frozen returns read, exactly as the live read's wire shape
-          at capture. Ids, dates, figures and coverage are fixed; names and
-          display precision of accounts, currencies and instruments are current
-          reference data.
+          at capture. Ids, dates, figures (amounts at their stored scale) and
+          coverage are fixed; names of accounts, currencies and instruments are
+          current reference data.
         $ref: ../../openapi.yaml#/components/schemas/InvestmentReturnsResponse
 ReturnsRunListResponse:
   type: object

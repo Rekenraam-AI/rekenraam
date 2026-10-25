@@ -26963,7 +26963,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error or saved inputs integrity failure */
+                /** @description Internal server error, or a listed run failed whole-document integrity (the same check as a single read) */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -34223,7 +34223,7 @@ export interface components {
             reporting_currency_id: number;
             /** @description Omitted or empty selects the default investment accounts. */
             account_ids?: number[] | null;
-            /** @description Default 7. */
+            /** @description Omitted means 7. An explicit value outside 1..31, including 0, is refused, as on the live read. */
             max_staleness_days?: number;
             /** Format: int64 */
             benchmark_commodity_id?: number | null;
@@ -34293,7 +34293,7 @@ export interface components {
             inputs: components["schemas"]["ReturnsRunInputs"];
         };
         ReturnsRunResponse: components["schemas"]["ReturnsRunSummary"] & {
-            /** @description The frozen returns read, exactly as the live read's wire shape at capture. Ids, dates, figures and coverage are fixed; names and display precision of accounts, currencies and instruments are current reference data. */
+            /** @description The frozen returns read, exactly as the live read's wire shape at capture. Ids, dates, figures (amounts at their stored scale) and coverage are fixed; names of accounts, currencies and instruments are current reference data. */
             output: components["schemas"]["InvestmentReturnsResponse"];
         };
         ReturnsRunListResponse: {
