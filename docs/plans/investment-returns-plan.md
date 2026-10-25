@@ -1082,19 +1082,28 @@ written.
      (paid into checking for a holding in scope), the entitled holding holds
      the receivable from the ex date, and the flow is counted on the payment
      date, when the cash crosses. Allocation shows it as cash under that
-     holding. Cases `TestReturnsKeepAnOutsidePaidDividendReceivableUntilPayment`,
+     holding. A receivable is currency, never position evidence: which side
+     a journal belongs to is read from units only. Cases
+     `TestReturnsKeepAnOutsidePaidDividendReceivableUntilPayment`,
      `TestReturnsWithdrawAnOutsidePaidDividendOnPayment`,
-     `TestReturnsHoldADividendReceivableForAnAccountNotYetOpen`.
+     `TestReturnsHoldADividendReceivableForAnAccountNotYetOpen`,
+     `TestReturnsCorrectedPayerAcrossScopeCreatesNoGain`.
    - **Cancelled income (review 2026-10-25).** Before a sleeve refuses,
-     converts or lists income, each correction chain's income cash is netted
-     exactly per day and target instrument in native amounts. A pair that
-     nets to zero (an entry and its reversal, or a replaced entry and its
-     inverse) is dropped. Reversed ambiguous income, an ex-date correction
+     converts or lists income, income cash is netted exactly in native
+     amounts per subject operation, day and target instrument. The subject
+     is the operation a journal carries the effect of: its own, or for a
+     reversal or a replacement's inverse, the one it undoes. A pair that
+     nets to zero is dropped, and a replacement in the same chain survives.
+     The portfolio does the same per chain and day before converting: a
+     commodity that nets to exactly zero needs no rate (unless a same-day
+     split scaled it). Reversed ambiguous income, an ex-date correction
      that resolves ambiguity, and reversed income with no rate therefore
      leave the sleeve available. Cases
      `TestInstrumentReturnsReversedAmbiguousIncomeLeavesTheSleeve`,
      `TestInstrumentReturnsExDateCorrectionClearsTheOldAmbiguity`,
-     `TestInstrumentReturnsReversedIncomeNeedsNoConversion`.
+     `TestInstrumentReturnsReversedIncomeNeedsNoConversion`,
+     `TestInstrumentReturnsHoldingRepairCancelsTheAmbiguousPaymentInLieu`,
+     `TestReturnsReversedForeignDividendPaidOutsideNeedsNoRate`.
    - **Review of `7d1996c3` and `8194782a` (2026-10-25).** All four findings
      were accepted and fixed. Each reviewer probe is a named regression case
      that failed before its fix:

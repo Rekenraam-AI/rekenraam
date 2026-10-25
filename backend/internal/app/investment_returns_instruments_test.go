@@ -813,3 +813,40 @@ func TestInstrumentReturnsReversedIncomeNeedsNoConversion(t *testing.T) {
 	requireReturnsAmount(t, 0, row.Gain)
 	requireReturn(t, "0.000000", row.TimeWeighted)
 }
+
+// A payment in lieu owed while short in scope (10) and outside (5) is
+// ambiguous until a replacement names the in-scope holding. The original and
+// its inverse cancel as a pair while the replacement survives on the same day
+// (review 2026-10-25, P2): income −20, nothing listed.
+func TestInstrumentReturnsHoldingRepairCancelsTheAmbiguousPaymentInLieu(t *testing.T) {
+	t.Parallel()
+	f := newBareReturnsFixture(t)
+	f.post(t, "2026-01-02", f.brokerCashID, f.cashAccountID, 200000)
+	outside := seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
+	for _, position := range []struct{ holding, quantity, proceeds int64 }{{f.holdingAccountID, 10, 100000}, {outside, 5, 50000}} {
+		_, err := f.investmentService.ShortSale(context.Background(), InvestmentTradeInput{
+			OwnerUserID: f.ownerUserID, TransactionDate: "2026-01-20", CommodityID: f.stockCommodityID,
+			HoldingAccountID: position.holding, CashAccountID: f.brokerCashID, CashCommodityID: f.eurCommodityID,
+			QuantityValue: exact.New(position.quantity), CashAmountValue: position.proceeds, CashAmountScale: 2})
+		require.NoError(t, err)
+	}
+	for _, date := range []string{"2026-01-31", "2026-02-10", "2026-02-20", "2026-02-28"} {
+		f.price(t, date, 10000)
+	}
+	input := PaymentInLieuInput{OwnerUserID: f.ownerUserID, TransactionDate: "2026-02-20",
+		CommodityID: NullableValue(f.stockCommodityID), ExDate: NullableValue("2026-02-10"),
+		CashAccountID: f.brokerCashID, CashCommodityID: f.eurCommodityID,
+		ExpenseAccountID: f.feeID, AmountValue: 2000, AmountScale: 2}
+	payment, err := f.investmentService.PaymentInLieu(context.Background(), input)
+	require.NoError(t, err)
+	input.HoldingAccountID = NullableValue(f.holdingAccountID)
+	_, err = f.investmentService.ReplacePaymentInLieu(context.Background(), ReplaceInvestmentPaymentInLieuInput{
+		OwnerUserID: f.ownerUserID, TransactionID: payment.ID, Reason: "identify the holding", Replacement: input})
+	require.NoError(t, err)
+
+	_, instruments := f.readInstruments(t, "2026-02-01", "2026-02-28", f.holdingAccountID, f.brokerCashID)
+	row := sleeveRow(t, instruments, f.stockCommodityID)
+	requireReturnsAmount(t, -20, row.Income)
+	requireReturnsAmount(t, -20, row.Gain)
+	require.Empty(t, instruments.NotAttributed)
+}

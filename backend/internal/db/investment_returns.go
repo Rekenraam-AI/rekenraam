@@ -22,6 +22,11 @@ type ReturnsOperationAnchor struct {
 	// SourceKind is the operation kind nearest in the chain that is not a
 	// reversal, so a reversal of a transfer still reads as a transfer.
 	SourceKind string
+	// SubjectOperationID is the operation whose effect this journal carries:
+	// its own, or for a reversal or the inverse inside a replacement, the
+	// operation it undoes. A journal and its undoing share it, so they can be
+	// cancelled as a pair while a replacement survives.
+	SubjectOperationID int64
 	// HoldingAccountID is the holding a capital-return or payment-in-lieu
 	// fact names.
 	HoldingAccountID sql.NullInt64
@@ -187,8 +192,12 @@ func (r *TransactionRepository) ReturnsOperationAnchors(ctx context.Context, boo
 		// corrects, so it is read with that operation's facts: a replacement
 		// that changes the ex date or payer must not move the inverse with it.
 		facts := operation
+		anchor.SubjectOperationID = anchor.OperationID
 		if role == "reversal" && operation.correctionOf.Valid && operations[operation.correctionOf.Int64] != nil {
 			facts = operations[operation.correctionOf.Int64]
+			anchor.SubjectOperationID = operation.correctionOf.Int64
+		} else if operation.kind == "reversal" && operation.correctionOf.Valid {
+			anchor.SubjectOperationID = operation.correctionOf.Int64
 		}
 		// A reversal or replacement may carry no facts of its own; its
 		// predecessor's facts describe the same position.

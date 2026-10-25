@@ -391,7 +391,9 @@ func (r *returnsReader) recognise(postings []db.LedgerPostingRecord, anchors []d
 	held := newReturnsHoldingIndex(postings, r.holdings)
 	holdingsByTransaction := map[int64]map[int64]bool{}
 	for _, posting := range postings {
-		if r.holdings[posting.AccountID] {
+		// Units are the position evidence; a receivable a holding carries
+		// (recognise) is currency and names no position.
+		if r.holdings[posting.AccountID] && r.kinds[posting.CommodityID] != "currency" {
 			if holdingsByTransaction[posting.TransactionID] == nil {
 				holdingsByTransaction[posting.TransactionID] = map[int64]bool{}
 			}
@@ -570,7 +572,9 @@ func (r *returnsReader) classify(anchors []db.ReturnsOperationAnchor) ([]returns
 	}
 	holdingsByTransaction := map[int64]map[int64]bool{}
 	for _, posting := range r.postings {
-		if r.holdings[posting.AccountID] {
+		// Units are the position evidence; a receivable a holding carries
+		// (recognise) is currency and names no position.
+		if r.holdings[posting.AccountID] && r.kinds[posting.CommodityID] != "currency" {
 			if holdingsByTransaction[posting.TransactionID] == nil {
 				holdingsByTransaction[posting.TransactionID] = map[int64]bool{}
 			}
@@ -594,7 +598,7 @@ func (r *returnsReader) classify(anchors []db.ReturnsOperationAnchor) ([]returns
 		entries[i] = append(entries[i], posting)
 	}
 
-	var flows []returnsEntryFlow
+	var pendingFlows []pendingEntryFlow
 	var fallbacks []ReturnsAttributionFallback
 	for _, entry := range entries {
 		first := entry[0]
@@ -637,7 +641,8 @@ func (r *returnsReader) classify(anchors []db.ReturnsOperationAnchor) ([]returns
 				delivery = true
 			}
 		}
-		flow := returnsEntryFlow{identity: identity, date: first.EntryDate, amount: new(big.Rat), ok: true}
+		pending := pendingEntryFlow{flow: returnsEntryFlow{identity: identity, date: first.EntryDate, ok: true},
+			parts: map[int64]*flowPart{}}
 		for _, posting := range entry {
 			var sign int64
 			switch {
@@ -654,24 +659,97 @@ func (r *returnsReader) classify(anchors []db.ReturnsOperationAnchor) ([]returns
 			default:
 				continue
 			}
+			part := pending.parts[posting.CommodityID]
+			if part == nil {
+				part = &flowPart{native: exact.NewScaledInt(), value: new(big.Rat), ok: true}
+				pending.parts[posting.CommodityID] = part
+			}
+			quantity := posting.QuantityValue
+			if sign < 0 {
+				quantity = quantity.Negated()
+			}
+			part.native.AddCoefficient(quantity, posting.QuantityScale)
 			value, ok := r.convert(posting.QuantityValue, posting.QuantityScale, posting.CommodityID, posting.EntryDate)
 			if !ok {
-				flow.ok = false
+				part.ok = false
 				continue
 			}
 			// The day's rate prices its end-of-day units. A delivery ordered
 			// before a split that day moved pre-split units, each of which the
 			// split then multiplied.
 			if isOperation {
-				if pending := db.PendingSplitFactor(r.splits, posting.CommodityID, posting.AccountID, posting.EntryDate, anchor.RootOperationID); pending != nil {
-					value.Mul(value, pending)
+				if factor := db.PendingSplitFactor(r.splits, posting.CommodityID, posting.AccountID, posting.EntryDate, anchor.RootOperationID); factor != nil {
+					value.Mul(value, factor)
+					part.split = true
 				}
 			}
-			flow.amount.Add(flow.amount, value.Mul(value, big.NewRat(sign, 1)))
+			part.value.Add(part.value, value.Mul(value, big.NewRat(sign, 1)))
 		}
-		flows = append(flows, flow)
+		pendingFlows = append(pendingFlows, pending)
 	}
-	return flows, fallbacks
+	return cancelFlowsBeforeConversion(pendingFlows), fallbacks
+}
+
+// pendingEntryFlow is an entry's flow before cancellation: its value per
+// commodity, each with its exact native amount.
+type pendingEntryFlow struct {
+	flow  returnsEntryFlow
+	parts map[int64]*flowPart
+}
+
+type flowPart struct {
+	native *exact.ScaledInt
+	value  *big.Rat
+	ok     bool
+	// split is set when a same-day split scaled the value, so it no longer
+	// follows the native amount.
+	split bool
+}
+
+// cancelFlowsBeforeConversion nets each correction chain's flows per day in
+// native amounts first. A commodity that nets to exactly zero (an entry and
+// its reversal, paid in a currency with no rate, say) contributes nothing,
+// so its conversion is never required. Any other amount is the sum of its
+// converted values, so a figure that converts is unchanged by this.
+func cancelFlowsBeforeConversion(pending []pendingEntryFlow) []returnsEntryFlow {
+	type flowKey struct{ identity, date string }
+	net := map[flowKey]map[int64]*exact.ScaledInt{}
+	split := map[flowKey]map[int64]bool{}
+	for _, entry := range pending {
+		key := flowKey{entry.flow.identity, entry.flow.date}
+		if net[key] == nil {
+			net[key], split[key] = map[int64]*exact.ScaledInt{}, map[int64]bool{}
+		}
+		for commodityID, part := range entry.parts {
+			if net[key][commodityID] == nil {
+				net[key][commodityID] = exact.NewScaledInt()
+			}
+			net[key][commodityID].AddScaled(part.native)
+			split[key][commodityID] = split[key][commodityID] || part.split
+		}
+	}
+	flows := make([]returnsEntryFlow, 0, len(pending))
+	for _, entry := range pending {
+		key := flowKey{entry.flow.identity, entry.flow.date}
+		flow := entry.flow
+		flow.amount = new(big.Rat)
+		counted := false
+		for commodityID, part := range entry.parts {
+			if !split[key][commodityID] && net[key][commodityID].Sign() == 0 {
+				continue
+			}
+			counted = true
+			if !part.ok {
+				flow.ok = false
+				continue
+			}
+			flow.amount.Add(flow.amount, part.value)
+		}
+		if counted || len(entry.parts) == 0 {
+			flows = append(flows, flow)
+		}
+	}
+	return flows
 }
 
 // isPerformance is a P posting's account: income or expense.

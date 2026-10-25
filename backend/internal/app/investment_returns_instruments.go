@@ -490,16 +490,18 @@ func returnsIncomeAnchor(anchor db.ReturnsOperationAnchor) bool {
 // the fact's holding decides when it names one; otherwise the instrument's
 // holdings at the end of the day before the ex date (the entry date when no
 // ex date is recorded), the portfolio read's own entitlement rule.
-// cancelledIncome finds the income groups a correction cancels: per chain,
-// day and income target, the cash the sleeve would count nets to zero in
-// every currency. An entry and its reversal, or a replaced entry and its
-// inverse, then leave no income behind, so neither is refused as
-// unattributable, needs a conversion, or is listed. Netting is exact and in
-// native amounts, before any rate is read.
+// cancelledIncome finds the income groups a correction cancels: per
+// subject operation (the journal and whatever undoes it), day and income
+// target, the cash the sleeve would count nets to zero in every currency. An
+// entry and its reversal, or a replaced entry and its inverse, then leave no
+// income behind, so neither is refused as unattributable, needs a
+// conversion, or is listed, while a replacement in the same chain survives.
+// Netting is exact and in native amounts, before any rate is read.
 func (r *returnsReader) cancelledIncome(groups []*sleeveGroup, held returnsHoldingIndex) map[*sleeveGroup]bool {
 	type chainDay struct {
-		identity, date string
-		target         int64
+		subject int64
+		date    string
+		target  int64
 	}
 	members := map[chainDay][]*sleeveGroup{}
 	totals := map[chainDay]map[int64]*exact.ScaledInt{}
@@ -508,7 +510,7 @@ func (r *returnsReader) cancelledIncome(groups []*sleeveGroup, held returnsHoldi
 			continue
 		}
 		target, _ := r.incomeTarget(group, held)
-		key := chainDay{identity: group.identity, date: group.date, target: target}
+		key := chainDay{subject: group.anchor.SubjectOperationID, date: group.date, target: target}
 		members[key] = append(members[key], group)
 		if totals[key] == nil {
 			totals[key] = map[int64]*exact.ScaledInt{}

@@ -189,3 +189,64 @@ func TestReturnsHoldADividendReceivableForAnAccountNotYetOpen(t *testing.T) {
 	requireReturnsAmount(t, 1100, result.ClosingValue)
 	requireReturnsAmount(t, 0, result.Withdrawals)
 }
+
+// A replacement moves the payer from TEST (held in scope) to OTHER (held
+// outside), paid into broker cash in scope: the replacement's cash enters
+// from outside (a contribution of 20), and the inverse cancels the original
+// inside. The receivable OTHER's holding carries is not position evidence for
+// the inverse (review 2026-10-25, P1), so nothing is withdrawn and no gain
+// appears.
+func TestReturnsCorrectedPayerAcrossScopeCreatesNoGain(t *testing.T) {
+	t.Parallel()
+	f := newBareReturnsFixture(t)
+	f.post(t, "2026-01-02", f.brokerCashID, f.cashAccountID, 200000)
+	f.trade(t, true, f.holdingAccountID, "2026-01-20", "", 10, 100000)
+	other := seedTestSecurityCommodity(t, f.investmentsTestFixture, "OTHER")
+	outside := seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
+	_, err := f.investmentService.Buy(context.Background(), InvestmentTradeInput{
+		OwnerUserID: f.ownerUserID, TransactionDate: "2026-01-20", CommodityID: other,
+		HoldingAccountID: outside, CashAccountID: f.brokerCashID, CashCommodityID: f.eurCommodityID,
+		QuantityValue: exact.New(10), CashAmountValue: 100000, CashAmountScale: 2})
+	require.NoError(t, err)
+	for _, date := range []string{"2026-01-31", "2026-02-10", "2026-02-19", "2026-02-20", "2026-02-28"} {
+		f.price(t, date, 10000)
+		f.priceOf(t, other, f.eurCommodityID, date, 10000)
+	}
+	dividend := f.dividendOf(t, "2026-02-20", "2026-02-10", &f.stockCommodityID, 2000, 0, false)
+	_, err = f.investmentService.ReplaceDividend(context.Background(), ReplaceInvestmentDividendInput{
+		OwnerUserID: f.ownerUserID, TransactionID: dividend.ID, Reason: "correct payer",
+		Replacement: DividendInput{TransactionDate: "2026-02-20", CommodityID: NullableValue(other),
+			CashAccountID: f.brokerCashID, CashCommodityID: f.eurCommodityID,
+			IncomeAccountID: &f.incomeAccountID, AmountValue: 2000, AmountScale: 2}})
+	require.NoError(t, err)
+
+	portfolio, _ := f.readInstruments(t, "2026-02-01", "2026-02-28", f.holdingAccountID, f.brokerCashID)
+	requireReturnsAmount(t, 0, portfolio.Gain)
+	requireReturnsAmount(t, 20, portfolio.Contributions)
+	requireReturnsAmount(t, 0, portfolio.Withdrawals)
+	requireReturn(t, "0.000000", portfolio.TimeWeighted)
+}
+
+// A USD dividend for the portfolio's TEST, paid into checking outside, with
+// no USD rate, then reversed: the chain nets to zero USD on each day before
+// any conversion, so the portfolio needs no USD rate (review 2026-10-25, P2).
+func TestReturnsReversedForeignDividendPaidOutsideNeedsNoRate(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	for _, date := range []string{"2026-02-10", "2026-02-19", "2026-02-20", "2026-02-28"} {
+		f.price(t, date, 10000)
+	}
+	usd := f.commodity(t, "USD", "currency", 2)
+	dividend, err := f.investmentService.Dividend(context.Background(), DividendInput{
+		OwnerUserID: f.ownerUserID, TransactionDate: "2026-02-20", ExDate: NullableValue("2026-02-10"),
+		CommodityID: NullableValue(f.stockCommodityID), CashAccountID: f.cashAccountID,
+		CashCommodityID: usd, IncomeAccountID: &f.incomeAccountID, AmountValue: 2000, AmountScale: 2})
+	require.NoError(t, err)
+	_, err = f.investmentService.ReverseDividend(context.Background(), ReverseInvestmentDividendInput{
+		OwnerUserID: f.ownerUserID, TransactionID: dividend.ID, Reason: "wrong entry"})
+	require.NoError(t, err)
+
+	result := f.read(t, "2026-02-01", "2026-02-28")
+	requireReturnsAmount(t, 0, result.Gain)
+	requireReturn(t, "0.000000", result.TimeWeighted)
+}
