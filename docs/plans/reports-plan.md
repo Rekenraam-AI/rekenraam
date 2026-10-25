@@ -86,6 +86,23 @@ selector, restated rows, coverage notices, charts, and CSV output ship in
 - *Coverage:* use the nearest on-or-before observation within the requested
   staleness window (default seven days). Responses identify stale uses and gaps;
   incomplete converted figures are omitted, never shown as complete totals.
+- *Splits (#407):* a raw security or crypto quote prices a unit of its own
+  day. A stale quote observed on `q` and used for a later date `d` is
+  therefore divided by the instrument's recorded split factor in `(q, d]`
+  before it values `d`'s ledger units (one exact factor per day, compounded;
+  reversed and replaced splits excluded). The factor is the instrument's,
+  read from every holding that recorded the split, because a quote prices
+  the instrument: a holding that never recorded a split is misvalued by a
+  fresh post-split quote just as by a rescaled one. The rate use discloses
+  the factor (`split_ratio_numerator` / `split_ratio_denominator`). Holdings
+  that recorded different factors for one day make any value whose span
+  crosses that day a gap (`conflicting_splits`), never a guessed factor.
+  Total-return series are never split-adjusted. Every `RateTable` consumer
+  (net worth, spending, cashflow, R13) reads this one rule; the observation
+  selection itself (`db/observation_selection.go`) is unchanged. Rescaling
+  was chosen over refusing a quote across a split because the recorded split
+  is exact, so the rescaled price is the same number the quote stated, and
+  refusing would make every value unknown for up to a week after each split.
 - *Withdrawn observations:* T-37 is complete. Voided observations and dependent
   derived rates are excluded from reporting-rate reads.
 - *Remaining scope:* these core reports remain live. R18 separately ships

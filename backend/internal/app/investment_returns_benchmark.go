@@ -44,16 +44,8 @@ type ReturnsBenchmark struct {
 	Points                 []ReturnsSeriesPoint
 	// Splits are the per-day split factors a price-return value used, in date
 	// order; empty for total return.
-	Splits    []ReturnsBenchmarkSplit
+	Splits    []SplitDay
 	Valuation ValuationCoverage
-}
-
-// ReturnsBenchmarkSplit is one day's split factor: every unit held at the end
-// of the previous day became Factor units (a holding's successive splits that
-// day compounded). Exact, so it is never rounded.
-type ReturnsBenchmarkSplit struct {
-	EffectiveOn string
-	Factor      *big.Rat
 }
 
 // newBenchmarkRates loads the benchmark's observations over the read's
@@ -73,42 +65,6 @@ func (r *returnsReader) newBenchmarkRates(ctx context.Context, commodityID int64
 	return table, nil
 }
 
-// benchmarkSplitDays combines recorded splits (in date order) into one factor
-// per day. A holding's successive splits on one day compound (2:1 twice is
-// 4:1, as its ledger units are); holdings that recorded the same event must
-// agree on the day's factor. A day they disagree on has no factor and is a
-// conflict, rather than a guess.
-func benchmarkSplitDays(recorded []db.ReturnsSplit) ([]ReturnsBenchmarkSplit, []string) {
-	var days []ReturnsBenchmarkSplit
-	var conflicts []string
-	for start := 0; start < len(recorded); {
-		end := start
-		for end < len(recorded) && recorded[end].EffectiveOn == recorded[start].EffectiveOn {
-			end++
-		}
-		byHolding := map[int64]*big.Rat{}
-		for _, split := range recorded[start:end] {
-			if byHolding[split.AccountID] == nil {
-				byHolding[split.AccountID] = big.NewRat(1, 1)
-			}
-			byHolding[split.AccountID].Mul(byHolding[split.AccountID], big.NewRat(split.RatioNumerator, split.RatioDenominator))
-		}
-		var factor *big.Rat
-		agree := true
-		for _, holding := range byHolding {
-			agree = agree && (factor == nil || factor.Cmp(holding) == 0)
-			factor = holding
-		}
-		if agree {
-			days = append(days, ReturnsBenchmarkSplit{EffectiveOn: recorded[start].EffectiveOn, Factor: factor})
-		} else {
-			conflicts = append(conflicts, recorded[start].EffectiveOn)
-		}
-		start = end
-	}
-	return days, conflicts
-}
-
 // benchmarkSeries reads the benchmark's value at each series date. One unit
 // held from the opening day is C(d)/C(open) units on d, where C multiplies the
 // split factors through a day. A quote observed on q prices a unit of q's
@@ -118,8 +74,9 @@ func benchmarkSplitDays(recorded []db.ReturnsSplit) ([]ReturnsBenchmarkSplit, []
 // gap, as the portfolio series orders its required gaps; a value whose span
 // (q to the opening day) crosses a conflicting day is unknown; a point-only
 // gap removes that point alone. Prices are positive, so the growth factor is.
-func benchmarkSeries(commodityID int64, basis string, rates *RateTable, recorded []db.ReturnsSplit, openDate string, dates []string, days int) ReturnsBenchmark {
-	splitDays, conflicts := benchmarkSplitDays(recorded)
+// The split factors are the rate table's own (none under total return).
+func benchmarkSeries(commodityID int64, basis string, rates *RateTable, openDate string, dates []string, days int) ReturnsBenchmark {
+	splitDays, conflicts := rates.SplitDays(commodityID)
 	used := map[string]bool{}
 	value := func(date string) (*big.Rat, ReturnFigure) {
 		price, observed, ok := rates.ConvertExactObserved(exact.New(1), 0, commodityID, date)
@@ -173,7 +130,7 @@ func benchmarkSeries(commodityID int64, basis string, rates *RateTable, recorded
 	}
 
 	// splitDays is in date order, so the disclosure is too.
-	benchmark.Splits = []ReturnsBenchmarkSplit{}
+	benchmark.Splits = []SplitDay{}
 	for _, split := range splitDays {
 		if used[split.EffectiveOn] {
 			benchmark.Splits = append(benchmark.Splits, split)

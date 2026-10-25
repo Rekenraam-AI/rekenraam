@@ -83,6 +83,10 @@ converted at `d` by the shared `RateTable` (`app/valuation.go`): a currency
 directly, a security or crypto unit through its quote currency (#281 chain),
 under `live_raw_v1` admission and the knowledge cutoff of the read. Negative
 balances (named shorts, a margin liability) contribute negative values.
+A stale quote dated before a recorded split is brought to `d`'s units by the
+instrument's split factor in between, the shared rule of the
+[reports plan](reports-plan.md) (#407); conflicting same-day factors in that
+span make `V(d)` unavailable (`conflicting_splits` gap).
 
 - It is **ledger based, not lot based**: return needs quantities and prices,
   never cost basis, so unknown basis does not affect any R13 figure.
@@ -361,6 +365,10 @@ provider is needed.
     by ratio had dropped the second split. A day holdings disagree on is a
     conflict: a value whose span from q to the opening day crosses it is
     `conflicting_splits` (dated the day), never a guessed factor.
+  - *Shared factors (#407).* The per-day factors and conflicts are the
+    benchmark rate table's own, the ones every ledger valuation applies;
+    the benchmark reads its quotes unadjusted (`ConvertExactObserved`) and
+    applies `C(q) / C(open)` itself, because its unit is the opening day's.
   - The factors used are listed in `benchmark.splits` as exact fractions in
     lowest terms (decimal strings). An instrument with an
   unrecorded split cannot be detected; the list shows what was applied. A
@@ -428,7 +436,11 @@ same-day compounding; see *Splits*), cases B12–B14, plus the reviewer's
 replacement probe kept as a regression. Out of scope and tracked separately:
 the shared `RateTable` values post-split ledger units with a stale pre-split
 quote too, so the portfolio's own series (and every live valuation) reads a
-split as a jump on days that reuse the old quote.
+split as a jump on days that reuse the old quote. Fixed in
+[#407](https://github.com/sergeyfarin/rekenraam/issues/407) (2026-10-25): the
+reproducer (2:1 on 02-02, quotes 100 on 01-31 and 50 on 02-04) read
+`0.909091` on 02-02 and 02-03 and now reads `0.000000`
+(`TestReturnsSeriesRescalesAStalePreSplitQuote`).
 
 ## Money-weighted return (IRR)
 

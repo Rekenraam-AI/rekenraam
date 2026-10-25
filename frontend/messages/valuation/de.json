@@ -3,6 +3,7 @@
   "valuation_price_missing": "Kein Preis verfügbar",
   "valuation_price_future": "Nur zukünftige Preise verfügbar",
   "valuation_price_incompatible": "Kursart oder Anpassungsbasis ist ungeeignet",
+  "valuation_price_conflicting_splits": "Positionen erfassen seit diesem Kurs unterschiedliche Split-Verhältnisse",
   "valuation_price_unknown": "Preis nach dem Wissensstichtag erfasst",
   "valuation_price_window": "Kein geeigneter Preis innerhalb der zulässigen Altersgrenze",
   "valuation_holdings_policy": "Aktuelle Bestände verwenden Preise bis einschließlich heute. Preise, die älter als sieben Tage sind, bleiben sichtbar und werden als veraltet markiert. Bereinigte Preise sowie Geld-/Briefkurse sind ausgeschlossen.",

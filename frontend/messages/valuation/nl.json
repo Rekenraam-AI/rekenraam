@@ -3,6 +3,7 @@
   "valuation_price_missing": "Geen prijs beschikbaar",
   "valuation_price_future": "Alleen toekomstige prijzen beschikbaar",
   "valuation_price_incompatible": "Koerstype of aanpassingsbasis is ongeschikt",
+  "valuation_price_conflicting_splits": "Posities registreren sinds deze koers verschillende splitsingsverhoudingen",
   "valuation_price_unknown": "Prijs vastgelegd na de kennisgrens",
   "valuation_price_window": "Geen geschikte prijs binnen de toegestane ouderdom",
   "valuation_holdings_policy": "Actuele posities gebruiken prijzen tot en met vandaag. Prijzen ouder dan zeven dagen blijven zichtbaar en worden als verouderd gemarkeerd. Aangepaste prijzen en bied-/laatkoersen zijn uitgesloten.",

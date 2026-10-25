@@ -61,6 +61,10 @@ const DefaultRateStalenessDays = 7
 const (
 	RateMissingNoObservation = "no_observation_in_window"
 	RateMissingNotACurrency  = "reporting_currency_is_not_a_currency"
+	// RateMissingConflictingSplits: the observation predates a day on which
+	// holdings recorded different split factors for the instrument, so the
+	// units it prices on the requested date are unknown (#407).
+	RateMissingConflictingSplits = "conflicting_splits"
 )
 
 // ReportingCurrencyInput is what a caller asks for.
@@ -85,6 +89,12 @@ type RateUse struct {
 	ViaCommodityID     int64  `json:"via_commodity_id,omitempty"`
 	ViaObservationID   int64  `json:"via_observation_id,omitempty"`
 	ViaObservationDate string `json:"via_observation_date,omitempty"`
+	// SplitRatio* are the exact factor (lowest terms) of the instrument's
+	// recorded splits between the observation date and the requested date:
+	// the quote priced a unit of its own day, and each such unit is this many
+	// units on the requested date (#407). Empty when no split intervened.
+	SplitRatioNumerator   string `json:"split_ratio_numerator,omitempty"`
+	SplitRatioDenominator string `json:"split_ratio_denominator,omitempty"`
 }
 
 // RateGap is a commodity that could not be converted, and why.
@@ -144,6 +154,12 @@ type RateTable struct {
 	// selectionPolicy names the observation selection behind byCommodity and
 	// chainQuotes; empty is live_raw_v1.
 	selectionPolicy string
+	// splitDays and splitConflicts hold, per instrument, its recorded split
+	// factors (one per day, in date order) and the days holdings disagree on,
+	// from the staleness window before the first date through the last. Empty
+	// under total-return selection.
+	splitDays      map[int64][]SplitDay
+	splitConflicts map[int64][]string
 }
 
 // NewRateTable loads every rate that could be needed to convert the given
@@ -262,7 +278,84 @@ func newRateTableAtBoundary(ctx context.Context, pricing *db.PricingRepository, 
 		return nil, err
 	}
 
+	// A raw quote prices a unit of its own day; a total-return series is a
+	// continuous index level and is never split-adjusted.
+	if !pricing.TotalReturnSecurities() {
+		splits, err := pricing.InstrumentSplits(ctx, BookID, needed, windowStart, toDate)
+		if err != nil {
+			return nil, err
+		}
+		table.splitDays, table.splitConflicts = instrumentSplitDays(splits)
+	}
+
 	return table, nil
+}
+
+// SplitDay is one day's split factor of an instrument: every unit held at the
+// end of the previous day became Factor units (a holding's successive splits
+// that day compounded). Exact, so it is never rounded.
+type SplitDay struct {
+	EffectiveOn string
+	Factor      *big.Rat
+}
+
+// instrumentSplitDays combines recorded splits (ordered by instrument, then
+// date) into one factor per instrument and day. A holding's successive splits
+// on one day compound (2:1 twice is 4:1, as its ledger units are); holdings
+// that recorded the same event must agree on the day's factor. A day they
+// disagree on has no factor and is a conflict, rather than a guess.
+//
+// The factor is the instrument's, not a holding's: a quote prices the
+// instrument, so a holding that never recorded a split is misvalued by a
+// fresh post-split quote just as by a rescaled stale one.
+func instrumentSplitDays(recorded []db.InstrumentSplit) (map[int64][]SplitDay, map[int64][]string) {
+	days := map[int64][]SplitDay{}
+	conflicts := map[int64][]string{}
+	for start := 0; start < len(recorded); {
+		first := recorded[start]
+		end := start
+		for end < len(recorded) && recorded[end].CommodityID == first.CommodityID && recorded[end].EffectiveOn == first.EffectiveOn {
+			end++
+		}
+		byHolding := map[int64]*big.Rat{}
+		for _, split := range recorded[start:end] {
+			if byHolding[split.AccountID] == nil {
+				byHolding[split.AccountID] = big.NewRat(1, 1)
+			}
+			byHolding[split.AccountID].Mul(byHolding[split.AccountID], big.NewRat(split.RatioNumerator, split.RatioDenominator))
+		}
+		var factor *big.Rat
+		agree := true
+		for _, holding := range byHolding {
+			agree = agree && (factor == nil || factor.Cmp(holding) == 0)
+			factor = holding
+		}
+		if agree {
+			days[first.CommodityID] = append(days[first.CommodityID], SplitDay{EffectiveOn: first.EffectiveOn, Factor: factor})
+		} else {
+			conflicts[first.CommodityID] = append(conflicts[first.CommodityID], first.EffectiveOn)
+		}
+		start = end
+	}
+	return days, conflicts
+}
+
+// splitFactor is the product of an instrument's split factors effective in
+// (observed, onDate]: how many units on onDate one unit of the observation's
+// day became. A conflicting day in that span returns that day instead.
+func (t *RateTable) splitFactor(commodityID int64, observed, onDate string) (*big.Rat, string) {
+	for _, conflict := range t.splitConflicts[commodityID] {
+		if conflict > observed && conflict <= onDate {
+			return nil, conflict
+		}
+	}
+	factor := big.NewRat(1, 1)
+	for _, split := range t.splitDays[commodityID] {
+		if split.EffectiveOn > observed && split.EffectiveOn <= onDate {
+			factor.Mul(factor, split.Factor)
+		}
+	}
+	return factor, ""
 }
 
 // QuoteCommodityID is the currency this table converts into.
@@ -278,7 +371,7 @@ func (t *RateTable) Scale() int { return t.quoteScale }
 // the figure rather than substituting a zero, which would read as "nothing"
 // instead of "unknown".
 func (t *RateTable) Convert(value exact.Coefficient, scale int, commodityID int64, onDate string) (*big.Int, bool) {
-	rate, ok := t.resolve(commodityID, onDate)
+	rate, ok := t.resolveUnits(commodityID, onDate)
 	if !ok {
 		return nil, false
 	}
@@ -299,31 +392,49 @@ func (t *RateTable) Convert(value exact.Coefficient, scale int, commodityID int6
 }
 
 // ConvertExact values an amount like Convert, with the same rate selection,
-// coverage and gaps, but returns the exact rational value instead of rounding
-// it to the reporting currency's scale. A consumer whose arithmetic needs the
-// true sign or ratio (R13's time-weighted chain) rounds only what it shows.
+// split rescaling, coverage and gaps, but returns the exact rational value
+// instead of rounding it to the reporting currency's scale. A consumer whose
+// arithmetic needs the true sign or ratio (R13's time-weighted chain) rounds
+// only what it shows.
 func (t *RateTable) ConvertExact(value exact.Coefficient, scale int, commodityID int64, onDate string) (*big.Rat, bool) {
-	amount, _, ok := t.ConvertExactObserved(value, scale, commodityID, onDate)
-	return amount, ok
+	rate, ok := t.resolveUnits(commodityID, onDate)
+	if !ok {
+		return nil, false
+	}
+	return t.convertExact(value, scale, commodityID, onDate, rate), true
 }
 
-// ConvertExactObserved is ConvertExact plus the valuation date of the
-// observation that priced the commodity itself (a chain's first leg), which a
-// caller needs when units changed between that date and onDate. It is onDate
-// for the reporting currency.
+// ConvertExactObserved values units of the observation's own day, not of
+// onDate: it is ConvertExact without split rescaling, plus the valuation date
+// of the observation that priced the commodity itself (a chain's first leg).
+// A caller that tracks its own units through splits (the R13 benchmark) uses
+// it with SplitDays. The date is onDate for the reporting currency.
 func (t *RateTable) ConvertExactObserved(value exact.Coefficient, scale int, commodityID int64, onDate string) (*big.Rat, string, bool) {
 	rate, ok := t.resolve(commodityID, onDate)
 	if !ok {
 		return nil, "", false
 	}
+	if rate.identity {
+		return t.convertExact(value, scale, commodityID, onDate, rate), onDate, true
+	}
+	return t.convertExact(value, scale, commodityID, onDate, rate), rate.use.ObservationDate, true
+}
+
+// SplitDays are the instrument's recorded split factors this table loaded and
+// the days holdings disagree on, both in date order.
+func (t *RateTable) SplitDays(commodityID int64) ([]SplitDay, []string) {
+	return t.splitDays[commodityID], t.splitConflicts[commodityID]
+}
+
+func (t *RateTable) convertExact(value exact.Coefficient, scale int, commodityID int64, onDate string, rate resolvedRate) *big.Rat {
 	amount := new(big.Rat).SetFrac(value.BigInt(), pow10(scale))
 	if rate.identity {
-		return amount, onDate, true
+		return amount
 	}
 	amount.Mul(amount, new(big.Rat).SetFrac(rate.price, pow10(rate.priceScale)))
 	amount.Quo(amount, new(big.Rat).SetFrac(rate.base, pow10(rate.baseScale)))
 	t.recordUse(commodityID, onDate, rate)
-	return amount, rate.use.ObservationDate, true
+	return amount
 }
 
 func pow10(scale int) *big.Int {
@@ -357,6 +468,31 @@ func (t *RateTable) resolve(commodityID int64, onDate string) (resolvedRate, boo
 		}, true
 	}
 	return t.resolveChained(commodityID, onDate)
+}
+
+// resolveUnits is resolve for units of onDate: a security or crypto quote
+// observed before onDate priced a unit of its own day, so its base quantity is
+// multiplied by the instrument's split factor in between (#407), exactly; the
+// use discloses the factor. A conflicting split day in between is a gap.
+func (t *RateTable) resolveUnits(commodityID int64, onDate string) (resolvedRate, bool) {
+	rate, ok := t.resolve(commodityID, onDate)
+	if !ok || rate.identity || rate.use.ObservationDate == onDate {
+		return rate, ok
+	}
+	factor, conflict := t.splitFactor(commodityID, rate.use.ObservationDate, onDate)
+	if conflict != "" {
+		if _, recorded := t.gaps[commodityID]; !recorded {
+			t.gaps[commodityID] = RateGap{CommodityID: commodityID, Reason: RateMissingConflictingSplits, NearestObservationDate: rate.use.ObservationDate}
+		}
+		return resolvedRate{}, false
+	}
+	if factor.Cmp(big.NewRat(1, 1)) == 0 {
+		return rate, true
+	}
+	rate.price = new(big.Int).Mul(rate.price, factor.Denom())
+	rate.base = new(big.Int).Mul(rate.base, factor.Num())
+	rate.use.SplitRatioNumerator, rate.use.SplitRatioDenominator = factor.Num().String(), factor.Denom().String()
+	return rate, true
 }
 
 // recordUse preserves each selected observation/date, so a later estimated

@@ -3,6 +3,7 @@
   "valuation_price_missing": "Aucun prix disponible",
   "valuation_price_future": "Seuls des prix futurs sont disponibles",
   "valuation_price_incompatible": "Type de cotation ou base d’ajustement incompatible",
+  "valuation_price_conflicting_splits": "Des positions enregistrent des rapports de division différents depuis ce cours",
   "valuation_price_unknown": "Prix enregistré après la limite de connaissance",
   "valuation_price_window": "Aucun prix compatible dans la limite d’ancienneté",
   "valuation_holdings_policy": "Les positions actuelles utilisent des prix datés au plus tard d’aujourd’hui. Les prix de plus de sept jours restent visibles et sont signalés comme anciens. Les prix ajustés et les cours acheteur/vendeur sont exclus.",

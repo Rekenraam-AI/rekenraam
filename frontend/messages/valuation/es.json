@@ -3,6 +3,7 @@
   "valuation_price_missing": "Sin precio disponible",
   "valuation_price_future": "Solo hay precios futuros",
   "valuation_price_incompatible": "Tipo de cotización o base de ajuste incompatible",
+  "valuation_price_conflicting_splits": "Las posiciones registran proporciones de división distintas desde esta cotización",
   "valuation_price_unknown": "Precio registrado después del límite de conocimiento",
   "valuation_price_window": "Sin precio compatible dentro de la antigüedad permitida",
   "valuation_holdings_policy": "Las posiciones actuales usan precios con fecha no posterior a hoy. Los de más de siete días siguen visibles y se marcan como antiguos. Se excluyen precios ajustados y cotizaciones de compra/venta.",

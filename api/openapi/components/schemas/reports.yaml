@@ -26,6 +26,16 @@ RateUse:
         leg is from an earlier date than requested.
     via_observation_id: { type: integer, format: int64 }
     via_observation_date: { type: string, format: date }
+    split_ratio_numerator:
+      type: string
+      description: >
+        Present when recorded splits of the instrument fall after
+        observation_date and on or before requested_date: the quote priced a
+        unit of its own day, and each such unit is split_ratio_numerator /
+        split_ratio_denominator units on requested_date (an exact fraction in
+        lowest terms, as decimal integer strings). The price used is the
+        quote divided by that factor.
+    split_ratio_denominator: { type: string }
 RateGap:
   type: object
   description: A commodity that could not be converted, and why.
@@ -34,7 +44,12 @@ RateGap:
     commodity_id: { type: integer, format: int64 }
     reason:
       type: string
-      enum: [no_observation_in_window, reporting_currency_is_not_a_currency, future_only, incompatible_quote_basis, not_known_at_cutoff]
+      enum: [no_observation_in_window, reporting_currency_is_not_a_currency, future_only, incompatible_quote_basis, not_known_at_cutoff, conflicting_splits]
+      description: >
+        conflicting_splits: the latest usable observation predates a day on
+        which holdings recorded different split factors for the instrument,
+        so the units it prices on the requested date are unknown;
+        nearest_observation_date is then that observation's date.
     nearest_observation_date:
       type: string
       format: date

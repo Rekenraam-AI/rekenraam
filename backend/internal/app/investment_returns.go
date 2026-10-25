@@ -262,24 +262,12 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 		return err
 	}
 	var benchmarkRates *RateTable
-	var benchmarkSplitFacts []db.ReturnsSplit
 	if input.BenchmarkCommodityID != 0 {
 		if kind := r.kinds[input.BenchmarkCommodityID]; kind != "security" && kind != "crypto" {
 			return ValidationError{Message: "benchmark must be a security or crypto commodity"}
 		}
 		if benchmarkRates, err = r.newBenchmarkRates(ctx, input.BenchmarkCommodityID, input.BenchmarkBasis, reporting, boundary); err != nil {
 			return err
-		}
-		if input.BenchmarkBasis == BenchmarkBasisPriceReturn {
-			// A stale opening quote can predate a split up to the staleness
-			// window before the opening day; that split rescales it.
-			windowStart, err := shiftISODate(r.openDate, -staleness)
-			if err != nil {
-				return err
-			}
-			if benchmarkSplitFacts, err = r.ledger.ReturnsInstrumentSplits(ctx, BookID, input.BenchmarkCommodityID, windowStart, r.to); err != nil {
-				return err
-			}
 		}
 	}
 	defer func() {
@@ -303,7 +291,7 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 		for _, point := range result.TimeWeightedSeries.Points {
 			dates = append(dates, point.Date)
 		}
-		benchmark := benchmarkSeries(input.BenchmarkCommodityID, input.BenchmarkBasis, benchmarkRates, benchmarkSplitFacts, r.openDate, dates, result.Days)
+		benchmark := benchmarkSeries(input.BenchmarkCommodityID, input.BenchmarkBasis, benchmarkRates, r.openDate, dates, result.Days)
 		result.Benchmark = &benchmark
 	}
 	return r.overflow

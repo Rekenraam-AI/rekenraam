@@ -77,6 +77,10 @@ type rateUseResponse struct {
 	ViaCommodityID     int64  `json:"via_commodity_id,omitempty"`
 	ViaObservationID   int64  `json:"via_observation_id,omitempty"`
 	ViaObservationDate string `json:"via_observation_date,omitempty"`
+	// The split factor that brought a stale quote to the requested day's
+	// units (#407); absent when no split intervened.
+	SplitRatioNumerator   string `json:"split_ratio_numerator,omitempty"`
+	SplitRatioDenominator string `json:"split_ratio_denominator,omitempty"`
 }
 
 type rateGapResponse struct {

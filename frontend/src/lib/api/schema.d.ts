@@ -28784,13 +28784,19 @@ export interface components {
             via_observation_id?: number;
             /** Format: date */
             via_observation_date?: string;
+            /** @description Present when recorded splits of the instrument fall after observation_date and on or before requested_date: the quote priced a unit of its own day, and each such unit is split_ratio_numerator / split_ratio_denominator units on requested_date (an exact fraction in lowest terms, as decimal integer strings). The price used is the quote divided by that factor. */
+            split_ratio_numerator?: string;
+            split_ratio_denominator?: string;
         };
         /** @description A commodity that could not be converted, and why. */
         RateGap: {
             /** Format: int64 */
             commodity_id: number;
-            /** @enum {string} */
-            reason: "no_observation_in_window" | "reporting_currency_is_not_a_currency" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff";
+            /**
+             * @description conflicting_splits: the latest usable observation predates a day on which holdings recorded different split factors for the instrument, so the units it prices on the requested date are unknown; nearest_observation_date is then that observation's date.
+             * @enum {string}
+             */
+            reason: "no_observation_in_window" | "reporting_currency_is_not_a_currency" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff" | "conflicting_splits";
             /**
              * Format: date
              * @description The closest observation outside the staleness window, when one exists. "No rate" and "no rate recently" are different problems with different fixes, so the response distinguishes them.
