@@ -27,7 +27,8 @@ func TestReturnsRunReproducesAfterBackdatedBuy(t *testing.T) {
 		tradeRequestBody(f, holding.ID, instrument.CommodityID, "2", 4000), http.StatusCreated)
 
 	base := "/api/v1/investments/returns/runs"
-	request := app.ReturnsRunRequest{From: "2026-02-01", To: "2026-03-31", ReportingCurrencyID: f.commodityID}
+	// A raw body with the optional fields genuinely absent, not sent as null.
+	request := map[string]any{"from": "2026-02-01", "to": "2026-03-31", "reporting_currency_id": f.commodityID}
 	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, base, request, http.StatusCreated)
 	var run db.ReturnsRunRecord
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&run))
@@ -44,8 +45,7 @@ func TestReturnsRunReproducesAfterBackdatedBuy(t *testing.T) {
 		SnapshotSHA256 string                `json:"snapshot_sha256"`
 	}
 	require.NoError(t, json.Unmarshal(run.InputsJSON, &inputs))
-	require.NotNil(t, inputs.Request.MaxStalenessDays)
-	assert.Equal(t, app.DefaultRateStalenessDays, *inputs.Request.MaxStalenessDays, "defaults are recorded as resolved")
+	assert.Equal(t, app.StalenessDays(app.DefaultRateStalenessDays), inputs.Request.MaxStalenessDays, "defaults are recorded as resolved")
 	assert.Equal(t, []int64{}, inputs.Request.AccountIDs)
 	assert.Nil(t, inputs.Request.BenchmarkCommodityID)
 	assert.Equal(t, run.SnapshotSHA256, inputs.SnapshotSHA256)
@@ -147,16 +147,18 @@ func TestReturnsRunValidationPaginationAndReadOnlyRetrieval(t *testing.T) {
 	doInvestmentRequest(t, handler, nil, "", http.MethodGet, base, nil, http.StatusUnauthorized)
 	doInvestmentRequest(t, handler, nil, "", http.MethodPost, base, valid, http.StatusUnauthorized)
 	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodPost, base, valid, http.StatusForbidden)
-	zero, total, stale, none := int64(0), "total_return", 32, 0
+	zero, total := int64(0), "total_return"
 	for _, input := range []any{
 		app.ReturnsRunRequest{},
 		app.ReturnsRunRequest{From: "2026-02-30", To: "2026-03-01", ReportingCurrencyID: f.commodityID},
 		app.ReturnsRunRequest{From: "2026-03-01", To: "2026-02-01", ReportingCurrencyID: f.commodityID},
 		app.ReturnsRunRequest{From: "2026-02-01", To: "2099-01-01", ReportingCurrencyID: f.commodityID},
 		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28"},
-		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, MaxStalenessDays: &stale},
-		// An explicit zero is refused as the live read refuses it, not read as omitted.
-		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, MaxStalenessDays: &none},
+		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, MaxStalenessDays: app.StalenessDays(32)},
+		// Only omission takes the default: an explicit zero is refused as the
+		// live read refuses it, and the non-nullable field refuses null.
+		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, MaxStalenessDays: app.StalenessDays(0)},
+		map[string]any{"from": "2026-02-01", "to": "2026-02-28", "reporting_currency_id": f.commodityID, "max_staleness_days": nil},
 		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, AccountIDs: []int64{0}},
 		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, BenchmarkCommodityID: &zero},
 		app.ReturnsRunRequest{From: "2026-02-01", To: "2026-02-28", ReportingCurrencyID: f.commodityID, BenchmarkBasis: &total},
@@ -211,4 +213,16 @@ func TestReturnsRunValidationPaginationAndReadOnlyRetrieval(t *testing.T) {
 	assert.Equal(t, before, count, "GETs, including the live read, never save a run or audit")
 	require.NoError(t, database.QueryRow(`SELECT COUNT(*) FROM investment_returns_runs`).Scan(&count))
 	assert.Equal(t, 21, count)
+
+	// Integrity is per page: a damaged oldest run, the first page's lookahead
+	// row, refuses only the page it belongs to.
+	_, err := database.Exec(`DROP TRIGGER investment_returns_runs_no_update`)
+	require.NoError(t, err)
+	_, err = database.Exec(`UPDATE investment_returns_runs SET output_json = '{}' WHERE id = ?`, ids[0])
+	require.NoError(t, err)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, base, nil, http.StatusOK)
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&page))
+	require.Len(t, page.Runs, 20)
+	require.NotNil(t, page.NextCursor)
+	doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, base+"?cursor="+*page.NextCursor, nil, http.StatusInternalServerError)
 }

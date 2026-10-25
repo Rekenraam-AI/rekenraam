@@ -34,7 +34,7 @@ ReturnsRunRequest:
       minimum: 1
       maximum: 31
       description: Omitted means 7. An explicit value outside 1..31, including 0,
-        is refused, as on the live read.
+        is refused, as on the live read; null is refused too (not nullable).
     benchmark_commodity_id:
       type:
       - integer

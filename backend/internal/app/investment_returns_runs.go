@@ -18,16 +18,48 @@ var ErrReturnsRunNotFound = errors.New("investment returns run not found")
 var ErrReturnsRunIntegrity = errors.New("investment returns run integrity check failed")
 
 // ReturnsRunRequest is the live read's inputs as a saved run records them,
-// with defaults resolved. Optional fields are pointers so an explicit value
-// is validated as the live read validates it, never mistaken for omission.
+// with defaults resolved. Nullable fields are pointers (null means none);
+// max_staleness_days is not nullable, so it records presence itself and an
+// explicit value, null included, is never mistaken for omission.
 type ReturnsRunRequest struct {
-	From                 string  `json:"from"`
-	To                   string  `json:"to"`
-	ReportingCurrencyID  int64   `json:"reporting_currency_id"`
-	AccountIDs           []int64 `json:"account_ids"`
-	MaxStalenessDays     *int    `json:"max_staleness_days"`
-	BenchmarkCommodityID *int64  `json:"benchmark_commodity_id"`
-	BenchmarkBasis       *string `json:"benchmark_basis"`
+	From                 string              `json:"from"`
+	To                   string              `json:"to"`
+	ReportingCurrencyID  int64               `json:"reporting_currency_id"`
+	AccountIDs           []int64             `json:"account_ids"`
+	MaxStalenessDays     ReturnsRunStaleness `json:"max_staleness_days,omitzero"`
+	BenchmarkCommodityID *int64              `json:"benchmark_commodity_id"`
+	BenchmarkBasis       *string             `json:"benchmark_basis"`
+}
+
+// ReturnsRunStaleness is max_staleness_days as sent: Present once the field
+// appears in the body, Null when it appears as null. Omitted, it is the zero
+// value and is left out when written.
+type ReturnsRunStaleness struct {
+	Days    int
+	Present bool
+	Null    bool
+}
+
+// StalenessDays is a staleness sent as a number.
+func StalenessDays(days int) ReturnsRunStaleness {
+	return ReturnsRunStaleness{Days: days, Present: true}
+}
+
+func (s ReturnsRunStaleness) IsZero() bool { return !s.Present }
+
+func (s *ReturnsRunStaleness) UnmarshalJSON(data []byte) error {
+	*s = ReturnsRunStaleness{Present: true, Null: string(data) == "null"}
+	if s.Null {
+		return nil
+	}
+	return json.Unmarshal(data, &s.Days)
+}
+
+func (s ReturnsRunStaleness) MarshalJSON() ([]byte, error) {
+	if s.Null {
+		return []byte("null"), nil
+	}
+	return json.Marshal(s.Days)
 }
 
 type ReturnsRunInput struct {
@@ -44,12 +76,13 @@ func (s *InvestmentService) CreateReturnsRun(ctx context.Context, input ReturnsR
 	request := input.Request
 	read := ReturnsInput{From: request.From, To: request.To, ReportingCommodityID: request.ReportingCurrencyID,
 		AccountIDs: request.AccountIDs}
-	if request.MaxStalenessDays != nil {
-		// Zero is the live read's "omitted"; an explicit zero is out of range.
-		if *request.MaxStalenessDays < 1 {
+	if request.MaxStalenessDays.Present {
+		// Only omission takes the default: zero is the live read's
+		// "omitted", so an explicit zero, like null, is out of range.
+		if request.MaxStalenessDays.Null || request.MaxStalenessDays.Days < 1 {
 			return db.ReturnsRunRecord{}, ValidationError{Message: fmt.Sprintf("max_staleness_days must be between 1 and %d", returnsMaxStalenessDays)}
 		}
-		read.MaxStalenessDays = *request.MaxStalenessDays
+		read.MaxStalenessDays = request.MaxStalenessDays.Days
 	}
 	if request.BenchmarkCommodityID != nil {
 		if *request.BenchmarkCommodityID <= 0 {
@@ -93,7 +126,7 @@ func (s *InvestmentService) CreateReturnsRun(ctx context.Context, input ReturnsR
 		return db.ReturnsRunRecord{}, err
 	}
 	resolved := ReturnsRunRequest{From: read.From, To: read.To, ReportingCurrencyID: read.ReportingCommodityID,
-		AccountIDs: read.AccountIDs, MaxStalenessDays: &read.MaxStalenessDays}
+		AccountIDs: read.AccountIDs, MaxStalenessDays: StalenessDays(read.MaxStalenessDays)}
 	if resolved.AccountIDs == nil {
 		resolved.AccountIDs = []int64{}
 	}
@@ -142,18 +175,21 @@ func (s *InvestmentService) ListReturnsRuns(ctx context.Context, before int64) (
 	if err != nil {
 		return nil, 0, err
 	}
+	// The 21st row only says whether a next page exists; it belongs to that
+	// page, so it is trimmed before the checks.
+	var next int64
+	if len(runs) > 20 {
+		runs = runs[:20]
+		next = runs[19].ID
+	}
 	// A summary is listed only for a document a single read would return:
-	// the whole run is verified, then its output is left for selection.
+	// each run on this page is verified whole, then its output is left for
+	// selection.
 	for i := range runs {
 		if !db.ValidReturnsRunDocument(runs[i]) {
 			return nil, 0, ErrReturnsRunIntegrity
 		}
 		runs[i].OutputJSON = nil
-	}
-	var next int64
-	if len(runs) > 20 {
-		runs = runs[:20]
-		next = runs[19].ID
 	}
 	return runs, next, nil
 }

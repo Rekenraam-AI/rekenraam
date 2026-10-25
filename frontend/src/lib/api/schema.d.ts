@@ -26963,7 +26963,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error, or a listed run failed whole-document integrity (the same check as a single read) */
+                /** @description Internal server error, or a run on this page failed whole-document integrity (the same check as a single read) */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -34223,7 +34223,7 @@ export interface components {
             reporting_currency_id: number;
             /** @description Omitted or empty selects the default investment accounts. */
             account_ids?: number[] | null;
-            /** @description Omitted means 7. An explicit value outside 1..31, including 0, is refused, as on the live read. */
+            /** @description Omitted means 7. An explicit value outside 1..31, including 0, is refused, as on the live read; null is refused too (not nullable). */
             max_staleness_days?: number;
             /** Format: int64 */
             benchmark_commodity_id?: number | null;
