@@ -872,8 +872,15 @@ journal itself posts only cash, income and withholding.
 - **Not attributed:** an unassigned instrument (`unassigned_instrument`),
   nothing held at the entitlement point (`not_held`), or `i` held both inside
   and outside the scope (D3). Each such entry is listed with its transaction,
-  date and reason. It counts only toward the portfolio's own figures and the
+  date and reason, wherever its cash landed: an entry paid into checking
+  outside the portfolio is listed too, as the portfolio read lists its
+  fallbacks. Only income for a position held entirely outside the scope is
+  not listed. It counts only toward the portfolio's own figures and the
   residual below.
+- **Income with a missing conversion.** Attributed income whose cash cannot be
+  converted makes the sleeve's income `flow_unavailable`, not
+  `income_unattributable`: the payer is known, and the gap is named in the
+  sleeve's coverage.
 
 **D2 — recognition date of income.** *Recommended:* attributed income is
 recognised on the **ex date** when recorded, else the entry date, and
@@ -922,8 +929,10 @@ an instrument's return.
 
 **D5 — shorts (review 3).** *Recommended:* a sleeve is **short in the
 period** when either of these holds:
-- a `short_sale` or `short_cover` operation on `i` in scope is recognised in
-  `[from, to]`;
+- a `short_sale` or `short_cover` operation chain on `i` in scope, recognised
+  in `[from, to]`, leaves non-zero net units after its corrections. A short
+  that was recorded and then reversed leaves none, and so does not suppress a
+  later long position's return;
 - the scope's balance of `i` is negative at the end of any day from `from − 1`
   to `to` (every posting day, not only evaluation days).
 
@@ -1062,6 +1071,20 @@ written.
      dividend, falls back to its entry date, and an owner who sold before
      the pay date sees it listed `not_held` until a replacement adds the ex
      date. The I2 cases record their ex dates through the dividend command.
+   - **Review of `7d1996c3` and `8194782a` (2026-10-25).** All four findings
+     were accepted and fixed. Each reviewer probe is a named regression case
+     that failed before its fix:
+     1. *Corrected payer:* a replacement links its inverse and its new
+        journal to one operation, so sleeves group by transaction, not
+        operation. The inverse keeps its predecessor's facts, so a €20
+        dividend moved from TEST to OTHER leaves TEST with 0
+        (`TestInstrumentReturnsCorrectedPayerMovesTheIncome`).
+     2. *Reversed short:* short exposure is the net units of each short
+        chain (`TestInstrumentReturnsReversedShortDoesNotBlockALaterLong`).
+     3. *Not-held income paid outside:* listed wherever its cash landed
+        (`TestInstrumentReturnsNotHeldIncomePaidOutsideIsDisclosed`).
+     4. *Missing FX:* income keeps `flow_unavailable`
+        (`TestInstrumentReturnsKnownIncomeWithMissingFXIsAFlowGap`).
 9. **Screen panel and saved-run inclusion**, with a browser case on a phone
    and an existing run reopened unchanged.
 

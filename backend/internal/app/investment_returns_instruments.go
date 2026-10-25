@@ -221,8 +221,8 @@ func (r *returnsReader) instrumentReturns(ctx context.Context, anchors []db.Retu
 			TimeWeighted: figures.TimeWeighted, TimeWeightedAnnualized: figures.TimeWeightedAnnualized,
 			MoneyWeighted: figures.MoneyWeighted, MoneyWeightedPeriod: figures.MoneyWeightedPeriod,
 		}
-		if incomeUnknown[commodityID] {
-			row.Income = ReturnsAmount{Reason: ReturnReasonIncomeUnattributable}
+		if reason := incomeUnknown[commodityID]; reason != "" {
+			row.Income = ReturnsAmount{Reason: reason}
 		} else {
 			amount := income[commodityID]
 			if amount == nil {
@@ -277,11 +277,11 @@ func (r *returnsReader) sleeve(commodityID int64, tables sleeveTables) *returnsR
 }
 
 // sleeveFlows reads every sleeve's flows from operation-wide groups. It
-// returns, per instrument: flows, signed attributed income and whether some
-// of it is unattributable; the income no sleeve carries; the instruments a
+// returns, per instrument: flows, signed attributed income and why some of it
+// is unknown (unattributable, or a missing conversion); the income no sleeve carries; the instruments a
 // flow involved; and those a named short operation touched.
 func (r *returnsReader) sleeveFlows(anchors []db.ReturnsOperationAnchor, tableFor func(int64) sleeveTables) (
-	map[int64][]returnsEntryFlow, map[int64]*big.Rat, map[int64]bool, []InstrumentIncomeNotAttributed, map[int64]bool, map[int64]bool) {
+	map[int64][]returnsEntryFlow, map[int64]*big.Rat, map[int64]string, []InstrumentIncomeNotAttributed, map[int64]bool, map[int64]bool) {
 	byTransaction := map[int64]db.ReturnsOperationAnchor{}
 	for _, anchor := range anchors {
 		byTransaction[anchor.TransactionID] = anchor
@@ -303,7 +303,10 @@ func (r *returnsReader) sleeveFlows(anchors []db.ReturnsOperationAnchor, tableFo
 		key := fmt.Sprintf("entry:%d", posting.JournalEntryID)
 		identity := key
 		if isOperation {
-			key = fmt.Sprintf("operation:%d:%s", anchor.OperationID, date)
+			// By transaction, not operation: a replacement links its inverse
+			// and its new journal to one operation, each with its own facts,
+			// and each is attributed on its own before the chain nets them.
+			key = fmt.Sprintf("transaction:%d:%s", posting.TransactionID, date)
 			identity = fmt.Sprintf("operation:%d", anchor.RootOperationID)
 		}
 		group, ok := index[key]
@@ -317,7 +320,10 @@ func (r *returnsReader) sleeveFlows(anchors []db.ReturnsOperationAnchor, tableFo
 
 	flows := map[int64][]returnsEntryFlow{}
 	income := map[int64]*big.Rat{}
-	incomeUnknown := map[int64]bool{}
+	incomeUnknown := map[int64]string{}
+	// shortUnits nets each short operation chain's units per instrument, so
+	// a short that was reversed leaves no exposure behind (review finding 2).
+	shortUnits := map[int64]map[string]*exact.ScaledInt{}
 	involved := map[int64]bool{}
 	shortOps := map[int64]bool{}
 	var notAttributed []InstrumentIncomeNotAttributed
@@ -328,16 +334,22 @@ func (r *returnsReader) sleeveFlows(anchors []db.ReturnsOperationAnchor, tableFo
 
 	for _, group := range groups {
 		units := map[int64][]db.LedgerPostingRecord{}
-		touches := false
 		for _, posting := range group.postings {
-			touches = touches || r.inScope[posting.AccountID]
 			if r.kinds[posting.CommodityID] != "currency" && r.inScope[posting.AccountID] {
 				units[posting.CommodityID] = append(units[posting.CommodityID], posting)
 			}
 		}
 		if group.isOperation && (returnsShortKinds[group.anchor.OperationKind] || returnsShortKinds[group.anchor.SourceKind]) {
-			for commodityID := range units {
-				shortOps[commodityID] = true
+			for commodityID, postings := range units {
+				if shortUnits[commodityID] == nil {
+					shortUnits[commodityID] = map[string]*exact.ScaledInt{}
+				}
+				if shortUnits[commodityID][group.identity] == nil {
+					shortUnits[commodityID][group.identity] = exact.NewScaledInt()
+				}
+				for _, posting := range postings {
+					shortUnits[commodityID][group.identity].AddCoefficient(posting.QuantityValue, posting.QuantityScale)
+				}
 			}
 		}
 		// outside values −Σ value(O_i): everything but the sleeve's own units,
@@ -370,8 +382,9 @@ func (r *returnsReader) sleeveFlows(anchors []db.ReturnsOperationAnchor, tableFo
 						income[commodityID] = new(big.Rat)
 					}
 					income[commodityID].Sub(income[commodityID], flow.amount)
-				} else {
-					incomeUnknown[commodityID] = true
+				} else if incomeUnknown[commodityID] == "" {
+					// The payer is known; only a conversion is missing.
+					incomeUnknown[commodityID] = ReturnReasonFlowUnavailable
 				}
 			case ReturnsFallbackHeldInsideAndOutside:
 				// D3: refused, but its direction is known from the cash.
@@ -382,13 +395,13 @@ func (r *returnsReader) sleeveFlows(anchors []db.ReturnsOperationAnchor, tableFo
 				}
 				add(commodityID, returnsEntryFlow{identity: group.identity, date: group.date, ok: false,
 					reason: ReturnReasonIncomeUnattributable, sign: sign})
-				incomeUnknown[commodityID] = true
+				incomeUnknown[commodityID] = ReturnReasonIncomeUnattributable
 				notAttributed = append(notAttributed, r.notAttributed(group, commodityID, reason))
 			case returnsIncomeOutside:
 			default:
-				if touches {
-					notAttributed = append(notAttributed, r.notAttributed(group, commodityID, reason))
-				}
+				// Listed wherever the cash landed, as the portfolio read
+				// lists its fallbacks (review finding 3).
+				notAttributed = append(notAttributed, r.notAttributed(group, commodityID, reason))
 			}
 			continue
 		}
@@ -447,6 +460,13 @@ func (r *returnsReader) sleeveFlows(anchors []db.ReturnsOperationAnchor, tableFo
 	})
 	if notAttributed == nil {
 		notAttributed = []InstrumentIncomeNotAttributed{}
+	}
+	for commodityID, chains := range shortUnits {
+		for _, units := range chains {
+			if units.Sign() != 0 {
+				shortOps[commodityID] = true
+			}
+		}
 	}
 	return flows, income, incomeUnknown, notAttributed, involved, shortOps
 }

@@ -646,3 +646,86 @@ func TestInstrumentReturnsReversedExchangeCancels(t *testing.T) {
 	requireReturnsAmount(t, 0, destination.Withdrawals)
 	requireReturnsAmount(t, 0, destination.Gain)
 }
+
+// Review of 7d1996c3 and 8194782a (2026-10-25): four findings, each kept as
+// its reviewer's probe.
+
+func TestInstrumentReturnsCorrectedPayerMovesTheIncome(t *testing.T) {
+	t.Parallel()
+	f := newBareReturnsFixture(t)
+	f.post(t, "2026-01-02", f.brokerCashID, f.cashAccountID, 200000)
+	f.trade(t, true, f.holdingAccountID, "2026-01-20", "", 10, 100000)
+	other := seedTestSecurityCommodity(t, f.investmentsTestFixture, "OTHER")
+	holding := seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
+	_, err := f.investmentService.Buy(context.Background(), InvestmentTradeInput{OwnerUserID: f.ownerUserID,
+		TransactionDate: "2026-01-20", CommodityID: other, HoldingAccountID: holding, CashAccountID: f.brokerCashID,
+		CashCommodityID: f.eurCommodityID, QuantityValue: exact.New(10), CashAmountValue: 100000, CashAmountScale: 2})
+	require.NoError(t, err)
+	for _, date := range []string{"2026-01-31", "2026-02-10", "2026-02-28"} {
+		f.price(t, date, 10000)
+		f.priceOf(t, other, f.eurCommodityID, date, 10000)
+	}
+	dividend := f.dividendOf(t, "2026-02-20", "2026-02-10", &f.stockCommodityID, 2000, 0, false)
+	_, err = f.investmentService.ReplaceDividend(context.Background(), ReplaceInvestmentDividendInput{OwnerUserID: f.ownerUserID,
+		TransactionID: dividend.ID, Reason: "correct payer", Replacement: DividendInput{TransactionDate: "2026-02-20",
+			CommodityID: NullableValue(other), CashAccountID: f.brokerCashID, CashCommodityID: f.eurCommodityID,
+			IncomeAccountID: &f.incomeAccountID, AmountValue: 2000, AmountScale: 2}})
+	require.NoError(t, err)
+	_, instruments := f.readInstruments(t, "2026-02-01", "2026-02-28")
+	a := sleeveRow(t, instruments, f.stockCommodityID)
+	b := sleeveRow(t, instruments, other)
+	requireReturnsAmount(t, 0, a.Income)
+	requireReturnsAmount(t, 20, b.Income)
+}
+
+func TestInstrumentReturnsReversedShortDoesNotBlockALaterLong(t *testing.T) {
+	t.Parallel()
+	f := newBareReturnsFixture(t)
+	f.post(t, "2026-01-02", f.brokerCashID, f.cashAccountID, 100000)
+	opening, err := f.investmentService.ShortSale(context.Background(), InvestmentTradeInput{OwnerUserID: f.ownerUserID,
+		TransactionDate: "2026-02-02", CommodityID: f.stockCommodityID, HoldingAccountID: f.holdingAccountID,
+		CashAccountID: f.brokerCashID, CashCommodityID: f.eurCommodityID, QuantityValue: exact.New(10), CashAmountValue: 100000, CashAmountScale: 2})
+	require.NoError(t, err)
+	_, err = f.investmentService.ReverseShortSale(context.Background(), ReverseInvestmentBuyInput{OwnerUserID: f.ownerUserID,
+		TransactionID: opening.Transaction.ID, Reason: "wrong entry"})
+	require.NoError(t, err)
+	f.trade(t, true, f.holdingAccountID, "2026-02-10", "", 10, 100000)
+	f.price(t, "2026-02-28", 11000)
+	_, instruments := f.readInstruments(t, "2026-02-01", "2026-02-28")
+	row := sleeveRow(t, instruments, f.stockCommodityID)
+	require.False(t, row.Short, "the only short was reversed")
+	requireReturn(t, "0.100000", row.TimeWeighted)
+}
+
+func TestInstrumentReturnsNotHeldIncomePaidOutsideIsDisclosed(t *testing.T) {
+	t.Parallel()
+	f := newBareReturnsFixture(t)
+	f.post(t, "2026-01-02", f.brokerCashID, f.cashAccountID, 100000)
+	f.trade(t, true, f.holdingAccountID, "2026-01-20", "", 10, 100000)
+	f.price(t, "2026-01-31", 10000)
+	f.trade(t, false, f.holdingAccountID, "2026-02-15", "", 10, 100000)
+	_, err := f.investmentService.Dividend(context.Background(), DividendInput{OwnerUserID: f.ownerUserID,
+		TransactionDate: "2026-02-20", CommodityID: NullableValue(f.stockCommodityID), CashAccountID: f.cashAccountID,
+		CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.incomeAccountID, AmountValue: 2000, AmountScale: 2})
+	require.NoError(t, err)
+	_, instruments := f.readInstruments(t, "2026-02-01", "2026-02-28")
+	require.Len(t, instruments.NotAttributed, 1, "a payment to checking must still disclose not_held")
+}
+
+func TestInstrumentReturnsKnownIncomeWithMissingFXIsAFlowGap(t *testing.T) {
+	t.Parallel()
+	f := newBareReturnsFixture(t)
+	f.post(t, "2026-01-02", f.brokerCashID, f.cashAccountID, 100000)
+	f.trade(t, true, f.holdingAccountID, "2026-01-20", "", 10, 100000)
+	for _, date := range []string{"2026-01-31", "2026-02-10", "2026-02-28"} {
+		f.price(t, date, 10000)
+	}
+	usd := f.commodity(t, "USD", "currency", 2)
+	_, err := f.investmentService.Dividend(context.Background(), DividendInput{OwnerUserID: f.ownerUserID,
+		TransactionDate: "2026-02-20", ExDate: NullableValue("2026-02-10"), CommodityID: NullableValue(f.stockCommodityID),
+		CashAccountID: f.brokerCashID, CashCommodityID: usd, IncomeAccountID: &f.incomeAccountID, AmountValue: 2000, AmountScale: 2})
+	require.NoError(t, err)
+	_, instruments := f.readInstruments(t, "2026-02-01", "2026-02-28")
+	row := sleeveRow(t, instruments, f.stockCommodityID)
+	require.Equal(t, ReturnReasonFlowUnavailable, row.Income.Reason, "payer is known; only its USD conversion is missing")
+}
