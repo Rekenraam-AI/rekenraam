@@ -9,8 +9,8 @@ as "finding N"; `ae084c4d`: two, recorded under the expected cases). Slice 2
 slice 5 (benchmarks) delivered the same day; slice 6 (saved runs) delivered
 2026-10-25. R13 core is complete. Slice 7 (browser total-return price entry,
 closing slice 5's API-only gap) delivered 2026-10-25. A per-instrument
-contract (`instrument_returns_v1`) is drafted for owner review, not
-accepted.**
+contract (`instrument_returns_v1`, revision 2) is drafted for owner review,
+not accepted; #409 (unsettled trade cash across a period boundary) is open.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
 0017 (provider independence, honest incomplete data) govern this plan.
@@ -701,10 +701,14 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
 
 ## Per-instrument returns (`instrument_returns_v1`) — DRAFT for owner review
 
-Status: **proposed 2026-10-25, not accepted, nothing implemented.** The six
-decisions D1–D6 below need owner answers; each states the recommended
-answer and the alternative. Until this section is accepted, no code, OpenAPI
-or test may cite it.
+Status: **proposed 2026-10-25 (revision 2), not accepted, nothing
+implemented.** Revision 2 resolves a same-day review of `4c3324e3` (five
+gaps, all accepted; recorded below as "review 1" to "review 5"). The review
+also exposed a shipped portfolio defect, [#409](https://github.com/sergeyfarin/rekenraam/issues/409):
+unsettled trade cash is counted twice across a period boundary. Decisions D1–D7
+need owner answers; each states the recommended answer and the alternative.
+Until this section is accepted, no code, OpenAPI or test may cite it, and
+the roadmap still lists per-instrument returns as deferred.
 
 The question: *how did each instrument the portfolio held perform over the
 period, including its income, independently of when it was bought or sold?*
@@ -723,13 +727,13 @@ dividend pays, has left the sleeve, wherever it lands. That is what makes
 per-instrument attribution possible without linking holdings to cash
 accounts, which the ledger does not do (see *Why not cash side alone*).
 
-- `V_i(d)` = the balance of `i` across the scope at the end of `d`, valued by
-  the read's shared `RateTable` (same admission, staleness window, split
-  rescaling (#407) and `conflicting_splits` gap as `V(d)`). Balances that are
-  all zero value at exactly 0 without a price.
-- A sleeve is listed when it has a posting dated in `[from, to]`, a non-zero
-  balance at the opening or closing boundary, or income attributed to it in
-  the period. Rows are ordered by commodity code, then id.
+- `V_i(d)` = the balance of `i` across the scope at the end of `d`, valued at
+  `d` with the read's price-selection rules (same admission, staleness window,
+  split rescaling (#407) and `conflicting_splits` gap as `V(d)`). Balances
+  that are all zero value at exactly 0 without a price.
+- A sleeve is listed when it has a flow recognised in the period, a non-zero
+  balance at the opening or closing boundary, or a posting dated in
+  `[from, to]`. Rows are ordered by commodity code, then id.
 
 **D1 — scope.** *Recommended:* the sleeve uses the portfolio's resolved
 account scope, so a sleeve always describes part of the portfolio being
@@ -737,142 +741,232 @@ read. *Alternative:* every holding of `i` in the book, whatever the scope.
 That makes a sleeve independent of the account selection, but then sleeves
 no longer describe the selected portfolio.
 
-### Sleeve flows
+### Sleeve flows: one per operation (review 1)
 
-The portfolio partition is reused, with `S_i` in place of B. For an entry
-dated in the period: **P** = income/expense postings, **T** =
-`commodity_trading` postings, and **O_i** = every other posting, including
-other portfolio accounts and other commodities. The flow into the sleeve
-(positive = in) is:
+An investment operation can post on several dates. A trade posts its units
+and their `commodity_trading` leg on the trade date, then the cash, its
+clearing leg and any included charge on the settlement date
+(`tradeJournalEntries`). A separately paid charge posts on its own date. Read
+entry by entry, the trade-date entry has no cash and the settlement entry has
+no units, so a purchase would gain value without being funded. Sleeve flows
+are therefore built **per operation, across all of its entries**:
 
-| Entry | `F_i` |
+- **Partition.** Over all of the operation's entries: **P** =
+  income/expense postings, **T** = `commodity_trading` postings, and
+  **O_i** = every other posting, including other portfolio accounts and
+  other commodities.
+- **Recognition date `r`.** The date the operation's units post: the trade
+  date of a trade, the effective date of a transfer or corporate action, and
+  D2's date for income. The whole operation's flow is recognised on `r`. It
+  counts in a period iff `r` is in `[from, to]`, whatever the dates of its
+  cash entries, as long as they were recorded by the read's knowledge cutoff.
+  A trade on `to` that settles later counts. A trade before `from` that
+  settles inside the period does not: its flow belongs to the earlier period.
+- **Identity.** A correction chain's operations net per (root operation,
+  `r`) before the in/out split, as finding 3 does at portfolio level.
+- **Entries outside operations** (plain journal entries) keep the
+  entry-level rule, with `r` = the entry date.
+
+| Operation | `F_i` (positive = into the sleeve) |
 |---|---|
-| **Delivery** (an external transfer in/out or its correction, or an equity-class O posting other than T; the portfolio rule) | `Σ value(S_i) + Σ value(P)`, at market |
-| **Exchange** (a `merger` or `spin_off` operation, or any entry posting units of two or more non-currency commodities in scope) | by consideration (D6) |
-| Otherwise, with an `S_i` posting | `F_i = −Σ value(O_i)` |
-| Attributed income (below) | `F_i = −Σ value(O_i)` |
+| **Delivery** (an external transfer in/out or its correction, or an equity-class O posting other than T; the portfolio rule) | `Σ value(S_i) + Σ value(P)`, at market on `r` |
+| **Exchange** (`share_exchange`, `cash_and_stock_merger`, `spin_off` only; review 5) | by consideration (D6) |
+| Any other operation with an `S_i` posting, or with income attributed to `i` | `F_i = −Σ value(O_i)`, each posting converted on `r` (D7) |
+| A plain journal entry posting units of two or more non-currency commodities in scope | refused: the involved sleeves' flow-dependent figures are unavailable with `unclassified_exchange` |
+
+The last row exists because a journal entry holding two instruments is not
+necessarily a corporate action (review 5). The ledger does not say what was
+exchanged for what, so the read never guesses.
+
+**D7 — currency date of settled cash.** *Recommended:* every cash posting of
+the operation is converted on `r`, so the flow and the units it buys are
+valued on the same day. FX movement between trade and settlement on a
+foreign-currency payable is a cash effect, so it lands in the residual.
+*Alternative:* convert each posting on its own entry date, which matches the
+portfolio's cash but values the funding of one purchase on two days.
 
 Consequences, each an expected case:
 
-- A buy paid 1,005 from broker cash (1,000 plus a fee of 5): `O_i` = cash
-  −1,005, so `F_i = +1,005`. The fee is expense (P) and is never a flow, so it
-  lowers the instrument's return (**D4**). The trade-versus-close difference
-  is return, as at portfolio level.
-- A sale for 995 net: `F_i = −995`, an outflow. A realized-gain posting is P
-  and changes nothing: returns stay ledger-based, never lot-based.
+- A buy of 1,000 with a fee of 5, settled two days later from broker cash:
+  `O_i` = cash −1,005 across both entries, so `F_i = +1,005` on the trade
+  date. The fee is expense (P) and is never a flow, so it lowers the
+  instrument's return (D4).
+- A sale for 995 net: `F_i = −995`. A realized-gain posting is P and changes
+  nothing: returns stay ledger-based, never lot-based.
 - A transfer between two in-scope holdings of `i` has only `S_i` and T
   postings, so no flow. A transfer to an out-of-scope holding puts the units
   in `O_i` at market, so it is an outflow at market value.
-- A split or stock distribution of `i` itself posts only `S_i` and T: no
-  flow. A split is neutral through the shared rescaling.
-- A short sale (units −10, cash +1,000): an outflow of 1,000. See D5 for which
-  figures a short sleeve gets.
+- A split of `i` posts only `S_i` and T: no flow, and neutral through the
+  shared rescaling.
+- A short sale (units −10, cash +1,000) is an outflow of 1,000. See D5 for
+  which figures a short sleeve gets.
 
-**D4 — trading costs.** *Recommended:* costs are net. A fee booked with the
-trade stays in P, so the inflow is the cash paid and the fee lowers that
-instrument's return. This matches the portfolio, which is net of fees and
-taxes. *Alternative:* gross, with flows at trade value excluding the fee. The
-fee then disappears from every sleeve and lands in the residual.
+**D4 — trading costs.** *Recommended:* costs are net. Every charge linked to
+the operation is part of its flow, including one paid separately on another
+date (review 1), so the inflow is all the cash paid and the charge lowers
+that instrument's return. This matches the portfolio, which is net of fees
+and taxes. *Alternative:* gross, with flows at trade value excluding
+charges. Charges then disappear from every sleeve and land in the residual.
 
-Same-day netting per economic identity (finding 3) applies per sleeve
-unchanged: a correction chain's same-day entries form one net flow before
-the in/out split.
-
-### Income attribution and timing
+### Income attribution and timing (review 2)
 
 Income enters a sleeve only through facts that name its instrument; the
 journal itself posts only cash, income and withholding.
 
+- **Entitlement** is decided by holdings at the **end of the day before the
+  ex date** when an ex date is recorded, else at the end of the entry date.
+  This is the rule the portfolio read already applies (`anchorSide`), and it
+  matches the dividend-event producer's entitlement date. An owner who sells
+  on the ex date is entitled; one who buys that day is not. Attributed when
+  `i` is held in scope at that point and nowhere outside it.
 - **Dividends and withholding** (`investment_dividend_facts.commodity_id =
-  i`). Attributed when, on the anchor date, `i` is held in scope and nowhere
-  outside it. The flow is the net cash, `−Σ value(O_i)`: a gross 20 with 3
-  withheld leaves 17 in cash, so `F_i = −17`. Returns are net of withholding.
-  A withholding-only or reclaim entry is attributed the same way and its sign
-  falls out of the formula.
+  i`). The flow is the net cash, `−Σ value(O_i)`: a gross 20 with 3 withheld
+  leaves 17 in cash, so `F_i = −17`, and returns are net of withholding. A
+  withholding-only payment of 3 gives `F_i = +3`, a contribution. A reclaim is
+  an outflow.
 - **Capital returns** name their holding; that account's commodity is `i`,
   so the cash received is an outflow.
 - **Payments in lieu** name a holding or an instrument and are attributed
   like dividends. A payment made on a short is an inflow (the sleeve's cost).
+- **Attributed income** is reported as one signed total (dividends,
+  capital returns and reclaims positive; withholding-only payments and
+  payments in lieu negative). Each flow also counts in contributions or
+  withdrawals by its own sign.
 - **Not attributed:** an unassigned instrument (`unassigned_instrument`),
-  nothing held on the anchor date (`not_held`), or `i` held inside and
-  outside the scope (D3). Each such entry is listed with its transaction,
-  date and reason, and counts only toward the portfolio's own figures and the
+  nothing held at the entitlement point (`not_held`), or `i` held both inside
+  and outside the scope (D3). Each such entry is listed with its transaction,
+  date and reason. It counts only toward the portfolio's own figures and the
   residual below.
 
-**D2 — timing.** *Recommended:* attributed income is a sleeve flow on its
-**anchor date**: the operation's ex date when recorded, else the entry date.
-It is converted to the reporting currency at that date. An entry dated after
-`to` whose anchor falls in the period counts, if it was recorded by the
-read's knowledge cutoff. *Why:* the price drops on the ex date, and an owner
-often sells between the ex date and the pay date. With payment-date timing,
-such a dividend would arrive in a sleeve with zero capital. The factor
-`(0 + 17) / (0 + 0)` makes TTWROR `non_positive_capital` for an ordinary
-round trip (case I2). *Cost:* a dividend that goes ex in the period but has
-not been recorded yet is missing until it is. That is the usual live-read
-restatement, and a saved run freezes it. *Alternative:* payment-date timing,
-which matches the portfolio's cash flows but loses TTWROR in that case.
+**D2 — recognition date of income.** *Recommended:* attributed income is
+recognised on the **ex date** when recorded, else the entry date, and
+converted on that date. An entry dated after `to` whose ex date falls in the
+period counts, if it was recorded by the read's knowledge cutoff.
+Recognition and entitlement are different points: entitlement is the end of
+the day before the ex date, recognition is the ex date itself.
 
-**D3 — held inside and outside the scope.** *Recommended:* refuse. The
-sleeve's withdrawals, gain, TTWROR and IRR are unavailable with
-`income_unattributable`, naming the entry; values and contributions remain.
-This arises only with an explicit account selection, never under the default
-scope. *Alternative:* split by units held inside versus outside on the
-anchor date, as an exact ratio, and disclose the split. It is
-deterministic, but it is an allocation the facts do not state.
+*Why:* the price drops on the ex date, and an owner often sells between the
+ex date and the pay date. With payment-date timing, such a dividend arrives
+in a sleeve with zero capital: `(0 + 17) / (0 + 0)` makes TTWROR
+`non_positive_capital` for an ordinary round trip (case I2). The choice also
+moves the income's timing in the **money-weighted** return. The response
+names the recognition rule (`income_recognition: ex_date`) so the earlier
+timing is disclosed. *Cost:* a dividend that goes ex in the period but has
+not been recorded yet is missing until it is. That is the usual live-read
+restatement, and a saved run freezes it. *Alternative:* payment-date
+timing, which matches the portfolio's cash flows but loses TTWROR in that
+case.
+
+**D3 — held inside and outside the scope (review 4).** *Recommended:* refuse,
+with dependencies that follow the flow's direction. Boundary values stay.
+The total that the unattributable flow would have entered (withdrawals for a
+dividend, contributions for a withholding-only payment or a payment in
+lieu) becomes unavailable with `income_unattributable`, naming the entry,
+and so do gain, TTWROR and IRR. The other total stays. This arises only with
+an explicit account selection, never under the default scope.
+*Alternative:* split by units held inside versus outside at the entitlement
+point, as an exact ratio, and disclose the split. It is deterministic, but it
+is an allocation the facts do not state.
 
 ### Figures
 
 Each sleeve gets the portfolio's figures, computed by the same code paths
-from `V_i` and `F_i`: opening and closing value, contributions, withdrawals,
-**attributed income** (shown separately; it is also part of withdrawals),
-absolute gain, TTWROR (the same evaluation-day chain), money-weighted return
-(the Descartes-only rule), their annual forms (≥ 365 days only), and the
-sleeve's own coverage and gaps. A missing price for `j` affects only `j`'s
-sleeve, plus any exchange flow that needs `j`. All figures are in the
-reporting currency, so FX is part of an instrument's return.
+from `V_i` and `F_i`:
+- opening and closing value, contributions, withdrawals, and signed
+  attributed income;
+- absolute gain;
+- TTWROR (the same evaluation-day chain) and money-weighted return (the
+  Descartes-only rule), with annual forms for periods of 365+ days only;
+- the sleeve's own coverage and gaps.
 
-**D5 — shorts.** *Recommended:* a sleeve that is short (balance below zero) on
-any evaluation day keeps its values, flows and absolute gain, but TTWROR and
-IRR are unavailable with `short_position`. A sleeve has no cash to carry the
-short's capital, so there is no positive denominator to divide by. Example:
-short 10 at 100, buy-to-cover price 90 at the close: gain
-`−900 − 0 − 0 + 1,000 = 100`. *Alternative:* none proposed. Defining short
-capital (margin, collateral) is a separate contract.
+A missing price for `j` affects only `j`'s sleeve, plus any exchange flow
+that needs `j`. All figures are in the reporting currency, so FX is part of
+an instrument's return.
 
-**D6 — exchanges.** *Recommended:* value an exchange by the **consideration
-received**. The outgoing sleeve (`merger` source, or spin-off parent) has an
-outflow equal to the market value of the new units plus any cash in lieu. The
-incoming sleeve has an inflow equal to the market value of its own units
-only. *Why:* a delisted source often has no price on the effective date, and
-the deal premium belongs to the holder of the source. *Alternative:* value
-each side at its own price, which leaves the source `flow_unavailable` when
-it is delisted. In either case, a missing price for the new instrument on the
-date is `flow_unavailable` for both sleeves.
+**D5 — shorts (review 3).** *Recommended:* a sleeve is **short in the
+period** when either of these holds:
+- a `short_sale` or `short_cover` operation on `i` in scope is recognised in
+  `[from, to]`;
+- the scope's balance of `i` is negative at the end of any day from `from − 1`
+  to `to` (every posting day, not only evaluation days).
+
+A short sleeve keeps its values, flows and absolute gain, but TTWROR and IRR
+are unavailable with `short_position`. A sleeve has no cash to carry the
+short's capital, so no positive denominator exists. Named operations are
+what catch a short opened and covered on the same day: short 10 for 1,000
+and cover for 900 leaves zero at both day ends. The plain chain would read
+`(0 + 1,000) / (0 + 900) − 1 = 11.1111 %`, which is now refused.
+
+*Limitation, disclosed:* the ledger records no order within a day, so a
+negative balance that exists only within one day and comes from plain
+entries rather than named short operations cannot be seen. An end-of-day
+negative balance outside named shorts is still `unclassified_short`, as at
+portfolio level. A same-day long round trip (buy for 900, sell for 1,000)
+correctly reads `(0 + 1,000) / (0 + 900) − 1`. *Alternative:* none
+proposed. Defining short capital (margin, collateral) is a separate
+contract.
+
+**D6 — exchanges (review 5).** *Recommended:* value an exchange by the
+**consideration received at the exchange**:
+- The source sleeve (exchanged instrument, or spin-off parent) has an outflow
+  equal to the market value on `r` of the new units, plus the merger's own
+  **contractual cash consideration** (the cash leg of a
+  `cash_and_stock_merger`).
+- The destination sleeve has an inflow equal to the market value of its own
+  units only.
+
+**Cash in lieu is not consideration.** The app records it as a later,
+separate disposal of the destination's fractional units, linked by
+`settled_operation_id` (#181). It is therefore an ordinary sale in the
+destination sleeve. Adding it to the source too would count it twice (case
+I4b).
+
+*Why consideration:* a delisted source often has no price on the effective
+date, and the deal premium belongs to the holder of the source.
+*Alternative:* value each side at its own price, which leaves the source
+`flow_unavailable` when it is delisted. In either case, a missing price for
+the new instrument on `r` is `flow_unavailable` for both sleeves.
+
+### Non-interference (required)
+
+Requesting instrument returns must not change any portfolio figure, its
+coverage, its rate uses or gaps, its series, allocation or benchmark. Sleeve
+valuations share the read's snapshot and price-selection rules but use their
+own rate tables and coverage, as the series and the benchmark already do. A
+gap that only a sleeve needs must never appear in the portfolio's coverage.
+Slice 8 asserts that the portfolio part of the response is byte-identical
+with and without the flag across the existing case families.
 
 **Residual, not an attribution.** When the portfolio gain and every sleeve
 gain are available, the read also returns `not_attributed_gain = portfolio
-gain − Σ sleeve gains`. Its label covers what goes there: cash interest, FX
-on cash, fees not booked with a trade, unattributed income, and the
-ex-date-versus-pay-date timing of D2. It is a difference, never a computed
-breakdown. Sleeve returns are not weighted into the portfolio return, and the
-response says so.
+gain − Σ sleeve gains`. Its label covers what goes there:
+- cash interest, and FX on cash (including D7's trade-to-settlement FX);
+- fees not linked to an operation, and unattributed income;
+- the timing differences of D2 and of trade-date recognition.
+
+It is a difference, never a computed breakdown. Sleeve returns are not
+weighted into the portfolio return, and the response says so. **#409 is a
+prerequisite of slice 8:** until the portfolio values unsettled trades
+correctly, the residual would absorb that defect.
 
 ### API, screen, saved runs
 
 - `GET /api/v1/investments/returns?…&instruments=true` adds
-  `instrument_returns: {policy: "instrument_returns_v1", rows, not_attributed,
-  not_attributed_gain}` from the **same snapshot and `RateTable`**: one
-  request for the page, with no per-row fan-out. Without the flag the
-  response is unchanged. The flag is part of the saved-run request
-  descriptor, and a saved run stores the field when the flag was set. No
-  migration is needed: runs store the output bytes, and the bundle CSV gains
-  no column.
-- Screen: an "By instrument" panel under the portfolio figures. On a phone
-  it is a list of cards; on wider screens a table. Each figure carries its
-  reason in words, and the panel shows the residual and the not-attributed
-  list. Loading, empty ("no instruments in this period"), error and success
-  states are required.
-- Not in v1: native (quote-currency) per-instrument returns; the
+  `instrument_returns: {policy: "instrument_returns_v1", income_recognition,
+  rows, not_attributed, not_attributed_gain}` from the same snapshot. That is
+  one request for the page, with no per-row fan-out. Without the flag the
+  response is unchanged.
+- **Saved runs.** The flag joins the request descriptor **only when true**,
+  so every existing run's descriptor, fingerprints and bytes are unchanged
+  and keep verifying. A new run with the flag stores the field. No migration
+  is needed, and the bundle CSV gains no column. Slice 9 asserts an existing
+  run reopens unchanged.
+- **Screen.** A "By instrument" panel under the portfolio figures: a list of
+  cards on a phone, a table on wider screens. Each figure carries its reason
+  in words, and the panel shows the residual, the not-attributed list and the
+  income recognition rule. Loading, empty ("no instruments in this period"),
+  error and success states are required.
+- **Not in v1:** native (quote-currency) per-instrument returns; the
   per-instrument benchmark comparison; contribution-to-return attribution
   (Brinson and similar).
 
@@ -880,24 +974,38 @@ response says so.
 
 | Case | Facts | Expected |
 |---|---|---|
-| I1 fee in return | period 02-01..02-28 (28 days); buy 10 at 100 on 02-01 from broker cash, fee 5; price 110 on 02-28 | contributions 1,005; closing 1,100; gain 95; TTWROR `1100/1005 − 1 = 0.094527`; period MWR `0.094527` (one inflow at t = 0, one value at t = 28); annual figures `period_shorter_than_year` |
-| I2 ex-date income, exit before pay | holds 10, price 100 on 01-31; ex 02-10, price 98, gross 20, withholding 3, net 17 paid 02-20; sells all 10 for 1,050 on 02-15 | withdrawals 1,067 (income 17); gain 67; TTWROR `(980+17)/1000 · 1050/980 − 1 = 2991/2800 − 1 = 0.068214`; period MWR `0.129425` (flows −1,000 at t 0, +17 at t 10, +1,050 at t 15); with payment-date timing TTWROR would be `non_positive_capital` on 02-20 |
-| I3 held inside and outside | I2 with 5 more units in an out-of-scope account on 02-10; scope = the in-scope account only | I2's sleeve: values present; withdrawals, gain, TTWROR, IRR `income_unattributable` naming the dividend (D3 as recommended) |
-| I4 merger | period 03-01..03-31; A: 10 units, price 100 on 02-28; on 03-01, 10 A → 5 B plus cash in lieu 7; B price 210 on 03-01 and 220 on 03-31 | A: outflow 1,057, TTWROR `0.057000`; B: inflow 1,050, closing 1,100, TTWROR `1100/1050 − 1 = 0.047619` |
-| I5 transfers | 10 units moved between two in-scope holdings, then 4 to an out-of-scope holding at price 105 | no flow for the first move; an outflow of 420 for the second |
-| I6 short | short 10 at 100 (proceeds 1,000); price 90 at the close | gain 100; TTWROR and IRR `short_position` |
-| I7 unassigned dividend | a dividend with no instrument, paid into broker cash | in no sleeve; listed `unassigned_instrument`; included in the portfolio figures and the residual |
+| I1 settlement and fee | period 02-01..02-28 (28 days); buy 10 at 100 traded 02-01, settled 02-03 from broker cash with a fee of 5; price 110 on 02-28 | inflow 1,005 recognised 02-01; closing 1,100; gain 95; TTWROR `1100/1005 − 1 = 0.094527`; period MWR `0.094527`; annual figures `period_shorter_than_year` |
+| I1b settles inside, traded before | 10 bought at 100 traded 01-31, settled 02-02; price 100 on 01-31, 110 on 02-28 | no sleeve flow in the period; opening 1,000; TTWROR `0.100000`; gain 100 |
+| I1c traded on `to`, settles after | I1 with the trade on 02-28 and settlement on 03-02, price 100 on 02-28 | inflow 1,005 on 02-28; closing 1,000; gain −5; TTWROR `1000/1005 − 1 = −0.004975` |
+| I1d separately paid charge | I1 with the fee of 5 paid separately from checking on 02-10 | identical to I1: one inflow of 1,005 on 02-01 |
+| I2 ex-date income, exit before pay | holds 10 at end of 02-09, price 100 on 01-31; ex 02-10, price 98, gross 20, withholding 3, net 17 paid 02-20; sells all 10 for 1,050 on 02-15 | withdrawals 1,067; income 17; gain 67; TTWROR `(980+17)/1000 · 1050/980 − 1 = 2991/2800 − 1 = 0.068214`; period MWR `0.129425` (−1,000 at t 0, +17 at t 10, +1,050 at t 15); `income_recognition: ex_date`; with payment-date timing TTWROR would be `non_positive_capital` on 02-20 |
+| I2b same-day trades on the ex date | (a) sells all 10 on 02-10; (b) holds nothing at end of 02-09 and buys 10 on 02-10; (c) moves all 10 to an out-of-scope holding on 02-10 | (a) attributed, income 17 on 02-10; (b) `not_held`, not in the sleeve; (c) attributed, since the units were held only inside at the entitlement point |
+| I3 held inside and outside | I2 plus 5 units out of scope at end of 02-09; scope = the in-scope account | values and contributions present; withdrawals, gain, TTWROR, IRR `income_unattributable` naming the dividend |
+| I3b ambiguous withholding-only | holds 10 inside and 5 outside; a withholding-only payment of 3 | withdrawals present; contributions, gain, TTWROR, IRR `income_unattributable` |
+| I4 cash-and-stock merger | period 03-01..03-31; A 10 units, price 100 on 02-28; on 03-01, 10 A → 5 B plus 7 contractual cash; B price 210 on 03-01, 220 on 03-31 | A: outflow 1,057, TTWROR `0.057000`; B: inflow 1,050, closing 1,100, TTWROR `1100/1050 − 1 = 0.047619` |
+| I4b fraction settled in cash | A 10 units worth 1,000 (price 100 on 02-28) → 10.5 B at 100 on 03-01 (share exchange); cash in lieu sells 0.5 B for 50 on 03-05; B 100 on 03-31 | A: outflow 1,050, gain 50, TTWROR `0.050000` (not 1,100 / 100); B: inflow 1,050, outflow 50, closing 1,000, gain 0, TTWROR `0.000000` |
+| I5 transfers | 10 units moved between two in-scope holdings, then 4 to an out-of-scope holding at price 105 | no flow for the first move; outflow 420 for the second |
+| I6 short | short 10 at 100 (proceeds 1,000) on 02-02; price 90 at the close | gain 100; TTWROR and IRR `short_position` |
+| I6b intraday short | short 10 for 1,000 and cover 10 for 900, both on 02-10 | gain 100; TTWROR and IRR `short_position` (not `0.111111`) |
+| I6c intraday long | buy 10 for 900 and sell 10 for 1,000, both on 02-10 | gain 100; TTWROR `1000/900 − 1 = 0.111111` |
+| I7 unassigned dividend | a dividend with no instrument, paid into broker cash | in no sleeve; listed `unassigned_instrument`; in the portfolio figures and the residual |
 | I8 residual | I1 inside a portfolio of broker cash funded by a 1,005 deposit | portfolio gain 95 = sleeve gain 95; `not_attributed_gain` 0 |
+| I9 two-instrument journal | a plain journal entry: A −10, B +5 | both sleeves' flow-dependent figures `unclassified_exchange`; portfolio unaffected |
+| I10 non-interference | every existing portfolio case (S, R, C, O, B families) with `instruments=true` | portfolio part of the response byte-identical to the read without the flag |
 
 Tests must own these fixtures and pin these literals, as the slice 1 cases
 do. Each case also asserts that no posting, operation or audit row was
 written.
 
-### Proposed slices (after acceptance)
+### Proposed slices (after acceptance and #409)
 
 8. **Sleeve read**: `instrument_returns` on the returns read, OpenAPI, and
-   cases I1–I8.
-9. **Screen panel and saved-run inclusion**, with a browser case on a phone.
+   cases I1–I10.
+9. **Screen panel and saved-run inclusion**, with a browser case on a phone
+   and an existing run reopened unchanged.
+
+Acceptance also updates the roadmap: R13 item 3 gains slices 8–9 after
+#409, and targets/rebalancing stay deferred.
 
 ## Slices
 
@@ -953,4 +1061,4 @@ Targets and rebalancing are **deferred** (no trade execution is implied,
 per the product direction). Security-level (per-instrument) returns need an
 instrument boundary with commodity-attributed income; that contract is
 drafted above as *Per-instrument returns (`instrument_returns_v1`)* and
-awaits owner review (D1–D6) before any slice starts.
+awaits owner review (D1–D7) and #409 before any slice starts.
