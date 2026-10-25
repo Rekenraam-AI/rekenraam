@@ -10,7 +10,8 @@ slice 5 (benchmarks) delivered the same day; slice 6 (saved runs) delivered
 2026-10-25. R13 core is complete. Slice 7 (browser total-return price entry,
 closing slice 5's API-only gap) delivered 2026-10-25. A per-instrument
 contract (`instrument_returns_v1`, revision 2) is drafted for owner review,
-not accepted; #409 (unsettled trade cash across a period boundary) is open.**
+not accepted. #409 (unsettled trade cash across a period boundary) was fixed
+the same day by trade-date recognition; see *Valuation `V(d)`*.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
 0017 (provider independence, honest incomplete data) govern this plan.
@@ -94,6 +95,31 @@ span make `V(d)` unavailable (`conflicting_splits` gap).
 
 - It is **ledger based, not lot based**: return needs quantities and prices,
   never cost basis, so unknown basis does not affect any R13 figure.
+- **Trade-date recognition (#409).** Every entry of an investment operation
+  whose units post on a single day is read on that day. A trade posts its
+  units on the trade date and its cash, clearing leg and charges on their own
+  dates (`tradeJournalEntries`), so read entry by entry, the bought units and
+  the cash not yet paid both sat in the portfolio between trade and
+  settlement. In the reproducer, a flat price with no flows read an opening
+  value of 1,200 instead of 1,100 and TTWROR −0.083333.
+  - **Unsettled amounts.** Recognising the cash with the units makes the
+    unsettled amount the portfolio's payable or receivable from the trade
+    date. It is valued daily in its own currency, as any balance is.
+  - **Flows.** A trade funded from outside the portfolio is a flow on the
+    trade date, converted on that date.
+  - **Which entries count.** An operation is in a period by its trade date.
+    A settlement dated after `to` is read with its trade, and one inside the
+    period whose trade preceded `from` belongs to the earlier period.
+  - **Unchanged.** Operations whose units post on several days, or on none
+    (a dividend, a capital return), keep their entry dates. Ledger balances,
+    reconciliation and every other report are unchanged: only this read
+    recognises on trade date. Net worth's own double count in the
+    settlement window is [#410](https://github.com/sergeyfarin/rekenraam/issues/410).
+  - **Cases** (`investment_returns_settlement_test.go`): R1 reproducer
+    (`0.000000`); R2 checking-funded across `from` (no flow); R3 settling
+    after `to` (closing 1,100, with allocation equal to it); R4
+    checking-funded settling after `to` (contribution 100 on the trade date);
+    R5 the R1 trade reversed (no figure moves).
 - An **unclassified short** (a negative countable balance beyond named short
   lots, the net-worth rule) makes that valuation unavailable
   (`unclassified_short`).
@@ -705,7 +731,9 @@ Status: **proposed 2026-10-25 (revision 2), not accepted, nothing
 implemented.** Revision 2 resolves a same-day review of `4c3324e3` (five
 gaps, all accepted; recorded below as "review 1" to "review 5"). The review
 also exposed a shipped portfolio defect, [#409](https://github.com/sergeyfarin/rekenraam/issues/409):
-unsettled trade cash is counted twice across a period boundary. Decisions D1–D7
+unsettled trade cash was counted twice across a period boundary. It is now
+fixed by the same trade-date recognition this draft uses for sleeves; see
+*Valuation `V(d)`*. Decisions D1–D7
 need owner answers; each states the recommended answer and the alternative.
 Until this section is accepted, no code, OpenAPI or test may cite it, and
 the roadmap still lists per-instrument returns as deferred.
@@ -780,10 +808,11 @@ exchanged for what, so the read never guesses.
 
 **D7 — currency date of settled cash.** *Recommended:* every cash posting of
 the operation is converted on `r`, so the flow and the units it buys are
-valued on the same day. FX movement between trade and settlement on a
-foreign-currency payable is a cash effect, so it lands in the residual.
-*Alternative:* convert each posting on its own entry date, which matches the
-portfolio's cash but values the funding of one purchase on two days.
+valued on the same day. This is what the portfolio read does since #409.
+FX movement between trade and settlement on a foreign-currency payable is a
+cash effect: the portfolio values the payable daily, and the sleeve leaves
+that movement to the residual. *Alternative:* convert each posting on its own
+entry date, which values the funding of one purchase on two days.
 
 Consequences, each an expected case:
 
@@ -897,9 +926,11 @@ what catch a short opened and covered on the same day: short 10 for 1,000
 and cover for 900 leaves zero at both day ends. The plain chain would read
 `(0 + 1,000) / (0 + 900) − 1 = 11.1111 %`, which is now refused.
 
-*Limitation, disclosed:* the ledger records no order within a day, so a
-negative balance that exists only within one day and comes from plain
-entries rather than named short operations cannot be seen. An end-of-day
+*Limitation, disclosed:* the ledger orders postings within a day only per
+account (`account_day_sequence`), not across accounts. A sleeve can span
+several holdings, so a negative balance that exists only within one day and
+comes from plain entries rather than named short operations is not used to
+classify a short. An end-of-day
 negative balance outside named shorts is still `unclassified_short`, as at
 portfolio level. A same-day long round trip (buy for 900, sell for 1,000)
 correctly reads `(0 + 1,000) / (0 + 900) − 1`. *Alternative:* none
@@ -942,12 +973,12 @@ gain are available, the read also returns `not_attributed_gain = portfolio
 gain − Σ sleeve gains`. Its label covers what goes there:
 - cash interest, and FX on cash (including D7's trade-to-settlement FX);
 - fees not linked to an operation, and unattributed income;
-- the timing differences of D2 and of trade-date recognition.
+- the income timing difference of D2.
 
 It is a difference, never a computed breakdown. Sleeve returns are not
-weighted into the portfolio return, and the response says so. **#409 is a
-prerequisite of slice 8:** until the portfolio values unsettled trades
-correctly, the residual would absorb that defect.
+weighted into the portfolio return, and the response says so. The portfolio
+and the sleeves both recognise trades on their trade date (#409), so
+settlement timing never lands in the residual.
 
 ### API, screen, saved runs
 
@@ -997,15 +1028,15 @@ Tests must own these fixtures and pin these literals, as the slice 1 cases
 do. Each case also asserts that no posting, operation or audit row was
 written.
 
-### Proposed slices (after acceptance and #409)
+### Proposed slices (after acceptance)
 
 8. **Sleeve read**: `instrument_returns` on the returns read, OpenAPI, and
    cases I1–I10.
 9. **Screen panel and saved-run inclusion**, with a browser case on a phone
    and an existing run reopened unchanged.
 
-Acceptance also updates the roadmap: R13 item 3 gains slices 8–9 after
-#409, and targets/rebalancing stay deferred.
+Acceptance also updates the roadmap: R13 item 3 gains slices 8–9, and
+targets/rebalancing stay deferred.
 
 ## Slices
 
@@ -1061,4 +1092,4 @@ Targets and rebalancing are **deferred** (no trade execution is implied,
 per the product direction). Security-level (per-instrument) returns need an
 instrument boundary with commodity-attributed income; that contract is
 drafted above as *Per-instrument returns (`instrument_returns_v1`)* and
-awaits owner review (D1–D7) and #409 before any slice starts.
+awaits owner review (D1–D7) before any slice starts.

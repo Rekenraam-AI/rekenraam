@@ -181,10 +181,10 @@ below is execution order, not a chain of hard dependencies.
    declared price- or total-return basis) and slice 6 (immutable saved runs,
    migration 0027, bundle schema 18) are delivered. Slice 7 (browser
    total-return price entry, closing slice 5's API-only gap) followed on
-   2026-10-25. Open defect [#409](https://github.com/sergeyfarin/rekenraam/issues/409):
-   a trade that settles after a period boundary is counted twice in that
-   boundary's value. A per-instrument contract is drafted for owner review,
-   not accepted, and waits for #409. Targets/rebalancing and
+   2026-10-25. [#409](https://github.com/sergeyfarin/rekenraam/issues/409), a trade
+   settling across a period boundary counted twice, is fixed by trade-date
+   recognition (2026-10-25). A per-instrument contract is drafted for owner
+   review and not accepted. Targets/rebalancing and
    per-instrument returns stay deferred, as the plan records.
    #284's owner-reviewed investment/reporting dispositions are now complete.
    If the accepted contract consumes native realized totals, it reuses

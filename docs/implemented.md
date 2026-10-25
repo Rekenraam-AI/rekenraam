@@ -640,6 +640,9 @@ lists runs and reopens one with the same figure, chart and allocation views.
 Slice 7 lets the pricing form record a security or crypto price as total
 return (benchmark-only, labelled so in the history; refused for currencies),
 and a correction keeps the replaced price's adjustment basis.
+Trade-date recognition (#409) reads every entry of an investment operation
+whose units post on one day on that day. A trade that settles later therefore
+no longer counts both its units and its unpaid cash across a period boundary.
 
 Period capital-return disclosure (#238) adds per-currency payment-date receipts,
 associated basis reductions, excluded excess and receipt/unknown-effect counts,

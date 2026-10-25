@@ -252,8 +252,9 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 	if err := r.resolveScope(ctx, input.AccountIDs, result); err != nil {
 		return err
 	}
-	var err error
-	if r.postings, err = r.ledger.LedgerPostingsThrough(ctx, BookID, r.to, "posted"); err != nil {
+	// Every dated posting: a trade on or before `to` may settle after it.
+	postings, err := r.ledger.LedgerPostingsThrough(ctx, BookID, "", "posted")
+	if err != nil {
 		return fmt.Errorf("read returns postings: %w", err)
 	}
 	if r.kinds, err = r.ledger.LedgerCommodityKinds(ctx, BookID); err != nil {
@@ -266,6 +267,7 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 	if err != nil {
 		return err
 	}
+	r.postings = recogniseOnUnitDate(postings, anchors, r.kinds, r.to)
 	classes, err := r.ledger.ReturnsInstrumentClassesAsOf(ctx, BookID, r.to)
 	if err != nil {
 		return err
@@ -323,6 +325,49 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 		result.Benchmark = &benchmark
 	}
 	return r.overflow
+}
+
+// recogniseOnUnitDate dates every entry of an investment operation whose units
+// post on one day on that day, and keeps what is recognised through `to`
+// (#409). A trade posts its units on the trade date and its cash, clearing
+// leg and charges on their own dates; read on those dates, the bought units
+// and the cash not yet paid would both sit in the portfolio until settlement.
+// Recognising the cash with the units is trade-date accounting: until
+// settlement, the unsettled amount is the portfolio's payable or receivable,
+// valued daily in its own currency like any balance. An operation whose units
+// post on several days, or none (a dividend), keeps its entry dates.
+func recogniseOnUnitDate(postings []db.LedgerPostingRecord, anchors []db.ReturnsOperationAnchor,
+	kinds map[int64]string, to string) []db.LedgerPostingRecord {
+	operationOf := map[int64]int64{}
+	for _, anchor := range anchors {
+		operationOf[anchor.TransactionID] = anchor.OperationID
+	}
+	unitDates := map[int64]map[string]bool{}
+	for _, posting := range postings {
+		operation, ok := operationOf[posting.TransactionID]
+		if !ok || kinds[posting.CommodityID] == "currency" {
+			continue
+		}
+		if unitDates[operation] == nil {
+			unitDates[operation] = map[string]bool{}
+		}
+		unitDates[operation][posting.EntryDate] = true
+	}
+	recognised := make([]db.LedgerPostingRecord, 0, len(postings))
+	for _, posting := range postings {
+		if dates := unitDates[operationOf[posting.TransactionID]]; len(dates) == 1 {
+			for date := range dates {
+				posting.EntryDate = date
+			}
+		}
+		if posting.EntryDate <= to {
+			recognised = append(recognised, posting)
+		}
+	}
+	// Stable, so each day keeps the ledger's own order; a moved posting
+	// follows the postings already on its new day.
+	sort.SliceStable(recognised, func(i, j int) bool { return recognised[i].EntryDate < recognised[j].EntryDate })
+	return recognised
 }
 
 // resolveScope fixes the portfolio accounts once, as of the period end.
