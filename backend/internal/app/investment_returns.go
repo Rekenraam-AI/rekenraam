@@ -286,7 +286,7 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 	if err != nil {
 		return err
 	}
-	r.recognised = recogniseOnUnitDate(postings, anchors, r.kinds, "9999-12-31")
+	r.recognised = r.recognise(postings, anchors)
 	r.postings = make([]db.LedgerPostingRecord, 0, len(r.recognised))
 	for _, posting := range r.recognised {
 		if posting.EntryDate <= r.to {
@@ -359,36 +359,117 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 	return r.overflow
 }
 
-// recogniseOnUnitDate dates every entry of an investment operation on its
-// recognition date (recognitionDates), and keeps what is recognised through
-// `to` (#409). A trade posts its units on the trade date and its cash,
-// clearing leg and charges on their own dates; read on those dates, the
-// bought units and the cash not yet paid would both sit in the portfolio
-// until settlement. Recognising the cash with the units is trade-date
-// accounting: until settlement, the unsettled amount is the portfolio's
-// payable or receivable, valued daily in its own currency like any balance.
-// A dividend with a recorded ex date is a receivable from that date the same
-// way.
-func recogniseOnUnitDate(postings []db.LedgerPostingRecord, anchors []db.ReturnsOperationAnchor,
-	kinds map[int64]string, to string) []db.LedgerPostingRecord {
+// recognise dates every entry of an investment operation on its
+// recognition date (recognitionDates). A trade posts its units on the trade
+// date and its cash, clearing leg and charges on their own dates; read on
+// those dates, the bought units and the cash not yet paid would both sit in
+// the portfolio until settlement. Recognising the cash with the units is
+// trade-date accounting (#409): until settlement, the unsettled amount is the
+// portfolio's payable or receivable, valued daily in its own currency like
+// any balance.
+//
+// A dividend or payment in lieu recognised on its ex date is a receivable
+// (or payable) of whoever is entitled, until its cash moves. When the cash
+// lands on the entitled side, its posting simply moves to the ex date. When
+// it crosses the portfolio boundary (paid into checking for a holding in
+// scope, say), the receivable is held from the ex date by a holding on the
+// entitled side, and settles on the payment date into the real cash account:
+// the boundary is crossed, and the flow counted, when the cash moves. The
+// settling postings form their own entry (journal entry id negated), so they
+// keep their own day.
+func (r *returnsReader) recognise(postings []db.LedgerPostingRecord, anchors []db.ReturnsOperationAnchor) []db.LedgerPostingRecord {
 	links := map[int64]db.InvestmentOperationLink{}
+	byTransaction := map[int64]db.ReturnsOperationAnchor{}
+	operationTransactions := map[int64][]int64{}
 	for _, anchor := range anchors {
 		links[anchor.TransactionID] = db.InvestmentOperationLink{OperationID: anchor.OperationID, ExDate: anchor.ExDate.String}
+		byTransaction[anchor.TransactionID] = anchor
+		operationTransactions[anchor.OperationID] = append(operationTransactions[anchor.OperationID], anchor.TransactionID)
 	}
-	dates := recognitionDates(postings, links, kinds)
+	dates := recognitionDates(postings, links, r.kinds)
+	// Units post on their own day, so entitlement reads the ledger as posted.
+	held := newReturnsHoldingIndex(postings, r.holdings)
+	holdingsByTransaction := map[int64]map[int64]bool{}
+	for _, posting := range postings {
+		if r.holdings[posting.AccountID] {
+			if holdingsByTransaction[posting.TransactionID] == nil {
+				holdingsByTransaction[posting.TransactionID] = map[int64]bool{}
+			}
+			holdingsByTransaction[posting.TransactionID][posting.AccountID] = true
+		}
+	}
+
 	recognised := make([]db.LedgerPostingRecord, 0, len(postings))
 	for _, posting := range postings {
-		if date, ok := dates[posting.TransactionID]; ok {
-			posting.EntryDate = date
-		}
-		if posting.EntryDate <= to {
+		recognition, ok := dates[posting.TransactionID]
+		if !ok || recognition.date == posting.EntryDate {
 			recognised = append(recognised, posting)
+			continue
 		}
+		if !recognition.exDate || !r.isOutsideBalance(posting.AccountID) {
+			posting.EntryDate = recognition.date
+			recognised = append(recognised, posting)
+			continue
+		}
+		anchor := byTransaction[posting.TransactionID]
+		side, _ := r.anchorSide(anchor, operationTransactions[anchor.OperationID], holdingsByTransaction, held, posting.EntryDate)
+		holder := r.receivableHolder(anchor, side, posting.AccountID, held)
+		if holder == posting.AccountID {
+			posting.EntryDate = recognition.date
+			recognised = append(recognised, posting)
+			continue
+		}
+		receivable := posting
+		receivable.AccountID, receivable.EntryDate = holder, recognition.date
+		settled := posting
+		settled.AccountID, settled.JournalEntryID = holder, -posting.JournalEntryID
+		settled.QuantityValue = settled.QuantityValue.Negated()
+		posting.JournalEntryID = -posting.JournalEntryID
+		recognised = append(recognised, receivable, settled, posting)
 	}
 	// Stable, so each day keeps the ledger's own order; a moved posting
 	// follows the postings already on its new day.
 	sort.SliceStable(recognised, func(i, j int) bool { return recognised[i].EntryDate < recognised[j].EntryDate })
 	return recognised
+}
+
+// receivableHolder is the account that holds an ex-date receivable until its
+// cash moves: the cash account itself when it is on the entitled side (or the
+// side is unknown), else the entitled holding, which held the units at the
+// end of the day before the ex date (or the holding a payment-in-lieu fact
+// names).
+func (r *returnsReader) receivableHolder(anchor db.ReturnsOperationAnchor, side string, cashAccountID int64, held returnsHoldingIndex) int64 {
+	inside := side == "in"
+	if side == "" || r.inScope[cashAccountID] == inside {
+		return cashAccountID
+	}
+	if anchor.HoldingAccountID.Valid && r.inScope[anchor.HoldingAccountID.Int64] == inside {
+		return anchor.HoldingAccountID.Int64
+	}
+	if !anchor.InstrumentID.Valid || !anchor.ExDate.Valid {
+		return cashAccountID
+	}
+	parsed, err := time.Parse(time.DateOnly, anchor.ExDate.String)
+	if err != nil {
+		return cashAccountID
+	}
+	holder := int64(0)
+	for accountID, quantity := range held.at(anchor.InstrumentID.Int64, parsed.AddDate(0, 0, -1).Format(time.DateOnly)) {
+		if quantity.Sign() != 0 && r.inScope[accountID] == inside && (holder == 0 || accountID < holder) {
+			holder = accountID
+		}
+	}
+	if holder == 0 {
+		return cashAccountID
+	}
+	return holder
+}
+
+// recognition is the day an investment transaction is recognised on, and
+// whether that day is its operation's recorded ex date.
+type recognition struct {
+	date   string
+	exDate bool
 }
 
 // recognitionDates returns, per transaction, the day its investment
@@ -397,7 +478,7 @@ func recogniseOnUnitDate(postings []db.LedgerPostingRecord, anchors []db.Returns
 // for an operation with no units, its recorded ex date (dividends
 // receivable). Other entries keep their own dates. The returns read and net
 // worth's unsettled amounts both use it, so they recognise one day.
-func recognitionDates(postings []db.LedgerPostingRecord, links map[int64]db.InvestmentOperationLink, kinds map[int64]string) map[int64]string {
+func recognitionDates(postings []db.LedgerPostingRecord, links map[int64]db.InvestmentOperationLink, kinds map[int64]string) map[int64]recognition {
 	unitDates := map[int64]map[string]bool{}
 	for _, posting := range postings {
 		link, ok := links[posting.TransactionID]
@@ -409,16 +490,16 @@ func recognitionDates(postings []db.LedgerPostingRecord, links map[int64]db.Inve
 		}
 		unitDates[link.OperationID][posting.EntryDate] = true
 	}
-	dates := map[int64]string{}
+	dates := map[int64]recognition{}
 	for transactionID, link := range links {
 		days, hasUnits := unitDates[link.OperationID]
 		switch {
 		case hasUnits && len(days) == 1:
 			for day := range days {
-				dates[transactionID] = day
+				dates[transactionID] = recognition{date: day}
 			}
 		case !hasUnits && link.ExDate != "":
-			dates[transactionID] = link.ExDate
+			dates[transactionID] = recognition{date: link.ExDate, exDate: true}
 		}
 	}
 	return dates

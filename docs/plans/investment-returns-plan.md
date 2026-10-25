@@ -1072,11 +1072,29 @@ written.
      the pay date sees it listed `not_held` until a replacement adds the ex
      date. The I2 cases record their ex dates through the dividend command.
    - **Portfolio recognition (2026-10-25, dividends receivable).**
-     `recogniseOnUnitDate` also recognises an operation with no units on its
-     recorded ex date, the rule net worth applies (reports plan, "Dividends
-     receivable"). Between the ex date and payment, the portfolio holds the
-     dividend as a receivable on the account it will be paid into; payment
-     is settlement and creates no second flow.
+     The returns read (`recognise`) also recognises an operation with no
+     units on its recorded ex date, the rule net worth applies (reports
+     plan, "Dividends receivable"). Between the ex date and payment, the portfolio holds the
+     dividend as a receivable; payment is settlement and creates no second
+     flow. The receivable belongs to whoever is entitled until its cash
+     moves (review 2026-10-25). When the cash lands on the entitled side,
+     its posting simply moves to the ex date. When it crosses the boundary
+     (paid into checking for a holding in scope), the entitled holding holds
+     the receivable from the ex date, and the flow is counted on the payment
+     date, when the cash crosses. Allocation shows it as cash under that
+     holding. Cases `TestReturnsKeepAnOutsidePaidDividendReceivableUntilPayment`,
+     `TestReturnsWithdrawAnOutsidePaidDividendOnPayment`,
+     `TestReturnsHoldADividendReceivableForAnAccountNotYetOpen`.
+   - **Cancelled income (review 2026-10-25).** Before a sleeve refuses,
+     converts or lists income, each correction chain's income cash is netted
+     exactly per day and target instrument in native amounts. A pair that
+     nets to zero (an entry and its reversal, or a replaced entry and its
+     inverse) is dropped. Reversed ambiguous income, an ex-date correction
+     that resolves ambiguity, and reversed income with no rate therefore
+     leave the sleeve available. Cases
+     `TestInstrumentReturnsReversedAmbiguousIncomeLeavesTheSleeve`,
+     `TestInstrumentReturnsExDateCorrectionClearsTheOldAmbiguity`,
+     `TestInstrumentReturnsReversedIncomeNeedsNoConversion`.
    - **Review of `7d1996c3` and `8194782a` (2026-10-25).** All four findings
      were accepted and fixed. Each reviewer probe is a named regression case
      that failed before its fix:

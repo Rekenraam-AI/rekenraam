@@ -729,3 +729,87 @@ func TestInstrumentReturnsKnownIncomeWithMissingFXIsAFlowGap(t *testing.T) {
 	row := sleeveRow(t, instruments, f.stockCommodityID)
 	require.Equal(t, ReturnReasonFlowUnavailable, row.Income.Reason, "payer is known; only its USD conversion is missing")
 }
+
+// Cancelled income (review 2026-10-25): an entry its correction cancels on
+// the same day leaves nothing to refuse, convert or list. Each case holds 10
+// TEST in scope; three cases.
+
+// Ambiguous income (5 more held outside from 02-15) that is reversed no
+// longer makes the sleeve unattributable: gain 100 on 1,000.
+func TestInstrumentReturnsReversedAmbiguousIncomeLeavesTheSleeve(t *testing.T) {
+	t.Parallel()
+	f := newBareReturnsFixture(t)
+	f.post(t, "2026-01-02", f.brokerCashID, f.cashAccountID, 200000)
+	outside := seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
+	f.trade(t, true, f.holdingAccountID, "2026-01-20", "", 10, 100000)
+	f.trade(t, true, outside, "2026-02-15", "", 5, 50000)
+	for _, date := range []string{"2026-01-31", "2026-02-10", "2026-02-20"} {
+		f.price(t, date, 10000)
+	}
+	f.price(t, "2026-02-28", 11000)
+	dividend := f.dividendOf(t, "2026-02-20", "", &f.stockCommodityID, 2000, 0, false)
+	_, err := f.investmentService.ReverseDividend(context.Background(), ReverseInvestmentDividendInput{
+		OwnerUserID: f.ownerUserID, TransactionID: dividend.ID, Reason: "wrong entry"})
+	require.NoError(t, err)
+
+	_, instruments := f.readInstruments(t, "2026-02-01", "2026-02-28", f.holdingAccountID, f.brokerCashID)
+	row := sleeveRow(t, instruments, f.stockCommodityID)
+	requireReturnsAmount(t, 0, row.Income)
+	requireReturnsAmount(t, 100, row.Gain)
+	requireReturn(t, "0.100000", row.TimeWeighted)
+}
+
+// Recording the ex date by replacement resolves the ambiguity: the original
+// and its inverse cancel on the payment date, and the replacement is
+// attributed on 02-10, when only the in-scope holding held TEST.
+func TestInstrumentReturnsExDateCorrectionClearsTheOldAmbiguity(t *testing.T) {
+	t.Parallel()
+	f := newBareReturnsFixture(t)
+	f.post(t, "2026-01-02", f.brokerCashID, f.cashAccountID, 200000)
+	outside := seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
+	f.trade(t, true, f.holdingAccountID, "2026-01-20", "", 10, 100000)
+	f.trade(t, true, outside, "2026-02-15", "", 5, 50000)
+	for _, date := range []string{"2026-01-31", "2026-02-10", "2026-02-20", "2026-02-28"} {
+		f.price(t, date, 10000)
+	}
+	dividend := f.dividendOf(t, "2026-02-20", "", &f.stockCommodityID, 2000, 0, false)
+	_, err := f.investmentService.ReplaceDividend(context.Background(), ReplaceInvestmentDividendInput{
+		OwnerUserID: f.ownerUserID, TransactionID: dividend.ID, Reason: "record entitlement date",
+		Replacement: DividendInput{TransactionDate: "2026-02-20", ExDate: NullableValue("2026-02-10"),
+			CashAccountID: f.brokerCashID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.incomeAccountID,
+			AmountValue: 2000, AmountScale: 2}})
+	require.NoError(t, err)
+
+	_, instruments := f.readInstruments(t, "2026-02-01", "2026-02-28", f.holdingAccountID, f.brokerCashID)
+	row := sleeveRow(t, instruments, f.stockCommodityID)
+	requireReturnsAmount(t, 20, row.Income)
+	requireReturnsAmount(t, 20, row.Gain)
+	requireReturn(t, "0.020000", row.TimeWeighted)
+}
+
+// A USD dividend with no USD rate, reversed: the cancelled pair needs no
+// conversion, so the sleeve stays available.
+func TestInstrumentReturnsReversedIncomeNeedsNoConversion(t *testing.T) {
+	t.Parallel()
+	f := newBareReturnsFixture(t)
+	f.post(t, "2026-01-02", f.brokerCashID, f.cashAccountID, 100000)
+	f.trade(t, true, f.holdingAccountID, "2026-01-20", "", 10, 100000)
+	for _, date := range []string{"2026-01-31", "2026-02-10", "2026-02-28"} {
+		f.price(t, date, 10000)
+	}
+	usd := f.commodity(t, "USD", "currency", 2)
+	dividend, err := f.investmentService.Dividend(context.Background(), DividendInput{
+		OwnerUserID: f.ownerUserID, TransactionDate: "2026-02-20", ExDate: NullableValue("2026-02-10"),
+		CommodityID: NullableValue(f.stockCommodityID), CashAccountID: f.brokerCashID,
+		CashCommodityID: usd, IncomeAccountID: &f.incomeAccountID, AmountValue: 2000, AmountScale: 2})
+	require.NoError(t, err)
+	_, err = f.investmentService.ReverseDividend(context.Background(), ReverseInvestmentDividendInput{
+		OwnerUserID: f.ownerUserID, TransactionID: dividend.ID, Reason: "wrong currency"})
+	require.NoError(t, err)
+
+	_, instruments := f.readInstruments(t, "2026-02-01", "2026-02-28")
+	row := sleeveRow(t, instruments, f.stockCommodityID)
+	requireReturnsAmount(t, 0, row.Income)
+	requireReturnsAmount(t, 0, row.Gain)
+	requireReturn(t, "0.000000", row.TimeWeighted)
+}

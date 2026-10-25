@@ -332,7 +332,11 @@ func (r *returnsReader) sleeveFlows(anchors []db.ReturnsOperationAnchor, tableFo
 		flows[commodityID] = append(flows[commodityID], flow)
 	}
 
+	cancelled := r.cancelledIncome(groups, held)
 	for _, group := range groups {
+		if cancelled[group] {
+			continue
+		}
 		units := map[int64][]db.LedgerPostingRecord{}
 		for _, posting := range group.postings {
 			if r.kinds[posting.CommodityID] != "currency" && r.inScope[posting.AccountID] {
@@ -486,6 +490,57 @@ func returnsIncomeAnchor(anchor db.ReturnsOperationAnchor) bool {
 // the fact's holding decides when it names one; otherwise the instrument's
 // holdings at the end of the day before the ex date (the entry date when no
 // ex date is recorded), the portfolio read's own entitlement rule.
+// cancelledIncome finds the income groups a correction cancels: per chain,
+// day and income target, the cash the sleeve would count nets to zero in
+// every currency. An entry and its reversal, or a replaced entry and its
+// inverse, then leave no income behind, so neither is refused as
+// unattributable, needs a conversion, or is listed. Netting is exact and in
+// native amounts, before any rate is read.
+func (r *returnsReader) cancelledIncome(groups []*sleeveGroup, held returnsHoldingIndex) map[*sleeveGroup]bool {
+	type chainDay struct {
+		identity, date string
+		target         int64
+	}
+	members := map[chainDay][]*sleeveGroup{}
+	totals := map[chainDay]map[int64]*exact.ScaledInt{}
+	for _, group := range groups {
+		if !group.isOperation || !returnsIncomeAnchor(group.anchor) {
+			continue
+		}
+		target, _ := r.incomeTarget(group, held)
+		key := chainDay{identity: group.identity, date: group.date, target: target}
+		members[key] = append(members[key], group)
+		if totals[key] == nil {
+			totals[key] = map[int64]*exact.ScaledInt{}
+		}
+		for _, posting := range group.postings {
+			if (posting.CommodityID == target && r.inScope[posting.AccountID]) || !r.isOutsideBalance(posting.AccountID) {
+				continue
+			}
+			if totals[key][posting.CommodityID] == nil {
+				totals[key][posting.CommodityID] = exact.NewScaledInt()
+			}
+			totals[key][posting.CommodityID].AddCoefficient(posting.QuantityValue, posting.QuantityScale)
+		}
+	}
+	cancelled := map[*sleeveGroup]bool{}
+	for key, groups := range members {
+		if len(groups) < 2 {
+			continue
+		}
+		zero := true
+		for _, total := range totals[key] {
+			zero = zero && total.Sign() == 0
+		}
+		if zero {
+			for _, group := range groups {
+				cancelled[group] = true
+			}
+		}
+	}
+	return cancelled
+}
+
 func (r *returnsReader) incomeTarget(group *sleeveGroup, held returnsHoldingIndex) (int64, string) {
 	anchor := group.anchor
 	commodityID := anchor.HoldingCommodityID.Int64

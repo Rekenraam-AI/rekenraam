@@ -467,8 +467,8 @@ func readUnsettledTrades(ctx context.Context, ledger netWorthLedger, kinds map[i
 	recognised := recognitionDates(postings, links, kinds)
 	trades := unsettledTrades{accounts: map[int64]db.LedgerAccountRecord{}}
 	for _, posting := range postings {
-		if date, ok := recognised[posting.TransactionID]; ok && posting.EntryDate != date {
-			trades.postings = append(trades.postings, unsettledPosting{recognisedOn: date, posting: posting})
+		if recognition, ok := recognised[posting.TransactionID]; ok && posting.EntryDate != recognition.date {
+			trades.postings = append(trades.postings, unsettledPosting{recognisedOn: recognition.date, posting: posting})
 			trades.accounts[posting.AccountID] = db.LedgerAccountRecord{}
 		}
 	}

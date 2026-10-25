@@ -126,3 +126,66 @@ func TestReturnsReversedSettledTradeLeavesNoFigure(t *testing.T) {
 	requireReturnsAmount(t, 0, result.Withdrawals)
 	requireReturn(t, "0.000000", result.TimeWeighted)
 }
+
+// Dividends receivable across the portfolio boundary (review 2026-10-25). The
+// fixture's 10 TEST sit in the portfolio; a dividend of 20 for them goes ex on
+// 02-10 and is paid on 02-20 into checking, outside the portfolio. The
+// receivable is the portfolio's until the cash moves, so it is held by the
+// entitled holding and the withdrawal happens on the payment date.
+func (f *returnsFixture) dividendIntoAccount(t *testing.T, cashAccountID int64) {
+	t.Helper()
+	_, err := f.investmentService.Dividend(context.Background(), DividendInput{
+		OwnerUserID: f.ownerUserID, TransactionDate: "2026-02-20", ExDate: NullableValue("2026-02-10"),
+		CommodityID: NullableValue(f.stockCommodityID), CashAccountID: cashAccountID,
+		CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.incomeAccountID, AmountValue: 2000, AmountScale: 2})
+	require.NoError(t, err)
+}
+
+// Before payment: 100 cash + 10 × 98 + the 20 receivable, nothing withdrawn,
+// and the ex-date price drop is offset by the dividend.
+func TestReturnsKeepAnOutsidePaidDividendReceivableUntilPayment(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.price(t, "2026-02-10", 9800)
+	f.dividendIntoAccount(t, f.cashAccountID)
+
+	result := f.read(t, "2026-02-01", "2026-02-15")
+	requireReturnsAmount(t, 1100, result.ClosingValue)
+	requireReturnsAmount(t, 0, result.Withdrawals)
+	requireReturn(t, "0.000000", result.TimeWeighted)
+}
+
+// The payment crosses the boundary: a withdrawal of 20 on 02-20.
+func TestReturnsWithdrawAnOutsidePaidDividendOnPayment(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.price(t, "2026-02-10", 9800)
+	f.price(t, "2026-02-20", 9800)
+	f.dividendIntoAccount(t, f.cashAccountID)
+
+	result := f.read(t, "2026-02-16", "2026-02-25")
+	requireReturnsAmount(t, 1100, result.OpeningValue)
+	requireReturnsAmount(t, 20, result.Withdrawals)
+	requireReturnsAmount(t, 1080, result.ClosingValue)
+}
+
+// Paid into an account that opens only on the payment date: net worth carries
+// the receivable on that account, and the portfolio still holds it.
+func TestReturnsHoldADividendReceivableForAnAccountNotYetOpen(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.price(t, "2026-02-10", 9800)
+	f.accountService.now = f.transactionService.now
+	account, err := f.accountService.CreateAccount(context.Background(), CreateAccountInput{
+		OwnerUserID: f.ownerUserID, OriginType: "browser_api", Operation: "account.create",
+		Name: "New dividend account", AccountClass: "asset", AccountKind: "brokerage_cash",
+		DefaultCommodityID: &f.eurCommodityID, OpenedOn: "2026-02-20", EffectiveFrom: "2026-02-20"})
+	require.NoError(t, err)
+	f.dividendIntoAccount(t, account.ID)
+
+	worth := f.netWorthAt(t, "2026-02-15")
+	requireUnsettled(t, f, worth.Unsettled, map[int64]int64{account.ID: 20})
+	result := f.read(t, "2026-02-01", "2026-02-15")
+	requireReturnsAmount(t, 1100, result.ClosingValue)
+	requireReturnsAmount(t, 0, result.Withdrawals)
+}

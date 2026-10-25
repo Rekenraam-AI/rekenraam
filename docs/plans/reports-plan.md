@@ -235,8 +235,10 @@ their own.
     date. The recognition date is the operation's recorded `ex` date; the
     journal that undoes a replaced operation uses the corrected operation's
     ex date, as the returns read does. The returns read applies the same
-    recognition to the portfolio (`recogniseOnUnitDate`), so net worth and
-    the portfolio value one dividend on one day. Income, spending, cashflow,
+    recognition to the portfolio, so net worth and the portfolio value one
+    dividend on one day. Net worth has no scope, so the receivable sits on
+    the paying account; the returns read keeps it with the entitled side
+    until the cash crosses the portfolio boundary (returns plan, slice 8). Income, spending, cashflow,
     registers, reconciliation and the forecast stay on posting dates:
     accrual income reporting is a separate decision. There is no managed
     receivable account and no partial settlement; a dividend is one
