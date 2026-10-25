@@ -236,6 +236,41 @@ func (r *TransactionRepository) LedgerPostingsInRange(ctx context.Context, bookI
 	})
 }
 
+// InvestmentOperationPostings reads every posting of a current posted
+// transaction linked to an investment operation, at any date, with the
+// operation each transaction belongs to. Net worth needs the postings dated
+// after its reporting date too: a trade recognised on its trade date may
+// settle later (#410).
+func (r *TransactionRepository) InvestmentOperationPostings(ctx context.Context, bookID int64) ([]LedgerPostingRecord, map[int64]int64, error) {
+	postings, err := r.ledgerPostings(ctx, ledgerPostingQuery{BookID: bookID, Status: "posted", OperationLinked: true})
+	if err != nil {
+		return nil, nil, err
+	}
+	rows, err := r.database.QueryContext(ctx, `
+		SELECT tv.transaction_id, l.operation_id
+		FROM investment_operation_journal_links l
+		JOIN current_transaction_versions tv ON tv.id = l.transaction_version_id
+		JOIN transactions t ON t.id = tv.transaction_id
+		WHERE l.book_id = ? AND tv.status = 'posted' AND t.deleted_at IS NULL
+		ORDER BY tv.transaction_id`, bookID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read investment operation links: %w", err)
+	}
+	defer rows.Close()
+	operationOf := map[int64]int64{}
+	for rows.Next() {
+		var transactionID, operationID int64
+		if err := rows.Scan(&transactionID, &operationID); err != nil {
+			return nil, nil, fmt.Errorf("scan investment operation link: %w", err)
+		}
+		operationOf[transactionID] = operationID
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("iterate investment operation links: %w", err)
+	}
+	return postings, operationOf, nil
+}
+
 func (r *TransactionRepository) AccountRegisterRunningPostings(ctx context.Context, params ListTransactionsParams) ([]LedgerPostingRecord, error) {
 	return r.ledgerPostings(ctx, ledgerPostingQuery{
 		BookID:     params.BookID,
@@ -253,6 +288,9 @@ type ledgerPostingQuery struct {
 	BeforeDate   string
 	CategoryOnly bool
 	CategoryType string
+	// OperationLinked keeps only transactions linked to an investment
+	// operation.
+	OperationLinked bool
 }
 
 func (r *TransactionRepository) ledgerPostings(ctx context.Context, query ledgerPostingQuery) ([]LedgerPostingRecord, error) {
@@ -312,6 +350,12 @@ func (r *TransactionRepository) ledgerPostings(ctx context.Context, query ledger
 				)
 				AND category_av.account_class IN ('income', 'expense')
 				AND category_av.account_kind = category_av.account_class
+		)`)
+	}
+
+	if query.OperationLinked {
+		where = append(where, `EXISTS (
+			SELECT 1 FROM investment_operation_journal_links l WHERE l.transaction_version_id = tv.id
 		)`)
 	}
 

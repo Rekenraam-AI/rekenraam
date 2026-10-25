@@ -55,6 +55,8 @@
   "reports_multi_commodity_notice": "Totalen worden per instrument apart getoond. Kies een rapportagevaluta om er een omgerekende regel in één eenheid aan toe te voegen.",
   "reports_unclassified_short_notice": "Sommige perioden bevatten een negatieve munt- of aandelenpositie die niet als shortverkoop is vastgelegd. Controleer het gedateerde rekeningoverzicht. Deze vermogenscijfers bevatten die positie; omgerekende totalen en grafieken worden pas getoond na correctie of classificatie.",
   "reports_unclassified_short_status": "Controleer positie",
+  "reports_unsettled_notice": "Sommige perioden bevatten transacties die nog niet waren afgewikkeld. Het vermogen telt hun geld mee op de transactiedatum; het rekeningsaldo verandert pas bij afwikkeling.",
+  "reports_unsettled_status": "Bevat niet-afgewikkelde transacties",
   "reports_position_status": "Positiestatus",
   "reports_reporting_currency": "Rapportagevaluta",
   "reports_reporting_currency_none": "Instrumenten apart houden",

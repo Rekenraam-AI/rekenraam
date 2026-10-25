@@ -55,6 +55,8 @@
   "reports_multi_commodity_notice": "Los totales se muestran por separado según el instrumento. Elija una moneda de referencia para añadir una línea reexpresada en una sola unidad.",
   "reports_unclassified_short_notice": "Algunos períodos contienen una posición negativa en monedas o acciones que no está identificada como venta en corto. Revise el registro fechado de la cuenta. Estas cifras incluyen esa posición; los totales convertidos y los gráficos se ocultan hasta corregirla o clasificarla.",
   "reports_unclassified_short_status": "Revisar posición",
+  "reports_unsettled_notice": "Algunos períodos incluyen operaciones aún no liquidadas. El patrimonio cuenta su efectivo en la fecha de la operación; el saldo de la cuenta cambia al liquidarse.",
+  "reports_unsettled_status": "Incluye operaciones sin liquidar",
   "reports_position_status": "Estado de la posición",
   "reports_reporting_currency": "Moneda de referencia",
   "reports_reporting_currency_none": "Mantener los instrumentos por separado",

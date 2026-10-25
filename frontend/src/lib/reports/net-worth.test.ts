@@ -21,6 +21,7 @@ const report: NetWorthSeriesResponse = {
     {
       start_date: '2026-06-01',
       end_date: '2026-06-07',
+      unsettled: [],
       unclassified_shorts: [],
       totals: [
         {
@@ -34,6 +35,7 @@ const report: NetWorthSeriesResponse = {
     {
       start_date: '2026-06-08',
       end_date: '2026-06-14',
+      unsettled: [],
       unclassified_shorts: [],
       totals: [
         {
@@ -149,6 +151,7 @@ it('does not turn a range with no holdings into a table of zeros', () => {
       {
         start_date: '2026-06-01',
         end_date: '2026-06-07',
+        unsettled: [],
         unclassified_shorts: [],
         totals: [],
         converted: { commodity_id: 9, quantity_value: '0', quantity_scale: 2, normal_quantity_value: '0' }

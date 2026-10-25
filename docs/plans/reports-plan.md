@@ -203,6 +203,34 @@ their own.
 - Take each bucket’s balance as of the bucket end, using account versions and
   postings valid through that date. Do not derive a time series by summing
   current account balances backward in the frontend.
+- **Trade-date recognition** ([#410](https://github.com/sergeyfarin/rekenraam/issues/410),
+  owner decision 2026-10-25). A trade posts its units and their
+  `commodity_trading` leg on the trade date, and its cash and clearing leg on
+  the settlement date (`tradeJournalEntries`). Read on posting dates alone,
+  net worth counted both the bought units and the unpaid cash between those
+  two dates. It now applies the returns plan's rule: every entry of an
+  investment operation whose units post on one day is recognised on that day.
+  - **The unsettled line.** On a reporting date, a cash posting dated later
+    whose units are already recognised (a payable, or a sale's receivable)
+    counts as `unsettled` on the account that will post it. A posting dated
+    earlier than its units counts with the opposite sign. Both responses
+    report it per account and commodity, and totals include it. Account
+    filters keep it with that account; the asset/liability and
+    `commodity_trading` rules apply to it as to any balance.
+  - **Unchanged.** Account balances, registers, reconciliation and cashflow
+    stay posting-based. Cashflow is a cash report, and settlement is when cash
+    moves. So cashflow's `net_movement` equals the change in totals minus
+    `unsettled` over the same accounts, which is the change in posted
+    balances. Operations whose units post on several days, or on none (a
+    dividend), keep their entry dates.
+  - **Edge.** A settling account whose first version is later than the
+    reporting date is not in that date's snapshot, so its unsettled amount is
+    not counted there, as with any balance.
+  - **Probe, other readers (2026-10-25).** Positions read current units only
+    and never cash. The forecast reads currency balances and future posted
+    entries. Spending and income never include a settlement leg. None of these
+    double counts.
+  - Cases: `ledger_unsettled_test.go` (N1–N6).
 - Return separate exact totals per commodity. A combined display is unavailable
   unless the caller selects the shipped reporting currency and named valuation method.
 - An account filter may power full net worth, one account’s historical balance,

@@ -94,11 +94,24 @@ type NetWorthInput struct {
 }
 
 type NetWorthResult struct {
-	AsOf                string
-	Status              string
+	AsOf   string
+	Status string
+	// Totals are trade-date: they include Unsettled.
 	Totals              []BalanceQuantity
+	Unsettled           []UnsettledAmount
 	UnclassifiedShorts  []UnclassifiedShortPosition
 	ExcludedSystemRoles []string
+}
+
+// UnsettledAmount is what an investment operation has recognised on its unit
+// date but not yet posted to an account, or posted before it (#410). A trade
+// posts its units on the trade date and its cash on the settlement date; in
+// between, net worth counts the cash not yet paid or received here, on the
+// account that settles it. Account balances stay posting-based: net-worth
+// totals are the posted balances plus these amounts.
+type UnsettledAmount struct {
+	AccountID int64
+	Amount    BalanceQuantity
 }
 
 // UnclassifiedShortPosition is a negative countable position without an
@@ -124,6 +137,7 @@ type NetWorthSeriesBucket struct {
 	StartDate          string
 	EndDate            string
 	Totals             []BalanceQuantity
+	Unsettled          []UnsettledAmount
 	UnclassifiedShorts []UnclassifiedShortPosition
 	// Converted is this bucket's net worth in the reporting currency, at the
 	// bucket's end date. Absent when a commodity cannot be converted or an
@@ -267,6 +281,7 @@ func (s *TransactionService) NetWorth(ctx context.Context, input NetWorthInput) 
 		AsOf:                asOf,
 		Status:              status,
 		Totals:              bucket.totals,
+		Unsettled:           bucket.unsettled,
 		UnclassifiedShorts:  bucket.unclassifiedShorts,
 		ExcludedSystemRoles: []string{"commodity_trading"},
 	}, nil
@@ -326,6 +341,7 @@ func (s *TransactionService) NetWorthSeries(ctx context.Context, input NetWorthS
 			StartDate:          bound.startDate,
 			EndDate:            bound.endDate,
 			Totals:             bucketTotals[index].totals,
+			Unsettled:          bucketTotals[index].unsettled,
 			UnclassifiedShorts: bucketTotals[index].unclassifiedShorts,
 		}
 		if rates != nil && len(bucketResult.UnclassifiedShorts) == 0 {
@@ -363,6 +379,7 @@ func (s *TransactionService) NetWorthSeries(ctx context.Context, input NetWorthS
 // forward across buckets instead.
 type netWorthBucket struct {
 	totals             []BalanceQuantity
+	unsettled          []UnsettledAmount
 	unclassifiedShorts []UnclassifiedShortPosition
 }
 
@@ -392,7 +409,57 @@ func (s *TransactionService) netWorthTotals(ctx context.Context, asOf string, st
 	for _, event := range shortEvents {
 		shorts.fold(event)
 	}
-	return netWorthBucketTotals(accounts, running, kinds, ReportFilters{}, shorts)
+	unsettled := unsettledTrades{}
+	if status == "posted" {
+		if unsettled, err = s.readUnsettledTrades(ctx, kinds); err != nil {
+			return netWorthBucket{}, err
+		}
+	}
+	return netWorthBucketTotals(accounts, running, unsettled.at(asOf), kinds, ReportFilters{}, shorts)
+}
+
+// unsettledTrades are the postings investment operations recognise on their
+// unit date but post on another: a trade's cash, its clearing leg and any
+// separately paid charge (#410, the returns plan's trade-date recognition).
+type unsettledTrades []unsettledPosting
+
+type unsettledPosting struct {
+	unitDate string
+	posting  db.LedgerPostingRecord
+}
+
+func (s *TransactionService) readUnsettledTrades(ctx context.Context, kinds map[int64]string) (unsettledTrades, error) {
+	postings, operationOf, err := s.repository.InvestmentOperationPostings(ctx, BookID)
+	if err != nil {
+		return nil, err
+	}
+	unitDates := singleUnitDates(postings, operationOf, kinds)
+	trades := unsettledTrades{}
+	for _, posting := range postings {
+		if date, ok := unitDates[operationOf[posting.TransactionID]]; ok && posting.EntryDate != date {
+			trades = append(trades, unsettledPosting{unitDate: date, posting: posting})
+		}
+	}
+	return trades, nil
+}
+
+// at returns, per account, what is recognised but not yet posted on asOf: a
+// posting dated after asOf whose units are recognised by then, less one
+// already posted whose units are not.
+func (u unsettledTrades) at(asOf string) map[int64]map[int64]*exact.ScaledInt {
+	pending := map[int64]map[int64]*exact.ScaledInt{}
+	for _, trade := range u {
+		posting := trade.posting
+		switch {
+		case trade.unitDate <= asOf && asOf < posting.EntryDate:
+		case posting.EntryDate <= asOf && asOf < trade.unitDate:
+			posting.QuantityValue = posting.QuantityValue.Negated()
+		default:
+			continue
+		}
+		foldPosting(pending, posting)
+	}
+	return pending
 }
 
 // namedShortQuantities is the dated quantity each holding owes through named
@@ -463,6 +530,10 @@ func (s *TransactionService) netWorthSeriesTotals(ctx context.Context, bounds []
 	}
 	shorts := namedShortQuantities{}
 	nextShort := 0
+	unsettled, err := s.readUnsettledTrades(ctx, kinds)
+	if err != nil {
+		return nil, err
+	}
 
 	timeline := newLedgerAccountTimeline(versions)
 	running := map[int64]map[int64]*exact.ScaledInt{}
@@ -480,7 +551,7 @@ func (s *TransactionService) netWorthSeriesTotals(ctx context.Context, bounds []
 			shorts.fold(shortEvents[nextShort])
 			nextShort++
 		}
-		totals, err := netWorthBucketTotals(timeline.snapshotThrough(bound.endDate), running, kinds, filters, shorts)
+		totals, err := netWorthBucketTotals(timeline.snapshotThrough(bound.endDate), running, unsettled.at(bound.endDate), kinds, filters, shorts)
 		if err != nil {
 			return nil, err
 		}
@@ -490,10 +561,12 @@ func (s *TransactionService) netWorthSeriesTotals(ctx context.Context, bounds []
 }
 
 // netWorthBucketTotals sums the running per-account balances that count as net
-// worth under the account snapshot in effect on the reporting date.
+// worth under the account snapshot in effect on the reporting date, plus the
+// unsettled amounts those accounts will post.
 func netWorthBucketTotals(
 	accounts []db.LedgerAccountRecord,
 	running map[int64]map[int64]*exact.ScaledInt,
+	pending map[int64]map[int64]*exact.ScaledInt,
 	kinds map[int64]string,
 	filters ReportFilters,
 	namedShorts namedShortQuantities,
@@ -501,14 +574,25 @@ func netWorthBucketTotals(
 	filterSet := reportFilterSetFrom(accounts, filters)
 	accountMap := ledgerAccountMap(accounts)
 
-	totals := map[int64]*exact.ScaledInt{}
-	shorts := []UnclassifiedShortPosition{}
-	for accountID, balances := range running {
+	counts := func(accountID int64) bool {
 		account, ok := accountMap[accountID]
 		if !ok || (account.AccountClass != "asset" && account.AccountClass != "liability") {
-			continue
+			return false
 		}
-		if account.SystemRole.Valid && account.SystemRole.String == "commodity_trading" {
+		return !account.SystemRole.Valid || account.SystemRole.String != "commodity_trading"
+	}
+	totals := map[int64]*exact.ScaledInt{}
+	add := func(commodityID int64, amount *exact.ScaledInt) {
+		total := totals[commodityID]
+		if total == nil {
+			total = exact.NewScaledInt()
+			totals[commodityID] = total
+		}
+		total.AddScaled(amount)
+	}
+	shorts := []UnclassifiedShortPosition{}
+	for accountID, balances := range running {
+		if !counts(accountID) {
 			continue
 		}
 		for commodityID, amount := range balances {
@@ -518,14 +602,36 @@ func netWorthBucketTotals(
 			if kinds[commodityID] != "currency" && namedShorts.unexplainedNegative(accountID, commodityID, amount) {
 				shorts = append(shorts, UnclassifiedShortPosition{AccountID: accountID, CommodityID: commodityID})
 			}
-			total := totals[commodityID]
-			if total == nil {
-				total = exact.NewScaledInt()
-				totals[commodityID] = total
-			}
-			total.AddScaled(amount)
+			add(commodityID, amount)
 		}
 	}
+	unsettled := []UnsettledAmount{}
+	for accountID, amounts := range pending {
+		if !counts(accountID) {
+			continue
+		}
+		included := map[int64]*exact.ScaledInt{}
+		for commodityID, amount := range amounts {
+			if amount.Sign() == 0 || !filterSet.includes(accountID, commodityID) {
+				continue
+			}
+			included[commodityID] = amount
+			add(commodityID, amount)
+		}
+		quantities, err := balanceMapToQuantities(included, "")
+		if err != nil {
+			return netWorthBucket{}, err
+		}
+		for _, quantity := range quantities {
+			unsettled = append(unsettled, UnsettledAmount{AccountID: accountID, Amount: quantity})
+		}
+	}
+	sort.Slice(unsettled, func(i, j int) bool {
+		if unsettled[i].AccountID != unsettled[j].AccountID {
+			return unsettled[i].AccountID < unsettled[j].AccountID
+		}
+		return unsettled[i].Amount.CommodityID < unsettled[j].Amount.CommodityID
+	})
 	quantities, err := balanceMapToQuantities(totals, "")
 	if err != nil {
 		return netWorthBucket{}, err
@@ -536,7 +642,7 @@ func netWorthBucketTotals(
 		}
 		return shorts[i].CommodityID < shorts[j].CommodityID
 	})
-	return netWorthBucket{totals: quantities, unclassifiedShorts: shorts}, nil
+	return netWorthBucket{totals: quantities, unsettled: unsettled, unclassifiedShorts: shorts}, nil
 }
 
 // foldPosting accumulates one posting into the running per-account balances.

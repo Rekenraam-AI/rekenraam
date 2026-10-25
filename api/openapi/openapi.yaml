@@ -980,6 +980,8 @@ components:
       $ref: "./components/schemas/ledger.yaml#/CategoryTotalsResponse"
     NetWorthResponse:
       $ref: "./components/schemas/ledger.yaml#/NetWorthResponse"
+    UnsettledAmount:
+      $ref: "./components/schemas/ledger.yaml#/UnsettledAmount"
     UnclassifiedShortPosition:
       $ref: "./components/schemas/ledger.yaml#/UnclassifiedShortPosition"
     NetWorthSeriesBucket:

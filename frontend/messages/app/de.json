@@ -55,6 +55,8 @@
   "reports_multi_commodity_notice": "Summen werden je Instrument getrennt ausgewiesen. Wählen Sie eine Berichtswährung, um eine umgerechnete Zeile in einer Einheit hinzuzufügen.",
   "reports_unclassified_short_notice": "Einige Zeiträume enthalten eine negative Coin- oder Aktienposition, die nicht als Leerverkauf erfasst wurde. Prüfen Sie das datierte Kontobuch. Die Vermögenswerte enthalten diese Position; umgerechnete Summen und Diagramme werden bis zur Korrektur oder Einordnung ausgeblendet.",
   "reports_unclassified_short_status": "Position prüfen",
+  "reports_unsettled_notice": "Einige Zeiträume enthalten noch nicht abgewickelte Geschäfte. Das Vermögen zählt ihr Geld zum Handelstag; der Kontostand ändert sich erst bei der Abwicklung.",
+  "reports_unsettled_status": "Enthält nicht abgewickelte Geschäfte",
   "reports_position_status": "Positionsstatus",
   "reports_reporting_currency": "Berichtswährung",
   "reports_reporting_currency_none": "Instrumente getrennt lassen",

@@ -62,8 +62,22 @@ type netWorthResponse struct {
 	AsOf                string                      `json:"as_of"`
 	Status              string                      `json:"status"`
 	Totals              []balanceQuantityResponse   `json:"totals"`
+	Unsettled           []unsettledAmountResponse   `json:"unsettled"`
 	UnclassifiedShorts  []unclassifiedShortResponse `json:"unclassified_shorts"`
 	ExcludedSystemRoles []string                    `json:"excluded_system_roles"`
+}
+
+type unsettledAmountResponse struct {
+	AccountID int64 `json:"account_id"`
+	balanceQuantityResponse
+}
+
+func toUnsettledAmountResponses(amounts []app.UnsettledAmount) []unsettledAmountResponse {
+	result := make([]unsettledAmountResponse, 0, len(amounts))
+	for _, amount := range amounts {
+		result = append(result, unsettledAmountResponse{AccountID: amount.AccountID, balanceQuantityResponse: toBalanceQuantityResponse(amount.Amount)})
+	}
+	return result
 }
 
 type unclassifiedShortResponse struct {
@@ -83,6 +97,7 @@ type netWorthSeriesBucketResponse struct {
 	StartDate          string                      `json:"start_date"`
 	EndDate            string                      `json:"end_date"`
 	Totals             []balanceQuantityResponse   `json:"totals"`
+	Unsettled          []unsettledAmountResponse   `json:"unsettled"`
 	UnclassifiedShorts []unclassifiedShortResponse `json:"unclassified_shorts"`
 	// Converted is this bucket at its own end date, in the reporting currency.
 	// Absent when a commodity in the bucket had no rate: a net worth missing a
@@ -178,6 +193,7 @@ func netWorth(logger *slog.Logger, authService *app.AuthService, transactionServ
 			AsOf:                result.AsOf,
 			Status:              result.Status,
 			Totals:              toBalanceQuantityResponses(result.Totals),
+			Unsettled:           toUnsettledAmountResponses(result.Unsettled),
 			UnclassifiedShorts:  toUnclassifiedShortResponses(result.UnclassifiedShorts),
 			ExcludedSystemRoles: result.ExcludedSystemRoles,
 		})
@@ -220,6 +236,7 @@ func netWorthSeries(logger *slog.Logger, authService *app.AuthService, transacti
 				StartDate:          bucket.StartDate,
 				EndDate:            bucket.EndDate,
 				Totals:             toBalanceQuantityResponses(bucket.Totals),
+				Unsettled:          toUnsettledAmountResponses(bucket.Unsettled),
 				UnclassifiedShorts: toUnclassifiedShortResponses(bucket.UnclassifiedShorts),
 				Converted:          toBalanceQuantityPointer(bucket.Converted),
 			})

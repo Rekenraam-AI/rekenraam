@@ -342,6 +342,27 @@ func recogniseOnUnitDate(postings []db.LedgerPostingRecord, anchors []db.Returns
 	for _, anchor := range anchors {
 		operationOf[anchor.TransactionID] = anchor.OperationID
 	}
+	unitDates := singleUnitDates(postings, operationOf, kinds)
+	recognised := make([]db.LedgerPostingRecord, 0, len(postings))
+	for _, posting := range postings {
+		if date, ok := unitDates[operationOf[posting.TransactionID]]; ok {
+			posting.EntryDate = date
+		}
+		if posting.EntryDate <= to {
+			recognised = append(recognised, posting)
+		}
+	}
+	// Stable, so each day keeps the ledger's own order; a moved posting
+	// follows the postings already on its new day.
+	sort.SliceStable(recognised, func(i, j int) bool { return recognised[i].EntryDate < recognised[j].EntryDate })
+	return recognised
+}
+
+// singleUnitDates returns the day each investment operation's units post on,
+// for the operations whose units post on exactly one day. Trade-date
+// recognition reads every entry of such an operation on that day: the returns
+// read (#409) and net worth's unsettled amounts (#410).
+func singleUnitDates(postings []db.LedgerPostingRecord, operationOf map[int64]int64, kinds map[int64]string) map[int64]string {
 	unitDates := map[int64]map[string]bool{}
 	for _, posting := range postings {
 		operation, ok := operationOf[posting.TransactionID]
@@ -353,21 +374,16 @@ func recogniseOnUnitDate(postings []db.LedgerPostingRecord, anchors []db.Returns
 		}
 		unitDates[operation][posting.EntryDate] = true
 	}
-	recognised := make([]db.LedgerPostingRecord, 0, len(postings))
-	for _, posting := range postings {
-		if dates := unitDates[operationOf[posting.TransactionID]]; len(dates) == 1 {
-			for date := range dates {
-				posting.EntryDate = date
-			}
+	single := map[int64]string{}
+	for operation, dates := range unitDates {
+		if len(dates) != 1 {
+			continue
 		}
-		if posting.EntryDate <= to {
-			recognised = append(recognised, posting)
+		for date := range dates {
+			single[operation] = date
 		}
 	}
-	// Stable, so each day keeps the ledger's own order; a moved posting
-	// follows the postings already on its new day.
-	sort.SliceStable(recognised, func(i, j int) bool { return recognised[i].EntryDate < recognised[j].EntryDate })
-	return recognised
+	return single
 }
 
 // resolveScope fixes the portfolio accounts once, as of the period end.

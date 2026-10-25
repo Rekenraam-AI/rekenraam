@@ -326,6 +326,7 @@ NetWorthSeriesBucket:
     - start_date
     - end_date
     - totals
+    - unsettled
     - unclassified_shorts
   properties:
     start_date:
@@ -336,8 +337,18 @@ NetWorthSeriesBucket:
       format: date
     totals:
       type: array
+      description: "Trade-date totals per commodity: posted asset and liability balances plus `unsettled`."
       items:
         $ref: "../../openapi.yaml#/components/schemas/BalanceQuantity"
+    unsettled:
+      type: array
+      description: >
+        Cash an investment operation has recognised on its trade date but not
+        yet posted (or posted before it), on the account that settles it.
+        Included in totals; account balances stay posting-based, so totals
+        minus these amounts are the posted balances.
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/UnsettledAmount"
     unclassified_shorts:
       type: array
       description: Negative countable positions in this bucket without an explicit short-sale workflow. Totals include these positions and require review.

@@ -28943,10 +28943,17 @@ export interface components {
             /** Format: date */
             as_of: string;
             status: components["schemas"]["TransactionStatus"];
+            /** @description Trade-date totals per commodity: posted asset and liability balances plus `unsettled`. */
             totals: components["schemas"]["BalanceQuantity"][];
+            /** @description Cash an investment operation has recognised on its trade date but not yet posted (or posted before it), on the account that settles it. Included in totals; account balances stay posting-based, so totals minus these amounts are the posted balances. */
+            unsettled: components["schemas"]["UnsettledAmount"][];
             /** @description Negative countable positions without an explicit short-sale workflow. Totals include these positions and require review. */
             unclassified_shorts: components["schemas"]["UnclassifiedShortPosition"][];
             excluded_system_roles: components["schemas"]["SystemAccountRole"][];
+        };
+        UnsettledAmount: components["schemas"]["BalanceQuantity"] & {
+            /** Format: int64 */
+            account_id: number;
         };
         UnclassifiedShortPosition: {
             /** Format: int64 */
@@ -28959,7 +28966,10 @@ export interface components {
             start_date: string;
             /** Format: date */
             end_date: string;
+            /** @description Trade-date totals per commodity: posted asset and liability balances plus `unsettled`. */
             totals: components["schemas"]["BalanceQuantity"][];
+            /** @description Cash an investment operation has recognised on its trade date but not yet posted (or posted before it), on the account that settles it. Included in totals; account balances stay posting-based, so totals minus these amounts are the posted balances. */
+            unsettled: components["schemas"]["UnsettledAmount"][];
             /** @description Negative countable positions in this bucket without an explicit short-sale workflow. Totals include these positions and require review. */
             unclassified_shorts: components["schemas"]["UnclassifiedShortPosition"][];
             /** @description This bucket's net worth at its own end date, in the reporting currency. A stock is converted on the date it is measured, so each bucket uses its own rate rather than one rate for the range. Absent when no reporting currency was asked for, when any commodity could not be converted, or when an unclassified short position makes this bucket unreliable. */

@@ -152,6 +152,7 @@ NetWorthResponse:
     - as_of
     - status
     - totals
+    - unsettled
     - unclassified_shorts
     - excluded_system_roles
   properties:
@@ -162,8 +163,18 @@ NetWorthResponse:
       $ref: "../../openapi.yaml#/components/schemas/TransactionStatus"
     totals:
       type: array
+      description: "Trade-date totals per commodity: posted asset and liability balances plus `unsettled`."
       items:
         $ref: "../../openapi.yaml#/components/schemas/BalanceQuantity"
+    unsettled:
+      type: array
+      description: >
+        Cash an investment operation has recognised on its trade date but not
+        yet posted (or posted before it), on the account that settles it.
+        Included in totals; account balances stay posting-based, so totals
+        minus these amounts are the posted balances.
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/UnsettledAmount"
     unclassified_shorts:
       type: array
       description: Negative countable positions without an explicit short-sale workflow. Totals include these positions and require review.
@@ -173,6 +184,16 @@ NetWorthResponse:
       type: array
       items:
         $ref: "../../openapi.yaml#/components/schemas/SystemAccountRole"
+
+UnsettledAmount:
+  allOf:
+    - $ref: "../../openapi.yaml#/components/schemas/BalanceQuantity"
+    - type: object
+      required: [account_id]
+      properties:
+        account_id:
+          type: integer
+          format: int64
 
 UnclassifiedShortPosition:
   type: object

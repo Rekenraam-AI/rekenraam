@@ -112,9 +112,9 @@ span make `V(d)` unavailable (`conflicting_splits` gap).
     period whose trade preceded `from` belongs to the earlier period.
   - **Unchanged.** Operations whose units post on several days, or on none
     (a dividend, a capital return), keep their entry dates. Ledger balances,
-    reconciliation and every other report are unchanged: only this read
-    recognises on trade date. Net worth's own double count in the
-    settlement window is [#410](https://github.com/sergeyfarin/rekenraam/issues/410).
+    reconciliation and cashflow stay posting-based. Net worth adopted the
+    same rule for [#410](https://github.com/sergeyfarin/rekenraam/issues/410),
+    as an unsettled line (reports plan, *Net worth over time*).
   - **Cases** (`investment_returns_settlement_test.go`): R1 reproducer
     (`0.000000`); R2 checking-funded across `from` (no flow); R3 settling
     after `to` (closing 1,100, with allocation equal to it); R4

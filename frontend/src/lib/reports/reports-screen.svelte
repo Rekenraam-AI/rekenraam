@@ -181,6 +181,11 @@
   const unclassifiedShortDates = $derived(
     new Set(netWorthQuery.data?.buckets.filter((bucket) => bucket.unclassified_shorts.length > 0).map((bucket) => bucket.end_date) ?? [])
   );
+  // Net worth is trade-date (#410): a bucket that counts cash a trade has not
+  // settled yet says so, because its account balances will not show it.
+  const unsettledDates = $derived(
+    new Set(netWorthQuery.data?.buckets.filter((bucket) => bucket.unsettled.length > 0).map((bucket) => bucket.end_date) ?? [])
+  );
   const multiCommodity = $derived(hasMultipleCommodities(rows));
   // Currencies *and* instrument commodities: a report can be filtered to a
   // security, and a commodity that can be selected must be nameable in every
@@ -512,6 +517,11 @@
           {m.reports_unclassified_short_notice()}
         </p>
       {/if}
+      {#if unsettledDates.size > 0}
+        <p class="mt-4 rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground">
+          {m.reports_unsettled_notice()}
+        </p>
+      {/if}
       <ValuationNotice valuation={netWorthQuery.data?.valuation} {commodityLabel} />
 
       <!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard users must be able to scroll the bounded table region, #328) -->
@@ -531,6 +541,9 @@
                   {formatRange(row.startDate, row.endDate)}
                   {#if unclassifiedShortDates.has(row.endDate)}
                     <span class="ml-1 text-xs font-semibold">({m.reports_unclassified_short_status()})</span>
+                  {/if}
+                  {#if unsettledDates.has(row.endDate)}
+                    <span class="ml-1 text-xs text-muted">({m.reports_unsettled_status()})</span>
                   {/if}
                 </td>
                 <td class="px-3 py-3 font-medium text-foreground">
