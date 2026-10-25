@@ -181,6 +181,11 @@ ReturnsBenchmark:
     stale or not, so a split is neutral. A value whose quote-to-opening span
     crosses a day on which holdings record different factors is
     `conflicting_splits`, dated that day.
+    For `price_return`, a trade-implied quote is first normalized to end-of-day
+    units using the instrument-wide split factor still pending after its source trade's
+    replay slot. If holdings disagree on that pending factor, the quote is
+    unavailable with a `conflicting_splits` gap in benchmark valuation
+    coverage, even if they agree on the day's total factor.
     `total_return` reads only observations recorded with adjustment basis
     total_return, a continuous series that is never split-adjusted. The basis
     is the request's declaration, never inferred.

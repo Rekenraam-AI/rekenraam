@@ -3628,7 +3628,14 @@ InvestmentPositionResponse:
     price_status:
       type: string
       enum: [usable, stale, no_price, future_only, incompatible_quote_basis, not_known_at_cutoff, conflicting_splits]
-      description: Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection. conflicting_splits means holdings recorded different split factors for the instrument on a day after the latest price and on or before valuation_as_of, so the units it priced are unknown and the position is not valued.
+      description: >-
+        Stale means older than seven calendar days; live holdings retain the
+        labelled value without an age rejection. conflicting_splits means
+        holdings recorded different instrument split factors after
+        latest_price_date and on or before valuation_as_of, or disagree on
+        the factor still pending after the source trade of a trade-implied
+        quote on latest_price_date. The quote's unit basis is then unknown
+        and the position is not valued.
     valuation_as_of:
       type: string
       format: date
@@ -3690,12 +3697,15 @@ InvestmentPositionResponse:
     split_ratio_numerator:
       type: string
       description: >-
-        Present when recorded splits of the instrument fall after
-        latest_price_date and on or before valuation_as_of: the quote priced a
-        unit of its own day, and each such unit is split_ratio_numerator /
-        split_ratio_denominator units on valuation_as_of (an exact fraction in
-        lowest terms, as decimal integer strings). Valuation divides the quote
-        by that factor; latest_price_value stays the quote as observed.
+        Exact factor used to bring the quote's unit basis to valuation_as_of:
+        each quoted unit corresponds to split_ratio_numerator /
+        split_ratio_denominator units on valuation_as_of (in lowest terms, as
+        decimal integer strings). It includes recorded splits after
+        latest_price_date and on or before valuation_as_of. For a trade-implied
+        quote it also includes splits on latest_price_date still pending after
+        the source trade's replay slot, when every holding that recorded that
+        day's splits agrees on the pending factor. Valuation divides the quote
+        by this factor; latest_price_value stays the quote as observed.
     split_ratio_denominator: { type: string }
 
 InvestmentPositionsResponse:
@@ -4188,7 +4198,14 @@ UnrealizedGainEntry:
     price_status:
       type: string
       enum: [usable, stale, no_price, future_only, incompatible_quote_basis, not_known_at_cutoff, conflicting_splits]
-      description: Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection. conflicting_splits means holdings recorded different split factors for the instrument on a day after the latest price and on or before valuation_as_of, so the units it priced are unknown and the position is not valued.
+      description: >-
+        Stale means older than seven calendar days; live holdings retain the
+        labelled value without an age rejection. conflicting_splits means
+        holdings recorded different instrument split factors after
+        latest_price_date and on or before valuation_as_of, or disagree on
+        the factor still pending after the source trade of a trade-implied
+        quote on latest_price_date. The quote's unit basis is then unknown
+        and the position is not valued.
     valuation_as_of:
       type: string
       format: date
@@ -4245,19 +4262,23 @@ UnrealizedGainEntry:
     split_ratio_numerator:
       type: string
       description: >-
-        Present when recorded splits of the instrument fall after
-        latest_price_date and on or before valuation_as_of: the quote priced a
-        unit of its own day, and each such unit is split_ratio_numerator /
-        split_ratio_denominator units on valuation_as_of (an exact fraction in
-        lowest terms, as decimal integer strings). Valuation divides the quote
-        by that factor; latest_price_value stays the quote as observed.
+        Exact factor used to bring the quote's unit basis to valuation_as_of:
+        each quoted unit corresponds to split_ratio_numerator /
+        split_ratio_denominator units on valuation_as_of (in lowest terms, as
+        decimal integer strings). It includes recorded splits after
+        latest_price_date and on or before valuation_as_of. For a trade-implied
+        quote it also includes splits on latest_price_date still pending after
+        the source trade's replay slot, when every holding that recorded that
+        day's splits agrees on the pending factor. Valuation divides the quote
+        by this factor; latest_price_value stays the quote as observed.
     split_ratio_denominator: { type: string }
     market_value_value:
       type: string
       pattern: '^-?(0|[1-9][0-9]{0,18})$'
       description: >-
-        quantity × latest_price, negated for a short position. Omitted when
-        valuation_unavailable is present.
+        Quantity valued at the selected quote, normalized to valuation_as_of
+        units using any disclosed split factor; negated for a short position.
+        Omitted when valuation_unavailable is present.
     market_value_scale:
       type: integer
       description: >-
@@ -4281,8 +4302,9 @@ UnrealizedGainEntry:
         why. no_price means no price observation exists for the position;
         unrepresentable means one is priced but the value does not fit the
         response's int64 fields; conflicting_splits means holdings recorded
-        different split factors after the latest price, so the units it
-        priced are unknown.
+        different split factors after the latest price, or disagree on the
+        factor still pending after a trade-implied quote's source trade on
+        latest_price_date, so the quote's unit basis is unknown.
     gain_unavailable:
       type: string
       enum: [unknown_basis]

@@ -29,12 +29,15 @@ RateUse:
     split_ratio_numerator:
       type: string
       description: >
-        Present when recorded splits of the instrument fall after
-        observation_date and on or before requested_date: the quote priced a
-        unit of its own day, and each such unit is split_ratio_numerator /
-        split_ratio_denominator units on requested_date (an exact fraction in
-        lowest terms, as decimal integer strings). The price used is the
-        quote divided by that factor.
+        Exact factor used to bring the quote's unit basis to requested_date:
+        each quoted unit corresponds to split_ratio_numerator /
+        split_ratio_denominator units on requested_date (in lowest terms, as
+        decimal integer strings). It includes recorded splits after
+        observation_date and on or before requested_date. For a trade-implied
+        quote it also includes splits on observation_date still pending after
+        the source trade's replay slot, when every holding that recorded that
+        day's splits agrees on the pending factor. The price used is the
+        observed quote divided by this factor.
     split_ratio_denominator: { type: string }
 RateGap:
   type: object
@@ -46,17 +49,24 @@ RateGap:
       type: string
       enum: [no_observation_in_window, reporting_currency_is_not_a_currency, future_only, incompatible_quote_basis, not_known_at_cutoff, conflicting_splits]
       description: >
-        conflicting_splits: the latest usable observation predates a day on
-        which holdings recorded different split factors for the instrument,
-        so the units it prices on the requested date are unknown;
-        nearest_observation_date is then that observation's date.
+        conflicting_splits: the selected observation's unit basis is unknown.
+        Either holdings recorded different split factors for the instrument
+        after the observation's date and on or before the requested valuation
+        date, or they
+        disagree on the factor still pending after a trade-implied quote's
+        source trade on the observation's date. The latter can occur even when
+        holdings agree on the day's total factor but recorded their splits
+        on different sides of the trade's replay slot. nearest_observation_date
+        is then that observation's date.
     nearest_observation_date:
       type: string
       format: date
       description: >
         The closest observation outside the staleness window, when one exists.
         "No rate" and "no rate recently" are different problems with different
-        fixes, so the response distinguishes them.
+        fixes, so the response distinguishes them. For conflicting_splits,
+        this is instead the date of the observation whose unit basis is
+        unknown, including a disputed same-day trade-implied quote.
     via_commodity_id:
       type: integer
       format: int64

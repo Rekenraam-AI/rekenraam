@@ -28784,7 +28784,7 @@ export interface components {
             via_observation_id?: number;
             /** Format: date */
             via_observation_date?: string;
-            /** @description Present when recorded splits of the instrument fall after observation_date and on or before requested_date: the quote priced a unit of its own day, and each such unit is split_ratio_numerator / split_ratio_denominator units on requested_date (an exact fraction in lowest terms, as decimal integer strings). The price used is the quote divided by that factor. */
+            /** @description Exact factor used to bring the quote's unit basis to requested_date: each quoted unit corresponds to split_ratio_numerator / split_ratio_denominator units on requested_date (in lowest terms, as decimal integer strings). It includes recorded splits after observation_date and on or before requested_date. For a trade-implied quote it also includes splits on observation_date still pending after the source trade's replay slot, when every holding that recorded that day's splits agrees on the pending factor. The price used is the observed quote divided by this factor. */
             split_ratio_numerator?: string;
             split_ratio_denominator?: string;
         };
@@ -28793,13 +28793,13 @@ export interface components {
             /** Format: int64 */
             commodity_id: number;
             /**
-             * @description conflicting_splits: the latest usable observation predates a day on which holdings recorded different split factors for the instrument, so the units it prices on the requested date are unknown; nearest_observation_date is then that observation's date.
+             * @description conflicting_splits: the selected observation's unit basis is unknown. Either holdings recorded different split factors for the instrument after the observation's date and on or before the requested valuation date, or they disagree on the factor still pending after a trade-implied quote's source trade on the observation's date. The latter can occur even when holdings agree on the day's total factor but recorded their splits on different sides of the trade's replay slot. nearest_observation_date is then that observation's date.
              * @enum {string}
              */
             reason: "no_observation_in_window" | "reporting_currency_is_not_a_currency" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff" | "conflicting_splits";
             /**
              * Format: date
-             * @description The closest observation outside the staleness window, when one exists. "No rate" and "no rate recently" are different problems with different fixes, so the response distinguishes them.
+             * @description The closest observation outside the staleness window, when one exists. "No rate" and "no rate recently" are different problems with different fixes, so the response distinguishes them. For conflicting_splits, this is instead the date of the observation whose unit basis is unknown, including a disputed same-day trade-implied quote.
              */
             nearest_observation_date?: string;
             /**
@@ -33126,7 +33126,7 @@ export interface components {
         };
         InvestmentPositionResponse: {
             /**
-             * @description Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection. conflicting_splits means holdings recorded different split factors for the instrument on a day after the latest price and on or before valuation_as_of, so the units it priced are unknown and the position is not valued.
+             * @description Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection. conflicting_splits means holdings recorded different instrument split factors after latest_price_date and on or before valuation_as_of, or disagree on the factor still pending after the source trade of a trade-implied quote on latest_price_date. The quote's unit basis is then unknown and the position is not valued.
              * @enum {string}
              */
             price_status?: "usable" | "stale" | "no_price" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff" | "conflicting_splits";
@@ -33173,7 +33173,7 @@ export interface components {
             latest_price_date?: string;
             /** @description True when the selected valuation quote was estimated from net-only trade cash. */
             latest_price_approximate: boolean;
-            /** @description Present when recorded splits of the instrument fall after latest_price_date and on or before valuation_as_of: the quote priced a unit of its own day, and each such unit is split_ratio_numerator / split_ratio_denominator units on valuation_as_of (an exact fraction in lowest terms, as decimal integer strings). Valuation divides the quote by that factor; latest_price_value stays the quote as observed. */
+            /** @description Exact factor used to bring the quote's unit basis to valuation_as_of: each quoted unit corresponds to split_ratio_numerator / split_ratio_denominator units on valuation_as_of (in lowest terms, as decimal integer strings). It includes recorded splits after latest_price_date and on or before valuation_as_of. For a trade-implied quote it also includes splits on latest_price_date still pending after the source trade's replay slot, when every holding that recorded that day's splits agrees on the pending factor. Valuation divides the quote by this factor; latest_price_value stays the quote as observed. */
             split_ratio_numerator?: string;
             split_ratio_denominator?: string;
         };
@@ -33414,7 +33414,7 @@ export interface components {
         };
         UnrealizedGainEntry: {
             /**
-             * @description Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection. conflicting_splits means holdings recorded different split factors for the instrument on a day after the latest price and on or before valuation_as_of, so the units it priced are unknown and the position is not valued.
+             * @description Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection. conflicting_splits means holdings recorded different instrument split factors after latest_price_date and on or before valuation_as_of, or disagree on the factor still pending after the source trade of a trade-implied quote on latest_price_date. The quote's unit basis is then unknown and the position is not valued.
              * @enum {string}
              */
             price_status?: "usable" | "stale" | "no_price" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff" | "conflicting_splits";
@@ -33461,10 +33461,10 @@ export interface components {
             latest_price_date?: string;
             /** @description True when the selected valuation quote was estimated from net-only trade cash. */
             latest_price_approximate: boolean;
-            /** @description Present when recorded splits of the instrument fall after latest_price_date and on or before valuation_as_of: the quote priced a unit of its own day, and each such unit is split_ratio_numerator / split_ratio_denominator units on valuation_as_of (an exact fraction in lowest terms, as decimal integer strings). Valuation divides the quote by that factor; latest_price_value stays the quote as observed. */
+            /** @description Exact factor used to bring the quote's unit basis to valuation_as_of: each quoted unit corresponds to split_ratio_numerator / split_ratio_denominator units on valuation_as_of (in lowest terms, as decimal integer strings). It includes recorded splits after latest_price_date and on or before valuation_as_of. For a trade-implied quote it also includes splits on latest_price_date still pending after the source trade's replay slot, when every holding that recorded that day's splits agrees on the pending factor. Valuation divides the quote by this factor; latest_price_value stays the quote as observed. */
             split_ratio_numerator?: string;
             split_ratio_denominator?: string;
-            /** @description quantity × latest_price, negated for a short position. Omitted when valuation_unavailable is present. */
+            /** @description Quantity valued at the selected quote, normalized to valuation_as_of units using any disclosed split factor; negated for a short position. Omitted when valuation_unavailable is present. */
             market_value_value?: string;
             /** @description Scale of market_value_value. Reduced below the computed precision only when redundant trailing zeros would otherwise overflow int64. */
             market_value_scale?: number;
@@ -33473,7 +33473,7 @@ export interface components {
             /** @description Omitted when valuation_unavailable is present. */
             unrealized_gain_scale?: number;
             /**
-             * @description Present only when market value and unrealized gain are omitted, saying why. no_price means no price observation exists for the position; unrepresentable means one is priced but the value does not fit the response's int64 fields; conflicting_splits means holdings recorded different split factors after the latest price, so the units it priced are unknown.
+             * @description Present only when market value and unrealized gain are omitted, saying why. no_price means no price observation exists for the position; unrepresentable means one is priced but the value does not fit the response's int64 fields; conflicting_splits means holdings recorded different split factors after the latest price, or disagree on the factor still pending after a trade-implied quote's source trade on latest_price_date, so the quote's unit basis is unknown.
              * @enum {string}
              */
             valuation_unavailable?: "no_price" | "unrepresentable" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff" | "conflicting_splits";
@@ -33924,7 +33924,7 @@ export interface components {
             by_currency: components["schemas"]["ReturnsAllocationRow"][];
             unknown: components["schemas"]["ReturnsAllocationUnknown"][];
         };
-        /** @description One security or crypto commodity read as a single unit held through the period, valued in the reporting currency by its own rate table (its gaps never mark the portfolio's coverage incomplete). It has no flows, so its time-weighted return telescopes to the ratio of its end values; points are the portfolio series' dates. A missing opening value removes every point (dated the opening day); a missing point value removes that point. The headline is the closing point. `price_return` reads raw observations and excludes distributions; raw quotes are per unit of their own day, so the unit count follows the instrument's effective recorded splits (from any holding) and each value is priced in the basis of the quote it used, stale or not, so a split is neutral. A value whose quote-to-opening span crosses a day on which holdings record different factors is `conflicting_splits`, dated that day. `total_return` reads only observations recorded with adjustment basis total_return, a continuous series that is never split-adjusted. The basis is the request's declaration, never inferred. */
+        /** @description One security or crypto commodity read as a single unit held through the period, valued in the reporting currency by its own rate table (its gaps never mark the portfolio's coverage incomplete). It has no flows, so its time-weighted return telescopes to the ratio of its end values; points are the portfolio series' dates. A missing opening value removes every point (dated the opening day); a missing point value removes that point. The headline is the closing point. `price_return` reads raw observations and excludes distributions; raw quotes are per unit of their own day, so the unit count follows the instrument's effective recorded splits (from any holding) and each value is priced in the basis of the quote it used, stale or not, so a split is neutral. A value whose quote-to-opening span crosses a day on which holdings record different factors is `conflicting_splits`, dated that day. For `price_return`, a trade-implied quote is first normalized to end-of-day units using the instrument-wide split factor still pending after its source trade's replay slot. If holdings disagree on that pending factor, the quote is unavailable with a `conflicting_splits` gap in benchmark valuation coverage, even if they agree on the day's total factor. `total_return` reads only observations recorded with adjustment basis total_return, a continuous series that is never split-adjusted. The basis is the request's declaration, never inferred. */
         ReturnsBenchmark: {
             /** Format: int64 */
             commodity_id: number;
