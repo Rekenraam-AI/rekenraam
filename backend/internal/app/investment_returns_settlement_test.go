@@ -250,3 +250,40 @@ func TestReturnsReversedForeignDividendPaidOutsideNeedsNoRate(t *testing.T) {
 	requireReturnsAmount(t, 0, result.Gain)
 	requireReturn(t, "0.000000", result.TimeWeighted)
 }
+
+// The same reversed USD dividend with no USD rate, or only a stale one: the
+// cancelled amount is never converted, so it leaves no coverage gap and no
+// stale-rate notice (review 2026-10-25).
+func TestReturnsCancelledForeignDividendLeavesNoCoverageDependency(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []string{"missing rate", "stale rate"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
+			f := newReturnsFixture(t)
+			for _, date := range []string{"2026-02-10", "2026-02-19", "2026-02-20", "2026-02-28"} {
+				f.price(t, date, 10000)
+			}
+			usd := f.commodity(t, "USD", "currency", 2)
+			if mode == "stale rate" {
+				f.priceOf(t, usd, f.eurCommodityID, "2026-02-17", 90)
+			}
+			dividend, err := f.investmentService.Dividend(context.Background(), DividendInput{
+				OwnerUserID: f.ownerUserID, TransactionDate: "2026-02-20", ExDate: NullableValue("2026-02-10"),
+				CommodityID: NullableValue(f.stockCommodityID), CashAccountID: f.cashAccountID,
+				CashCommodityID: usd, IncomeAccountID: &f.incomeAccountID, AmountValue: 2000, AmountScale: 2})
+			require.NoError(t, err)
+			_, err = f.investmentService.ReverseDividend(context.Background(), ReverseInvestmentDividendInput{
+				OwnerUserID: f.ownerUserID, TransactionID: dividend.ID, Reason: "wrong entry"})
+			require.NoError(t, err)
+
+			result := f.read(t, "2026-02-01", "2026-02-28")
+			requireReturnsAmount(t, 0, result.Gain)
+			requireReturn(t, "0.000000", result.TimeWeighted)
+			require.True(t, result.Valuation.Complete)
+			require.Empty(t, result.Valuation.Gaps)
+			for _, use := range result.Valuation.Used {
+				require.NotEqual(t, usd, use.CommodityID)
+			}
+		})
+	}
+}

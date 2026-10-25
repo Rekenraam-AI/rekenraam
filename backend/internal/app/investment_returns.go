@@ -661,7 +661,7 @@ func (r *returnsReader) classify(anchors []db.ReturnsOperationAnchor) ([]returns
 			}
 			part := pending.parts[posting.CommodityID]
 			if part == nil {
-				part = &flowPart{native: exact.NewScaledInt(), value: new(big.Rat), ok: true}
+				part = &flowPart{native: exact.NewScaledInt()}
 				pending.parts[posting.CommodityID] = part
 			}
 			quantity := posting.QuantityValue
@@ -669,25 +669,19 @@ func (r *returnsReader) classify(anchors []db.ReturnsOperationAnchor) ([]returns
 				quantity = quantity.Negated()
 			}
 			part.native.AddCoefficient(quantity, posting.QuantityScale)
-			value, ok := r.convert(posting.QuantityValue, posting.QuantityScale, posting.CommodityID, posting.EntryDate)
-			if !ok {
-				part.ok = false
-				continue
-			}
 			// The day's rate prices its end-of-day units. A delivery ordered
 			// before a split that day moved pre-split units, each of which the
 			// split then multiplied.
+			var factor *big.Rat
 			if isOperation {
-				if factor := db.PendingSplitFactor(r.splits, posting.CommodityID, posting.AccountID, posting.EntryDate, anchor.RootOperationID); factor != nil {
-					value.Mul(value, factor)
-					part.split = true
-				}
+				factor = db.PendingSplitFactor(r.splits, posting.CommodityID, posting.AccountID, posting.EntryDate, anchor.RootOperationID)
+				part.split = part.split || factor != nil
 			}
-			part.value.Add(part.value, value.Mul(value, big.NewRat(sign, 1)))
+			part.postings = append(part.postings, signedPosting{posting: posting, sign: sign, factor: factor})
 		}
 		pendingFlows = append(pendingFlows, pending)
 	}
-	return cancelFlowsBeforeConversion(pendingFlows), fallbacks
+	return r.cancelFlowsBeforeConversion(pendingFlows), fallbacks
 }
 
 // pendingEntryFlow is an entry's flow before cancellation: its value per
@@ -698,20 +692,26 @@ type pendingEntryFlow struct {
 }
 
 type flowPart struct {
-	native *exact.ScaledInt
-	value  *big.Rat
-	ok     bool
-	// split is set when a same-day split scaled the value, so it no longer
+	native   *exact.ScaledInt
+	postings []signedPosting
+	// split is set when a same-day split scales a value, so it no longer
 	// follows the native amount.
 	split bool
 }
 
+type signedPosting struct {
+	posting db.LedgerPostingRecord
+	sign    int64
+	factor  *big.Rat
+}
+
 // cancelFlowsBeforeConversion nets each correction chain's flows per day in
-// native amounts first. A commodity that nets to exactly zero (an entry and
-// its reversal, paid in a currency with no rate, say) contributes nothing,
-// so its conversion is never required. Any other amount is the sum of its
+// native amounts first, and converts only what survives. A commodity that
+// nets to exactly zero (an entry and its reversal, paid in a currency with no
+// rate, say) contributes nothing and is never converted, so it adds no
+// coverage gap or stale-rate notice. Any other amount is the sum of its
 // converted values, so a figure that converts is unchanged by this.
-func cancelFlowsBeforeConversion(pending []pendingEntryFlow) []returnsEntryFlow {
+func (r *returnsReader) cancelFlowsBeforeConversion(pending []pendingEntryFlow) []returnsEntryFlow {
 	type flowKey struct{ identity, date string }
 	net := map[flowKey]map[int64]*exact.ScaledInt{}
 	split := map[flowKey]map[int64]bool{}
@@ -734,16 +734,29 @@ func cancelFlowsBeforeConversion(pending []pendingEntryFlow) []returnsEntryFlow 
 		flow := entry.flow
 		flow.amount = new(big.Rat)
 		counted := false
-		for commodityID, part := range entry.parts {
+		commodities := make([]int64, 0, len(entry.parts))
+		for commodityID := range entry.parts {
+			commodities = append(commodities, commodityID)
+		}
+		slices.Sort(commodities)
+		for _, commodityID := range commodities {
+			part := entry.parts[commodityID]
 			if !split[key][commodityID] && net[key][commodityID].Sign() == 0 {
 				continue
 			}
 			counted = true
-			if !part.ok {
-				flow.ok = false
-				continue
+			for _, signed := range part.postings {
+				posting := signed.posting
+				value, ok := r.convert(posting.QuantityValue, posting.QuantityScale, posting.CommodityID, posting.EntryDate)
+				if !ok {
+					flow.ok = false
+					continue
+				}
+				if signed.factor != nil {
+					value.Mul(value, signed.factor)
+				}
+				flow.amount.Add(flow.amount, value.Mul(value, big.NewRat(signed.sign, 1)))
 			}
-			flow.amount.Add(flow.amount, part.value)
 		}
 		if counted || len(entry.parts) == 0 {
 			flows = append(flows, flow)

@@ -1094,16 +1094,18 @@ written.
      is the operation a journal carries the effect of: its own, or for a
      reversal or a replacement's inverse, the one it undoes. A pair that
      nets to zero is dropped, and a replacement in the same chain survives.
-     The portfolio does the same per chain and day before converting: a
-     commodity that nets to exactly zero needs no rate (unless a same-day
-     split scaled it). Reversed ambiguous income, an ex-date correction
+     The portfolio does the same per chain and day before converting, and
+     converts only what survives: a commodity that nets to exactly zero
+     (unless a same-day split scaled it) is never converted, so it needs no
+     rate and adds no coverage gap or stale-rate notice. Reversed ambiguous income, an ex-date correction
      that resolves ambiguity, and reversed income with no rate therefore
      leave the sleeve available. Cases
      `TestInstrumentReturnsReversedAmbiguousIncomeLeavesTheSleeve`,
      `TestInstrumentReturnsExDateCorrectionClearsTheOldAmbiguity`,
      `TestInstrumentReturnsReversedIncomeNeedsNoConversion`,
      `TestInstrumentReturnsHoldingRepairCancelsTheAmbiguousPaymentInLieu`,
-     `TestReturnsReversedForeignDividendPaidOutsideNeedsNoRate`.
+     `TestReturnsReversedForeignDividendPaidOutsideNeedsNoRate`,
+     `TestReturnsCancelledForeignDividendLeavesNoCoverageDependency`.
    - **Review of `7d1996c3` and `8194782a` (2026-10-25).** All four findings
      were accepted and fixed. Each reviewer probe is a named regression case
      that failed before its fix:
