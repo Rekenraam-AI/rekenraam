@@ -108,9 +108,9 @@
   // back without a market value; only the second is worth telling the user
   // about, so the two reasons must not share the placeholder dash.
   function unavailableLabel(reason: string | undefined): string {
-    return reason === 'unrepresentable'
-      ? m.investments_gains_value_out_of_range()
-      : m.investments_gains_no_price();
+    if (reason === 'unrepresentable') return m.investments_gains_value_out_of_range();
+    if (reason === 'conflicting_splits') return m.valuation_price_conflicting_splits();
+    return m.investments_gains_no_price();
   }
 
   function gainClass(value: string): string {

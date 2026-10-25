@@ -33126,10 +33126,10 @@ export interface components {
         };
         InvestmentPositionResponse: {
             /**
-             * @description Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection.
+             * @description Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection. conflicting_splits means holdings recorded different split factors for the instrument on a day after the latest price and on or before valuation_as_of, so the units it priced are unknown and the position is not valued.
              * @enum {string}
              */
-            price_status?: "usable" | "stale" | "no_price" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff";
+            price_status?: "usable" | "stale" | "no_price" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff" | "conflicting_splits";
             /**
              * Format: date
              * @description Owner-local current date at read start; positions remain the current operational projection.
@@ -33173,6 +33173,9 @@ export interface components {
             latest_price_date?: string;
             /** @description True when the selected valuation quote was estimated from net-only trade cash. */
             latest_price_approximate: boolean;
+            /** @description Present when recorded splits of the instrument fall after latest_price_date and on or before valuation_as_of: the quote priced a unit of its own day, and each such unit is split_ratio_numerator / split_ratio_denominator units on valuation_as_of (an exact fraction in lowest terms, as decimal integer strings). Valuation divides the quote by that factor; latest_price_value stays the quote as observed. */
+            split_ratio_numerator?: string;
+            split_ratio_denominator?: string;
         };
         InvestmentPositionsResponse: {
             positions: components["schemas"]["InvestmentPositionResponse"][];
@@ -33411,10 +33414,10 @@ export interface components {
         };
         UnrealizedGainEntry: {
             /**
-             * @description Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection.
+             * @description Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection. conflicting_splits means holdings recorded different split factors for the instrument on a day after the latest price and on or before valuation_as_of, so the units it priced are unknown and the position is not valued.
              * @enum {string}
              */
-            price_status?: "usable" | "stale" | "no_price" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff";
+            price_status?: "usable" | "stale" | "no_price" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff" | "conflicting_splits";
             /**
              * Format: date
              * @description Owner-local current date at read start; positions remain the current operational projection.
@@ -33458,6 +33461,9 @@ export interface components {
             latest_price_date?: string;
             /** @description True when the selected valuation quote was estimated from net-only trade cash. */
             latest_price_approximate: boolean;
+            /** @description Present when recorded splits of the instrument fall after latest_price_date and on or before valuation_as_of: the quote priced a unit of its own day, and each such unit is split_ratio_numerator / split_ratio_denominator units on valuation_as_of (an exact fraction in lowest terms, as decimal integer strings). Valuation divides the quote by that factor; latest_price_value stays the quote as observed. */
+            split_ratio_numerator?: string;
+            split_ratio_denominator?: string;
             /** @description quantity × latest_price, negated for a short position. Omitted when valuation_unavailable is present. */
             market_value_value?: string;
             /** @description Scale of market_value_value. Reduced below the computed precision only when redundant trailing zeros would otherwise overflow int64. */
@@ -33467,10 +33473,10 @@ export interface components {
             /** @description Omitted when valuation_unavailable is present. */
             unrealized_gain_scale?: number;
             /**
-             * @description Present only when market value and unrealized gain are omitted, saying why. no_price means no price observation exists for the position; unrepresentable means one is priced but the value does not fit the response's int64 fields.
+             * @description Present only when market value and unrealized gain are omitted, saying why. no_price means no price observation exists for the position; unrepresentable means one is priced but the value does not fit the response's int64 fields; conflicting_splits means holdings recorded different split factors after the latest price, so the units it priced are unknown.
              * @enum {string}
              */
-            valuation_unavailable?: "no_price" | "unrepresentable" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff";
+            valuation_unavailable?: "no_price" | "unrepresentable" | "future_only" | "incompatible_quote_basis" | "not_known_at_cutoff" | "conflicting_splits";
             /**
              * @description Gain is omitted when basis is unknown; quantity and any available market value are retained.
              * @enum {string}

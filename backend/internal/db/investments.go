@@ -437,7 +437,14 @@ type InvestmentPositionRecord struct {
 	// Defaults: base_quantity_value=1, base_quantity_scale=0 (price is per 1 unit).
 	LatestPriceBaseQuantityValue sql.NullInt64
 	LatestPriceBaseQuantityScale sql.NullInt64
-	BasisKnowledge               string
+	// SplitRatio* are the exact factor (lowest terms) of the instrument's
+	// recorded splits between the latest price's date and ValuationAsOf:
+	// each unit the quote priced is this many units on that date, so the
+	// quote is divided by it (#408). Empty when no split intervened.
+	SplitRatioNumerator   string
+	SplitRatioDenominator string
+	splitFactor           *big.Rat
+	BasisKnowledge        string
 	// PositionSide is short for borrowed units: QuantityValue is then the
 	// positive owed quantity and the basis amounts are opening proceeds.
 	PositionSide string
@@ -2360,6 +2367,9 @@ func (r *InvestmentRepository) Positions(ctx context.Context, bookID int64, boun
 		}
 		records = append(records, position.record)
 	}
+	if err := splitAdjustPositionPrices(ctx, r.database, bookID, records); err != nil {
+		return nil, err
+	}
 	return records, nil
 }
 
@@ -3578,6 +3588,8 @@ type UnrealizedGainRecord struct {
 	LatestPriceScale        sql.NullInt64
 	LatestPriceDate         sql.NullString
 	LatestPriceApproximate  sql.NullInt64
+	SplitRatioNumerator     string
+	SplitRatioDenominator   string
 	MarketValueValue        *int64
 	MarketValueScale        *int
 	UnrealizedGainValue     *int64
@@ -3598,6 +3610,10 @@ type UnrealizedGainRecord struct {
 const (
 	ValuationNoPrice         = "no_price"
 	ValuationUnrepresentable = "unrepresentable"
+	// ValuationConflictingSplits: the latest price predates a day on which
+	// holdings recorded different split factors for the instrument, so the
+	// units it priced on the valuation date are unknown (#408).
+	ValuationConflictingSplits = "conflicting_splits"
 )
 
 // int64AtUsableScale restates a computed valuation so it fits the read model's
@@ -3651,12 +3667,16 @@ func valuePositions(positions []InvestmentPositionRecord) ([]UnrealizedGainRecor
 			LatestPriceScale:        pos.LatestPriceScale,
 			LatestPriceDate:         pos.LatestPriceDate,
 			LatestPriceApproximate:  pos.LatestPriceApproximate,
+			SplitRatioNumerator:     pos.SplitRatioNumerator,
+			SplitRatioDenominator:   pos.SplitRatioDenominator,
 			PositionSide:            pos.PositionSide,
 		}
 		if pos.BasisKnowledge == InvestmentBasisUnknown {
 			record.GainUnavailable = "unknown_basis"
 		}
-		if pos.LatestPriceValue.Valid && pos.LatestPriceScale.Valid {
+		if pos.PriceStatus == ValuationConflictingSplits {
+			record.ValuationUnavailable = ValuationConflictingSplits
+		} else if pos.LatestPriceValue.Valid && pos.LatestPriceScale.Valid {
 			// market_value = quantity × price_value ÷ base_quantity_value,
 			// through exact.MulDivRound so the whole thing is one big.Int
 			// expression with a single rounding step at the end — the same
@@ -3686,10 +3706,18 @@ func valuePositions(positions []InvestmentPositionRecord) ([]UnrealizedGainRecor
 			// Compute at whichever of that, the cost basis's scale and zero is
 			// deepest, so nothing is rounded away before the subtraction.
 			gainScale := max(max(pos.QuantityScale+priceScale-baseQtyScale, pos.RemainingCostBasisScale), 0)
+			// A quote observed before a recorded split priced pre-split units:
+			// each became splitFactor units, so the price per unit is divided by
+			// it, exactly (#408).
+			price, base := big.NewInt(pos.LatestPriceValue.Int64), big.NewInt(baseQtyValue)
+			if pos.splitFactor != nil {
+				price.Mul(price, pos.splitFactor.Denom())
+				base.Mul(base, pos.splitFactor.Num())
+			}
 			marketBig, err := exact.MulDivRound(
 				pos.QuantityValue.BigInt(), pos.QuantityScale,
-				big.NewInt(pos.LatestPriceValue.Int64), priceScale,
-				big.NewInt(baseQtyValue), baseQtyScale,
+				price, priceScale,
+				base, baseQtyScale,
 				gainScale,
 			)
 			if err != nil {

@@ -95,7 +95,8 @@ func datedPositionsTx(ctx context.Context, tx *sql.Tx, bookID int64, asOf string
 }
 
 // priceDatedPositionsTx attaches the selected observation, or the reason none
-// is usable, with the holdings rule: retained, stale past seven days.
+// is usable, with the holdings rule: retained, stale past seven days, and
+// divided by any split recorded after it (#408).
 func priceDatedPositionsTx(ctx context.Context, tx *sql.Tx, bookID int64, boundary ObservationBoundary, positions []InvestmentPositionRecord) error {
 	if len(positions) == 0 {
 		return nil
@@ -156,5 +157,5 @@ func priceDatedPositionsTx(ctx context.Context, tx *sql.Tx, bookID int64, bounda
 		position.LatestPriceApproximate = p.approximate
 		position.LatestPriceBaseQuantityValue, position.LatestPriceBaseQuantityScale = p.baseValue, p.baseScale
 	}
-	return nil
+	return splitAdjustPositionPrices(ctx, tx, bookID, positions)
 }

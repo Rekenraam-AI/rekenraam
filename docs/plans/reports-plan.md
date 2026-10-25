@@ -98,8 +98,14 @@ selector, restated rows, coverage notices, charts, and CSV output ship in
   that recorded different factors for one day make any value whose span
   crosses that day a gap (`conflicting_splits`), never a guessed factor.
   Total-return series are never split-adjusted. Every `RateTable` consumer
-  (net worth, spending, cashflow, R13) reads this one rule; the observation
-  selection itself (`db/observation_selection.go`) is unchanged. Rescaling
+  (net worth, spending, cashflow, R13) reads this one rule, and so do
+  holdings and unrealized gains (current, dated, statement and alternative
+  reads, #408), which price positions from the selection directly: their
+  latest price stays the quote as observed, the position discloses the same
+  factor, and its value divides by it (`conflicting_splits` leaves the
+  position unvalued). The factor logic (`db.InstrumentSplitDays`,
+  `db.SplitFactor`) has one home; the observation selection itself
+  (`db/observation_selection.go`) is unchanged. Rescaling
   was chosen over refusing a quote across a split because the recorded split
   is exact, so the rescaled price is the same number the quote stated, and
   refusing would make every value unknown for up to a week after each split.

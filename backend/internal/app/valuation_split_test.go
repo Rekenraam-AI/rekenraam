@@ -135,3 +135,64 @@ func TestValuationRefusesAStaleQuoteAcrossConflictingSplits(t *testing.T) {
 	require.Equal(t, []RateGap{{CommodityID: f.stockCommodityID, Reason: RateMissingConflictingSplits, NearestObservationDate: "2026-01-31"}},
 		series.Valuation.Gaps)
 }
+
+// #408: holdings and unrealized gains price current ledger units with the
+// selected observation directly, not through RateTable, under the same rule.
+// As of 02-03 the 01-31 quote prices pre-split units: 20 × 100 / 2 = 1,000
+// against the 1,000 basis. As of 02-04 the post-split quote, 50, is fresh.
+func TestUnrealizedGainsRescaleAStalePreSplitQuote(t *testing.T) {
+	t.Parallel()
+	f := splitValuationFixture(t)
+
+	for date, factor := range map[string]string{"2026-02-01": "", "2026-02-03": "2/1", "2026-02-04": ""} {
+		_, entries, err := f.investmentService.UnrealizedGainsProjection(context.Background(), date)
+		require.NoError(t, err)
+		require.Len(t, entries, 1, date)
+		entry := entries[0]
+		require.NotNil(t, entry.MarketValueValue, date)
+		require.Equal(t, 0, exact.ScaledIntFromInt64(*entry.MarketValueValue, *entry.MarketValueScale).
+			Cmp(exact.ScaledIntFromInt64(100000, 2)), "%s market value %de-%d", date, *entry.MarketValueValue, *entry.MarketValueScale)
+		require.Equal(t, int64(0), *entry.UnrealizedGainValue, date)
+		actual := ""
+		if entry.SplitRatioNumerator != "" {
+			actual = entry.SplitRatioNumerator + "/" + entry.SplitRatioDenominator
+		}
+		require.Equal(t, factor, actual, date)
+	}
+}
+
+// The current holdings read discloses the factor on the position it prices
+// with a stale pre-split quote.
+func TestPositionsDiscloseTheSplitAfterTheirQuote(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	_, err := acknowledgedSplit(context.Background(), f.investmentService, splitInput(f.investmentsTestFixture, "2026-02-02", 2, 1))
+	require.NoError(t, err)
+
+	positions, err := f.investmentService.Positions(context.Background())
+	require.NoError(t, err)
+	require.Len(t, positions, 1)
+	require.Equal(t, "2026-01-31", positions[0].LatestPriceDate)
+	require.Equal(t, "2", positions[0].SplitRatioNumerator)
+	require.Equal(t, "1", positions[0].SplitRatioDenominator)
+}
+
+// Holdings that disagree on a day leave a position valued across it unknown.
+func TestUnrealizedGainsRefuseAStaleQuoteAcrossConflictingSplits(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	second := seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
+	for holding, ratio := range map[int64]int64{f.holdingAccountID: 2, second: 3} {
+		input := splitInput(f.investmentsTestFixture, "2026-02-02", ratio, 1)
+		input.HoldingAccountID = holding
+		_, err := acknowledgedSplit(context.Background(), f.investmentService, input)
+		require.NoError(t, err)
+	}
+
+	_, entries, err := f.investmentService.UnrealizedGainsProjection(context.Background(), "2026-02-03")
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	require.Nil(t, entries[0].MarketValueValue)
+	require.Nil(t, entries[0].UnrealizedGainValue)
+	require.Equal(t, db.ValuationConflictingSplits, entries[0].ValuationUnavailable)
+}

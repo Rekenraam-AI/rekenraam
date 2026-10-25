@@ -668,6 +668,8 @@ type investmentPositionResponse struct {
 	LatestPriceScale        *int              `json:"latest_price_scale,omitempty"`
 	LatestPriceDate         string            `json:"latest_price_date,omitempty"`
 	LatestPriceApproximate  bool              `json:"latest_price_approximate"`
+	SplitRatioNumerator     string            `json:"split_ratio_numerator,omitempty"`
+	SplitRatioDenominator   string            `json:"split_ratio_denominator,omitempty"`
 	TransferBasisAllocation string            `json:"transfer_basis_allocation"`
 	PositionSide            string            `json:"position_side"`
 }
@@ -2431,7 +2433,7 @@ func toInvestmentLotResponses(lots []app.InvestmentLot) []investmentLotResponse 
 func toInvestmentPositionResponses(positions []app.InvestmentPosition) []investmentPositionResponse {
 	responses := make([]investmentPositionResponse, 0, len(positions))
 	for _, position := range positions {
-		responses = append(responses, investmentPositionResponse{PriceStatus: position.PriceStatus, ValuationAsOf: position.ValuationAsOf, KnowledgeCutoff: position.KnowledgeCutoff, AccountID: position.AccountID, CommodityID: position.CommodityID, QuantityValue: position.QuantityValue, QuantityScale: position.QuantityScale, RemainingCostBasisValue: projectedBasisValue(position.RemainingCostBasisValue, position.BasisKnowledge), RemainingCostBasisScale: projectedBasisScale(position.RemainingCostBasisScale, position.BasisKnowledge), BasisKnowledge: position.BasisKnowledge, CostCommodityID: position.CostCommodityID, LatestPriceValue: moneyCoefficientPointer(position.LatestPriceValue), LatestPriceScale: position.LatestPriceScale, LatestPriceDate: position.LatestPriceDate, LatestPriceApproximate: position.LatestPriceApproximate, TransferBasisAllocation: position.TransferBasisAllocation, PositionSide: position.PositionSide})
+		responses = append(responses, investmentPositionResponse{PriceStatus: position.PriceStatus, ValuationAsOf: position.ValuationAsOf, KnowledgeCutoff: position.KnowledgeCutoff, AccountID: position.AccountID, CommodityID: position.CommodityID, QuantityValue: position.QuantityValue, QuantityScale: position.QuantityScale, RemainingCostBasisValue: projectedBasisValue(position.RemainingCostBasisValue, position.BasisKnowledge), RemainingCostBasisScale: projectedBasisScale(position.RemainingCostBasisScale, position.BasisKnowledge), BasisKnowledge: position.BasisKnowledge, CostCommodityID: position.CostCommodityID, LatestPriceValue: moneyCoefficientPointer(position.LatestPriceValue), LatestPriceScale: position.LatestPriceScale, LatestPriceDate: position.LatestPriceDate, LatestPriceApproximate: position.LatestPriceApproximate, SplitRatioNumerator: position.SplitRatioNumerator, SplitRatioDenominator: position.SplitRatioDenominator, TransferBasisAllocation: position.TransferBasisAllocation, PositionSide: position.PositionSide})
 	}
 	return responses
 }
@@ -2535,6 +2537,8 @@ type unrealizedGainResponse struct {
 	LatestPriceScale        *int              `json:"latest_price_scale,omitempty"`
 	LatestPriceDate         string            `json:"latest_price_date,omitempty"`
 	LatestPriceApproximate  bool              `json:"latest_price_approximate"`
+	SplitRatioNumerator     string            `json:"split_ratio_numerator,omitempty"`
+	SplitRatioDenominator   string            `json:"split_ratio_denominator,omitempty"`
 	MarketValueValue        *moneyCoefficient `json:"market_value_value,omitempty"`
 	MarketValueScale        *int              `json:"market_value_scale,omitempty"`
 	UnrealizedGainValue     *moneyCoefficient `json:"unrealized_gain_value,omitempty"`
@@ -2696,6 +2700,8 @@ func gainsProjectionResponse(profile app.GainsProfile, realized []app.RealizedGa
 			LatestPriceScale:       e.LatestPriceScale,
 			LatestPriceDate:        e.LatestPriceDate,
 			LatestPriceApproximate: e.LatestPriceApproximate,
+			SplitRatioNumerator:    e.SplitRatioNumerator,
+			SplitRatioDenominator:  e.SplitRatioDenominator,
 			MarketValueValue:       moneyCoefficientPointer(e.MarketValueValue),
 			MarketValueScale:       e.MarketValueScale,
 			UnrealizedGainValue:    moneyCoefficientPointer(e.UnrealizedGainValue),

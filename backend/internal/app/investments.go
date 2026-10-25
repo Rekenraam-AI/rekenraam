@@ -637,7 +637,11 @@ type InvestmentPosition struct {
 	LatestPriceScale        *int
 	LatestPriceDate         string
 	LatestPriceApproximate  bool
-	BasisKnowledge          string
+	// SplitRatio* disclose the split factor the latest price was divided by
+	// (#408); empty when none.
+	SplitRatioNumerator   string
+	SplitRatioDenominator string
+	BasisKnowledge        string
 	// TransferBasisAllocation is how an internal transfer from this position
 	// allocates basis: the position's method lock, else its resolved default.
 	TransferBasisAllocation string
@@ -3103,6 +3107,8 @@ func toInvestmentPositions(records []db.InvestmentPositionRecord) []InvestmentPo
 			LatestPriceScale:        priceScale,
 			LatestPriceDate:         nullableString(record.LatestPriceDate),
 			LatestPriceApproximate:  record.LatestPriceApproximate.Valid && record.LatestPriceApproximate.Int64 == 1,
+			SplitRatioNumerator:     record.SplitRatioNumerator,
+			SplitRatioDenominator:   record.SplitRatioDenominator,
 			PositionSide:            record.PositionSide,
 		})
 	}
@@ -3268,13 +3274,17 @@ type UnrealizedGainEntry struct {
 	LatestPriceScale        *int
 	LatestPriceDate         string
 	LatestPriceApproximate  bool
-	MarketValueValue        *int64
-	MarketValueScale        *int
-	UnrealizedGainValue     *int64
-	UnrealizedGainScale     *int
-	ValuationUnavailable    string
-	BasisKnowledge          string
-	GainUnavailable         string
+	// SplitRatio* disclose the split factor the latest price was divided by
+	// (#408); empty when none.
+	SplitRatioNumerator   string
+	SplitRatioDenominator string
+	MarketValueValue      *int64
+	MarketValueScale      *int
+	UnrealizedGainValue   *int64
+	UnrealizedGainScale   *int
+	ValuationUnavailable  string
+	BasisKnowledge        string
+	GainUnavailable       string
 	// PositionSide is short for owed units: MarketValue is the signed
 	// (negative) exposure and the gain is remaining opening proceeds less the
 	// cost to cover.
@@ -3401,6 +3411,8 @@ func unrealizedGainEntries(records []db.UnrealizedGainRecord) []UnrealizedGainEn
 			LatestPriceScale:        priceScale,
 			LatestPriceDate:         nullableString(r.LatestPriceDate),
 			LatestPriceApproximate:  r.LatestPriceApproximate.Valid && r.LatestPriceApproximate.Int64 == 1,
+			SplitRatioNumerator:     r.SplitRatioNumerator,
+			SplitRatioDenominator:   r.SplitRatioDenominator,
 			MarketValueValue:        r.MarketValueValue,
 			MarketValueScale:        r.MarketValueScale,
 			UnrealizedGainValue:     r.UnrealizedGainValue,

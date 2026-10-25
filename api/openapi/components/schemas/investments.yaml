@@ -3627,8 +3627,8 @@ InvestmentPositionResponse:
   properties:
     price_status:
       type: string
-      enum: [usable, stale, no_price, future_only, incompatible_quote_basis, not_known_at_cutoff]
-      description: Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection.
+      enum: [usable, stale, no_price, future_only, incompatible_quote_basis, not_known_at_cutoff, conflicting_splits]
+      description: Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection. conflicting_splits means holdings recorded different split factors for the instrument on a day after the latest price and on or before valuation_as_of, so the units it priced are unknown and the position is not valued.
     valuation_as_of:
       type: string
       format: date
@@ -3687,6 +3687,16 @@ InvestmentPositionResponse:
     latest_price_approximate:
       type: boolean
       description: True when the selected valuation quote was estimated from net-only trade cash.
+    split_ratio_numerator:
+      type: string
+      description: >-
+        Present when recorded splits of the instrument fall after
+        latest_price_date and on or before valuation_as_of: the quote priced a
+        unit of its own day, and each such unit is split_ratio_numerator /
+        split_ratio_denominator units on valuation_as_of (an exact fraction in
+        lowest terms, as decimal integer strings). Valuation divides the quote
+        by that factor; latest_price_value stays the quote as observed.
+    split_ratio_denominator: { type: string }
 
 InvestmentPositionsResponse:
   type: object
@@ -4177,8 +4187,8 @@ UnrealizedGainEntry:
   properties:
     price_status:
       type: string
-      enum: [usable, stale, no_price, future_only, incompatible_quote_basis, not_known_at_cutoff]
-      description: Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection.
+      enum: [usable, stale, no_price, future_only, incompatible_quote_basis, not_known_at_cutoff, conflicting_splits]
+      description: Stale means older than seven calendar days; live holdings retain the labelled value without an age rejection. conflicting_splits means holdings recorded different split factors for the instrument on a day after the latest price and on or before valuation_as_of, so the units it priced are unknown and the position is not valued.
     valuation_as_of:
       type: string
       format: date
@@ -4232,6 +4242,16 @@ UnrealizedGainEntry:
     latest_price_approximate:
       type: boolean
       description: True when the selected valuation quote was estimated from net-only trade cash.
+    split_ratio_numerator:
+      type: string
+      description: >-
+        Present when recorded splits of the instrument fall after
+        latest_price_date and on or before valuation_as_of: the quote priced a
+        unit of its own day, and each such unit is split_ratio_numerator /
+        split_ratio_denominator units on valuation_as_of (an exact fraction in
+        lowest terms, as decimal integer strings). Valuation divides the quote
+        by that factor; latest_price_value stays the quote as observed.
+    split_ratio_denominator: { type: string }
     market_value_value:
       type: string
       pattern: '^-?(0|[1-9][0-9]{0,18})$'
@@ -4255,12 +4275,14 @@ UnrealizedGainEntry:
       description: Omitted when valuation_unavailable is present.
     valuation_unavailable:
       type: string
-      enum: [no_price, unrepresentable, future_only, incompatible_quote_basis, not_known_at_cutoff]
+      enum: [no_price, unrepresentable, future_only, incompatible_quote_basis, not_known_at_cutoff, conflicting_splits]
       description: >-
         Present only when market value and unrealized gain are omitted, saying
         why. no_price means no price observation exists for the position;
         unrepresentable means one is priced but the value does not fit the
-        response's int64 fields.
+        response's int64 fields; conflicting_splits means holdings recorded
+        different split factors after the latest price, so the units it
+        priced are unknown.
     gain_unavailable:
       type: string
       enum: [unknown_basis]

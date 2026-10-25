@@ -285,77 +285,19 @@ func newRateTableAtBoundary(ctx context.Context, pricing *db.PricingRepository, 
 		if err != nil {
 			return nil, err
 		}
-		table.splitDays, table.splitConflicts = instrumentSplitDays(splits)
+		table.splitDays, table.splitConflicts = db.InstrumentSplitDays(splits)
 	}
 
 	return table, nil
 }
 
-// SplitDay is one day's split factor of an instrument: every unit held at the
-// end of the previous day became Factor units (a holding's successive splits
-// that day compounded). Exact, so it is never rounded.
-type SplitDay struct {
-	EffectiveOn string
-	Factor      *big.Rat
-}
+// SplitDay is one day's split factor of an instrument (db.SplitDay): the
+// holdings read applies the same factors (#408).
+type SplitDay = db.SplitDay
 
-// instrumentSplitDays combines recorded splits (ordered by instrument, then
-// date) into one factor per instrument and day. A holding's successive splits
-// on one day compound (2:1 twice is 4:1, as its ledger units are); holdings
-// that recorded the same event must agree on the day's factor. A day they
-// disagree on has no factor and is a conflict, rather than a guess.
-//
-// The factor is the instrument's, not a holding's: a quote prices the
-// instrument, so a holding that never recorded a split is misvalued by a
-// fresh post-split quote just as by a rescaled stale one.
-func instrumentSplitDays(recorded []db.InstrumentSplit) (map[int64][]SplitDay, map[int64][]string) {
-	days := map[int64][]SplitDay{}
-	conflicts := map[int64][]string{}
-	for start := 0; start < len(recorded); {
-		first := recorded[start]
-		end := start
-		for end < len(recorded) && recorded[end].CommodityID == first.CommodityID && recorded[end].EffectiveOn == first.EffectiveOn {
-			end++
-		}
-		byHolding := map[int64]*big.Rat{}
-		for _, split := range recorded[start:end] {
-			if byHolding[split.AccountID] == nil {
-				byHolding[split.AccountID] = big.NewRat(1, 1)
-			}
-			byHolding[split.AccountID].Mul(byHolding[split.AccountID], big.NewRat(split.RatioNumerator, split.RatioDenominator))
-		}
-		var factor *big.Rat
-		agree := true
-		for _, holding := range byHolding {
-			agree = agree && (factor == nil || factor.Cmp(holding) == 0)
-			factor = holding
-		}
-		if agree {
-			days[first.CommodityID] = append(days[first.CommodityID], SplitDay{EffectiveOn: first.EffectiveOn, Factor: factor})
-		} else {
-			conflicts[first.CommodityID] = append(conflicts[first.CommodityID], first.EffectiveOn)
-		}
-		start = end
-	}
-	return days, conflicts
-}
-
-// splitFactor is the product of an instrument's split factors effective in
-// (observed, onDate]: how many units on onDate one unit of the observation's
-// day became. A conflicting day in that span returns that day instead.
+// splitFactor is db.SplitFactor over this table's loaded splits.
 func (t *RateTable) splitFactor(commodityID int64, observed, onDate string) (*big.Rat, string) {
-	for _, conflict := range t.splitConflicts[commodityID] {
-		if conflict > observed && conflict <= onDate {
-			return nil, conflict
-		}
-	}
-	factor := big.NewRat(1, 1)
-	for _, split := range t.splitDays[commodityID] {
-		if split.EffectiveOn > observed && split.EffectiveOn <= onDate {
-			factor.Mul(factor, split.Factor)
-		}
-	}
-	return factor, ""
+	return db.SplitFactor(t.splitDays[commodityID], t.splitConflicts[commodityID], observed, onDate)
 }
 
 // QuoteCommodityID is the currency this table converts into.
