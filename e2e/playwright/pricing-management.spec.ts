@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 import { readyForLedger, ensureCurrency } from './support/ledger';
 import { apiJSON } from './support/api';
-import { todayISO } from './support/dates';
+import { daysFromTodayISO, todayISO } from './support/dates';
 
 test.use({ viewport: { width: 390, height: 844 } });
 const messages = (locale = 'en') => JSON.parse(readFileSync(new URL(`../../frontend/messages/pricing/${locale}.json`, import.meta.url), 'utf8'));
@@ -144,4 +144,65 @@ test('[acceptance] empty configured instrument and older history pages are reach
   await expect(page.getByRole('button',{name:m.pricing_load_more,exact:true})).toBeHidden();
   expect(historyRequests).toBe(2);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+// R13 slice 7 (#119): a total-return benchmark series is entered in the
+// browser. It is labelled benchmark-only, a correction keeps its basis, and
+// the returns screen reads it as a total-return benchmark.
+test('[acceptance] a manual total-return price feeds a total-return benchmark at 390px', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const m = messages();
+  const opened = daysFromTodayISO(-60);
+  // The returns screen needs an investment account to compare against.
+  await apiJSON(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: 'Total-return broker', account_class: 'asset', account_kind: 'brokerage_cash',
+    default_commodity_id: currencyID, allows_postings: true, opened_on: opened, effective_from: opened
+  });
+  const index = await apiJSON<{ commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
+    commodity_code: 'TRIDX', instrument_type: 'other', display_name: 'Total-return index', symbol: 'TRIDX',
+    quote_commodity_id: currencyID, trading_commodity_id: currencyID, quantity_scale: 0, price_scale: 2, effective_from: opened
+  });
+  await page.goto(`/app/pricing?base_commodity_id=${index.commodity_id}&quote_commodity_id=${currencyID}`);
+  await expect(page.locator('#pricing-history-base')).toHaveValue(String(index.commodity_id));
+  const record = async (date: string, amount: string) => {
+    await page.getByRole('button', { name: m.pricing_add, exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: m.pricing_add, exact: true });
+    const basis = dialog.getByRole('combobox', { name: m.pricing_adjustment_basis, exact: true });
+    await expect(basis).toHaveValue('raw');
+    await expect(dialog.getByText(m.pricing_basis_hint, { exact: true })).toBeVisible();
+    await basis.selectOption('total_return');
+    await dialog.locator('#price-date').fill(date);
+    await dialog.locator('#price-amount').fill(amount);
+    await dialog.locator('#price-reason').fill('Index factsheet');
+    await dialog.getByRole('button', { name: m.pricing_review, exact: true }).click();
+    await expect(dialog.getByRole('region', { name: m.pricing_review_title })).toContainText(`${m.pricing_adjustment_basis}: ${m.pricing_basis_total}`);
+    const saved = page.waitForResponse(res => res.url().endsWith('/pricing/manual') && res.request().method() === 'POST');
+    await dialog.getByRole('button', { name: m.pricing_confirm, exact: true }).click();
+    const response = await saved; expect(response.status()).toBe(201);
+    expect(response.request().postDataJSON().adjustment_basis).toBe('total_return');
+    await expect(dialog).toBeHidden();
+    return (await response.json()) as { id: number };
+  };
+  const opening = await record(daysFromTodayISO(-46), '90');
+  await record(todayISO(), '115');
+  const row = page.locator(`[data-price-id="${opening.id}"]`);
+  await expect(row).toContainText(`${m.pricing_basis_total} · ${m.pricing_benchmark_only}`);
+
+  await row.getByRole('button', { name: m.pricing_correct, exact: true }).click();
+  const correct = page.getByRole('dialog', { name: m.pricing_correct, exact: true });
+  await expect(correct.getByRole('combobox', { name: m.pricing_adjustment_basis })).toHaveCount(0);
+  await expect(correct).toContainText(m.pricing_basis_kept);
+  await correct.locator('#price-amount').fill('100');
+  await correct.locator('#price-reason').fill('Factsheet restated');
+  await correct.getByRole('button', { name: m.pricing_review, exact: true }).click();
+  const corrected = page.waitForResponse(res => res.url().endsWith(`/prices/${opening.id}/correct`) && res.request().method() === 'POST');
+  await correct.getByRole('button', { name: m.pricing_confirm, exact: true }).click();
+  const replacement = await (await corrected).json();
+  expect(replacement.replacement.adjustment_basis).toBe('total_return');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  const params = new URLSearchParams({ from: daysFromTodayISO(-45), to: todayISO(), reporting_currency_id: String(currencyID),
+    benchmark_commodity_id: String(index.commodity_id), benchmark_basis: 'total_return' });
+  await page.goto(`/app/investments/returns?${params}`);
+  await expect(page.getByTestId('returns-benchmark').getByTestId('returns-benchmark-period')).toHaveText('+15.00%');
 });

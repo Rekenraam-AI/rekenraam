@@ -24,6 +24,7 @@
     {#if price.is_manual}<StatusBadge>{m.pricing_owner_assertion()}</StatusBadge>{/if}
     {#if price.is_derived}<StatusBadge tone="warning">{m.pricing_derived_warning()}</StatusBadge>{/if}
     {#if price.is_approximate}<StatusBadge tone="warning">{m.pricing_approximate()}</StatusBadge>{/if}
+    {#if price.adjustment_basis === 'total_return'}<StatusBadge>{m.pricing_basis_total()} · {m.pricing_benchmark_only()}</StatusBadge>{/if}
   </div>
   {#if detailed}
     <dl class="grid gap-2 text-sm sm:grid-cols-2 [&_dt]:text-muted [&_dd]:break-words">

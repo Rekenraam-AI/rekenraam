@@ -29493,6 +29493,12 @@ export interface components {
             /** @description Positive int64 coefficient, canonical decimal string. Maximum 9223372036854775807. */
             base_quantity_value: string;
             base_quantity_scale: number;
+            /**
+             * @description raw values ledger units; total_return values only an R13 benchmark declared total-return and is refused for a currency base.
+             * @default raw
+             * @enum {string}
+             */
+            adjustment_basis: "raw" | "total_return";
             /** Format: date-time */
             observed_at?: string;
             reference?: string;
@@ -29505,6 +29511,8 @@ export interface components {
             /** @description Positive int64 coefficient, canonical decimal string. Maximum 9223372036854775807. */
             base_quantity_value: string;
             base_quantity_scale: number;
+            /** @description Optional. A correction keeps the replaced observation's basis; any other value is refused. */
+            adjustment_basis?: string;
             /** Format: date-time */
             observed_at?: string;
             reference?: string;

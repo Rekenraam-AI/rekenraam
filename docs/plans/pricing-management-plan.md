@@ -93,8 +93,13 @@ their deduplication identity retain the existing immutable model.
 ### Manual commands
 
 Manual entry requires an exact positive price and base quantity, a valuation
-date, and a reason. It always uses the seeded manual source, manual quote type,
-raw adjustment basis, and optional plain-text reference/observation timestamp.
+date, and a reason. It always uses the seeded manual source and manual quote
+type, with an optional plain-text reference/observation timestamp. Its
+adjustment basis is `raw` unless the owner chooses `total_return` for a
+security or crypto price (R13 slice 7, #119): a total-return price values only
+a returns benchmark declared total-return and never a ledger balance, so the
+form explains that and the history labels it benchmark-only. No other basis is
+recordable by hand, and a currency price is never total-return.
 The coefficient range is checked before converting to the existing int64 model;
 overflow refuses without writes. The legacy create route may not carry a
 supersedes ID: correction has its own reviewed command.
@@ -108,8 +113,9 @@ Legacy callers may void without an acknowledgement; the new UI always supplies
 one. The existing depth-16 bound remains atomic: deeper closure refuses wholly.
 
 Correction retires the root and active derived closure, then appends a manual
-replacement for the root's same commodity pair and valuation date. Other dates
-or pairs require explicit void plus separate manual entry. It preserves all
+replacement for the root's same commodity pair, valuation date and adjustment
+basis. Other dates, pairs or bases require explicit void plus separate manual
+entry: relabelling a basis would move the price between selections. It preserves all
 original values/source/trade identities, records immutable supersession linkage,
 and uses one audit event for retirement and replacement. It does not regenerate
 derived rates, reinterpret provider IDs or edit trade-implied ledger facts.

@@ -111,6 +111,7 @@ type manualPriceRequest struct {
 	PriceScale        int    `json:"price_scale"`
 	BaseQuantityValue string `json:"base_quantity_value"`
 	BaseQuantityScale int    `json:"base_quantity_scale"`
+	AdjustmentBasis   string `json:"adjustment_basis"`
 	ObservedAt        string `json:"observed_at"`
 	Reference         string `json:"reference"`
 	Reason            string `json:"reason"`
@@ -158,7 +159,7 @@ func writeManualPrice(logger *slog.Logger, auth *app.AuthService, service *app.P
 		input := app.ManualPriceInput{OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
 			BaseCommodityID: request.BaseCommodityID, QuoteCommodityID: request.QuoteCommodityID, ValuationDate: request.ValuationDate,
 			PriceValue: request.PriceValue, PriceScale: request.PriceScale, BaseQuantityValue: request.BaseQuantityValue, BaseQuantityScale: request.BaseQuantityScale,
-			ObservedAt: request.ObservedAt, Reference: request.Reference, Reason: request.Reason}
+			AdjustmentBasis: request.AdjustmentBasis, ObservedAt: request.ObservedAt, Reference: request.Reference, Reason: request.Reason}
 		if correct {
 			id, ok := readPathInt64(w, r, "price_id", "price observation id")
 			if !ok {

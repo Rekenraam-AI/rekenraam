@@ -7,7 +7,8 @@ as "finding N"; `ae084c4d`: two, recorded under the expected cases). Slice 2
 (returns screen) slice 3 (cumulative TTWROR series and chart) and slice 4
 (allocation at the closing day), contracts below, delivered the same day;
 slice 5 (benchmarks) delivered the same day; slice 6 (saved runs) delivered
-2026-10-25. R13 core is complete.**
+2026-10-25. R13 core is complete. Slice 7 (browser total-return price entry,
+closing slice 5's API-only gap) delivered 2026-10-25.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
 0017 (provider independence, honest incomplete data) govern this plan.
@@ -409,9 +410,9 @@ provider is needed.
   2): a price, a total-return price, or the quote currency's exchange rate
   when the gap carries `via_commodity_id`.
 - **Recording total-return observations.** The general price API accepts any
-  adjustment basis; the browser's manual price form records `raw` only, so a
-  total-return series is entered through the API until that form offers the
-  basis.
+  adjustment basis. The browser's manual price form offers unadjusted (the
+  default) or total return for a security or crypto price (slice 7), and a
+  correction keeps the replaced price's basis.
 
 **Benchmark cases (slice 5).** S1 portfolio; benchmark IDX priced in EUR.
 
@@ -732,6 +733,19 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
    *Benchmark*), a benchmark card and a dashed chart line on the screen.
 6. **Saved return runs** — immutable output and input fingerprint, as R18.
    *Delivered 2026-10-25*; see *Saved return runs (slice 6)*.
+7. **Total-return price entry** — closes slice 5's gap: `POST
+   /api/v1/pricing/manual` accepts `adjustment_basis` `raw` (default) or
+   `total_return`, refused for a currency base, and the pricing form offers it
+   for securities and crypto with the benchmark-only consequence in words; the
+   history marks such a price "Total return · Benchmark only". A correction
+   keeps the replaced observation's basis and refuses another, because a
+   relabel would move a price between the raw and total-return selections
+   (before this slice a browser correction silently rewrote any basis to
+   `raw`). *Delivered 2026-10-25*: API
+   `TestManualTotalReturnPriceFeedsOnlyATotalReturnBenchmark` (100 → 110 reads
+   `0.100000` on the total-return benchmark while the portfolio stays
+   `0.000000` and the price-return benchmark stays unavailable; the corrected
+   88 → 110 reads `0.250000`), browser case in `pricing-management.spec.ts`.
 
 Targets and rebalancing are **deferred** (no trade execution is implied,
 per the product direction). Security-level (per-instrument) returns need an

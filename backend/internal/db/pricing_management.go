@@ -290,11 +290,14 @@ func (r *PricingRepository) CorrectPrice(ctx context.Context, params CorrectPric
 	return result, nil
 }
 
-func (r *PricingRepository) PricePairExists(ctx context.Context, bookID, baseID, quoteID int64) (bool, error) {
+// PricePairBaseKind reports whether both commodities belong to the book and,
+// when they do, the base commodity's kind (currency, security, crypto).
+func (r *PricingRepository) PricePairBaseKind(ctx context.Context, bookID, baseID, quoteID int64) (string, bool, error) {
 	var count int
-	err := r.database.QueryRowContext(ctx, `SELECT count(*) FROM commodities WHERE book_id = ? AND id IN (?, ?)`, bookID, baseID, quoteID).Scan(&count)
+	var kind sql.NullString
+	err := r.database.QueryRowContext(ctx, `SELECT count(*), MAX(CASE WHEN id = ? THEN kind END) FROM commodities WHERE book_id = ? AND id IN (?, ?)`, baseID, bookID, baseID, quoteID).Scan(&count, &kind)
 	if err != nil {
-		return false, fmt.Errorf("read price commodity references: %w", err)
+		return "", false, fmt.Errorf("read price commodity references: %w", err)
 	}
-	return count == 2, nil
+	return kind.String, count == 2, nil
 }

@@ -179,7 +179,9 @@ below is execution order, not a chain of hard dependencies.
    reviews), slice 2 (returns screen), slice 3 (TTWROR series and chart) and
    slice 4 (allocation at the closing day) and slice 5 (benchmarks on a
    declared price- or total-return basis) and slice 6 (immutable saved runs,
-   migration 0027, bundle schema 18) are delivered. Targets/rebalancing and
+   migration 0027, bundle schema 18) are delivered. Slice 7 (browser
+   total-return price entry, closing slice 5's API-only gap) followed on
+   2026-10-25. Targets/rebalancing and
    per-instrument returns stay deferred, as the plan records.
    #284's owner-reviewed investment/reporting dispositions are now complete.
    If the accepted contract consumes native realized totals, it reuses

@@ -26,12 +26,16 @@
   const initial = untrack(() => ({ base: target?.base_commodity_id ?? initialBase,
     quote: target?.quote_commodity_id ?? initialQuote, date: target?.valuation_date ?? workspace.as_of,
     price: target ? formatEditableAmount(target.price_value, target.price_scale) : '',
-    quantity: target ? formatEditableAmount(target.base_quantity_value, target.base_quantity_scale) : '1' }));
+    quantity: target ? formatEditableAmount(target.base_quantity_value, target.base_quantity_scale) : '1',
+    basis: target?.adjustment_basis ?? 'raw' }));
   let base = $state(initial.base);
   let quote = $state(initial.quote);
   let valuationDate = $state(initial.date);
   let price = $state(initial.price);
   let quantity = $state(initial.quantity);
+  // Raw prices value holdings; total-return prices serve only an R13
+  // benchmark. A correction keeps its target's basis, so it is shown, not sent.
+  let basis = $state(initial.basis);
   let reference = $state('');
   let observedAt = $state('');
   let reason = $state('');
@@ -44,6 +48,9 @@
   const title = $derived(mode === 'create' ? m.pricing_add() : mode === 'correct' ? m.pricing_correct() : m.pricing_void());
   const parsedPrice = $derived(parsePriceAmount(price));
   const parsedQuantity = $derived(parsePriceAmount(quantity));
+  const baseIsCurrency = $derived(workspace.commodities.find(item => item.id === base)?.kind === 'currency');
+  const sentBasis = $derived<NonNullable<ManualPriceRequest['adjustment_basis']>>(mode === 'create' && !baseIsCurrency && basis === 'total_return' ? 'total_return' : 'raw');
+  const basisLabels = $derived<Record<string, string>>({ raw: m.pricing_basis_raw(), split_adjusted: m.pricing_basis_split(), dividend_adjusted: m.pricing_basis_dividend(), total_return: m.pricing_basis_total(), not_applicable: m.pricing_basis_na() });
   const canReview = $derived(!!reason.trim() && (mode === 'void' || (base > 0 && quote > 0 && base !== quote && !!valuationDate && !!parsedPrice && !!parsedQuantity)));
   function close() { if (pending) return; onCancel(); }
   function cancelReview() { reviewing = false; impact = null; void tick().then(() => reviewButton?.focus()); }
@@ -69,10 +76,10 @@
         const input: ManualPriceRequest = {
           base_commodity_id: base, quote_commodity_id: quote, valuation_date: valuationDate,
           price_value: parsedPrice.value, price_scale: parsedPrice.scale, base_quantity_value: parsedQuantity.value, base_quantity_scale: parsedQuantity.scale,
-          reason, reference, ...(observedAt.trim() ? { observed_at: observedAt.trim() } : {})
+          adjustment_basis: sentBasis, reason, reference, ...(observedAt.trim() ? { observed_at: observedAt.trim() } : {})
         };
         if (mode === 'correct' && target && impact) {
-          const { base_commodity_id: _base, quote_commodity_id: _quote, valuation_date: _date, ...correction } = input;
+          const { base_commodity_id: _base, quote_commodity_id: _quote, valuation_date: _date, adjustment_basis: _basis, ...correction } = input;
           await correctPrice(target.id, { ...correction, expected_impact: impact.token }, csrf);
         } else if (mode === 'create') await createManualPrice(input, csrf);
         else throw new TranslatedFormError(m.pricing_stale_review());
@@ -104,6 +111,14 @@
         <label class="grid gap-1 text-sm" for="price-amount">{m.pricing_price()}<input id="price-amount" inputmode="decimal" required bind:value={price} aria-describedby="price-amount-hint" class="min-h-11 w-full rounded-(--radius-control) border border-border bg-control px-3" /></label>
         <label class="grid gap-1 text-sm" for="price-quantity">{m.pricing_base_quantity()}<input id="price-quantity" inputmode="decimal" required bind:value={quantity} aria-describedby="price-amount-hint" class="min-h-11 w-full rounded-(--radius-control) border border-border bg-control px-3" /></label>
         <p id="price-amount-hint" class="text-sm text-muted">{m.pricing_amount_hint()}</p>
+        {#if mode === 'correct'}
+          <p class="grid gap-1 text-sm sm:col-span-2"><span class="text-muted">{m.pricing_adjustment_basis()}</span><span>{basisLabels[basis] ?? basis}</span><span class="text-muted">{m.pricing_basis_kept()}</span></p>
+        {:else if base > 0 && !baseIsCurrency}
+          <label class="grid gap-1 text-sm sm:col-span-2" for="price-basis">{m.pricing_adjustment_basis()}<select id="price-basis" bind:value={basis} aria-describedby="price-basis-hint" class="min-h-11 w-full rounded-(--radius-control) border border-border bg-control px-3">
+            <option value="raw">{m.pricing_basis_raw()}</option><option value="total_return">{m.pricing_basis_total()}</option>
+          </select></label>
+          <p id="price-basis-hint" class="text-sm text-muted sm:col-span-2">{m.pricing_basis_hint()}</p>
+        {/if}
         <label class="grid gap-1 text-sm sm:col-span-2" for="price-reference">{m.pricing_reference()}<input id="price-reference" maxlength="500" bind:value={reference} class="min-h-11 w-full rounded-(--radius-control) border border-border bg-control px-3" /></label>
         <label class="grid gap-1 text-sm sm:col-span-2" for="price-observed">{m.pricing_observed_input()}<input id="price-observed" bind:value={observedAt} placeholder="2026-10-13T12:00:00Z" class="min-h-11 w-full rounded-(--radius-control) border border-border bg-control px-3" /></label>
       {/if}
@@ -121,6 +136,7 @@
       {#if mode !== 'void' && parsedPrice && parsedQuantity}
         <p class="break-words font-semibold">{m.pricing_amount_pair({ price: formatQuantity(parsedPrice.value, parsedPrice.scale, locale), quote: workspace.commodities.find(item => item.id === quote)?.code ?? '', base: formatQuantity(parsedQuantity.value, parsedQuantity.scale, locale), instrument: workspace.commodities.find(item => item.id === base)?.code ?? '' })}</p>
         <p>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(parseISO(valuationDate))}</p>
+        {#if (mode === 'correct' ? basis : sentBasis) !== 'raw'}<p>{m.pricing_adjustment_basis()}: {basisLabels[mode === 'correct' ? basis : sentBasis] ?? basis}</p>{/if}
         <p class="text-sm text-muted">{m.pricing_owner_assertion()}</p>
       {/if}
       <p class="break-words text-sm">{reason}</p>

@@ -194,10 +194,18 @@ type ManualPriceInput struct {
 	PriceScale        int
 	BaseQuantityValue string
 	BaseQuantityScale int
-	ObservedAt        string
-	Reference         string
-	Reason            string
+	// AdjustmentBasis is raw (the default) or total_return. A correction
+	// keeps the basis of the observation it replaces.
+	AdjustmentBasis string
+	ObservedAt      string
+	Reference       string
+	Reason          string
 }
+
+// manualEntryBases are the bases an owner can record by hand: raw values
+// ledger units; total_return values only an R13 benchmark declared
+// total-return (observationSelection never lets it value a balance).
+var manualEntryBases = map[string]bool{"raw": true, "total_return": true}
 
 type PriceImpact struct {
 	Prices []PriceObservation
@@ -237,12 +245,19 @@ func (s *PricingService) manualPriceSpec(ctx context.Context, input ManualPriceI
 	if input.BaseCommodityID == input.QuoteCommodityID {
 		return db.PriceObservationSpec{}, ValidationError{Message: "price pair must be distinct"}
 	}
-	valid, err := s.repository.PricePairExists(ctx, BookID, input.BaseCommodityID, input.QuoteCommodityID)
+	baseKind, valid, err := s.repository.PricePairBaseKind(ctx, BookID, input.BaseCommodityID, input.QuoteCommodityID)
 	if err != nil {
 		return db.PriceObservationSpec{}, err
 	}
 	if !valid {
 		return db.PriceObservationSpec{}, ValidationError{Message: "price commodities are invalid"}
+	}
+	basis := strings.TrimSpace(input.AdjustmentBasis)
+	if basis == "" {
+		basis = "raw"
+	}
+	if basis == "total_return" && baseKind == "currency" {
+		return db.PriceObservationSpec{}, ValidationError{Message: "a currency price cannot be total-return"}
 	}
 	price, err := priceInt64(input.PriceValue)
 	if err != nil {
@@ -267,12 +282,15 @@ func (s *PricingService) manualPriceSpec(ctx context.Context, input ManualPriceI
 	return cleanPriceObservationSpec(PriceObservationInput{
 		BaseCommodityID: input.BaseCommodityID, QuoteCommodityID: input.QuoteCommodityID, ValuationDate: input.ValuationDate,
 		PriceValue: price, PriceScale: input.PriceScale, BaseQuantityValue: quantity, BaseQuantityScale: input.BaseQuantityScale,
-		SourceID: &sourceID, IsManual: true, QuoteType: "manual", AdjustmentBasis: "raw", ObservedAt: input.ObservedAt,
+		SourceID: &sourceID, IsManual: true, QuoteType: "manual", AdjustmentBasis: basis, ObservedAt: input.ObservedAt,
 		MetadataJSON: string(metadata), DerivationJSON: "{}", SeriesMetadataJSON: "{}",
 	})
 }
 
 func (s *PricingService) CreateManualPrice(ctx context.Context, input ManualPriceInput) (PriceObservation, error) {
+	if basis := strings.TrimSpace(input.AdjustmentBasis); basis != "" && !manualEntryBases[basis] {
+		return PriceObservation{}, ValidationError{Message: "manual prices are raw or total-return"}
+	}
 	spec, err := s.manualPriceSpec(ctx, input)
 	if err != nil {
 		return PriceObservation{}, err
@@ -313,6 +331,13 @@ func (s *PricingService) CorrectPrice(ctx context.Context, input CorrectPriceInp
 	if (input.BaseCommodityID != 0 && input.BaseCommodityID != root.BaseCommodityID) || (input.QuoteCommodityID != 0 && input.QuoteCommodityID != root.QuoteCommodityID) || (input.ValuationDate != "" && input.ValuationDate != root.ValuationDate) {
 		return CorrectPriceResult{}, ValidationError{Message: "price correction keeps the same pair and valuation date"}
 	}
+	// Relabelling a basis would move the price between selections (a
+	// total-return benchmark quote would start valuing ledger units), so a
+	// correction is a new value on the same basis, never a new basis.
+	if input.AdjustmentBasis != "" && strings.TrimSpace(input.AdjustmentBasis) != root.AdjustmentBasis {
+		return CorrectPriceResult{}, ValidationError{Message: "price correction keeps the same adjustment basis"}
+	}
+	input.AdjustmentBasis = root.AdjustmentBasis
 	input.BaseCommodityID = root.BaseCommodityID
 	input.QuoteCommodityID = root.QuoteCommodityID
 	input.ValuationDate = root.ValuationDate

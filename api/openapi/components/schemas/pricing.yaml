@@ -737,6 +737,13 @@ ManualPriceRequest:
       type: integer
       minimum: 0
       maximum: 18
+    adjustment_basis:
+      type: string
+      enum:
+      - raw
+      - total_return
+      default: raw
+      description: raw values ledger units; total_return values only an R13 benchmark declared total-return and is refused for a currency base.
     observed_at:
       type: string
       format: date-time
@@ -776,6 +783,9 @@ CorrectPriceRequest:
       type: integer
       minimum: 0
       maximum: 18
+    adjustment_basis:
+      type: string
+      description: Optional. A correction keeps the replaced observation's basis; any other value is refused.
     observed_at:
       type: string
       format: date-time

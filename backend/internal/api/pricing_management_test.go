@@ -215,3 +215,67 @@ func TestCreateDerivedPriceRejectsALegNamingNoObservation(t *testing.T) {
 	require.NoError(t, database.QueryRow(`SELECT count(*) FROM price_observation_dependencies WHERE source_observation_id = ?`, created.ID).Scan(&links))
 	assert.Equal(t, 1, links)
 }
+
+// R13 slice 7: the manual entry route records a total-return benchmark
+// series. It feeds only a benchmark declared total-return, never the
+// portfolio's own valuation, and a correction cannot relabel its basis.
+func TestManualTotalReturnPriceFeedsOnlyATotalReturnBenchmark(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	f := bootstrapInvestmentAPITest(t, handler)
+	instrument := createInstrumentForSession(t, handler, f, "TRI")
+	holding := createHoldingAccountForSession(t, handler, f, instrument.ID)
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/buy",
+		tradeRequestBody(f, holding.ID, instrument.CommodityID, "2", 4000), http.StatusCreated)
+	entry := func(date, price, basis string) manualPriceRequest {
+		return manualPriceRequest{BaseCommodityID: instrument.CommodityID, QuoteCommodityID: f.commodityID, ValuationDate: date,
+			PriceValue: price, PriceScale: 0, BaseQuantityValue: "1", AdjustmentBasis: basis, Reason: "index factsheet"}
+	}
+	var opening priceObservationResponse
+	res := doPricingRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/pricing/manual", entry("2026-01-31", "100", "total_return"), http.StatusCreated)
+	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &opening))
+	assert.Equal(t, "total_return", opening.AdjustmentBasis)
+	assert.Equal(t, "manual", opening.QuoteType)
+	doPricingRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/pricing/manual", entry("2026-02-01", "110", "total_return"), http.StatusCreated)
+
+	path := fmt.Sprintf("/api/v1/investments/returns?from=2026-02-01&to=2026-02-01&reporting_currency_id=%d&benchmark_commodity_id=%d", f.commodityID, instrument.CommodityID)
+	read := func(basis string) investmentReturnsResponse {
+		res := doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, path+"&benchmark_basis="+basis, nil, http.StatusOK)
+		var body investmentReturnsResponse
+		require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
+		require.NotNil(t, body.Benchmark)
+		return body
+	}
+	total := read("total_return")
+	require.NotNil(t, total.Benchmark.TimeWeighted.Value, "100 → 110 on the declared basis")
+	assert.Equal(t, "0.100000", *total.Benchmark.TimeWeighted.Value)
+	// The trade-implied price still values the holding; 110 is not a raw quote.
+	require.NotNil(t, total.TimeWeighted.Value)
+	assert.Equal(t, "0.000000", *total.TimeWeighted.Value)
+	price := read("price_return")
+	assert.Nil(t, price.Benchmark.TimeWeighted.Value, "total-return observations never price a price-return benchmark")
+
+	// A correction keeps the basis it replaces and refuses another.
+	preview := doPricingRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/pricing/prices/"+itoa(opening.ID)+"/impact", nil, http.StatusOK)
+	var impact priceImpactResponse
+	require.NoError(t, json.Unmarshal(preview.Body.Bytes(), &impact))
+	relabel := entry("2026-01-31", "100", "raw")
+	relabel.ExpectedImpact = impact.Token
+	doPricingRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/pricing/prices/"+itoa(opening.ID)+"/correct", relabel, http.StatusBadRequest)
+	correction := entry("2026-01-31", "88", "")
+	correction.ExpectedImpact = impact.Token
+	res = doPricingRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/pricing/prices/"+itoa(opening.ID)+"/correct", correction, http.StatusCreated)
+	var corrected correctPriceResponse
+	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &corrected))
+	assert.Equal(t, "total_return", corrected.Replacement.AdjustmentBasis)
+	total = read("total_return")
+	require.NotNil(t, total.Benchmark.TimeWeighted.Value)
+	assert.Equal(t, "0.250000", *total.Benchmark.TimeWeighted.Value, "88 → 110")
+
+	// Only raw and total-return are recordable, and a currency is never total-return.
+	doPricingRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/pricing/manual", entry("2026-02-02", "100", "split_adjusted"), http.StatusBadRequest)
+	gbp := createCurrencyForSession(t, handler, f.sessionCookie, f.csrfToken, `{"code":"GBP"}`)
+	currency := entry("2026-02-02", "1", "total_return")
+	currency.BaseCommodityID = gbp.ID
+	doPricingRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/pricing/manual", currency, http.StatusBadRequest)
+}
