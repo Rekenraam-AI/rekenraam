@@ -113,3 +113,120 @@ func (f *returnsFixture) buyFromBrokerCash(t *testing.T, date string, cents int6
 	})
 	require.NoError(t, err)
 }
+
+// O4–O7, review of 942507ae: a quote prices the instrument, so its basis on a
+// split day is instrument-wide, decided by every holding that recorded the
+// day's split, not only the trade's own holding. Quantities stay a holding's.
+
+// O4: holding A sells its 10 TEST at 100 before holding B records the day's
+// 2:1 split; A records none (it holds nothing after). The sale priced a
+// pre-split unit, so B's 2 units are worth 100, not 200.
+func TestSplitDayQuoteFromAnotherHoldingUsesTheInstrumentBasis(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newReturnsFixture(t)
+	second := f.secondHoldingWithOneUnit(t)
+	_, err := f.investmentService.Sell(ctx, InvestmentTradeInput{
+		OwnerUserID: f.ownerUserID, TransactionDate: "2026-02-02", CommodityID: f.stockCommodityID,
+		HoldingAccountID: f.holdingAccountID, CashAccountID: f.brokerCashID, QuantityValue: exact.New(10),
+		CashAmountValue: 100000, CashAmountScale: 2, CashCommodityID: f.eurCommodityID, CostBasisMethod: "fifo",
+	})
+	require.NoError(t, err)
+	input := splitInput(f.investmentsTestFixture, "2026-02-02", 2, 1)
+	input.HoldingAccountID = second
+	_, err = acknowledgedSplit(ctx, f.investmentService, input)
+	require.NoError(t, err)
+
+	result := f.readBenchmark(t, "2026-02-01", "2026-02-03", f.stockCommodityID, "")
+	requireReturnsAmount(t, 1100, result.ClosingValue) // 1,000 cash + 2 × 50
+	requireReturn(t, "0.000000", result.TimeWeighted)
+	requireReturn(t, "0.000000", result.Benchmark.TimeWeighted)
+}
+
+// O5: replacing the trade and then the split keeps each in its original slot.
+func TestSplitDayQuoteBasisSurvivesTradeAndSplitReplacement(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newReturnsFixture(t)
+	input := InvestmentTradeInput{
+		OwnerUserID: f.ownerUserID, TransactionDate: "2026-02-02", CommodityID: f.stockCommodityID,
+		HoldingAccountID: f.holdingAccountID, CashAccountID: f.brokerCashID, QuantityValue: exact.New(1),
+		CashAmountValue: 10000, CashAmountScale: 2, CashCommodityID: f.eurCommodityID,
+	}
+	trade, err := f.investmentService.Buy(ctx, input)
+	require.NoError(t, err)
+	split, err := acknowledgedSplit(ctx, f.investmentService, splitInput(f.investmentsTestFixture, "2026-02-02", 2, 1))
+	require.NoError(t, err)
+	_, err = acknowledgedReplaceBuy(ctx, f.investmentService, ReplaceInvestmentBuyInput{
+		OwnerUserID: f.ownerUserID, TransactionID: trade.Transaction.ID, Reason: "restated same trade", Replacement: input,
+	})
+	require.NoError(t, err)
+	_, err = acknowledgedReplaceSplit(ctx, f.investmentService, replaceSplitInput(f.investmentsTestFixture, split.Transaction.ID, "2026-02-02", 4, 1))
+	require.NoError(t, err)
+
+	result := f.readBenchmark(t, "2026-02-01", "2026-02-03", f.stockCommodityID, "")
+	requireReturnsAmount(t, 1100, result.ClosingValue) // 44 × 25
+	requireReturn(t, "0.000000", result.TimeWeighted)
+	requireReturn(t, "0.000000", result.Benchmark.TimeWeighted)
+}
+
+// O6: a trade between two same-day splits of its holding priced units after
+// the first and before the second: 50 is 25 per end-of-day unit.
+func TestSplitDayTradeBetweenSuccessiveSplits(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newReturnsFixture(t)
+	_, err := acknowledgedSplit(ctx, f.investmentService, splitInput(f.investmentsTestFixture, "2026-02-02", 2, 1))
+	require.NoError(t, err)
+	f.buyFromBrokerCash(t, "2026-02-02", 5000)
+	_, err = acknowledgedSplit(ctx, f.investmentService, splitInput(f.investmentsTestFixture, "2026-02-02", 2, 1))
+	require.NoError(t, err)
+
+	result := f.readBenchmark(t, "2026-02-01", "2026-02-03", f.stockCommodityID, "")
+	requireReturnsAmount(t, 1100, result.ClosingValue) // 42 × 25 + 50
+	requireReturn(t, "0.000000", result.TimeWeighted)
+	requireReturn(t, "0.000000", result.Benchmark.TimeWeighted)
+}
+
+// O7: holding B records the day's split before a trade in holding A, which
+// records it after: the units the trade's quote priced are unknown, so the
+// value it would give is a conflicting_splits gap, never a guess.
+func TestSplitDayQuoteBetweenHoldingsSplitsIsAGap(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newReturnsFixture(t)
+	second := f.secondHoldingWithOneUnit(t)
+	input := splitInput(f.investmentsTestFixture, "2026-02-02", 2, 1)
+	input.HoldingAccountID = second
+	_, err := acknowledgedSplit(ctx, f.investmentService, input)
+	require.NoError(t, err)
+	f.buyFromBrokerCash(t, "2026-02-02", 10000)
+	_, err = acknowledgedSplit(ctx, f.investmentService, splitInput(f.investmentsTestFixture, "2026-02-02", 2, 1))
+	require.NoError(t, err)
+
+	result := f.read(t, "2026-02-01", "2026-02-03")
+	require.Nil(t, result.ClosingValue.Amount)
+	require.Equal(t, ReturnReasonValuationUnavailable, result.ClosingValue.Reason)
+	require.Len(t, result.Valuation.Gaps, 1)
+	require.Equal(t, RateMissingConflictingSplits, result.Valuation.Gaps[0].Reason)
+
+	_, gains, err := f.investmentService.UnrealizedGainsProjection(ctx, "2026-02-03")
+	require.NoError(t, err)
+	for _, entry := range gains {
+		require.Nil(t, entry.MarketValueValue, "holdings refuse the disputed quote too")
+	}
+}
+
+// secondHoldingWithOneUnit opens another TEST holding with 1 unit bought from
+// broker cash for 100 before the opening boundary.
+func (f *returnsFixture) secondHoldingWithOneUnit(t *testing.T) int64 {
+	t.Helper()
+	second := seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
+	_, err := f.investmentService.Buy(context.Background(), InvestmentTradeInput{
+		OwnerUserID: f.ownerUserID, TransactionDate: "2026-01-25", CommodityID: f.stockCommodityID,
+		HoldingAccountID: second, CashAccountID: f.brokerCashID, QuantityValue: exact.New(1),
+		CashAmountValue: 10000, CashAmountScale: 2, CashCommodityID: f.eurCommodityID,
+	})
+	require.NoError(t, err)
+	return second
+}

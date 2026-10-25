@@ -433,6 +433,10 @@ provider is needed.
 | O1 trade before split | buy 1 for 100 from broker cash 02-02, then 2:1 that day; 02-01..02-03 | closing 1,100 = 22 × 50; TTWROR `0.000000`; holdings value 1,100 |
 | O2 trade after split | 2:1 on 02-02, then buy 1 for 50 | closing 1,100 = 21 × 50 + 50; `0.000000` |
 | O3 delivery before split | external transfer-in of 1 on 02-02, then 2:1; stale (01-31) or fresh (50 on 02-02) quote | contribution 100, closing 1,200, `0.000000` |
+| O4 quote from another holding | holding A sells its 10 at 100 on 02-02, then holding B (1 unit) records 2:1 | closing 1,100 = 1,000 + 2 × 50; portfolio and benchmark `0.000000` |
+| O5 replacements | O1, then the buy and the split are replaced (split 4:1) | closing 1,100 = 44 × 25; `0.000000` |
+| O6 between splits | 2:1, buy 1 for 50, 2:1, one holding, one day | closing 1,100 = 42 × 25 + 50; `0.000000` |
+| O7 disputed basis | B records 2:1, then a buy in A, then A records 2:1 | closing value `valuation_unavailable`, gap `conflicting_splits`; holdings unvalued |
 
 **Review of `eeab1a2a` (2026-10-25).** Both findings accepted: (1) a
 price-return benchmark read raw quotes for one fixed unit, so a recorded 2:1
@@ -460,6 +464,13 @@ same-day split, and a delivery posted before one, were read in post-split
 units (cases O1–O3, `investment_returns_split_order_test.go`, including
 holdings through the dated valuation read). The chained-FX benchmark probe
 passed and is kept as a regression.
+
+**Review of `942507ae` (2026-10-25).** Accepted: the quote rule consulted
+only the trade's own holding, so a sale before another holding's same-day
+split was read as a post-split price (O4: 2 units valued at 200). A quote's
+basis is now instrument-wide, with a disputed basis a gap (O7); quantities
+keep the holding rule. The reviewer's replacement and between-splits probes
+passed and are kept (O5, O6).
 
 ## Money-weighted return (IRR)
 

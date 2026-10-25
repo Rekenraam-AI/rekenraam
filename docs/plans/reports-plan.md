@@ -101,13 +101,19 @@ selector, restated rows, coverage notices, charts, and CSV output ship in
   *Same-day order.* A split splits the lots that exist at its replay slot
   (the correction root's operation id, the order replay uses), so an event
   ordered before it that day carried pre-split units. A trade-implied quote
-  from a trade ordered before a split its holding recorded that day is cash
-  per pre-split unit: it is first divided by the factor still pending after
-  the trade (`db.PendingSplitFactor`), which brings it to the end of its own
-  day, and the disclosed factor includes it. Every other quote dated on a
-  split day prices a post-split (end-of-day) unit. The same pending factor
-  multiplies the units an investment operation posted before that day's
-  split when R13 values them as a flow. Every `RateTable` consumer
+  is cash per unit of its trade, and a quote prices the instrument, not one
+  holding, so its basis is instrument-wide: it is divided by the factor of
+  the day's splits recorded after the trade's slot, which every holding that
+  recorded the day's split must agree on (`db.TradeQuotePendingSplits`);
+  that brings it to the end of its own day, and the disclosed factor
+  includes it. A trade ordered between one holding's split and another's
+  priced units nobody can name: that quote is a `conflicting_splits` gap
+  (and holdings leave the position unvalued), never a guess. Every other
+  quote dated on a split day prices a post-split (end-of-day) unit.
+  Quantities are a holding's: the units an investment operation posted
+  before its own holding's split that day are multiplied by the factor
+  pending after its slot in that holding (`db.PendingSplitFactor`) when R13
+  values them as a flow. Every `RateTable` consumer
   (net worth, spending, cashflow, R13) reads this one rule, and so do
   holdings and unrealized gains (current, dated, statement and alternative
   reads, #408), which price positions from the selection directly: their

@@ -155,7 +155,9 @@ func previousISODate(date string) string {
 
 // PendingSplitFactor is how many end-of-day units one unit of an event earlier
 // in a split day became: the product of the splits the same holding recorded
-// for the instrument that day in a later replay slot. A same-day trade or
+// for the instrument that day in a later replay slot. It is for quantities,
+// which belong to a holding; a quote's basis is instrument-wide
+// (TradeQuotePendingSplits). A same-day trade or
 // delivery ordered before the split carried pre-split units (the split split
 // them), one ordered after it carried post-split units. Nil when none is
 // pending. Splits must be ordered as InstrumentSplits returns them.
@@ -173,26 +175,37 @@ func PendingSplitFactor(splits []InstrumentSplit, commodityID, accountID int64, 
 	return factor
 }
 
+// TradeQuoteBasis is how a trade-implied quote dated on a split day relates
+// to that day's end-of-day units. A quote prices the instrument, not one
+// holding, so its basis is instrument-wide: Pending is the factor of the
+// day's splits recorded after the trade's slot, which every holding that
+// recorded the day's split agrees on. Disputed is set when they do not (the
+// trade falls between one holding's split and another's): the units the
+// quote priced are then unknown.
+type TradeQuoteBasis struct {
+	Pending  *big.Rat
+	Disputed bool
+}
+
 // TradeQuotePendingSplits returns, per trade-implied observation of the given
-// instruments dated in (after, through], the split factor still pending after
-// its trade (PendingSplitFactor): such a quote is cash per unit of the trade,
-// and a trade ordered before that day's split priced pre-split units. Only
-// observations with a pending split appear.
-func (r *PricingRepository) TradeQuotePendingSplits(ctx context.Context, bookID int64, commodityIDs []int64, after, through string) (map[int64]*big.Rat, error) {
+// instruments dated in (after, through] on a day with a recorded split, its
+// TradeQuoteBasis: such a quote is cash per unit of its trade, and a trade
+// ordered before that day's split priced pre-split units. Observations with
+// nothing pending and nothing disputed are omitted. Quantities follow the
+// operation's own holding instead (PendingSplitFactor): units are a
+// holding's, a price is the instrument's.
+func (r *PricingRepository) TradeQuotePendingSplits(ctx context.Context, bookID int64, commodityIDs []int64, after, through string) (map[int64]TradeQuoteBasis, error) {
 	return tradeQuotePendingSplits(ctx, r.database, bookID, commodityIDs, after, through)
 }
 
-func tradeQuotePendingSplits(ctx context.Context, queryer rowsQueryer, bookID int64, commodityIDs []int64, after, through string) (map[int64]*big.Rat, error) {
-	pending := map[int64]*big.Rat{}
+func tradeQuotePendingSplits(ctx context.Context, queryer rowsQueryer, bookID int64, commodityIDs []int64, after, through string) (map[int64]TradeQuoteBasis, error) {
+	bases := map[int64]TradeQuoteBasis{}
 	if len(commodityIDs) == 0 {
-		return pending, nil
+		return bases, nil
 	}
 	clause, args := inClause("po.base_commodity_id", commodityIDs)
-	// The trade's holding is the split's holding with a posting of the
-	// instrument in the observation's source version; the commodity-trading
-	// leg is a system account that never records a split.
 	rows, err := queryer.QueryContext(ctx, correctionRootsCTE+`
-		SELECT po.id, f.ratio_numerator, f.ratio_denominator
+		SELECT po.id, f.account_id, f.ratio_numerator, f.ratio_denominator, slot.root_id > trade.root_id
 		FROM price_observations po
 		JOIN investment_operation_journal_links link ON link.transaction_version_id = po.source_transaction_version_id
 		JOIN correction_roots trade ON trade.operation_id = link.operation_id
@@ -201,25 +214,52 @@ func tradeQuotePendingSplits(ctx context.Context, queryer rowsQueryer, bookID in
 		JOIN effective_investment_operations split ON split.id = f.operation_id
 		JOIN correction_roots slot ON slot.operation_id = f.operation_id
 		WHERE po.book_id = ? AND po.quote_type = 'trade_implied' AND `+clause+`
-			AND po.valuation_date > ? AND po.valuation_date <= ? AND slot.root_id > trade.root_id
-			AND EXISTS (SELECT 1 FROM posting_versions pv WHERE pv.transaction_version_id = po.source_transaction_version_id
-				AND pv.account_id = f.account_id AND pv.commodity_id = po.base_commodity_id)
-		ORDER BY po.id, slot.root_id`, append(append([]any{bookID, bookID, bookID}, args...), after, through)...)
+			AND po.valuation_date > ? AND po.valuation_date <= ?
+		ORDER BY po.id, f.account_id, slot.root_id`, append(append([]any{bookID, bookID, bookID}, args...), after, through)...)
 	if err != nil {
 		return nil, fmt.Errorf("read trade quote pending splits: %w", err)
 	}
 	defer rows.Close()
+	// Per observation, per holding: the factor that holding recorded after the
+	// trade (1 when all of its splits that day came before it).
+	byHolding := map[int64]map[int64]*big.Rat{}
+	var order []int64
 	for rows.Next() {
-		var observationID, numerator, denominator int64
-		if err := rows.Scan(&observationID, &numerator, &denominator); err != nil {
+		var observationID, accountID, numerator, denominator int64
+		var afterTrade bool
+		if err := rows.Scan(&observationID, &accountID, &numerator, &denominator, &afterTrade); err != nil {
 			return nil, fmt.Errorf("scan trade quote pending split: %w", err)
 		}
-		if pending[observationID] == nil {
-			pending[observationID] = big.NewRat(1, 1)
+		if byHolding[observationID] == nil {
+			byHolding[observationID] = map[int64]*big.Rat{}
+			order = append(order, observationID)
 		}
-		pending[observationID].Mul(pending[observationID], big.NewRat(numerator, denominator))
+		if byHolding[observationID][accountID] == nil {
+			byHolding[observationID][accountID] = big.NewRat(1, 1)
+		}
+		if afterTrade {
+			byHolding[observationID][accountID].Mul(byHolding[observationID][accountID], big.NewRat(numerator, denominator))
+		}
 	}
-	return pending, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate trade quote pending splits: %w", err)
+	}
+	one := big.NewRat(1, 1)
+	for _, observationID := range order {
+		var pending *big.Rat
+		disputed := false
+		for _, factor := range byHolding[observationID] {
+			disputed = disputed || (pending != nil && pending.Cmp(factor) != 0)
+			pending = factor
+		}
+		switch {
+		case disputed:
+			bases[observationID] = TradeQuoteBasis{Disputed: true}
+		case pending.Cmp(one) != 0:
+			bases[observationID] = TradeQuoteBasis{Pending: pending}
+		}
+	}
+	return bases, nil
 }
 
 // splitAdjustPositionPrices brings each position's latest raw quote to the
@@ -269,8 +309,13 @@ func splitAdjustPositionPrices(ctx context.Context, queryer rowsQueryer, bookID 
 			continue
 		}
 		factor, conflict := SplitFactor(days[position.CommodityID], conflicts[position.CommodityID], observed.String, position.ValuationAsOf)
-		if own := pending[position.latestPriceObservationID.Int64]; own != nil && conflict == "" {
-			factor.Mul(factor, own)
+		if basis := pending[position.latestPriceObservationID.Int64]; conflict == "" {
+			switch {
+			case basis.Disputed:
+				conflict = position.LatestPriceDate.String
+			case basis.Pending != nil:
+				factor.Mul(factor, basis.Pending)
+			}
 		}
 		switch {
 		case conflict != "":

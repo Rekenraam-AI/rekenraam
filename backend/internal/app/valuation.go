@@ -162,10 +162,11 @@ type RateTable struct {
 	// under total-return selection.
 	splitDays      map[int64][]SplitDay
 	splitConflicts map[int64][]string
-	// pendingSplits holds, per trade-implied observation whose trade was
-	// ordered before a split on its own day, the factor still pending after
-	// the trade: that quote priced pre-split units.
-	pendingSplits map[int64]*big.Rat
+	// pendingSplits holds, per trade-implied observation dated on a split
+	// day, its instrument-wide basis: the factor still pending after the
+	// trade (that quote priced pre-split units), or disputed when holdings
+	// recorded the day's split on both sides of the trade.
+	pendingSplits map[int64]db.TradeQuoteBasis
 }
 
 // NewRateTable loads every rate that could be needed to convert the given
@@ -408,17 +409,25 @@ type resolvedRate struct {
 // endOfDay brings a trade-implied quote ordered before a split on its own day
 // to that day's end-of-day units: each unit it priced became the pending
 // factor's units, so the price per unit is divided by it, exactly. Every
-// other quote already prices an end-of-day unit.
-func (t *RateTable) endOfDay(rate resolvedRate, observationID int64) resolvedRate {
-	factor := t.pendingSplits[observationID]
+// other quote already prices an end-of-day unit. A quote whose basis the
+// holdings dispute prices unknown units: a conflicting_splits gap.
+func (t *RateTable) endOfDay(commodityID int64, rate resolvedRate, observationID int64) (resolvedRate, bool) {
+	basis := t.pendingSplits[observationID]
+	if basis.Disputed {
+		if _, recorded := t.gaps[commodityID]; !recorded {
+			t.gaps[commodityID] = RateGap{CommodityID: commodityID, Reason: RateMissingConflictingSplits, NearestObservationDate: rate.use.ObservationDate}
+		}
+		return resolvedRate{}, false
+	}
+	factor := basis.Pending
 	if factor == nil {
-		return rate
+		return rate, true
 	}
 	rate.price = new(big.Int).Mul(rate.price, factor.Denom())
 	rate.base = new(big.Int).Mul(rate.base, factor.Num())
 	rate.pending = factor
 	rate.use.SplitRatioNumerator, rate.use.SplitRatioDenominator = factor.Num().String(), factor.Denom().String()
-	return rate
+	return rate, true
 }
 
 // resolve selects a commodity's rate on a date and records a gap on a miss.
@@ -429,13 +438,13 @@ func (t *RateTable) resolve(commodityID int64, onDate string) (resolvedRate, boo
 		return resolvedRate{identity: true}, true
 	}
 	if rate, found := t.observationOnOrBefore(t.byCommodity[commodityID], onDate); found {
-		return t.endOfDay(resolvedRate{
+		return t.endOfDay(commodityID, resolvedRate{
 			price: big.NewInt(rate.PriceValue), priceScale: rate.PriceScale,
 			base: big.NewInt(rate.BaseQuantityValue), baseScale: rate.BaseQuantityScale,
 			use: RateUse{ObservationID: rate.ObservationID, Approximate: rate.IsApproximate,
 				CommodityID: commodityID, ObservationDate: rate.ValuationDate, RequestedDate: onDate,
 				Stale: rate.ValuationDate != onDate, Derived: rate.IsDerived},
-		}, rate.ObservationID), true
+		}, rate.ObservationID)
 	}
 	return t.resolveChained(commodityID, onDate)
 }
@@ -522,7 +531,7 @@ func (t *RateTable) resolveChained(commodityID int64, onDate string) (resolvedRa
 		}
 		return resolvedRate{}, false
 	}
-	return t.endOfDay(resolvedRate{
+	return t.endOfDay(commodityID, resolvedRate{
 		price:      new(big.Int).Mul(big.NewInt(first.PriceValue), big.NewInt(second.PriceValue)),
 		priceScale: first.PriceScale + second.PriceScale,
 		base:       new(big.Int).Mul(big.NewInt(first.BaseQuantityValue), big.NewInt(second.BaseQuantityValue)),
@@ -531,7 +540,7 @@ func (t *RateTable) resolveChained(commodityID int64, onDate string) (resolvedRa
 			CommodityID: commodityID, ObservationDate: first.ValuationDate, RequestedDate: onDate,
 			Stale:   first.ValuationDate != onDate || second.ValuationDate != onDate,
 			Derived: true, ViaCommodityID: second.BaseCommodityID, ViaObservationID: second.ObservationID, ViaObservationDate: second.ValuationDate},
-	}, first.ObservationID), true
+	}, first.ObservationID)
 }
 
 // rateFor finds a commodity's direct reporting rate, recording a gap on a miss.
