@@ -185,8 +185,8 @@ below is execution order, not a chain of hard dependencies.
    settling across a period boundary counted twice, is fixed by trade-date
    recognition (2026-10-25). The per-instrument contract
    (`instrument_returns_v1`) was accepted on 2026-10-25 (D1–D7) and is the
-   current R13 work: slice 8 (sleeve read), then slice 9 (screen and saved
-   runs). Targets/rebalancing stay deferred, as the plan records.
+   current R13 work: slice 8 (sleeve read) is delivered (2026-10-25); slice 9
+   (screen and saved runs) is next. Targets/rebalancing stay deferred, as the plan records.
    #284's owner-reviewed investment/reporting dispositions are now complete.
    If the accepted contract consumes native realized totals, it reuses
    `app.NativeRealizedTotals`, delivered by

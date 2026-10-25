@@ -83,6 +83,13 @@ get:
         type: string
         enum: [price_return, total_return]
         default: price_return
+    - name: instruments
+      in: query
+      required: false
+      description: When `true`, adds `instrument_returns` (policy instrument_returns_v1) from the same snapshot. Requesting it changes no other field.
+      schema:
+        type: boolean
+        default: false
   responses:
     "200":
       description: The returns read
@@ -94,7 +101,7 @@ get:
           schema:
             $ref: "../openapi.yaml#/components/schemas/InvestmentReturnsResponse"
     "400":
-      description: A date or currency is missing or malformed, `from` is after `to`, `to` is after owner-local today, an account is not a balance-sheet account, max_staleness_days is out of range, the benchmark is not a security or crypto commodity, or benchmark_basis is invalid or given without a benchmark
+      description: A date or currency is missing or malformed, `from` is after `to`, `to` is after owner-local today, an account is not a balance-sheet account, max_staleness_days is out of range, the benchmark is not a security or crypto commodity, benchmark_basis is invalid or given without a benchmark, or instruments is not true or false
       headers:
         X-Request-ID:
           $ref: "../openapi.yaml#/components/headers/XRequestID"

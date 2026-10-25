@@ -58,6 +58,8 @@ type ReturnsInput struct {
 	// price_return (the default) or total_return.
 	BenchmarkCommodityID int64
 	BenchmarkBasis       string
+	// Instruments adds per-instrument returns (instrument_returns_v1).
+	Instruments bool
 }
 
 // ReturnsAmount is a reporting-currency amount, or why it is missing.
@@ -104,6 +106,9 @@ type ReturnsResult struct {
 	Allocation         ReturnsAllocation
 	// Benchmark is nil unless one was requested.
 	Benchmark *ReturnsBenchmark
+	// InstrumentReturns is nil unless requested; requesting it changes no
+	// other figure.
+	InstrumentReturns *InstrumentReturns
 
 	AttributionFallbacks []ReturnsAttributionFallback
 	Valuation            ValuationCoverage
@@ -216,7 +221,11 @@ type returnsReader struct {
 	holdings map[int64]bool
 	kinds    map[int64]string
 	postings []db.LedgerPostingRecord
-	shorts   []db.ShortLotQuantityEvent
+	// recognised is every posting on its recognised date, including those
+	// recognised after `to`: income going ex inside the period may be paid
+	// after it.
+	recognised []db.LedgerPostingRecord
+	shorts     []db.ShortLotQuantityEvent
 	// splits are the instruments' recorded splits in the period, with their
 	// same-day slots, for flows ordered before a split on their own day.
 	splits []db.InstrumentSplit
@@ -226,6 +235,11 @@ type returnsReader struct {
 	seriesRates *RateTable
 	// closing is V(to), kept for the allocation that splits it.
 	closing returnsValuation
+	// gain is the exact absolute gain, or nil when it is unavailable; the
+	// per-instrument residual subtracts exact gains, never rounded ones.
+	gain *big.Rat
+	// flowReason is why the first unknown flow is unknown.
+	flowReason string
 	// overflow is the first amount no coefficient can carry. It fails the
 	// read: a null figure without a reason would read as missing data.
 	overflow error
@@ -239,6 +253,11 @@ type returnsEntryFlow struct {
 	date     string
 	amount   *big.Rat
 	ok       bool
+	// reason names why an unknown flow (ok false) is unknown; empty is
+	// flow_unavailable. sign is its direction when that alone is known (+1
+	// in, −1 out): only that side's total is then unknown.
+	reason string
+	sign   int
 }
 
 // returnsDeliveryKinds move units across the portfolio boundary against a
@@ -267,7 +286,13 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 	if err != nil {
 		return err
 	}
-	r.postings = recogniseOnUnitDate(postings, anchors, r.kinds, r.to)
+	r.recognised = recogniseOnUnitDate(postings, anchors, r.kinds, "9999-12-31")
+	r.postings = make([]db.LedgerPostingRecord, 0, len(r.recognised))
+	for _, posting := range r.recognised {
+		if posting.EntryDate <= r.to {
+			r.postings = append(r.postings, posting)
+		}
+	}
 	classes, err := r.ledger.ReturnsInstrumentClassesAsOf(ctx, BookID, r.to)
 	if err != nil {
 		return err
@@ -323,6 +348,13 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 		}
 		benchmark := benchmarkSeries(input.BenchmarkCommodityID, input.BenchmarkBasis, benchmarkRates, r.openDate, dates, result.Days)
 		result.Benchmark = &benchmark
+	}
+	if input.Instruments {
+		instruments, err := r.instrumentReturns(ctx, anchors, reporting, boundary, result.Days)
+		if err != nil {
+			return err
+		}
+		result.InstrumentReturns = &instruments
 	}
 	return r.overflow
 }
@@ -713,10 +745,18 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 	// independent same-day flows keep the inflow-start / outflow-end timing.
 	type flowKey struct{ identity, date string }
 	netted := map[flowKey]*big.Rat{}
-	flowsKnown := true
+	flowsKnown, inKnown, outKnown := true, true, true
 	for _, flow := range flows {
 		if !flow.ok {
 			flowsKnown = false
+			if r.flowReason == "" {
+				r.flowReason = flow.reason
+				if r.flowReason == "" {
+					r.flowReason = ReturnReasonFlowUnavailable
+				}
+			}
+			inKnown = inKnown && flow.sign < 0
+			outKnown = outKnown && flow.sign > 0
 			continue
 		}
 		key := flowKey{flow.identity, flow.date}
@@ -768,12 +808,13 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 
 	result.OpeningValue = r.amount(values[r.openDate], r.openDate)
 	result.ClosingValue = r.amount(values[r.to], r.to)
-	if flowsKnown {
-		result.Contributions = ReturnsAmount{Amount: r.quantity(contributions)}
-		result.Withdrawals = ReturnsAmount{Amount: r.quantity(withdrawals)}
-	} else {
-		result.Contributions = ReturnsAmount{Reason: ReturnReasonFlowUnavailable}
-		result.Withdrawals = ReturnsAmount{Reason: ReturnReasonFlowUnavailable}
+	result.Contributions = ReturnsAmount{Amount: r.quantity(contributions)}
+	if !inKnown {
+		result.Contributions = ReturnsAmount{Reason: r.flowReason}
+	}
+	result.Withdrawals = ReturnsAmount{Amount: r.quantity(withdrawals)}
+	if !outKnown {
+		result.Withdrawals = ReturnsAmount{Reason: r.flowReason}
 	}
 
 	// Each figure has its own dependencies: gain and IRR need the flows and
@@ -782,7 +823,7 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 	var boundaryBlock ReturnFigure
 	switch {
 	case !flowsKnown:
-		boundaryBlock = unavailableReturn(ReturnReasonFlowUnavailable, "")
+		boundaryBlock = unavailableReturn(r.flowReason, "")
 	case values[r.openDate].reason != "":
 		boundaryBlock = unavailableReturn(values[r.openDate].reason, r.openDate)
 	case values[r.to].reason != "":
@@ -804,6 +845,7 @@ func (r *returnsReader) compute(flows []returnsEntryFlow, result *ReturnsResult)
 	gain := new(big.Rat).Sub(closing, open)
 	gain.Sub(gain, contributions)
 	gain.Add(gain, withdrawals)
+	r.gain = gain
 	result.Gain = ReturnsAmount{Amount: r.quantity(gain)}
 
 	if open.Sign() == 0 && len(dates) == 0 {
@@ -894,7 +936,7 @@ func (r *returnsReader) series(byDay map[string]returnsDayFlow, flowsKnown bool,
 		point := ReturnsSeriesPoint{Date: date}
 		switch {
 		case !flowsKnown:
-			point.TimeWeighted = unavailableReturn(ReturnReasonFlowUnavailable, "")
+			point.TimeWeighted = unavailableReturn(r.flowReason, "")
 		case required[r.openDate].reason != "":
 			point.TimeWeighted = unavailableReturn(required[r.openDate].reason, r.openDate)
 		case valuation.reason != "":

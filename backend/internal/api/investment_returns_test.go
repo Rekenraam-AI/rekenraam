@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// R13 slices 1, 3, 4 and 5: the returns read is wired, echoes its policy and scope, and
+// R13 slices 1, 3, 4, 5 and 8: the returns read is wired, echoes its policy and scope, and
 // keeps a reason beside every missing figure. Calculation literals live in
 // the app package's tests.
 func TestInvestmentReturnsAPI(t *testing.T) {
@@ -78,7 +78,25 @@ func TestInvestmentReturnsAPI(t *testing.T) {
 	assert.Equal(t, "live_total_return_v1", compared.Benchmark.Valuation.SelectionPolicy)
 	assert.Equal(t, body.TimeWeighted, compared.TimeWeighted)
 
+	// Slice 8: instrument returns only when asked; the key is absent otherwise.
+	require.Nil(t, body.InstrumentReturns)
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, path, nil, http.StatusOK)
+	var raw map[string]json.RawMessage
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&raw))
+	assert.NotContains(t, raw, "instrument_returns")
+	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, path+"&instruments=true", nil, http.StatusOK)
+	var withInstruments investmentReturnsResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&withInstruments))
+	require.NotNil(t, withInstruments.InstrumentReturns)
+	assert.Equal(t, "instrument_returns_v1", withInstruments.InstrumentReturns.Policy)
+	assert.Equal(t, "ex_date", withInstruments.InstrumentReturns.IncomeRecognition)
+	require.Len(t, withInstruments.InstrumentReturns.Rows, 1)
+	assert.Equal(t, instrument.CommodityID, withInstruments.InstrumentReturns.Rows[0].CommodityID)
+	assert.NotNil(t, withInstruments.InstrumentReturns.NotAttributed, "an empty list, never null")
+	assert.Equal(t, body.TimeWeighted, withInstruments.TimeWeighted)
+
 	for _, query := range []string{
+		fmt.Sprintf("?from=2026-02-01&to=2026-02-01&reporting_currency_id=%d&instruments=yes", f.commodityID),
 		"?from=2026-02-01&to=2026-02-01",
 		fmt.Sprintf("?from=2026-02-01&to=2026-02-01&reporting_currency_id=%d&benchmark_commodity_id=%d", f.commodityID, f.commodityID),
 		fmt.Sprintf("?from=2026-02-01&to=2026-02-01&reporting_currency_id=%d&benchmark_commodity_id=x", f.commodityID),

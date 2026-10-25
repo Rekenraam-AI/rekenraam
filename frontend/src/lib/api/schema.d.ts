@@ -26836,6 +26836,8 @@ export interface paths {
                     benchmark_commodity_id?: number;
                     /** @description Which observations price the benchmark — `price_return` (raw prices, distributions excluded) or `total_return` (only observations recorded with adjustment basis total_return). Requires `benchmark_commodity_id`. */
                     benchmark_basis?: "price_return" | "total_return";
+                    /** @description When `true`, adds `instrument_returns` (policy instrument_returns_v1) from the same snapshot. Requesting it changes no other field. */
+                    instruments?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -26853,7 +26855,7 @@ export interface paths {
                         "application/json": components["schemas"]["InvestmentReturnsResponse"];
                     };
                 };
-                /** @description A date or currency is missing or malformed, `from` is after `to`, `to` is after owner-local today, an account is not a balance-sheet account, max_staleness_days is out of range, the benchmark is not a security or crypto commodity, or benchmark_basis is invalid or given without a benchmark */
+                /** @description A date or currency is missing or malformed, `from` is after `to`, `to` is after owner-local today, an account is not a balance-sheet account, max_staleness_days is out of range, the benchmark is not a security or crypto commodity, benchmark_basis is invalid or given without a benchmark, or instruments is not true or false */
                 400: {
                     headers: {
                         "X-Request-ID": components["headers"]["XRequestID"];
@@ -34099,7 +34101,7 @@ export interface components {
         ReturnsAmount: {
             amount: components["schemas"]["BalanceQuantity"] | null;
             /** @enum {string|null} */
-            reason: "valuation_unavailable" | "flow_unavailable" | "unclassified_short" | null;
+            reason: "valuation_unavailable" | "flow_unavailable" | "unclassified_short" | "income_unattributable" | "unclassified_exchange" | "instrument_gain_unavailable" | null;
             /** Format: date */
             date: string | null;
         };
@@ -34107,7 +34109,7 @@ export interface components {
         ReturnFigure: {
             value: string | null;
             /** @enum {string|null} */
-            reason: "valuation_unavailable" | "flow_unavailable" | "unclassified_short" | "non_positive_capital" | "no_capital" | "no_root" | "root_not_unique" | "numerical_limit" | "period_shorter_than_year" | "non_positive_growth" | "conflicting_splits" | null;
+            reason: "valuation_unavailable" | "flow_unavailable" | "unclassified_short" | "non_positive_capital" | "no_capital" | "no_root" | "root_not_unique" | "numerical_limit" | "period_shorter_than_year" | "non_positive_growth" | "conflicting_splits" | "short_position" | "income_unattributable" | "unclassified_exchange" | null;
             /** Format: date */
             date: string | null;
         };
@@ -34225,8 +34227,54 @@ export interface components {
             allocation: components["schemas"]["ReturnsAllocation"];
             /** @description The requested benchmark, or null when none was requested. */
             benchmark: components["schemas"]["ReturnsBenchmark"] | null;
+            /** @description Present only when requested with `instruments=true`; requesting it changes no other field. Saved runs made without it omit the key. */
+            instrument_returns?: components["schemas"]["InstrumentReturns"];
             attribution_fallbacks: components["schemas"]["ReturnsAttributionFallback"][];
             valuation: components["schemas"]["Valuation"];
+        };
+        /** @description Per-instrument returns (policy instrument_returns_v1), from the same snapshot as the portfolio figures. Sleeve returns are not weighted into the portfolio return. */
+        InstrumentReturns: {
+            /** @enum {string} */
+            policy: "instrument_returns_v1";
+            /** @enum {string} */
+            income_recognition: "ex_date";
+            /** @description Ordered by commodity code, then id. */
+            rows: components["schemas"]["InstrumentReturnsRow"][];
+            not_attributed: components["schemas"]["InstrumentIncomeNotAttributed"][];
+            /** @description The portfolio gain less every sleeve's gain — cash interest, FX on cash, unlinked fees, unattributed income and ex-date timing. A difference, never a computed breakdown; `instrument_gain_unavailable` when any gain is. */
+            not_attributed_gain: components["schemas"]["ReturnsAmount"];
+        };
+        /** @description One instrument's sleeve: its units in the portfolio scope, never cash, with the portfolio's own figures computed from the sleeve's values and flows. A trade's flow is all the cash paid or received for it, recognised on its trade date and converted on that date; income is a flow on its ex date when recorded, else its entry date; an exchange is valued at the consideration received. A sleeve that is short (a named short operation in the period, or a scope balance below zero at a day's end) keeps values, flows and gain, and its returns are `short_position`. */
+        InstrumentReturnsRow: {
+            /** Format: int64 */
+            commodity_id: number;
+            short: boolean;
+            opening_value: components["schemas"]["ReturnsAmount"];
+            closing_value: components["schemas"]["ReturnsAmount"];
+            contributions: components["schemas"]["ReturnsAmount"];
+            withdrawals: components["schemas"]["ReturnsAmount"];
+            /** @description Signed income attributed to the instrument (dividends, capital returns and reclaims positive; withholding-only payments and payments in lieu negative). Each also counts in contributions or withdrawals by its sign. */
+            income: components["schemas"]["ReturnsAmount"];
+            gain: components["schemas"]["ReturnsAmount"];
+            time_weighted: components["schemas"]["ReturnFigure"];
+            time_weighted_annualized: components["schemas"]["ReturnFigure"];
+            money_weighted: components["schemas"]["ReturnFigure"];
+            money_weighted_period: components["schemas"]["ReturnFigure"];
+            valuation: components["schemas"]["Valuation"];
+        };
+        /** @description Income recognised in the period that no sleeve carries. */
+        InstrumentIncomeNotAttributed: {
+            /** Format: int64 */
+            transaction_id: number;
+            /** Format: int64 */
+            operation_id: number;
+            operation_kind: string;
+            /** Format: date */
+            date: string;
+            /** Format: int64 */
+            instrument_id: number | null;
+            /** @enum {string} */
+            reason: "unassigned_instrument" | "not_held" | "held_inside_and_outside";
         };
         /** @description Save a new returns_v1 run. The same inputs as the live returns read, validated the same way. No knowledge cutoff, output or other client-supplied figure is accepted. */
         ReturnsRunRequest: {

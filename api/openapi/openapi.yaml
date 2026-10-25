@@ -1640,6 +1640,12 @@ components:
       $ref: "./components/schemas/investment-returns.yaml#/ReturnsBenchmark"
     InvestmentReturnsResponse:
       $ref: "./components/schemas/investment-returns.yaml#/InvestmentReturnsResponse"
+    InstrumentReturns:
+      $ref: "./components/schemas/investment-returns.yaml#/InstrumentReturns"
+    InstrumentReturnsRow:
+      $ref: "./components/schemas/investment-returns.yaml#/InstrumentReturnsRow"
+    InstrumentIncomeNotAttributed:
+      $ref: "./components/schemas/investment-returns.yaml#/InstrumentIncomeNotAttributed"
     ReturnsRunRequest:
       $ref: "./components/schemas/investment-returns-runs.yaml#/ReturnsRunRequest"
     ReturnsRunResolvedRequest:

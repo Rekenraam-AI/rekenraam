@@ -619,6 +619,17 @@ func (t *RateTable) pairGap(commodityID, rateCommodityID int64, onDate string) R
 	return gap
 }
 
+// withFreshCoverage is a copy of t that shares its loaded observations, which
+// are only read after loading, but records its own uses and gaps. Each R13
+// instrument sleeve values through one, so a price only a sleeve needed never
+// appears in another figure's coverage.
+func (t *RateTable) withFreshCoverage() *RateTable {
+	copied := *t
+	copied.used = map[rateUseKey]RateUse{}
+	copied.gaps = map[int64]RateGap{}
+	return &copied
+}
+
 // Coverage reports what the table actually did, for the response to carry.
 func (t *RateTable) Coverage(code string) ValuationCoverage {
 	policy := t.selectionPolicy

@@ -32,6 +32,19 @@ type ReturnsOperationAnchor struct {
 	// ExDate is the operation's recorded ex date, or the payment-in-lieu
 	// fact's, when there is one.
 	ExDate sql.NullString
+	// HoldingCommodityID is the instrument a capital-return fact names.
+	HoldingCommodityID sql.NullInt64
+	// Exchange is the share-exchange, cash-and-stock-merger or spin-off fact
+	// of the operation or, for a reversal, of the operation it corrects.
+	Exchange *ReturnsExchangeFact
+}
+
+// ReturnsExchangeFact names what an exchange-family operation gave up and
+// received: the source instrument and holding, and the new instrument.
+type ReturnsExchangeFact struct {
+	SourceCommodityID      int64
+	SourceAccountID        sql.NullInt64
+	DestinationCommodityID int64
 }
 
 type returnsOperation struct {
@@ -41,6 +54,9 @@ type returnsOperation struct {
 	instrument   sql.NullInt64
 	hasFact      bool
 	exDate       sql.NullString
+	// holdingCommodity is a capital-return fact's instrument.
+	holdingCommodity sql.NullInt64
+	exchange         *ReturnsExchangeFact
 }
 
 // ReturnsOperationAnchors returns one anchor per current posted transaction
@@ -72,8 +88,10 @@ func (r *TransactionRepository) ReturnsOperationAnchors(ctx context.Context, boo
 		query string
 		apply func(*returnsOperation, sql.NullInt64, sql.NullInt64, sql.NullString)
 	}{
-		{`SELECT operation_id, account_id, NULL, NULL FROM investment_capital_return_facts WHERE book_id = ?`,
-			func(o *returnsOperation, holding, _ sql.NullInt64, _ sql.NullString) { o.holding = holding }},
+		{`SELECT operation_id, account_id, commodity_id, NULL FROM investment_capital_return_facts WHERE book_id = ?`,
+			func(o *returnsOperation, holding, commodity sql.NullInt64, _ sql.NullString) {
+				o.holding, o.holdingCommodity = holding, commodity
+			}},
 		{`SELECT operation_id, holding_account_id, commodity_id, ex_date FROM valid_investment_payment_in_lieu_facts WHERE book_id = ?`,
 			func(o *returnsOperation, holding, instrument sql.NullInt64, exDate sql.NullString) {
 				o.holding, o.instrument, o.hasFact = holding, instrument, true
@@ -106,6 +124,28 @@ func (r *TransactionRepository) ReturnsOperationAnchors(ctx context.Context, boo
 		if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 			return nil, fmt.Errorf("iterate returns facts: %w", err)
 		}
+	}
+
+	rows, err = r.database.QueryContext(ctx, `
+		SELECT operation_id, commodity_id, source_account_id, destination_commodity_id
+		FROM investment_transfer_facts
+		WHERE book_id = ? AND transfer_kind IN ('exchange', 'spin_off') AND destination_commodity_id IS NOT NULL`, bookID)
+	if err != nil {
+		return nil, fmt.Errorf("read returns exchange facts: %w", err)
+	}
+	for rows.Next() {
+		var operationID int64
+		var fact ReturnsExchangeFact
+		if err := rows.Scan(&operationID, &fact.SourceCommodityID, &fact.SourceAccountID, &fact.DestinationCommodityID); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("scan returns exchange fact: %w", err)
+		}
+		if operation := operations[operationID]; operation != nil {
+			operation.exchange = &fact
+		}
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return nil, fmt.Errorf("iterate returns exchange facts: %w", err)
 	}
 
 	rows, err = r.database.QueryContext(ctx, `
@@ -150,7 +190,14 @@ func (r *TransactionRepository) ReturnsOperationAnchors(ctx context.Context, boo
 		}
 		if source != nil {
 			anchor.HoldingAccountID, anchor.InstrumentFact, anchor.InstrumentID = source.holding, source.hasFact, source.instrument
-			anchor.ExDate = source.exDate
+			anchor.ExDate, anchor.HoldingCommodityID = source.exDate, source.holdingCommodity
+		}
+		exchange := operation
+		for depth := 0; exchange != nil && exchange.exchange == nil && exchange.correctionOf.Valid && depth < 64; depth++ {
+			exchange = operations[exchange.correctionOf.Int64]
+		}
+		if exchange != nil {
+			anchor.Exchange = exchange.exchange
 		}
 		if operation.exDate.Valid {
 			anchor.ExDate = operation.exDate
@@ -161,6 +208,29 @@ func (r *TransactionRepository) ReturnsOperationAnchors(ctx context.Context, boo
 		return nil, fmt.Errorf("iterate returns operation links: %w", err)
 	}
 	return anchors, nil
+}
+
+// ReturnsCommodityCodes maps every commodity of the book to its code, so
+// per-instrument rows have a stable, readable order.
+func (r *TransactionRepository) ReturnsCommodityCodes(ctx context.Context, bookID int64) (map[int64]string, error) {
+	rows, err := r.database.QueryContext(ctx, `SELECT id, code FROM commodities WHERE book_id = ?`, bookID)
+	if err != nil {
+		return nil, fmt.Errorf("read returns commodity codes: %w", err)
+	}
+	defer rows.Close()
+	codes := map[int64]string{}
+	for rows.Next() {
+		var id int64
+		var code string
+		if err := rows.Scan(&id, &code); err != nil {
+			return nil, fmt.Errorf("scan returns commodity code: %w", err)
+		}
+		codes[id] = code
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate returns commodity codes: %w", err)
+	}
+	return codes, nil
 }
 
 // AccountBaseKinds maps every account kind code to its base kind.

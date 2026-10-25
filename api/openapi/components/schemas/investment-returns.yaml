@@ -9,7 +9,7 @@ ReturnsAmount:
         - type: "null"
     reason:
       type: [string, "null"]
-      enum: [valuation_unavailable, flow_unavailable, unclassified_short, null]
+      enum: [valuation_unavailable, flow_unavailable, unclassified_short, income_unattributable, unclassified_exchange, instrument_gain_unavailable, null]
     date:
       type: [string, "null"]
       format: date
@@ -23,7 +23,7 @@ ReturnFigure:
       pattern: "^-?[0-9]+\\.[0-9]{6}$"
     reason:
       type: [string, "null"]
-      enum: [valuation_unavailable, flow_unavailable, unclassified_short, non_positive_capital, no_capital, no_root, root_not_unique, numerical_limit, period_shorter_than_year, non_positive_growth, conflicting_splits, null]
+      enum: [valuation_unavailable, flow_unavailable, unclassified_short, non_positive_capital, no_capital, no_root, root_not_unique, numerical_limit, period_shorter_than_year, non_positive_growth, conflicting_splits, short_position, income_unattributable, unclassified_exchange, null]
     date:
       type: [string, "null"]
       format: date
@@ -286,9 +286,101 @@ InvestmentReturnsResponse:
       oneOf:
         - $ref: "../../openapi.yaml#/components/schemas/ReturnsBenchmark"
         - type: "null"
+    instrument_returns:
+      description: Present only when requested with `instruments=true`; requesting it changes no other field. Saved runs made without it omit the key.
+      $ref: "../../openapi.yaml#/components/schemas/InstrumentReturns"
     attribution_fallbacks:
       type: array
       items:
         $ref: "../../openapi.yaml#/components/schemas/ReturnsAttributionFallback"
     valuation:
       $ref: "../../openapi.yaml#/components/schemas/Valuation"
+InstrumentReturnsRow:
+  type: object
+  description: >
+    One instrument's sleeve: its units in the portfolio scope, never cash,
+    with the portfolio's own figures computed from the sleeve's values and
+    flows. A trade's flow is all the cash paid or received for it, recognised
+    on its trade date and converted on that date; income is a flow on its ex
+    date when recorded, else its entry date; an exchange is valued at the
+    consideration received. A sleeve that is short (a named short operation
+    in the period, or a scope balance below zero at a day's end) keeps
+    values, flows and gain, and its returns are `short_position`.
+  required: [commodity_id, short, opening_value, closing_value, contributions, withdrawals, income, gain, time_weighted, time_weighted_annualized, money_weighted, money_weighted_period, valuation]
+  properties:
+    commodity_id:
+      type: integer
+      format: int64
+    short:
+      type: boolean
+    opening_value:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAmount"
+    closing_value:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAmount"
+    contributions:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAmount"
+    withdrawals:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAmount"
+    income:
+      description: Signed income attributed to the instrument (dividends, capital returns and reclaims positive; withholding-only payments and payments in lieu negative). Each also counts in contributions or withdrawals by its sign.
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAmount"
+    gain:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAmount"
+    time_weighted:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
+    time_weighted_annualized:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
+    money_weighted:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
+    money_weighted_period:
+      $ref: "../../openapi.yaml#/components/schemas/ReturnFigure"
+    valuation:
+      $ref: "../../openapi.yaml#/components/schemas/Valuation"
+InstrumentIncomeNotAttributed:
+  type: object
+  description: Income recognised in the period that no sleeve carries.
+  required: [transaction_id, operation_id, operation_kind, date, instrument_id, reason]
+  properties:
+    transaction_id:
+      type: integer
+      format: int64
+    operation_id:
+      type: integer
+      format: int64
+    operation_kind:
+      type: string
+    date:
+      type: string
+      format: date
+    instrument_id:
+      type: [integer, "null"]
+      format: int64
+    reason:
+      type: string
+      enum: [unassigned_instrument, not_held, held_inside_and_outside]
+InstrumentReturns:
+  type: object
+  description: >
+    Per-instrument returns (policy instrument_returns_v1), from the same
+    snapshot as the portfolio figures. Sleeve returns are not weighted into
+    the portfolio return.
+  required: [policy, income_recognition, rows, not_attributed, not_attributed_gain]
+  properties:
+    policy:
+      type: string
+      enum: [instrument_returns_v1]
+    income_recognition:
+      type: string
+      enum: [ex_date]
+    rows:
+      type: array
+      description: Ordered by commodity code, then id.
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/InstrumentReturnsRow"
+    not_attributed:
+      type: array
+      items:
+        $ref: "../../openapi.yaml#/components/schemas/InstrumentIncomeNotAttributed"
+    not_attributed_gain:
+      description: The portfolio gain less every sleeve's gain — cash interest, FX on cash, unlinked fees, unattributed income and ex-date timing. A difference, never a computed breakdown; `instrument_gain_unavailable` when any gain is.
+      $ref: "../../openapi.yaml#/components/schemas/ReturnsAmount"

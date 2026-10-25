@@ -641,6 +641,19 @@ lists runs and reopens one with the same figure, chart and allocation views.
 Slice 7 lets the pricing form record a security or crypto price as total
 return (benchmark-only, labelled so in the history; refused for currencies),
 and a correction keeps the replaced price's adjustment basis.
+Per-instrument returns (#119 slice 8, `instrument_returns_v1`) come from
+`instruments=true` on the same read. Each sleeve is an instrument's units in
+scope, never cash, computed by the portfolio's own code:
+- trades are recognised on their trade date with all their cash;
+- income is recognised on its ex date (entitlement at the end of the day
+  before), and ambiguous income is refused in its own direction;
+- exchanges and spin-offs are valued at consideration, and cash in lieu
+  counts as the destination's sale;
+- shorts keep their gain but get no return;
+- plain two-instrument journal entries are refused.
+
+The read also returns the income no sleeve carries and the portfolio gain
+left over. Requesting instrument returns changes no portfolio figure.
 Trade-date recognition (#409) reads every entry of an investment operation
 whose units post on one day on that day. A trade that settles later therefore
 no longer counts both its units and its unpaid cash across a period boundary.

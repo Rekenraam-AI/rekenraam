@@ -87,6 +87,39 @@ type returnsAllocationResponse struct {
 	Unknown       []returnsAllocationUnknownResponse `json:"unknown"`
 }
 
+type instrumentReturnsRowResponse struct {
+	CommodityID            int64                 `json:"commodity_id"`
+	Short                  bool                  `json:"short"`
+	OpeningValue           returnsAmountResponse `json:"opening_value"`
+	ClosingValue           returnsAmountResponse `json:"closing_value"`
+	Contributions          returnsAmountResponse `json:"contributions"`
+	Withdrawals            returnsAmountResponse `json:"withdrawals"`
+	Income                 returnsAmountResponse `json:"income"`
+	Gain                   returnsAmountResponse `json:"gain"`
+	TimeWeighted           returnFigureResponse  `json:"time_weighted"`
+	TimeWeightedAnnualized returnFigureResponse  `json:"time_weighted_annualized"`
+	MoneyWeighted          returnFigureResponse  `json:"money_weighted"`
+	MoneyWeightedPeriod    returnFigureResponse  `json:"money_weighted_period"`
+	Valuation              *valuationResponse    `json:"valuation"`
+}
+
+type instrumentIncomeNotAttributedResponse struct {
+	TransactionID int64  `json:"transaction_id"`
+	OperationID   int64  `json:"operation_id"`
+	OperationKind string `json:"operation_kind"`
+	Date          string `json:"date"`
+	InstrumentID  *int64 `json:"instrument_id"`
+	Reason        string `json:"reason"`
+}
+
+type instrumentReturnsResponse struct {
+	Policy            string                                  `json:"policy"`
+	IncomeRecognition string                                  `json:"income_recognition"`
+	Rows              []instrumentReturnsRowResponse          `json:"rows"`
+	NotAttributed     []instrumentIncomeNotAttributedResponse `json:"not_attributed"`
+	NotAttributedGain returnsAmountResponse                   `json:"not_attributed_gain"`
+}
+
 type investmentReturnsResponse struct {
 	Policy                 string                    `json:"policy"`
 	From                   string                    `json:"from"`
@@ -108,8 +141,11 @@ type investmentReturnsResponse struct {
 	TimeWeightedSeries     returnsSeriesResponse     `json:"time_weighted_series"`
 	Allocation             returnsAllocationResponse `json:"allocation"`
 	Benchmark              *returnsBenchmarkResponse `json:"benchmark"`
-	AttributionFallbacks   []returnsFallbackResponse `json:"attribution_fallbacks"`
-	Valuation              *valuationResponse        `json:"valuation"`
+	// InstrumentReturns is omitted unless requested, so a saved run made
+	// without it keeps the bytes runs had before slice 8.
+	InstrumentReturns    *instrumentReturnsResponse `json:"instrument_returns,omitempty"`
+	AttributionFallbacks []returnsFallbackResponse  `json:"attribution_fallbacks"`
+	Valuation            *valuationResponse         `json:"valuation"`
 }
 
 func investmentReturns(logger *slog.Logger, authService *app.AuthService, investmentService *app.InvestmentService) http.HandlerFunc {
@@ -139,6 +175,14 @@ func investmentReturns(logger *slog.Logger, authService *app.AuthService, invest
 			return
 		}
 		input.BenchmarkBasis = strings.TrimSpace(query.Get("benchmark_basis"))
+		switch strings.TrimSpace(query.Get("instruments")) {
+		case "", "false":
+		case "true":
+			input.Instruments = true
+		default:
+			writeAPIError(w, http.StatusBadRequest, "VALIDATION_FAILED", "instruments must be true or false")
+			return
+		}
 		result, err := investmentService.ReadReturns(r.Context(), input)
 		if err != nil {
 			writeInvestmentServiceError(w, r, logger, "investment returns", err)
@@ -195,8 +239,39 @@ func toInvestmentReturnsResponse(result app.ReturnsResult) investmentReturnsResp
 			Valuation: toValuationResponse(&result.TimeWeightedSeries.Valuation)},
 		Allocation:           toReturnsAllocationResponse(result.Allocation),
 		Benchmark:            benchmark,
+		InstrumentReturns:    toInstrumentReturnsResponse(result.InstrumentReturns),
 		AttributionFallbacks: fallbacks, Valuation: toValuationResponse(&result.Valuation),
 	}
+}
+
+func toInstrumentReturnsResponse(instruments *app.InstrumentReturns) *instrumentReturnsResponse {
+	if instruments == nil {
+		return nil
+	}
+	rows := make([]instrumentReturnsRowResponse, 0, len(instruments.Rows))
+	for _, row := range instruments.Rows {
+		rows = append(rows, instrumentReturnsRowResponse{
+			CommodityID: row.CommodityID, Short: row.Short,
+			OpeningValue: toReturnsAmountResponse(row.OpeningValue), ClosingValue: toReturnsAmountResponse(row.ClosingValue),
+			Contributions: toReturnsAmountResponse(row.Contributions), Withdrawals: toReturnsAmountResponse(row.Withdrawals),
+			Income: toReturnsAmountResponse(row.Income), Gain: toReturnsAmountResponse(row.Gain),
+			TimeWeighted: toReturnFigureResponse(row.TimeWeighted), TimeWeightedAnnualized: toReturnFigureResponse(row.TimeWeightedAnnualized),
+			MoneyWeighted: toReturnFigureResponse(row.MoneyWeighted), MoneyWeightedPeriod: toReturnFigureResponse(row.MoneyWeightedPeriod),
+			Valuation: toValuationResponse(&row.Valuation),
+		})
+	}
+	notAttributed := make([]instrumentIncomeNotAttributedResponse, 0, len(instruments.NotAttributed))
+	for _, item := range instruments.NotAttributed {
+		response := instrumentIncomeNotAttributedResponse{TransactionID: item.TransactionID, OperationID: item.OperationID,
+			OperationKind: item.OperationKind, Date: item.Date, Reason: item.Reason}
+		if item.InstrumentID != 0 {
+			instrumentID := item.InstrumentID
+			response.InstrumentID = &instrumentID
+		}
+		notAttributed = append(notAttributed, response)
+	}
+	return &instrumentReturnsResponse{Policy: instruments.Policy, IncomeRecognition: instruments.IncomeRecognition,
+		Rows: rows, NotAttributed: notAttributed, NotAttributedGain: toReturnsAmountResponse(instruments.NotAttributedGain)}
 }
 
 func toReturnsSeriesPointsResponse(points []app.ReturnsSeriesPoint) []returnsSeriesPointResponse {

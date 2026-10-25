@@ -728,7 +728,8 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
 ## Per-instrument returns (`instrument_returns_v1`)
 
 Status: **accepted by the owner 2026-10-25 (D1–D7 as revised, including D5's
-bounded short detection); slice 8 in progress.** History: proposed and
+bounded short detection); slice 8 (sleeve read) delivered 2026-10-25; slice 9
+next.** History: proposed and
 revised (revision 2) the same day. Revision 2 resolves a same-day review of `4c3324e3` (five
 gaps, all accepted; recorded below as "review 1" to "review 5"). The review
 also exposed a shipped portfolio defect, [#409](https://github.com/sergeyfarin/rekenraam/issues/409):
@@ -1041,7 +1042,24 @@ written.
 ### Slices
 
 8. **Sleeve read**: `instrument_returns` on the returns read, OpenAPI, and
-   cases I1–I12.
+   cases I1–I12. *Delivered 2026-10-25*. Implementation notes:
+   - The code is `app/investment_returns_instruments.go`, with cases in
+     `investment_returns_instruments_test.go`.
+   - Every case reads twice and requires the portfolio part to be
+     byte-identical (I10), and asserts that nothing was written.
+   - A sleeve is the portfolio reader restricted to one commodity's postings,
+     run through the same `compute`. Each sleeve values through its own
+     fresh-coverage copy of a rate table loaded once for all sleeves, so no
+     sleeve gap reaches the portfolio's coverage.
+   - Exchange facts come from `investment_transfer_facts`. A reversal mirrors
+     every leg and cancels, which is pinned by
+     `TestInstrumentReturnsReversedExchangeCancels`.
+   - **Ex dates in practice:** today only a payment in lieu records an
+     operation ex date. A manual or provider-completed dividend has none, so
+     D2 falls back to its entry date, and an owner who sold before the pay
+     date sees that dividend listed `not_held`. The I2 cases insert the ex
+     date as an operation date. Recording a dividend's ex date is a separate
+     follow-up.
 9. **Screen panel and saved-run inclusion**, with a browser case on a phone
    and an existing run reopened unchanged.
 
