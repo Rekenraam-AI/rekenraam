@@ -1729,5 +1729,7 @@
   "investments_attribution_cash_parent_unresolved": "The original corporate action was reversed. The disposal remains recorded; its financial validity is checked separately.",
   "investments_attribution_cash_parent_mismatch": "The current corporate action no longer matches this disposal’s holding, instrument or date. The original reference is preserved.",
   "investments_cash_in_lieu_current_parent": "Current action #{id}",
-  "investments_dividend_payer_help": "The payer is optional. Changing only this attribution leaves cash and tax unchanged."
+  "investments_dividend_payer_help": "The payer is optional. Changing only this attribution leaves cash and tax unchanged.",
+  "investments_dividend_ex_date": "Ex-dividend date",
+  "investments_dividend_ex_date_hint": "Returns count this payment on its ex-dividend date, for whoever held the shares the day before. Leave blank if unknown."
 }

@@ -1729,5 +1729,7 @@
   "investments_attribution_cash_parent_unresolved": "De oorspronkelijke bedrijfshandeling is teruggedraaid. De verkoop blijft vastgelegd; de financiële geldigheid wordt apart gecontroleerd.",
   "investments_attribution_cash_parent_mismatch": "De huidige bedrijfshandeling past niet meer bij de rekening, het instrument of de datum van deze verkoop. De oorspronkelijke verwijzing blijft behouden.",
   "investments_cash_in_lieu_current_parent": "Huidige actie #{id}",
-  "investments_dividend_payer_help": "De betaler is optioneel. Als u alleen deze toerekening wijzigt, blijven geldbedragen en belasting gelijk."
+  "investments_dividend_payer_help": "De betaler is optioneel. Als u alleen deze toerekening wijzigt, blijven geldbedragen en belasting gelijk.",
+  "investments_dividend_ex_date": "Ex-dividenddatum",
+  "investments_dividend_ex_date_hint": "Rendementen tellen deze betaling op de ex-dividenddatum, voor wie de aandelen de dag ervoor bezat. Laat leeg als de datum onbekend is."
 }

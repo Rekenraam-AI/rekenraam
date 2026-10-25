@@ -29,7 +29,7 @@
 
   // Replaces a posted cash dividend or reinvested dividend (T-115). Only the
   // amounts, withholding, quantity, income account, a cash dividend's payer
-  // (#244) and memo are editable: the date, account and currency are fixed,
+  // (#244) and ex date, and memo are editable: the date, account and currency are fixed,
   // so the form shows them read-only.
   let {
     csrfToken,
@@ -72,6 +72,8 @@
   // Omission keeps the recorded payer, so "unassigned" is offered only when
   // none was recorded.
   let payerID = $state(initialDividend?.commodity_id ? String(initialDividend.commodity_id) : '');
+  // The ex date is always sent: a blank field clears a recorded one.
+  let exDate = $state(initialDividend?.ex_date ?? '');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
 
@@ -137,6 +139,7 @@
     } else {
       target = { kind: 'cash', payload: {
         commodity_id: payerID ? Number(payerID) : null,
+        ex_date: exDate || null,
         withholding_only: withholdingOnly,
         transaction_date: terms.event_date, cash_account_id: initialDividend!.cash_account_id,
         cash_commodity_id: terms.cash_commodity_id, income_account_id: withholdingOnly ? undefined : Number(incomeAccountID),
@@ -252,6 +255,16 @@
         {/each}
       </select>
       <p class="mt-1 text-xs text-muted">{m.investments_dividend_payer_help()}</p>
+    </div>
+    <div>
+      <label for="dividend-correction-ex-date" class="mb-1 block text-sm font-medium text-foreground">
+        {m.investments_dividend_ex_date()}
+        <span class="ml-1 text-xs font-normal text-muted">({m.investments_form_optional()})</span>
+      </label>
+      <input id="dividend-correction-ex-date" type="date" bind:value={exDate} max={terms.event_date}
+        aria-describedby="dividend-correction-ex-date-hint"
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
+      <p id="dividend-correction-ex-date-hint" class="mt-1 text-xs text-muted">{m.investments_dividend_ex_date_hint()}</p>
     </div>
   {/if}
 

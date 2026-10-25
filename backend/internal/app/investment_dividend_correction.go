@@ -83,7 +83,10 @@ func (s *InvestmentService) prepareDividendReversalWrite(ctx context.Context, in
 	if err != nil {
 		return db.DividendOperationRecord{}, db.CreateTransactionParams{}, err
 	}
-	params.Dividend = &db.DividendFact{CommodityID: operation.CommodityID, WithholdingOnly: operation.WithholdingOnly}
+	// The reversal repeats the original's ex date, so both are recognised on
+	// the same day and cancel.
+	params.Dividend = &db.DividendFact{CommodityID: operation.CommodityID, WithholdingOnly: operation.WithholdingOnly,
+		ExDate: operation.ExDate}
 	params.InvestmentCorrectionOfOperationID = operation.OperationID
 	params.InvestmentCorrectionMode = "reverse"
 	params.InvestmentCorrectionReason = planned.ChangeReason
@@ -137,6 +140,12 @@ func (s *InvestmentService) prepareDividendReplacementWrite(ctx context.Context,
 	// Omission preserves; explicit null clears without changing payment shape.
 	if !replacement.CommodityID.Set {
 		replacement.CommodityID = NullablePatch[int64]{Set: true, Value: nullableSQLInt64Ptr(operation.CommodityID)}
+	}
+	if !replacement.ExDate.Set {
+		replacement.ExDate = NullablePatch[string]{Set: true}
+		if operation.ExDate != "" {
+			replacement.ExDate.Value = &operation.ExDate
+		}
 	}
 	// dividendPlan writes the cash leg first; that posting names the original
 	// cash account and currency.

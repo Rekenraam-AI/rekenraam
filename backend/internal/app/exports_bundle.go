@@ -942,7 +942,7 @@ value in this archive was ever a floating-point number.`,
   investment-payment-in-lieu-facts.csv  optional owner attribution of payments in lieu and reversals
   investment-operations.csv  named investment command parents
   investment-operation-journal-links.csv  posted versions made by each operation
-  investment-operation-dates.csv  typed trade, settlement, and payment dates
+  investment-operation-dates.csv  typed trade, settlement, payment, effective and ex dates
   investment-operation-components.csv  exact source amounts and fee elections
   investment-lot-state.csv  current remaining balances and update attribution
   investment-lot-facts.csv  immutable opening facts of operation-opened lots

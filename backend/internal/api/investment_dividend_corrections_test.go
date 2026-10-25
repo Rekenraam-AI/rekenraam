@@ -172,3 +172,51 @@ func TestSeparateWithholdingAPIAndBundle(t *testing.T) {
 	assert.Equal(t, "-1500", components.column(components.rows[0], "amount_value"))
 	assert.Equal(t, strconv.FormatInt(f.commodityID, 10), components.column(components.rows[0], "commodity_id"))
 }
+
+// R13 D2: a dividend's ex date crosses the wire on entry, in its correction
+// terms, through a replacement (null clears) and in the bundle's dates.
+func TestDividendExDateAPI(t *testing.T) {
+	t.Parallel()
+	handler, _ := newSetupTestHandler(t)
+	f := bootstrapInvestmentAPITest(t, handler)
+	instrument := createInstrumentForSession(t, handler, f, "DIVEX")
+	dividend := func(exDate any) map[string]any {
+		return map[string]any{"commodity_id": instrument.CommodityID, "transaction_date": "2026-04-01", "ex_date": exDate,
+			"cash_account_id": f.cashAccount.ID, "cash_commodity_id": f.commodityID, "income_account_id": f.incomeAccount.ID,
+			"amount_value": "5000", "amount_scale": 2}
+	}
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/dividend", dividend("2026-04-02"), http.StatusBadRequest)
+	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/dividend", dividend("2026-03-20"), http.StatusCreated)
+	var original transactionResponse
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&original))
+	base := "/api/v1/investments/transactions/" + strconv.FormatInt(original.ID, 10)
+
+	chainRes := doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, base+"/correction-chain", nil, http.StatusOK)
+	var chain investmentCorrectionChainResponse
+	require.NoError(t, json.NewDecoder(chainRes.Body).Decode(&chain))
+	require.NotNil(t, chain.EffectiveDividend)
+	require.NotNil(t, chain.EffectiveDividend.ExDate)
+	assert.Equal(t, "2026-03-20", *chain.EffectiveDividend.ExDate)
+	dates := downloadBundle(t, handler, f.sessionCookie, "").table(t, "investment-operation-dates.csv")
+	exRows := 0
+	for _, row := range dates.rows {
+		if dates.column(row, "date_role") == "ex" {
+			exRows++
+			assert.Equal(t, "2026-03-20", dates.column(row, "event_date"))
+		}
+	}
+	assert.Equal(t, 1, exRows)
+
+	replacedRes := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, base+"/replace-dividend",
+		map[string]any{"reason": "no ex date known", "replacement": dividend(nil)}, http.StatusCreated)
+	var replaced investmentDividendReplacementResponse
+	require.NoError(t, json.NewDecoder(replacedRes.Body).Decode(&replaced))
+	chainRes = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet,
+		"/api/v1/investments/transactions/"+strconv.FormatInt(replaced.ReplacementTransaction.ID, 10)+"/correction-chain", nil, http.StatusOK)
+	var raw struct {
+		EffectiveDividend map[string]json.RawMessage `json:"effective_dividend"`
+	}
+	require.NoError(t, json.NewDecoder(chainRes.Body).Decode(&raw))
+	require.NotNil(t, raw.EffectiveDividend)
+	assert.NotContains(t, raw.EffectiveDividend, "ex_date", "null cleared the ex date")
+}

@@ -25,6 +25,12 @@ func recordInvestmentFoundationTx(ctx context.Context, tx *sql.Tx, params Create
 			params.BookID, operationID, fact.CommodityID, boolInt(fact.WithholdingOnly), auditEventID); err != nil {
 			return fmt.Errorf("record dividend paying instrument: %w", err)
 		}
+		if fact.ExDate != "" {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO investment_operation_dates (operation_id, date_role, event_date)
+			VALUES (?, 'ex', ?)`, operationID, fact.ExDate); err != nil {
+				return fmt.Errorf("record dividend ex-date: %w", err)
+			}
+		}
 	}
 	if fact := params.PaymentInLieu; fact != nil {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO investment_payment_in_lieu_facts

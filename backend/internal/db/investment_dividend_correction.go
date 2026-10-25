@@ -10,6 +10,9 @@ import (
 type DividendFact struct {
 	CommodityID     sql.NullInt64
 	WithholdingOnly bool
+	// ExDate is the optional ex date the payment was made for, recorded as
+	// the operation's 'ex' date.
+	ExDate string
 }
 
 // DividendOperationRecord pins a posted cash dividend (T-115). A cash
@@ -24,6 +27,7 @@ type DividendOperationRecord struct {
 	EventDate            string
 	CommodityID          sql.NullInt64
 	WithholdingOnly      bool
+	ExDate               string
 	AlreadyCorrected     bool
 	ImportedLineage      bool
 }
@@ -37,6 +41,8 @@ func dividendOperationByTransactionIDQuery(ctx context.Context, reader saleOpera
 	var corrected int
 	err := reader.QueryRowContext(ctx, `SELECT o.id, linked_version.transaction_id, link.transaction_version_id,
 		current.id, o.event_date, facts.commodity_id, COALESCE(facts.withholding_only, 0),
+		COALESCE((SELECT d.event_date FROM investment_operation_dates d
+			WHERE d.operation_id = o.id AND d.date_role = 'ex' ORDER BY d.date_seq LIMIT 1), ''),
 		EXISTS(SELECT 1 FROM investment_operations successor WHERE successor.correction_of_operation_id = o.id)
 		FROM investment_operations o
 		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id AND link.role = 'primary'
@@ -45,7 +51,7 @@ func dividendOperationByTransactionIDQuery(ctx context.Context, reader saleOpera
 		JOIN investment_dividend_facts facts ON facts.operation_id = o.id AND facts.book_id=o.book_id
 		WHERE o.book_id = ? AND linked_version.transaction_id = ? AND o.operation_kind = 'dividend'`,
 		bookID, transactionID).Scan(&record.OperationID, &record.TransactionID, &record.TransactionVersionID,
-		&record.CurrentVersionID, &record.EventDate, &record.CommodityID, &record.WithholdingOnly, &corrected)
+		&record.CurrentVersionID, &record.EventDate, &record.CommodityID, &record.WithholdingOnly, &record.ExDate, &corrected)
 	if errors.Is(err, sql.ErrNoRows) {
 		return DividendOperationRecord{}, ErrNotFound
 	}

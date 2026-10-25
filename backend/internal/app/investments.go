@@ -525,12 +525,15 @@ type DividendInput struct {
 	TagIDs      []int64
 	NeedsReview bool
 	// WithholdingOnly records a separate tax payment: AmountValue is tax, with no income leg.
-	WithholdingOnly      bool
-	OwnerUserID          int64
-	AuthSessionID        int64
-	RequestID            string
-	TransactionDate      string
-	CommodityID          NullablePatch[int64]
+	WithholdingOnly bool
+	OwnerUserID     int64
+	AuthSessionID   int64
+	RequestID       string
+	TransactionDate string
+	CommodityID     NullablePatch[int64]
+	// ExDate is the optional ex date the payment was made for, no later than
+	// TransactionDate. A replacement keeps the recorded one when it is unset.
+	ExDate               NullablePatch[string]
 	CashAccountID        int64
 	CashCommodityID      int64
 	IncomeAccountID      *int64
@@ -1981,7 +1984,8 @@ func (s *InvestmentService) prepareDividendWrite(ctx context.Context, input Divi
 	if err != nil {
 		return db.CreateTransactionParams{}, err
 	}
-	params.Dividend = &db.DividendFact{CommodityID: nullableInt64(input.CommodityID.Value), WithholdingOnly: input.WithholdingOnly}
+	params.Dividend = &db.DividendFact{CommodityID: nullableInt64(input.CommodityID.Value), WithholdingOnly: input.WithholdingOnly,
+		ExDate: strings.TrimSpace(input.ExDate.OrZero())}
 	params.InvestmentComponents = []db.InvestmentComponentSpec{{
 		Kind: "dividend_gross", CommodityID: input.CashCommodityID,
 		AmountValue: strconv.FormatInt(input.AmountValue, 10), AmountScale: input.AmountScale,
@@ -2300,12 +2304,19 @@ func (s *InvestmentService) AcceptSuggestionWithCompletion(ctx context.Context, 
 		commodityID = &instrument.CommodityID
 	}
 
+	// A dividend-family provider event is dated on its ex date; the dividend
+	// completed from it records that ex date (R13 D2).
+	var exDate NullablePatch[string]
+	if record.EventFamily == "dividend" {
+		exDate = NullableValue(record.EventDate)
+	}
 	dividendInput := DividendInput{
 		OwnerUserID:            ownerUserID,
 		AuthSessionID:          authSessionID,
 		RequestID:              requestID,
 		TransactionDate:        proposal.TransactionDate,
 		CommodityID:            NullablePatch[int64]{Set: true, Value: commodityID},
+		ExDate:                 exDate,
 		CashAccountID:          proposal.CashAccountID,
 		CashCommodityID:        proposal.CashCommodityID,
 		IncomeAccountID:        proposal.IncomeAccountID,
@@ -2369,7 +2380,7 @@ func (s *InvestmentService) LinkSuggestion(ctx context.Context, ownerUserID int6
 	case errors.Is(err, db.ErrEventSuggestionNotPending):
 		return InvestmentEventSuggestion{}, ErrInvestmentSuggestionNotPending
 	case errors.Is(err, db.ErrEventLinkTarget):
-		return InvestmentEventSuggestion{}, ValidationError{Message: "only an unlinked posted cash dividend of this instrument dated on or after the ex-date, or for a short holder an unlinked payment in lieu of this instrument, holding and ex-date, can be linked"}
+		return InvestmentEventSuggestion{}, ValidationError{Message: "only an unlinked posted cash dividend of this instrument dated on or after the ex-date and recording no other ex-date, or for a short holder an unlinked payment in lieu of this instrument, holding and ex-date, can be linked"}
 	case err != nil:
 		return InvestmentEventSuggestion{}, fmt.Errorf("link investment event suggestion: %w", err)
 	}
@@ -2917,6 +2928,15 @@ func validateDividendInput(input DividendInput) (string, error) {
 	date, err := cleanRequiredDate(input.TransactionDate, "transaction date")
 	if err != nil {
 		return "", err
+	}
+	if input.ExDate.Value != nil {
+		exDate, err := cleanRequiredDate(*input.ExDate.Value, "ex-date")
+		if err != nil {
+			return "", err
+		}
+		if exDate > date {
+			return "", ValidationError{Message: "ex-date must be on or before the payment date"}
+		}
 	}
 	return date, nil
 }

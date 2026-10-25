@@ -166,7 +166,7 @@
   <div class="grid gap-3 sm:grid-cols-2">
     <div>
       <label for="{idPrefix}-date" class="mb-1 block text-sm font-medium text-foreground">{m.investments_suggestion_payment_date()}</label>
-      <input id="{idPrefix}-date" type="date" bind:value={paymentDate} required class={fieldClass} />
+      <input id="{idPrefix}-date" type="date" bind:value={paymentDate} min={evidence?.exDate} required class={fieldClass} />
     </div>
     <div>
       <label for="{idPrefix}-cash" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_cash_account()}</label>

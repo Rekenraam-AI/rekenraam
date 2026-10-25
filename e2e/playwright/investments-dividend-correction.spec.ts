@@ -85,6 +85,36 @@ test('a cash dividend is corrected, then the correction is reversed', async ({ p
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
+  // R13 D2: an ex date recorded later by correction, so returns recognise the
+  // income on it.
+  test('a correction records the ex date a cash dividend was paid for', async ({ page }) => {
+    const s = await setup(page, 'EXD');
+    const paidOn = daysFromTodayISO(-10);
+    const exDate = daysFromTodayISO(-20);
+    const dividend = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/dividend', s.csrfToken, {
+      transaction_date: paidOn, cash_account_id: s.cashID, cash_commodity_id: s.currencyID,
+      income_account_id: s.incomeID, amount_value: '5000', amount_scale: 2, memo: `ACME ${s.suffix}`
+    });
+
+    await page.goto(`/app/transactions?transaction_id=${dividend.id}`);
+    await page.getByRole('button', { name: 'Correct dividend…' }).click();
+    const form = page.getByRole('dialog', { name: 'Correct this dividend' });
+    const exDateField = form.getByLabel('Ex-dividend date');
+    await expect(exDateField).toHaveValue('');
+    await expect(exDateField).toHaveAttribute('max', paidOn);
+    await form.getByLabel('Reason for correction').fill('statement names the ex date');
+    await exDateField.fill(exDate);
+    await form.getByRole('button', { name: 'Review and replace' }).click();
+    await expect(form).toBeHidden();
+
+    const replacement = await chainEffective(page, dividend.id);
+    expect(replacement).not.toBe(dividend.id);
+    const chain = await apiJSON<{ effective_dividend: { ex_date?: string } }>(page, 'GET',
+      `/api/v1/investments/transactions/${replacement}/correction-chain`);
+    expect(chain.effective_dividend.ex_date).toBe(exDate);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+
   test('correcting a reinvested dividend shows the later sale gain it changes', async ({ page }) => {
     const s = await setup(page, 'RDV');
     const openedOn = daysFromTodayISO(-60);

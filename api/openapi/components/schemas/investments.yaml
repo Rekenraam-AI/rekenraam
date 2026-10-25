@@ -2550,6 +2550,10 @@ InvestmentCorrectionDividendTerms:
       type: integer
       format: int64
       description: Optional payer shared by gross income and withholding; absent when unassigned. Retained provider claims are diagnosed separately.
+    ex_date:
+      type: string
+      format: date
+      description: Recorded ex date the payment was made for; absent when none was recorded.
     event_date: { type: string, format: date }
     cash_account_id: { type: integer, format: int64 }
     cash_commodity_id: { type: integer, format: int64 }
@@ -3299,6 +3303,14 @@ DividendRequest:
       type: [integer, 'null']
       format: int64
       description: Optional payer attribution. Entry omission/null is unassigned; replacement omission preserves, null clears and a value assigns. No historical holding is required.
+    ex_date:
+      type: [string, 'null']
+      format: date
+      description: >-
+        Optional ex date the payment (or separate withholding) was made for, on or
+        before transaction_date. Per-instrument returns recognise the income on it
+        and decide entitlement at the end of the previous day. Entry omission/null
+        records none; replacement omission preserves, null clears and a value replaces.
     cash_account_id:
       type: integer
       format: int64
@@ -3914,7 +3926,10 @@ EventSuggestionCompletion:
     transaction_date:
       type: string
       format: date
-      description: Payment date, which becomes the dividend's transaction date.
+      description: >-
+        Payment date, which becomes the dividend's transaction date. A cash dividend
+        completed from a provider dividend records the event's ex date, so the
+        payment date may not precede it.
     cash_account_id:
       type: integer
       format: int64

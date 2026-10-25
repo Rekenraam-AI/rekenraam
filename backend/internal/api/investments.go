@@ -573,21 +573,22 @@ type investmentLotDisposalResponse struct {
 }
 
 type dividendRequest struct {
-	WithholdingOnly      bool                 `json:"withholding_only"`
-	TransactionDate      string               `json:"transaction_date"`
-	CommodityID          nullableField[int64] `json:"commodity_id,omitzero"`
-	CashAccountID        int64                `json:"cash_account_id"`
-	CashCommodityID      int64                `json:"cash_commodity_id"`
-	IncomeAccountID      *int64               `json:"income_account_id"`
-	AmountValue          moneyCoefficient     `json:"amount_value"`
-	AmountScale          int                  `json:"amount_scale"`
-	WithholdingValue     *moneyCoefficient    `json:"withholding_value"`
-	WithholdingScale     *int                 `json:"withholding_scale"`
-	WithholdingAccountID *int64               `json:"withholding_account_id"`
-	Memo                 string               `json:"memo"`
-	PayeeID              *int64               `json:"payee_id"`
-	Status               string               `json:"status"`
-	ChangeReason         string               `json:"change_reason"`
+	WithholdingOnly      bool                  `json:"withholding_only"`
+	TransactionDate      string                `json:"transaction_date"`
+	CommodityID          nullableField[int64]  `json:"commodity_id,omitzero"`
+	ExDate               nullableField[string] `json:"ex_date,omitzero"`
+	CashAccountID        int64                 `json:"cash_account_id"`
+	CashCommodityID      int64                 `json:"cash_commodity_id"`
+	IncomeAccountID      *int64                `json:"income_account_id"`
+	AmountValue          moneyCoefficient      `json:"amount_value"`
+	AmountScale          int                   `json:"amount_scale"`
+	WithholdingValue     *moneyCoefficient     `json:"withholding_value"`
+	WithholdingScale     *int                  `json:"withholding_scale"`
+	WithholdingAccountID *int64                `json:"withholding_account_id"`
+	Memo                 string                `json:"memo"`
+	PayeeID              *int64                `json:"payee_id"`
+	Status               string                `json:"status"`
+	ChangeReason         string                `json:"change_reason"`
 	reconciliationOverrideFields
 }
 
@@ -2276,7 +2277,7 @@ func toInvestmentTradeChargeRequests(charges []app.InvestmentTradeChargeInput) [
 func toDividendInput(owner app.Owner, r *http.Request, request dividendRequest) app.DividendInput {
 	return app.DividendInput{WithholdingOnly: request.WithholdingOnly,
 		OwnerUserID: owner.ID, AuthSessionID: authenticatedSessionID(r), RequestID: RequestIDFromContext(r.Context()),
-		TransactionDate: request.TransactionDate, CommodityID: request.CommodityID.NullablePatch, CashAccountID: request.CashAccountID,
+		TransactionDate: request.TransactionDate, CommodityID: request.CommodityID.NullablePatch, ExDate: request.ExDate.NullablePatch, CashAccountID: request.CashAccountID,
 		CashCommodityID: request.CashCommodityID, IncomeAccountID: request.IncomeAccountID, AmountValue: int64(request.AmountValue),
 		AmountScale: request.AmountScale, WithholdingValue: moneyInt64Pointer(request.WithholdingValue), WithholdingScale: request.WithholdingScale,
 		WithholdingAccountID: request.WithholdingAccountID, Memo: request.Memo, PayeeID: request.PayeeID,
@@ -3153,6 +3154,7 @@ type investmentCorrectionDividendTerms struct {
 	Attribution          *investmentAttributionResponse `json:"attribution"`
 	WithholdingOnly      bool                           `json:"withholding_only"`
 	CommodityID          *int64                         `json:"commodity_id,omitempty"`
+	ExDate               *string                        `json:"ex_date,omitempty"`
 	EventDate            string                         `json:"event_date"`
 	CashAccountID        int64                          `json:"cash_account_id"`
 	CashCommodityID      int64                          `json:"cash_commodity_id"`
@@ -3170,7 +3172,7 @@ func toInvestmentCorrectionDividendTerms(terms *app.InvestmentCorrectionDividend
 	if terms == nil {
 		return nil
 	}
-	return &investmentCorrectionDividendTerms{Attribution: toInvestmentAttributionResponse(&terms.Attribution), WithholdingOnly: terms.WithholdingOnly, CommodityID: terms.CommodityID, EventDate: terms.EventDate, CashAccountID: terms.CashAccountID,
+	return &investmentCorrectionDividendTerms{Attribution: toInvestmentAttributionResponse(&terms.Attribution), WithholdingOnly: terms.WithholdingOnly, CommodityID: terms.CommodityID, ExDate: optionalString(terms.ExDate), EventDate: terms.EventDate, CashAccountID: terms.CashAccountID,
 		CashCommodityID: terms.CashCommodityID, IncomeAccountID: terms.IncomeAccountID,
 		AmountValue: terms.AmountValue, AmountScale: terms.AmountScale,
 		WithholdingAccountID: terms.WithholdingAccountID, WithholdingValue: terms.WithholdingValue,

@@ -279,9 +279,10 @@ const cashPaymentClaimSQL = `SELECT 1 FROM investment_cash_payment_identity targ
 	WHERE target.book_id=o.book_id AND target.transaction_id=t.id`
 
 // eventLinkCandidatesSQL offers each suggestion only its own kind of payment.
-// Dividend candidates match instrument/date window; payment-in-lieu candidates
-// match instrument, one proposed holding and ex-date. Claim identity spans the
-// correction ancestry independently of the current owner attribution.
+// Dividend candidates match instrument/date window and any recorded ex date;
+// payment-in-lieu candidates match instrument, one proposed holding and
+// ex-date. Claim identity spans the correction ancestry independently of the
+// current owner attribution.
 func eventLinkCandidatesSQL(ctx context.Context) string {
 	return `
 	SELECT suggestion_id, transaction_id, transaction_date, cash_code, amount_value, amount_scale, holding_account_id, holding_account_name
@@ -304,6 +305,9 @@ func eventLinkCandidatesSQL(ctx context.Context) string {
 			-- A short holder's payment in lieu (#255) is never a cash dividend.
 			AND json_extract(s.proposed_transaction_json, '$.kind') IS NOT 'payment_in_lieu'
 			AND o.event_date >= e.event_date AND o.event_date <= date(e.event_date, '+' || ? || ' days')
+			-- A dividend that records an ex date is paid for that ex date only.
+			AND NOT EXISTS (SELECT 1 FROM investment_operation_dates ex
+				WHERE ex.operation_id = o.id AND ex.date_role = 'ex' AND ex.event_date <> e.event_date)
 			AND NOT EXISTS (` + cashPaymentClaimSQL + `)
 		UNION ALL
 		SELECT s.id, tv.transaction_id, o.event_date, cash.code, c.amount_value, c.amount_scale, c.component_seq,

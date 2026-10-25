@@ -87,13 +87,15 @@ func (f *returnsFixture) buyWithFee(t *testing.T, date, settle string, feeAccoun
 }
 
 // dividendOf records a TEST dividend into broker cash, gross with optional
-// withholding, and its ex date when one is given (recorded as an operation
-// date, as a payment in lieu's is).
-func (f *returnsFixture) dividendOf(t *testing.T, date, exDate string, instrument *int64, gross, withheld int64, withholdingOnly bool) {
+// withholding, and its ex date when one is given.
+func (f *returnsFixture) dividendOf(t *testing.T, date, exDate string, instrument *int64, gross, withheld int64, withholdingOnly bool) Transaction {
 	t.Helper()
 	input := DividendInput{OwnerUserID: f.ownerUserID, TransactionDate: date, CommodityID: NullablePatch[int64]{Set: true, Value: instrument},
 		CashAccountID: f.brokerCashID, CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.incomeAccountID,
 		AmountValue: gross, AmountScale: 2, WithholdingOnly: withholdingOnly}
+	if exDate != "" {
+		input.ExDate = NullableValue(exDate)
+	}
 	if withholdingOnly {
 		input.IncomeAccountID = nil
 	}
@@ -105,12 +107,7 @@ func (f *returnsFixture) dividendOf(t *testing.T, date, exDate string, instrumen
 	}
 	transaction, err := f.investmentService.Dividend(context.Background(), input)
 	require.NoError(t, err)
-	if exDate != "" {
-		_, err = f.database.Exec(`INSERT INTO investment_operation_dates (operation_id, date_role, event_date)
-			SELECT l.operation_id, 'ex', ? FROM investment_operation_journal_links l
-			JOIN transaction_versions tv ON tv.id = l.transaction_version_id WHERE tv.transaction_id = ?`, exDate, transaction.ID)
-		require.NoError(t, err)
-	}
+	return transaction
 }
 
 // readInstruments reads with instrument returns and checks I10: the portfolio

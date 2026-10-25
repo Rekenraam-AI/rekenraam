@@ -100,7 +100,8 @@
 
   // Form fields
   let transactionDate = $state(ownerToday());
-  // cash dividend only
+  // cash dividend and separate withholding only
+  let exDate = $state('');
   let cashAccountID = $state('');
   let incomeAccountID = $state('');
   let withholdingAccountID = $state('');
@@ -258,6 +259,7 @@
           transaction_date: transactionDate,
           withholding_only: mode === 'withholding',
           commodity_id: selectedInstrument?.commodity_id,
+          ex_date: exDate || undefined,
           cash_account_id: Number(cashAccountID),
           cash_commodity_id: cashCommodityID,
           income_account_id: mode !== 'withholding' && incomeAccountID ? Number(incomeAccountID) : undefined,
@@ -405,6 +407,24 @@
       required
     />
   </div>
+
+  {#if mode !== 'reinvested'}
+    <div>
+      <label for="div-ex-date" class="mb-1 block text-sm font-medium text-foreground">
+        {m.investments_dividend_ex_date()}
+        <span class="ml-1 text-xs font-normal text-muted">({m.investments_form_optional()})</span>
+      </label>
+      <input
+        id="div-ex-date"
+        type="date"
+        bind:value={exDate}
+        max={transactionDate}
+        aria-describedby="div-ex-date-hint"
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground"
+      />
+      <p id="div-ex-date-hint" class="mt-1 text-xs text-muted">{m.investments_dividend_ex_date_hint()}</p>
+    </div>
+  {/if}
 
   <!-- Instrument autocomplete (optional for cash dividend, required for reinvested) -->
   <div class="relative">

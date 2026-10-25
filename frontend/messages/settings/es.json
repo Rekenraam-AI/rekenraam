@@ -1729,5 +1729,7 @@
   "investments_attribution_cash_parent_unresolved": "La operación corporativa original se revirtió. La disposición sigue registrada; su validez financiera se comprueba por separado.",
   "investments_attribution_cash_parent_mismatch": "La operación corporativa actual ya no coincide con la cuenta, el instrumento o la fecha de esta disposición. Se conserva la referencia original.",
   "investments_cash_in_lieu_current_parent": "Operación actual #{id}",
-  "investments_dividend_payer_help": "El pagador es opcional. Cambiar solo esta atribución no modifica el efectivo ni los impuestos."
+  "investments_dividend_payer_help": "El pagador es opcional. Cambiar solo esta atribución no modifica el efectivo ni los impuestos.",
+  "investments_dividend_ex_date": "Fecha ex-dividendo",
+  "investments_dividend_ex_date_hint": "Las rentabilidades cuentan este pago en la fecha ex-dividendo, para quien tenía las acciones el día anterior. Déjela en blanco si se desconoce."
 }

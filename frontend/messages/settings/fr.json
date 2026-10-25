@@ -1729,5 +1729,7 @@
   "investments_attribution_cash_parent_unresolved": "L’opération sur titres d’origine a été contrepassée. La cession reste enregistrée ; sa validité financière est vérifiée séparément.",
   "investments_attribution_cash_parent_mismatch": "L’opération sur titres actuelle ne correspond plus au compte, à l’instrument ou à la date de cette cession. La référence d’origine est conservée.",
   "investments_cash_in_lieu_current_parent": "Opération actuelle nº {id}",
-  "investments_dividend_payer_help": "Le payeur est facultatif. Modifier uniquement cette attribution ne change ni les espèces ni les impôts."
+  "investments_dividend_payer_help": "Le payeur est facultatif. Modifier uniquement cette attribution ne change ni les espèces ni les impôts.",
+  "investments_dividend_ex_date": "Date ex-dividende",
+  "investments_dividend_ex_date_hint": "Les rendements comptent ce paiement à la date ex-dividende, pour le détenteur des titres la veille. Laissez vide si elle est inconnue."
 }

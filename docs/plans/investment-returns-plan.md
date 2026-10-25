@@ -1054,12 +1054,14 @@ written.
    - Exchange facts come from `investment_transfer_facts`. A reversal mirrors
      every leg and cancels, which is pinned by
      `TestInstrumentReturnsReversedExchangeCancels`.
-   - **Ex dates in practice:** today only a payment in lieu records an
-     operation ex date. A manual or provider-completed dividend has none, so
-     D2 falls back to its entry date, and an owner who sold before the pay
-     date sees that dividend listed `not_held`. The I2 cases insert the ex
-     date as an operation date. Recording a dividend's ex date is a separate
-     follow-up.
+   - **Ex dates in practice:** a cash dividend, a withholding-only payment
+     and a payment in lieu can each record an ex date (dividends since
+     2026-10-25; contract in the
+     [operation plan](investment-operation-refactor-plan.md), "Dividend ex
+     dates"). A dividend recorded without one, including every imported
+     dividend, falls back to its entry date, and an owner who sold before
+     the pay date sees it listed `not_held` until a replacement adds the ex
+     date. The I2 cases record their ex dates through the dividend command.
 9. **Screen panel and saved-run inclusion**, with a browser case on a phone
    and an existing run reopened unchanged.
 

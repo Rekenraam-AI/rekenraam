@@ -149,7 +149,7 @@ func (r *TransactionRepository) ReturnsOperationAnchors(ctx context.Context, boo
 	}
 
 	rows, err = r.database.QueryContext(ctx, `
-		SELECT tv.transaction_id, l.operation_id
+		SELECT tv.transaction_id, l.operation_id, l.role
 		FROM investment_operation_journal_links l
 		JOIN current_transaction_versions tv ON tv.id = l.transaction_version_id
 		JOIN transactions t ON t.id = tv.transaction_id
@@ -162,7 +162,8 @@ func (r *TransactionRepository) ReturnsOperationAnchors(ctx context.Context, boo
 	var anchors []ReturnsOperationAnchor
 	for rows.Next() {
 		var anchor ReturnsOperationAnchor
-		if err := rows.Scan(&anchor.TransactionID, &anchor.OperationID); err != nil {
+		var role string
+		if err := rows.Scan(&anchor.TransactionID, &anchor.OperationID, &role); err != nil {
 			return nil, fmt.Errorf("scan returns operation link: %w", err)
 		}
 		operation := operations[anchor.OperationID]
@@ -182,9 +183,16 @@ func (r *TransactionRepository) ReturnsOperationAnchors(ctx context.Context, boo
 			id = current.correctionOf.Int64
 			current = operations[id]
 		}
+		// The inverse journal inside a replacement undoes the operation it
+		// corrects, so it is read with that operation's facts: a replacement
+		// that changes the ex date or payer must not move the inverse with it.
+		facts := operation
+		if role == "reversal" && operation.correctionOf.Valid && operations[operation.correctionOf.Int64] != nil {
+			facts = operations[operation.correctionOf.Int64]
+		}
 		// A reversal or replacement may carry no facts of its own; its
 		// predecessor's facts describe the same position.
-		source := operation
+		source := facts
 		for depth := 0; source != nil && !source.hasFact && !source.holding.Valid && source.correctionOf.Valid && depth < 64; depth++ {
 			source = operations[source.correctionOf.Int64]
 		}
@@ -192,15 +200,15 @@ func (r *TransactionRepository) ReturnsOperationAnchors(ctx context.Context, boo
 			anchor.HoldingAccountID, anchor.InstrumentFact, anchor.InstrumentID = source.holding, source.hasFact, source.instrument
 			anchor.ExDate, anchor.HoldingCommodityID = source.exDate, source.holdingCommodity
 		}
-		exchange := operation
+		exchange := facts
 		for depth := 0; exchange != nil && exchange.exchange == nil && exchange.correctionOf.Valid && depth < 64; depth++ {
 			exchange = operations[exchange.correctionOf.Int64]
 		}
 		if exchange != nil {
 			anchor.Exchange = exchange.exchange
 		}
-		if operation.exDate.Valid {
-			anchor.ExDate = operation.exDate
+		if facts.exDate.Valid {
+			anchor.ExDate = facts.exDate
 		}
 		anchors = append(anchors, anchor)
 	}

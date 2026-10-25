@@ -32637,6 +32637,11 @@ export interface components {
              * @description Optional payer shared by gross income and withholding; absent when unassigned. Retained provider claims are diagnosed separately.
              */
             commodity_id?: number;
+            /**
+             * Format: date
+             * @description Recorded ex date the payment was made for; absent when none was recorded.
+             */
+            ex_date?: string;
             /** Format: date */
             event_date: string;
             /** Format: int64 */
@@ -33232,6 +33237,11 @@ export interface components {
              * @description Optional payer attribution. Entry omission/null is unassigned; replacement omission preserves, null clears and a value assigns. No historical holding is required.
              */
             commodity_id?: number | null;
+            /**
+             * Format: date
+             * @description Optional ex date the payment (or separate withholding) was made for, on or before transaction_date. Per-instrument returns recognise the income on it and decide entitlement at the end of the previous day. Entry omission/null records none; replacement omission preserves, null clears and a value replaces.
+             */
+            ex_date?: string | null;
             /** Format: int64 */
             cash_account_id: number;
             /** Format: int64 */
@@ -33534,7 +33544,7 @@ export interface components {
         EventSuggestionCompletion: {
             /**
              * Format: date
-             * @description Payment date, which becomes the dividend's transaction date.
+             * @description Payment date, which becomes the dividend's transaction date. A cash dividend completed from a provider dividend records the event's ex date, so the payment date may not precede it.
              */
             transaction_date: string;
             /** Format: int64 */

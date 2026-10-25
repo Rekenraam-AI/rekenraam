@@ -1729,5 +1729,7 @@
   "investments_attribution_cash_parent_unresolved": "Die ursprüngliche Kapitalmaßnahme wurde storniert. Der Verkauf bleibt erfasst; seine finanzielle Gültigkeit wird getrennt geprüft.",
   "investments_attribution_cash_parent_mismatch": "Die aktuelle Kapitalmaßnahme passt nicht mehr zu Konto, Wertpapier oder Datum dieses Verkaufs. Der ursprüngliche Verweis bleibt erhalten.",
   "investments_cash_in_lieu_current_parent": "Aktuelle Maßnahme Nr. {id}",
-  "investments_dividend_payer_help": "Der Zahler ist optional. Wenn Sie nur diese Zuordnung ändern, bleiben Geldbetrag und Steuer unverändert."
+  "investments_dividend_payer_help": "Der Zahler ist optional. Wenn Sie nur diese Zuordnung ändern, bleiben Geldbetrag und Steuer unverändert.",
+  "investments_dividend_ex_date": "Ex-Dividenden-Tag",
+  "investments_dividend_ex_date_hint": "Renditen erfassen diese Zahlung am Ex-Dividenden-Tag, für den Inhaber der Anteile am Vortag. Bei unbekanntem Datum leer lassen."
 }

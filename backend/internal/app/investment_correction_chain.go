@@ -144,9 +144,11 @@ type InvestmentCorrectionShareExchangeTerms struct {
 // InvestmentCorrectionDividendTerms are an effective cash dividend's posted
 // facts. The date, cash account and currency are fixed for a replacement.
 type InvestmentCorrectionDividendTerms struct {
-	Attribution          InvestmentAttributionDiagnostic
-	WithholdingOnly      bool
-	CommodityID          *int64
+	Attribution     InvestmentAttributionDiagnostic
+	WithholdingOnly bool
+	CommodityID     *int64
+	// ExDate is the recorded ex date, or empty when none was recorded.
+	ExDate               string
 	EventDate            string
 	CashAccountID        int64
 	CashCommodityID      int64
@@ -328,6 +330,7 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 			chain.EffectiveDividend, chain.CanCorrectDividend = dividendCorrectionTerms(transaction, operation.WithholdingOnly)
 			if chain.EffectiveDividend != nil {
 				chain.EffectiveDividend.CommodityID = nullableSQLInt64Ptr(operation.CommodityID)
+				chain.EffectiveDividend.ExDate = operation.ExDate
 				diagnostic, err := s.repository.DividendAttribution(ctx, BookID, transaction.ID)
 				if err != nil {
 					return InvestmentCorrectionChain{}, err
