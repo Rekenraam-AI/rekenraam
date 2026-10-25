@@ -8,7 +8,9 @@ as "finding N"; `ae084c4d`: two, recorded under the expected cases). Slice 2
 (allocation at the closing day), contracts below, delivered the same day;
 slice 5 (benchmarks) delivered the same day; slice 6 (saved runs) delivered
 2026-10-25. R13 core is complete. Slice 7 (browser total-return price entry,
-closing slice 5's API-only gap) delivered 2026-10-25.**
+closing slice 5's API-only gap) delivered 2026-10-25. A per-instrument
+contract (`instrument_returns_v1`) is drafted for owner review, not
+accepted.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
 0017 (provider independence, honest incomplete data) govern this plan.
@@ -697,6 +699,206 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
    (0.00009 + 0.00001) / 1000 · 900 / 0.00009 − 1 = `0.000000`, and a
    cent-rounded chain fails this case.
 
+## Per-instrument returns (`instrument_returns_v1`) — DRAFT for owner review
+
+Status: **proposed 2026-10-25, not accepted, nothing implemented.** The six
+decisions D1–D6 below need owner answers; each states the recommended
+answer and the alternative. Until this section is accepted, no code, OpenAPI
+or test may cite it.
+
+The question: *how did each instrument the portfolio held perform over the
+period, including its income, independently of when it was bought or sold?*
+It answers that inside the existing returns read. It is read-only like the
+rest of R13: income is attached to an instrument at read time, and no
+posting, operation or fact is written. Reconciliation, balances and exports
+are unchanged.
+
+### Boundary: the instrument sleeve
+
+For instrument commodity `i` (a security or crypto, never a currency), the
+**sleeve** `S_i` is every posting of commodity `i` on an account in the
+resolved portfolio scope (the same accounts, resolved once as of `to`). A
+sleeve holds **units only, never cash**: cash that a sale produces, or a
+dividend pays, has left the sleeve, wherever it lands. That is what makes
+per-instrument attribution possible without linking holdings to cash
+accounts, which the ledger does not do (see *Why not cash side alone*).
+
+- `V_i(d)` = the balance of `i` across the scope at the end of `d`, valued by
+  the read's shared `RateTable` (same admission, staleness window, split
+  rescaling (#407) and `conflicting_splits` gap as `V(d)`). Balances that are
+  all zero value at exactly 0 without a price.
+- A sleeve is listed when it has a posting dated in `[from, to]`, a non-zero
+  balance at the opening or closing boundary, or income attributed to it in
+  the period. Rows are ordered by commodity code, then id.
+
+**D1 — scope.** *Recommended:* the sleeve uses the portfolio's resolved
+account scope, so a sleeve always describes part of the portfolio being
+read. *Alternative:* every holding of `i` in the book, whatever the scope.
+That makes a sleeve independent of the account selection, but then sleeves
+no longer describe the selected portfolio.
+
+### Sleeve flows
+
+The portfolio partition is reused, with `S_i` in place of B. For an entry
+dated in the period: **P** = income/expense postings, **T** =
+`commodity_trading` postings, and **O_i** = every other posting, including
+other portfolio accounts and other commodities. The flow into the sleeve
+(positive = in) is:
+
+| Entry | `F_i` |
+|---|---|
+| **Delivery** (an external transfer in/out or its correction, or an equity-class O posting other than T; the portfolio rule) | `Σ value(S_i) + Σ value(P)`, at market |
+| **Exchange** (a `merger` or `spin_off` operation, or any entry posting units of two or more non-currency commodities in scope) | by consideration (D6) |
+| Otherwise, with an `S_i` posting | `F_i = −Σ value(O_i)` |
+| Attributed income (below) | `F_i = −Σ value(O_i)` |
+
+Consequences, each an expected case:
+
+- A buy paid 1,005 from broker cash (1,000 plus a fee of 5): `O_i` = cash
+  −1,005, so `F_i = +1,005`. The fee is expense (P) and is never a flow, so it
+  lowers the instrument's return (**D4**). The trade-versus-close difference
+  is return, as at portfolio level.
+- A sale for 995 net: `F_i = −995`, an outflow. A realized-gain posting is P
+  and changes nothing: returns stay ledger-based, never lot-based.
+- A transfer between two in-scope holdings of `i` has only `S_i` and T
+  postings, so no flow. A transfer to an out-of-scope holding puts the units
+  in `O_i` at market, so it is an outflow at market value.
+- A split or stock distribution of `i` itself posts only `S_i` and T: no
+  flow. A split is neutral through the shared rescaling.
+- A short sale (units −10, cash +1,000): an outflow of 1,000. See D5 for which
+  figures a short sleeve gets.
+
+**D4 — trading costs.** *Recommended:* costs are net. A fee booked with the
+trade stays in P, so the inflow is the cash paid and the fee lowers that
+instrument's return. This matches the portfolio, which is net of fees and
+taxes. *Alternative:* gross, with flows at trade value excluding the fee. The
+fee then disappears from every sleeve and lands in the residual.
+
+Same-day netting per economic identity (finding 3) applies per sleeve
+unchanged: a correction chain's same-day entries form one net flow before
+the in/out split.
+
+### Income attribution and timing
+
+Income enters a sleeve only through facts that name its instrument; the
+journal itself posts only cash, income and withholding.
+
+- **Dividends and withholding** (`investment_dividend_facts.commodity_id =
+  i`). Attributed when, on the anchor date, `i` is held in scope and nowhere
+  outside it. The flow is the net cash, `−Σ value(O_i)`: a gross 20 with 3
+  withheld leaves 17 in cash, so `F_i = −17`. Returns are net of withholding.
+  A withholding-only or reclaim entry is attributed the same way and its sign
+  falls out of the formula.
+- **Capital returns** name their holding; that account's commodity is `i`,
+  so the cash received is an outflow.
+- **Payments in lieu** name a holding or an instrument and are attributed
+  like dividends. A payment made on a short is an inflow (the sleeve's cost).
+- **Not attributed:** an unassigned instrument (`unassigned_instrument`),
+  nothing held on the anchor date (`not_held`), or `i` held inside and
+  outside the scope (D3). Each such entry is listed with its transaction,
+  date and reason, and counts only toward the portfolio's own figures and the
+  residual below.
+
+**D2 — timing.** *Recommended:* attributed income is a sleeve flow on its
+**anchor date**: the operation's ex date when recorded, else the entry date.
+It is converted to the reporting currency at that date. An entry dated after
+`to` whose anchor falls in the period counts, if it was recorded by the
+read's knowledge cutoff. *Why:* the price drops on the ex date, and an owner
+often sells between the ex date and the pay date. With payment-date timing,
+such a dividend would arrive in a sleeve with zero capital. The factor
+`(0 + 17) / (0 + 0)` makes TTWROR `non_positive_capital` for an ordinary
+round trip (case I2). *Cost:* a dividend that goes ex in the period but has
+not been recorded yet is missing until it is. That is the usual live-read
+restatement, and a saved run freezes it. *Alternative:* payment-date timing,
+which matches the portfolio's cash flows but loses TTWROR in that case.
+
+**D3 — held inside and outside the scope.** *Recommended:* refuse. The
+sleeve's withdrawals, gain, TTWROR and IRR are unavailable with
+`income_unattributable`, naming the entry; values and contributions remain.
+This arises only with an explicit account selection, never under the default
+scope. *Alternative:* split by units held inside versus outside on the
+anchor date, as an exact ratio, and disclose the split. It is
+deterministic, but it is an allocation the facts do not state.
+
+### Figures
+
+Each sleeve gets the portfolio's figures, computed by the same code paths
+from `V_i` and `F_i`: opening and closing value, contributions, withdrawals,
+**attributed income** (shown separately; it is also part of withdrawals),
+absolute gain, TTWROR (the same evaluation-day chain), money-weighted return
+(the Descartes-only rule), their annual forms (≥ 365 days only), and the
+sleeve's own coverage and gaps. A missing price for `j` affects only `j`'s
+sleeve, plus any exchange flow that needs `j`. All figures are in the
+reporting currency, so FX is part of an instrument's return.
+
+**D5 — shorts.** *Recommended:* a sleeve that is short (balance below zero) on
+any evaluation day keeps its values, flows and absolute gain, but TTWROR and
+IRR are unavailable with `short_position`. A sleeve has no cash to carry the
+short's capital, so there is no positive denominator to divide by. Example:
+short 10 at 100, buy-to-cover price 90 at the close: gain
+`−900 − 0 − 0 + 1,000 = 100`. *Alternative:* none proposed. Defining short
+capital (margin, collateral) is a separate contract.
+
+**D6 — exchanges.** *Recommended:* value an exchange by the **consideration
+received**. The outgoing sleeve (`merger` source, or spin-off parent) has an
+outflow equal to the market value of the new units plus any cash in lieu. The
+incoming sleeve has an inflow equal to the market value of its own units
+only. *Why:* a delisted source often has no price on the effective date, and
+the deal premium belongs to the holder of the source. *Alternative:* value
+each side at its own price, which leaves the source `flow_unavailable` when
+it is delisted. In either case, a missing price for the new instrument on the
+date is `flow_unavailable` for both sleeves.
+
+**Residual, not an attribution.** When the portfolio gain and every sleeve
+gain are available, the read also returns `not_attributed_gain = portfolio
+gain − Σ sleeve gains`. Its label covers what goes there: cash interest, FX
+on cash, fees not booked with a trade, unattributed income, and the
+ex-date-versus-pay-date timing of D2. It is a difference, never a computed
+breakdown. Sleeve returns are not weighted into the portfolio return, and the
+response says so.
+
+### API, screen, saved runs
+
+- `GET /api/v1/investments/returns?…&instruments=true` adds
+  `instrument_returns: {policy: "instrument_returns_v1", rows, not_attributed,
+  not_attributed_gain}` from the **same snapshot and `RateTable`**: one
+  request for the page, with no per-row fan-out. Without the flag the
+  response is unchanged. The flag is part of the saved-run request
+  descriptor, and a saved run stores the field when the flag was set. No
+  migration is needed: runs store the output bytes, and the bundle CSV gains
+  no column.
+- Screen: an "By instrument" panel under the portfolio figures. On a phone
+  it is a list of cards; on wider screens a table. Each figure carries its
+  reason in words, and the panel shows the residual and the not-attributed
+  list. Loading, empty ("no instruments in this period"), error and success
+  states are required.
+- Not in v1: native (quote-currency) per-instrument returns; the
+  per-instrument benchmark comparison; contribution-to-return attribution
+  (Brinson and similar).
+
+### Expected cases (hand-derived; period lengths in days)
+
+| Case | Facts | Expected |
+|---|---|---|
+| I1 fee in return | period 02-01..02-28 (28 days); buy 10 at 100 on 02-01 from broker cash, fee 5; price 110 on 02-28 | contributions 1,005; closing 1,100; gain 95; TTWROR `1100/1005 − 1 = 0.094527`; period MWR `0.094527` (one inflow at t = 0, one value at t = 28); annual figures `period_shorter_than_year` |
+| I2 ex-date income, exit before pay | holds 10, price 100 on 01-31; ex 02-10, price 98, gross 20, withholding 3, net 17 paid 02-20; sells all 10 for 1,050 on 02-15 | withdrawals 1,067 (income 17); gain 67; TTWROR `(980+17)/1000 · 1050/980 − 1 = 2991/2800 − 1 = 0.068214`; period MWR `0.129425` (flows −1,000 at t 0, +17 at t 10, +1,050 at t 15); with payment-date timing TTWROR would be `non_positive_capital` on 02-20 |
+| I3 held inside and outside | I2 with 5 more units in an out-of-scope account on 02-10; scope = the in-scope account only | I2's sleeve: values present; withdrawals, gain, TTWROR, IRR `income_unattributable` naming the dividend (D3 as recommended) |
+| I4 merger | period 03-01..03-31; A: 10 units, price 100 on 02-28; on 03-01, 10 A → 5 B plus cash in lieu 7; B price 210 on 03-01 and 220 on 03-31 | A: outflow 1,057, TTWROR `0.057000`; B: inflow 1,050, closing 1,100, TTWROR `1100/1050 − 1 = 0.047619` |
+| I5 transfers | 10 units moved between two in-scope holdings, then 4 to an out-of-scope holding at price 105 | no flow for the first move; an outflow of 420 for the second |
+| I6 short | short 10 at 100 (proceeds 1,000); price 90 at the close | gain 100; TTWROR and IRR `short_position` |
+| I7 unassigned dividend | a dividend with no instrument, paid into broker cash | in no sleeve; listed `unassigned_instrument`; included in the portfolio figures and the residual |
+| I8 residual | I1 inside a portfolio of broker cash funded by a 1,005 deposit | portfolio gain 95 = sleeve gain 95; `not_attributed_gain` 0 |
+
+Tests must own these fixtures and pin these literals, as the slice 1 cases
+do. Each case also asserts that no posting, operation or audit row was
+written.
+
+### Proposed slices (after acceptance)
+
+8. **Sleeve read**: `instrument_returns` on the returns read, OpenAPI, and
+   cases I1–I8.
+9. **Screen panel and saved-run inclusion**, with a browser case on a phone.
+
 ## Slices
 
 1. **Backend live read** — `GET /api/v1/investments/returns`, OpenAPI,
@@ -749,5 +951,6 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
 
 Targets and rebalancing are **deferred** (no trade execution is implied,
 per the product direction). Security-level (per-instrument) returns need an
-instrument boundary with commodity-attributed income and are a separate
-contract after slice 4.
+instrument boundary with commodity-attributed income; that contract is
+drafted above as *Per-instrument returns (`instrument_returns_v1`)* and
+awaits owner review (D1–D6) before any slice starts.
