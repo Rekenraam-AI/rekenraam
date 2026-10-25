@@ -531,8 +531,9 @@ type DividendInput struct {
 	RequestID       string
 	TransactionDate string
 	CommodityID     NullablePatch[int64]
-	// ExDate is the optional ex date the payment was made for, no later than
-	// TransactionDate. A replacement keeps the recorded one when it is unset.
+	// ExDate is the optional ex date the payment was made for; net worth and
+	// returns recognise the payment on it. A replacement keeps the recorded
+	// one when it is unset.
 	ExDate               NullablePatch[string]
 	CashAccountID        int64
 	CashCommodityID      int64
@@ -2380,7 +2381,7 @@ func (s *InvestmentService) LinkSuggestion(ctx context.Context, ownerUserID int6
 	case errors.Is(err, db.ErrEventSuggestionNotPending):
 		return InvestmentEventSuggestion{}, ErrInvestmentSuggestionNotPending
 	case errors.Is(err, db.ErrEventLinkTarget):
-		return InvestmentEventSuggestion{}, ValidationError{Message: "only an unlinked posted cash dividend of this instrument dated on or after the ex-date and recording no other ex-date, or for a short holder an unlinked payment in lieu of this instrument, holding and ex-date, can be linked"}
+		return InvestmentEventSuggestion{}, ValidationError{Message: "only an unlinked posted cash dividend of this instrument recording this ex-date, or recording none and dated on or after it, or for a short holder an unlinked payment in lieu of this instrument, holding and ex-date, can be linked"}
 	case err != nil:
 		return InvestmentEventSuggestion{}, fmt.Errorf("link investment event suggestion: %w", err)
 	}
@@ -2929,13 +2930,11 @@ func validateDividendInput(input DividendInput) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// An ex date may follow the payment (a due-bill special dividend): net
+	// worth then carries the early cash as unsettled until the ex date.
 	if input.ExDate.Value != nil {
-		exDate, err := cleanRequiredDate(*input.ExDate.Value, "ex-date")
-		if err != nil {
+		if _, err := cleanRequiredDate(*input.ExDate.Value, "ex-date"); err != nil {
 			return "", err
-		}
-		if exDate > date {
-			return "", ValidationError{Message: "ex-date must be on or before the payment date"}
 		}
 	}
 	return date, nil

@@ -261,7 +261,7 @@
         {m.investments_dividend_ex_date()}
         <span class="ml-1 text-xs font-normal text-muted">({m.investments_form_optional()})</span>
       </label>
-      <input id="dividend-correction-ex-date" type="date" bind:value={exDate} max={terms.event_date}
+      <input id="dividend-correction-ex-date" type="date" bind:value={exDate}
         aria-describedby="dividend-correction-ex-date-hint"
         class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
       <p id="dividend-correction-ex-date-hint" class="mt-1 text-xs text-muted">{m.investments_dividend_ex_date_hint()}</p>

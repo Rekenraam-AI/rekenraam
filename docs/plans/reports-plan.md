@@ -221,8 +221,27 @@ their own.
     stay posting-based. Cashflow is a cash report, and settlement is when cash
     moves. So cashflow's `net_movement` equals the change in totals minus
     `unsettled` over the same accounts, which is the change in posted
-    balances. Operations whose units post on several days, or on none (a
-    dividend), keep their entry dates.
+    balances. Operations whose units post on several days keep their entry
+    dates, and so does one with no units unless it records an ex date (next
+    point).
+  - **Dividends receivable** (owner decision 2026-10-25, extending #410). A
+    cash dividend, separate withholding payment or payment in lieu that
+    records an ex date is recognised on that date. It is the same rule with a
+    different recognition date: from the ex date until the payment date, its
+    cash posting counts as `unsettled` on the account it will be paid into
+    (a receivable; a payable for a payment in lieu). Cash paid before the ex
+    date counts with the opposite sign until the ex date, so an early payment
+    shows no gain before recognition. One without an ex date keeps its entry
+    date. The recognition date is the operation's recorded `ex` date; the
+    journal that undoes a replaced operation uses the corrected operation's
+    ex date, as the returns read does. The returns read applies the same
+    recognition to the portfolio (`recogniseOnUnitDate`), so net worth and
+    the portfolio value one dividend on one day. Income, spending, cashflow,
+    registers, reconciliation and the forecast stay on posting dates:
+    accrual income reporting is a separate decision. There is no managed
+    receivable account and no partial settlement; a dividend is one
+    operation with one payment. A pending provider suggestion is not
+    recognised: its amount is an estimate until the owner confirms it.
   - **A settling account not yet open.** An obligation recognised before its
     settling account's first version still counts. That version classifies
     the account, so an account opened on the settlement day carries the
@@ -235,7 +254,7 @@ their own.
     and never cash. The forecast reads currency balances and future posted
     entries. Spending and income never include a settlement leg. None of these
     double counts.
-  - Cases: `ledger_unsettled_test.go` (N1–N9); browser
+  - Cases: `ledger_unsettled_test.go` (N1–N9, dividends N10–N13); browser
     `e2e/playwright/reports-unsettled.spec.ts` (390 px, axe).
 - Return separate exact totals per commodity. A combined display is unavailable
   unless the caller selects the shipped reporting currency and named valuation method.

@@ -1071,6 +1071,12 @@ written.
      dividend, falls back to its entry date, and an owner who sold before
      the pay date sees it listed `not_held` until a replacement adds the ex
      date. The I2 cases record their ex dates through the dividend command.
+   - **Portfolio recognition (2026-10-25, dividends receivable).**
+     `recogniseOnUnitDate` also recognises an operation with no units on its
+     recorded ex date, the rule net worth applies (reports plan, "Dividends
+     receivable"). Between the ex date and payment, the portfolio holds the
+     dividend as a receivable on the account it will be paid into; payment
+     is settlement and creates no second flow.
    - **Review of `7d1996c3` and `8194782a` (2026-10-25).** All four findings
      were accepted and fixed. Each reviewer probe is a named regression case
      that failed before its fix:

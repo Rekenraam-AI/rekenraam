@@ -295,3 +295,112 @@ func requireNetWorthOneSnapshot(t *testing.T, series bool) {
 	require.Equal(t, "10", units.String(), "first posted read preceded the buy")
 	require.Equal(t, "900000", euros.String(), "old units must pair with old cash; mixed state creates a false 100 loss")
 }
+
+// Dividends receivable (reports plan, extending #410): a dividend that
+// records an ex date is recognised on it. Its cash counts as unsettled on the
+// account it is paid into from the ex date until payment, or with the
+// opposite sign when it is paid first. The fixture's 10 TEST pay into broker
+// cash; amounts are whole euros.
+
+// N10: gross 20, 3 withheld, ex 02-10, paid 02-20: a receivable of the net 17
+// from the ex date. Without an ex date the dividend keeps its payment date.
+func TestNetWorthRecognisesADividendReceivableOnItsExDate(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.dividendOf(t, "2026-02-20", "2026-02-10", &f.stockCommodityID, 2000, 300, false)
+
+	cases := []struct {
+		date      string
+		euros     int64
+		unsettled map[int64]int64
+	}{
+		{"2026-02-09", 9000, map[int64]int64{}},
+		{"2026-02-10", 9017, map[int64]int64{f.brokerCashID: 17}},
+		{"2026-02-19", 9017, map[int64]int64{f.brokerCashID: 17}},
+		{"2026-02-20", 9017, map[int64]int64{}},
+	}
+	for _, tc := range cases {
+		worth := f.netWorthAt(t, tc.date)
+		requireAmount(t, worth.Totals, f.eurCommodityID, tc.euros*100, 2, tc.date)
+		requireUnsettled(t, f, worth.Unsettled, tc.unsettled)
+	}
+
+	g := newReturnsFixture(t)
+	g.dividendOf(t, "2026-02-20", "", &g.stockCommodityID, 2000, 300, false)
+	worth := g.netWorthAt(t, "2026-02-19")
+	requireAmount(t, worth.Totals, g.eurCommodityID, 900000, 2, "no ex date: nothing before payment")
+	requireUnsettled(t, g, worth.Unsettled, map[int64]int64{})
+}
+
+// N11: a due-bill dividend paid 02-10 that goes ex 02-12 is early cash, offset
+// until the ex date, so net worth shows no gain before recognition.
+func TestNetWorthOffsetsADividendPaidBeforeItsExDate(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.dividendOf(t, "2026-02-10", "2026-02-12", &f.stockCommodityID, 2000, 0, false)
+
+	worth := f.netWorthAt(t, "2026-02-10")
+	requireAmount(t, worth.Totals, f.eurCommodityID, 900000, 2, "paid, not yet recognised")
+	requireUnsettled(t, f, worth.Unsettled, map[int64]int64{f.brokerCashID: -20})
+	worth = f.netWorthAt(t, "2026-02-12")
+	requireAmount(t, worth.Totals, f.eurCommodityID, 902000, 2, "recognised on the ex date")
+	requireUnsettled(t, f, worth.Unsettled, map[int64]int64{})
+
+	balances, err := f.transactionService.AccountBalances(context.Background(), AccountBalancesInput{OwnerUserID: f.ownerUserID, AsOf: "2026-02-10"})
+	require.NoError(t, err)
+	for _, account := range balances.Accounts {
+		if account.AccountID == f.brokerCashID {
+			requireAmount(t, account.DirectBalances, f.eurCommodityID, 12000, 2, "the posted balance has the cash")
+		}
+	}
+}
+
+// N12: a reversed ex-dated dividend leaves nothing on any day, and a
+// replacement that adds the ex date recognises the dividend from it: the
+// inverse journal keeps the original's (payment) date and cancels it there.
+func TestNetWorthDividendCorrectionsRecogniseOneDividend(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newReturnsFixture(t)
+	reversed := f.dividendOf(t, "2026-02-20", "2026-02-10", &f.stockCommodityID, 2000, 0, false)
+	_, err := f.investmentService.ReverseDividend(ctx, ReverseInvestmentDividendInput{OwnerUserID: f.ownerUserID,
+		TransactionID: reversed.ID, Reason: "duplicate"})
+	require.NoError(t, err)
+	for _, date := range []string{"2026-02-09", "2026-02-10", "2026-02-20"} {
+		worth := f.netWorthAt(t, date)
+		requireAmount(t, worth.Totals, f.eurCommodityID, 900000, 2, "reversed "+date)
+		requireUnsettled(t, f, worth.Unsettled, map[int64]int64{})
+	}
+
+	g := newReturnsFixture(t)
+	original := g.dividendOf(t, "2026-02-20", "", &g.stockCommodityID, 2000, 0, false)
+	_, err = g.investmentService.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{OwnerUserID: g.ownerUserID,
+		TransactionID: original.ID, Reason: "record the ex date", Replacement: DividendInput{TransactionDate: "2026-02-20",
+			ExDate: NullableValue("2026-02-10"), CashAccountID: g.brokerCashID, CashCommodityID: g.eurCommodityID,
+			IncomeAccountID: &g.incomeAccountID, AmountValue: 2000, AmountScale: 2}})
+	require.NoError(t, err)
+	worth := g.netWorthAt(t, "2026-02-09")
+	requireAmount(t, worth.Totals, g.eurCommodityID, 900000, 2, "before the ex date")
+	worth = g.netWorthAt(t, "2026-02-10")
+	requireAmount(t, worth.Totals, g.eurCommodityID, 902000, 2, "the replacement from its ex date")
+	requireUnsettled(t, g, worth.Unsettled, map[int64]int64{g.brokerCashID: 20})
+	worth = g.netWorthAt(t, "2026-02-20")
+	requireAmount(t, worth.Totals, g.eurCommodityID, 902000, 2, "paid once")
+	requireUnsettled(t, g, worth.Unsettled, map[int64]int64{})
+}
+
+// N13: the portfolio values the receivable on the same day as net worth.
+// Closing 02-15: broker 100 + receivable 17 + 10 TEST at 98.
+func TestReturnsPortfolioHoldsTheDividendReceivable(t *testing.T) {
+	t.Parallel()
+	f := newReturnsFixture(t)
+	f.price(t, "2026-02-10", 9800)
+	f.dividendOf(t, "2026-02-20", "2026-02-10", &f.stockCommodityID, 2000, 300, false)
+
+	result := f.read(t, "2026-02-01", "2026-02-15")
+	requireReturnsAmount(t, 1097, result.ClosingValue)
+	requireReturnsAmount(t, 0, result.Contributions)
+	requireReturnsAmount(t, 0, result.Withdrawals)
+	worth := f.netWorthAt(t, "2026-02-15")
+	requireUnsettled(t, f, worth.Unsettled, map[int64]int64{f.brokerCashID: 17})
+}

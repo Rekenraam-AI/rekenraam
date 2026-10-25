@@ -169,8 +169,9 @@ NetWorthResponse:
     unsettled:
       type: array
       description: >
-        Cash an investment operation has recognised on its trade date but not
-        yet posted (or posted before it), on the account that settles it.
+        Cash an investment operation has recognised but not yet posted (or
+        posted before recognition), on the account that settles it: a trade
+        on its trade date, a dividend or payment in lieu on its recorded ex date.
         Included in totals; account balances stay posting-based, so totals
         minus these amounts are the posted balances.
       items:

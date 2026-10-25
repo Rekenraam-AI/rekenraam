@@ -403,7 +403,7 @@ type netWorthLedger interface {
 	LedgerPostingsThrough(ctx context.Context, bookID int64, asOf string, status string) ([]db.LedgerPostingRecord, error)
 	LedgerCommodityKinds(ctx context.Context, bookID int64) (map[int64]string, error)
 	ShortLotQuantityEventsThrough(ctx context.Context, bookID int64, through string) ([]db.ShortLotQuantityEvent, error)
-	InvestmentOperationPostings(ctx context.Context, bookID int64) ([]db.LedgerPostingRecord, map[int64]int64, error)
+	InvestmentOperationPostings(ctx context.Context, bookID int64) ([]db.LedgerPostingRecord, map[int64]db.InvestmentOperationLink, error)
 }
 
 func netWorthTotals(ctx context.Context, ledger netWorthLedger, asOf string, status string) (netWorthBucket, error) {
@@ -441,9 +441,11 @@ func netWorthTotals(ctx context.Context, ledger netWorthLedger, asOf string, sta
 	return netWorthBucketTotals(accounts, running, unsettled.at(asOf), unsettled.accounts, kinds, ReportFilters{}, shorts)
 }
 
-// unsettledTrades are the postings investment operations recognise on their
-// unit date but post on another: a trade's cash, its clearing leg and any
-// separately paid charge (#410, the returns plan's trade-date recognition).
+// unsettledTrades are the postings investment operations recognise on one
+// date but post on another: a trade's cash, its clearing leg and any
+// separately paid charge (#410, the returns plan's trade-date recognition),
+// and a dividend's or payment in lieu's cash between its ex date and payment
+// (dividends receivable).
 type unsettledTrades struct {
 	postings []unsettledPosting
 	// accounts classifies a settling account that has no version yet on a
@@ -453,20 +455,20 @@ type unsettledTrades struct {
 }
 
 type unsettledPosting struct {
-	unitDate string
-	posting  db.LedgerPostingRecord
+	recognisedOn string
+	posting      db.LedgerPostingRecord
 }
 
 func readUnsettledTrades(ctx context.Context, ledger netWorthLedger, kinds map[int64]string) (unsettledTrades, error) {
-	postings, operationOf, err := ledger.InvestmentOperationPostings(ctx, BookID)
+	postings, links, err := ledger.InvestmentOperationPostings(ctx, BookID)
 	if err != nil {
 		return unsettledTrades{}, err
 	}
-	unitDates := singleUnitDates(postings, operationOf, kinds)
+	recognised := recognitionDates(postings, links, kinds)
 	trades := unsettledTrades{accounts: map[int64]db.LedgerAccountRecord{}}
 	for _, posting := range postings {
-		if date, ok := unitDates[operationOf[posting.TransactionID]]; ok && posting.EntryDate != date {
-			trades.postings = append(trades.postings, unsettledPosting{unitDate: date, posting: posting})
+		if date, ok := recognised[posting.TransactionID]; ok && posting.EntryDate != date {
+			trades.postings = append(trades.postings, unsettledPosting{recognisedOn: date, posting: posting})
 			trades.accounts[posting.AccountID] = db.LedgerAccountRecord{}
 		}
 	}
@@ -495,8 +497,8 @@ func (u unsettledTrades) at(asOf string) map[int64]map[int64]*exact.ScaledInt {
 	for _, trade := range u.postings {
 		posting := trade.posting
 		switch {
-		case trade.unitDate <= asOf && asOf < posting.EntryDate:
-		case posting.EntryDate <= asOf && asOf < trade.unitDate:
+		case trade.recognisedOn <= asOf && asOf < posting.EntryDate:
+		case posting.EntryDate <= asOf && asOf < trade.recognisedOn:
 			posting.QuantityValue = posting.QuantityValue.Negated()
 		default:
 			continue

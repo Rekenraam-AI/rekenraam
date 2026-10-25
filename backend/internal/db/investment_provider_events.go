@@ -304,10 +304,12 @@ func eventLinkCandidatesSQL(ctx context.Context) string {
 		WHERE s.book_id = ? AND s.status = 'suggested' AND e.event_family = 'dividend'
 			-- A short holder's payment in lieu (#255) is never a cash dividend.
 			AND json_extract(s.proposed_transaction_json, '$.kind') IS NOT 'payment_in_lieu'
-			AND o.event_date >= e.event_date AND o.event_date <= date(e.event_date, '+' || ? || ' days')
-			-- A dividend that records an ex date is paid for that ex date only.
-			AND NOT EXISTS (SELECT 1 FROM investment_operation_dates ex
-				WHERE ex.operation_id = o.id AND ex.date_role = 'ex' AND ex.event_date <> e.event_date)
+			-- A dividend recording an ex date is paid for that ex date only;
+			-- one recording none must fall in the payment window.
+			AND CASE WHEN EXISTS (SELECT 1 FROM investment_operation_dates ex WHERE ex.operation_id = o.id AND ex.date_role = 'ex')
+				THEN EXISTS (SELECT 1 FROM investment_operation_dates ex
+					WHERE ex.operation_id = o.id AND ex.date_role = 'ex' AND ex.event_date = e.event_date)
+				ELSE o.event_date >= e.event_date AND o.event_date <= date(e.event_date, '+' || ? || ' days') END
 			AND NOT EXISTS (` + cashPaymentClaimSQL + `)
 		UNION ALL
 		SELECT s.id, tv.transaction_id, o.event_date, cash.code, c.amount_value, c.amount_scale, c.component_seq,

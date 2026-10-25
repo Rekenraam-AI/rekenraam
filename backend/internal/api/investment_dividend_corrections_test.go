@@ -185,7 +185,7 @@ func TestDividendExDateAPI(t *testing.T) {
 			"cash_account_id": f.cashAccount.ID, "cash_commodity_id": f.commodityID, "income_account_id": f.incomeAccount.ID,
 			"amount_value": "5000", "amount_scale": 2}
 	}
-	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/dividend", dividend("2026-04-02"), http.StatusBadRequest)
+	doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/dividend", dividend("2026-04-31"), http.StatusBadRequest)
 	res := doInvestmentRequest(t, handler, f.sessionCookie, f.csrfToken, http.MethodPost, "/api/v1/investments/dividend", dividend("2026-03-20"), http.StatusCreated)
 	var original transactionResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&original))

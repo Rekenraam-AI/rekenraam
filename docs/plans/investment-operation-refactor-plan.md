@@ -714,36 +714,39 @@ correction, reversal and backdating; #176 provider import.
   continues under #391; #392 delivers fractional-share parent replay and
   #393 retains dividend/withholding payer attribution.
 - **Dividend ex dates (R13 D2, specified 2026-10-25).** A cash dividend may
-  record the ex date it was paid for, so the per-instrument returns read
-  (`instrument_returns_v1`, D2) recognises it on that date and decides
-  entitlement at the end of the day before it. The contract:
-  - **Optional, attribution only.** `ex_date` is an optional calendar date on
-    the dividend command. It never changes cash, income, withholding or any
-    lot. It is stored as the operation's immutable `ex` operation date, the
+  record the ex date it was paid for. The returns read (`instrument_returns_v1`,
+  D2) and net worth (dividends receivable) recognise it on that date, and
+  entitlement is decided at the end of the day before it. The contract:
+  - **Optional; recognition only.** `ex_date` is an optional calendar date
+    on the dividend command. It never changes a posting, its date or any lot;
+    it changes only the day net worth and returns recognise the payment. It is stored as the operation's immutable `ex` operation date, the
     role a payment in lieu already writes, so `ReturnsOperationAnchors` reads
     both the same way.
-  - **No later than the payment date.** An ex date after the dividend's
-    transaction date is refused with a validation error. *Known limit:* a
-    due-bill special dividend whose ex date follows its payable date cannot
-    carry it; recorded without one, it falls back to its entry date.
+  - **Any calendar date, before or after payment.** An ex date after the
+    payment date is accepted (revised 2026-10-25 with dividends receivable,
+    see the [reports plan](reports-plan.md), "Net worth over time"). A
+    due-bill special dividend goes ex after it is paid; until the ex date,
+    net worth carries its early cash as a negative unsettled amount, so no
+    gain appears before recognition.
   - **Withholding-only payments may carry one.** A separate tax payment is
     the tax on one distribution, so its entitlement follows that
     distribution's ex date (returns case I3b).
   - **Corrections.** A replacement follows the payer rule: omission preserves
-    the recorded ex date, `null` clears it and a value replaces it, checked
-    against the fixed payment date. A reversal repeats the original's ex date,
-    so the original and its reversal are recognised on the same day and
-    cancel. The inverse journal inside a replacement is read with the facts of
+    the recorded ex date, `null` clears it and a value replaces it. A
+    reversal repeats the original's ex date, so the original and its
+    reversal are recognised on the same day and cancel. The inverse journal inside a replacement is read with the facts of
     the operation it corrects, not the replacement's. A changed ex date or
     payer therefore moves the corrected flow and does not leave the original
     standing on its old date.
   - **Provider dividends.** A dividend-family provider event's `event_date`
     is its ex date (the producer's entitlement date is the day before). A
-    dividend completed from it carries that ex date. A completion whose
-    payment date is before the ex date is refused. Linking an existing
-    dividend writes no facts. A dividend whose recorded ex date differs from
-    the event's is not a link candidate. One recorded without an ex date can
-    still be linked and stays without one; the owner adds it by replacement.
+    dividend completed from it carries that ex date, whatever its payment
+    date. Linking an existing dividend writes no facts. A dividend whose
+    recorded ex date differs from the event's is not a link candidate; one
+    recording the event's ex date is a candidate whatever its payment date,
+    and one recording none keeps the payment window (on or after the ex
+    date, up to 90 days). One recorded without an ex date stays without one
+    when linked; the owner adds it by replacement.
   - **Imports.** CSV, QIF and broker imports carry no ex date; their sources
     do not state one.
   - **Reads and export.** The correction terms of a dividend expose

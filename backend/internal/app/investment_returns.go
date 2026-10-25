@@ -359,25 +359,26 @@ func (r *returnsReader) read(ctx context.Context, input ReturnsInput, staleness 
 	return r.overflow
 }
 
-// recogniseOnUnitDate dates every entry of an investment operation whose units
-// post on one day on that day, and keeps what is recognised through `to`
-// (#409). A trade posts its units on the trade date and its cash, clearing
-// leg and charges on their own dates; read on those dates, the bought units
-// and the cash not yet paid would both sit in the portfolio until settlement.
-// Recognising the cash with the units is trade-date accounting: until
-// settlement, the unsettled amount is the portfolio's payable or receivable,
-// valued daily in its own currency like any balance. An operation whose units
-// post on several days, or none (a dividend), keeps its entry dates.
+// recogniseOnUnitDate dates every entry of an investment operation on its
+// recognition date (recognitionDates), and keeps what is recognised through
+// `to` (#409). A trade posts its units on the trade date and its cash,
+// clearing leg and charges on their own dates; read on those dates, the
+// bought units and the cash not yet paid would both sit in the portfolio
+// until settlement. Recognising the cash with the units is trade-date
+// accounting: until settlement, the unsettled amount is the portfolio's
+// payable or receivable, valued daily in its own currency like any balance.
+// A dividend with a recorded ex date is a receivable from that date the same
+// way.
 func recogniseOnUnitDate(postings []db.LedgerPostingRecord, anchors []db.ReturnsOperationAnchor,
 	kinds map[int64]string, to string) []db.LedgerPostingRecord {
-	operationOf := map[int64]int64{}
+	links := map[int64]db.InvestmentOperationLink{}
 	for _, anchor := range anchors {
-		operationOf[anchor.TransactionID] = anchor.OperationID
+		links[anchor.TransactionID] = db.InvestmentOperationLink{OperationID: anchor.OperationID, ExDate: anchor.ExDate.String}
 	}
-	unitDates := singleUnitDates(postings, operationOf, kinds)
+	dates := recognitionDates(postings, links, kinds)
 	recognised := make([]db.LedgerPostingRecord, 0, len(postings))
 	for _, posting := range postings {
-		if date, ok := unitDates[operationOf[posting.TransactionID]]; ok {
+		if date, ok := dates[posting.TransactionID]; ok {
 			posting.EntryDate = date
 		}
 		if posting.EntryDate <= to {
@@ -390,32 +391,37 @@ func recogniseOnUnitDate(postings []db.LedgerPostingRecord, anchors []db.Returns
 	return recognised
 }
 
-// singleUnitDates returns the day each investment operation's units post on,
-// for the operations whose units post on exactly one day. Trade-date
-// recognition reads every entry of such an operation on that day: the returns
-// read (#409) and net worth's unsettled amounts (#410).
-func singleUnitDates(postings []db.LedgerPostingRecord, operationOf map[int64]int64, kinds map[int64]string) map[int64]string {
+// recognitionDates returns, per transaction, the day its investment
+// operation is recognised on when one rule fixes it: the day the units post
+// when they post on exactly one day (trade-date recognition, #409/#410), or,
+// for an operation with no units, its recorded ex date (dividends
+// receivable). Other entries keep their own dates. The returns read and net
+// worth's unsettled amounts both use it, so they recognise one day.
+func recognitionDates(postings []db.LedgerPostingRecord, links map[int64]db.InvestmentOperationLink, kinds map[int64]string) map[int64]string {
 	unitDates := map[int64]map[string]bool{}
 	for _, posting := range postings {
-		operation, ok := operationOf[posting.TransactionID]
+		link, ok := links[posting.TransactionID]
 		if !ok || kinds[posting.CommodityID] == "currency" {
 			continue
 		}
-		if unitDates[operation] == nil {
-			unitDates[operation] = map[string]bool{}
+		if unitDates[link.OperationID] == nil {
+			unitDates[link.OperationID] = map[string]bool{}
 		}
-		unitDates[operation][posting.EntryDate] = true
+		unitDates[link.OperationID][posting.EntryDate] = true
 	}
-	single := map[int64]string{}
-	for operation, dates := range unitDates {
-		if len(dates) != 1 {
-			continue
-		}
-		for date := range dates {
-			single[operation] = date
+	dates := map[int64]string{}
+	for transactionID, link := range links {
+		days, hasUnits := unitDates[link.OperationID]
+		switch {
+		case hasUnits && len(days) == 1:
+			for day := range days {
+				dates[transactionID] = day
+			}
+		case !hasUnits && link.ExDate != "":
+			dates[transactionID] = link.ExDate
 		}
 	}
-	return single
+	return dates
 }
 
 // resolveScope fixes the portfolio accounts once, as of the period end.

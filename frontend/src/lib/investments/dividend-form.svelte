@@ -418,7 +418,6 @@
         id="div-ex-date"
         type="date"
         bind:value={exDate}
-        max={transactionDate}
         aria-describedby="div-ex-date-hint"
         class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground"
       />

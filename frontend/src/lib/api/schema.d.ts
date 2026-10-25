@@ -28947,7 +28947,7 @@ export interface components {
             status: components["schemas"]["TransactionStatus"];
             /** @description Trade-date totals per commodity: posted asset and liability balances plus `unsettled`. */
             totals: components["schemas"]["BalanceQuantity"][];
-            /** @description Cash an investment operation has recognised on its trade date but not yet posted (or posted before it), on the account that settles it. Included in totals; account balances stay posting-based, so totals minus these amounts are the posted balances. */
+            /** @description Cash an investment operation has recognised but not yet posted (or posted before recognition), on the account that settles it: a trade on its trade date, a dividend or payment in lieu on its recorded ex date. Included in totals; account balances stay posting-based, so totals minus these amounts are the posted balances. */
             unsettled: components["schemas"]["UnsettledAmount"][];
             /** @description Negative countable positions without an explicit short-sale workflow. Totals include these positions and require review. */
             unclassified_shorts: components["schemas"]["UnclassifiedShortPosition"][];
@@ -28970,7 +28970,7 @@ export interface components {
             end_date: string;
             /** @description Trade-date totals per commodity: posted asset and liability balances plus `unsettled`. */
             totals: components["schemas"]["BalanceQuantity"][];
-            /** @description Cash an investment operation has recognised on its trade date but not yet posted (or posted before it), on the account that settles it. Included in totals; account balances stay posting-based, so totals minus these amounts are the posted balances. */
+            /** @description Cash an investment operation has recognised but not yet posted (or posted before recognition), on the account that settles it: a trade on its trade date, a dividend or payment in lieu on its recorded ex date. Included in totals; account balances stay posting-based, so totals minus these amounts are the posted balances. */
             unsettled: components["schemas"]["UnsettledAmount"][];
             /** @description Negative countable positions in this bucket without an explicit short-sale workflow. Totals include these positions and require review. */
             unclassified_shorts: components["schemas"]["UnclassifiedShortPosition"][];
@@ -33239,7 +33239,7 @@ export interface components {
             commodity_id?: number | null;
             /**
              * Format: date
-             * @description Optional ex date the payment (or separate withholding) was made for, on or before transaction_date. Per-instrument returns recognise the income on it and decide entitlement at the end of the previous day. Entry omission/null records none; replacement omission preserves, null clears and a value replaces.
+             * @description Optional ex date the payment (or separate withholding) was made for; it may follow transaction_date. Net worth and returns recognise the payment on it (an unsettled receivable, or early cash, until the payment date), and entitlement is decided at the end of the previous day. Entry omission/null records none; replacement omission preserves, null clears and a value replaces.
              */
             ex_date?: string | null;
             /** Format: int64 */
@@ -33544,7 +33544,7 @@ export interface components {
         EventSuggestionCompletion: {
             /**
              * Format: date
-             * @description Payment date, which becomes the dividend's transaction date. A cash dividend completed from a provider dividend records the event's ex date, so the payment date may not precede it.
+             * @description Payment date, which becomes the dividend's transaction date. A cash dividend completed from a provider dividend records the event's ex date.
              */
             transaction_date: string;
             /** Format: int64 */

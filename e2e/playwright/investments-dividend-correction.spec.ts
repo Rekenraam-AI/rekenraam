@@ -101,7 +101,6 @@ test.describe('on a phone', () => {
     const form = page.getByRole('dialog', { name: 'Correct this dividend' });
     const exDateField = form.getByLabel('Ex-dividend date');
     await expect(exDateField).toHaveValue('');
-    await expect(exDateField).toHaveAttribute('max', paidOn);
     await form.getByLabel('Reason for correction').fill('statement names the ex date');
     await exDateField.fill(exDate);
     await form.getByRole('button', { name: 'Review and replace' }).click();

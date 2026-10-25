@@ -9,9 +9,9 @@ import (
 )
 
 // Dividend ex dates (investment-operation-refactor-plan.md, "Dividend ex
-// dates"): optional, no later than the payment date, kept through
-// corrections and carried from a provider dividend, so R13 recognises the
-// income on its ex date (D2).
+// dates"): optional, before or after payment, kept through corrections and
+// carried from a provider dividend, so returns (R13 D2) and net worth
+// (dividends receivable) recognise the payment on its ex date.
 
 // dividendExDate reads the effective dividend's ex date as the correction
 // terms expose it.
@@ -43,7 +43,7 @@ func operationExDates(t *testing.T, f *returnsFixture, transactionID int64) []st
 	return dates
 }
 
-func TestDividendExDateIsOptionalAndNoLaterThanPayment(t *testing.T) {
+func TestDividendExDateIsOptionalAndMayFollowPayment(t *testing.T) {
 	t.Parallel()
 	f := newBareReturnsFixture(t)
 	f.post(t, "2026-01-02", f.brokerCashID, f.cashAccountID, 100000)
@@ -54,6 +54,9 @@ func TestDividendExDateIsOptionalAndNoLaterThanPayment(t *testing.T) {
 
 	sameDay := f.dividendOf(t, "2026-02-20", "2026-02-20", &f.stockCommodityID, 2000, 0, false)
 	assert.Equal(t, "2026-02-20", dividendExDate(t, f.investmentService, f.ownerUserID, sameDay.ID))
+	// A due-bill special dividend goes ex after it is paid.
+	dueBill := f.dividendOf(t, "2026-02-20", "2026-02-23", &f.stockCommodityID, 2000, 0, false)
+	assert.Equal(t, "2026-02-23", dividendExDate(t, f.investmentService, f.ownerUserID, dueBill.ID))
 
 	// A separate tax payment carries its distribution's ex date (I3b).
 	tax := f.dividendOf(t, "2026-02-20", "2026-02-10", &f.stockCommodityID, 300, 0, true)
@@ -61,7 +64,7 @@ func TestDividendExDateIsOptionalAndNoLaterThanPayment(t *testing.T) {
 	assert.Equal(t, []string{"2026-02-10"}, operationExDates(t, f, tax.ID))
 
 	before := countTransactions(t, f.database)
-	for _, exDate := range []string{"2026-02-21", "2026-13-01", "10-02-2026"} {
+	for _, exDate := range []string{"2026-13-01", "10-02-2026", ""} {
 		_, err := f.investmentService.Dividend(context.Background(), DividendInput{OwnerUserID: f.ownerUserID, TransactionDate: "2026-02-20",
 			ExDate: NullableValue(exDate), CommodityID: NullableValue(f.stockCommodityID), CashAccountID: f.brokerCashID,
 			CashCommodityID: f.eurCommodityID, IncomeAccountID: &f.incomeAccountID, AmountValue: 2000, AmountScale: 2})
@@ -69,7 +72,7 @@ func TestDividendExDateIsOptionalAndNoLaterThanPayment(t *testing.T) {
 		require.ErrorAs(t, err, &validation, exDate)
 		assert.Contains(t, validation.Message, "ex-date")
 	}
-	assert.Equal(t, before, countTransactions(t, f.database), "a refused ex date writes nothing")
+	assert.Equal(t, before, countTransactions(t, f.database), "a malformed ex date writes nothing")
 }
 
 func TestDividendExDateFollowsTheCorrectionPaths(t *testing.T) {
@@ -91,13 +94,10 @@ func TestDividendExDateFollowsTheCorrectionPaths(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "2026-02-10", dividendExDate(t, f.investmentService, f.ownerUserID, kept.Replacement.ID))
 
-	// A value replaces it; one after the fixed payment date is refused.
-	_, err = replacement(kept.Replacement.ID, NullableValue("2026-02-21"))
-	var validation ValidationError
-	require.ErrorAs(t, err, &validation)
-	moved, err := replacement(kept.Replacement.ID, NullableValue("2026-02-11"))
+	// A value replaces it, also after the fixed payment date.
+	moved, err := replacement(kept.Replacement.ID, NullableValue("2026-02-21"))
 	require.NoError(t, err)
-	assert.Equal(t, "2026-02-11", dividendExDate(t, f.investmentService, f.ownerUserID, moved.Replacement.ID))
+	assert.Equal(t, "2026-02-21", dividendExDate(t, f.investmentService, f.ownerUserID, moved.Replacement.ID))
 
 	// Null clears it.
 	cleared, err := replacement(moved.Replacement.ID, NullablePatch[string]{Set: true})
@@ -185,16 +185,8 @@ func TestProviderDividendCompletionRecordsTheEventExDate(t *testing.T) {
 	f.fetch(t)
 	july := suggestionForExDate(t, f.suggestions(t), "2026-07-29")
 
-	// The payment cannot precede the ex date it was paid for.
-	before := countTransactions(t, f.database)
-	_, err := f.investmentSvc.AcceptSuggestionWithCompletion(ctx, 1, 0, "req", july.ID, f.completion("2026-07-28", 1600))
-	var validation ValidationError
-	require.ErrorAs(t, err, &validation)
-	assert.Contains(t, validation.Message, "ex-date")
-	assert.Equal(t, before, countTransactions(t, f.database))
-	assert.Equal(t, "suggested", suggestionForExDate(t, f.suggestions(t), "2026-07-29").Status)
-
-	accepted, err := f.investmentSvc.AcceptSuggestionWithCompletion(ctx, 1, 0, "req", july.ID, f.completion("2026-08-14", 1600))
+	// Paid the day before the ex date (a due bill): still this event's ex date.
+	accepted, err := f.investmentSvc.AcceptSuggestionWithCompletion(ctx, 1, 0, "req", july.ID, f.completion("2026-07-28", 1600))
 	require.NoError(t, err)
 	require.NotNil(t, accepted.GeneratedTransactionID)
 	assert.Equal(t, "2026-07-29", dividendExDate(t, f.investmentSvc, 1, *accepted.GeneratedTransactionID))
@@ -205,16 +197,18 @@ func TestProviderDividendLinkRequiresAMatchingRecordedExDate(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	f := newDividendEventFixture(t)
-	record := func(exDate NullablePatch[string]) Transaction {
-		transaction, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", ExDate: exDate,
+	record := func(paidOn string, exDate NullablePatch[string]) Transaction {
+		transaction, err := f.investmentSvc.Dividend(ctx, DividendInput{OwnerUserID: 1, TransactionDate: paidOn, ExDate: exDate,
 			CommodityID: NullableValue(f.instrument.CommodityID), CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
 			IncomeAccountID: &f.categoryAccountID, AmountValue: 1600, AmountScale: 2})
 		require.NoError(t, err)
 		return transaction
 	}
-	other := record(NullableValue("2026-07-28"))
-	matching := record(NullableValue("2026-07-29"))
-	unrecorded := record(NullablePatch[string]{})
+	other := record("2026-08-14", NullableValue("2026-07-28"))
+	matching := record("2026-08-14", NullableValue("2026-07-29"))
+	// Recording the event's ex date, it qualifies though paid before it.
+	early := record("2026-07-20", NullableValue("2026-07-29"))
+	unrecorded := record("2026-08-14", NullablePatch[string]{})
 	f.fetch(t)
 
 	july := suggestionForExDate(t, f.suggestions(t), "2026-07-29")
@@ -222,7 +216,7 @@ func TestProviderDividendLinkRequiresAMatchingRecordedExDate(t *testing.T) {
 	for _, candidate := range july.LinkCandidates {
 		candidates = append(candidates, candidate.TransactionID)
 	}
-	assert.ElementsMatch(t, []int64{matching.ID, unrecorded.ID}, candidates)
+	assert.ElementsMatch(t, []int64{matching.ID, early.ID, unrecorded.ID}, candidates)
 
 	_, err := f.investmentSvc.LinkSuggestion(ctx, 1, 0, "req", july.ID, other.ID)
 	var validation ValidationError

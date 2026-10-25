@@ -289,21 +289,34 @@ func (r *TransactionRepository) LedgerPostingsInRange(ctx context.Context, bookI
 // operation each transaction belongs to. Net worth needs the postings dated
 // after its reporting date too: a trade recognised on its trade date may
 // settle later (#410).
-func (r *TransactionRepository) InvestmentOperationPostings(ctx context.Context, bookID int64) ([]LedgerPostingRecord, map[int64]int64, error) {
+// InvestmentOperationLink is the investment operation a posted transaction
+// belongs to and the ex date it is recognised on, if any: the operation's
+// own or, for the journal undoing a replaced operation, that operation's.
+type InvestmentOperationLink struct {
+	OperationID int64
+	ExDate      string
+}
+
+func (r *TransactionRepository) InvestmentOperationPostings(ctx context.Context, bookID int64) ([]LedgerPostingRecord, map[int64]InvestmentOperationLink, error) {
 	return investmentOperationPostings(ctx, r.database, bookID)
 }
-func (s *LedgerSnapshotReader) InvestmentOperationPostings(ctx context.Context, bookID int64) ([]LedgerPostingRecord, map[int64]int64, error) {
+func (s *LedgerSnapshotReader) InvestmentOperationPostings(ctx context.Context, bookID int64) ([]LedgerPostingRecord, map[int64]InvestmentOperationLink, error) {
 	return investmentOperationPostings(ctx, s.transaction, bookID)
 }
 
-func investmentOperationPostings(ctx context.Context, source queryer, bookID int64) ([]LedgerPostingRecord, map[int64]int64, error) {
+func investmentOperationPostings(ctx context.Context, source queryer, bookID int64) ([]LedgerPostingRecord, map[int64]InvestmentOperationLink, error) {
 	postings, err := queryLedgerPostings(ctx, source, ledgerPostingQuery{BookID: bookID, Status: "posted", OperationLinked: true})
 	if err != nil {
 		return nil, nil, err
 	}
 	rows, err := source.QueryContext(ctx, `
-		SELECT tv.transaction_id, l.operation_id
+		SELECT tv.transaction_id, l.operation_id,
+			COALESCE((SELECT d.event_date FROM investment_operation_dates d
+				WHERE d.operation_id = CASE WHEN l.role = 'reversal' AND o.correction_of_operation_id IS NOT NULL
+					THEN o.correction_of_operation_id ELSE l.operation_id END
+				AND d.date_role = 'ex' ORDER BY d.date_seq LIMIT 1), '')
 		FROM investment_operation_journal_links l
+		JOIN investment_operations o ON o.id = l.operation_id
 		JOIN current_transaction_versions tv ON tv.id = l.transaction_version_id
 		JOIN transactions t ON t.id = tv.transaction_id
 		WHERE l.book_id = ? AND tv.status = 'posted' AND t.deleted_at IS NULL
@@ -312,18 +325,19 @@ func investmentOperationPostings(ctx context.Context, source queryer, bookID int
 		return nil, nil, fmt.Errorf("read investment operation links: %w", err)
 	}
 	defer rows.Close()
-	operationOf := map[int64]int64{}
+	links := map[int64]InvestmentOperationLink{}
 	for rows.Next() {
-		var transactionID, operationID int64
-		if err := rows.Scan(&transactionID, &operationID); err != nil {
+		var transactionID int64
+		var link InvestmentOperationLink
+		if err := rows.Scan(&transactionID, &link.OperationID, &link.ExDate); err != nil {
 			return nil, nil, fmt.Errorf("scan investment operation link: %w", err)
 		}
-		operationOf[transactionID] = operationID
+		links[transactionID] = link
 	}
 	if err := rows.Err(); err != nil {
 		return nil, nil, fmt.Errorf("iterate investment operation links: %w", err)
 	}
-	return postings, operationOf, nil
+	return postings, links, nil
 }
 
 func (r *TransactionRepository) AccountRegisterRunningPostings(ctx context.Context, params ListTransactionsParams) ([]LedgerPostingRecord, error) {

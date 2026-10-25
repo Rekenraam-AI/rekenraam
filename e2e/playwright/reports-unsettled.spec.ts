@@ -30,10 +30,10 @@ test('net worth discloses an unsettled trade on a phone', async ({ page }) => {
   });
   const query = `view=net-worth&start_date=${traded}&end_date=${settled}&bucket=day&account_id=${cash.id}&reporting_currency_id=${currencyID}`;
   await page.goto(`/app/reports?${query}`);
-  await expect(page.getByText('Some periods include trades that had not settled yet.', { exact: false })).toBeVisible();
+  await expect(page.getByText('Some periods include trades or dividends whose cash had not moved yet.', { exact: false })).toBeVisible();
   const rows = page.getByRole('table').locator('tbody tr');
-  await expect(rows.filter({ hasText: 'Includes unsettled trades' })).toHaveCount(4);
-  await expect(rows.filter({ hasText: 'Includes unsettled trades' }).first()).toContainText('-100.00');
+  await expect(rows.filter({ hasText: 'Includes unsettled trades or dividends' })).toHaveCount(4);
+  await expect(rows.filter({ hasText: 'Includes unsettled trades or dividends' }).first()).toContainText('-100.00');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await expectNoAccessibilityViolations(page, 'Reports with unsettled trades');
 });
