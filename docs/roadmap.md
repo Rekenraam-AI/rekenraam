@@ -54,7 +54,7 @@ Statuses: ✅ shipped · ◐ partly shipped ahead of its slice · ▶ current ·
 | R11 | Pricing/FX management UI | ✅ | `docs/plans/pricing-management-plan.md` |
 | R12 | Investments UI + gains reporting | ✅ | `docs/plans/investments-plan.md` |
 | R12a | Investment journal/subledger integrity correction | ✅ | `docs/plans/investment-integrity-plan.md`, ADR 0012 |
-| R13 | Investment return analytics (TWR/MWR) | ✅ | [returns contract](plans/investment-returns-plan.md) |
+| R13 | Investment return analytics (TWR/MWR; per-instrument slices 8–9 current) | ✅ core · ▶ | [returns contract](plans/investment-returns-plan.md) |
 | R14 | Receipts & attachments (capture, OCR, inbox) | ⏸ | `docs/plans/receipts-plan.md` |
 | R14a | Attachment storage + manual attach (scope decision still required) | ⏸ | `docs/plans/receipts-plan.md` |
 | R15 | Connections expansion (IBKR Flex → GoCardless; the #111 dividend producer shipped early, 2026-10-17) | ⏸ | `docs/plans/connections-plan.md` |
@@ -183,9 +183,10 @@ below is execution order, not a chain of hard dependencies.
    total-return price entry, closing slice 5's API-only gap) followed on
    2026-10-25. [#409](https://github.com/sergeyfarin/rekenraam/issues/409), a trade
    settling across a period boundary counted twice, is fixed by trade-date
-   recognition (2026-10-25). A per-instrument contract is drafted for owner
-   review and not accepted. Targets/rebalancing and
-   per-instrument returns stay deferred, as the plan records.
+   recognition (2026-10-25). The per-instrument contract
+   (`instrument_returns_v1`) was accepted on 2026-10-25 (D1–D7) and is the
+   current R13 work: slice 8 (sleeve read), then slice 9 (screen and saved
+   runs). Targets/rebalancing stay deferred, as the plan records.
    #284's owner-reviewed investment/reporting dispositions are now complete.
    If the accepted contract consumes native realized totals, it reuses
    `app.NativeRealizedTotals`, delivered by

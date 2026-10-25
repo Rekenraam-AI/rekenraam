@@ -9,8 +9,8 @@ as "finding N"; `ae084c4d`: two, recorded under the expected cases). Slice 2
 slice 5 (benchmarks) delivered the same day; slice 6 (saved runs) delivered
 2026-10-25. R13 core is complete. Slice 7 (browser total-return price entry,
 closing slice 5's API-only gap) delivered 2026-10-25. A per-instrument
-contract (`instrument_returns_v1`, revision 2) is drafted for owner review,
-not accepted. #409 (unsettled trade cash across a period boundary) was fixed
+contract (`instrument_returns_v1`) was accepted the same day; slices 8–9
+follow. #409 (unsettled trade cash across a period boundary) was fixed
 the same day by trade-date recognition; see *Valuation `V(d)`*.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
@@ -725,25 +725,25 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
    (0.00009 + 0.00001) / 1000 · 900 / 0.00009 − 1 = `0.000000`, and a
    cent-rounded chain fails this case.
 
-## Per-instrument returns (`instrument_returns_v1`) — DRAFT for owner review
+## Per-instrument returns (`instrument_returns_v1`)
 
-Status: **proposed 2026-10-25 (revision 2), not accepted, nothing
-implemented.** Revision 2 resolves a same-day review of `4c3324e3` (five
+Status: **accepted by the owner 2026-10-25 (D1–D7 as revised, including D5's
+bounded short detection); slice 8 in progress.** History: proposed and
+revised (revision 2) the same day. Revision 2 resolves a same-day review of `4c3324e3` (five
 gaps, all accepted; recorded below as "review 1" to "review 5"). The review
 also exposed a shipped portfolio defect, [#409](https://github.com/sergeyfarin/rekenraam/issues/409):
 unsettled trade cash was counted twice across a period boundary. It is now
 fixed by the same trade-date recognition this draft uses for sleeves; see
 *Valuation `V(d)`*. Decisions D1–D7
-need owner answers; each states the recommended answer and the alternative.
-Until this section is accepted, no code, OpenAPI or test may cite it, and
-the roadmap still lists per-instrument returns as deferred.
+were answered with the recommended answer for each; the alternatives stay
+recorded beside them.
 
 A second review (of `e4d0eba3`) judged D1–D7 reasonable to accept, D7's
 trade-date FX choice included. It asked for hand-derived foreign-currency
 settlement and spin-off cases (now I11, I12, I12b). It also noted that
 accepting D5 means accepting **bounded** short detection: named short
 operations and end-of-day balances, not every plain intraday position. The
-owner's acceptance is still pending.
+owner accepted that limitation explicitly.
 
 The question: *how did each instrument the portfolio held perform over the
 period, including its income, independently of when it was bought or sold?*
@@ -1038,15 +1038,15 @@ Tests must own these fixtures and pin these literals, as the slice 1 cases
 do. Each case also asserts that no posting, operation or audit row was
 written.
 
-### Proposed slices (after acceptance)
+### Slices
 
 8. **Sleeve read**: `instrument_returns` on the returns read, OpenAPI, and
    cases I1–I12.
 9. **Screen panel and saved-run inclusion**, with a browser case on a phone
    and an existing run reopened unchanged.
 
-Acceptance also updates the roadmap: R13 item 3 gains slices 8–9, and
-targets/rebalancing stay deferred.
+The roadmap's R13 item lists slices 8–9; targets and rebalancing stay
+deferred.
 
 ## Slices
 
@@ -1100,6 +1100,6 @@ targets/rebalancing stay deferred.
 
 Targets and rebalancing are **deferred** (no trade execution is implied,
 per the product direction). Security-level (per-instrument) returns need an
-instrument boundary with commodity-attributed income; that contract is
-drafted above as *Per-instrument returns (`instrument_returns_v1`)* and
-awaits owner review (D1–D7) before any slice starts.
+instrument boundary with commodity-attributed income; that contract,
+*Per-instrument returns (`instrument_returns_v1`)* above, was accepted on
+2026-10-25 as slices 8–9.
