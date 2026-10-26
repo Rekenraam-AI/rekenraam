@@ -585,7 +585,15 @@ return-of-capital excess in period statements (delivered 2026-10-15). Saved oper
 use a consistent snapshot; saved alternative/FX runs, broker-basis comparisons,
 TWR/IRR and jurisdiction tax rules remain outside the delivered contract.
 
-**R13 returns, slice 1 (#119, 2026-10-24).** `GET /api/v1/investments/returns`
+**R13 return analytics (#119, slices 1–9 delivered 2026-10-24..26).** The
+owner accepted the bounded delivery for closure on 2026-10-26; the
+[plan's acceptance record](plans/investment-returns-plan.md#accepted-delivery-and-follow-up-disposition-2026-10-26)
+links commit/test evidence, successful hosted CI and retained limits. Actual
+allocation ships; target allocation/drift [#411](https://github.com/sergeyfarin/rekenraam/issues/411)
+and advisory rebalancing [#412](https://github.com/sergeyfarin/rekenraam/issues/412)
+remain deferred independent features, with their own contracts still required.
+
+`GET /api/v1/investments/returns`
 is a read-only live returns read under the accepted
 [returns_v1 contract](plans/investment-returns-plan.md): TTWROR (daily
 linking, inflows at day start, outflows at day end, valued on every day the
@@ -594,8 +602,10 @@ space only when Descartes' rule proves a unique root), period and annualized
 (periods of 365+ days only), with opening/closing values, contributions,
 withdrawals and gain in one reporting currency. Scope is selected account
 subtrees or the default investment accounts. Investment-operation cash is
-classified by the holding or instrument its facts name, so a dividend paid to
-checking is income plus a same-day withdrawal without any posting;
+classified by the holding or instrument its facts name. An entitled dividend
+paid to checking is income on recognition, held as a receivable until payment
+when an ex date is recorded, and withdrawn when paid; this read-time treatment
+creates no posting. Without an ex date, recognition and payment coincide;
 unattributable cash falls back to the cash side and every fallback is listed.
 External security transfers count at market value (trading legs stay
 internal), correction chains net before flows split into inflows and

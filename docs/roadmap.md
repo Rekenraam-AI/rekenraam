@@ -14,14 +14,17 @@ Other questions have exactly one home each:
 Do not restate shipped detail here; when a focus item ships, delete it and
 record the capability in `implemented.md`.
 
-Last reviewed: 2026-10-24 against local `40e29fe9`, owner acceptance and live
-GitHub issue state. The documentation and competitor review is recorded in the
+R13 status reviewed: 2026-10-26 against `b9c57ea3`, its successful hosted CI,
+live #119 and the owner's closure/follow-up decision. The remaining queue
+retains the 2026-10-24 owner-reviewed order; other issue states were not
+re-audited in this update. The documentation and competitor review is recorded in the
 [app-state review and audit brief](reviews/app-state-and-audit-plan-2026-10-17.md).
 R16, R11, R17 and R18 have met their bounded delivery bars. **R13's
 returns_v1 core is delivered: all six accepted slices (live read, screen,
 series, allocation, benchmark, saved runs) shipped 2026-10-24..25, and
 per-instrument returns (`instrument_returns_v1`, slices 8–9) followed by
-2026-10-26.**
+2026-10-26. #119's bounded delivery is accepted for closure; targets and advisory
+rebalancing are separately deferred as #411/#412.**
 The cross-app engineering audit is delivered; owner/release follow-ups remain
 explicit below. **#402 is delivered with the owner's disposition: ADR 0016
 thresholds amended. #404 followed the same day: explicit statement reuse
@@ -166,39 +169,14 @@ below is execution order, not a chain of hard dependencies.
    | 4 — delivered 2026-10-24 | [#404](https://github.com/sergeyfarin/rekenraam/issues/404) | [Measured](reviews/statement-compilation-2026-10-24.md): 22% of compile time repeats inside a transaction, 47% only across transactions. Track A (statement sets in five hot loops) lowered the app median 223.3 → 219.4 s and the full-gate pair to 255.5/274.1 s, so the act threshold no longer fires (thinly); investigate still does. The native cache measured −4.4% (≈2.7% beyond A) and the owner declined it; `_stmt_cache_size=0` stays. |
    | 5 | [#405](https://github.com/sergeyfarin/rekenraam/issues/405) | Before the v0.1.0 tag, after #404: collapse migrations into one slimmed baseline (see Public-release gates). Measured with the #402 method; no invariant or error contract lost. |
 
-   These are the chosen maintenance slots, not technical blockers for R13.
-   R13 specification may proceed in parallel. The separate product-policy
+   These are the chosen maintenance slots, not prerequisites retroactively
+   imposed on delivered R13. The separate product-policy
    audit [#390](https://github.com/sergeyfarin/rekenraam/issues/390), delivered
    #391/#388/#389/#392/#393/#394 contracts, and accepted financial-field
    correction feature [#395](https://github.com/sergeyfarin/rekenraam/issues/395)
    remain distinct from behavior-preserving maintenance; do not restore
    retired attribution blockers.
-3. **R13 [#119](https://github.com/sergeyfarin/rekenraam/issues/119) — core delivered 2026-10-25; per-instrument slices 8–9 delivered by 2026-10-26.**
-   The [returns_v1 contract](plans/investment-returns-plan.md) was accepted by
-   the owner on 2026-10-24 (position-anchored income classification with
-   disclosed cash-side fallback, annualization only for 365+ days, proven
-   unique IRR roots only). Slice 1 (backend live read, corrected after two
-   reviews), slice 2 (returns screen), slice 3 (TTWROR series and chart) and
-   slice 4 (allocation at the closing day) and slice 5 (benchmarks on a
-   declared price- or total-return basis) and slice 6 (immutable saved runs,
-   migration 0027, bundle schema 18) are delivered. Slice 7 (browser
-   total-return price entry, closing slice 5's API-only gap) followed on
-   2026-10-25. [#409](https://github.com/sergeyfarin/rekenraam/issues/409), a trade
-   settling across a period boundary counted twice, is fixed by trade-date
-   recognition (2026-10-25). The per-instrument contract
-   (`instrument_returns_v1`) was accepted on 2026-10-25 (D1–D7) and is
-   delivered: slice 8 (sleeve read) on 2026-10-25 and slice 9 (screen panel
-   and saved-run inclusion) on 2026-10-26. Targets/rebalancing stay deferred, as the plan records.
-   #284's owner-reviewed investment/reporting dispositions are now complete.
-   If the accepted contract consumes native realized totals, it reuses
-   `app.NativeRealizedTotals`, delivered by
-   [#399](https://github.com/sergeyfarin/rekenraam/issues/399) on 2026-10-24
-   at the owner's request; it must not copy HTTP totals policy. R13 tests must own their fixtures and
-   expected figures; completion of existing browser repairs is not a gate.
-   No other accepted cleanup, provider evidence, #390 or #395 is a blanket
-   R13 prerequisite. A new dependency must name its concrete conflict and
-   smallest resolution.
-4. **Continue the remaining accepted maintenance after R13 core.**
+3. **Continue the remaining accepted maintenance after R13 core.**
    [#400](https://github.com/sergeyfarin/rekenraam/issues/400) is delivered
    (2026-10-24, owner-requested ahead of this slot): `previewReview` and
    `commitReview` own the compatible browser review lifecycles, including
@@ -218,12 +196,29 @@ below is execution order, not a chain of hard dependencies.
    [deferred inventory](reviews/maintainability-audit-2026-10-24.md#explicitly-deferred-inventory-original-ranks-713).
    Revisit only on the recorded trigger and refreshed evidence; open a bounded
    issue then if justified. They are outside this accepted execution queue.
-5. **Continue independent readiness work.**
+4. **Continue independent readiness work.**
    [#102](https://github.com/sergeyfarin/rekenraam/issues/102) needs native
    terminology review, not another catalog-parity implementation. Recheck
    [#112](https://github.com/sergeyfarin/rekenraam/issues/112)'s upstream
    TypeScript/OpenAPI-generator compatibility when considering the upgrade;
    its old blocker text is not fresh compatibility evidence.
+
+### R13 — accepted delivery and deferred extensions
+
+[#119](https://github.com/sergeyfarin/rekenraam/issues/119)'s bounded return
+analytics delivery is accepted for closure on 2026-10-26. The
+[plan's disposition and evidence](plans/investment-returns-plan.md#accepted-delivery-and-follow-up-disposition-2026-10-26)
+record the shipped slices, regression cases, successful CI and accepted limits;
+[implemented.md](implemented.md) records the capability. R13 is removed from
+current focus.
+
+The owner retained two **deferred P3 extensions**, outside the current execution
+queue: [#411](https://github.com/sergeyfarin/rekenraam/issues/411) for target
+allocation/drift, and [#412](https://github.com/sergeyfarin/rekenraam/issues/412)
+for advisory rebalancing. Each needs its own accepted contract; rebalancing
+depends on the target model. No trade execution is implied. Keeping these
+issues does not move them ahead of #405, #395 or the retained release/readiness
+work above. No additional R13 implementation is required to close #119.
 
 ### Completed initiatives through R10
 
@@ -346,10 +341,11 @@ Keep `docs/competitor-comparison.md` as the maintained parity matrix and
 each roadmap initiative complete, update the comparison's implication section
 and record either the parity gained or the deliberate gap retained.
 
-The [2026-10-17 source recheck](competitor-comparison.md) supports keeping
-R13 returns/allocation as the next feature gap against Portfolio Performance
-and Ghostfolio. R16 lifecycle, R11 pricing, R17 crypto and R18 gains inspection
-are delivered gains; they are not claims of full product or tax parity.
+The [2026-10-17 source recheck and 2026-10-26 local status update](competitor-comparison.md)
+record R13 returns/allocation as delivered alongside R16 lifecycle, R11 pricing,
+R17 crypto and R18 gains inspection. Targets/drift (#411) and advisory
+rebalancing (#412) remain deliberate gaps. These delivered capabilities are
+not claims of full product, metric or tax parity.
 Actual's import/rules and PocketSmith's planning workflows also justify auditing
 everyday migration and planning usability now. R6 depth and R7a convenience
 remain deliberate gaps, not automatically promoted features. Verify the core

@@ -20,9 +20,78 @@ Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 R13 answers one question: *how did a selected set of investment accounts
 perform over a period, independently of when money was added or removed
 (time-weighted), and for the money the owner actually put in
-(money-weighted)?* It is read-only. It never writes postings, operations,
-observations or audit events, and it never invents a transfer to make a
-figure work.
+(money-weighted)?* The live calculation is read-only. It never writes postings,
+operations, observations or audit events, and it never invents a transfer to
+make a figure work. Explicitly saving a run persists its document and audit
+event under the separate slice 6 contract.
+
+## Accepted delivery and follow-up disposition (2026-10-26)
+
+The owner accepted closing [#119](https://github.com/sergeyfarin/rekenraam/issues/119)
+around the delivered `returns_v1` and `instrument_returns_v1` scope, including
+all nine slices and their review corrections. Targets and advisory rebalancing
+are retained as separate deferred features, not described as implemented.
+This supersedes the earlier tracking choice to keep #119 open for them.
+
+### Delivery evidence
+
+| Delivered outcome | Commit evidence | Independent cases / regression owner |
+|---|---|---|
+| Live TTWROR/IRR, values, external flows and honest unavailable reasons | [e30413a5](https://github.com/sergeyfarin/rekenraam/commit/e30413a5), [ae084c4d](https://github.com/sergeyfarin/rekenraam/commit/ae084c4d), [790bd788](https://github.com/sergeyfarin/rekenraam/commit/790bd788) | `investment_returns_calc_test.go`, `investment_returns_test.go`; literal return cases and exact daily arithmetic |
+| URL-held selection and repairable coverage on the returns screen | [f0b3b8ec](https://github.com/sergeyfarin/rekenraam/commit/f0b3b8ec), [e533a101](https://github.com/sergeyfarin/rekenraam/commit/e533a101), [181087fc](https://github.com/sergeyfarin/rekenraam/commit/181087fc) | `returns-model.test.ts`, `investment-returns.spec.ts`; stale FX leg, missing/stale notices and historical account choices |
+| Cumulative series with a closing point identical to the headline | [df4a75b1](https://github.com/sergeyfarin/rekenraam/commit/df4a75b1), [8585b604](https://github.com/sergeyfarin/rekenraam/commit/8585b604) | C1–C8 and `TestReturnsSeriesClosingGapOutranksAnEarlierGap`; chart-only coverage stays separate |
+| Closing allocation by account, asset type and currency | [62f9201d](https://github.com/sergeyfarin/rekenraam/commit/62f9201d), [52065a30](https://github.com/sergeyfarin/rekenraam/commit/52065a30) | A1–A8 in `investment_returns_allocation_test.go`; long/short, unknown values and explicit overflow |
+| Declared price/total-return benchmarks, split-neutral quotes and FX gaps | [eeab1a2a](https://github.com/sergeyfarin/rekenraam/commit/eeab1a2a), [6cfd060d](https://github.com/sergeyfarin/rekenraam/commit/6cfd060d), [351039f4](https://github.com/sergeyfarin/rekenraam/commit/351039f4) | `investment_returns_benchmark_test.go`, `investment_returns_split_order_test.go`; independent basis/FX/split cases |
+| Immutable saved runs, integrity on every read and exact saved-scale display | [f9195d67](https://github.com/sergeyfarin/rekenraam/commit/f9195d67), [506b1e46](https://github.com/sergeyfarin/rekenraam/commit/506b1e46), [a371481e](https://github.com/sergeyfarin/rekenraam/commit/a371481e) | `TestReturnsRunReproducesAfterBackdatedBuy`, `TestReturnsRunValidationPaginationAndReadOnlyRetrieval`; export, restore, tampering, page boundaries and omitted/null/zero validation |
+| Browser entry/correction of benchmark-only total-return prices | [86c48efb](https://github.com/sergeyfarin/rekenraam/commit/86c48efb) | `TestManualTotalReturnPriceFeedsOnlyATotalReturnBenchmark`, `pricing-management.spec.ts` |
+| Instrument sleeves and ex-date receivables with correction cancellation | [7d1996c3](https://github.com/sergeyfarin/rekenraam/commit/7d1996c3), [819b78ce](https://github.com/sergeyfarin/rekenraam/commit/819b78ce), [03ce3680](https://github.com/sergeyfarin/rekenraam/commit/03ce3680), [05aece6e](https://github.com/sergeyfarin/rekenraam/commit/05aece6e) | I1–I12b; `TestInstrumentReturnsReversedAmbiguousIncomeLeavesTheSleeve`, `TestInstrumentReturnsHoldingRepairCancelsTheAmbiguousPaymentInLieu`, `TestReturnsCorrectedPayerAcrossScopeCreatesNoGain`, `TestReturnsCancelledForeignDividendLeavesNoCoverageDependency` |
+| Live/saved instrument panel and truthful fallback treatment | [6dedbb83](https://github.com/sergeyfarin/rekenraam/commit/6dedbb83), [b9c57ea3](https://github.com/sergeyfarin/rekenraam/commit/b9c57ea3) | `TestReturnsRunSavedBeforeInstrumentsReopensUnchanged`, `TestReturnsRunFreezesInstrumentReturns`; phone/tablet/desktop browser acceptance |
+
+Application/API test files above live under `backend/internal/app/` and
+`backend/internal/api/`; the model tests live under
+`frontend/src/lib/investments/`, and browser journeys under `e2e/playwright/`.
+The detailed contracts and review history below remain the formula and
+policy authority; this table is delivery evidence, not another task checklist.
+
+### Validation result and its limits
+
+On 2026-10-26 the closing review independently checked hosted
+[CI run 40285442638](https://github.com/sergeyfarin/rekenraam/actions/runs/40285442638)
+at `b9c57ea37d1ee8d61441eae7c44c32c03f7bcfe6`: **all six jobs succeeded** —
+Backend Tests (shared race gate), Backend Coverage (including its floor),
+Frontend Check, Integrated Build, E2E Smoke (app) and E2E Smoke (audits).
+The separate [code-scanning run](https://github.com/sergeyfarin/rekenraam/actions/runs/40285441590)
+also succeeded. There is no pending CI in that implementation evidence.
+The final delivery report additionally records 778 frontend unit tests and
+all 10 returns browser journeys passing; these local counts are delivery
+evidence, not a claim that the Frontend Check job runs the entire unit suite.
+The instrument journey checks 390px, 768px and 1280px, including accessibility
+and the focusable scrolling table at tablet width.
+
+The closing change updates documentation/tracking only. It validates links,
+named tests, commit ancestry and the diff; it does not rerun runtime suites or
+claim a new release certification. Owner household/deployment and restore/export
+acceptance remain [#336](https://github.com/sergeyfarin/rekenraam/issues/336),
+separate from deterministic R13 acceptance. The roadmap retains all release gates.
+
+### Retained work and accepted limits
+
+| Disposition | Owner / reason |
+|---|---|
+| **Deferred: target allocation and drift** | [#411](https://github.com/sergeyfarin/rekenraam/issues/411). Actual allocation ships; target grouping, exact weights, cash/short denominator, history and incomplete-value policy need their own accepted contract. |
+| **Deferred: advisory rebalancing** | [#412](https://github.com/sergeyfarin/rekenraam/issues/412). Requires the target model from #411 and an accepted funding/rounding/coverage policy. No broker execution or automatic postings are implied. |
+| **Retain: honest unavailable figures** | Ambiguous income, unclassified exchanges, missing required prices/FX, non-positive capital and unproven IRR roots stay unavailable under the named rules. Do not invent attribution or pick a numerical root to make a percentage appear. |
+| **Retain: bounded short detection / no short-sleeve return** | D5 is accepted. Named short operations and end-of-day balances are detected; arbitrary plain intraday exposure is not reconstructed. Short sleeves retain supported values/gain but no percentage return. A different method requires a new accepted contract. |
+| **Retain: benchmark source limits** | Manual total-return entry now ships. Price-return benchmarks exclude distributions and depend on recorded splits; an unrecorded split cannot be detected. Live benchmark adapters and broker comparisons remain optional future integrations with separate evidence, not a reason to reopen #119. |
+| **Retain: saved-run presentation limits** | Figures, ids, dates and saved scales are frozen. Names resolve as they are today; older runs are not rebuilt. Freezing descriptive metadata would require a separately justified versioned extension. |
+| **Retain: valuation recognition, not full accrual accounting** | Recorded ex-date dividends/payments in lieu affect net worth and returns as receivables/payables; posting-date income, spending, cashflow, registers, reconciliation and forecast are unchanged. Separate receivable accounts and partial-payment workflows are not delivered. |
+
+Only targets and advisory rebalancing are newly retained delivery issues here.
+The other rows are explicit accepted limits, not hidden outstanding R13 fixes.
+Revisit one when a concrete user case or defect warrants a bounded issue and
+an accepted change to the relevant contract. Existing #395 financial-field
+corrections and #405 schema work keep their own issues; closing #119 neither
+delivers nor changes their acceptance or the roadmap's order.
 
 ## Owner decisions (2026-10-24)
 
@@ -64,9 +133,11 @@ the only honest remaining rule, and the response lists every such entry.
 **No transaction is created.** A dividend paid into checking stays exactly
 one recorded journal (checking +20 against income −20), so reconciliation
 against bank and broker statements is unchanged. Inside the return
-calculation alone, that journal is read as portfolio income plus a same-day
-withdrawal. Neither half is stored, and balances, net worth, cashflow,
-reconciliation and exports keep reading the ledger as posted.
+calculation, income belongs to the entitled side and the cash payment is a
+withdrawal. Without an ex date these coincide; with one, the receivable
+bridges recognition and payment as *Valuation `V(d)`* specifies. Neither
+read-time adjustment is stored. Net worth uses the same receivable timing;
+cashflow, reconciliation and posted exports retain the original journal dates.
 
 ## Inputs
 
@@ -1175,8 +1246,8 @@ written.
      overflowing its box at 768px without being focusable, so the box is now
      a labelled, focusable region, with an accessibility check at that width.
 
-The roadmap's R13 item lists slices 8–9; targets and rebalancing stay
-deferred.
+Slices 8–9 complete the accepted instrument contract. Targets and rebalancing
+stay deferred in #411 and #412; see the acceptance disposition above.
 
 ## Slices
 
@@ -1228,8 +1299,7 @@ deferred.
    `0.000000` and the price-return benchmark stays unavailable; the corrected
    88 → 110 reads `0.250000`), browser case in `pricing-management.spec.ts`.
 
-Targets and rebalancing are **deferred** (no trade execution is implied,
-per the product direction). Security-level (per-instrument) returns need an
-instrument boundary with commodity-attributed income; that contract,
-*Per-instrument returns (`instrument_returns_v1`)* above, was accepted on
-2026-10-25 as slices 8–9.
+Targets and rebalancing are **deferred** to [#411](https://github.com/sergeyfarin/rekenraam/issues/411)
+and [#412](https://github.com/sergeyfarin/rekenraam/issues/412); no trade
+execution is implied. Security-level returns (`instrument_returns_v1`,
+slices 8–9) are delivered, as recorded above.

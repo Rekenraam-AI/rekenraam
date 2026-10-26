@@ -17,6 +17,11 @@ added on 2026-10-18 from the same kind of sources. Provider signup, feed availab
 and licensing are separate checks. Documentation supports a workflow comparison,
 not measured usability, equivalent financial semantics or market demand.
 
+Rekenraam's R13 status was reconciled on 2026-10-26 at `b9c57ea3`; the
+[accepted delivery record](plans/investment-returns-plan.md#accepted-delivery-and-follow-up-disposition-2026-10-26)
+now replaces the earlier local returns gap. This updates local capability
+status only; competitor sources retain their original review dates.
+
 ## Verified comparison
 
 | Product | Documented strengths relevant here | Boundary or implication for Rekenraam |
@@ -24,7 +29,7 @@ not measured usability, equivalent financial semantics or market demand.
 | **Rekenraam** | Exact multi-commodity ledger, reconciliation, CSV/QIF export and import, budgets, recurring drafts, per-currency forecasts, investment lots/gains and Trading 212 import. | Native correction, transfers, structural actions, historical entry, unknown-basis resolution/recovery, named shorts, price management and crypto quotes ship. R18 adds dated gains, period statements, alternative/person-pooled methods, operational FX and immutable operational runs. Live-read consistency, capital-return disclosure and unclassified imported dividend cash disclosure ship (#237/#238/#246); reviewed Twelve Data dividend suggestions and named short payment in lieu also ship; tax rules and TWR/IRR remain outside R18. See [implemented](implemented.md) and [roadmap](roadmap.md). |
 | **GnuCash** | Its [investment guide](https://www.gnucash.org/docs/v5/C/gnucash-guide/chapter_invest.html) documents lots, dividends, return of capital, splits and mergers, and a price database. | Sets the accounting and transaction-type bar for R16. The guide is for a desktop application; this comparison does not equate its lot methods or tax results with Rekenraam's. |
 | **Quicken Classic** | Its [investment action list](https://info.quicken.com/win/tell-me-about-the-investment-transaction-list-s-ac) names transfers, return of capital, splits, short sales and covers; its [placeholder guide](https://www.quicken.com/support/resolving-placeholders-and-usd0-00-cost-basis-in-quicken-for-mac/) explains missing-basis recovery. | A migration target needs basis-preserving transfers, correction and explicit unknown-basis handling before it can promise comparable investment history. Quicken's [short-cover help](https://info.quicken.com/win/how-do-i-cover-a-short-sale) reinforces naming shorts separately from ordinary sells. |
-| **Portfolio Performance** | Its [security menu](https://help.portfolio-performance.info/en/reference/view/securities/context-menu/) documents security transfers and a split wizard; its [performance manual](https://help.portfolio-performance.info/en/reference/view/reports/performance/dashboard/) documents TTWROR and IRR. | R16's split/transfer and historical-entry/recovery workflows now ship; R18 adds dated basis/gains and saved operational documents, while R13 returns remain open. Its default split path retroactively adjusts earlier transactions and quotes; Rekenraam's immutable-source design calls for a dated operation and separate adjusted views. |
+| **Portfolio Performance** | Its [security menu](https://help.portfolio-performance.info/en/reference/view/securities/context-menu/) documents security transfers and a split wizard; its [performance manual](https://help.portfolio-performance.info/en/reference/view/reports/performance/dashboard/) documents TTWROR and IRR. | R16's split/transfer and historical-entry/recovery workflows ship; R18 adds dated basis/gains and saved operational documents. R13 now adds named TTWROR/IRR contracts, allocation, benchmarks, instrument returns and saved returns runs. Its default split path retroactively adjusts earlier transactions and quotes; Rekenraam retains dated operations and immutable source history. No formula-by-formula equivalence is claimed. |
 | **Ghostfolio** | The project's [README](https://github.com/ghostfolio/ghostfolio/blob/main/README.md) documents self-hosting, activity import/export, multi-account holdings, portfolio charts, ROAI periods and a mobile-first PWA. | Portfolio analytics and mobile presentation are relevant R13 benchmarks. Its documented activity/API scope does not establish equivalent ledger or basis semantics, so no absence claim is made here. |
 | **Actual Budget** | Its [rules](https://actualbudget.org/docs/budgeting/rules/) can transform imports, its [schedules](https://actualbudget.org/docs/schedules/) support automatic or reviewed entry, and its [import guide](https://actualbudget.org/docs/transactions/importing/) lists CSV/QIF/OFX/QFX/CAMT. Its [multi-currency guide](https://actualbudget.org/docs/budgeting/multi-currency/) says native support is still absent and describes an experimental workaround. | Rekenraam's exact multi-currency model is a meaningful difference. Actual's broader import formats and rules are a later usability benchmark; its documented schedules reinforce a clear review-before-post workflow. |
 | **Firefly III** | Its [rules](https://docs.firefly-iii.org/how-to/firefly-iii/features/rules/), [data importer](https://docs.firefly-iii.org/how-to/data-importer/import/csv/) and [budgets](https://docs.firefly-iii.org/how-to/firefly-iii/finances/budgets/) cover mature routine transaction management. | Keep R6 import depth and rules on the later list. This review did not verify comparable security-lot accounting, so it makes no claim about its presence or absence. |
@@ -99,8 +104,10 @@ What this means for Rekenraam:
    operational FX and immutable operational runs gain explicit valuation and
    basis inspection. Saved alternative/FX runs, broker-basis comparison and
    jurisdiction tax rules remain outside that delivery. #237/#238 are delivered;
-   R13's TTWROR/IRR and allocation views remain the deliberate gap against the existing Portfolio Performance/Ghostfolio benchmark. Specify
-   equations and external-flow classification before claiming returns parity.
+   R13's accepted TTWROR/IRR, allocation, benchmark and per-instrument views
+   followed by 2026-10-26, with immutable saved output. Targets/drift (#411)
+   and advisory rebalancing (#412) remain deliberately deferred. This closes
+   the local implementation gap without claiming identical vendor semantics.
 4. **Treat locale input and owner-local dates as trust work.** Locale amount
    parsing (#100) and owner-local date defaults (#101) are delivered. Native
    terminology review (#102) remains before calling the five drafted
@@ -108,20 +115,21 @@ What this means for Rekenraam:
 5. **Keep R6 and broader feeds later.** Actual and Firefly III document
    richer import automation, but Rekenraam already has usable CSV/QIF entry.
    No official source in this review justifies moving broader integrations
-   ahead of validating the delivered core and specifying R13 returns.
+   ahead of validating the delivered core.
 
 These priorities are reflected in the [roadmap](roadmap.md). Recheck source
 pages before making market-wide uniqueness or release-parity claims.
 
 ## Consequences of the October recheck
 
-R13 remains a useful gap, with different metrics requiring different contracts:
+The October comparison identified an R13 gap, since delivered locally under
+named contracts; different products' metrics still require separate comparison:
 Portfolio Performance documents [TTWROR](https://help.portfolio-performance.info/en/concepts/performance/time-weighted/),
 while Ghostfolio's linked README calls its period measure ROAI. These are not
-interchangeable labels for the same output. Adopt a named formula and test
-external flows before comparing percentages. Allocation targets, denominators
-and missing-value coverage also need a contract; a gains table is not an
-allocation or return report.
+interchangeable labels for the same output. Rekenraam now has an accepted
+formula, external-flow, allocation-denominator and missing-value contract with
+independent expected cases. Allocation targets (#411) and advisory rebalancing
+(#412) still require their own contracts; delivered returns do not imply them.
 
 The July survey and September strategy review remain dated research. Their
 claims of category leadership, uniqueness, demand, prices or willingness to

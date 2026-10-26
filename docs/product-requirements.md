@@ -524,6 +524,16 @@ Goal: add power-user workflows after the core ledger is stable.
   owner-local today and excludes recorded future investment events, just as an
   explicit date does. Persist report snapshots where reproducibility
   cannot be guaranteed cheaply from immutable facts and versioned policies.
+- Portfolio-period and per-instrument performance follow the accepted
+  `returns_v1` and `instrument_returns_v1` contracts: named time-weighted and
+  money-weighted formulas, external-flow and income-recognition rules,
+  reporting-currency valuation, coverage, actual allocation, declared benchmark
+  basis and immutable saved output. The [R13 plan](plans/investment-returns-plan.md#accepted-delivery-and-follow-up-disposition-2026-10-26)
+  records acceptance of this bounded delivery on 2026-10-26. Target allocation
+  and drift [#411](https://github.com/sergeyfarin/rekenraam/issues/411), and
+  advisory rebalancing [#412](https://github.com/sergeyfarin/rekenraam/issues/412),
+  are separate deferred extensions requiring their own accepted contracts;
+  neither automatic trade execution nor tax optimization is implied.
 
 ### Later
 
