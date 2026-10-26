@@ -3152,6 +3152,7 @@ func toInvestmentCorrectionSplitTerms(terms *app.InvestmentCorrectionSplitTerms)
 
 type investmentCorrectionDividendTerms struct {
 	Attribution          *investmentAttributionResponse `json:"attribution"`
+	SourceDifferences    []string                       `json:"source_differences"`
 	WithholdingOnly      bool                           `json:"withholding_only"`
 	CommodityID          *int64                         `json:"commodity_id,omitempty"`
 	ExDate               *string                        `json:"ex_date,omitempty"`
@@ -3172,7 +3173,7 @@ func toInvestmentCorrectionDividendTerms(terms *app.InvestmentCorrectionDividend
 	if terms == nil {
 		return nil
 	}
-	return &investmentCorrectionDividendTerms{Attribution: toInvestmentAttributionResponse(&terms.Attribution), WithholdingOnly: terms.WithholdingOnly, CommodityID: terms.CommodityID, ExDate: optionalString(terms.ExDate), EventDate: terms.EventDate, CashAccountID: terms.CashAccountID,
+	return &investmentCorrectionDividendTerms{Attribution: toInvestmentAttributionResponse(&terms.Attribution), SourceDifferences: terms.SourceDifferences, WithholdingOnly: terms.WithholdingOnly, CommodityID: terms.CommodityID, ExDate: optionalString(terms.ExDate), EventDate: terms.EventDate, CashAccountID: terms.CashAccountID,
 		CashCommodityID: terms.CashCommodityID, IncomeAccountID: terms.IncomeAccountID,
 		AmountValue: terms.AmountValue, AmountScale: terms.AmountScale,
 		WithholdingAccountID: terms.WithholdingAccountID, WithholdingValue: terms.WithholdingValue,

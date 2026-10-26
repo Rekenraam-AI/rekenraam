@@ -1,6 +1,6 @@
 import { expect, test, type Page } from './support/fixtures';
 import { apiJSON } from './support/api';
-import { readyForLedger } from './support/ledger';
+import { ensureCurrency, readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
 
 /**
@@ -111,6 +111,47 @@ test.describe('on a phone', () => {
     const chain = await apiJSON<{ effective_dividend: { ex_date?: string } }>(page, 'GET',
       `/api/v1/investments/transactions/${replacement}/correction-chain`);
     expect(chain.effective_dividend.ex_date).toBe(exDate);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+
+  // #395: the date, cash account and (with the account) the currency of a
+  // cash dividend are correctable; the original is cancelled where it was.
+  test('a correction moves a cash dividend to another date and cash account currency', async ({ page }) => {
+    const s = await setup(page, 'MDV');
+    const chf = await ensureCurrency(page, s.csrfToken, 'CHF', 'Swiss franc');
+    const openedOn = daysFromTodayISO(-60);
+    const broker = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', s.csrfToken, {
+      name: `Broker CHF ${s.suffix}`, account_class: 'asset', account_kind: 'brokerage_cash',
+      default_commodity_id: chf, allows_postings: true, opened_on: openedOn, effective_from: openedOn
+    });
+    const income = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', s.csrfToken, {
+      name: `Dividend income any ${s.suffix}`, account_class: 'income', account_kind: 'income',
+      allows_postings: true, opened_on: openedOn, effective_from: openedOn
+    });
+    const dividend = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/dividend', s.csrfToken, {
+      transaction_date: daysFromTodayISO(-10), cash_account_id: s.cashID, cash_commodity_id: s.currencyID,
+      income_account_id: income.id, amount_value: '5000', amount_scale: 2, memo: `ACME ${s.suffix}`
+    });
+
+    await page.goto(`/app/transactions?transaction_id=${dividend.id}`);
+    await page.getByRole('button', { name: 'Correct dividend…' }).click();
+    const form = page.getByRole('dialog', { name: 'Correct this dividend' });
+    await expect(form.getByLabel('Date', { exact: true })).toHaveValue(daysFromTodayISO(-10));
+    await form.getByLabel('Reason for correction').fill('paid into the CHF account two days earlier');
+    await form.getByLabel('Date', { exact: true }).fill(daysFromTodayISO(-12));
+    await form.getByLabel(/^Cash account/).selectOption(String(broker.id));
+    await expect(form.getByText('(CHF)').first()).toBeVisible();
+    await form.getByLabel(/^Dividend amount/).fill('48.00');
+    await form.getByRole('button', { name: 'Review and replace' }).click();
+    await expect(form).toBeHidden();
+
+    const replacement = await chainEffective(page, dividend.id);
+    expect(replacement).not.toBe(dividend.id);
+    const chain = await apiJSON<{ effective_dividend: { event_date: string; cash_account_id: number; cash_commodity_id: number;
+      amount_value: string; amount_scale: number; source_differences: string[] } }>(page, 'GET',
+      `/api/v1/investments/transactions/${replacement}/correction-chain`);
+    expect(chain.effective_dividend).toMatchObject({ event_date: daysFromTodayISO(-12), cash_account_id: broker.id,
+      cash_commodity_id: chf, amount_value: '4800', amount_scale: 2, source_differences: [] });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 

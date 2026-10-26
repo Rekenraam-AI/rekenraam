@@ -3,8 +3,10 @@ post:
   description: >-
     Posts the inverse and the corrected dividend — gross amount, withholding,
     income and withholding accounts — under one audit event (T-115). The
-    replacement keeps the dividend date, cash account and currency. The original
-    remains posted history; an imported dividend keeps its committed source
+    replacement may also correct the dividend date, cash account and currency
+    (#395): the inverse cancels the original on its own date and accounts, and
+    every reconciled boundary either journal changes needs the reviewed
+    override. The original remains posted history; an imported dividend keeps its committed source
     identity on the original. Separate withholding keeps its tax-only shape;
     amount_value is its tax magnitude and no income is posted. Omitting the
     paying commodity_id preserves the source instrument. An explicitly corrected

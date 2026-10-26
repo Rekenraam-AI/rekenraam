@@ -1333,7 +1333,7 @@
   "transactions_investment_reverse_dividend_copy": "Er wordt een tegenboeking gemaakt voor het dividend en eventueel ingehouden belasting. Het oorspronkelijke dividend blijft in de geschiedenis.",
   "transactions_investment_replace_dividend_action": "Dividend corrigeren…",
   "transactions_investment_replace_dividend_title": "Dit dividend corrigeren",
-  "transactions_investment_replace_dividend_copy": "Voer de gecorrigeerde bedragen in. Datum, geldrekening en valuta blijven zoals geboekt, en het origineel blijft in de auditgeschiedenis.",
+  "transactions_investment_replace_dividend_copy": "Voer de gecorrigeerde gegevens in. Het origineel blijft geboekt en wordt op zijn eigen datum tegengeboekt; de vervanging wordt geboekt op de datum en de geldrekening die u invult, in de valuta van die rekening.",
   "transactions_investment_reverse_reinvestment_action": "Herbelegd dividend terugboeken…",
   "transactions_investment_reverse_reinvestment_title": "Dit herbelegde dividend terugboeken",
   "transactions_investment_reverse_reinvestment_copy": "Er wordt een tegenboeking gemaakt en latere lottoewijzingen worden zonder de herbelegde stukken herberekend. Een latere verkoop die niet meer gedekt is, blokkeert de terugboeking. Het origineel blijft in de geschiedenis.",
@@ -1651,7 +1651,7 @@
   "investments_withholding_pending": "Bronbelasting vastleggen…",
   "investments_withholding_correct_action": "Bronbelasting corrigeren…",
   "investments_withholding_correct_title": "Deze bronbelasting corrigeren",
-  "investments_withholding_correct_copy": "Vervang deze belastingbetaling door het juiste bedrag en de juiste belastingrekening. Datum, geldrekening en valuta blijven gelijk.",
+  "investments_withholding_correct_copy": "Vervang deze belastingbetaling door de juiste datum, geldrekening, bedrag en belastingrekening. Het blijft een belastingbetaling en het origineel blijft in de auditgeschiedenis.",
   "investments_withholding_reverse_action": "Bronbelasting terugdraaien…",
   "investments_withholding_reverse_title": "Deze bronbelasting terugdraaien",
   "investments_withholding_reverse_copy": "Boek een gecontroleerde tegenboeking voor deze afzonderlijke belastingbetaling. Het origineel blijft in de historie.",
@@ -1731,5 +1731,11 @@
   "investments_cash_in_lieu_current_parent": "Huidige actie #{id}",
   "investments_dividend_payer_help": "De betaler is optioneel. Als u alleen deze toerekening wijzigt, blijven geldbedragen en belasting gelijk.",
   "investments_dividend_ex_date": "Ex-dividenddatum",
-  "investments_dividend_ex_date_hint": "Rendementen tellen deze betaling op de ex-dividenddatum, voor wie de aandelen de dag ervoor bezat. Laat leeg als de datum onbekend is."
+  "investments_dividend_ex_date_hint": "Rendementen tellen deze betaling op de ex-dividenddatum, voor wie de aandelen de dag ervoor bezat. Laat leeg als de datum onbekend is.",
+  "investments_dividend_source_differs": "Deze betaling wijkt af van de geïmporteerde betaling in: {fields}. De geïmporteerde bron blijft ongewijzigd.",
+  "investments_dividend_source_field_date": "datum",
+  "investments_dividend_source_field_cash_account": "geldrekening",
+  "investments_dividend_source_field_currency": "valuta",
+  "investments_dividend_source_field_amount": "bedrag",
+  "investments_dividend_source_field_withholding": "bronbelasting"
 }

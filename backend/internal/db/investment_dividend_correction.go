@@ -138,6 +138,8 @@ type DividendReplacementRecord struct {
 // ReplaceDividend posts the inverse and the corrected dividend under one
 // audit event. The replacement operation links the inverse as its reversal
 // journal, exactly like a trade replacement; the original stays history.
+// The inverse keeps the original's date; the replacement may carry a
+// corrected date, cash account and currency (#395).
 func (r *InvestmentRepository) ReplaceDividend(ctx context.Context, expected DividendOperationRecord,
 	inverseParams, replacementParams CreateTransactionParams,
 ) (DividendReplacementRecord, error) {
@@ -165,7 +167,6 @@ func (r *InvestmentRepository) replaceDividend(ctx context.Context, expected Div
 		replacementParams.Spec.InvestmentOperationKind != "dividend" ||
 		replacementParams.Spec.TransactionKind != "investment" || replacementParams.Spec.Status != "posted" ||
 		inverseParams.Spec.TransactionDate != expected.EventDate ||
-		replacementParams.Spec.TransactionDate != expected.EventDate ||
 		replacementParams.InvestmentCorrectionOfOperationID != expected.OperationID ||
 		replacementParams.InvestmentCorrectionMode != "replace" ||
 		replacementParams.InvestmentCorrectionReason == "" ||

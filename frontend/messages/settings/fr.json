@@ -1333,7 +1333,7 @@
   "transactions_investment_reverse_dividend_copy": "Une opération inverse est enregistrée pour le dividende et l'impôt retenu. Le dividende d'origine reste dans l'historique.",
   "transactions_investment_replace_dividend_action": "Corriger le dividende…",
   "transactions_investment_replace_dividend_title": "Corriger ce dividende",
-  "transactions_investment_replace_dividend_copy": "Saisissez les montants corrigés. La date, le compte de trésorerie et la devise restent inchangés, et l'original reste dans l'historique d'audit.",
+  "transactions_investment_replace_dividend_copy": "Saisissez les données corrigées. L'original reste comptabilisé et est annulé à sa propre date ; le remplacement est comptabilisé à la date et sur le compte de trésorerie indiqués, dans la devise de ce compte.",
   "transactions_investment_reverse_reinvestment_action": "Annuler le dividende réinvesti…",
   "transactions_investment_reverse_reinvestment_title": "Annuler ce dividende réinvesti",
   "transactions_investment_reverse_reinvestment_copy": "Une opération inverse est enregistrée et les affectations de lots ultérieures sont recalculées sans les titres réinvestis. Une vente ultérieure qui ne serait plus couverte bloque l'annulation. L'original reste dans l'historique.",
@@ -1651,7 +1651,7 @@
   "investments_withholding_pending": "Enregistrement de la retenue fiscale…",
   "investments_withholding_correct_action": "Corriger la retenue fiscale…",
   "investments_withholding_correct_title": "Corriger cette retenue fiscale",
-  "investments_withholding_correct_copy": "Remplacez ce paiement fiscal par le montant et le compte fiscal corrigés. La date, le compte espèces et la devise restent inchangés.",
+  "investments_withholding_correct_copy": "Remplacez ce paiement fiscal par sa date, son compte de trésorerie, son montant et son compte fiscal corrigés. Il reste un paiement fiscal, et l'original reste dans l'historique d'audit.",
   "investments_withholding_reverse_action": "Annuler la retenue fiscale…",
   "investments_withholding_reverse_title": "Annuler cette retenue fiscale",
   "investments_withholding_reverse_copy": "Comptabilisez une écriture inverse traçable de ce paiement fiscal séparé. L’original reste dans l’historique.",
@@ -1731,5 +1731,11 @@
   "investments_cash_in_lieu_current_parent": "Opération actuelle nº {id}",
   "investments_dividend_payer_help": "Le payeur est facultatif. Modifier uniquement cette attribution ne change ni les espèces ni les impôts.",
   "investments_dividend_ex_date": "Date ex-dividende",
-  "investments_dividend_ex_date_hint": "Les rendements comptent ce paiement à la date ex-dividende, pour le détenteur des titres la veille. Laissez vide si elle est inconnue."
+  "investments_dividend_ex_date_hint": "Les rendements comptent ce paiement à la date ex-dividende, pour le détenteur des titres la veille. Laissez vide si elle est inconnue.",
+  "investments_dividend_source_differs": "Ce paiement diffère de celui enregistré par son import pour : {fields}. La source importée reste inchangée.",
+  "investments_dividend_source_field_date": "date",
+  "investments_dividend_source_field_cash_account": "compte de trésorerie",
+  "investments_dividend_source_field_currency": "devise",
+  "investments_dividend_source_field_amount": "montant",
+  "investments_dividend_source_field_withholding": "retenue"
 }

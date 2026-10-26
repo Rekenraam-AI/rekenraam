@@ -1362,7 +1362,7 @@
   "transactions_investment_reverse_dividend_copy": "This posts an inverse transaction for the dividend and any tax withheld. The original dividend stays in history.",
   "transactions_investment_replace_dividend_action": "Correct dividend…",
   "transactions_investment_replace_dividend_title": "Correct this dividend",
-  "transactions_investment_replace_dividend_copy": "Enter the corrected amounts. The date, cash account and currency stay as recorded, and the original stays in the audit history.",
+  "transactions_investment_replace_dividend_copy": "Enter the corrected facts. The original stays posted and is cancelled on its own date; the replacement posts on the date and to the cash account you enter, in that account's currency.",
   "transactions_investment_reverse_reinvestment_action": "Reverse reinvested dividend…",
   "transactions_investment_reverse_reinvestment_title": "Reverse this reinvested dividend",
   "transactions_investment_reverse_reinvestment_copy": "This posts an inverse transaction and recalculates later lot allocations without the reinvested shares. A later sale that cannot be covered will block the reversal. The original stays in history.",
@@ -1651,7 +1651,7 @@
   "investments_withholding_pending": "Recording withholding tax…",
   "investments_withholding_correct_action": "Correct withholding tax…",
   "investments_withholding_correct_title": "Correct this withholding tax",
-  "investments_withholding_correct_copy": "Replace this tax payment with its corrected amount and tax account. The date, cash account and currency stay fixed.",
+  "investments_withholding_correct_copy": "Replace this tax payment with its corrected date, cash account, amount and tax account. It stays a tax payment, and the original stays in the audit history.",
   "investments_withholding_reverse_action": "Reverse withholding tax…",
   "investments_withholding_reverse_title": "Reverse this withholding tax",
   "investments_withholding_reverse_copy": "Post an audited inverse of this separate tax payment. The original remains in history.",
@@ -1731,5 +1731,11 @@
   "investments_cash_in_lieu_current_parent": "Current action #{id}",
   "investments_dividend_payer_help": "The payer is optional. Changing only this attribution leaves cash and tax unchanged.",
   "investments_dividend_ex_date": "Ex-dividend date",
-  "investments_dividend_ex_date_hint": "Returns count this payment on its ex-dividend date, for whoever held the shares the day before. Leave blank if unknown."
+  "investments_dividend_ex_date_hint": "Returns count this payment on its ex-dividend date, for whoever held the shares the day before. Leave blank if unknown.",
+  "investments_dividend_source_differs": "This payment differs from the one its import recorded in: {fields}. The imported source is kept unchanged.",
+  "investments_dividend_source_field_date": "date",
+  "investments_dividend_source_field_cash_account": "cash account",
+  "investments_dividend_source_field_currency": "currency",
+  "investments_dividend_source_field_amount": "amount",
+  "investments_dividend_source_field_withholding": "withholding"
 }

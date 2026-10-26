@@ -1333,7 +1333,7 @@
   "transactions_investment_reverse_dividend_copy": "Se registra una operación inversa del dividendo y de la retención. El dividendo original permanece en el historial.",
   "transactions_investment_replace_dividend_action": "Corregir dividendo…",
   "transactions_investment_replace_dividend_title": "Corregir este dividendo",
-  "transactions_investment_replace_dividend_copy": "Introduzca los importes corregidos. La fecha, la cuenta de efectivo y la moneda se mantienen, y el original permanece en el historial de auditoría.",
+  "transactions_investment_replace_dividend_copy": "Introduzca los datos corregidos. El original se mantiene contabilizado y se anula en su propia fecha; el reemplazo se contabiliza en la fecha y la cuenta de efectivo que indique, en la moneda de esa cuenta.",
   "transactions_investment_reverse_reinvestment_action": "Revertir dividendo reinvertido…",
   "transactions_investment_reverse_reinvestment_title": "Revertir este dividendo reinvertido",
   "transactions_investment_reverse_reinvestment_copy": "Se registra una operación inversa y se recalculan las asignaciones de lotes posteriores sin los títulos reinvertidos. Una venta posterior que quede sin cubrir bloquea la reversión. El original permanece en el historial.",
@@ -1651,7 +1651,7 @@
   "investments_withholding_pending": "Registrando retención fiscal…",
   "investments_withholding_correct_action": "Corregir retención fiscal…",
   "investments_withholding_correct_title": "Corregir esta retención fiscal",
-  "investments_withholding_correct_copy": "Sustituya este pago de impuestos por el importe y la cuenta fiscal corregidos. La fecha, la cuenta de efectivo y la moneda se mantienen.",
+  "investments_withholding_correct_copy": "Sustituya este pago de impuestos por su fecha, cuenta de efectivo, importe y cuenta fiscal corregidos. Sigue siendo un pago de impuestos y el original permanece en el historial de auditoría.",
   "investments_withholding_reverse_action": "Revertir retención fiscal…",
   "investments_withholding_reverse_title": "Revertir esta retención fiscal",
   "investments_withholding_reverse_copy": "Registre un asiento inverso auditable de este pago de impuestos separado. El original permanece en el historial.",
@@ -1731,5 +1731,11 @@
   "investments_cash_in_lieu_current_parent": "Operación actual #{id}",
   "investments_dividend_payer_help": "El pagador es opcional. Cambiar solo esta atribución no modifica el efectivo ni los impuestos.",
   "investments_dividend_ex_date": "Fecha ex-dividendo",
-  "investments_dividend_ex_date_hint": "Las rentabilidades cuentan este pago en la fecha ex-dividendo, para quien tenía las acciones el día anterior. Déjela en blanco si se desconoce."
+  "investments_dividend_ex_date_hint": "Las rentabilidades cuentan este pago en la fecha ex-dividendo, para quien tenía las acciones el día anterior. Déjela en blanco si se desconoce.",
+  "investments_dividend_source_differs": "Este pago difiere del registrado por su importación en: {fields}. El origen importado se conserva sin cambios.",
+  "investments_dividend_source_field_date": "fecha",
+  "investments_dividend_source_field_cash_account": "cuenta de efectivo",
+  "investments_dividend_source_field_currency": "moneda",
+  "investments_dividend_source_field_amount": "importe",
+  "investments_dividend_source_field_withholding": "retención"
 }

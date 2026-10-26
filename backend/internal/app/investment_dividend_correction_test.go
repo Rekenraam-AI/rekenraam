@@ -196,12 +196,13 @@ func TestDividendCorrectionsStayInTheirFamily(t *testing.T) {
 	_, err = f.investmentService.ReverseReinvestedDividendReconciliationImpact(ctx, ReverseReinvestedDividendInput{
 		OwnerUserID: f.ownerUserID, TransactionID: dividend.ID, Reason: "wrong command"})
 	require.ErrorIs(t, err, ErrInvestmentReinvestmentNotFound)
+	// Date, account and currency are correctable (#395); the payment shape is not.
 	other := cashDividendInput(f, 0, 10000, 0)
-	other.TransactionDate = "2026-03-02"
+	other.WithholdingOnly = true
 	_, err = f.investmentService.ReplaceDividendReconciliationImpact(ctx, ReplaceInvestmentDividendInput{
-		OwnerUserID: f.ownerUserID, TransactionID: dividend.ID, Reason: "moved", Replacement: other})
+		OwnerUserID: f.ownerUserID, TransactionID: dividend.ID, Reason: "really a tax payment", Replacement: other})
 	var validation ValidationError
-	require.ErrorAs(t, err, &validation, "date changes are a separate correction family")
+	require.ErrorAs(t, err, &validation, "a dividend cannot become a standalone withholding")
 	_, err = f.investmentService.ReverseDividendReconciliationImpact(ctx, ReverseInvestmentDividendInput{
 		OwnerUserID: f.ownerUserID, TransactionID: dividend.ID})
 	require.ErrorAs(t, err, &validation, "a reason is required")
@@ -253,6 +254,23 @@ func TestImportedDividendCorrectionPreservesCommittedIdentity(t *testing.T) {
 	chain, err := f.investmentSvc.CorrectionChain(ctx, f.ownerUserID, originalID)
 	require.NoError(t, err)
 	require.Nil(t, chain.EffectiveDividend.CommodityID)
+	// #395: the owner's corrected amount is disclosed against the imported
+	// payment; a payer change is attribution, not a cash difference.
+	require.Equal(t, []string{"amount"}, chain.EffectiveDividend.SourceDifferences)
+	replacement.TransactionDate = "2026-06-16"
+	result, err = f.investmentSvc.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{OwnerUserID: f.ownerUserID,
+		TransactionID: result.Replacement.ID, Reason: "settled a day later", Replacement: replacement})
+	require.NoError(t, err)
+	chain, err = f.investmentSvc.CorrectionChain(ctx, f.ownerUserID, originalID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"date", "amount"}, chain.EffectiveDividend.SourceDifferences)
+	replacement.TransactionDate, replacement.AmountValue = "2026-06-15", 432
+	result, err = f.investmentSvc.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{OwnerUserID: f.ownerUserID,
+		TransactionID: result.Replacement.ID, Reason: "the broker was right", Replacement: replacement})
+	require.NoError(t, err)
+	chain, err = f.investmentSvc.CorrectionChain(ctx, f.ownerUserID, originalID)
+	require.NoError(t, err)
+	require.Empty(t, chain.EffectiveDividend.SourceDifferences, "restoring the imported facts clears the disclosure")
 	unchangedSource, err := f.importRepo.ImportStagedRowByID(ctx, divRow)
 	require.NoError(t, err)
 	require.Equal(t, originalRaw, unchangedSource.RawJSON)
@@ -290,7 +308,7 @@ func TestCorrectionChainOffersDividendTerms(t *testing.T) {
 	require.False(t, chain.CanCorrectReinvestedDividend)
 	terms := chain.EffectiveDividend
 	require.NotNil(t, terms)
-	require.Equal(t, InvestmentCorrectionDividendTerms{Attribution: InvestmentAttributionDiagnostic{Status: SelfCheckPassed, Reasons: []string{}}, EventDate: "2026-03-01", CashAccountID: f.cashAccountID,
+	require.Equal(t, InvestmentCorrectionDividendTerms{Attribution: InvestmentAttributionDiagnostic{Status: SelfCheckPassed, Reasons: []string{}}, SourceDifferences: []string{}, EventDate: "2026-03-01", CashAccountID: f.cashAccountID,
 		CashCommodityID: f.eurCommodityID, IncomeAccountID: f.incomeAccountID, AmountValue: exact.New(10000), AmountScale: 2,
 		WithholdingAccountID: &withholding, WithholdingValue: terms.WithholdingValue, WithholdingScale: terms.WithholdingScale,
 		Memo: "ACME dividend"}, *terms)

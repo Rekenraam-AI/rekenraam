@@ -2538,11 +2538,21 @@ InvestmentCorrectionDividendTerms:
   type: object
   description: >-
     The effective cash dividend's posted facts, for pre-filling a replacement.
-    The date, cash account and currency are fixed for a replacement.
-  required: [attribution, event_date, cash_account_id, cash_commodity_id, amount_value, amount_scale]
+    A replacement may correct the date, cash account and currency (#395); the
+    payment shape (withholding_only) is fixed.
+  required: [attribution, source_differences, event_date, cash_account_id, cash_commodity_id, amount_value, amount_scale]
   properties:
     attribution:
       $ref: '#/InvestmentAttributionDiagnostic'
+    source_differences:
+      type: array
+      description: >-
+        Cash facts in which an imported lineage's effective payment differs
+        from the payment its import produced. Empty for manual dividends and
+        for imported ones that still match. Disclosure only; never a refusal.
+      items:
+        type: string
+        enum: [date, cash_account, currency, amount, withholding]
     withholding_only:
       type: boolean
       description: Separate tax payment; amount is tax, no income leg, and withholding_account_id is required.

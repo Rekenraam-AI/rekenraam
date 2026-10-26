@@ -248,6 +248,11 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   evidence and settled suggestions. Compare retained source claims read-only;
   do not add holdings authorization or a review queue for manual unassigned cash.
   CSV income permits absent payer; asserted unresolved codes still need review.
+  Their date, cash account and currency are correctable financial inputs
+  (#395): the inverse stays on the original's date/accounts, the replacement
+  carries the corrected facts through the shared writer's boundary review, and
+  an imported lineage discloses `source_differences` against its root, never
+  vetoing. Payment shape stays fixed.
 - A short holder's payment in lieu (#255, refined by #388/#389 and ADR 0019)
   is lot-free cash/expense/recovery. Holding, instrument and ex-date are
   optional auditable attribution, not write authorization. Entry omission/null

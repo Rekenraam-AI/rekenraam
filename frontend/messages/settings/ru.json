@@ -1333,7 +1333,7 @@
   "transactions_investment_reverse_dividend_copy": "Будет проведена обратная транзакция по дивиденду и удержанному налогу. Исходный дивиденд останется в истории.",
   "transactions_investment_replace_dividend_action": "Исправить дивиденд…",
   "transactions_investment_replace_dividend_title": "Исправить этот дивиденд",
-  "transactions_investment_replace_dividend_copy": "Введите исправленные суммы. Дата, денежный счёт и валюта остаются прежними, а исходная запись сохраняется в истории аудита.",
+  "transactions_investment_replace_dividend_copy": "Введите исправленные данные. Исходная запись остаётся проведённой и сторнируется своей датой; замена проводится указанной датой на выбранный денежный счёт в его валюте.",
   "transactions_investment_reverse_reinvestment_action": "Сторнировать реинвестированный дивиденд…",
   "transactions_investment_reverse_reinvestment_title": "Сторнировать этот реинвестированный дивиденд",
   "transactions_investment_reverse_reinvestment_copy": "Будет проведена обратная транзакция, а последующие распределения по лотам будут пересчитаны без реинвестированных бумаг. Если последующую продажу нечем покрыть, сторнирование будет заблокировано. Исходная запись останется в истории.",
@@ -1651,7 +1651,7 @@
   "investments_withholding_pending": "Запись удержанного налога…",
   "investments_withholding_correct_action": "Исправить удержанный налог…",
   "investments_withholding_correct_title": "Исправить это удержание налога",
-  "investments_withholding_correct_copy": "Замените этот налоговый платёж исправленной суммой и налоговым счётом. Дата, денежный счёт и валюта сохраняются.",
+  "investments_withholding_correct_copy": "Замените этот налоговый платёж исправленными датой, денежным счётом, суммой и налоговым счётом. Он остаётся налоговым платежом, а исходная запись сохраняется в истории аудита.",
   "investments_withholding_reverse_action": "Сторнировать удержанный налог…",
   "investments_withholding_reverse_title": "Сторнировать это удержание налога",
   "investments_withholding_reverse_copy": "Создайте проверяемую обратную проводку этого отдельного налогового платежа. Исходная запись останется в истории.",
@@ -1731,5 +1731,11 @@
   "investments_cash_in_lieu_current_parent": "Текущая операция № {id}",
   "investments_dividend_payer_help": "Плательщик необязателен. Изменение только этой привязки не меняет денежные суммы и налог.",
   "investments_dividend_ex_date": "Дата экс-дивиденда",
-  "investments_dividend_ex_date_hint": "Доходность учитывает эту выплату в дату экс-дивиденда для того, кто владел бумагами накануне. Если дата неизвестна, оставьте поле пустым."
+  "investments_dividend_ex_date_hint": "Доходность учитывает эту выплату в дату экс-дивиденда для того, кто владел бумагами накануне. Если дата неизвестна, оставьте поле пустым.",
+  "investments_dividend_source_differs": "Этот платёж отличается от записанного при импорте по полям: {fields}. Импортированный источник не изменяется.",
+  "investments_dividend_source_field_date": "дата",
+  "investments_dividend_source_field_cash_account": "денежный счёт",
+  "investments_dividend_source_field_currency": "валюта",
+  "investments_dividend_source_field_amount": "сумма",
+  "investments_dividend_source_field_withholding": "удержанный налог"
 }

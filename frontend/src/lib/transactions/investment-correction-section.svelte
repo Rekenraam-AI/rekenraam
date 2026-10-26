@@ -8,6 +8,7 @@
   import { getLocale } from '#lib/paraglide/runtime.js';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import ModalDialog from '#lib/components/modal-dialog.svelte';
+  import DividendSourceDifferences from '#lib/investments/dividend-source-differences.svelte';
   import CapitalReturnSummary from '#lib/investments/capital-return-summary.svelte';
   import CapitalReturnForm from '#lib/investments/capital-return-form.svelte';
   import CashInLieuForm from '#lib/investments/cash-in-lieu-form.svelte';
@@ -668,6 +669,7 @@
     {/if}
     {#if chainQuery.data?.effective_dividend?.attribution}
       <AttributionDiagnostic diagnostic={chainQuery.data.effective_dividend.attribution} />
+      <DividendSourceDifferences differences={chainQuery.data.effective_dividend.source_differences} />
     {/if}
     {#if chainQuery.data?.cash_in_lieu_attribution}
       <AttributionDiagnostic diagnostic={chainQuery.data.cash_in_lieu_attribution} />

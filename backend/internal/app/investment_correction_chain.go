@@ -144,9 +144,14 @@ type InvestmentCorrectionShareExchangeTerms struct {
 // InvestmentCorrectionDividendTerms are an effective cash dividend's posted
 // facts. The date, cash account and currency are fixed for a replacement.
 type InvestmentCorrectionDividendTerms struct {
-	Attribution     InvestmentAttributionDiagnostic
-	WithholdingOnly bool
-	CommodityID     *int64
+	Attribution InvestmentAttributionDiagnostic
+	// SourceDifferences names the cash facts in which an imported lineage's
+	// effective payment differs from the payment its import produced (#395):
+	// date, cash_account, currency, amount, withholding. It discloses an owner
+	// correction against the retained source claim; it never refuses one.
+	SourceDifferences []string
+	WithholdingOnly   bool
+	CommodityID       *int64
 	// ExDate is the recorded ex date, or empty when none was recorded.
 	ExDate               string
 	EventDate            string
@@ -336,6 +341,17 @@ func (s *InvestmentService) CorrectionChain(ctx context.Context, ownerUserID, tr
 					return InvestmentCorrectionChain{}, err
 				}
 				chain.EffectiveDividend.Attribution = investmentAttributionDiagnostic(diagnostic)
+				chain.EffectiveDividend.SourceDifferences = []string{}
+				if root := records[0]; root.Imported && root.TransactionID.Valid && root.OperationKind == "dividend" &&
+					root.OperationID != record.OperationID {
+					source, err := s.transactionService.Transaction(ctx, root.TransactionID.Int64)
+					if err != nil {
+						return InvestmentCorrectionChain{}, err
+					}
+					if claimed, ok := dividendCorrectionTerms(source, operation.WithholdingOnly); ok {
+						chain.EffectiveDividend.SourceDifferences = dividendSourceDifferences(*claimed, *chain.EffectiveDividend)
+					}
+				}
 			}
 		}
 		if correctable && record.OperationKind == "payment_in_lieu" {
@@ -557,6 +573,35 @@ func dividendCorrectionTerms(transaction Transaction, withholdingOnly bool) (*In
 		terms.WithholdingAccountID, terms.WithholdingValue, terms.WithholdingScale = &account, &value, &scale
 	}
 	return terms, true
+}
+
+// dividendSourceDifferences compares cash facts exactly, scale-aware. Payer,
+// ex date and memo are attribution with their own diagnostics, not cash facts.
+func dividendSourceDifferences(source, effective InvestmentCorrectionDividendTerms) []string {
+	differences := []string{}
+	if source.EventDate != effective.EventDate {
+		differences = append(differences, "date")
+	}
+	if source.CashAccountID != effective.CashAccountID {
+		differences = append(differences, "cash_account")
+	}
+	if source.CashCommodityID != effective.CashCommodityID {
+		differences = append(differences, "currency")
+	}
+	if exact.ScaledIntFromCoefficient(source.AmountValue, source.AmountScale).Cmp(
+		exact.ScaledIntFromCoefficient(effective.AmountValue, effective.AmountScale)) != 0 {
+		differences = append(differences, "amount")
+	}
+	withheld := func(terms InvestmentCorrectionDividendTerms) *exact.ScaledInt {
+		if terms.WithholdingValue == nil || terms.WithholdingScale == nil {
+			return exact.ScaledIntFromInt64(0, 0)
+		}
+		return exact.ScaledIntFromCoefficient(*terms.WithholdingValue, *terms.WithholdingScale)
+	}
+	if withheld(source).Cmp(withheld(effective)) != 0 {
+		differences = append(differences, "withholding")
+	}
+	return differences
 }
 
 // reinvestmentCorrectionTerms reads a posted reinvestment in the shape

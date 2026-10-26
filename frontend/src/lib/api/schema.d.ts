@@ -23833,7 +23833,7 @@ export interface paths {
         put?: never;
         /**
          * Replace a posted cash dividend or separate withholding tax
-         * @description Posts the inverse and the corrected dividend — gross amount, withholding, income and withholding accounts — under one audit event (T-115). The replacement keeps the dividend date, cash account and currency. The original remains posted history; an imported dividend keeps its committed source identity on the original. Separate withholding keeps its tax-only shape; amount_value is its tax magnitude and no income is posted. Omitting the paying commodity_id preserves the source instrument. An explicitly corrected payer belongs to the successor; the inverse remains attributed to the source.
+         * @description Posts the inverse and the corrected dividend — gross amount, withholding, income and withholding accounts — under one audit event (T-115). The replacement may also correct the dividend date, cash account and currency (#395): the inverse cancels the original on its own date and accounts, and every reconciled boundary either journal changes needs the reviewed override. The original remains posted history; an imported dividend keeps its committed source identity on the original. Separate withholding keeps its tax-only shape; amount_value is its tax magnitude and no income is posted. Omitting the paying commodity_id preserves the source instrument. An explicitly corrected payer belongs to the successor; the inverse remains attributed to the source.
          */
         post: {
             parameters: {
@@ -32627,9 +32627,11 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** @description The effective cash dividend's posted facts, for pre-filling a replacement. The date, cash account and currency are fixed for a replacement. */
+        /** @description The effective cash dividend's posted facts, for pre-filling a replacement. A replacement may correct the date, cash account and currency (#395); the payment shape (withholding_only) is fixed. */
         InvestmentCorrectionDividendTerms: {
             attribution: components["schemas"]["InvestmentAttributionDiagnostic"];
+            /** @description Cash facts in which an imported lineage's effective payment differs from the payment its import produced. Empty for manual dividends and for imported ones that still match. Disclosure only; never a refusal. */
+            source_differences: ("date" | "cash_account" | "currency" | "amount" | "withholding")[];
             /** @description Separate tax payment; amount is tax, no income leg, and withholding_account_id is required. */
             withholding_only?: boolean;
             /**

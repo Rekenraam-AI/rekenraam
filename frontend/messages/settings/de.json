@@ -1333,7 +1333,7 @@
   "transactions_investment_reverse_dividend_copy": "Dies bucht eine Gegenbuchung für die Dividende und eine einbehaltene Quellensteuer. Die ursprüngliche Dividende bleibt im Verlauf.",
   "transactions_investment_replace_dividend_action": "Dividende korrigieren…",
   "transactions_investment_replace_dividend_title": "Diese Dividende korrigieren",
-  "transactions_investment_replace_dividend_copy": "Geben Sie die korrigierten Beträge ein. Datum, Geldkonto und Währung bleiben wie erfasst, und das Original bleibt im Prüfverlauf.",
+  "transactions_investment_replace_dividend_copy": "Geben Sie die korrigierten Angaben ein. Das Original bleibt gebucht und wird an seinem eigenen Datum storniert; der Ersatz wird zum eingegebenen Datum auf das gewählte Geldkonto gebucht, in dessen Währung.",
   "transactions_investment_reverse_reinvestment_action": "Reinvestierte Dividende stornieren…",
   "transactions_investment_reverse_reinvestment_title": "Diese reinvestierte Dividende stornieren",
   "transactions_investment_reverse_reinvestment_copy": "Dies bucht eine Gegenbuchung und berechnet spätere Lot-Zuordnungen ohne die reinvestierten Anteile neu. Ein späterer Verkauf, der nicht mehr gedeckt ist, verhindert die Stornierung. Das Original bleibt im Verlauf.",
@@ -1651,7 +1651,7 @@
   "investments_withholding_pending": "Quellensteuer wird erfasst…",
   "investments_withholding_correct_action": "Quellensteuer korrigieren…",
   "investments_withholding_correct_title": "Diese Quellensteuer korrigieren",
-  "investments_withholding_correct_copy": "Ersetzen Sie diese Steuerzahlung durch den korrigierten Betrag und das Steuerkonto. Datum, Geldkonto und Währung bleiben unverändert.",
+  "investments_withholding_correct_copy": "Ersetzen Sie diese Steuerzahlung durch korrigiertes Datum, Geldkonto, Betrag und Steuerkonto. Sie bleibt eine Steuerzahlung, und das Original bleibt im Prüfverlauf.",
   "investments_withholding_reverse_action": "Quellensteuer stornieren…",
   "investments_withholding_reverse_title": "Diese Quellensteuer stornieren",
   "investments_withholding_reverse_copy": "Buchen Sie eine nachvollziehbare Gegenbuchung dieser separaten Steuerzahlung. Das Original bleibt im Verlauf erhalten.",
@@ -1731,5 +1731,11 @@
   "investments_cash_in_lieu_current_parent": "Aktuelle Maßnahme Nr. {id}",
   "investments_dividend_payer_help": "Der Zahler ist optional. Wenn Sie nur diese Zuordnung ändern, bleiben Geldbetrag und Steuer unverändert.",
   "investments_dividend_ex_date": "Ex-Dividenden-Tag",
-  "investments_dividend_ex_date_hint": "Renditen erfassen diese Zahlung am Ex-Dividenden-Tag, für den Inhaber der Anteile am Vortag. Bei unbekanntem Datum leer lassen."
+  "investments_dividend_ex_date_hint": "Renditen erfassen diese Zahlung am Ex-Dividenden-Tag, für den Inhaber der Anteile am Vortag. Bei unbekanntem Datum leer lassen.",
+  "investments_dividend_source_differs": "Diese Zahlung weicht von der durch den Import erfassten ab bei: {fields}. Die importierte Quelle bleibt unverändert.",
+  "investments_dividend_source_field_date": "Datum",
+  "investments_dividend_source_field_cash_account": "Geldkonto",
+  "investments_dividend_source_field_currency": "Währung",
+  "investments_dividend_source_field_amount": "Betrag",
+  "investments_dividend_source_field_withholding": "Quellensteuer"
 }

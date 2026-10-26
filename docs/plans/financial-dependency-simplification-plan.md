@@ -4,7 +4,8 @@ Owner direction: 2026-10-23, governed by
 [ADR 0019](../adrs/0019-financial-effects-and-repairable-attribution.md).
 This is a design and delivery-boundary plan. #391's cross-family inventory and
 contracts are complete at `4ad8373f772eb02b40126f5e9d746f0eb50c9e79`;
-runtime follow-up #395 remains open. #388/#389/#392/#393/#394 are delivered.
+runtime follow-up #395 is in delivery (cash dividends delivered 2026-10-26).
+#388/#389/#392/#393/#394 are delivered.
 The earlier comparative baseline is `8549045a4484f01e6e9b28e4f0a5fd6aa8213985`.
 
 Delivery acceptance and progress live in
@@ -343,7 +344,8 @@ replacement omission/preserve, null/clear and value/assign. Shape is independent
 of payer in immutable facts; known standalone tax stays tax without gross income
 or lots. Neutral repairs use the existing atomic inverse/replacement writer,
 retain original/source facts and preserve cash checkpoints. Date/cash account/
-currency correction remains #395's separate financial-input scope.
+currency correction is #395's separate financial-input scope (cash dividends
+delivered; see below).
 
 Migration 25 preserves prior facts and backfills only recorded unambiguous shape,
 never payer. Nullable exact reversals, valid-facts self-check and explicit
@@ -395,6 +397,38 @@ probe only to decide a concrete hypothesis. Keep a concise set of retained
 complexity and rejected simplifications. Do not build a universal rule engine,
 require zero warnings, measure success by deleted LOC, or make an exhaustive
 new audit a prerequisite to every local improvement.
+
+### Financial Field Correction Delivery (#395)
+
+**Slice 1, cash dividends and standalone withholding (2026-10-26).** The
+service and writer no longer pin a replacement's date, cash account and
+currency. The inverse remains the exact original journal on the original's date
+and accounts; the replacement is ordinary dividend entry under the same audit
+event, so the shared writer reviews each reconciled boundary either journal
+changes. A move inside one reconciled period nets to zero there and keeps the
+checkpoint. The currency follows the selected cash account, as on entry, and an
+account without a default commodity keeps the recorded one. Payment shape
+(dividend versus standalone tax) remains fixed, and payer/ex date keep #393's
+nullable patch semantics.
+
+Source mismatch is disclosed, not vetoed. For imported lineage, the correction
+chain compares the effective payment's cash facts exactly (scale-aware) with
+the root operation the import produced: the immutable record of the claim,
+without reparsing each importer's raw format. It reports `date`,
+`cash_account`, `currency`, `amount` and `withholding`; payer and ex date stay
+attribution with #393's diagnostics. Restoring the imported facts clears the
+disclosure. Raw source rows and commit identity are unchanged.
+
+The retired policy assertion in `TestDividendCorrectionsStayInTheirFamily`
+now pins payment shape instead. Named cases:
+`TestReplaceDividendCorrectsDateCashAccountAndCurrency` (EUR 100/15 to USD
+110/16.50 on a new account and earlier date, original netting to zero),
+`TestReplaceStandaloneWithholdingCorrectsDateAndCashAccount`,
+`TestReplaceDividendDateAcrossReconciledBoundaryRequiresOverride` (out of,
+into and within a reconciled period) and the source-difference assertions in
+`TestImportedDividendCorrectionPreservesCommittedIdentity`. Browser: a 390 px
+correction to another date and CHF cash account. Payment in lieu and
+reinvestment follow as separate slices on the issue.
 
 ### Historical Cash-In-Lieu Entry Delivery (#394, 2026-10-24)
 

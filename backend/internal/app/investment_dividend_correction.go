@@ -126,7 +126,7 @@ func (s *InvestmentService) ReplaceDividendReconciliationImpact(ctx context.Cont
 // Preview and commit freeze identical journals and components.
 func (s *InvestmentService) prepareDividendReplacementWrite(ctx context.Context, input ReplaceInvestmentDividendInput) (db.DividendOperationRecord, db.CreateTransactionParams, db.CreateTransactionParams, error) {
 	const operationCode = "investment.dividend.replace"
-	operation, original, inversePlan, err := s.dividendCorrectionPlan(ctx, input.OwnerUserID, input.AuthSessionID, input.RequestID,
+	operation, _, inversePlan, err := s.dividendCorrectionPlan(ctx, input.OwnerUserID, input.AuthSessionID, input.RequestID,
 		input.TransactionID, input.Reason, input.ReconciliationOverride, operationCode)
 	if err != nil {
 		return db.DividendOperationRecord{}, db.CreateTransactionParams{}, db.CreateTransactionParams{}, err
@@ -147,14 +147,10 @@ func (s *InvestmentService) prepareDividendReplacementWrite(ctx context.Context,
 			replacement.ExDate.Value = &operation.ExDate
 		}
 	}
-	// dividendPlan writes the cash leg first; that posting names the original
-	// cash account and currency.
-	cash := original.JournalEntries[0].Postings[0]
-	if replacement.TransactionDate != operation.EventDate || replacement.CashAccountID != cash.AccountID ||
-		replacement.CashCommodityID != cash.CommodityID {
-		return db.DividendOperationRecord{}, db.CreateTransactionParams{}, db.CreateTransactionParams{},
-			ValidationError{Message: "replacement must keep the dividend date, cash account and currency"}
-	}
+	// Date, cash account and currency are financial inputs the owner may
+	// correct (#395): the inverse cancels the original on its own date and
+	// accounts, and the shared writer reviews every reconciled boundary either
+	// journal crosses. Only the payment shape above stays fixed.
 	replacement.OwnerUserID = input.OwnerUserID
 	replacement.AuthSessionID = input.AuthSessionID
 	replacement.RequestID = input.RequestID
