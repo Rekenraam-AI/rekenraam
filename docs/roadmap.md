@@ -175,8 +175,9 @@ below is execution order, not a chain of hard dependencies.
 
    #405's retained follow-ups are outside this queue and do not reorder #395.
    Three are CI/browser reliability:
-   [#414](https://github.com/sergeyfarin/rekenraam/issues/414) (P2; a
-   capital-return reversal flake that turned `main` red once),
+   [#414](https://github.com/sergeyfarin/rekenraam/issues/414) (P3; a
+   capital-return reversal flake that turned `main` red once; failed attempts
+   now keep traces, and the cause awaits a recurrence),
    [#415](https://github.com/sergeyfarin/rekenraam/issues/415) (runner
    setup stalls) and [#416](https://github.com/sergeyfarin/rekenraam/issues/416)
    (an axe contrast flake). The other three are bounded P3 items:
