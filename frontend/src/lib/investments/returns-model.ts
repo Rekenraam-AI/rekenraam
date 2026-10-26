@@ -1,5 +1,5 @@
 import type { ReadonlyURLSearchParams } from '$app/state';
-import type { BenchmarkBasis, ReturnsSeriesPoint } from '#lib/api/investments.ts';
+import type { BenchmarkBasis, ReturnsAttributionFallback, ReturnsSeriesPoint } from '#lib/api/investments.ts';
 import { adjacentCalendarDate, isCalendarDate } from '#lib/dates/calendar-date.ts';
 import { m } from '#lib/paraglide/messages.js';
 import { staleObservationDates, type Valuation } from '#lib/reports/reporting-currency.ts';
@@ -166,6 +166,17 @@ export function fallbackReasonText(reason: string): string {
     default:
       return m.returns_reason_unknown();
   }
+}
+
+/**
+ * How the portfolio figures treat a payment no instrument carries, from the
+ * portfolio's own fallback for that transaction; null when the portfolio
+ * tied it to a holding, so it lists no fallback. Never assumed.
+ */
+export function fallbackCountedText(fallbacks: ReturnsAttributionFallback[], transactionID: number): string | null {
+  const fallback = fallbacks.find((candidate) => candidate.transaction_id === transactionID);
+  if (!fallback) return null;
+  return fallback.counted ? m.returns_fallback_counted() : m.returns_fallback_not_counted();
 }
 
 /**

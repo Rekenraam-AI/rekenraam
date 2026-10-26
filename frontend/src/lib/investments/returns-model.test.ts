@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  allocationBarPercent, assetTypeText, benchmarkGaps, fallbackReasonText, formatReturn, formatWeight, lastYear, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
+  allocationBarPercent, assetTypeText, benchmarkGaps, fallbackCountedText, fallbackReasonText, formatReturn, formatWeight, lastYear, parseReturnsSelection, presetRange, returnDirection, returnReasonText,
   returnsChartModel, returnsCoverage, returnsSelectionParams, unavailableAccountIDs, validRange, yearToDate
 } from './returns-model';
 import type { ReturnFigure, ReturnsSeriesPoint } from '#lib/api/investments.ts';
@@ -114,6 +114,12 @@ describe('reason text', () => {
     expect(new Set(texts).size).toBe(reasons.length);
     for (const [index, text] of texts.entries()) expect(text).not.toContain(reasons[index]);
     expect(returnReasonText('something_new', null, date)).toBe(returnReasonText(undefined, null, date));
+  });
+
+  it("states the portfolio's own treatment of unattributed income, never an assumed one", () => {
+    const fallback = { transaction_id: 8, operation_id: 7, operation_kind: 'dividend', date: '2026-10-16', reason: 'unassigned_instrument' as const };
+    expect(fallbackCountedText([{ ...fallback, counted: false }], 8)).not.toBe(fallbackCountedText([{ ...fallback, counted: true }], 8));
+    expect(fallbackCountedText([{ ...fallback, counted: true }], 9)).toBeNull();
   });
 
   it('explains every attribution fallback', () => {

@@ -457,6 +457,9 @@ test('[acceptance] returns by instrument agree live and saved, through corrected
     await expect(panel.getByTestId('returns-instruments-residual')).toContainText('0.00');
     await expect(panel.getByTestId('returns-instruments-not-attributed').getByRole('listitem')).toHaveCount(1);
     await expect(panel.getByTestId('returns-instruments-not-attributed')).toContainText('no instrument assigned');
+    // Paid into checking, outside the portfolio: the portfolio's own fallback
+    // says it is not counted, and the panel says so rather than assuming.
+    await expect(panel.getByTestId('returns-instruments-not-attributed').getByRole('listitem')).toContainText('not counted');
     await expect(panel.getByTestId('returns-instruments-income-rule')).toBeVisible();
   };
   const live = page.getByTestId('returns-summary').getByTestId('returns-instruments');
@@ -490,4 +493,10 @@ test('[acceptance] returns by instrument agree live and saved, through corrected
   await expect(saved.getByTestId('returns-instrument-card').first()).toBeHidden();
   expect(await noHorizontalScroll(page)).toBe(true);
   await expectNoAccessibilityViolations(page, 'Returns by instrument on a wide screen');
+  // At tablet width the table can overflow its box, which a keyboard can scroll.
+  await page.setViewportSize({ width: 768, height: 1024 });
+  const scroller = saved.getByRole('region', { name: 'By instrument (scrolls sideways)', exact: true });
+  await expect(scroller).toHaveAttribute('tabindex', '0');
+  expect(await noHorizontalScroll(page)).toBe(true);
+  await expectNoAccessibilityViolations(page, 'Returns by instrument at tablet width');
 });

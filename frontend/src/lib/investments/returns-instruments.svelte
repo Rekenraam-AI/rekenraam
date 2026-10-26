@@ -1,16 +1,19 @@
 <script lang="ts">
-  import type { InstrumentReturns, ReturnFigure, ReturnsAmount } from '#lib/api/investments.ts';
+  import type { InstrumentReturns, ReturnFigure, ReturnsAmount, ReturnsAttributionFallback } from '#lib/api/investments.ts';
   import { m } from '#lib/paraglide/messages.js';
-  import { fallbackReasonText, formatReturn, returnDirection, returnReasonText, returnsCoverage } from './returns-model';
+  import { fallbackCountedText, fallbackReasonText, formatReturn, returnDirection, returnReasonText, returnsCoverage } from './returns-model';
 
   // Per-instrument returns (instrument_returns_v1, R13 slice 9), live or
   // saved: every figure, reason and gap comes from the document; only the
   // instrument names are today's reference data. Cards on a phone, a table
   // from md up; each unavailable figure says why in words.
   let {
-    instruments, locale, formatDate, formatAmount, commodityLabel
+    instruments, fallbacks, locale, formatDate, formatAmount, commodityLabel
   }: {
     instruments: InstrumentReturns;
+    /** The portfolio's own attribution fallbacks from the same document:
+     * whether its figures count a payment no instrument carries. */
+    fallbacks: ReturnsAttributionFallback[];
     locale: string;
     formatDate: (date: string) => string;
     /** The result's own amount text (live or saved scale) or its reason. */
@@ -103,7 +106,8 @@
     </ul>
 
     <!-- Wider screens: one table, scrolling inside its own box if needed. -->
-    <div class="hidden overflow-x-auto md:block">
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard users must be able to scroll the table when it overflows) -->
+    <div class="hidden overflow-x-auto md:block" role="region" tabindex="0" aria-label={m.returns_instruments_table_region()}>
       <table class="w-full text-left text-sm">
         <caption class="sr-only">{m.returns_instruments_title()}</caption>
         <thead class="text-xs text-muted">
@@ -164,6 +168,7 @@
             <a href={`/app/transactions?transaction_id=${item.transaction_id}`} class="inline-flex min-h-11 items-center font-semibold underline underline-offset-2">{formatDate(item.date)}</a>
             {#if item.instrument_id !== null}· {commodityLabel(item.instrument_id)}{/if}
             · {fallbackReasonText(item.reason)}
+            {#if fallbackCountedText(fallbacks, item.transaction_id) !== null}· {fallbackCountedText(fallbacks, item.transaction_id)}{/if}
           </li>
         {/each}
       </ul>

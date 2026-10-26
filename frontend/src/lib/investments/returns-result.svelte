@@ -175,7 +175,7 @@
 
   {#if result.instrument_returns}
     <Panel>
-      <ReturnsInstruments instruments={result.instrument_returns} {locale} formatDate={day} formatAmount={amountText}
+      <ReturnsInstruments instruments={result.instrument_returns} fallbacks={result.attribution_fallbacks} {locale} formatDate={day} formatAmount={amountText}
         commodityLabel={currencyOrCommodity} />
     </Panel>
   {/if}

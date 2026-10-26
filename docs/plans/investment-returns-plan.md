@@ -1163,6 +1163,17 @@ written.
      the same facts at 390px and 1280px, with accessibility checks at both.
      The slice 6 browser case now also asserts that a run saved without the
      flag has no panel.
+   - **Review of `6dedbb83` (2026-10-26).** One P2 finding, accepted: the
+     not-attributed help claimed every such payment "still counts in the
+     portfolio figures". An unassigned dividend paid into checking outside
+     the portfolio is not counted (case S4, `counted: false`). The panel now
+     claims nothing general. It shows each entry's own treatment, read from
+     the portfolio's `attribution_fallbacks` for the same transaction in the
+     same document ("counted as portfolio income" or "not counted"), and
+     says nothing for an entry without one. The browser case asserts "not
+     counted" for that entry. The reviewer's probe also showed the table
+     overflowing its box at 768px without being focusable, so the box is now
+     a labelled, focusable region, with an accessibility check at that width.
 
 The roadmap's R13 item lists slices 8–9; targets and rebalancing stay
 deferred.
