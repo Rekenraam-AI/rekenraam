@@ -31,6 +31,21 @@ remote-discovery feature must specify its storage and evidence contract then,
 rather than retaining a second inactive identity model. This does not change
 provider identity or valuation behavior.
 
+New provider capabilities go in `backend/internal/marketdata`. Today's
+contracts are `FXRateProvider`, `PriceProvider` and `DividendProvider` (#111).
+Each one embeds `Provider` and is looked up by provider code through
+`Registry` (for example, `Registry.DividendProvider(code)`). A provider returns
+observed facts for an explicitly identified listing: its provider instrument
+ID, plus MIC where relevant. It never receives database IDs, holdings or
+accounts, and it never decides what the owner received. Application services
+map those facts into proposals and ledger commands. A future corporate-action
+or split capability (#256, #145) follows the same pattern. Its request and
+observation shapes come from verified provider payloads, not from a speculative
+interface. The unused application-level placeholders from the June 2026
+scaffold (`InstrumentSearchProvider`, `DividendProvider`,
+`CorporateActionProvider` and their request/event types) were removed on
+2026-10-26 (#418) for that reason.
+
 Provider identifiers live in the versioned instrument `identifiers` object:
 `coingecko_id` is a unique coin ID (e.g. `bitcoin`), `yahoo_symbol` includes any
 exchange suffix (e.g. `ASML.AS`), and `twelve_data_symbol` is the exact provider
