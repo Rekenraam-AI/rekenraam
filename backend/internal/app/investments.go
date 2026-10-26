@@ -47,30 +47,12 @@ var (
 	ErrGainImpactAcknowledgementStale    = db.ErrGainImpactAcknowledgementStale
 )
 
-type InstrumentSearchProvider interface {
-	SearchInstruments(ctx context.Context, query string) ([]InstrumentSearchCandidate, error)
-}
-
 type DividendProvider interface {
 	FetchDividends(ctx context.Context, request CorporateEventProviderRequest) ([]ProviderInvestmentEvent, error)
 }
 
 type CorporateActionProvider interface {
 	FetchCorporateActions(ctx context.Context, request CorporateEventProviderRequest) ([]ProviderInvestmentEvent, error)
-}
-
-type InstrumentSearchCandidate struct {
-	SourceCode           string
-	ProviderInstrumentID string
-	Symbol               string
-	DisplayName          string
-	InstrumentType       string
-	ExchangeCode         string
-	MIC                  string
-	CountryCode          string
-	QuoteCode            string
-	ConfidenceBPS        int
-	RawJSON              string
 }
 
 type CorporateEventProviderRequest struct {
