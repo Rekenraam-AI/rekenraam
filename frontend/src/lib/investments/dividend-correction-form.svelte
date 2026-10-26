@@ -235,7 +235,10 @@
   {#if initialDividend}<DividendSourceDifferences differences={initialDividend.source_differences} />{/if}
 
   <div>
-    <label for="dividend-correction-date" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_date()}</label>
+    <!-- A cash dividend or tax payment is dated by its payment; a reinvestment by its acquisition. -->
+    <label for="dividend-correction-date" class="mb-1 block text-sm font-medium text-foreground">
+      {reinvested ? m.investments_form_date() : m.investments_form_payment_date()}
+    </label>
     <input id="dividend-correction-date" type="date" bind:value={transactionDate} required
       class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
   </div>

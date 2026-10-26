@@ -136,9 +136,9 @@ test.describe('on a phone', () => {
     await page.goto(`/app/transactions?transaction_id=${dividend.id}`);
     await page.getByRole('button', { name: 'Correct dividend…' }).click();
     const form = page.getByRole('dialog', { name: 'Correct this dividend' });
-    await expect(form.getByLabel('Date', { exact: true })).toHaveValue(daysFromTodayISO(-10));
+    await expect(form.getByLabel('Payment date', { exact: true })).toHaveValue(daysFromTodayISO(-10));
     await form.getByLabel('Reason for correction').fill('paid into the SEK account two days earlier');
-    await form.getByLabel('Date', { exact: true }).fill(daysFromTodayISO(-12));
+    await form.getByLabel('Payment date', { exact: true }).fill(daysFromTodayISO(-12));
     await form.getByLabel(/^Cash account/).selectOption(String(broker.id));
     await expect(form.getByText('(SEK)').first()).toBeVisible();
     await form.getByLabel(/^Dividend amount/).fill('48.00');

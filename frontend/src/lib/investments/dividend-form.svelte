@@ -392,7 +392,7 @@
   <!-- Date -->
   <div>
     <label for="div-date" class="mb-1 block text-sm font-medium text-foreground">
-      {m.investments_form_date()}
+      {mode === 'reinvested' ? m.investments_form_date() : m.investments_form_payment_date()}
     </label>
     <input
       id="div-date"

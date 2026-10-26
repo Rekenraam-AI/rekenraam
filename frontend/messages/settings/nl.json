@@ -1738,5 +1738,6 @@
   "investments_dividend_source_field_currency": "valuta",
   "investments_dividend_source_field_amount": "bedrag",
   "investments_dividend_source_field_withholding": "bronbelasting",
-  "investments_form_currency": "Valuta"
+  "investments_form_currency": "Valuta",
+  "investments_form_payment_date": "Betaaldatum"
 }

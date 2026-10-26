@@ -1738,5 +1738,6 @@
   "investments_dividend_source_field_currency": "Währung",
   "investments_dividend_source_field_amount": "Betrag",
   "investments_dividend_source_field_withholding": "Quellensteuer",
-  "investments_form_currency": "Währung"
+  "investments_form_currency": "Währung",
+  "investments_form_payment_date": "Zahltag"
 }

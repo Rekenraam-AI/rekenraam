@@ -31,8 +31,11 @@ corrections through the existing writer and acquisition replay. #393 also owns
 dividend source identity across correction ancestry and visible source/payer
 mismatch, now delivered with migration 25 and bundle schema 17. #394/#395 are
 accepted contracts; #394 now ships historical-parent entry/preview/lot selection
-with migration 26 and localized existing-history discovery, while #395 remains
-a runtime follow-up. Other typed allocation, source,
+with migration 26 and localized existing-history discovery. #395 shipped on
+2026-10-26: cash dividend, standalone withholding and payment-in-lieu date/cash
+account/currency corrections through the existing writer, and reinvestment
+date/holding/instrument/cost-currency corrections through acquisition replay.
+Other typed allocation, source,
 derivation, snapshot and reconciliation dependencies are retained with concrete
 counterexamples; the review adds no relationship engine or loan subsystem.
 

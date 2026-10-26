@@ -1738,5 +1738,6 @@
   "investments_dividend_source_field_currency": "devise",
   "investments_dividend_source_field_amount": "montant",
   "investments_dividend_source_field_withholding": "retenue",
-  "investments_form_currency": "Devise"
+  "investments_form_currency": "Devise",
+  "investments_form_payment_date": "Date de paiement"
 }

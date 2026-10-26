@@ -1738,5 +1738,6 @@
   "investments_dividend_source_field_currency": "валюта",
   "investments_dividend_source_field_amount": "сумма",
   "investments_dividend_source_field_withholding": "удержанный налог",
-  "investments_form_currency": "Валюта"
+  "investments_form_currency": "Валюта",
+  "investments_form_payment_date": "Дата платежа"
 }

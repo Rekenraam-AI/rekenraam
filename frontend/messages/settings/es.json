@@ -1738,5 +1738,6 @@
   "investments_dividend_source_field_currency": "moneda",
   "investments_dividend_source_field_amount": "importe",
   "investments_dividend_source_field_withholding": "retención",
-  "investments_form_currency": "Moneda"
+  "investments_form_currency": "Moneda",
+  "investments_form_payment_date": "Fecha de pago"
 }

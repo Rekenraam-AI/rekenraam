@@ -83,3 +83,64 @@ func TestInvestmentIncomeCountsOnlyTheEffectivePrimaryJournal(t *testing.T) {
 		require.Empty(t, income)
 	})
 }
+
+// The FX-converted statement reads the same income records, so a corrected
+// dividend converts only its own gross at its own date — never the linked
+// inverse of the original (#395 review regression).
+func TestGainsFXStatementConvertsOnlyTheCorrectedDividendIncome(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("amount and date correction", func(t *testing.T) {
+		t.Parallel()
+		f := newInvestmentsTestFixture(t)
+		usd := gainsFXCurrency(t, f)
+		original := dividendInputOn(f, "2026-03-10", 10000)
+		payment, err := f.investmentService.Dividend(ctx, original)
+		require.NoError(t, err)
+		_, err = f.investmentService.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{OwnerUserID: f.ownerUserID,
+			TransactionID: payment.ID, Reason: "paid 120.00 on the 15th", Replacement: dividendInputOn(f, "2026-03-15", 12000)})
+		require.NoError(t, err)
+		for date, rate := range map[string]int64{"2026-03-10": 90, "2026-03-15": 95, "2026-03-31": 120} {
+			gainsFXRate(t, f, usd, date, rate)
+		}
+		statement := gainsStatement(t, f, "2026-03-01", "2026-03-31")
+		for _, tc := range []struct {
+			method string
+			income int64
+		}{{GainsFXHistoricBasis, 11400}, {GainsFXValuationDateAll, 14400}} {
+			result, err := f.investmentService.ConvertGainsStatement(ctx, statement, GainsFXInput{CommodityID: usd, Method: tc.method})
+			require.NoError(t, err)
+			// 120.00 × 0.95 on the corrected date, or × 1.20 at the closing date.
+			assertFXAmount(t, tc.income, 2, result.Income)
+			require.Len(t, result.Income.Components, 1, tc.method)
+		}
+	})
+
+	t.Run("currency correction", func(t *testing.T) {
+		t.Parallel()
+		f := newInvestmentsTestFixture(t)
+		usd := gainsFXCurrency(t, f)
+		payment, err := f.investmentService.Dividend(ctx, dividendInputOn(f, "2026-03-10", 10000))
+		require.NoError(t, err)
+		replacement := dividendInputOn(f, "2026-03-15", 11000)
+		replacement.CashCommodityID = usd
+		_, err = f.investmentService.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{OwnerUserID: f.ownerUserID,
+			TransactionID: payment.ID, Reason: "paid in USD", Replacement: replacement})
+		require.NoError(t, err)
+		statement := gainsStatement(t, f, "2026-03-01", "2026-03-31")
+		result, err := f.investmentService.ConvertGainsStatement(ctx, statement, GainsFXInput{CommodityID: usd, Method: GainsFXHistoricBasis})
+		require.NoError(t, err)
+		// Native USD income needs no rate, and no EUR inverse component exists
+		// to make the total unavailable or negative.
+		assertFXAmount(t, 11000, 2, result.Income)
+		require.Len(t, result.Income.Components, 1)
+		require.Equal(t, usd, result.Income.Components[0].CommodityID)
+	})
+}
+
+func dividendInputOn(f *investmentsTestFixture, date string, gross int64) DividendInput {
+	input := cashDividendInput(f, 0, gross, 0)
+	input.TransactionDate = date
+	return input
+}

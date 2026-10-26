@@ -1738,5 +1738,6 @@
   "investments_dividend_source_field_currency": "currency",
   "investments_dividend_source_field_amount": "amount",
   "investments_dividend_source_field_withholding": "withholding",
-  "investments_form_currency": "Currency"
+  "investments_form_currency": "Currency",
+  "investments_form_payment_date": "Payment date"
 }

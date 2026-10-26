@@ -142,7 +142,8 @@ type InvestmentCorrectionShareExchangeTerms struct {
 }
 
 // InvestmentCorrectionDividendTerms are an effective cash dividend's posted
-// facts. The date, cash account and currency are fixed for a replacement.
+// facts, which pre-fill its replacement. Date, cash account and currency are
+// correctable (#395); the payment shape (WithholdingOnly) is fixed.
 type InvestmentCorrectionDividendTerms struct {
 	Attribution InvestmentAttributionDiagnostic
 	// SourceDifferences names the cash facts in which an imported lineage's
