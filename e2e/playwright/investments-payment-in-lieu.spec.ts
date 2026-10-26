@@ -103,8 +103,6 @@ test('a payment in lieu is recorded, corrected and reversed on mobile', async ({
 
 // #395: a correction moves the payment to another date and a cash account in
 // another currency; the original is cancelled where it was posted.
-// NOK is this journey's own currency: CHF belongs to the book-wide period
-// statement spec (investments-gains-statement.spec.ts).
 test('a payment in lieu correction changes its date, cash account and currency on mobile', async ({ page }) => {
   const s = await setup(page);
   const nok = await ensureCurrency(page, s.csrfToken, 'NOK', 'Norwegian krone');

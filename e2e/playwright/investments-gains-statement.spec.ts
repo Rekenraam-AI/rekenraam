@@ -1,4 +1,4 @@
-import { test, expect } from './support/fixtures';
+import { test, expect } from './support/owned-book';
 import AxeBuilder from '@axe-core/playwright';
 import { apiJSON } from './support/api';
 import { ensureCurrency, readyForLedger } from './support/ledger';
@@ -8,11 +8,10 @@ test.use({ viewport: { width: 390, height: 844 } });
 
 // #231 (R18 slice 2): the period statement reports opening and closing
 // unrealized, realized and income per currency, and shows an absent figure
-// with its reason instead of zero. Everything is booked in CHF, which no other
-// spec posts income or trades in, so the shared e2e book cannot change this
-// currency's totals. Journeys needing another currency take their own (the
-// #395 correction journeys use SEK and NOK).
-test.describe.serial('period statement', () => {
+// with its reason instead of zero. The statement is a book-wide read, so each
+// case runs in a book of its own (support/owned-book.ts, #398): no other spec's
+// income or trades can change the totals it asserts.
+test.describe('period statement', () => {
   test('the period statement splits a result per currency and never shows an absent figure as zero at 390px', async ({ page }) => {
     const { csrfToken } = await readyForLedger(page);
     const chf = await ensureCurrency(page, csrfToken, 'CHF', 'Swiss Franc');
@@ -107,14 +106,27 @@ test.describe.serial('period statement', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 
-  // One test per locale (#251), after the journey has booked its CHF figures.
+  // One test per locale (#251), each in its own book with one dividend so the
+  // statement has a row to translate.
   const locales = [
     ['nl', 'Winsten', 'Periodeoverzicht'], ['de', 'Gewinne', 'Periodenübersicht'], ['fr', 'Plus-values', 'Relevé de période'],
     ['es', 'Ganancias', 'Estado del período'], ['ru', 'Прибыль', 'Отчёт за период']
   ] as const;
   for (const [locale, tab, title] of locales) {
     test(`the period statement is translated in ${locale}`, async ({ page }) => {
-      await readyForLedger(page);
+      const { csrfToken, currencyID } = await readyForLedger(page);
+      const openedOn = daysFromTodayISO(-60);
+      const account = (name: string, accountClass: string, kind: string) =>
+        apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+          name, account_class: accountClass, account_kind: kind, default_commodity_id: currencyID,
+          allows_postings: true, opened_on: openedOn, effective_from: openedOn
+        });
+      const cash = await account('Statement cash', 'asset', 'brokerage_cash');
+      const income = await account('Statement income', 'income', 'income');
+      await apiJSON(page, 'POST', '/api/v1/investments/dividend', csrfToken, {
+        transaction_date: daysFromTodayISO(-10), cash_account_id: cash.id, cash_commodity_id: currencyID,
+        income_account_id: income.id, amount_value: '500', amount_scale: 2
+      });
       await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
       await page.goto('/app/investments');
       await page.getByRole('button', { name: tab, exact: true }).click();

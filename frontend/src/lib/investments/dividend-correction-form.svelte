@@ -26,6 +26,7 @@
   } from '#lib/api/investments.ts';
   import { invalidateInvestmentReads } from './invalidate';
   import DividendSourceDifferences from './dividend-source-differences.svelte';
+  import { isSettlementAccount } from './settlement-accounts.ts';
 
   // Replaces a posted cash dividend or reinvested dividend (T-115). A cash
   // dividend's date, cash account and currency are correctable (#395), with
@@ -56,7 +57,9 @@
   const terms = (initialReinvestment ?? initialDividend)!;
 
   const queryClient = useQueryClient();
-  const accountsQuery = createQuery(() => accountsQueryOptions(false, false));
+  // Archived accounts too: a recorded account that has since been archived
+  // must stay selected rather than silently fall back to another option.
+  const accountsQuery = createQuery(() => accountsQueryOptions(true, false));
   const currenciesQuery = createQuery(() => currenciesQueryOptions());
   const instrumentsQuery = createQuery(() => investmentInstrumentsQueryOptions());
 
@@ -98,11 +101,9 @@
     (['asset', 'liability', 'expense'].includes(account.account_class) && !account.system_role &&
       !['security_holding', 'fund_holding'].includes(account.account_kind) && account.status === 'active' && account.allows_postings) ||
     account.id === initialDividend?.withholding_account_id));
-  // The entry form's cash accounts, retaining the recorded one even if archived.
+  // The backend settlement role, retaining the recorded account even if archived.
   const cashAccounts = $derived(accounts.filter((account: AccountResponse) =>
-    (account.account_class === 'asset' && account.status === 'active' && account.allows_postings &&
-      !['security_holding', 'fund_holding'].includes(account.account_kind)) ||
-    account.id === initialDividend?.cash_account_id));
+    isSettlementAccount(account, initialDividend?.cash_account_id)));
   const currenciesByID = $derived(new Map<number, CurrencyResponse>(
     (currenciesQuery.data?.currencies ?? []).map((currency: CurrencyResponse) => [currency.id, currency])));
   // As on entry, the currency is the cash account's; an account without a

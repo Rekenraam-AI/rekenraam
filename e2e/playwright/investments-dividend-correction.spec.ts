@@ -116,8 +116,6 @@ test.describe('on a phone', () => {
 
   // #395: the date, cash account and (with the account) the currency of a
   // cash dividend are correctable; the original is cancelled where it was.
-  // SEK is this journey's own currency: CHF belongs to the book-wide period
-  // statement spec (investments-gains-statement.spec.ts).
   test('a correction moves a cash dividend to another date and cash account currency', async ({ page }) => {
     const s = await setup(page, 'MDV');
     const sek = await ensureCurrency(page, s.csrfToken, 'SEK', 'Swedish krona');
@@ -155,6 +153,41 @@ test.describe('on a phone', () => {
     expect(chain.effective_dividend).toMatchObject({ event_date: daysFromTodayISO(-12), cash_account_id: broker.id,
       cash_commodity_id: sek, amount_value: '4800', amount_scale: 2, source_differences: [] });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+
+  // The recorded cash account stays selected after it is archived, rather
+  // than the picker silently falling back to another account, and a liability
+  // the backend settlement role accepts (a margin line) is offered.
+  test('a correction keeps an archived cash account and offers a margin line', async ({ page }) => {
+    const s = await setup(page, 'ARC');
+    const openedOn = daysFromTodayISO(-60);
+    const margin = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', s.csrfToken, {
+      name: `Margin line ${s.suffix}`, account_class: 'liability', account_kind: 'line_of_credit',
+      default_commodity_id: s.currencyID, allows_postings: true, opened_on: openedOn, effective_from: openedOn
+    });
+    const dividend = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/dividend', s.csrfToken, {
+      transaction_date: daysFromTodayISO(-10), cash_account_id: s.cashID, cash_commodity_id: s.currencyID,
+      income_account_id: s.incomeID, amount_value: '5000', amount_scale: 2, memo: `ACME ${s.suffix}`
+    });
+    await apiJSON(page, 'POST', `/api/v1/accounts/${s.cashID}/close`, s.csrfToken, { closed_on: todayISO() });
+    await apiJSON(page, 'POST', `/api/v1/accounts/${s.cashID}/archive`, s.csrfToken, { effective_from: todayISO() });
+
+    await page.goto(`/app/transactions?transaction_id=${dividend.id}`);
+    await page.getByRole('button', { name: 'Correct dividend…' }).click();
+    const form = page.getByRole('dialog', { name: 'Correct this dividend' });
+    const cashAccount = form.getByLabel(/^Cash account/);
+    await expect(cashAccount).toHaveValue(String(s.cashID));
+    await expect(cashAccount.locator(`option[value="${margin.id}"]`)).toHaveCount(1);
+    await form.getByLabel('Reason for correction').fill('paid against the margin line');
+    await cashAccount.selectOption(String(margin.id));
+    await form.getByRole('button', { name: 'Review and replace' }).click();
+    await expect(form).toBeHidden();
+
+    const replacement = await chainEffective(page, dividend.id);
+    expect(replacement).not.toBe(dividend.id);
+    const chain = await apiJSON<{ effective_dividend: { cash_account_id: number } }>(page, 'GET',
+      `/api/v1/investments/transactions/${replacement}/correction-chain`);
+    expect(chain.effective_dividend.cash_account_id).toBe(margin.id);
   });
 
   test('correcting a reinvested dividend shows the later sale gain it changes', async ({ page }) => {

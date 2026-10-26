@@ -38,6 +38,7 @@
 
   import { usePrefilledInstrument } from '#lib/investments/investment-prefill.svelte.ts';
   import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
+  import { isSettlementAccount } from '#lib/investments/settlement-accounts.ts';
 
   const ownerToday = useOwnerToday();
 
@@ -130,15 +131,9 @@
     pending: PendingDividend;
   } | null>(null);
 
+  // The backend settlement role: cash, or a liability such as a margin loan.
   const cashAccounts = $derived(
-    (accountsQuery.data?.accounts ?? []).filter(
-      (a: AccountResponse) =>
-        a.account_class === 'asset' &&
-        a.status === 'active' &&
-        a.allows_postings &&
-        a.account_kind !== 'security_holding' &&
-        a.account_kind !== 'fund_holding'
-    )
+    (accountsQuery.data?.accounts ?? []).filter((a: AccountResponse) => isSettlementAccount(a))
   );
 
   const holdingAccounts = $derived(

@@ -24,6 +24,7 @@
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
   import type { InvestmentPrefill } from '#lib/investments/investment-prefill.ts';
   import { invalidateInvestmentReads } from './invalidate';
+  import { isSettlementAccount } from './settlement-accounts.ts';
 
   // Cash is required; optional attribution is editable through the same
   // audited replacement as amount/account corrections. A correction may also
@@ -76,8 +77,7 @@
   const holdingAccounts = $derived(accounts.filter((account: AccountResponse) =>
     isSubledgerManagedAccountKind(account.account_kind)));
   const cashAccounts = $derived(accounts.filter((account: AccountResponse) =>
-    ['asset', 'liability'].includes(account.account_class) && account.allows_postings && !account.system_role &&
-    !isSubledgerManagedAccountKind(account.account_kind) && (account.status === 'active' || account.id === terms?.cash_account_id)));
+    isSettlementAccount(account, terms?.cash_account_id)));
   const expenseAccounts = $derived(accounts.filter((account: AccountResponse) =>
     account.account_class === 'expense' && account.allows_postings &&
     (account.status === 'active' || account.id === terms?.expense_account_id)));
