@@ -9,7 +9,9 @@ import (
 
 // Dividend attribution does not assert historical share entitlement. Only a
 // retained provider claim supplies a comparison: unknown owner payer is
-// unavailable support, a different known payer is a warning. Neither gates cash.
+// unavailable support; a different known payer, or a known ex date other than
+// the provider event's date (its ex date), is a warning. A cleared ex date is
+// unknown, not a contradiction. None of these gates cash.
 func dividendAttributions(ctx context.Context, source queryer, bookID, transactionID int64) ([]InvestmentAttributionDiagnostic, error) {
 	rows, err := source.QueryContext(ctx, `SELECT DISTINCT v.transaction_id, f.commodity_id IS NULL,
 		EXISTS (SELECT 1 FROM investment_cash_payment_identity previous
@@ -18,7 +20,9 @@ func dividendAttributions(ctx context.Context, source queryer, bookID, transacti
 		 JOIN investment_provider_events event ON event.id=claim.provider_event_id AND event.book_id=claim.book_id
 		 JOIN investment_instruments instrument ON instrument.id=event.instrument_id AND instrument.book_id=event.book_id
 		 WHERE previous.book_id=identity.book_id AND previous.root_operation_id=identity.root_operation_id
-		   AND f.commodity_id IS NOT NULL AND instrument.commodity_id<>f.commodity_id)
+		   AND ((f.commodity_id IS NOT NULL AND instrument.commodity_id<>f.commodity_id)
+		     OR EXISTS (SELECT 1 FROM investment_operation_dates ex
+		       WHERE ex.operation_id=o.id AND ex.date_role='ex' AND ex.event_date<>event.event_date)))
 	 FROM effective_investment_operations o
 	 JOIN valid_investment_dividend_facts f ON f.operation_id=o.id AND f.book_id=o.book_id
 	 JOIN investment_operation_journal_links l ON l.operation_id=o.id AND l.book_id=o.book_id AND l.role='primary'

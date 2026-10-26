@@ -20,13 +20,15 @@ type InvestmentIncomeRecord struct {
 
 // InvestmentIncome lists the gross income of every effective cash and
 // reinvested dividend dated from..to inclusive. A reversed or replaced
-// dividend is not effective, so only its replacement counts. Withholding
-// posts to its own account and does not reduce the gross figure.
+// dividend is not effective, so only its replacement counts — its own primary
+// journal, not the inverse of the original it also links as 'reversal'.
+// Withholding posts to its own account and does not reduce the gross figure.
 func (r *InvestmentRepository) InvestmentIncome(ctx context.Context, bookID int64, from, to string) ([]InvestmentIncomeRecord, error) {
 	rows, err := r.database.QueryContext(ctx, `
 		SELECT o.id, o.event_date, pv.commodity_id, pv.quantity_value, pv.quantity_scale
 		FROM effective_investment_operations o
 		JOIN investment_operation_journal_links link ON link.operation_id = o.id AND link.book_id = o.book_id
+			AND link.role = 'primary'
 		JOIN transaction_versions linked ON linked.id = link.transaction_version_id
 		JOIN current_transaction_versions tv ON tv.transaction_id = linked.transaction_id
 		JOIN posting_versions pv ON pv.transaction_version_id = tv.id

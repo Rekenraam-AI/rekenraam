@@ -356,8 +356,11 @@ original, inverse and replacement journals for both dividend and payment in
 lieu. A second provider event cannot claim another version of one payment;
 another real unclaimed payment remains linkable. Existing legacy duplicate
 claims are preserved and reported as integrity findings rather than erased.
-Source-linked dividend repair shows a different known payer as a warning and
-cleared payer as unavailable support without inventing a contradiction. Manual
+Source-linked dividend repair shows a different known payer, or a known ex
+date other than the provider event's (its ex date; added 2026-10-26 with
+`TestDividendCorrectedExDateContradictingProviderEvidenceWarns`), as a warning,
+and cleared payer as unavailable support without inventing a contradiction; a
+cleared ex date is likewise unknown, not a contradiction. Manual
 unassigned payer is disclosed in income coverage, without a new source-agreement
 or holdings workflow. Existing detail/self-check and provider history expose
 the diagnosis, original evidence and original payment/correction chain.

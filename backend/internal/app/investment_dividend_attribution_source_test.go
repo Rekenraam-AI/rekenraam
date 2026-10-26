@@ -154,3 +154,51 @@ func TestDividendProviderConcurrentClaimsCommitOnce(t *testing.T) {
 	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM investment_event_suggestions WHERE linked_transaction_id=?`, payment.ID).Scan(&count))
 	require.Equal(t, 1, count)
 }
+
+// A provider dividend event's date is its ex date. An owner correction to a
+// different known ex date contradicts that retained claim and is disclosed as
+// a warning, like a different payer; clearing the ex date is unknown, not a
+// contradiction; restoring the claimed date passes. Cash never changes.
+func TestDividendCorrectedExDateContradictingProviderEvidenceWarns(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newDividendEventFixture(t)
+	f.fetch(t)
+	july := suggestionForExDate(t, f.suggestions(t), "2026-07-29")
+	input := DividendInput{OwnerUserID: 1, TransactionDate: "2026-08-14", CommodityID: NullableValue(f.instrument.CommodityID),
+		ExDate: NullableValue("2026-07-29"), CashAccountID: f.cashAccountID, CashCommodityID: f.eurCommodityID,
+		IncomeAccountID: &f.categoryAccountID, AmountValue: 1600, AmountScale: 2}
+	payment, err := f.investmentSvc.Dividend(ctx, input)
+	require.NoError(t, err)
+	_, err = f.investmentSvc.LinkSuggestion(ctx, 1, 0, "link", july.ID, payment.ID)
+	require.NoError(t, err)
+	fixture := &investmentsTestFixture{database: f.database}
+	balance := accountBalance(t, fixture, f.cashAccountID)
+
+	current := payment.ID
+	for _, step := range []struct {
+		exDate  NullablePatch[string]
+		status  string
+		reasons []string
+	}{
+		{NullableValue("2026-07-30"), SelfCheckWarning, []string{db.AttributionProviderMismatch}},
+		{NullablePatch[string]{Set: true}, SelfCheckPassed, []string{}},
+		{NullableValue("2026-07-29"), SelfCheckPassed, []string{}},
+	} {
+		replacement := input
+		replacement.ExDate = step.exDate
+		result, err := f.investmentSvc.ReplaceDividend(ctx, ReplaceInvestmentDividendInput{OwnerUserID: 1, TransactionID: current,
+			Reason: "ex date correction", Replacement: replacement})
+		require.NoError(t, err)
+		current = result.Replacement.ID
+		chain, err := f.investmentSvc.CorrectionChain(ctx, 1, payment.ID)
+		require.NoError(t, err)
+		require.Equal(t, step.status, chain.EffectiveDividend.Attribution.Status, "ex date %+v", step.exDate)
+		require.Equal(t, step.reasons, chain.EffectiveDividend.Attribution.Reasons, "ex date %+v", step.exDate)
+		require.False(t, chain.EffectiveDividend.Attribution.Unavailable, "the payer is still known")
+		run := mustRunInvestmentSelfCheck(t, fixture)
+		require.Equal(t, step.status, resultFor(t, run, CheckInvestmentAttribution).Status)
+		require.Equal(t, SelfCheckPassed, resultFor(t, run, CheckInvestmentFoundation).Status)
+		require.Equal(t, balance, accountBalance(t, fixture, f.cashAccountID), "attribution repair never changes cash")
+	}
+}
