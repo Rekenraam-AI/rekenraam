@@ -9,7 +9,9 @@ test.use({ viewport: { width: 390, height: 844 } });
 // #231 (R18 slice 2): the period statement reports opening and closing
 // unrealized, realized and income per currency, and shows an absent figure
 // with its reason instead of zero. Everything is booked in CHF, which no other
-// spec uses, so the shared e2e book cannot change this currency's totals.
+// spec posts income or trades in, so the shared e2e book cannot change this
+// currency's totals. Journeys needing another currency take their own (the
+// #395 correction journeys use SEK and NOK).
 test.describe.serial('period statement', () => {
   test('the period statement splits a result per currency and never shows an absent figure as zero at 390px', async ({ page }) => {
     const { csrfToken } = await readyForLedger(page);

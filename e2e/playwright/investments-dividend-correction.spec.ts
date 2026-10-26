@@ -116,13 +116,15 @@ test.describe('on a phone', () => {
 
   // #395: the date, cash account and (with the account) the currency of a
   // cash dividend are correctable; the original is cancelled where it was.
+  // SEK is this journey's own currency: CHF belongs to the book-wide period
+  // statement spec (investments-gains-statement.spec.ts).
   test('a correction moves a cash dividend to another date and cash account currency', async ({ page }) => {
     const s = await setup(page, 'MDV');
-    const chf = await ensureCurrency(page, s.csrfToken, 'CHF', 'Swiss franc');
+    const sek = await ensureCurrency(page, s.csrfToken, 'SEK', 'Swedish krona');
     const openedOn = daysFromTodayISO(-60);
     const broker = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', s.csrfToken, {
-      name: `Broker CHF ${s.suffix}`, account_class: 'asset', account_kind: 'brokerage_cash',
-      default_commodity_id: chf, allows_postings: true, opened_on: openedOn, effective_from: openedOn
+      name: `Broker SEK ${s.suffix}`, account_class: 'asset', account_kind: 'brokerage_cash',
+      default_commodity_id: sek, allows_postings: true, opened_on: openedOn, effective_from: openedOn
     });
     const income = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', s.csrfToken, {
       name: `Dividend income any ${s.suffix}`, account_class: 'income', account_kind: 'income',
@@ -137,10 +139,10 @@ test.describe('on a phone', () => {
     await page.getByRole('button', { name: 'Correct dividend…' }).click();
     const form = page.getByRole('dialog', { name: 'Correct this dividend' });
     await expect(form.getByLabel('Date', { exact: true })).toHaveValue(daysFromTodayISO(-10));
-    await form.getByLabel('Reason for correction').fill('paid into the CHF account two days earlier');
+    await form.getByLabel('Reason for correction').fill('paid into the SEK account two days earlier');
     await form.getByLabel('Date', { exact: true }).fill(daysFromTodayISO(-12));
     await form.getByLabel(/^Cash account/).selectOption(String(broker.id));
-    await expect(form.getByText('(CHF)').first()).toBeVisible();
+    await expect(form.getByText('(SEK)').first()).toBeVisible();
     await form.getByLabel(/^Dividend amount/).fill('48.00');
     await form.getByRole('button', { name: 'Review and replace' }).click();
     await expect(form).toBeHidden();
@@ -151,7 +153,7 @@ test.describe('on a phone', () => {
       amount_value: string; amount_scale: number; source_differences: string[] } }>(page, 'GET',
       `/api/v1/investments/transactions/${replacement}/correction-chain`);
     expect(chain.effective_dividend).toMatchObject({ event_date: daysFromTodayISO(-12), cash_account_id: broker.id,
-      cash_commodity_id: chf, amount_value: '4800', amount_scale: 2, source_differences: [] });
+      cash_commodity_id: sek, amount_value: '4800', amount_scale: 2, source_differences: [] });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 

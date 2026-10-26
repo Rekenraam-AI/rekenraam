@@ -103,13 +103,15 @@ test('a payment in lieu is recorded, corrected and reversed on mobile', async ({
 
 // #395: a correction moves the payment to another date and a cash account in
 // another currency; the original is cancelled where it was posted.
+// NOK is this journey's own currency: CHF belongs to the book-wide period
+// statement spec (investments-gains-statement.spec.ts).
 test('a payment in lieu correction changes its date, cash account and currency on mobile', async ({ page }) => {
   const s = await setup(page);
-  const chf = await ensureCurrency(page, s.csrfToken, 'CHF', 'Swiss franc');
+  const nok = await ensureCurrency(page, s.csrfToken, 'NOK', 'Norwegian krone');
   const openedOn = daysFromTodayISO(-60);
   const broker = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', s.csrfToken, {
-    name: `PIL broker CHF ${Date.now()}`, account_class: 'asset', account_kind: 'brokerage_cash',
-    default_commodity_id: chf, allows_postings: true, opened_on: openedOn, effective_from: openedOn
+    name: `PIL broker NOK ${Date.now()}`, account_class: 'asset', account_kind: 'brokerage_cash',
+    default_commodity_id: nok, allows_postings: true, opened_on: openedOn, effective_from: openedOn
   });
   const anyExpense = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', s.csrfToken, {
     name: `Borrow costs any ${Date.now()}`, account_class: 'expense', account_kind: 'expense',
@@ -125,10 +127,10 @@ test('a payment in lieu correction changes its date, cash account and currency o
   await page.getByRole('button', { name: 'Correct payment in lieu…' }).click();
   const correction = page.getByRole('dialog', { name: 'Correct payment in lieu' });
   await expect(correction.getByLabel('Payment date')).toHaveValue(daysFromTodayISO(-8));
-  await correction.getByLabel('Reason for correction').fill('the broker charged it in CHF a day later');
+  await correction.getByLabel('Reason for correction').fill('the broker charged it in NOK a day later');
   await correction.getByLabel('Payment date').fill(daysFromTodayISO(-7));
   await correction.getByLabel('Cash account').selectOption(String(broker.id));
-  await expect(correction.getByText('(CHF)').first()).toBeVisible();
+  await expect(correction.getByText('(NOK)').first()).toBeVisible();
   await correction.getByLabel(/Amount owed/).fill('4.80');
   await correction.getByRole('button', { name: 'Save correction' }).click();
   await expect(correction).toBeHidden();
@@ -139,7 +141,7 @@ test('a payment in lieu correction changes its date, cash account and currency o
     amount_value: string; amount_scale: number; ex_date: string | null } }>(page, 'GET',
     `/api/v1/investments/transactions/${payment.id}/correction-chain`);
   expect(chain.effective_payment_in_lieu).toMatchObject({ event_date: daysFromTodayISO(-7), cash_account_id: broker.id,
-    cash_commodity_id: chf, amount_value: '480', amount_scale: 2, ex_date: daysFromTodayISO(-10) });
+    cash_commodity_id: nok, amount_value: '480', amount_scale: 2, ex_date: daysFromTodayISO(-10) });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 

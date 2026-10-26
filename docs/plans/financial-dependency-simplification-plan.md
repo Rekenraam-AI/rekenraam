@@ -426,7 +426,7 @@ now pins payment shape instead. Named cases:
 `TestReplaceDividendDateAcrossReconciledBoundaryRequiresOverride` (out of,
 into and within a reconciled period) and the source-difference assertions in
 `TestImportedDividendCorrectionPreservesCommittedIdentity`. Browser: a 390 px
-correction to another date and CHF cash account.
+correction to another date and SEK cash account.
 
 **Slice 2, payment in lieu (2026-10-26).** The same contract: the service and
 writer no longer pin the replacement's date, cash account and currency; the
@@ -443,7 +443,7 @@ date/account correction. Named cases:
 9 recovered to USD 55 / 5 on a new account and date, short lot unchanged),
 `TestReplacePaymentInLieuDateAcrossReconciledBoundaryRequiresOverride` and
 `TestPaymentInLieuFieldCorrectionKeepsProviderLinkAndDedupe`. Browser: a 390 px
-correction to another date and CHF cash account.
+correction to another date and NOK cash account.
 
 **Slice 3, reinvested dividend (2026-10-26).** Only the service check pinned
 date, holding, instrument and cost currency; the acquisition writer already
