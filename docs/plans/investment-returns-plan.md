@@ -84,9 +84,12 @@ separate from deterministic R13 acceptance. The roadmap retains all release gate
 | **Retain: bounded short detection / no short-sleeve return** | D5 is accepted. Named short operations and end-of-day balances are detected; arbitrary plain intraday exposure is not reconstructed. Short sleeves retain supported values/gain but no percentage return. A different method requires a new accepted contract. |
 | **Retain: benchmark source limits** | Manual total-return entry now ships. Price-return benchmarks exclude distributions and depend on recorded splits; an unrecorded split cannot be detected. Live benchmark adapters and broker comparisons remain optional future integrations with separate evidence, not a reason to reopen #119. |
 | **Retain: saved-run presentation limits** | Figures, ids, dates and saved scales are frozen. Names resolve as they are today; older runs are not rebuilt. Freezing descriptive metadata would require a separately justified versioned extension. |
+| **Deferred: performance evidence at scale** | [#413](https://github.com/sergeyfarin/rekenraam/issues/413). The large-book harness seeds no investments, so the returns read, `instruments=true` (one `compute` per sleeve) and saved runs have no wall-time or heap measurement. Measure and bound first; optimise only on evidence. |
+| **Retain: not in `instrument_returns_v1`** | Native (quote-currency) per-instrument returns, per-instrument benchmark comparison and contribution-to-return attribution (Brinson and similar) are outside the accepted contract (*API, screen, saved runs*). Each needs its own contract; none is planned. |
 | **Retain: valuation recognition, not full accrual accounting** | Recorded ex-date dividends/payments in lieu affect net worth and returns as receivables/payables; posting-date income, spending, cashflow, registers, reconciliation and forecast are unchanged. Separate receivable accounts and partial-payment workflows are not delivered. |
 
-Only targets and advisory rebalancing are newly retained delivery issues here.
+Only targets, advisory rebalancing and the scale measurement are retained
+as delivery issues here.
 The other rows are explicit accepted limits, not hidden outstanding R13 fixes.
 Revisit one when a concrete user case or defect warrants a bounded issue and
 an accepted change to the relevant contract. Existing #395 financial-field

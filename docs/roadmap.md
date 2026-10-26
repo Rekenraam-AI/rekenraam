@@ -218,7 +218,11 @@ allocation/drift, and [#412](https://github.com/sergeyfarin/rekenraam/issues/412
 for advisory rebalancing. Each needs its own accepted contract; rebalancing
 depends on the target model. No trade execution is implied. Keeping these
 issues does not move them ahead of #405, #395 or the retained release/readiness
-work above. No additional R13 implementation is required to close #119.
+work above. [#413](https://github.com/sergeyfarin/rekenraam/issues/413), also
+P3, measures the returns read (including `instruments=true` and saved runs)
+on a large investment book, which the large-book harness has never seeded. It
+is evidence work, cheapest before #405 changes the cost baseline, and not a
+gate. No additional R13 implementation is required to close #119.
 
 ### Completed initiatives through R10
 
