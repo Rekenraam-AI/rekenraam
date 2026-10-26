@@ -18,11 +18,15 @@ test('[acceptance] server year controls investment entry, gains and unchosen dis
     const response = await route.fetch();
     await route.fulfill({ response, json: { ...await response.json(), owner_today: '2027-01-01' } });
   });
-  for (const name of ['Record sell', 'Record dividend', 'Record short sale']) {
+  for (const [name, dateLabel] of [
+    ['Record sell', 'Date'],
+    ['Record dividend', 'Payment date'],
+    ['Record short sale', 'Date']
+  ] as const) {
     await page.goto('/app/investments');
     await page.getByRole('button', { name, exact: true }).click();
     const form = page.locator('form').filter({ has: page.getByRole('heading', { name, exact: true }) });
-    await expect(form.getByLabel('Date', { exact: true })).toHaveValue('2027-01-01');
+    await expect(form.getByLabel(dateLabel, { exact: true })).toHaveValue('2027-01-01');
   }
   await page.goto('/app/investments?tab=gains');
   // The portfolio tab is driven by local UI state.
