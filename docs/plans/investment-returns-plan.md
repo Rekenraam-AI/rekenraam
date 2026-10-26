@@ -9,8 +9,9 @@ as "finding N"; `ae084c4d`: two, recorded under the expected cases). Slice 2
 slice 5 (benchmarks) delivered the same day; slice 6 (saved runs) delivered
 2026-10-25. R13 core is complete. Slice 7 (browser total-return price entry,
 closing slice 5's API-only gap) delivered 2026-10-25. A per-instrument
-contract (`instrument_returns_v1`) was accepted the same day; slices 8–9
-follow. #409 (unsettled trade cash across a period boundary) was fixed
+contract (`instrument_returns_v1`) was accepted the same day; slice 8
+(sleeve read) delivered 2026-10-25 and slice 9 (screen panel and saved-run
+inclusion) 2026-10-26. #409 (unsettled trade cash across a period boundary) was fixed
 the same day by trade-date recognition; see *Valuation `V(d)`*.**
 Governs [#119](https://github.com/sergeyfarin/rekenraam/issues/119). The
 [roadmap](../roadmap.md) owns order; ADR 0012 (reporting boundaries) and ADR
@@ -729,7 +730,7 @@ calculator. R1–R7 are the reproducers from the 2026-10-24 review of
 
 Status: **accepted by the owner 2026-10-25 (D1–D7 as revised, including D5's
 bounded short detection); slice 8 (sleeve read) delivered 2026-10-25; slice 9
-next.** History: proposed and
+(screen panel and saved runs) delivered 2026-10-26.** History: proposed and
 revised (revision 2) the same day. Revision 2 resolves a same-day review of `4c3324e3` (five
 gaps, all accepted; recorded below as "review 1" to "review 5"). The review
 also exposed a shipped portfolio defect, [#409](https://github.com/sergeyfarin/rekenraam/issues/409):
@@ -1121,7 +1122,47 @@ written.
      4. *Missing FX:* income keeps `flow_unavailable`
         (`TestInstrumentReturnsKnownIncomeWithMissingFXIsAFlowGap`).
 9. **Screen panel and saved-run inclusion**, with a browser case on a phone
-   and an existing run reopened unchanged.
+   and an existing run reopened unchanged. *Delivered 2026-10-26*:
+   - **Selection.** A "Show returns by instrument" checkbox in the returns
+     controls, applied with the rest and kept in the link as
+     `instruments=true` (any other value reads as off). Off is the default, so
+     every existing link opens as before.
+   - **Panel** (`returns-instruments.svelte`, under the allocation). One card
+     per instrument on a phone, one table from `md` up (rendered from the
+     same rows; the hidden layout is out of the accessibility tree). Each
+     figure that is unavailable shows its reason in words, including the
+     slice 8 codes `short_position`, `income_unattributable`,
+     `unclassified_exchange` and `instrument_gain_unavailable`. Each
+     instrument names its own missing and stale prices from its own
+     `valuation`, never the portfolio's. The panel also shows the
+     not-attributed residual, the income no instrument carries (linked to
+     its transaction), the ex-date recognition rule, and an empty state ("No
+     instruments in this period."). Live and saved results render through
+     the same component; a saved one keeps its stored scales.
+   - **Saved runs.** `ReturnsRunRequest.instruments` is recorded in the
+     resolved request only when true (`omitzero`), so a run without it keeps
+     the slice 6 bytes. Integrity (single read, list, self-check) adds one
+     rule: the request's `instruments` is true exactly when the output carries
+     `instrument_returns`. The run list labels such a run "By instrument".
+   - **Named validation.** `TestReturnsRunSavedBeforeInstrumentsReopensUnchanged`
+     inserts a golden document saved by the slice 6 code
+     (`backend/internal/api/testdata/returns-run-slice6.json`) and requires
+     its single read, list entry and self-check to return it unchanged; a new
+     run with `instruments: false` keeps that request shape.
+     `TestReturnsRunFreezesInstrumentReturns` corrects one dividend's payer,
+     reverses another and records an unassigned one. It requires the saved
+     output to equal the live read byte for byte (apart from the knowledge
+     instant), pins the sleeves (income 20 moved to the corrected payer,
+     TTWROR `0.020000`; the other sleeve's income 0 and its missing closing
+     price named in its own coverage; one `unassigned_instrument` entry), and
+     checks that a later reversal restates only the live read. It also
+     checks that a flag without the output, or the output without the flag,
+     is refused even when consistently rehashed. Browser case `[acceptance]
+     returns by instrument agree live and saved, through corrected and
+     cancelled income, on a phone` (`investment-returns.spec.ts`) checks
+     the same facts at 390px and 1280px, with accessibility checks at both.
+     The slice 6 browser case now also asserts that a run saved without the
+     flag has no panel.
 
 The roadmap's R13 item lists slices 8–9; targets and rebalancing stay
 deferred.

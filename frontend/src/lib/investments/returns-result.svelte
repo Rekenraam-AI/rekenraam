@@ -9,8 +9,10 @@
   } from './returns-model';
   import ReturnsChart from './returns-chart.svelte';
   import ReturnsAllocation from './returns-allocation.svelte';
+  import ReturnsInstruments from './returns-instruments.svelte';
 
-  // One returns_v1 result, live or saved (R13 slices 2-6). Every figure comes
+  // One returns_v1 result, live or saved (R13 slices 2-6, and slice 9's
+  // per-instrument panel when the read asked for it). Every figure comes
   // from the result; names come from the lookups, which are today's
   // reference data, so a saved run fixes only ids, dates and figures.
   // Amounts were rounded to the reporting currency's standard scale when
@@ -170,6 +172,13 @@
       formatAmount={(amount) => amountText({ amount, reason: null, date: null })}
       {accountName} {currencyCode} commodityLabel={currencyOrCommodity} />
   </Panel>
+
+  {#if result.instrument_returns}
+    <Panel>
+      <ReturnsInstruments instruments={result.instrument_returns} {locale} formatDate={day} formatAmount={amountText}
+        commodityLabel={currencyOrCommodity} />
+    </Panel>
+  {/if}
 
   {#if coverage.missing.length > 0}
     <p role="status" class="text-sm text-warning">{m.returns_coverage_incomplete({ commodities: coverage.missing.map(currencyOrCommodity).join(', ') })}</p>

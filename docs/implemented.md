@@ -658,6 +658,16 @@ scope, never cash, computed by the portfolio's own code:
 
 The read also returns the income no sleeve carries and the portfolio gain
 left over. Requesting instrument returns changes no portfolio figure.
+Slice 9 shows them on the returns screen: a "Show returns by instrument"
+control (kept in the link as `instruments=true`) adds a "By instrument" panel
+with one card per instrument on a phone and one table on wider screens. Each
+unavailable figure gives its reason in words, each instrument names its own
+missing or stale prices, and the panel shows the not-attributed residual, the
+income no instrument carries and the ex-date income rule. A saved run keeps
+the choice: `instruments: true` is recorded in its request only when asked,
+its output then freezes `instrument_returns`, and integrity requires the two
+to agree. Runs saved before slice 9 keep their exact bytes and reopen
+unchanged, without the panel.
 Trade-date recognition (#409) reads every entry of an investment operation
 whose units post on one day on that day. A trade that settles later therefore
 no longer counts both its units and its unpaid cash across a period boundary.

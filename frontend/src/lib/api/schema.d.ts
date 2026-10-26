@@ -34308,6 +34308,8 @@ export interface components {
              * @enum {string|null}
              */
             benchmark_basis?: "price_return" | "total_return" | null;
+            /** @description When true, the run also computes and freezes `instrument_returns` (instrument_returns_v1, slice 9) from the same snapshot. Omitted or false computes the portfolio read only, exactly as a run saved before slice 9. */
+            instruments?: boolean;
         };
         /** @description The request as the run resolved it, with defaults filled in. */
         ReturnsRunResolvedRequest: {
@@ -34323,6 +34325,11 @@ export interface components {
             benchmark_commodity_id: number | null;
             /** @enum {string|null} */
             benchmark_basis: "price_return" | "total_return" | null;
+            /**
+             * @description Present only when the run was asked for the per-instrument read, so runs without it keep the slice 6 request bytes. Integrity requires the output to carry `instrument_returns` exactly when this is true.
+             * @enum {boolean}
+             */
+            instruments?: true;
         };
         /** @description The same fields of the frozen output, repeated so a summary can be listed without it. Integrity requires them to agree. */
         ReturnsRunDescriptor: {

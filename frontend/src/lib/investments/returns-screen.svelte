@@ -75,12 +75,14 @@
   let accountDraft = $state<number[]>([]);
   let benchmarkDraft = $state('');
   let basisDraft = $state<BenchmarkBasis>('price_return');
+  let instrumentsDraft = $state(false);
   $effect(() => {
     fromDraft = selection.from;
     toDraft = selection.to;
     accountDraft = [...selection.accountIDs];
     benchmarkDraft = selection.benchmarkCommodityID === null ? '' : String(selection.benchmarkCommodityID);
     basisDraft = selection.benchmarkBasis;
+    instrumentsDraft = selection.instruments;
   });
   $effect(() => {
     currencyDraft = reportingCurrencyID === null ? '' : String(reportingCurrencyID);
@@ -95,7 +97,8 @@
       reportingCurrencyID: reportingCurrencyID ?? 0,
       accountIDs: selection.accountIDs,
       benchmarkCommodityID,
-      benchmarkBasis: selection.benchmarkBasis
+      benchmarkBasis: selection.benchmarkBasis,
+      instruments: selection.instruments
     }),
     // A linked benchmark waits for the instruments that confirm it exists.
     enabled: reportingCurrencyID !== null && (selection.benchmarkCommodityID === null || !instruments.isPending)
@@ -107,7 +110,8 @@
     result && result.resolved_account_ids.length > 0 && reportingCurrencyID !== null
       ? {
         from: selection.from, to: selection.to, reporting_currency_id: reportingCurrencyID, account_ids: selection.accountIDs,
-        benchmark_commodity_id: benchmarkCommodityID, benchmark_basis: benchmarkCommodityID !== null ? selection.benchmarkBasis : null
+        benchmark_commodity_id: benchmarkCommodityID, benchmark_basis: benchmarkCommodityID !== null ? selection.benchmarkBasis : null,
+        ...(selection.instruments ? { instruments: true } : {})
       }
       : null
   );
@@ -125,7 +129,8 @@
     const params = returnsSelectionParams({
       from, to, reportingCurrencyID: Number(currencyDraft), accountIDs: [...selectable].sort((a, b) => a - b),
       benchmarkCommodityID: benchmark !== null && benchmarkOptions.some((instrument) => instrument.commodity_id === benchmark) ? benchmark : null,
-      benchmarkBasis: basisDraft
+      benchmarkBasis: basisDraft,
+      instruments: instrumentsDraft
     });
     void goto(`/app/investments/returns?${params.toString()}`, { reset: false });
   }
@@ -286,6 +291,14 @@
             <button type="button" class="min-h-11 text-sm text-foreground underline underline-offset-2" onclick={() => { accountDraft = []; }}>{m.returns_accounts_reset()}</button>
           {/if}
         </fieldset>
+
+        <div class="space-y-1">
+          <label class="flex min-h-11 items-center gap-2 text-sm text-foreground">
+            <input type="checkbox" bind:checked={instrumentsDraft} aria-describedby="returns-instruments-help" data-testid="returns-instruments-toggle" />
+            {m.returns_instruments_toggle()}
+          </label>
+          <p id="returns-instruments-help" class="text-xs text-muted">{m.returns_instruments_toggle_help()}</p>
+        </div>
 
         <button type="submit" disabled={rangeInvalid || currencyDraft === ''}
           class="min-h-11 rounded-(--radius-control) border border-border bg-control px-4 text-sm font-medium text-foreground hover:bg-control-hover disabled:opacity-50">

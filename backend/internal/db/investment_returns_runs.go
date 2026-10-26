@@ -57,15 +57,27 @@ func scanReturnsRun(scan func(...any) error) (ReturnsRunRecord, error) {
 // ValidReturnsRunDocument checks stored bytes, not a recalculation against
 // the current book: both digests, the snapshot identity, and a descriptor
 // that names returns_v1 at the run's own capture instant and agrees with
-// the output it describes.
+// the output it describes. A request for the per-instrument read
+// (instruments, recorded only when true) must have produced one, and only
+// such a request may.
 func ValidReturnsRunDocument(r ReturnsRunRecord) bool {
 	var input struct {
+		Request struct {
+			Instruments bool `json:"instruments"`
+		} `json:"request"`
 		SnapshotSHA256 string               `json:"snapshot_sha256"`
 		Descriptor     ReturnsRunDescriptor `json:"descriptor"`
 	}
 	var output ReturnsRunDescriptor
+	var instruments struct {
+		InstrumentReturns json.RawMessage `json:"instrument_returns"`
+	}
 	if r.SchemaVersion != 1 || GainsRunDigest(r.InputsJSON) != r.InputsSHA256 || GainsRunDigest(r.OutputJSON) != r.OutputSHA256 ||
-		json.Unmarshal(r.InputsJSON, &input) != nil || json.Unmarshal(r.OutputJSON, &output) != nil {
+		json.Unmarshal(r.InputsJSON, &input) != nil || json.Unmarshal(r.OutputJSON, &output) != nil ||
+		json.Unmarshal(r.OutputJSON, &instruments) != nil {
+		return false
+	}
+	if input.Request.Instruments != (len(instruments.InstrumentReturns) > 0 && string(instruments.InstrumentReturns) != "null") {
 		return false
 	}
 	saved, err := json.Marshal(input.Descriptor)

@@ -19,6 +19,8 @@ export type ReturnsSelection = {
   benchmarkCommodityID: number | null;
   /** Declared by the owner, never inferred: price return unless stated. */
   benchmarkBasis: BenchmarkBasis;
+  /** Per-instrument returns beside the portfolio (slice 9); off unless asked. */
+  instruments: boolean;
 };
 
 export type ReturnsPreset = 'ytd' | 'last_year';
@@ -69,7 +71,8 @@ export function parseReturnsSelection(params: ReadonlyURLSearchParams, today: st
     reportingCurrencyID: Number.isSafeInteger(currency) && currency > 0 ? currency : null,
     accountIDs,
     benchmarkCommodityID,
-    benchmarkBasis: benchmarkCommodityID !== null && params.get('benchmark_basis') === 'total_return' ? 'total_return' : 'price_return'
+    benchmarkBasis: benchmarkCommodityID !== null && params.get('benchmark_basis') === 'total_return' ? 'total_return' : 'price_return',
+    instruments: params.get('instruments') === 'true'
   };
 }
 
@@ -81,6 +84,7 @@ export function returnsSelectionParams(selection: ReturnsSelection): URLSearchPa
     params.set('benchmark_commodity_id', String(selection.benchmarkCommodityID));
     if (selection.benchmarkBasis === 'total_return') params.set('benchmark_basis', 'total_return');
   }
+  if (selection.instruments) params.set('instruments', 'true');
   return params;
 }
 
@@ -116,6 +120,14 @@ export function returnReasonText(reason: string | null | undefined, date: string
       return m.returns_reason_non_positive_growth();
     case 'conflicting_splits':
       return day ? m.returns_reason_conflicting_splits_dated({ date: day }) : m.returns_reason_conflicting_splits();
+    case 'short_position':
+      return m.returns_reason_short_position();
+    case 'income_unattributable':
+      return day ? m.returns_reason_income_unattributable_dated({ date: day }) : m.returns_reason_income_unattributable();
+    case 'unclassified_exchange':
+      return day ? m.returns_reason_unclassified_exchange_dated({ date: day }) : m.returns_reason_unclassified_exchange();
+    case 'instrument_gain_unavailable':
+      return m.returns_reason_instrument_gain_unavailable();
     default:
       return m.returns_reason_unknown();
   }

@@ -29,6 +29,10 @@ type ReturnsRunRequest struct {
 	MaxStalenessDays     ReturnsRunStaleness `json:"max_staleness_days,omitzero"`
 	BenchmarkCommodityID *int64              `json:"benchmark_commodity_id"`
 	BenchmarkBasis       *string             `json:"benchmark_basis"`
+	// Instruments adds the per-instrument read (instrument_returns_v1). It
+	// is recorded only when true, so a run without it keeps the slice 6
+	// request shape, descriptor and digests.
+	Instruments bool `json:"instruments,omitzero"`
 }
 
 // ReturnsRunStaleness is max_staleness_days as sent: Present once the field
@@ -75,7 +79,7 @@ type ReturnsRunFormatter func(ReturnsResult) (json.RawMessage, error)
 func (s *InvestmentService) CreateReturnsRun(ctx context.Context, input ReturnsRunInput, format ReturnsRunFormatter) (db.ReturnsRunRecord, error) {
 	request := input.Request
 	read := ReturnsInput{From: request.From, To: request.To, ReportingCommodityID: request.ReportingCurrencyID,
-		AccountIDs: request.AccountIDs}
+		AccountIDs: request.AccountIDs, Instruments: request.Instruments}
 	if request.MaxStalenessDays.Present {
 		// Only omission takes the default: zero is the live read's
 		// "omitted", so an explicit zero, like null, is out of range.
@@ -126,7 +130,7 @@ func (s *InvestmentService) CreateReturnsRun(ctx context.Context, input ReturnsR
 		return db.ReturnsRunRecord{}, err
 	}
 	resolved := ReturnsRunRequest{From: read.From, To: read.To, ReportingCurrencyID: read.ReportingCommodityID,
-		AccountIDs: read.AccountIDs, MaxStalenessDays: StalenessDays(read.MaxStalenessDays)}
+		AccountIDs: read.AccountIDs, MaxStalenessDays: StalenessDays(read.MaxStalenessDays), Instruments: read.Instruments}
 	if resolved.AccountIDs == nil {
 		resolved.AccountIDs = []int64{}
 	}

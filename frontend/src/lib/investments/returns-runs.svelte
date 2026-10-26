@@ -89,6 +89,7 @@
                 from: day(item.inputs.descriptor.from), to: day(item.inputs.descriptor.to),
                 currency: currencies.find((currency) => currency.id === item.inputs.request.reporting_currency_id)?.code ?? `#${item.inputs.request.reporting_currency_id}`
               })}</span>
+              {#if item.inputs.request.instruments}<span class="block text-xs text-muted">{m.returns_runs_item_instruments()}</span>{/if}
             </button>
           </li>
         {/each}

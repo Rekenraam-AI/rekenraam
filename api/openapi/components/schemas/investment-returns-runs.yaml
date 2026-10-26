@@ -50,6 +50,11 @@ ReturnsRunRequest:
       - total_return
       - null
       description: Requires benchmark_commodity_id; defaults to price_return.
+    instruments:
+      type: boolean
+      description: When true, the run also computes and freezes `instrument_returns`
+        (instrument_returns_v1, slice 9) from the same snapshot. Omitted or false
+        computes the portfolio read only, exactly as a run saved before slice 9.
 ReturnsRunResolvedRequest:
   type: object
   required:
@@ -91,6 +96,13 @@ ReturnsRunResolvedRequest:
       - price_return
       - total_return
       - null
+    instruments:
+      type: boolean
+      enum:
+      - true
+      description: Present only when the run was asked for the per-instrument read,
+        so runs without it keep the slice 6 request bytes. Integrity requires the
+        output to carry `instrument_returns` exactly when this is true.
 ReturnsRunDescriptor:
   type: object
   required:

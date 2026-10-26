@@ -6,7 +6,8 @@ import { ensureCurrency, readyForLedger } from './support/ledger';
 import { daysFromTodayISO, todayISO } from './support/dates';
 import { expectNoAccessibilityViolations } from './support/a11y';
 
-// R13 slices 2–4 (#119): the returns screen, its chart and allocation over the returns_v1 read. The
+// R13 slices 2–9 (#119): the returns screen, its chart, allocation, saved runs
+// and per-instrument panel over the returns_v1 read. The
 // default scope is every investment account in the book, so each test owns
 // its book and the figures are exact.
 test.use({ viewport: { width: 390, height: 844 } });
@@ -366,6 +367,8 @@ test('a saved returns run keeps its figures after a backdated buy on a phone', a
   await expect(frozen.getByTestId('returns-closing')).toContainText('1,100.00');
   await expect(frozen.getByTestId('returns-twr-period')).toHaveText('+10.00%');
   await expect(frozen.getByText(/^Saved from the ledger as known at /)).toBeVisible();
+  // A run saved without instruments has no instrument panel.
+  await expect(saved.getByTestId('returns-instruments')).toHaveCount(0);
 
   const downloading = page.waitForEvent('download');
   await saved.getByRole('link', { name: 'Download saved run (JSON)', exact: true }).click();
@@ -375,4 +378,116 @@ test('a saved returns run keeps its figures after a backdated buy on a phone', a
 
   expect(await noHorizontalScroll(page)).toBe(true);
   await expectNoAccessibilityViolations(page, 'Saved returns run on a phone');
+});
+
+test('[acceptance] returns by instrument agree live and saved, through corrected and cancelled income, on a phone', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  const opened = daysFromTodayISO(-60);
+  const checking = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: 'Sleeve checking', account_class: 'asset', account_kind: 'checking',
+    default_commodity_id: currencyID, allows_postings: true, opened_on: opened, effective_from: opened
+  });
+  const income = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: 'Sleeve income', account_class: 'income', account_kind: 'income',
+    default_commodity_id: currencyID, allows_postings: true, opened_on: opened, effective_from: opened
+  });
+  const instruments = [];
+  for (const symbol of ['SLVA', 'SLVB']) {
+    const instrument = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', csrfToken, {
+      commodity_code: symbol, instrument_type: 'stock', display_name: `Sleeve ${symbol}`, symbol,
+      quote_commodity_id: currencyID, trading_commodity_id: currencyID, quantity_scale: 0, price_scale: 2, effective_from: opened
+    });
+    const holding = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/holding-accounts', csrfToken, {
+      instrument_id: instrument.id, name: `Sleeve ${symbol} holding`, opened_on: opened, effective_from: opened
+    });
+    // Ten units for 1,000.00 from checking, outside the portfolio.
+    await apiJSON(page, 'POST', '/api/v1/investments/buy', csrfToken, {
+      transaction_date: daysFromTodayISO(-40), commodity_id: instrument.commodity_id, holding_account_id: holding.id,
+      cash_account_id: checking.id, quantity_value: '10', quantity_scale: 0, cash_amount_value: '100000', cash_amount_scale: 2,
+      cash_commodity_id: currencyID, cost_basis_method: 'fifo'
+    });
+    // 100.00 on every flow day; SLVA closes at 110.00, SLVB at 100.00.
+    for (const [date, price] of [[daysFromTodayISO(-30), 10000], [daysFromTodayISO(-20), 10000], [todayISO(), symbol === 'SLVA' ? 11000 : 10000]] as const) {
+      await apiJSON(page, 'POST', '/api/v1/pricing/prices', csrfToken, {
+        base_commodity_id: instrument.commodity_id, quote_commodity_id: currencyID, quote_type: 'close',
+        adjustment_basis: 'raw', price_value: price, price_scale: 2, valuation_date: date, is_manual: true
+      });
+    }
+    instruments.push(instrument);
+  }
+  const [first, second] = instruments;
+  const dividend = (commodityID: number | undefined, exDate: string, date: string, amount: string) => ({
+    transaction_date: date, ...(commodityID ? { commodity_id: commodityID, ex_date: exDate } : {}),
+    cash_account_id: checking.id, cash_commodity_id: currencyID, income_account_id: income.id, amount_value: amount, amount_scale: 2
+  });
+  // Corrected: 20.00 recorded for SLVB, moved to SLVA.
+  const corrected = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/dividend', csrfToken,
+    dividend(second.commodity_id, daysFromTodayISO(-30), daysFromTodayISO(-25), '2000'));
+  const replacement = await apiJSON<{ replacement_transaction: { id: number } }>(page, 'POST',
+    `/api/v1/investments/transactions/${corrected.id}/replace-dividend`, csrfToken,
+    { reason: 'Payer was SLVA', replacement: dividend(first.commodity_id, daysFromTodayISO(-30), daysFromTodayISO(-25), '2000') });
+  // Cancelled: 50.00 for SLVA, reversed.
+  const cancelled = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/dividend', csrfToken,
+    dividend(first.commodity_id, daysFromTodayISO(-20), daysFromTodayISO(-15), '5000'));
+  await apiJSON(page, 'POST', `/api/v1/investments/transactions/${cancelled.id}/reverse-dividend`, csrfToken, { reason: 'Paid in error' });
+  // Unassigned: listed, carried by no instrument.
+  await apiJSON(page, 'POST', '/api/v1/investments/dividend', csrfToken, dividend(undefined, '', daysFromTodayISO(-10), '700'));
+
+  await page.goto(`/app/investments/returns?from=${daysFromTodayISO(-45)}&to=${todayISO()}&reporting_currency_id=${currencyID}`);
+  // Anchored on a loaded result, so the absence is not vacuous.
+  await expect(page.getByTestId('returns-summary').getByTestId('returns-contributions')).toContainText('2,000.00');
+  await expect(page.getByTestId('returns-summary').getByTestId('returns-instruments')).toHaveCount(0);
+  await page.getByTestId('returns-instruments-toggle').check();
+  await page.getByRole('button', { name: 'Show returns', exact: true }).click();
+  await expect(page).toHaveURL(/instruments=true/);
+
+  const expectSleeves = async (panel: ReturnType<Page['getByTestId']>) => {
+    const cards = panel.getByTestId('returns-instrument-card');
+    await expect(cards).toHaveCount(2);
+    const a = cards.filter({ hasText: 'SLVA' });
+    // 1,020 / 1,000 on the ex date, then 1,100 / 1,000: +12.20 %.
+    await expect(a.getByTestId('returns-instrument-twr')).toHaveText('+12.20%');
+    await expect(a.getByTestId('returns-instrument-income')).toContainText('20.00');
+    await expect(a.getByTestId('returns-instrument-withdrawals')).toContainText('20.00');
+    await expect(a.getByTestId('returns-instrument-gain')).toContainText('120.00');
+    const b = cards.filter({ hasText: 'SLVB' });
+    await expect(b.getByTestId('returns-instrument-twr')).toHaveText('0.00%');
+    await expect(b.getByTestId('returns-instrument-income')).toContainText('0.00');
+    await expect(b.getByTestId('returns-instrument-gain')).toContainText('0.00');
+    await expect(panel.getByTestId('returns-instruments-residual')).toContainText('0.00');
+    await expect(panel.getByTestId('returns-instruments-not-attributed').getByRole('listitem')).toHaveCount(1);
+    await expect(panel.getByTestId('returns-instruments-not-attributed')).toContainText('no instrument assigned');
+    await expect(panel.getByTestId('returns-instruments-income-rule')).toBeVisible();
+  };
+  const live = page.getByTestId('returns-summary').getByTestId('returns-instruments');
+  await expectSleeves(live);
+  expect(await noHorizontalScroll(page)).toBe(true);
+  await expectNoAccessibilityViolations(page, 'Returns by instrument on a phone');
+
+  const runs = page.getByTestId('returns-runs');
+  const saving = page.waitForResponse((res) => res.url().endsWith('/api/v1/investments/returns/runs') && res.request().method() === 'POST');
+  await runs.getByRole('button', { name: 'Save this run', exact: true }).click();
+  const run = await (await saving).json() as { id: number; inputs: { request: { instruments?: boolean } } };
+  expect(run.inputs.request.instruments).toBe(true);
+  const saved = page.getByTestId('saved-returns-run').getByTestId('returns-instruments');
+  await expectSleeves(saved);
+  // Same figures, reasons and coverage notes, live and saved.
+  expect(await saved.getByTestId('returns-instrument-card').allInnerTexts()).toEqual(await live.getByTestId('returns-instrument-card').allInnerTexts());
+  await expect(runs.getByRole('button', { name: new RegExp(`^#${run.id} · saved `) })).toContainText('By instrument');
+
+  // Reversing the replacement restates the live read only.
+  await apiJSON(page, 'POST', `/api/v1/investments/transactions/${replacement.replacement_transaction.id}/reverse-dividend`, csrfToken, { reason: 'Not paid' });
+  await page.reload();
+  await expect(live.getByTestId('returns-instrument-card').filter({ hasText: 'SLVA' }).getByTestId('returns-instrument-twr')).toHaveText('+10.00%');
+  await runs.getByRole('button', { name: new RegExp(`^#${run.id} · saved `) }).click();
+  await expectSleeves(saved);
+
+  // Wider screens show one table with the same rows.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const rows = saved.getByTestId('returns-instrument-row');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.filter({ hasText: 'SLVA' }).getByTestId('returns-instrument-twr')).toHaveText('+12.20%');
+  await expect(saved.getByTestId('returns-instrument-card').first()).toBeHidden();
+  expect(await noHorizontalScroll(page)).toBe(true);
+  await expectNoAccessibilityViolations(page, 'Returns by instrument on a wide screen');
 });

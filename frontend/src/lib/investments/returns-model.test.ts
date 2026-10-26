@@ -28,7 +28,7 @@ describe('returns period presets', () => {
 describe('parseReturnsSelection', () => {
   it('reads a complete selection, deduplicating and sorting accounts', () => {
     expect(parseReturnsSelection(params('from=2026-02-01&to=2026-06-30&reporting_currency_id=3&account_id=9&account_id=4&account_id=9'), today))
-      .toEqual({ from: '2026-02-01', to: '2026-06-30', reportingCurrencyID: 3, accountIDs: [4, 9], benchmarkCommodityID: null, benchmarkBasis: 'price_return' });
+      .toEqual({ from: '2026-02-01', to: '2026-06-30', reportingCurrencyID: 3, accountIDs: [4, 9], benchmarkCommodityID: null, benchmarkBasis: 'price_return', instruments: false });
   });
 
   it('falls back to year to date for any range the server would refuse', () => {
@@ -45,12 +45,19 @@ describe('parseReturnsSelection', () => {
 
   it('round-trips through the URL parameters it writes', () => {
     const selection = { from: '2026-02-01', to: '2026-06-30', reportingCurrencyID: 3, accountIDs: [4, 9],
-      benchmarkCommodityID: 7, benchmarkBasis: 'total_return' as const };
+      benchmarkCommodityID: 7, benchmarkBasis: 'total_return' as const, instruments: true };
     expect(parseReturnsSelection(returnsSelectionParams(selection), today)).toEqual(selection);
-    expect(returnsSelectionParams({ ...selection, reportingCurrencyID: null, accountIDs: [], benchmarkCommodityID: null }).toString())
+    expect(returnsSelectionParams({ ...selection, reportingCurrencyID: null, accountIDs: [], benchmarkCommodityID: null, instruments: false }).toString())
       .toBe('from=2026-02-01&to=2026-06-30');
     // Price return is the default and is not written.
     expect(returnsSelectionParams({ ...selection, benchmarkBasis: 'price_return' }).get('benchmark_basis')).toBeNull();
+  });
+
+  it('asks for instruments only when the link says exactly true', () => {
+    expect(parseReturnsSelection(params('instruments=true'), today).instruments).toBe(true);
+    for (const query of ['', 'instruments=1', 'instruments=false', 'instruments=TRUE']) {
+      expect(parseReturnsSelection(params(query), today).instruments, query).toBe(false);
+    }
   });
 
   it('reads a benchmark basis only with a valid benchmark, and only as declared', () => {
@@ -94,11 +101,15 @@ describe('reason text', () => {
   it('names the day a dated reason applies to', () => {
     expect(returnReasonText('valuation_unavailable', '2026-05-01', date)).toContain('[2026-05-01]');
     expect(returnReasonText('non_positive_capital', '2026-07-30', date)).toContain('[2026-07-30]');
+    expect(returnReasonText('income_unattributable', '2026-02-10', date)).toContain('[2026-02-10]');
+    expect(returnReasonText('unclassified_exchange', '2026-02-11', date)).toContain('[2026-02-11]');
   });
 
   it('explains every documented reason and never shows a raw code', () => {
     const reasons = ['valuation_unavailable', 'unclassified_short', 'flow_unavailable', 'non_positive_capital', 'no_capital',
-      'no_root', 'root_not_unique', 'numerical_limit', 'period_shorter_than_year', 'non_positive_growth'];
+      'no_root', 'root_not_unique', 'numerical_limit', 'period_shorter_than_year', 'non_positive_growth', 'conflicting_splits',
+      // instrument_returns_v1 (slice 9)
+      'short_position', 'income_unattributable', 'unclassified_exchange', 'instrument_gain_unavailable'];
     const texts = reasons.map((reason) => returnReasonText(reason, null, date));
     expect(new Set(texts).size).toBe(reasons.length);
     for (const [index, text] of texts.entries()) expect(text).not.toContain(reasons[index]);
