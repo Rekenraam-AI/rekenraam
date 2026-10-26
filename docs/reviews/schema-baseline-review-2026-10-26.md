@@ -306,8 +306,8 @@ Tests, Backend Coverage, Frontend Check, Integrated Build and E2E Smoke
 (audits) pass. E2E Smoke (app) failed one of 438 cases. In
 `investments-capital-return-reads` (nl, mobile), the reversal click stalled in
 the browser for 28 s while every backend request finished in under 260 ms.
-No evidence links it to this change; it is #414. #405 stays open until a
-hosted E2E run is green.
+No evidence links it to this change; it is #414. The next run, at `0ac0a6cf`,
+passed every job, and #405 is closed.
 
 Follow-ups are tracked on GitHub: #417 (category-version deletion guard),
 #418 (unreferenced search declarations), #419 (reprofile the race suite;

@@ -168,5 +168,6 @@ The browser timeout/reruns are explicit in that record. Retained follow-ups
 are tracked as #417 (category-version deletion guard), #418 (unreferenced
 search declarations), #419 (reprofile against ADR 0016) and #420
 (`verify-backup` exit status). The first hosted run at `4b3ef084` passed every
-job except one unrelated E2E app flake (#414); #405 closes after a green run.
+job except one unrelated E2E app flake (#414). Every job is green at
+`0ac0a6cf`, and #405 is closed.
 No release gate or feature order is changed by the retained opportunities.

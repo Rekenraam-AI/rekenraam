@@ -30,8 +30,8 @@ explicit below. **#402 is delivered with the owner's disposition: ADR 0016
 thresholds amended. #404 followed the same day: explicit statement reuse
 shipped and the native statement cache was declined. #405 is delivered on
 `main` (2026-10-26): the [schema review](reviews/schema-baseline-review-2026-10-26.md)
-records the slimmed baseline, workflow findings and matched measurements. It
-stays open only for a green hosted E2E smoke run (#414).
+records the slimmed baseline, workflow findings and matched measurements.
+Hosted CI is green at `0ac0a6cf`; #405 is closed.
 #403, found on the way, is fixed; #284's owner review is complete. #399
 (app-owned native realized totals), #400 (shared browser review
 lifecycles) and #401 (corporate-action correction preparation) were delivered
@@ -170,7 +170,7 @@ below is execution order, not a chain of hard dependencies.
    | 2 — delivered 2026-10-24 | [#402](https://github.com/sergeyfarin/rekenraam/issues/402) | [Measured](reviews/race-suite-cost-2026-10-24.md): migration replay is 4.5% of application race CPU; growth is schema size (per-connection load, statement compilation) plus new tests. No coverage-preserving test change is justified. Explicit thresholds (ADR 0016 amendment) replace the 200 s trigger; the owner sequenced compilation-cost work as #404. |
    | 3 — delivered 2026-10-24 | [#398](https://github.com/sergeyfarin/rekenraam/issues/398) | Book-wide self-check assertions run in a per-test owned book (`support/owned-book.ts`) with exact status, counts and samples and no outcome branching; transaction facts read the per-transaction diagnostic; a saturated owned book (21 unrelated records) pins the sample cap. |
    | 4 — delivered 2026-10-24 | [#404](https://github.com/sergeyfarin/rekenraam/issues/404) | [Measured](reviews/statement-compilation-2026-10-24.md): 22% of compile time repeats inside a transaction, 47% only across transactions. Track A (statement sets in five hot loops) lowered the app median 223.3 → 219.4 s and the full-gate pair to 255.5/274.1 s, so the act threshold no longer fires (thinly); investigate still does. The native cache measured −4.4% (≈2.7% beyond A) and the owner declined it; `_stmt_cache_size=0` stays. |
-   | 5 — delivered on `main` 2026-10-26; awaiting green E2E CI (#414) | [#405](https://github.com/sergeyfarin/rekenraam/issues/405) | [Reviewed and measured](reviews/schema-baseline-review-2026-10-26.md): one baseline, two dormant tables/fifteen indexes/five views removed; all 164 triggers retained. Fix unused crypto cleanup and validate seed generation through its native consumer. Application median 240.7 → 229.6 s; full-gate application pair 271.8/289.0 → 248.5/262.5 s. Act no longer fires; investigate remains. Follow-ups #417 (category-version deletion guard), #418 (dead search declarations), #419 (reprofile), #420 (`verify-backup` exit status). Hosted CI at `4b3ef084`: backend, coverage, frontend, build and E2E audits pass; E2E app hit an unrelated flake (#414). |
+   | 5 — delivered 2026-10-26 | [#405](https://github.com/sergeyfarin/rekenraam/issues/405) | [Reviewed and measured](reviews/schema-baseline-review-2026-10-26.md): one baseline, two dormant tables/fifteen indexes/five views removed; all 164 triggers retained. Fix unused crypto cleanup and validate seed generation through its native consumer. Application median 240.7 → 229.6 s; full-gate application pair 271.8/289.0 → 248.5/262.5 s. Act no longer fires; investigate remains. Follow-ups #417 (category-version deletion guard), #418 (dead search declarations), #419 (reprofile), #420 (`verify-backup` exit status). Hosted CI green at `0ac0a6cf`; the earlier unrelated E2E app flake is #414. |
 
    These are the chosen maintenance slots, not prerequisites retroactively
    imposed on delivered R13. The separate product-policy
@@ -378,7 +378,7 @@ remain separate from local daily-driver delivery.
 
 ### Before the v0.1.0 tag
 
-- **Schema consolidation delivered on `main`, 2026-10-26:
+- **Schema consolidation delivered, 2026-10-26:
   [#405](https://github.com/sergeyfarin/rekenraam/issues/405).**
   The [review](reviews/schema-baseline-review-2026-10-26.md) and per-object
   inventory retain financial contracts and named evidence with coverage limits.
@@ -387,8 +387,8 @@ remain separate from local daily-driver delivery.
   documented `BREAKING DEV DATABASE` reset; no legacy databases exist.
   Installed-release migrations become append-only at the tag. Separate release
   gates and #395's work order remain unchanged; retained findings do not jump
-  ahead of them. #405 closes after a green hosted E2E smoke run; the first
-  hosted run hit an unrelated browser flake (#414).
+  ahead of them. Hosted CI is green at `0ac0a6cf`; an unrelated browser
+  flake seen on the first hosted run is tracked as #414.
 
 ### Public repository hygiene
 
