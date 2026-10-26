@@ -304,15 +304,13 @@ explicitly not part of financial attribute history.
 Do not physically store `valid_to` in these version tables. Because rows are
 append-only, `valid_to` should be derived for the canonical timeline.
 
-Expose current state through SQLite views:
-
-- `current_account_versions`
-- `current_institution_versions`
-- `current_commodity_versions`
-
-Repository current-state helpers should query these views instead of repeating
-the `MAX(version_seq)` pattern. History and version-list endpoints should query
-the base version tables directly.
+Select current state through the shared repository selector
+`db.CurrentReferenceVersions(ctx, kind)` instead of repeating the
+effective-date/version-sequence pattern. It picks, per entity, the latest
+`effective_from` on or before the operation's owner-local reference date
+(`db.WithReferenceDate`, #385), then the highest `version_seq`. The former
+UTC-dated `current_*_versions` views were removed in the #405 baseline. History
+and version-list endpoints query the base version tables directly.
 
 ## Audit Events
 

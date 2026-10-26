@@ -650,9 +650,11 @@ Rules:
 
 Posting validation must load the account version as of
 `journal_entries.entry_date`, not the current account version as of today.
-`current_account_versions` is useful for current UI state, but it is tied to the
-current date and must not be used to validate backdated transactions. The
-service or trigger should perform a parameterized as-of lookup:
+Current-state selection (`db.CurrentReferenceVersions`, which replaced the
+`current_account_versions` view in #405) is useful for current UI state, but it
+is tied to the owner's current day and must not be used to validate backdated
+transactions. The service or trigger should perform a parameterized as-of
+lookup:
 
 ```sql
 WHERE effective_from <= :entry_date

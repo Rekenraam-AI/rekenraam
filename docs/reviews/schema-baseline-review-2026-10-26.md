@@ -109,20 +109,15 @@ Suggested follow-up acceptance: the same SQL-level attempted removal of a used
 category or holding version refuses atomically; unused custom/starter cleanup
 still works; historical-child and default-payee references still refuse; the
 existing API refusal and error contract remain. This is a bounded database
-consistency task, not a reason to reorder #395.
+consistency task, not a reason to reorder #395. Tracked as #417.
 
 **Retained opportunities, without promoting them into the queue.** The
 unreferenced `InstrumentSearchProvider`/`InstrumentSearchCandidate` declarations
-can be removed in a later focused code cleanup. The unreachable legacy pricing
+can be removed in a later focused code cleanup (#418). The unreachable legacy pricing
 schema probe is already deferred in the
 [owner-reviewed maintainability inventory](maintainability-audit-2026-10-24.md#explicitly-deferred-inventory-original-ranks-713);
 this review supplies fresh schema evidence, not a claim that it was removed.
 No new local work IDs are allocated.
-
-Automatic approval review rejected publishing a GitHub follow-up because it
-could not establish trust/authorization for the destination and payload.
-The findings are therefore recorded here; no alternative external posting was
-attempted.
 
 ## Migration and backup semantics
 
@@ -291,7 +286,6 @@ the complete 12-case audits group passed on rerun. After the unversioned-file
 admission correction, the rebuilt binary passed both owner setup/login
 bootstrap cases. No frontend change was justified by that single timeout.
 This remains an explicitly recorded intermittent validation observation.
-Hosted CI has not been run; no push or publication was requested.
 
 To reproduce, use clean original/final checkouts, run the native probe
 separately in each (versions `0,1,20,27` original, `0,1` proposed), and remove
@@ -304,5 +298,19 @@ script accepts the native captures and reads only index/FK metadata through
 Python SQLite; it does not substitute that engine for native behavior tests.
 
 Local implementation and the required measured acceptance are complete.
-GitHub tracking/publication is unchanged because automatic approval review
-rejected the external follow-up write; the findings and limits remain here.
+
+## Post-push record (2026-10-26)
+
+Hosted CI at `4b3ef084` (the same runtime source as `f4ee790f`): Backend
+Tests, Backend Coverage, Frontend Check, Integrated Build and E2E Smoke
+(audits) pass. E2E Smoke (app) failed one of 438 cases. In
+`investments-capital-return-reads` (nl, mobile), the reversal click stalled in
+the browser for 28 s while every backend request finished in under 260 ms.
+No evidence links it to this change; it is #414. #405 stays open until a
+hosted E2E run is green.
+
+Follow-ups are tracked on GitHub: #417 (category-version deletion guard),
+#418 (unreferenced search declarations), #419 (reprofile the race suite;
+ADR 0016 investigate still fires) and #420 (`verify-backup` reports an
+unrestorable backup with exit status 0). The post-push audit is recorded on
+#405.
