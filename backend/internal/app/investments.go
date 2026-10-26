@@ -47,28 +47,6 @@ var (
 	ErrGainImpactAcknowledgementStale    = db.ErrGainImpactAcknowledgementStale
 )
 
-type DividendProvider interface {
-	FetchDividends(ctx context.Context, request CorporateEventProviderRequest) ([]ProviderInvestmentEvent, error)
-}
-
-type CorporateActionProvider interface {
-	FetchCorporateActions(ctx context.Context, request CorporateEventProviderRequest) ([]ProviderInvestmentEvent, error)
-}
-
-type CorporateEventProviderRequest struct {
-	InstrumentID int64
-	AfterDate    string
-	BeforeDate   string
-}
-
-type ProviderInvestmentEvent struct {
-	ProviderEventID string
-	EventFamily     string
-	EventDate       string
-	NormalizedJSON  string
-	RawJSON         string
-}
-
 type InvestmentInstrument struct {
 	ID                 int64
 	BookID             int64
