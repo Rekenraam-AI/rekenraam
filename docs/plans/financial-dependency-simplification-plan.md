@@ -4,7 +4,8 @@ Owner direction: 2026-10-23, governed by
 [ADR 0019](../adrs/0019-financial-effects-and-repairable-attribution.md).
 This is a design and delivery-boundary plan. #391's cross-family inventory and
 contracts are complete at `4ad8373f772eb02b40126f5e9d746f0eb50c9e79`;
-runtime follow-up #395 is in delivery (cash dividends delivered 2026-10-26).
+runtime follow-up #395 is in delivery (cash dividends and payment in lieu
+delivered 2026-10-26).
 #388/#389/#392/#393/#394 are delivered.
 The earlier comparative baseline is `8549045a4484f01e6e9b28e4f0a5fd6aa8213985`.
 
@@ -427,8 +428,24 @@ now pins payment shape instead. Named cases:
 `TestReplaceDividendDateAcrossReconciledBoundaryRequiresOverride` (out of,
 into and within a reconciled period) and the source-difference assertions in
 `TestImportedDividendCorrectionPreservesCommittedIdentity`. Browser: a 390 px
-correction to another date and CHF cash account. Payment in lieu and
-reinvestment follow as separate slices on the issue.
+correction to another date and CHF cash account.
+
+**Slice 2, payment in lieu (2026-10-26).** The same contract: the service and
+writer no longer pin the replacement's date, cash account and currency; the
+inverse stays on the original's date and accounts; the currency follows the
+cash account. The payment stays lot-free, and #388's attribution patch
+semantics and diagnostics are unchanged. Unlike an imported dividend, no
+source claims a payment in lieu's cash facts: a provider event supplies only
+instrument and ex date (already diagnosed as `provider_attribution_mismatch`),
+and the owner supplies date, account and amount when completing it. So no
+cash-fact disclosure is added; the control is that a provider-linked payment
+keeps its one payment identity, link, raw evidence and refetch dedupe across a
+date/account correction. Named cases:
+`TestReplacePaymentInLieuCorrectsDateCashAccountAndCurrency` (EUR 50 owed /
+9 recovered to USD 55 / 5 on a new account and date, short lot unchanged),
+`TestReplacePaymentInLieuDateAcrossReconciledBoundaryRequiresOverride` and
+`TestPaymentInLieuFieldCorrectionKeepsProviderLinkAndDedupe`. Browser: a 390 px
+correction to another date and CHF cash account. Reinvestment follows.
 
 ### Historical Cash-In-Lieu Entry Delivery (#394, 2026-10-24)
 

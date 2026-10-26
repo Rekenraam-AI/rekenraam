@@ -1,6 +1,6 @@
 import { expect, test, type Page } from './support/fixtures';
 import { apiJSON } from './support/api';
-import { readyForLedger } from './support/ledger';
+import { ensureCurrency, readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
 import { expectNoAccessibilityViolations } from './support/a11y';
 import { readFileSync } from 'node:fs';
@@ -99,6 +99,48 @@ test('a payment in lieu is recorded, corrected and reversed on mobile', async ({
   await page.getByLabel('Reason for reversal').fill('charged in error');
   await page.getByRole('button', { name: 'Review and reverse' }).click();
   await expect.poll(() => expenseBalance(page, s.expenseID)).toBe('0');
+});
+
+// #395: a correction moves the payment to another date and a cash account in
+// another currency; the original is cancelled where it was posted.
+test('a payment in lieu correction changes its date, cash account and currency on mobile', async ({ page }) => {
+  const s = await setup(page);
+  const chf = await ensureCurrency(page, s.csrfToken, 'CHF', 'Swiss franc');
+  const openedOn = daysFromTodayISO(-60);
+  const broker = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', s.csrfToken, {
+    name: `PIL broker CHF ${Date.now()}`, account_class: 'asset', account_kind: 'brokerage_cash',
+    default_commodity_id: chf, allows_postings: true, opened_on: openedOn, effective_from: openedOn
+  });
+  const anyExpense = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', s.csrfToken, {
+    name: `Borrow costs any ${Date.now()}`, account_class: 'expense', account_kind: 'expense',
+    allows_postings: true, opened_on: openedOn, effective_from: openedOn
+  });
+  const payment = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/payment-in-lieu', s.csrfToken, {
+    holding_account_id: s.holdingID, commodity_id: s.commodityID, ex_date: daysFromTodayISO(-10),
+    transaction_date: daysFromTodayISO(-8), cash_account_id: s.cashID, cash_commodity_id: s.currencyID,
+    expense_account_id: anyExpense.id, amount_value: '500', amount_scale: 2
+  });
+
+  await page.goto(`/app/transactions?transaction_id=${payment.id}`);
+  await page.getByRole('button', { name: 'Correct payment in lieu…' }).click();
+  const correction = page.getByRole('dialog', { name: 'Correct payment in lieu' });
+  await expect(correction.getByLabel('Payment date')).toHaveValue(daysFromTodayISO(-8));
+  await correction.getByLabel('Reason for correction').fill('the broker charged it in CHF a day later');
+  await correction.getByLabel('Payment date').fill(daysFromTodayISO(-7));
+  await correction.getByLabel('Cash account').selectOption(String(broker.id));
+  await expect(correction.getByText('(CHF)').first()).toBeVisible();
+  await correction.getByLabel(/Amount owed/).fill('4.80');
+  await correction.getByRole('button', { name: 'Save correction' }).click();
+  await expect(correction).toBeHidden();
+
+  await expect.poll(async () => (await apiJSON<{ effective_transaction_id: number | null }>(page, 'GET',
+    `/api/v1/investments/transactions/${payment.id}/correction-chain`)).effective_transaction_id).not.toBe(payment.id);
+  const chain = await apiJSON<{ effective_payment_in_lieu: { event_date: string; cash_account_id: number; cash_commodity_id: number;
+    amount_value: string; amount_scale: number; ex_date: string | null } }>(page, 'GET',
+    `/api/v1/investments/transactions/${payment.id}/correction-chain`);
+  expect(chain.effective_payment_in_lieu).toMatchObject({ event_date: daysFromTodayISO(-7), cash_account_id: broker.id,
+    cash_commodity_id: chf, amount_value: '480', amount_scale: 2, ex_date: daysFromTodayISO(-10) });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
 test('unsupported short attribution leaves recorded cash effective with a warning', async ({ page }) => {

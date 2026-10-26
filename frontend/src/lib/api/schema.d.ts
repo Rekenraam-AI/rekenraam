@@ -24183,7 +24183,7 @@ export interface paths {
         put?: never;
         /**
          * Replace a posted payment in lieu of a dividend
-         * @description Posts the inverse and corrected payment under one audit event. Holding, instrument and ex-date are optional repairable attribution: omission preserves, null clears, and a value replaces. Payment date, cash account and currency stay fixed. Attribution-only repair nets to zero at every reconciliation boundary and does not change lots or gains. Historical short support and source disagreement are advisory diagnostics.
+         * @description Posts the inverse and corrected payment under one audit event. Holding, instrument and ex-date are optional repairable attribution: omission preserves, null clears, and a value replaces. Payment date, cash account and currency may also be corrected (#395): the inverse cancels the original on its own date and accounts, and every reconciled boundary either journal changes needs the reviewed override. Attribution-only repair nets to zero at every reconciliation boundary and does not change lots or gains. Historical short support and source disagreement are advisory diagnostics.
          */
         post: {
             parameters: {
@@ -32672,7 +32672,7 @@ export interface components {
             status: "passed" | "warning" | "incomplete";
             reasons: ("no_short_at_entitlement_close" | "ex_date_after_payment" | "provider_attribution_mismatch" | "cash_in_lieu_parent_unresolved" | "cash_in_lieu_parent_mismatch")[];
         };
-        /** @description The effective payment in lieu's posted facts, for pre-filling a replacement. Attribution is nullable and repairable; payment date, cash account and currency remain fixed. */
+        /** @description The effective payment in lieu's posted facts, for pre-filling a replacement. Attribution is nullable and repairable; payment date, cash account and currency are correctable financial inputs (#395). */
         InvestmentCorrectionPaymentInLieuTerms: {
             attribution: components["schemas"]["InvestmentAttributionDiagnostic"];
             /** Format: int64 */

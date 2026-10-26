@@ -2,12 +2,10 @@
   import { autofocus } from '#lib/components/autofocus.ts';
   import { untrack } from 'svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { parseISO } from 'date-fns';
   import { commitReview, type CommitReviewState } from '#lib/investments/commit-review.ts';
   import type { ReviewGuards } from '#lib/investments/preview-review.ts';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { m } from '#lib/paraglide/messages.js';
-  import { getLocale } from '#lib/paraglide/runtime.js';
   import { useOwnerToday } from '#lib/dates/owner-date-context.ts';
   import { accountsQueryOptions, type AccountResponse } from '#lib/api/accounts.ts';
   import { currenciesQueryOptions, type CurrencyResponse } from '#lib/api/currencies.ts';
@@ -28,7 +26,8 @@
   import { invalidateInvestmentReads } from './invalidate';
 
   // Cash is required; optional attribution is editable through the same
-  // audited replacement as amount/account corrections.
+  // audited replacement as amount/account corrections. A correction may also
+  // change the payment date, cash account and, with the account, currency (#395).
   let {
     csrfToken,
     onSaved,
@@ -74,7 +73,6 @@
 
   const accounts = $derived(accountsQuery.data?.accounts ?? []);
   const instruments = $derived(instrumentsQuery.data?.instruments ?? []);
-  const accountName = (id: number) => accounts.find((account: AccountResponse) => account.id === id)?.name ?? `#${id}`;
   const holdingAccounts = $derived(accounts.filter((account: AccountResponse) =>
     isSubledgerManagedAccountKind(account.account_kind)));
   const cashAccounts = $derived(accounts.filter((account: AccountResponse) =>
@@ -90,10 +88,12 @@
     !isSubledgerManagedAccountKind(account.account_kind) && (account.status === 'active' || account.id === terms?.recovery_account_id)));
   const currenciesByID = $derived(new Map<number, CurrencyResponse>(
     (currenciesQuery.data?.currencies ?? []).map((currency: CurrencyResponse) => [currency.id, currency])));
-  const cashCommodityID = $derived(terms?.cash_commodity_id ??
-    accounts.find((account: AccountResponse) => String(account.id) === cashAccountID)?.default_commodity_id ?? undefined);
+  // The currency is the cash account's; a correction to an account without a
+  // default commodity keeps the recorded currency.
+  const cashCommodityID = $derived(
+    accounts.find((account: AccountResponse) => String(account.id) === cashAccountID)?.default_commodity_id ??
+      terms?.cash_commodity_id ?? undefined);
   const currencyCode = $derived(cashCommodityID ? currenciesByID.get(cashCommodityID)?.code ?? '' : '');
-  const dateFormatter = $derived(new Intl.DateTimeFormat(getLocale(), { year: 'numeric', month: 'short', day: 'numeric' }));
   const loading = $derived(accountsQuery.isPending || currenciesQuery.isPending || instrumentsQuery.isPending);
   const loadError = $derived(accountsQuery.isError || currenciesQuery.isError || instrumentsQuery.isError);
   const canSubmit = $derived(!loading && !loadError && !!paymentDate &&
@@ -218,28 +218,23 @@
     </div>
   </fieldset>
 
-  {#if initial && terms}
-    <dl class="grid grid-cols-1 gap-2 rounded-(--radius-panel) border border-border p-3 text-sm sm:grid-cols-2">
-      <div><dt class="text-xs text-muted">{m.investments_payment_in_lieu_payment_date()}</dt><dd class="text-foreground">{dateFormatter.format(parseISO(terms.event_date))}</dd></div>
-      <div class="sm:col-span-2"><dt class="text-xs text-muted">{m.investments_form_cash_account()}</dt><dd class="text-foreground">{accountName(terms.cash_account_id)} {currencyCode}</dd></div>
-    </dl>
+  {#if initial}
     <div>
       <label for="pil-reason" class="mb-1 block text-sm font-medium text-foreground">{m.investments_payment_in_lieu_correction_reason()}</label>
       <input id="pil-reason" type="text" {@attach autofocus} bind:value={reason} maxlength="500" required class={inputClass} />
     </div>
-  {:else}
-    <div>
-      <label for="pil-payment-date" class="mb-1 block text-sm font-medium text-foreground">{m.investments_payment_in_lieu_payment_date()}</label>
-      <input id="pil-payment-date" type="date" bind:value={paymentDate} required class={inputClass} />
-    </div>
-    <div>
-      <label for="pil-cash" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_cash_account()}</label>
-      <select id="pil-cash" bind:value={cashAccountID} required class={inputClass}>
-        <option value="">{m.investments_form_select_account()}</option>
-        {#each cashAccounts as account (account.id)}<option value={String(account.id)}>{account.name}</option>{/each}
-      </select>
-    </div>
   {/if}
+  <div>
+    <label for="pil-payment-date" class="mb-1 block text-sm font-medium text-foreground">{m.investments_payment_in_lieu_payment_date()}</label>
+    <input id="pil-payment-date" type="date" bind:value={paymentDate} required class={inputClass} />
+  </div>
+  <div>
+    <label for="pil-cash" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_cash_account()}</label>
+    <select id="pil-cash" bind:value={cashAccountID} required class={inputClass}>
+      <option value="">{m.investments_form_select_account()}</option>
+      {#each cashAccounts as account (account.id)}<option value={String(account.id)}>{account.name}</option>{/each}
+    </select>
+  </div>
 
   <div>
     <label for="pil-amount" class="mb-1 block text-sm font-medium text-foreground">

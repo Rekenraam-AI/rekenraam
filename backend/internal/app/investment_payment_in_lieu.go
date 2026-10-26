@@ -365,13 +365,12 @@ func (s *InvestmentService) ReplacePaymentInLieuReconciliationImpact(ctx context
 // the command nets its financial effects at each reconciliation boundary.
 func (s *InvestmentService) preparePaymentInLieuReplacementWrite(ctx context.Context, input ReplaceInvestmentPaymentInLieuInput) (db.PaymentInLieuOperationRecord, db.CreateTransactionParams, db.CreateTransactionParams, error) {
 	const operationCode = "investment.payment_in_lieu.replace"
-	operation, original, inversePlan, err := s.paymentInLieuCorrectionPlan(ctx, input.OwnerUserID, input.AuthSessionID, input.RequestID,
+	operation, _, inversePlan, err := s.paymentInLieuCorrectionPlan(ctx, input.OwnerUserID, input.AuthSessionID, input.RequestID,
 		input.TransactionID, input.Reason, input.ReconciliationOverride, operationCode)
 	if err != nil {
 		return db.PaymentInLieuOperationRecord{}, db.CreateTransactionParams{}, db.CreateTransactionParams{}, err
 	}
 	replacement := input.Replacement
-	cash := original.JournalEntries[0].Postings[0]
 	if !replacement.HoldingAccountID.Set {
 		replacement.HoldingAccountID = NullableValue(operation.Fact.HoldingAccountID)
 		if operation.Fact.HoldingAccountID == 0 {
@@ -390,11 +389,10 @@ func (s *InvestmentService) preparePaymentInLieuReplacementWrite(ctx context.Con
 			replacement.ExDate.Value = nil
 		}
 	}
-	if replacement.TransactionDate != operation.EventDate ||
-		replacement.CashAccountID != cash.AccountID || replacement.CashCommodityID != cash.CommodityID {
-		return db.PaymentInLieuOperationRecord{}, db.CreateTransactionParams{}, db.CreateTransactionParams{},
-			ValidationError{Message: "replacement must keep the payment date, cash account and currency"}
-	}
+	// Date, cash account and currency are financial inputs the owner may
+	// correct (#395), as for a cash dividend: the inverse cancels the original
+	// on its own date and accounts, and the shared writer reviews every
+	// reconciled boundary either journal changes.
 	replacement.OwnerUserID = input.OwnerUserID
 	replacement.AuthSessionID = input.AuthSessionID
 	replacement.RequestID = input.RequestID

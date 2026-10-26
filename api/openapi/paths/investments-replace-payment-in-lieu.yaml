@@ -4,7 +4,9 @@ post:
     Posts the inverse and corrected payment under one audit event. Holding,
     instrument and ex-date are optional repairable attribution: omission
     preserves, null clears, and a value replaces. Payment date, cash account
-    and currency stay fixed. Attribution-only repair nets to zero at every
+    and currency may also be corrected (#395): the inverse cancels the original
+    on its own date and accounts, and every reconciled boundary either journal
+    changes needs the reviewed override. Attribution-only repair nets to zero at every
     reconciliation boundary and does not change lots or gains. Historical
     short support and source disagreement are advisory diagnostics.
   parameters:

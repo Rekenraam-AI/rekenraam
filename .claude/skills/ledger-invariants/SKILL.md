@@ -258,7 +258,8 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   optional auditable attribution, not write authorization. Entry omission/null
   is unassigned; replacement omission preserves, null clears and values replace.
   Use the existing immutable correction chain; attribution-only repair nets to
-  zero at every checkpoint and changes no lots/gains. Historical support,
+  zero at every checkpoint and changes no lots/gains. Its date, cash account
+  and currency are correctable financial inputs as for cash dividends (#395). Historical support,
   chronology and source disagreement are read-only diagnostics. Preserve source
   identity/evidence across repair. Ordinary writes never enumerate/replay all
   payments; real cover quantities, posting roles, recovery constraints and

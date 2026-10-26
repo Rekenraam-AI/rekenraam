@@ -2581,7 +2581,7 @@ InvestmentCorrectionPaymentInLieuTerms:
   description: >-
     The effective payment in lieu's posted facts, for pre-filling a
     replacement. Attribution is nullable and repairable; payment date, cash
-    account and currency remain fixed.
+    account and currency are correctable financial inputs (#395).
   required: [attribution, holding_account_id, commodity_id, ex_date, event_date, cash_account_id, cash_commodity_id, expense_account_id, amount_value, amount_scale]
   properties:
     attribution:

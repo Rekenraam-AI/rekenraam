@@ -159,7 +159,8 @@ type PaymentInLieuReplacementRecord struct {
 }
 
 // ReplacePaymentInLieu posts the inverse and the corrected payment under one
-// audit event; the replacement may repair its attribution.
+// audit event; the replacement may repair its attribution and correct its
+// date, cash account and currency (#395). The inverse keeps the original's date.
 func (r *InvestmentRepository) ReplacePaymentInLieu(ctx context.Context, expected PaymentInLieuOperationRecord,
 	inverseParams, replacementParams CreateTransactionParams,
 ) (PaymentInLieuReplacementRecord, error) {
@@ -187,7 +188,6 @@ func (r *InvestmentRepository) replacePaymentInLieu(ctx context.Context, expecte
 		!validPaymentInLieuParams(replacementParams) ||
 		replacementParams.Spec.InvestmentOperationKind != "payment_in_lieu" ||
 		inverseParams.Spec.TransactionDate != expected.EventDate ||
-		replacementParams.Spec.TransactionDate != expected.EventDate ||
 		replacementParams.InvestmentCorrectionOfOperationID != expected.OperationID ||
 		replacementParams.InvestmentCorrectionMode != "replace" ||
 		replacementParams.InvestmentCorrectionReason == "" ||
