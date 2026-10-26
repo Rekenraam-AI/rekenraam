@@ -146,13 +146,11 @@ func (s *InvestmentService) prepareReinvestmentReplacementWrite(ctx context.Cont
 	if err != nil {
 		return preparedBuyReplacementWrite{}, err
 	}
+	// Date, holding, instrument and cost currency are correctable (#395)
+	// through the acquisition writer's typed old/new-position replay (T-116):
+	// a dependent disposal, specific-lot election or transfer that the
+	// corrected history cannot satisfy is named and nothing is written.
 	replacement := input.Replacement
-	if replacement.TransactionDate != operation.EventDate ||
-		replacement.HoldingAccountID != operation.AccountID ||
-		replacement.CommodityID != operation.CommodityID ||
-		replacement.CashCommodityID != operation.CostCommodityID {
-		return preparedBuyReplacementWrite{}, ValidationError{Message: "replacement must keep the reinvested dividend date, holding account, instrument and currency"}
-	}
 	replacement.OwnerUserID = input.OwnerUserID
 	replacement.AuthSessionID = input.AuthSessionID
 	replacement.RequestID = input.RequestID

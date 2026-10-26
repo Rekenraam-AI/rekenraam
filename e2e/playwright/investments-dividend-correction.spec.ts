@@ -219,4 +219,59 @@ test.describe('on a phone', () => {
     await expect(saleRow).not.toContainText('140.00');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
+
+  // #395: a reinvestment moves to another holding and a later date; the gain
+  // review names the earlier sale it restates before anything is written.
+  test('correcting a reinvested dividend date and holding restates the later sale', async ({ page }) => {
+    const s = await setup(page, 'RMV');
+    const openedOn = daysFromTodayISO(-60);
+    const name = `Moved ${s.suffix}`;
+    const instrument = await apiJSON<{ id: number; commodity_id: number }>(page, 'POST', '/api/v1/investments/instruments', s.csrfToken, {
+      commodity_code: s.suffix.toUpperCase(), instrument_type: 'stock', display_name: name, symbol: s.suffix.toUpperCase(),
+      quote_commodity_id: s.currencyID, trading_commodity_id: s.currencyID, quantity_scale: 3, price_scale: 2, effective_from: openedOn
+    });
+    const holding = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/holding-accounts', s.csrfToken, {
+      instrument_id: instrument.id, name: `Moved holding ${s.suffix}`, opened_on: openedOn, effective_from: openedOn
+    });
+    const otherHolding = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/investments/holding-accounts', s.csrfToken, {
+      instrument_id: instrument.id, name: `Other broker ${s.suffix}`, opened_on: openedOn, effective_from: openedOn
+    });
+    const reinvestment = await apiJSON<{ transaction: { id: number } }>(page, 'POST', '/api/v1/investments/reinvested-dividend', s.csrfToken, {
+      transaction_date: daysFromTodayISO(-30), commodity_id: instrument.commodity_id, holding_account_id: holding.id,
+      income_account_id: s.incomeID, quantity_value: '10', quantity_scale: 0, amount_value: '2000', amount_scale: 2,
+      cash_commodity_id: s.currencyID
+    });
+    const trade = (side: 'buy' | 'sell', daysAgo: number, quantity: string, cash: string) =>
+      apiJSON(page, 'POST', `/api/v1/investments/${side}`, s.csrfToken, {
+        transaction_date: daysFromTodayISO(-daysAgo), commodity_id: instrument.commodity_id, holding_account_id: holding.id,
+        cash_account_id: s.cashID, quantity_value: quantity, quantity_scale: 0, cash_amount_value: cash,
+        cash_amount_scale: 2, cash_commodity_id: s.currencyID, cost_basis_method: 'fifo'
+      });
+    await trade('buy', 20, '10', '20000');
+    await trade('sell', 10, '5', '15000');
+
+    await page.goto(`/app/transactions?transaction_id=${reinvestment.transaction.id}`);
+    await page.getByRole('button', { name: 'Correct reinvested dividend…' }).click();
+    const form = page.getByRole('dialog', { name: 'Correct this reinvested dividend' });
+    await expect(form.getByLabel('Date', { exact: true })).toHaveValue(daysFromTodayISO(-30));
+    await form.getByLabel('Reason for correction').fill('reinvested later, at the other broker');
+    await form.getByLabel('Date', { exact: true }).fill(daysFromTodayISO(-15));
+    await form.getByLabel('Holding account').selectOption(String(otherHolding.id));
+    await form.getByRole('button', { name: 'Review and replace' }).click();
+
+    // The sale now takes the bought shares: basis 10.00 → 100.00.
+    const dialog = page.getByRole('alertdialog');
+    await expect(dialog).toContainText(`Sale on ${daysFromTodayISO(-10)}: basis 10.00 → 100.00, gain 140.00 → 50.00`);
+    await dialog.getByRole('button', { name: 'Accept changed gains' }).click();
+    await expect(dialog).toBeHidden();
+    await expect(form).toBeHidden();
+
+    const replacement = await chainEffective(page, reinvestment.transaction.id);
+    expect(replacement).not.toBe(reinvestment.transaction.id);
+    const chain = await apiJSON<{ effective_reinvestment: { event_date: string; holding_account_id: number; commodity_id: number } }>(
+      page, 'GET', `/api/v1/investments/transactions/${replacement}/correction-chain`);
+    expect(chain.effective_reinvestment).toMatchObject({ event_date: daysFromTodayISO(-15), holding_account_id: otherHolding.id,
+      commodity_id: instrument.commodity_id });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
 });

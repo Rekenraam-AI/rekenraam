@@ -1339,7 +1339,7 @@
   "transactions_investment_reverse_reinvestment_copy": "Une opération inverse est enregistrée et les affectations de lots ultérieures sont recalculées sans les titres réinvestis. Une vente ultérieure qui ne serait plus couverte bloque l'annulation. L'original reste dans l'historique.",
   "transactions_investment_replace_reinvestment_action": "Corriger le dividende réinvesti…",
   "transactions_investment_replace_reinvestment_title": "Corriger ce dividende réinvesti",
-  "transactions_investment_replace_reinvestment_copy": "Saisissez la quantité et le montant corrigés. La date, le compte titres et la devise restent inchangés ; les ventes ultérieures sont recalculées et l'original reste dans l'historique d'audit.",
+  "transactions_investment_replace_reinvestment_copy": "Saisissez les données corrigées. La date, le compte-titres, l'instrument et la devise peuvent changer ; les deux positions et les ventes ultérieures sont recalculées, une vente que l'historique corrigé ne peut couvrir est signalée, et l'original reste dans l'historique d'audit.",
   "transactions_investment_split_adjustment_note": "Cette transaction ajuste la division ci-dessus : une écriture antérieure a modifié le nombre d’actions qu’elle a multipliées.",
   "investments_split_replace_help": "Modifiez la date ou le rapport. La division d’origine est contrepassée et la division corrigée est enregistrée à la même place dans la journée ; les ventes ultérieures sont recalculées.",
   "investments_split_replace_reason": "Motif de la correction",
@@ -1737,5 +1737,6 @@
   "investments_dividend_source_field_cash_account": "compte de trésorerie",
   "investments_dividend_source_field_currency": "devise",
   "investments_dividend_source_field_amount": "montant",
-  "investments_dividend_source_field_withholding": "retenue"
+  "investments_dividend_source_field_withholding": "retenue",
+  "investments_form_currency": "Devise"
 }

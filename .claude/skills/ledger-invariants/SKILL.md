@@ -264,6 +264,9 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   identity/evidence across repair. Ordinary writes never enumerate/replay all
   payments; real cover quantities, posting roles, recovery constraints and
   financial reconciliation guards remain active.
+- A reinvested dividend's date, holding, instrument and cost currency are
+  correctable through the acquisition writer's old/new-position replay
+  (#395, T-116); it stays a `reinvested_dividend` opening, never a cash buy.
 - Effective reads use the views `effective_investment_operations`,
   `latest_investment_disposal_revisions`, `latest_investment_split_revisions`,
   `effective_investment_lot_events` and `effective_investment_transfer_links`;

@@ -173,7 +173,7 @@ below is execution order, not a chain of hard dependencies.
    | 4 — delivered 2026-10-24 | [#404](https://github.com/sergeyfarin/rekenraam/issues/404) | [Measured](reviews/statement-compilation-2026-10-24.md): 22% of compile time repeats inside a transaction, 47% only across transactions. Track A (statement sets in five hot loops) lowered the app median 223.3 → 219.4 s and the full-gate pair to 255.5/274.1 s, so the act threshold no longer fires (thinly); investigate still does. The native cache measured −4.4% (≈2.7% beyond A) and the owner declined it; `_stmt_cache_size=0` stays. |
    | 5 — delivered 2026-10-26 | [#405](https://github.com/sergeyfarin/rekenraam/issues/405) | [Reviewed and measured](reviews/schema-baseline-review-2026-10-26.md): one baseline, two dormant tables/fifteen indexes/five views removed; all 164 triggers retained. Fix unused crypto cleanup and validate seed generation through its native consumer. Application median 240.7 → 229.6 s; full-gate application pair 271.8/289.0 → 248.5/262.5 s. Act no longer fires; investigate remains. Follow-ups #417 (category-version deletion guard), #418 (dead search declarations; delivered 2026-10-26), #419 (reprofile), #420 (`verify-backup` exit status). Hosted CI green at `0ac0a6cf`; the earlier unrelated E2E app flake is #414. |
 
-   #405's retained follow-ups are outside this queue and do not reorder #395.
+   #405's retained follow-ups are outside this queue.
    Three are CI/browser reliability:
    [#414](https://github.com/sergeyfarin/rekenraam/issues/414) (P3; a
    capital-return reversal flake that turned `main` red once; failed attempts
@@ -202,11 +202,11 @@ below is execution order, not a chain of hard dependencies.
    (2026-10-24, owner-requested ahead of this slot): `previewReview` and
    `commitReview` own the compatible browser review lifecycles, including
    #395's dividend-correction and payment-in-lieu sites.
-   Deliver [#395](https://github.com/sergeyfarin/rekenraam/issues/395)'s
-   separate financial-field correction feature using the existing forms and
-   extracted controller where applicable. #395 extends existing controllers;
-   it does not add four controllers. This is scheduling, not a technical
-   blocker inferred from four product families.
+   [#395](https://github.com/sergeyfarin/rekenraam/issues/395)'s
+   financial-field correction feature is delivered (2026-10-26, three slices:
+   cash dividends and standalone withholding, payments in lieu, reinvested
+   dividends) through the existing forms, writers and review controllers; see
+   the [plan's delivery record](plans/financial-dependency-simplification-plan.md#financial-field-correction-delivery-395).
    Independent corporate-action preparation
    [#401](https://github.com/sergeyfarin/rekenraam/issues/401) is delivered
    (2026-10-24, owner-requested ahead of this slot): one leaf owns the
@@ -238,8 +238,8 @@ queue: [#411](https://github.com/sergeyfarin/rekenraam/issues/411) for target
 allocation/drift, and [#412](https://github.com/sergeyfarin/rekenraam/issues/412)
 for advisory rebalancing. Each needs its own accepted contract; rebalancing
 depends on the target model. No trade execution is implied. Keeping these
-issues does not move them ahead of #395 or the retained release/readiness
-work above. [#413](https://github.com/sergeyfarin/rekenraam/issues/413), also
+issues does not move them ahead of the retained release/readiness work
+above. [#413](https://github.com/sergeyfarin/rekenraam/issues/413), also
 P3, measures the returns read (including `instruments=true` and saved runs)
 on a large investment book, which the large-book harness has never seeded. It
 is evidence work, not a gate. #405 has since changed the cost baseline, so
@@ -404,8 +404,7 @@ remain separate from local daily-driver delivery.
   packages the reviewed schema. Head is 1, generation 20261026. Requires the
   documented `BREAKING DEV DATABASE` reset; no legacy databases exist.
   Installed-release migrations become append-only at the tag. Separate release
-  gates and #395's work order remain unchanged; retained findings do not jump
-  ahead of them. Hosted CI is green at `0ac0a6cf`; an unrelated browser
+  gates remain unchanged; retained findings do not jump ahead of them. Hosted CI is green at `0ac0a6cf`; an unrelated browser
   flake seen on the first hosted run is tracked as #414.
 
 ### Public repository hygiene

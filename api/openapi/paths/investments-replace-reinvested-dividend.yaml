@@ -4,8 +4,12 @@ post:
     Posts the inverse and a corrected reinvestment — quantity, amount and income
     account — opens a new lot, replays later long disposals, retires the
     original trade price and updates reconciliation under one audit event
-    (T-115). The replacement keeps the date, holding account, instrument and
-    currency. A non-empty gain change set requires the preview's exact
+    (T-115). The replacement may also correct the date, holding account,
+    instrument and cost currency (#395): the source and new positions replay
+    in the same transaction, and a later disposal, specific-lot election or
+    transfer the corrected history cannot satisfy refuses with
+    INVESTMENT_BUY_DEPENDENCY, writing nothing. It stays an income-funded
+    reinvestment. A non-empty gain change set requires the preview's exact
     gain_impact_acknowledgement.
   parameters:
     - in: path

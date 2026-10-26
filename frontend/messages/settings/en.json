@@ -1368,7 +1368,7 @@
   "transactions_investment_reverse_reinvestment_copy": "This posts an inverse transaction and recalculates later lot allocations without the reinvested shares. A later sale that cannot be covered will block the reversal. The original stays in history.",
   "transactions_investment_replace_reinvestment_action": "Correct reinvested dividend…",
   "transactions_investment_replace_reinvestment_title": "Correct this reinvested dividend",
-  "transactions_investment_replace_reinvestment_copy": "Enter the corrected quantity and amount. The date, holding account and currency stay as recorded; later sales are recalculated and the original stays in the audit history.",
+  "transactions_investment_replace_reinvestment_copy": "Enter the corrected facts. The date, holding account, instrument and currency may change; both positions and later sales are recalculated, a sale the corrected history cannot satisfy is named, and the original stays in the audit history.",
   "transactions_investment_split_adjustment_note": "This transaction adjusts the split above: an earlier entry changed how many shares it multiplied.",
   "investments_split_replace_help": "Change the date or ratio. The original split is reversed and the corrected one is recorded at the same place in that day; later sales are recalculated.",
   "investments_split_replace_reason": "Reason for correction",
@@ -1737,5 +1737,6 @@
   "investments_dividend_source_field_cash_account": "cash account",
   "investments_dividend_source_field_currency": "currency",
   "investments_dividend_source_field_amount": "amount",
-  "investments_dividend_source_field_withholding": "withholding"
+  "investments_dividend_source_field_withholding": "withholding",
+  "investments_form_currency": "Currency"
 }

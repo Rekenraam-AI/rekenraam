@@ -1,7 +1,6 @@
 <script lang="ts">
   import { autofocus } from '#lib/components/autofocus.ts';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { parseISO } from 'date-fns';
   import { untrack } from 'svelte';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import { m } from '#lib/paraglide/messages.js';
@@ -31,7 +30,9 @@
   // Replaces a posted cash dividend or reinvested dividend (T-115). A cash
   // dividend's date, cash account and currency are correctable (#395), with
   // the currency following the cash account as on entry; its payment shape is
-  // fixed. A reinvestment's date, holding and currency stay read-only here.
+  // fixed. A reinvestment's date, holding, instrument and cost currency are
+  // correctable through old/new-position replay; the gain review names any
+  // later sale it restates.
   let {
     csrfToken,
     transactionID,
@@ -77,6 +78,9 @@
   let exDate = $state(initialDividend?.ex_date ?? '');
   let transactionDate = $state(terms.event_date);
   let cashAccountID = $state(initialDividend ? String(initialDividend.cash_account_id) : '');
+  let holdingAccountID = $state(initialReinvestment ? String(initialReinvestment.holding_account_id) : '');
+  let instrumentCommodityID = $state(initialReinvestment ? String(initialReinvestment.commodity_id) : '');
+  let costCommodityID = $state(initialReinvestment ? String(initialReinvestment.cash_commodity_id) : '');
   let pending = $state(false);
   let formError = $state<unknown>(undefined);
 
@@ -87,7 +91,6 @@
   let review = $state<CommitReviewState<Pending> | null>(null);
 
   const accounts = $derived(accountsQuery.data?.accounts ?? []);
-  const accountName = (id: number) => accounts.find((account: AccountResponse) => account.id === id)?.name ?? `#${id}`;
   const incomeAccounts = $derived(accounts.filter((account: AccountResponse) =>
     account.account_class === 'income' && ((account.status === 'active' && account.allows_postings) || account.id === terms.income_account_id)));
   // Match the backend tax roles; retain the original account even if archived.
@@ -107,14 +110,16 @@
   const cashCommodityID = $derived(initialDividend
     ? (cashAccounts.find((account: AccountResponse) => String(account.id) === cashAccountID)?.default_commodity_id ??
       initialDividend.cash_commodity_id)
-    : terms.cash_commodity_id);
+    : Number(costCommodityID));
+  // The holdings a reinvestment may open its lot in, retaining the recorded one.
+  const holdingAccounts = $derived(accounts.filter((account: AccountResponse) =>
+    (['security_holding', 'fund_holding'].includes(account.account_kind) && account.status === 'active') ||
+    account.id === initialReinvestment?.holding_account_id));
   const currencyCode = $derived(currenciesByID.get(cashCommodityID)?.code ?? '');
   const gainRows = $derived(review?.gainImpact
     ? gainImpactRows(review.gainImpact.changes, gainImpactCurrency(currenciesByID), getLocale()) : []);
-  const dateLabel = $derived(new Intl.DateTimeFormat(getLocale(), { year: 'numeric', month: 'short', day: 'numeric' })
-    .format(parseISO(terms.event_date)));
   const canSubmit = $derived(!!reason.trim() && amountStr.trim() !== '' && transactionDate !== '' &&
-    (reinvested || cashAccountID !== '') && (withholdingOnly ? withholdingAccountID !== '' : incomeAccountID !== '') &&
+    (reinvested ? holdingAccountID !== '' && instrumentCommodityID !== '' && costCommodityID !== '' : cashAccountID !== '') && (withholdingOnly ? withholdingAccountID !== '' : incomeAccountID !== '') &&
     (!reinvested || quantityStr.trim() !== '') &&
     (!showWithholding || withholdingStr.trim() === '' || withholdingAccountID !== ''));
 
@@ -145,8 +150,8 @@
     if (initialReinvestment) {
       if (!quantity) return;
       target = { kind: 'reinvested', payload: {
-        transaction_date: initialReinvestment.event_date, commodity_id: initialReinvestment.commodity_id,
-        holding_account_id: initialReinvestment.holding_account_id, cash_commodity_id: initialReinvestment.cash_commodity_id,
+        transaction_date: transactionDate, commodity_id: Number(instrumentCommodityID),
+        holding_account_id: Number(holdingAccountID), cash_commodity_id: Number(costCommodityID),
         income_account_id: Number(incomeAccountID), quantity_value: quantity.value, quantity_scale: quantity.scale,
         amount_value: amount.value, amount_scale: amount.scale, memo: memo.trim() || undefined,
         payee_id: initialReinvestment.payee_id
@@ -228,26 +233,40 @@
 
   {#if initialDividend}<DividendSourceDifferences differences={initialDividend.source_differences} />{/if}
 
+  <div>
+    <label for="dividend-correction-date" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_date()}</label>
+    <input id="dividend-correction-date" type="date" bind:value={transactionDate} required
+      class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
+  </div>
   {#if initialReinvestment}
-    <dl class="grid grid-cols-1 gap-2 rounded-(--radius-panel) border border-border p-3 text-sm sm:grid-cols-2">
-      <div>
-        <dt class="text-xs text-muted">{m.investments_form_date()}</dt>
-        <dd class="font-medium text-foreground">{dateLabel}</dd>
-      </div>
-      <div>
-        <dt class="text-xs text-muted">{m.investments_form_holding_account()}</dt>
-        <dd class="font-medium text-foreground">
-          {accountName(initialReinvestment.holding_account_id)}
-          {#if currencyCode}<span class="text-muted"> · {currencyCode}</span>{/if}
-        </dd>
-      </div>
-    </dl>
-  {:else}
     <div>
-      <label for="dividend-correction-date" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_date()}</label>
-      <input id="dividend-correction-date" type="date" bind:value={transactionDate} required
-        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground" />
+      <label for="dividend-correction-holding" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_holding_account()}</label>
+      <select id="dividend-correction-holding" bind:value={holdingAccountID} required
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground">
+        {#each holdingAccounts as account (account.id)}<option value={String(account.id)}>{account.name}</option>{/each}
+      </select>
     </div>
+    <div>
+      <label for="dividend-correction-instrument" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_instrument()}</label>
+      <select id="dividend-correction-instrument" bind:value={instrumentCommodityID} required
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground">
+        {#if !(instrumentsQuery.data?.instruments ?? []).some((instrument) => String(instrument.commodity_id) === instrumentCommodityID)}
+          <option value={instrumentCommodityID}>#{instrumentCommodityID}</option>
+        {/if}
+        {#each instrumentsQuery.data?.instruments ?? [] as instrument (instrument.commodity_id)}
+          <option value={String(instrument.commodity_id)}>{instrument.display_name} ({instrument.symbol || instrument.commodity_code})</option>
+        {/each}
+      </select>
+    </div>
+    <div>
+      <label for="dividend-correction-currency" class="mb-1 block text-sm font-medium text-foreground">{m.investments_form_currency()}</label>
+      <select id="dividend-correction-currency" bind:value={costCommodityID} required
+        class="w-full rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm text-foreground">
+        {#if !currenciesByID.has(Number(costCommodityID))}<option value={costCommodityID}>#{costCommodityID}</option>{/if}
+        {#each [...currenciesByID.values()] as currency (currency.id)}<option value={String(currency.id)}>{currency.code}</option>{/each}
+      </select>
+    </div>
+  {:else}
     <div>
       <label for="dividend-correction-cash-account" class="mb-1 block text-sm font-medium text-foreground">
         {m.investments_form_cash_account()}

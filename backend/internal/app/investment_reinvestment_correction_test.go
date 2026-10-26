@@ -249,11 +249,15 @@ func TestReinvestmentAndBuyCorrectionsStayInTheirFamilies(t *testing.T) {
 	_, err = f.investmentService.ReverseReinvestedDividendReconciliationImpact(ctx, ReverseReinvestedDividendInput{
 		OwnerUserID: f.ownerUserID, TransactionID: buy.Transaction.ID, Reason: "wrong command"})
 	require.ErrorIs(t, err, ErrInvestmentReinvestmentNotFound)
+	// Field changes are correctable within the family (#395); the family is not.
+	_, err = f.investmentService.ReplaceBuyReconciliationImpact(ctx, ReplaceInvestmentBuyInput{
+		OwnerUserID: f.ownerUserID, TransactionID: reinvestment.Transaction.ID, Reason: "as a purchase",
+		Replacement: tradeOn(f, f.holdingAccountID, "2026-01-01", 10, 2000)})
+	require.ErrorIs(t, err, ErrInvestmentBuyNotFound, "a reinvestment is never replaced by a cash purchase")
 	moved := reinvestmentInput(f, "2026-01-02", 10, 2000)
 	_, err = f.investmentService.ReplaceReinvestedDividendReconciliationImpact(ctx, ReplaceReinvestedDividendInput{
 		OwnerUserID: f.ownerUserID, TransactionID: reinvestment.Transaction.ID, Reason: "moved", Replacement: moved})
-	var validation ValidationError
-	require.ErrorAs(t, err, &validation, "date changes are a separate correction family")
+	require.NoError(t, err)
 }
 
 func reconcileHolding(t *testing.T, f *investmentsTestFixture, statementDate string, balance int64) int64 {

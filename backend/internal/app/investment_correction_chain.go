@@ -168,7 +168,8 @@ type InvestmentCorrectionDividendTerms struct {
 }
 
 // InvestmentCorrectionReinvestmentTerms are an effective reinvested
-// dividend's posted facts. Date, holding, instrument and currency are fixed.
+// dividend's posted facts. Date, holding, instrument and currency are
+// correctable through old/new-position replay (#395).
 type InvestmentCorrectionReinvestmentTerms struct {
 	EventDate        string
 	HoldingAccountID int64

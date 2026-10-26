@@ -2605,7 +2605,8 @@ InvestmentCorrectionReinvestmentTerms:
   type: object
   description: >-
     The effective reinvested dividend's posted facts, for pre-filling a
-    replacement. Date, holding account, instrument and currency are fixed.
+    replacement. Date, holding account, instrument and currency are
+    correctable through old/new-position replay (#395).
   required: [event_date, holding_account_id, commodity_id, cash_commodity_id, income_account_id, quantity_value, quantity_scale, amount_value, amount_scale]
   properties:
     event_date: { type: string, format: date }

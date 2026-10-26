@@ -4,9 +4,7 @@ Owner direction: 2026-10-23, governed by
 [ADR 0019](../adrs/0019-financial-effects-and-repairable-attribution.md).
 This is a design and delivery-boundary plan. #391's cross-family inventory and
 contracts are complete at `4ad8373f772eb02b40126f5e9d746f0eb50c9e79`;
-runtime follow-up #395 is in delivery (cash dividends and payment in lieu
-delivered 2026-10-26).
-#388/#389/#392/#393/#394 are delivered.
+#388/#389/#392/#393/#394/#395 are delivered.
 The earlier comparative baseline is `8549045a4484f01e6e9b28e4f0a5fd6aa8213985`.
 
 Delivery acceptance and progress live in
@@ -445,7 +443,26 @@ date/account correction. Named cases:
 9 recovered to USD 55 / 5 on a new account and date, short lot unchanged),
 `TestReplacePaymentInLieuDateAcrossReconciledBoundaryRequiresOverride` and
 `TestPaymentInLieuFieldCorrectionKeepsProviderLinkAndDedupe`. Browser: a 390 px
-correction to another date and CHF cash account. Reinvestment follows.
+correction to another date and CHF cash account.
+
+**Slice 3, reinvested dividend (2026-10-26).** Only the service check pinned
+date, holding, instrument and cost currency; the acquisition writer already
+replays typed old/new positions for buys (T-116), so the reinvestment uses the
+same lifecycle unchanged. The replacement stays an income-funded
+`reinvested_dividend` opening, never a cash purchase or a generic dividend.
+Later FIFO, average-cost and specific-lot disposals and transfers replay or
+refuse with the dependency named; changed gains need the exact preview
+acknowledgement; the original implied price is retired and the replacement's
+sits on its corrected date; a checkpoint the move crosses needs the reviewed
+override. The retired policy assertion in
+`TestReinvestmentAndBuyCorrectionsStayInTheirFamilies` now pins the family
+fence (a reinvestment is never replaced through the buy command). Named cases
+and browser coverage are listed in the feature ledger. Imported reinvestments
+remain outside native correction, as before.
+
+**Disposition.** #395's acceptance is met across all four families and the
+issue is closed. Saved report bytes and source evidence were not touched by
+any slice; their existing immutability tests remain the control.
 
 ### Historical Cash-In-Lieu Entry Delivery (#394, 2026-10-24)
 

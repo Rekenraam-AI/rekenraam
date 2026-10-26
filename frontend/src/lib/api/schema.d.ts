@@ -24542,7 +24542,7 @@ export interface paths {
         put?: never;
         /**
          * Replace a posted reinvested dividend
-         * @description Posts the inverse and a corrected reinvestment — quantity, amount and income account — opens a new lot, replays later long disposals, retires the original trade price and updates reconciliation under one audit event (T-115). The replacement keeps the date, holding account, instrument and currency. A non-empty gain change set requires the preview's exact gain_impact_acknowledgement.
+         * @description Posts the inverse and a corrected reinvestment — quantity, amount and income account — opens a new lot, replays later long disposals, retires the original trade price and updates reconciliation under one audit event (T-115). The replacement may also correct the date, holding account, instrument and cost currency (#395): the source and new positions replay in the same transaction, and a later disposal, specific-lot election or transfer the corrected history cannot satisfy refuses with INVESTMENT_BUY_DEPENDENCY, writing nothing. It stays an income-funded reinvestment. A non-empty gain change set requires the preview's exact gain_impact_acknowledgement.
          */
         post: {
             parameters: {
@@ -32701,7 +32701,7 @@ export interface components {
             /** Format: int64 */
             payee_id?: number;
         };
-        /** @description The effective reinvested dividend's posted facts, for pre-filling a replacement. Date, holding account, instrument and currency are fixed. */
+        /** @description The effective reinvested dividend's posted facts, for pre-filling a replacement. Date, holding account, instrument and currency are correctable through old/new-position replay (#395). */
         InvestmentCorrectionReinvestmentTerms: {
             /** Format: date */
             event_date: string;

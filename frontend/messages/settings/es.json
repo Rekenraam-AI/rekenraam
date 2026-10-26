@@ -1339,7 +1339,7 @@
   "transactions_investment_reverse_reinvestment_copy": "Se registra una operación inversa y se recalculan las asignaciones de lotes posteriores sin los títulos reinvertidos. Una venta posterior que quede sin cubrir bloquea la reversión. El original permanece en el historial.",
   "transactions_investment_replace_reinvestment_action": "Corregir dividendo reinvertido…",
   "transactions_investment_replace_reinvestment_title": "Corregir este dividendo reinvertido",
-  "transactions_investment_replace_reinvestment_copy": "Introduzca la cantidad y el importe corregidos. La fecha, la cuenta de valores y la moneda se mantienen; las ventas posteriores se recalculan y el original permanece en el historial de auditoría.",
+  "transactions_investment_replace_reinvestment_copy": "Introduzca los datos corregidos. La fecha, la cuenta de valores, el instrumento y la moneda pueden cambiar; se recalculan ambas posiciones y las ventas posteriores, se indica cualquier venta que el historial corregido no pueda cubrir y el original permanece en el historial de auditoría.",
   "transactions_investment_split_adjustment_note": "Esta transacción ajusta el desdoblamiento anterior: una operación previa cambió cuántas acciones multiplicó.",
   "investments_split_replace_help": "Cambie la fecha o la proporción. El desdoblamiento original se revierte y el corregido se registra en la misma posición de ese día; las ventas posteriores se recalculan.",
   "investments_split_replace_reason": "Motivo de la corrección",
@@ -1737,5 +1737,6 @@
   "investments_dividend_source_field_cash_account": "cuenta de efectivo",
   "investments_dividend_source_field_currency": "moneda",
   "investments_dividend_source_field_amount": "importe",
-  "investments_dividend_source_field_withholding": "retención"
+  "investments_dividend_source_field_withholding": "retención",
+  "investments_form_currency": "Moneda"
 }
