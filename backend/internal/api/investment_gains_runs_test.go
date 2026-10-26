@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"rekenraam/backend/internal/app"
 	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/exact"
@@ -290,7 +291,7 @@ func TestInvestmentGainsRunRetainsUnavailableFiguresAndCapturedCurrencyMetadata(
  symbol, display_symbol, name, standard_scale, max_quantity_scale, metadata_json, change_audit_event_id)
  SELECT commodity_id, version_seq + 1, effective_from, recorded_at, changed_by_user_id, 'later metadata fixture', status,
  symbol, display_symbol, 'Later name', 3, max_quantity_scale, metadata_json, change_audit_event_id
- FROM current_commodity_versions WHERE commodity_id = ?`, f.commodityID)
+ FROM `+db.CurrentReferenceVersions(context.Background(), "commodity")+` WHERE commodity_id = ?`, f.commodityID)
 	require.NoError(t, err)
 	res = doInvestmentRequest(t, handler, f.sessionCookie, "", http.MethodGet, "/api/v1/investments/gains/runs/"+strconv.FormatInt(run.ID, 10)+"?download=true", nil, http.StatusOK)
 	assert.Contains(t, res.Header().Get("Content-Disposition"), "rekenraam-gains-run-")

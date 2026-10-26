@@ -30,13 +30,14 @@ var ErrRestoreSchemaNewer = errors.New("backup schema is newer than this build")
 
 // BackupInspection is what verify-backup reports.
 type BackupInspection struct {
-	Path            string
-	ByteSize        int64
-	SchemaVersion   int64
-	BinaryVersion   int64
-	IntegrityOK     bool
-	RowCounts       map[string]int64
-	SealedRowCounts map[string]int64
+	Path             string
+	ByteSize         int64
+	SchemaVersion    int64
+	BinaryVersion    int64
+	BaselineIdentity int
+	IntegrityOK      bool
+	RowCounts        map[string]int64
+	SealedRowCounts  map[string]int64
 }
 
 // InspectBackup opens a backup read-only and answers the questions a person
@@ -65,6 +66,9 @@ func InspectBackup(ctx context.Context, backupPath string) (BackupInspection, er
 		return inspection, fmt.Errorf("open backup: %w", err)
 	}
 	defer backupDatabase.Close()
+	if err := backupDatabase.QueryRowContext(ctx, `PRAGMA user_version`).Scan(&inspection.BaselineIdentity); err != nil {
+		return inspection, fmt.Errorf("read backup baseline identity: %w", err)
+	}
 
 	if err := backupDatabase.QueryRowContext(ctx, `SELECT COALESCE(MAX(version_id), 0) FROM goose_db_version`).Scan(&inspection.SchemaVersion); err != nil {
 		return inspection, fmt.Errorf("read backup schema version: %w", err)
@@ -196,6 +200,9 @@ func RestoreSQLiteDatabase(ctx context.Context, backupPath string, databaseURL s
 	inspection, err := InspectBackup(ctx, backupPath)
 	if err != nil {
 		return RestoreResult{}, err
+	}
+	if inspection.BaselineIdentity != BaselineIdentity {
+		return RestoreResult{}, ErrIncompatibleBaseline
 	}
 	if inspection.SchemaVersion > inspection.BinaryVersion {
 		return RestoreResult{}, fmt.Errorf("%w: backup is at migration %d, this build knows %d",

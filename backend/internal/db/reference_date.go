@@ -20,13 +20,14 @@ func ReferenceDate(ctx context.Context) string {
 }
 
 // CurrentReferenceVersions supplies the same effective-date/version-sequence
-// ordering as the schema's legacy UTC views, with the application's date.
-// Unwired repository callers retain the legacy view; application operations
+// ordering as the former UTC views, with the application's date.
+// Unwired repository callers retain UTC selection; application operations
 // establish their reference date before opening a transaction or read snapshot.
 func CurrentReferenceVersions(ctx context.Context, kind string) string {
 	date := ReferenceDate(ctx)
-	if date == "" {
-		return "current_" + kind + "_versions"
+	dateSQL := "date('now')"
+	if date != "" {
+		dateSQL = "'" + strings.ReplaceAll(date, "'", "''") + "'"
 	}
 	table, key := kind+"_versions", kind+"_id"
 	if kind == "investment_instrument" {
@@ -36,6 +37,6 @@ func CurrentReferenceVersions(ctx context.Context, kind string) string {
 		WHERE reference_version.id = (
 			SELECT candidate.id FROM ` + table + ` candidate
 			WHERE candidate.` + key + ` = reference_version.` + key + `
-			  AND candidate.effective_from <= '` + strings.ReplaceAll(date, "'", "''") + `'
+			  AND candidate.effective_from <= ` + dateSQL + `
 			ORDER BY candidate.effective_from DESC, candidate.version_seq DESC LIMIT 1))`
 }

@@ -1,0 +1,36 @@
+package db
+
+import (
+	"context"
+	"github.com/stretchr/testify/require"
+	"testing"
+)
+
+// Review probe: demonstrates the current database-level asymmetry. It does
+// not assert that permissive category deletion is a desired product policy.
+func TestSchemaReviewCategoryVersionDeletionAsymmetry(t *testing.T) {
+	t.Parallel()
+	database := seedReplayTestBook(t)
+	before := captureLedgerState(t, database)
+	var categoryVersion, holdingVersion int64
+	require.NoError(t, database.QueryRow(`SELECT av.id FROM account_versions av
+ WHERE av.account_class IN ('income','expense')
+   AND json_extract(av.metadata_json,'$.category.is_builtin')=0
+   AND EXISTS(SELECT 1 FROM posting_versions pv WHERE pv.account_id=av.account_id)
+ ORDER BY av.id LIMIT 1`).Scan(&categoryVersion))
+	require.NoError(t, database.QueryRow(`SELECT av.id FROM account_versions av JOIN accounts a ON a.id=av.account_id
+ WHERE av.account_class='asset' AND a.system_role IS NULL
+   AND EXISTS(SELECT 1 FROM posting_versions pv WHERE pv.account_id=av.account_id)
+ ORDER BY av.id LIMIT 1`).Scan(&holdingVersion))
+	tx, err := database.BeginTx(context.Background(), nil)
+	require.NoError(t, err)
+	result, err := tx.Exec(`DELETE FROM account_versions WHERE id=?`, categoryVersion)
+	require.NoError(t, err, "current special category branch permits deleting used history")
+	affected, err := result.RowsAffected()
+	require.NoError(t, err)
+	require.EqualValues(t, 1, affected)
+	_, err = tx.Exec(`DELETE FROM account_versions WHERE id=?`, holdingVersion)
+	require.ErrorContains(t, err, "account_versions rows are append-only")
+	require.NoError(t, tx.Rollback())
+	require.Equal(t, before, captureLedgerState(t, database))
+}

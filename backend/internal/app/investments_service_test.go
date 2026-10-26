@@ -952,7 +952,7 @@ func setHoldingCostBasisMethod(t *testing.T, f *investmentsTestFixture, method s
 			account_class, account_kind, parent_account_id, institution_id, country_code,
 			default_commodity_id, quantity_scale_override, allows_postings, number_last4,
 			external_ref_hint, comment_markdown, metadata_json, NULL, ?
-		FROM current_account_versions WHERE account_id = ?
+		FROM `+db.CurrentReferenceVersions(context.Background(), "account")+` WHERE account_id = ?
 	`, f.ownerUserID, method, f.holdingAccountID)
 	require.NoError(t, err)
 	updated, err := f.accountService.Account(ctx, f.holdingAccountID)

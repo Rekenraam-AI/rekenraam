@@ -24,6 +24,13 @@ No exchange API, DeFi, staking-reward or NFT integration is admitted.
 
 ## Provider identity and valuation
 
+#405's pre-release baseline review removes the unused `instrument_source_links`
+and `instrument_search_cache` tables. No runtime producer, reader or export
+uses them; instrument search is over the owner's local instruments. A later
+remote-discovery feature must specify its storage and evidence contract then,
+rather than retaining a second inactive identity model. This does not change
+provider identity or valuation behavior.
+
 Provider identifiers live in the versioned instrument `identifiers` object:
 `coingecko_id` is a unique coin ID (e.g. `bitcoin`), `yahoo_symbol` includes any
 exchange suffix (e.g. `ASML.AS`), and `twelve_data_symbol` is the exact provider

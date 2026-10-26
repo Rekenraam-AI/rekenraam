@@ -3,8 +3,11 @@
 #
 # The existing fixture describes the consolidated candidate baseline, not an
 # installed release. TestMigrateSeededBaselineMatchesFreshSchema loads it into
-# migration 0001, upgrades to HEAD, and asserts every durable figure survived.
+# migration 0001, repeats migration admission, and asserts every durable
+# figure survived.
 #
+# #405 rebased the unused candidate fixture under ADR 0013; no installed or
+# legacy database exists. All installed-release fixtures remain frozen.
 # EXISTING FIXTURES ARE FROZEN. Regenerating v01_seed.sql against a later schema
 # defeats the test it feeds: the point is to migrate data written by the OLD
 # app, which current code may no longer be able to produce. Use this to create
@@ -22,7 +25,7 @@ if [ $# -ne 1 ]; then
   echo "usage: $0 <output.sql>" >&2
   exit 2
 fi
-OUT="$1"
+OUT="$(python3 -c 'import pathlib, sys; print(pathlib.Path(sys.argv[1]).resolve())' "$1")"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -30,8 +33,8 @@ trap 'rm -rf "$WORK"' EXIT
 (SEED_OUT="$WORK/seed.sqlite" "$ROOT/scripts/go-backend.sh" test ./internal/api \
   -run '^TestBuildReleaseSeedFixture$' -count=1)
 
-python3 - "$WORK/seed.sqlite" "$OUT" <<'PY'
-import pathlib, re, subprocess, sys
+python3 - "$WORK/seed.sqlite" "$WORK/candidate.sql" <<'PY'
+import pathlib, re, sqlite3, subprocess, sys
 
 source, target = sys.argv[1], sys.argv[2]
 dump = subprocess.run(["sqlite3", source, ".dump"], capture_output=True, text=True, check=True).stdout
@@ -67,6 +70,15 @@ for statement in statements:
 if books is None:
     raise SystemExit("dump has no books row")
 
+# FK deferral does not defer admission triggers. A lot's opening-operation
+# guard needs its audited operation header already present; clearing allocations
+# also need their journal links. Physical table order puts lots first. Move headers before lots, retaining row/id order.
+header_tables = ("investment_operations", "investment_operation_dates", "investment_operation_journal_links")
+operations = [s for table in header_tables for s in inserts if s.split()[2].strip('"') == table]
+inserts = [s for s in inserts if s.split()[2].strip('"') not in header_tables]
+lot_index = next((i for i, s in enumerate(inserts) if s.split()[2].strip('"') == "investment_lots"), len(inserts))
+inserts[lot_index:lot_index] = operations
+
 # books.default_currency_commodity_id is checked by a trigger on write, and
 # triggers do not honour defer_foreign_keys — so the book goes in without it
 # and is pointed at its currency once that row exists.
@@ -75,7 +87,7 @@ currency, fields[4] = fields[4], "NULL"
 
 header = """-- Frozen v0.1 seed: a realistic book built through the real HTTP API against
 -- migration 0001, then dumped. TestMigrateSeededBaselineMatchesFreshSchema
--- replays it into a 0001-only database and upgrades that to HEAD. This is a
+-- replays it into the current baseline and repeats admission. This is a
 -- candidate-baseline fixture, not evidence of an installed-release upgrade.
 --
 -- FROZEN. Regenerating this against a later schema would defeat the test: the
@@ -89,10 +101,33 @@ header = """-- Frozen v0.1 seed: a realistic book built through the real HTTP AP
 --
 -- Two ordering accommodations, because a dump is in table order and a book is
 -- not a tree: the loader defers foreign keys to COMMIT, and the book's default
--- currency is set at the end, once the commodity it points at exists.
+-- currency is restored after commodity rows, before account/posting triggers run.
 """
-body = "\n".join(["INSERT INTO books VALUES(" + ",".join(fields) + ");"] + inserts)
-footer = "\nUPDATE books SET default_currency_commodity_id = %s WHERE id = 1;\n" % currency
-pathlib.Path(target).write_text(header + body + footer)
-print("wrote %s (%d statements)" % (target, len(inserts) + 1))
+# Explicit column lists keep a frozen fixture's meaning independent of later
+# additive columns, while still loading every original field verbatim.
+connection = sqlite3.connect(source)
+def explicit_columns(statement):
+    table = statement.split()[2].strip('"')
+    columns = [row[0] for row in connection.execute("SELECT name FROM pragma_table_info(?)", (table,))]
+    return statement.replace(" VALUES(", " (" + ", ".join(columns) + ") VALUES(", 1)
+# Restore the default as soon as its commodity exists. Waiting until the end
+# would let account/posting triggers enqueue foreign-currency work for the
+# book's own currency while the pointer is temporarily NULL.
+commodity_end = max(i for i, statement in enumerate(inserts)
+                    if statement.split()[2].strip('"') == "commodities") + 1
+statements = [explicit_columns(statement) for statement in
+              ["INSERT INTO books VALUES(" + ",".join(fields) + ");"] + inserts]
+statements.insert(commodity_end + 1, "UPDATE books SET default_currency_commodity_id = %s WHERE id = 1;" % currency)
+body = "\n".join(statements)
+connection.close()
+pathlib.Path(target).write_text(header + body + "\n")
+print("prepared %d statements" % len(statements))
 PY
+
+# Exercise the real consumer, including its production CHECKs, FKs, triggers,
+# exact ledger/lot/checkpoint oracles and repeated migration admission. Publish
+# a proposed fixture only after it loads; do not replace an installed fixture.
+(SEED_INPUT="$WORK/candidate.sql" SEED_SOURCE="$WORK/seed.sqlite" "$ROOT/scripts/go-backend.sh" test ./internal/db \
+  -run '^TestValidateReleaseSeedFixture$' -count=1)
+cp -- "$WORK/candidate.sql" "$OUT"
+echo "wrote validated seed: $OUT"

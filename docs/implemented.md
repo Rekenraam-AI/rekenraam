@@ -22,6 +22,21 @@ ADR 0013 permits an explicitly declared redesign before any installed release;
 each rewrite updates the checksum, fixtures and upgrade/equivalence tests.
 After the first installed release, schema changes use forward migrations.
 
+#405 consolidates the previous candidate's 0001–0027 into head **1**, with
+baseline identity `20261026`. It removes two unused provider-lookup tables,
+fifteen indexes (twelve redundant, three belonging to those tables) and five
+stored UTC reference views; the shared selector preserves the owner date and
+repository UTC fallback. Financial tables and all remaining CHECK/FK/key
+contracts are retained. Stock and crypto share unused-instrument compensation,
+while durable references still refuse cleanup atomically. Startup/restore
+refuse earlier development baselines before mutation. The release-seed tool
+also validates a fresh native round trip before writing its output. See the
+[review and measured limits](reviews/schema-baseline-review-2026-10-26.md) and
+[reset procedure](developer-workflow.md#migrations-and-resetting-your-database).
+Historical migration numbers cited elsewhere in this ledger refer to the
+pre-consolidation candidate; their capabilities now belong to baseline 1.
+
+
 Last documentation reconciliation: 2026-10-17 against `f35cc723`, GitHub
 closures and selected implementation/test consumers. See the
 [app-state review](reviews/app-state-and-audit-plan-2026-10-17.md) for coverage

@@ -176,9 +176,6 @@ func TestMigrateAppliesEmbeddedMigrations(t *testing.T) {
 	})
 	assert.Contains(t, readTableColumns(t, database, "accounts"), "created_audit_event_id")
 	assert.Contains(t, readTableColumns(t, database, "account_versions"), "change_audit_event_id")
-	assert.True(t, sqliteObjectExists(t, database, "view", "current_account_versions"))
-	assert.True(t, sqliteObjectExists(t, database, "view", "current_institution_versions"))
-	assert.True(t, sqliteObjectExists(t, database, "view", "current_commodity_versions"))
 	assert.Subset(t, readTableColumns(t, database, "payees"), []string{
 		"id",
 		"book_id",
@@ -191,7 +188,6 @@ func TestMigrateAppliesEmbeddedMigrations(t *testing.T) {
 		"status",
 		"normalized_name",
 	})
-	assert.True(t, sqliteObjectExists(t, database, "view", "current_payee_versions"))
 	assert.Subset(t, readTableColumns(t, database, "transactions"), []string{
 		"id",
 		"book_id",
@@ -242,11 +238,11 @@ func TestMigrateSeededBaselineMatchesFreshSchema(t *testing.T) {
 	ctx := context.Background()
 	seeded := openTestDatabase(t)
 
+	// Start at baseline 1 even after future forward migrations are added. This
+	// fixture will represent an installed v0.1 database once that release exists.
 	baseline, err := migrations.FS.ReadFile("0001_initial_schema.sql")
 	require.NoError(t, err)
-	baselineFS := fstest.MapFS{
-		"0001_initial_schema.sql": {Data: baseline},
-	}
+	baselineFS := fstest.MapFS{"0001_initial_schema.sql": {Data: baseline}}
 	provider, err := goose.NewProvider(goose.DialectSQLite3, seeded, baselineFS)
 	require.NoError(t, err)
 	_, err = provider.Up(ctx)
@@ -269,46 +265,6 @@ func TestMigrateSeededBaselineMatchesFreshSchema(t *testing.T) {
 	before := captureLedgerState(t, seeded)
 	require.NoError(t, Migrate(ctx, seeded))
 	after := captureLedgerState(t, seeded)
-	// Re-running migration admission must preserve every seeded durable row.
-	assert.Equal(t, "0", after["count:import_source_revisions"])
-	assert.Equal(t, "0", after["count:investment_basis_resolution_provenance"])
-	delete(after, "count:investment_basis_resolution_provenance")
-	// The seed has no derived observations, so there is nothing to backfill;
-	// TestPriceDependencyMigrationBackfillsDerivationLegs covers one that does.
-	assert.Equal(t, "0", after["count:price_observation_dependencies"])
-	delete(after, "count:price_observation_dependencies")
-	// #393 records the frozen seed's one known gross-payment shape without
-	// inventing a payer or changing its original audit attribution.
-	assert.Equal(t, "1", after["count:investment_dividend_facts"])
-	var historicalDividend string
-	require.NoError(t, seeded.QueryRow(`SELECT json_array(operation_id,commodity_id,withholding_only,created_audit_event_id) FROM investment_dividend_facts`).Scan(&historicalDividend))
-	assert.Equal(t, "[4,null,0,33]", historicalDividend)
-	delete(after, "count:investment_dividend_facts")
-	// #234 adds empty immutable report storage; existing figures stay exact.
-	assert.Equal(t, "0", after["count:investment_gains_runs"])
-	delete(after, "count:investment_gains_runs")
-	// R13 slice 6 adds empty immutable returns-run storage.
-	assert.Equal(t, "0", after["count:investment_returns_runs"])
-	delete(after, "count:investment_returns_runs")
-	// #254 adds empty append-only provider revision evidence.
-	assert.Equal(t, "0", after["count:investment_provider_event_revisions"])
-	delete(after, "count:investment_provider_event_revisions")
-	// #255 adds empty payment-in-lieu entitlement facts.
-	assert.Equal(t, "0", after["count:investment_payment_in_lieu_facts"])
-	delete(after, "count:investment_payment_in_lieu_facts")
-	// #334 creates an empty credential store, preserving all seeded financial
-	// figures and security history. No pre-existing credential can be invented.
-	assert.Equal(t, "0", after["count:personal_access_tokens"])
-	delete(after, "count:personal_access_tokens")
-	delete(before, "count:goose_db_version")
-	delete(after, "count:goose_db_version")
-
-	// #117 adds exactly three built-in quote providers. All pre-existing
-	// financial evidence remains byte-for-byte identical; the seed is frozen.
-	assert.Equal(t, "5", before["count:market_data_sources"])
-	assert.Equal(t, "8", after["count:market_data_sources"])
-	before["count:market_data_sources"] = "8"
-
 	assert.Equal(t, before, after, "upgrading must not change a single durable figure")
 
 	// Stated separately from the snapshot comparison so a failure names what
@@ -606,32 +562,25 @@ func TestInitialMigrationDownRemovesTheConsolidatedSchema(t *testing.T) {
 		WHERE name NOT LIKE 'sqlite_%' AND name NOT LIKE 'goose_%'
 	`).Scan(&objectCount))
 	assert.Zero(t, objectCount)
+	require.NoError(t, Migrate(context.Background(), database), "a local empty down can be followed by fresh startup")
+
 }
 
-func TestCurrentVersionViewsUseConsistentSelectionRules(t *testing.T) {
+func TestCurrentReferenceSelectionUsesConsistentRules(t *testing.T) {
 	t.Parallel()
-	database := openTestDatabase(t)
-
-	require.NoError(t, Migrate(context.Background(), database))
-
-	for _, viewName := range []string{
-		"current_commodity_versions",
-		"current_institution_versions",
-		"current_account_versions",
-		"current_payee_versions",
-	} {
-		viewSQL := readSQLiteObjectSQL(t, database, "view", viewName)
-		assert.Contains(t, viewSQL, "effective_from <= date('now')", viewName)
-		assert.Contains(t, viewSQL, "ORDER BY", viewName)
-		assert.Contains(t, viewSQL, "effective_from DESC", viewName)
-		assert.Contains(t, viewSQL, "version_seq DESC", viewName)
+	for _, kind := range []string{"account", "commodity", "institution", "payee", "investment_instrument"} {
+		selection := CurrentReferenceVersions(WithReferenceDate(context.Background(), "2026-10-26"), kind)
+		assert.Contains(t, selection, "effective_from <= '2026-10-26'")
+		assert.Contains(t, selection, "effective_from DESC, candidate.version_seq DESC")
+		fallback := CurrentReferenceVersions(context.Background(), kind)
+		assert.Contains(t, fallback, "effective_from <= date('now')")
 	}
-
+	database := openTestDatabase(t)
+	require.NoError(t, Migrate(context.Background(), database))
 	transactionViewSQL := readSQLiteObjectSQL(t, database, "view", "current_transaction_versions")
-	assert.NotContains(t, transactionViewSQL, "effective_from", "transaction versions are sequence-only and not effective-dated")
-	assert.Contains(t, transactionViewSQL, "ORDER BY", "current_transaction_versions")
-	assert.Contains(t, transactionViewSQL, "version_seq DESC", "current_transaction_versions")
-	assert.Contains(t, transactionViewSQL, "id DESC", "current_transaction_versions")
+	assert.NotContains(t, transactionViewSQL, "effective_from")
+	assert.Contains(t, transactionViewSQL, "version_seq DESC")
+	assert.Contains(t, transactionViewSQL, "id DESC")
 }
 
 func TestCommodityPrecisionCeilingAllowsCryptoOnlyThroughTwentyFour(t *testing.T) {
@@ -1031,7 +980,7 @@ func TestCurrentVersionViewsUseEffectiveDateBeforeVersionSequence(t *testing.T) 
 	var name string
 	err = database.QueryRowContext(context.Background(), `
 		SELECT name
-		FROM current_account_versions
+		FROM `+CurrentReferenceVersions(WithReferenceDate(context.Background(), "2026-10-26"), "account")+`
 		WHERE account_id = 1
 	`).Scan(&name)
 	require.NoError(t, err)
@@ -1280,7 +1229,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(27), version, "the head stores immutable returns runs")
+	assert.Equal(t, int64(1), version, "the complete unused v0.1 schema is one baseline")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))
@@ -1309,10 +1258,10 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 		objectCounts[kind]++
 	}
 	assert.Equal(t, map[string]int{
-		"index":   120,
-		"table":   118,
+		"index":   105,
+		"table":   116,
 		"trigger": 164,
-		"view":    21,
+		"view":    16,
 	}, objectCounts, "the migrated head must retain every schema object")
 	assert.Equal(t, "view", objects["valid_investment_dividend_facts"])
 	assert.Equal(t, "view", objects["investment_cash_payment_identity"])

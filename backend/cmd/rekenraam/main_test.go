@@ -40,28 +40,34 @@ func TestRecoverOwnerCommandBacksUpDatabaseBeforeMigration(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	exitCode := run(context.Background(), []string{"recover-owner", "--password-stdin", "--backup-path", backupPath}, bytes.NewBufferString("new-password\n"), stdout, stderr)
 
-	require.Equal(t, 0, exitCode, stderr.String())
-	assert.Contains(t, stdout.String(), backupPath)
+	require.Equal(t, 1, exitCode, stderr.String())
+	assert.Contains(t, stderr.String(), "incompatible pre-release baseline")
+	require.FileExists(t, backupPath, "recovery backs up before attempting migration, even when admission refuses")
 
 	backupDatabase := openSQLiteReadOnly(t, backupPath)
 	defer backupDatabase.Close()
 	assert.False(t, sqliteTableExists(t, backupDatabase, "setup_steps"))
 	assert.False(t, sqliteTableExists(t, backupDatabase, "login_throttles"))
 
-	database := openRecoveryCommandDatabase(t, databaseURL)
+	database, err := db.Open(context.Background(), databaseURL)
+	require.NoError(t, err)
 	defer database.Close()
-	assert.True(t, sqliteTableExists(t, database, "setup_steps"))
-	assert.True(t, sqliteTableExists(t, database, "login_throttles"))
+	assert.False(t, sqliteTableExists(t, database, "setup_steps"))
+	assert.False(t, sqliteTableExists(t, database, "login_throttles"))
+	assert.False(t, sqliteTableExists(t, database, "goose_db_version"))
 
 	var passwordHash string
-	err := database.QueryRowContext(context.Background(), `SELECT password_hash FROM users WHERE username = 'owner'`).Scan(&passwordHash)
+	err = database.QueryRowContext(context.Background(), `SELECT password_hash FROM users WHERE username = 'owner'`).Scan(&passwordHash)
 	require.NoError(t, err)
-	assert.NotEqual(t, "old-password-hash", passwordHash)
+	assert.Equal(t, "old-password-hash", passwordHash)
+	var backupHash string
+	require.NoError(t, backupDatabase.QueryRow(`SELECT password_hash FROM users WHERE username='owner'`).Scan(&backupHash))
+	assert.Equal(t, passwordHash, backupHash)
 
 	var revokedSessionCount int
 	err = database.QueryRowContext(context.Background(), `SELECT COUNT(1) FROM auth_sessions WHERE revoked_at IS NOT NULL`).Scan(&revokedSessionCount)
 	require.NoError(t, err)
-	assert.Equal(t, 1, revokedSessionCount)
+	assert.Equal(t, 0, revokedSessionCount)
 }
 
 func TestRecoverOwnerCommandCreatesBackupAndRevokesSessions(t *testing.T) {

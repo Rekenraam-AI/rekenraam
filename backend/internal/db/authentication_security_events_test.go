@@ -4,33 +4,22 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"rekenraam/backend/migrations"
 )
 
-// Migration 0014 (#288) rebuilds authentication_events. An upgrade keeps
-// every sign-in row exactly, defaulting the new columns; a downgrade refuses
-// to drop account-security history.
-func TestAuthenticationSecurityEventsMigrationKeepsSignInHistoryAndRefusesLossyDowngrade(t *testing.T) {
+// Sign-in history and account-security event semantics remain distinct.
+func TestAuthenticationSecurityEventsPreserveSignInHistory(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	database, _ := newMFATestRepository(t)
-	provider, err := goose.NewProvider(goose.DialectSQLite3, database, migrations.FS)
-	require.NoError(t, err)
-	_, err = provider.DownTo(ctx, 13)
-	require.NoError(t, err)
 
-	_, err = database.ExecContext(ctx, `
+	_, err := database.ExecContext(ctx, `
 		INSERT INTO authentication_events (id, occurred_at, event_type, outcome, username, user_id, client_ip, failure_reason, request_id)
 		VALUES (7, '2026-08-01T00:00:00Z', 'login_failed', 'failure', 'owner', 1, '203.0.113.7', 'invalid_credentials', 'req-7')
 	`)
 	require.NoError(t, err)
 
-	_, err = provider.Up(ctx)
-	require.NoError(t, err)
 	var eventType, reason, requestID, origin, factor, metadata string
 	require.NoError(t, database.QueryRowContext(ctx, `
 		SELECT event_type, failure_reason, request_id, origin, second_factor, metadata_json
@@ -51,8 +40,6 @@ func TestAuthenticationSecurityEventsMigrationKeepsSignInHistoryAndRefusesLossyD
 	require.Error(t, err, "owner recovery is only ever recorded from the CLI")
 
 	require.NoError(t, insertAuthenticationEvent(ctx, database, securityTestEvent("mfa_disabled")))
-	_, err = provider.DownTo(ctx, 13)
-	require.ErrorContains(t, err, "CHECK constraint failed")
 	var count int
 	require.NoError(t, database.QueryRowContext(ctx, `SELECT count(*) FROM authentication_events WHERE event_type = 'mfa_disabled'`).Scan(&count))
 	assert.Equal(t, 1, count)

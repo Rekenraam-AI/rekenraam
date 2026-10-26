@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/exact"
-	"rekenraam/backend/migrations"
 )
 
 func TestCryptoInstrumentCreatesScale24CommodityAndPreservesLots(t *testing.T) {
@@ -21,7 +20,7 @@ func TestCryptoInstrumentCreatesScale24CommodityAndPreservesLots(t *testing.T) {
 	instrument, holding := cryptoTestHolding(t, f)
 	var kind, effective string
 	var scale int
-	require.NoError(t, f.database.QueryRow(`SELECT c.kind,cv.max_quantity_scale,iiv.effective_from FROM commodities c JOIN current_commodity_versions cv ON cv.commodity_id=c.id JOIN investment_instruments ii ON ii.commodity_id=c.id JOIN current_investment_instrument_versions iiv ON iiv.instrument_id=ii.id WHERE c.id=?`, instrument.CommodityID).Scan(&kind, &scale, &effective))
+	require.NoError(t, f.database.QueryRow(`SELECT c.kind,cv.max_quantity_scale,iiv.effective_from FROM commodities c JOIN `+db.CurrentReferenceVersions(context.Background(), "commodity")+` cv ON cv.commodity_id=c.id JOIN investment_instruments ii ON ii.commodity_id=c.id JOIN `+db.CurrentReferenceVersions(context.Background(), "investment_instrument")+` iiv ON iiv.instrument_id=ii.id WHERE c.id=?`, instrument.CommodityID).Scan(&kind, &scale, &effective))
 	assert.Equal(t, "crypto", kind)
 	assert.Equal(t, 24, scale)
 	assert.Equal(t, db.CommodityGenesisDate, effective)
@@ -118,22 +117,6 @@ func TestCryptoCSVRejectsUnsupportedRowsBeforeStaging(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
-}
-
-func TestCryptoMigrationRefusesLossyDowngradeAtomically(t *testing.T) {
-	t.Parallel()
-	f := newInvestTestFixture(t)
-	instrument, _ := cryptoTestHolding(t, f)
-	provider, err := goose.NewProvider(goose.DialectSQLite3, f.database, migrations.FS)
-	require.NoError(t, err)
-	_, err = provider.DownTo(context.Background(), 5)
-	require.Error(t, err)
-	var scale int
-	require.NoError(t, f.database.QueryRow(`SELECT quantity_scale FROM current_investment_instrument_versions WHERE instrument_id=?`, instrument.ID).Scan(&scale))
-	assert.Equal(t, 24, scale)
-	var count int
-	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM market_data_sources WHERE code IN ('coingecko','twelve_data','yahoo_finance')`).Scan(&count))
-	assert.Equal(t, 3, count)
 }
 
 func TestCryptoCSVBackdatedBuyDisclosesGainsAndHoldsUntilAcknowledged(t *testing.T) {

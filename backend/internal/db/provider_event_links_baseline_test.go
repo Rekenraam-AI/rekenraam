@@ -4,24 +4,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"rekenraam/backend/migrations"
 )
 
-// Migration 0011 (#111) rebuilds investment_event_suggestions for links. An
-// upgrade keeps every existing suggestion exactly; a downgrade refuses to drop
-// an owner's link evidence.
-func TestProviderEventLinkMigrationPreservesSuggestionsAndRefusesLossyDowngrade(t *testing.T) {
+// Provider suggestions retain their source identity and explicit link evidence.
+func TestProviderEventBaselinePreservesSuggestionIdentityAndLinkRequirements(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	database, _, _ := migratedInvestmentTestDatabase(t)
-	provider, err := goose.NewProvider(goose.DialectSQLite3, database, migrations.FS)
-	require.NoError(t, err)
-	_, err = provider.DownTo(ctx, 10)
-	require.NoError(t, err)
+	database := seedReplayTestBook(t)
 
 	var sourceID int64
 	require.NoError(t, database.QueryRowContext(ctx, `SELECT id FROM market_data_sources WHERE code = 'manual'`).Scan(&sourceID))
@@ -34,12 +25,10 @@ func TestProviderEventLinkMigrationPreservesSuggestionsAndRefusesLossyDowngrade(
 		return id
 	}
 	legacyEvent := insertEvent("legacy")
-	_, err = database.ExecContext(ctx, `INSERT INTO investment_event_suggestions (id, book_id, provider_event_id, confidence_bps, status, proposed_transaction_json, failure_reason, created_at, updated_at)
+	_, err := database.ExecContext(ctx, `INSERT INTO investment_event_suggestions (id, book_id, provider_event_id, confidence_bps, status, proposed_transaction_json, failure_reason, created_at, updated_at)
 		VALUES (41, 1, ?, 9000, 'failed', '{"kind":"split"}', 'unsupported', '2026-06-01T00:00:00Z', '2026-06-02T00:00:00Z')`, legacyEvent)
 	require.NoError(t, err)
 
-	_, err = provider.Up(ctx)
-	require.NoError(t, err)
 	var status, proposal, reason, updated string
 	var linked any
 	require.NoError(t, database.QueryRowContext(ctx, `SELECT status, proposed_transaction_json, failure_reason, updated_at, linked_transaction_id FROM investment_event_suggestions WHERE id = 41`).
@@ -53,20 +42,12 @@ func TestProviderEventLinkMigrationPreservesSuggestionsAndRefusesLossyDowngrade(
 		VALUES (1, ?, 0, 'linked', '2026-06-01T00:00:00Z', '2026-06-01T00:00:00Z')`, insertEvent("unlinked"))
 	require.Error(t, err, "a linked suggestion names its transaction")
 
-	// A link survives a refused downgrade untouched. The blank book has no
-	// transaction, so the fixture names one with foreign keys briefly off.
-	conn, err := database.Conn(ctx)
+	// A real source link remains intact on repeated startup admission.
+	_, err = database.ExecContext(ctx, `UPDATE investment_event_suggestions SET status='linked', linked_transaction_id=1, failure_reason='' WHERE id=41`)
 	require.NoError(t, err)
-	_, err = conn.ExecContext(ctx, `PRAGMA foreign_keys = OFF`)
-	require.NoError(t, err)
-	_, err = conn.ExecContext(ctx, `UPDATE investment_event_suggestions SET status = 'linked', linked_transaction_id = 999, failure_reason = '' WHERE id = 41`)
-	require.NoError(t, err)
-	_, err = conn.ExecContext(ctx, `PRAGMA foreign_keys = ON`)
-	require.NoError(t, err)
-	require.NoError(t, conn.Close())
-	_, err = provider.DownTo(ctx, 10)
-	require.ErrorContains(t, err, "CHECK constraint failed")
+	require.NoError(t, Migrate(ctx, database))
+
 	var count int
-	require.NoError(t, database.QueryRowContext(ctx, `SELECT count(*) FROM investment_event_suggestions WHERE status = 'linked' AND linked_transaction_id = 999`).Scan(&count))
+	require.NoError(t, database.QueryRowContext(ctx, `SELECT count(*) FROM investment_event_suggestions WHERE status = 'linked' AND linked_transaction_id = 1`).Scan(&count))
 	assert.Equal(t, 1, count)
 }

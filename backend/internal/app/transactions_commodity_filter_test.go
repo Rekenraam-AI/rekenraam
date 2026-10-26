@@ -4,11 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"rekenraam/backend/migrations"
 )
 
 // An instrument's view lists its activity through the commodity filter
@@ -157,10 +154,6 @@ func TestDividendInstrumentFactsAreImmutableAndValidatePayer(t *testing.T) {
 	require.NoError(t, f.database.QueryRow(`SELECT created_audit_event_id FROM investment_operations WHERE id = ?`, operation.OperationID).Scan(&auditID))
 	_, err = f.database.Exec(`INSERT INTO investment_dividend_facts (operation_id, book_id, commodity_id, created_audit_event_id) VALUES (?, ?, ?, ?)`, operation.OperationID, BookID, f.eurCommodityID, auditID)
 	require.ErrorContains(t, err, "invalid dividend instrument fact")
-	provider, err := goose.NewProvider(goose.DialectSQLite3, f.database, migrations.FS)
-	require.NoError(t, err)
-	_, err = provider.DownTo(ctx, 8)
-	require.ErrorContains(t, err, "CHECK constraint failed", "downgrade must preserve paying-instrument evidence")
 	var count int
 	require.NoError(t, f.database.QueryRow(`SELECT count(*) FROM investment_dividend_facts`).Scan(&count))
 	require.Equal(t, 2, count, "assigned and unassigned facts both retain payment shape")

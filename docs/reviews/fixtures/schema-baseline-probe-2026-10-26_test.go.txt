@@ -1,0 +1,98 @@
+package db
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/pressly/goose/v3"
+	"github.com/stretchr/testify/require"
+	"rekenraam/backend/migrations"
+)
+
+func TestSchemaBaseline405Probe(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	type result struct {
+		Version   int
+		Objects   map[string]int
+		SQLBytes  int
+		OpenMS    []float64
+		PrepareMS []float64
+	}
+	results := []result{}
+	for _, text := range strings.Split(os.Getenv("SCHEMA_PROBE_VERSIONS"), ",") {
+		version, err := strconv.Atoi(text)
+		require.NoError(t, err)
+		path := filepath.Join(t.TempDir(), "probe.sqlite")
+		uri := SQLiteFileURL(path)
+		database, err := Open(ctx, uri)
+		require.NoError(t, err)
+		if version > 0 {
+			p, err := goose.NewProvider(goose.DialectSQLite3, database, migrations.FS)
+			require.NoError(t, err)
+			_, err = p.UpTo(ctx, int64(version))
+			require.NoError(t, err)
+		}
+		r := result{Version: version, Objects: map[string]int{}}
+		rows, err := database.Query(`SELECT type,COUNT(*),COALESCE(SUM(length(sql)),0) FROM sqlite_schema GROUP BY type`)
+		require.NoError(t, err)
+		for rows.Next() {
+			var typ string
+			var count, size int
+			require.NoError(t, rows.Scan(&typ, &count, &size))
+			r.Objects[typ] = count
+			r.SQLBytes += size
+		}
+		require.NoError(t, rows.Close())
+		if schemaPath := os.Getenv("SCHEMA_PROBE_SCHEMA_OUTPUT"); schemaPath != "" && text == strings.Split(os.Getenv("SCHEMA_PROBE_VERSIONS"), ",")[len(strings.Split(os.Getenv("SCHEMA_PROBE_VERSIONS"), ","))-1] {
+			schemaRows, err := database.Query(`SELECT rowid,type,name,tbl_name,coalesce(sql,'') FROM sqlite_schema ORDER BY rowid`)
+			require.NoError(t, err)
+			objects := []map[string]any{}
+			for schemaRows.Next() {
+				var id int
+				var typ, name, table, sql string
+				require.NoError(t, schemaRows.Scan(&id, &typ, &name, &table, &sql))
+				objects = append(objects, map[string]any{"rowid": id, "type": typ, "name": name, "table": table, "sql": sql})
+			}
+			require.NoError(t, schemaRows.Close())
+			body, err := json.MarshalIndent(objects, "", "  ")
+			require.NoError(t, err)
+			require.NoError(t, os.WriteFile(schemaPath, body, 0600))
+			if output := os.Getenv("SCHEMA_PROBE_DATABASE_OUTPUT"); output != "" {
+				require.NoError(t, BackupSQLiteDatabase(ctx, database, output))
+			}
+		}
+		require.NoError(t, database.Close())
+		for rotation := 0; rotation < 5; rotation++ {
+			start := time.Now()
+			for i := 0; i < 100; i++ {
+				d, err := Open(ctx, uri)
+				require.NoError(t, err)
+				require.NoError(t, d.Close())
+			}
+			r.OpenMS = append(r.OpenMS, float64(time.Since(start).Nanoseconds())/100/1e6)
+			if version > 0 {
+				d, err := Open(ctx, uri)
+				require.NoError(t, err)
+				start = time.Now()
+				for i := 0; i < 100; i++ {
+					s, err := d.PrepareContext(ctx, `INSERT INTO posting_versions DEFAULT VALUES`)
+					require.NoError(t, err)
+					require.NoError(t, s.Close())
+				}
+				r.PrepareMS = append(r.PrepareMS, float64(time.Since(start).Nanoseconds())/100/1e6)
+				require.NoError(t, d.Close())
+			}
+		}
+		results = append(results, r)
+	}
+	body, err := json.MarshalIndent(results, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(os.Getenv("SCHEMA_PROBE_OUTPUT"), body, 0600))
+}

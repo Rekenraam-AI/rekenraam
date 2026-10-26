@@ -16,7 +16,7 @@ import (
 // TestBuildReleaseSeedFixture is a tool, not a test: it builds a realistic book
 // through the real HTTP stack and vacuums the result to SEED_OUT, which
 // scripts/build-release-seed.sh then shapes into the frozen SQL fixture that
-// internal/db's upgrade test replays.
+// internal/db's baseline-equivalence test replays.
 //
 // It runs only when SEED_OUT is set, so the ordinary suite skips it. Building
 // the book through the API rather than with hand-written INSERTs is the point:
@@ -95,18 +95,19 @@ func TestBuildReleaseSeedFixture(t *testing.T) {
 		"journal_entries":[{"entry_date":"2026-01-23","postings":[
 			`+posting(groceries.ID, 700, 2, f.commodityID)+`,
 			`+posting(card.ID, -700, 2, f.commodityID)+`]}]}`, http.StatusCreated)
-	doInvestmentRequest(t, handler, session, csrf, http.MethodPost,
+	deleted = mutateTransaction(t, handler, session, csrf, http.MethodPost,
 		"/api/v1/transactions/"+strconvFormatInt(deleted.ID)+"/soft-delete",
-		map[string]string{"change_reason": "wrong account"}, http.StatusOK)
+		`{"change_reason":"wrong account"}`, http.StatusOK)
+	require.NotEmpty(t, deleted.DeletedAt)
 
 	// An edit, so at least one transaction carries a superseded version.
-	doInvestmentRequest(t, handler, session, csrf, http.MethodPatch,
-		"/api/v1/transactions/"+strconvFormatInt(paycheque.ID), json.RawMessage(`{
+	mutateTransaction(t, handler, session, csrf, http.MethodPatch,
+		"/api/v1/transactions/"+strconvFormatInt(paycheque.ID), `{
 			"transaction_date":"2026-01-05","description":"January salary (corrected)",
 			"change_reason":"payee was wrong",
 			"journal_entries":[{"entry_date":"2026-01-05","postings":[
 				`+posting(f.cashAccount.ID, 320000, 2, f.commodityID)+`,
-				`+posting(salary.ID, -320000, 2, f.commodityID)+`]}]}`), http.StatusOK)
+				`+posting(salary.ID, -320000, 2, f.commodityID)+`]}]}`, http.StatusOK)
 
 	// --- Reconciliation --------------------------------------------------
 	openingPosting := postingByAccount(t, opening, f.cashAccount.ID)

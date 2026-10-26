@@ -7,40 +7,27 @@ import (
 	"testing"
 	"time"
 
-	"rekenraam/backend/internal/db"
-	"rekenraam/backend/internal/testdb"
-	"rekenraam/backend/migrations"
-
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"rekenraam/backend/internal/db"
+	"rekenraam/backend/internal/testdb"
 )
 
-func TestPersonalAccessTokenMigrationPreservesHistoryAndRefusesLossyDowngrade(t *testing.T) {
+func TestPersonalAccessTokenBaselinePreservesHistory(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	database, _ := testdb.Open(t)
-	provider, err := goose.NewProvider(goose.DialectSQLite3, database, migrations.FS)
-	require.NoError(t, err)
-	_, err = provider.DownTo(ctx, 18)
-	require.NoError(t, err)
-	_, err = database.Exec(`INSERT INTO authentication_events(id,occurred_at,event_type,outcome,username,client_ip,request_id,origin,second_factor,metadata_json)
+	_, err := database.Exec(`INSERT INTO authentication_events(id,occurred_at,event_type,outcome,username,client_ip,request_id,origin,second_factor,metadata_json)
 		VALUES(17,'2026-10-01T00:00:00Z','login_succeeded','success','synthetic-owner','203.0.113.7','migration-request','browser_api','totp','{"retained":true}')`)
-	require.NoError(t, err)
-	_, err = provider.Up(ctx)
 	require.NoError(t, err)
 	var eventType, factor, metadata, requestID, username, clientIP string
 	require.NoError(t, database.QueryRow(`SELECT event_type,second_factor,metadata_json,request_id,username,client_ip FROM authentication_events WHERE id=17`).Scan(&eventType, &factor, &metadata, &requestID, &username, &clientIP))
 	assert.Equal(t, []string{"login_succeeded", "totp", `{"retained":true}`, "migration-request", "synthetic-owner", "203.0.113.7"}, []string{eventType, factor, metadata, requestID, username, clientIP})
-	_, err = provider.DownTo(ctx, 18)
-	require.NoError(t, err, "unused credential schema can be downgraded without losing old events")
-	_, err = provider.Up(ctx)
-	require.NoError(t, err)
+	require.NoError(t, db.Migrate(ctx, database))
 	require.NoError(t, db.NewAuthRepository(database).RecordAuthenticationEvent(ctx, db.AuthenticationEventParams{
 		OccurredAt: "2026-10-20T00:00:00Z", EventType: "token_denied", Outcome: "failure", Origin: "personal_access_token", FailureReason: "invalid_token",
 	}))
-	_, err = provider.DownTo(ctx, 18)
-	require.ErrorContains(t, err, "CHECK constraint failed", "token event history alone prevents downgrade")
 }
 
 func TestPersonalAccessTokenManagementRechecksSessionAndPasswordAndConcurrentLimit(t *testing.T) {

@@ -6,11 +6,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"rekenraam/backend/internal/db"
-	"rekenraam/backend/migrations"
 )
 
 // The production formatter lives with the API wire DTOs. This test formatter
@@ -81,18 +80,13 @@ func TestGainsRunSnapshotIgnoresWritesBeforePersistence(t *testing.T) {
 	assert.Equal(t, "6", live[0].QuantityValue.String())
 }
 
-func TestGainsRunMigrationPreservesFinancialFactsAndRefusesPopulatedDowngrade(t *testing.T) {
+func TestGainsRunBaselinePreservesFinancialFacts(t *testing.T) {
 	t.Parallel()
 	f := newInvestmentsTestFixture(t)
 	buyOn(t, f, "2026-01-01", 10, 10000)
 	before := buyReplacementPreviewSnapshot(t, f.database)
 	ctx := context.Background()
-	provider, err := goose.NewProvider(goose.DialectSQLite3, f.database, migrations.FS)
-	require.NoError(t, err)
-	_, err = provider.DownTo(ctx, 6)
-	require.NoError(t, err)
-	_, err = provider.Up(ctx)
-	require.NoError(t, err)
+	require.NoError(t, db.Migrate(ctx, f.database))
 	assert.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
 	run, err := f.investmentService.CreateGainsRun(ctx, GainsRunInput{OwnerUserID: f.ownerUserID,
 		Request: GainsRunRequest{ReportType: "gains", ValuationAsOf: "2026-03-01"}}, testGainsRunFormatter)
@@ -102,8 +96,6 @@ func TestGainsRunMigrationPreservesFinancialFactsAndRefusesPopulatedDowngrade(t 
 	// An explicit report save adds its own audit; all financial facts stay exact.
 	after["audit_events"] = before["audit_events"]
 	assert.Equal(t, before, after)
-	_, err = provider.DownTo(ctx, 6)
-	require.Error(t, err, "populated downgrade must not discard immutable reports")
 	saved, err := f.investmentService.GainsRun(ctx, run.ID)
 	require.NoError(t, err)
 	assert.Equal(t, run, saved)

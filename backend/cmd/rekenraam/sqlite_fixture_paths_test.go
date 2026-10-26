@@ -28,9 +28,10 @@ func TestRecoveryAndRestoreHelpersEscapeTemporaryRoot(t *testing.T) {
 		for _, tc := range []struct {
 			name string
 			open func(*testing.T) string
+			exit int
 		}{
-			{"migrated", func(t *testing.T) string { return setupRecoveryCommandDatabase(t, "old-password") }},
-			{"pre-migration", setupPreMigrationRecoveryDatabase},
+			{"migrated", func(t *testing.T) string { return setupRecoveryCommandDatabase(t, "old-password") }, 0},
+			{"pre-migration", setupPreMigrationRecoveryDatabase, 1},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				databaseURL := tc.open(t)
@@ -41,8 +42,11 @@ func TestRecoveryAndRestoreHelpersEscapeTemporaryRoot(t *testing.T) {
 				t.Setenv("DATABASE_URL", databaseURL)
 				backup := filepath.Join(t.TempDir(), "recovery #?%23.sqlite")
 				stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
-				require.Equal(t, 0, run(ctx, []string{"recover-owner", "--password-stdin", "--backup-path", backup},
+				require.Equal(t, tc.exit, run(ctx, []string{"recover-owner", "--password-stdin", "--backup-path", backup},
 					strings.NewReader("new-password\n"), stdout, stderr), stderr.String())
+				if tc.exit != 0 {
+					assert.Contains(t, stderr.String(), "incompatible pre-release baseline")
+				}
 				reader := openSQLiteReadOnly(t, backup)
 				t.Cleanup(func() { assert.NoError(t, reader.Close()) })
 				assert.True(t, sqliteTableExists(t, reader, "users"))

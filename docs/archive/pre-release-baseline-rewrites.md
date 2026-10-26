@@ -227,3 +227,126 @@ unchanged. Stop the app, export anything worth keeping, remove the disposable
 database named by `DATABASE_URL` and its `-wal`/`-shm` sidecars as above,
 restart and redo owner setup. Do not use restore across this rewrite. No
 installed v0.1 release exists.
+
+
+**BREAKING DEV DATABASE, #405 (2026-10-26):** migrations 0001–0027 were
+consolidated into one reviewed baseline at head 1. Two dormant provider tables,
+their three indexes, twelve redundant indexes and five stored UTC reference
+views were removed; reference selection keeps
+its existing ordering, owner date and repository UTC fallback through its
+shared selector. The unused candidate seed preserves its original exact
+financial facts with explicit current column lists and the recorded gross
+cash-dividend shape. The native schema diff and limits are in the
+[schema review](../reviews/schema-baseline-review-2026-10-26.md).
+
+The baseline identity is now `PRAGMA user_version = 20261026`; it is independent
+of Goose's migration number. Previous development files and backups are
+incompatible, even if their migration number is 1. Startup/restore refuse
+them explicitly; no data conversion or automatic reset is attempted. The owner
+reconfirmed that no legacy databases exist. Stop the app, export anything worth
+keeping with the original build, remove only the disposable `DATABASE_URL`
+file and its `-wal`/`-shm` sidecars, restart and repeat owner setup. Use the
+[current reset procedure](../developer-workflow.md#migrations-and-resetting-your-database).
+Installed-release migrations remain immutable after v0.1.0.
+
+### Historical forward migrations folded into #405
+
+The following notes described the previous candidate, not current upgrade or
+downgrade targets. Their financial capabilities and supported saved-document
+versions remain in the new baseline. They do not authorize restoring an old
+candidate backup with the new binary.
+
+Forward migration `0002_basis_resolution_provenance.sql` (#197, 2026-10-13)
+adds immutable evidence revision history without rewriting `0001` or resetting
+databases made with the same `0001` baseline. It does not bridge a baseline
+rewrite such as #148. Startup upgrades schema 1 to 2 while preserving all
+financial rows and original declarations. Bundle schema 10 adds
+`investment-basis-resolution-provenance.csv`; backups retain every revision.
+
+Forward migration `0003_unresolved_capital_return.sql` (#169, 2026-10-13)
+preserves known original/revised return-of-capital effects and adds explicit
+knowledge with nullable reduction/excess pairs. Startup upgrades existing
+schema-2 databases without a reset. Downgrade refuses unknown evidence; use the
+verified backup/restore workflow for rollback. The baseline checksums remain
+unchanged. Bundle schema 11 includes the new effect knowledge.
+
+Forward migration `0004_posting_line_once_per_version.sql` (#224, 2026-10-14)
+adds a unique index so a posting line has at most one posting per transaction
+version. Startup upgrades existing schema-3 databases without a reset; one that
+already holds such a duplicate fails the migration and must be recreated (no
+installed release is affected). Bundle schema is unchanged.
+
+Forward migration `0009_dividend_instruments.sql` (#229, 2026-10-15)
+adds immutable paying-instrument facts for dividends and separate withholding.
+Startup upgrades the existing baseline without a reset or changes to posted
+journals; historical payers remain unassigned. A populated fact table refuses
+downgrade so payer/tax evidence is not lost. Bundle schema 13 adds
+`investment-dividend-facts.csv`; use verified backup/restore for rollback.
+
+Forward migration `0015_closing_day_postings.sql` (#292, 2026-10-17)
+recreates the `posting_versions_account_version_valid` trigger so a closed
+account version accepts postings dated on its `closed_on`. No data changes.
+
+Forward migration `0014_authentication_security_events.sql` (#288, 2026-10-17)
+rebuilds `authentication_events` to accept account-security event types and
+adds `origin`, `second_factor` and `metadata_json`. Startup copies every
+existing sign-in row unchanged, with the new columns at their defaults. A
+downgrade is refused once any account-security event or recorded second
+factor exists. Bundle schema is unchanged.
+
+Forward migration `0013_payment_in_lieu_facts.sql` (#255, 2026-10-17) adds
+immutable short-holding, instrument and ex-date facts for payments in lieu of
+dividends. It creates an empty table; a populated one refuses downgrade.
+Bundle schema 14 adds `investment-payment-in-lieu-facts.csv`.
+
+Forward migration `0010_unclassified_dividend_statement_documents.sql` (#246,
+2026-10-16) widens the saved gains-run document version to allow schema-3
+statements. Startup copies every saved run, its exact JSON and hashes unchanged.
+A schema-3 document refuses downgrade. Bundle schema is unchanged: the CSV
+already carries each run's version and exact JSON.
+
+Forward migration `0019_personal_access_tokens.sql` (#334) preserves the existing
+baseline and all authentication-event columns while adding hash-only API
+credentials and token event types. No reset is needed; bundle schema stays 15
+because credentials are excluded from ledger exports. Native backups retain
+hashes/lifecycle state. Downgrade refuses credential rows or token event history;
+use a verified pre-upgrade backup for rollback.
+
+Forward migration `0020_throttle_generations.sql` (#366) adds persisted random
+identities to throttle windows without resetting counters/deadlines. Reservations
+carry that identity through every failure, release and success reset, so an old
+attempt cannot affect a replacement or recreate a cleared budget. Upgrade and
+restart preserve identities; local down/up assigns fresh ones while preserving
+budgets. No reset is needed; ledger bundle schema stays 15. The head schema is
+20. Production rollback still restores the verified pre-upgrade backup and
+previous binary; a down migration is only a local development control.
+
+Forward migration `0021_reference_data_guard_dates.sql` (#385) replaces the
+FX activation and instrument precision guards' UTC-current reads with source
+version effective dates. Source history, work items and financial amounts stay
+intact. `TestReferenceDateMigrationPreservesHistoryAndUsesSourceDates` covers
+20→21, both guard behaviors and a development down/up round trip.
+
+Forward migration `0006_crypto_instruments.sql` preserves existing instrument
+versions, IDs and financial evidence, widens instrument/lot commodity guards to
+crypto and registers quote providers. No development reset is required for the
+same baseline. Downgrade preserves a stock-only database with unused quote sources; it
+refuses crypto versions or referenced quote sources. Restore a verified
+pre-upgrade backup when downgrade is refused. Ledger bundle schema is unchanged because instrument type,
+commodity kind, precision, identifiers and generic pricing data were already
+exported fields.
+
+
+Forward migration `0007_investment_gains_runs.sql` (#234, 2026-10-15) adds
+immutable saved operational gains/statement runs without resetting existing
+same-baseline databases. Downgrade refuses a database containing saved runs;
+use a verified pre-upgrade backup for rollback. Bundle schema 12 adds
+`investment-gains-runs.csv`; backup/restore retains every original document and
+fingerprint. The investment-foundation self-check diagnoses document corruption
+without recomputing historical figures. See the [reporting policy](plans/investment-reporting-plan.md#immutable-operational-runs-234).
+
+Forward migration `0027_investment_returns_runs.sql` (R13 slice 6, #119,
+2026-10-25) adds immutable saved returns_v1 runs on the same terms: downgrade
+refuses while any run exists, bundle schema 18 adds
+`investment-returns-runs.csv`, and the same self-check verifies their
+documents. See the [returns plan](plans/investment-returns-plan.md#saved-return-runs-slice-6).

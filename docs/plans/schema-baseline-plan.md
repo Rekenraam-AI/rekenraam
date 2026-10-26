@@ -124,11 +124,14 @@ other keys: `journal_entries_version_idx`, `posting_versions_journal_idx`,
 The first two duplicate unique-key prefixes; all require native query-plan
 verification and inspection of ordering before removal.
 
-Five UTC-based reference views have no production Go readers after #385:
+The initial text search found five UTC-based reference views with no literal
+production Go references after #385:
 `current_account_versions`, `current_commodity_versions`,
 `current_institution_versions`, `current_payee_versions`,
 `current_investment_instrument_versions`. Tests still read or assert them.
-Removing them requires moving those tests to explicit dates; transaction and
+The deeper review found the repository fallback constructs their names in
+`CurrentReferenceVersions`; removal must inline the same UTC fallback as well
+as moving direct test reads to the selector. Transaction and
 investment effective-history views serve different purposes and remain subject
 to their own review.
 
@@ -138,3 +141,17 @@ otherwise silently accept an old development database also at 1, while goose
 would emit its generic missing-migration error for other old heads. Review
 startup, inspection and restore together, before selecting the smallest durable
 identity mechanism.
+
+
+## Review refinement
+
+The full source/schema reachability sweep also found two dormant tables,
+`instrument_source_links` and `instrument_search_cache`, their three indexes,
+and a deletion-guard reference to the former. No runtime producer, reader,
+export, frontend/API contract or fixture uses them. R17 stores quote identities
+in versioned instrument metadata and local search uses the instrument versions.
+Remove these objects in the unused baseline, with the current R17 contract
+clarified in the same change. Keep all other reference-protection clauses.
+Six more redundant indexes serve descending entity-version sequences already
+supported by reverse scans of unique `(entity_id, version_seq)` keys; verify
+those plans alongside the first six.

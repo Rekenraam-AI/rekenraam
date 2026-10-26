@@ -38,7 +38,9 @@ func runVerifyBackup(ctx context.Context, cfg config.Config, args []string, stdo
 	fmt.Fprintf(stdout, "size:            %d bytes\n", inspection.ByteSize)
 	fmt.Fprintf(stdout, "integrity:       ok (integrity_check and foreign_key_check)\n")
 	fmt.Fprintf(stdout, "schema version:  %d (this build knows %d)\n", inspection.SchemaVersion, inspection.BinaryVersion)
-	if inspection.SchemaVersion > inspection.BinaryVersion {
+	if inspection.BaselineIdentity != db.BaselineIdentity {
+		fmt.Fprintf(stdout, "baseline:        %d (this build requires %d); incompatible pre-release baseline, cannot restore\n", inspection.BaselineIdentity, db.BaselineIdentity)
+	} else if inspection.SchemaVersion > inspection.BinaryVersion {
 		fmt.Fprintln(stdout, "                 this backup is NEWER than this build and cannot be restored by it")
 	}
 

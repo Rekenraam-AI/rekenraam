@@ -164,6 +164,11 @@ of scope until an accepted ADR changes the product decision.
 - [R13 returns contract](plans/investment-returns-plan.md) — returns_v1: portfolio boundary, position-anchored flow classification, TTWROR/IRR equations, failure states, expected cases and slices (#119).
 - [R18 completion audit](reviews/r18-completion-audit-2026-10-15.md) — delivery evidence, date-default fix and independent follow-ups #237/#238.
 
+- [Schema baseline review (#405)](reviews/schema-baseline-review-2026-10-26.md) —
+  schema necessity, object/constraint evidence, workflow inconsistencies,
+  compatibility, test preservation and matched measurements; governed by the
+  [baseline plan](plans/schema-baseline-plan.md).
+
 ## Folders
 
 - **[plans/](plans/)** — feature plans: design + acceptance criteria for one

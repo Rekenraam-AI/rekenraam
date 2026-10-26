@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"rekenraam/backend/internal/db"
 )
 
 func TestCategoriesSetupSeedsBuiltInsAndStarterSuggestionsWithoutEnglishCanonicalNames(t *testing.T) {
@@ -52,7 +55,7 @@ func TestCategoriesSetupSeedsBuiltInsAndStarterSuggestionsWithoutEnglishCanonica
 	require.NoError(t, database.QueryRow(`
 		SELECT av.name
 		FROM accounts a
-		JOIN current_account_versions av ON av.account_id = a.id
+		JOIN `+db.CurrentReferenceVersions(context.Background(), "account")+` av ON av.account_id = a.id
 		WHERE av.code = 'expense_food'
 	`).Scan(&storedName))
 	assert.False(t, storedName.Valid)

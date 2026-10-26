@@ -1,6 +1,14 @@
 # Upgrade Policy And Operator Guide
 
-The current v0.1 candidate schema baseline is migration `0001`. It may be
+The current v0.1 candidate schema baseline is migration `0001` (generation
+`20261026`, consolidated from 0001–0027 by #405). Previous development files
+and backups are incompatible, including earlier files numbered 1. Export with
+their original build before updating, then reset only disposable development
+data using the [developer procedure](developer-workflow.md#migrations-and-resetting-your-database).
+Startup and restore refuse a baseline mismatch before migration or replacement.
+No legacy or installed database exists.
+
+The unused candidate baseline may be
 redesigned before the first installed release under ADR 0013; disposable
 development databases then need a reset. Rekenraam applies pending embedded
 Goose migrations automatically before the HTTP server starts. A migration
@@ -72,7 +80,8 @@ The first installed release has no earlier supported release to upgrade from.
 Later releases must accept a database from any earlier installed release.
 No legacy databases currently exist. CI's
 `TestMigrateSeededBaselineMatchesFreshSchema` loads the current consolidated
-baseline with frozen seeded user data, repeats migration admission, and asserts
+baseline with frozen seeded user data, applies any later embedded migrations,
+repeats migration admission, and asserts
 data preservation and schema equivalence with a fresh install. Installed-release
 upgrade fixtures will be required once those releases exist. The
 [2026-10-18 deployment audit](reviews/deployment-audit-2026-10-18.md) separately
@@ -80,28 +89,17 @@ records an actual candidate-image upgrade from migrations 14 to 18 and rollback
 by verified pre-upgrade backup. That synthetic drill does not establish support
 for an earlier installed release or for every intermediate development schema.
 
-Migration 20 ([#366 evidence](reviews/throttle-reservation-audit-2026-10-20.md))
-adds throttle-generation identities. Existing failed-attempt counters and block
-deadlines are preserved; no owner/password/session reset is required. The named
-19→20 native SQLite control also verifies persisted identities across restart.
-Financial schema/data and the ledger bundle format are unchanged by migration
-20.
-
-Candidate head migration 21 ([#385 evidence](reviews/owner-current-reference-2026-10-22.md))
-replaces two reference-data triggers so their checks use the inserted version's
-effective date. It preserves all source versions, queued work, financial
-amounts and bundle columns. Application current-reference reads now use the
-owner-local day; explicit historical dates keep their meaning. The native
-20→21 regression retains source rows and verifies both trigger behaviors.
-Use the same verified-backup rollback path below.
+The [historical migration notes](archive/pre-release-baseline-rewrites.md#historical-forward-migrations-folded-into-405)
+describe the previous candidate. Their capabilities remain in baseline 1;
+those intermediate migration numbers are no longer upgrade targets.
 
 ## Failed upgrade or rollback
 
 Do not run down migrations on a populated database. Stop the new binary,
 preserve the failed database for diagnosis, restore the verified pre-upgrade
 backup with the documented `rekenraam restore --from <path>` workflow, and
-restart the previous binary. Restore refuses a database whose schema is newer
-than the binary understands.
+restart the previous binary. Restore refuses a mismatched baseline generation
+or a schema newer than the binary understands.
 
 ## Maintainer release checklist
 

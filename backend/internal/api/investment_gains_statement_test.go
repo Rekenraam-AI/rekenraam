@@ -3,11 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"github.com/pressly/goose/v3"
 	"net/http"
-	"rekenraam/backend/internal/app"
-	"rekenraam/backend/internal/db"
-	"rekenraam/backend/migrations"
 	"strconv"
 	"strings"
 	"testing"
@@ -16,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"rekenraam/backend/internal/app"
+	"rekenraam/backend/internal/db"
 	"rekenraam/backend/internal/exact"
 )
 
@@ -182,7 +180,7 @@ func TestInvestmentGainsStatementDisclosesExcludedCapitalReturnAPI(t *testing.T)
 	require.Equal(t, "2026-06-01", statement.Reporting.CapitalReturnReduction.Components[0].RequestedDate)
 }
 
-func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisclosure(t *testing.T) {
+func TestCapitalReturnStatementSchemasPreserveFrozenBytesAndDisclosure(t *testing.T) {
 	t.Parallel()
 	handler, database := newSetupTestHandler(t)
 	f := bootstrapInvestmentAPITest(t, handler)
@@ -236,15 +234,9 @@ func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisc
 	require.NoError(t, err)
 	legacy := db.GainsRunRecord{BookID: 1, SchemaVersion: 1, ReportType: "statement", CapturedAt: profile.KnowledgeCutoff, CreatedAt: captured.Format(time.RFC3339),
 		CreatedByUserID: ownerID, SnapshotSHA256: strings.Repeat("a", 64), InputsJSON: inputs, OutputJSON: encoded, InputsSHA256: db.GainsRunDigest(inputs), OutputSHA256: db.GainsRunDigest(encoded)}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, database, migrations.FS)
-	require.NoError(t, err)
-	_, err = provider.DownTo(ctx, 7)
-	require.NoError(t, err)
 	legacy, err = db.NewInvestmentRepository(database).CreateGainsRun(ctx, legacy, db.AuditEventParams{BookID: 1, ActorUserID: ownerID, OriginType: "browser_api", OccurredAt: legacy.CreatedAt})
 	require.NoError(t, err)
 	require.True(t, db.ValidGainsRunDocument(legacy))
-	_, err = provider.UpTo(ctx, 8)
-	require.NoError(t, err)
 	legacy2 := legacy
 	legacy2.SchemaVersion = 2
 	legacy2.OutputJSON = schema2Output
@@ -252,8 +244,6 @@ func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisc
 	legacy2, err = db.NewInvestmentRepository(database).CreateGainsRun(ctx, legacy2, db.AuditEventParams{BookID: 1, ActorUserID: ownerID, OriginType: "browser_api", OccurredAt: legacy2.CreatedAt})
 	require.NoError(t, err)
 	require.True(t, db.ValidGainsRunDocument(legacy2))
-	_, err = provider.Up(ctx)
-	require.NoError(t, err)
 	for _, run := range []db.GainsRunRecord{legacy, legacy2} {
 		got, err := service.GainsRun(ctx, run.ID)
 		require.NoError(t, err)
@@ -284,8 +274,6 @@ func TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisc
 	live, err := service.GainsStatement(ctx, "2026-06-01", "2026-06-30")
 	require.NoError(t, err)
 	require.Empty(t, live.CapitalReturns)
-	_, err = provider.DownTo(ctx, 7)
-	require.Error(t, err, "cannot downgrade away schema-2 and schema-3 contracts")
 	// Goose rolls back one migration at a time; later migrations can already
 	// have been removed before schema 8 refuses. Restore the head before using
 	// the current server's export contract.

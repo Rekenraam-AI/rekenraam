@@ -5,11 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"rekenraam/backend/migrations"
 )
 
 // dependencyPairs lists the indexed (derived, source) links in a stable order.
@@ -127,58 +124,6 @@ func TestPriceDependenciesAreImmutable(t *testing.T) {
 // exactly the leg rule the old json_each cascade followed: integer
 // observation_ids inside a $.legs array on an is_derived observation, naming an
 // earlier observation in the book. Malformed metadata is skipped, not fatal.
-func TestPriceDependencyMigrationBackfillsDerivationLegs(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	fixture := newVoidCascadeFixture(t)
-	first := fixture.createObservation(t, 1)
-	second := fixture.createObservation(t, 2)
-
-	provider, err := goose.NewProvider(goose.DialectSQLite3, fixture.database, migrations.FS)
-	require.NoError(t, err)
-	_, err = provider.DownTo(ctx, 4)
-	require.NoError(t, err)
-
-	// Before 0005 a derived observation was only its derivation_json.
-	insertLegacy := func(isDerived bool, derivation string) int64 {
-		result, err := fixture.database.ExecContext(ctx, `
-			INSERT INTO price_observations (
-				book_id, series_id, base_commodity_id, quote_commodity_id, quote_type, adjustment_basis,
-				price_value, price_scale, base_quantity_value, base_quantity_scale, valuation_date,
-				source_id, is_manual, is_derived, derivation_json, metadata_json, recorded_at,
-				created_by_user_id, created_audit_event_id
-			)
-			SELECT book_id, series_id, base_commodity_id, quote_commodity_id, quote_type, adjustment_basis,
-				price_value, price_scale, base_quantity_value, base_quantity_scale, valuation_date,
-				source_id, 0, ?, ?, '{}', recorded_at, created_by_user_id, created_audit_event_id
-			FROM price_observations WHERE id = ?
-		`, boolInt(isDerived), derivation, first)
-		require.NoError(t, err)
-		id, err := result.LastInsertId()
-		require.NoError(t, err)
-		return id
-	}
-	both := insertLegacy(true, fmt.Sprintf(`{"kind":"triangulated_fx","legs":[{"observation_id":%d},{"observation_id":%d}]}`, first, second))
-	mixed := insertLegacy(true, fmt.Sprintf(`{"legs":[{"observation_id":%d},{"observation_id":%d},"text",7.5,`+
-		`{"observation_id":"%d"},{"observation_id":%d},{"observation_id":%d}]}`, first, first, second, first+100000, both))
-	insertLegacy(true, `not json`)
-	insertLegacy(true, fmt.Sprintf(`{"legs":{"observation_id":%d}}`, first))
-	insertLegacy(false, fmt.Sprintf(`{"legs":[{"observation_id":%d}]}`, first))
-
-	_, err = provider.Up(ctx)
-	require.NoError(t, err)
-
-	assert.Equal(t, [][2]int64{{both, first}, {both, second}, {mixed, first}, {mixed, both}}, fixture.dependencyPairs(t))
-
-	// The backfilled links carry the void cascade.
-	records, err := fixture.void(t, second)
-	require.NoError(t, err)
-	ids := []int64{}
-	for _, record := range records {
-		ids = append(ids, record.ID)
-	}
-	assert.Equal(t, []int64{second, both, mixed}, ids)
-}
 
 // A derived observation whose derivation is not JSON, or has no legs array,
 // names no sources: it is stored without links rather than failing the write.

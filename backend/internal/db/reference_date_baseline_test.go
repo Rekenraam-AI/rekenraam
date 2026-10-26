@@ -5,21 +5,15 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"rekenraam/backend/migrations"
 )
 
-func TestReferenceDateMigrationPreservesHistoryAndUsesSourceDates(t *testing.T) {
+func TestReferenceDateBaselineGuardsUseSourceDates(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	database, ownerID, currencyID := migratedInvestmentTestDatabase(t)
-	provider, err := goose.NewProvider(goose.DialectSQLite3, database, migrations.FS)
-	require.NoError(t, err)
-	_, err = provider.DownTo(ctx, 20)
-	require.NoError(t, err)
-	_, err = database.Exec(`INSERT INTO commodities(book_id,code,kind,is_builtin,created_at,created_by_user_id)
+	_, err := database.Exec(`INSERT INTO commodities(book_id,code,kind,is_builtin,created_at,created_by_user_id)
 		VALUES(1,'DATED','security',0,'2999-01-01T00:00:00Z',?)`, ownerID)
 	require.NoError(t, err)
 	var securityID int64
@@ -33,10 +27,6 @@ func TestReferenceDateMigrationPreservesHistoryAndUsesSourceDates(t *testing.T) 
 		Spec: InvestmentInstrumentSpec{CommodityID: sql.NullInt64{Int64: securityID, Valid: true}, InstrumentType: "stock", DisplayName: "Dated instrument", QuantityScale: 6, PriceScale: 4, IdentifiersJSON: "{}", MetadataJSON: "{}"},
 	}
 	dated := WithReferenceDate(ctx, "2999-01-01")
-	_, err = NewInvestmentRepository(database).CreateInstrument(dated, params)
-	require.ErrorContains(t, err, "instrument type and precision must match its commodity", "old trigger wrongly uses UTC today")
-	_, err = provider.Up(ctx)
-	require.NoError(t, err)
 	instrument, err := NewInvestmentRepository(database).CreateInstrument(dated, params)
 	require.NoError(t, err)
 	assert.Equal(t, securityID, instrument.CommodityID)
@@ -75,10 +65,8 @@ func TestReferenceDateMigrationPreservesHistoryAndUsesSourceDates(t *testing.T) 
 	assert.Equal(t, queued+1, after, "future account versions cannot suppress earlier coverage")
 
 	accounts, versions := countRows(t, database, "accounts"), countRows(t, database, "account_versions")
-	_, err = provider.DownTo(ctx, 20)
-	require.NoError(t, err)
-	_, err = provider.Up(ctx)
-	require.NoError(t, err)
+	require.NoError(t, Migrate(ctx, database))
+	require.NoError(t, Migrate(ctx, database))
 	assert.Equal(t, accounts, countRows(t, database, "accounts"))
 	assert.Equal(t, versions, countRows(t, database, "account_versions"))
 	assert.Equal(t, 0, countRows(t, database, "posting_versions"))

@@ -125,6 +125,17 @@ func TestCapitalReturnExplicitQuantitiesCapOnlyEntitledBasis(t *testing.T) {
 	require.NoError(t, err)
 	requireScaled(t, 500, 2, lotRemainingBasis(t, f, *replacement.Replacement.LotID), "one of two units still entitled after replay")
 	requireInvestmentSelfCheckPasses(t, f)
+	// #405: the explicit entitlement is durable evidence, with independent
+	// storage refusals as well as the replay/read assertions above.
+	before := buyReplacementPreviewSnapshot(t, f.database)
+	_, err = f.database.Exec(`UPDATE investment_capital_return_entitlements SET quantity_value=quantity_value`)
+	require.ErrorContains(t, err, "investment capital return entitlements are immutable")
+	_, err = f.database.Exec(`DELETE FROM investment_capital_return_entitlements`)
+	require.ErrorContains(t, err, "investment capital return entitlements are immutable")
+	_, err = f.database.Exec(`INSERT INTO investment_capital_return_entitlements(operation_id,entitlement_seq,book_id,lot_id,quantity_value,quantity_scale) VALUES(0,1,1,?,'1',0)`, *buy.LotID)
+	require.ErrorContains(t, err, "investment capital return entitlement is outside its operation or lot")
+	require.Equal(t, before, buyReplacementPreviewSnapshot(t, f.database))
+
 }
 
 func TestCapitalReturnExplicitQuantityOverHoldingRefusedWithoutWriting(t *testing.T) {

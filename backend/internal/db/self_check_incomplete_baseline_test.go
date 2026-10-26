@@ -4,26 +4,16 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
-
-	"rekenraam/backend/migrations"
 )
 
-// Migration 0017 (#313) rebuilds both self-check tables to admit an
-// incomplete verdict. Historical runs keep their recorded verdicts, counts,
-// samples and summaries — a pre-#313 failed run over unknown basis stays
-// failed — and the rebuilt child still cascades from its renamed parent.
-func TestSelfCheckIncompleteMigrationPreservesHistoricalRuns(t *testing.T) {
+// Recorded verdicts remain history; incomplete coverage has its own constrained state.
+func TestSelfCheckBaselinePreservesRecordedVerdictsAndValidatesIncomplete(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	database, _ := newMFATestRepository(t)
-	provider, err := goose.NewProvider(goose.DialectSQLite3, database, migrations.FS)
-	require.NoError(t, err)
-	_, err = provider.DownTo(ctx, 16)
-	require.NoError(t, err)
 
-	_, err = database.ExecContext(ctx, `
+	_, err := database.ExecContext(ctx, `
 		INSERT INTO books (id, code, name, owner_user_id, created_at, updated_at, updated_by_user_id)
 		VALUES (1, 'personal', 'Personal', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1);
 		INSERT INTO self_check_runs (id, book_id, trigger, status, failed_check_count, error_summary, started_at, finished_at, created_at)
@@ -36,8 +26,7 @@ func TestSelfCheckIncompleteMigrationPreservesHistoricalRuns(t *testing.T) {
 	`)
 	require.NoError(t, err)
 
-	_, err = provider.Up(ctx)
-	require.NoError(t, err)
+	require.NoError(t, Migrate(ctx, database))
 
 	type runRow struct {
 		status, errorSummary string
@@ -76,7 +65,7 @@ func TestSelfCheckIncompleteMigrationPreservesHistoricalRuns(t *testing.T) {
 	var parent string
 	require.NoError(t, database.QueryRowContext(ctx,
 		`SELECT "table" FROM pragma_foreign_key_list('self_check_results')`).Scan(&parent))
-	require.Equal(t, "self_check_runs", parent, "renaming the rebuilt parent rewrites the child's reference")
+	require.Equal(t, "self_check_runs", parent, "results reference their recorded run")
 
 	// The new states are representable, and contradictory ones are refused.
 	_, err = database.ExecContext(ctx, `
@@ -96,21 +85,12 @@ func TestSelfCheckIncompleteMigrationPreservesHistoricalRuns(t *testing.T) {
 		require.Error(t, err, name)
 	}
 
-	// A downgrade cannot hold an incomplete verdict, so it is refused rather
-	// than rewriting one.
-	_, err = provider.DownTo(ctx, 16)
-	require.Error(t, err)
-
 	_, err = database.ExecContext(ctx, `DELETE FROM self_check_runs WHERE id = 9`)
 	require.NoError(t, err)
 	var remaining int64
 	require.NoError(t, database.QueryRowContext(ctx, `SELECT COUNT(*) FROM self_check_results WHERE run_id = 9`).Scan(&remaining))
 	require.Zero(t, remaining, "results still cascade from their run")
 
-	_, err = provider.DownTo(ctx, 16)
-	require.NoError(t, err)
 	require.NoError(t, database.QueryRowContext(ctx, `SELECT status FROM self_check_runs WHERE id = 7`).Scan(&status))
 	require.Equal(t, "failed", status)
-	_, err = provider.Up(ctx)
-	require.NoError(t, err)
 }

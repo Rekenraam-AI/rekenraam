@@ -1,0 +1,360 @@
+{
+  "retired": [
+    [
+      "backend/internal/app/crypto_instruments_test.go",
+      "TestCryptoMigrationRefusesLossyDowngradeAtomically"
+    ],
+    [
+      "backend/internal/db/import_identity_scope_migration_test.go",
+      "TestImportIdentityScopeMigrationRoundTrips"
+    ],
+    [
+      "backend/internal/db/pricing_dependencies_test.go",
+      "TestPriceDependencyMigrationBackfillsDerivationLegs"
+    ],
+    [
+      "backend/internal/app/investment_unknown_non_sale_test.go",
+      "TestCapitalReturnForwardMigrationPreservesPopulatedKnownHistory"
+    ]
+  ],
+  "moved": [
+    [
+      "backend/internal/app/transactions_commodity_filter_test.go",
+      "TestDividendInstrumentFactsAreImmutableAndValidatePayer",
+      "TestDividendInstrumentFactsAreImmutableAndValidatePayer",
+      "backend/internal/app/transactions_commodity_filter_test.go"
+    ],
+    [
+      "backend/internal/app/investment_gains_runs_test.go",
+      "TestGainsRunMigrationPreservesFinancialFactsAndRefusesPopulatedDowngrade",
+      "TestGainsRunBaselinePreservesFinancialFacts",
+      "backend/internal/app/investment_gains_runs_test.go"
+    ],
+    [
+      "backend/internal/app/investment_unknown_non_sale_test.go",
+      "TestCapitalReturnUnknownAmountPairsAndDowngradeRefusal",
+      "TestCapitalReturnUnknownAmountPairsAreEnforced",
+      "backend/internal/app/investment_unknown_non_sale_test.go"
+    ],
+    [
+      "backend/internal/app/investment_payment_attribution_migration_test.go",
+      "TestPaymentAttributionMigrationPreservesHistoryAndRefusesLossyDowngrade",
+      "TestPaymentAttributionBaselinePreservesImmutableFacts",
+      "backend/internal/app/investment_payment_attribution_baseline_test.go"
+    ],
+    [
+      "backend/internal/app/investment_cash_in_lieu_parent_migration_test.go",
+      "TestCashInLieuParentMigrationPreservesHistoryAndRefusesMisleadingDowngrade",
+      "TestCashInLieuBaselinePreservesOriginalParent",
+      "backend/internal/app/investment_cash_in_lieu_parent_baseline_test.go"
+    ],
+    [
+      "backend/internal/api/investment_gains_statement_test.go",
+      "TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisclosure",
+      "TestCapitalReturnStatementSchemasPreserveFrozenBytesAndDisclosure",
+      "backend/internal/api/investment_gains_statement_test.go"
+    ],
+    [
+      "backend/internal/db/throttle_generations_migration_test.go",
+      "TestThrottleGenerationMigrationPreservesBudgetsAndRestarts",
+      "TestThrottleGenerationsPreserveBudgetsAcrossRestart",
+      "backend/internal/db/throttle_generations_baseline_test.go"
+    ],
+    [
+      "backend/internal/db/authentication_security_events_test.go",
+      "TestAuthenticationSecurityEventsMigrationKeepsSignInHistoryAndRefusesLossyDowngrade",
+      "TestAuthenticationSecurityEventsPreserveSignInHistory",
+      "backend/internal/db/authentication_security_events_test.go"
+    ],
+    [
+      "backend/internal/db/auth_tokens_test.go",
+      "TestPersonalAccessTokenMigrationPreservesHistoryAndRefusesLossyDowngrade",
+      "TestPersonalAccessTokenBaselinePreservesHistory",
+      "backend/internal/db/auth_tokens_test.go"
+    ],
+    [
+      "backend/internal/db/self_check_incomplete_migration_test.go",
+      "TestSelfCheckIncompleteMigrationPreservesHistoricalRuns",
+      "TestSelfCheckBaselinePreservesRecordedVerdictsAndValidatesIncomplete",
+      "backend/internal/db/self_check_incomplete_baseline_test.go"
+    ],
+    [
+      "backend/internal/db/self_check_warning_migration_test.go",
+      "TestSelfCheckWarningMigrationPreservesHistoryAndRefusesLossyDowngrade",
+      "TestSelfCheckBaselinePreservesAndValidatesAttributionWarnings",
+      "backend/internal/db/self_check_warning_baseline_test.go"
+    ],
+    [
+      "backend/internal/db/fx_coverage_progress_migration_test.go",
+      "TestFXCoverageProgressMigrationPreservesQueuedWork",
+      "TestFXCoverageBaselinePreservesQueuedWork",
+      "backend/internal/db/fx_coverage_progress_baseline_test.go"
+    ],
+    [
+      "backend/internal/db/provider_event_links_migration_test.go",
+      "TestProviderEventLinkMigrationPreservesSuggestionsAndRefusesLossyDowngrade",
+      "TestProviderEventBaselinePreservesSuggestionIdentityAndLinkRequirements",
+      "backend/internal/db/provider_event_links_baseline_test.go"
+    ],
+    [
+      "backend/internal/db/reference_date_migration_test.go",
+      "TestReferenceDateMigrationPreservesHistoryAndUsesSourceDates",
+      "TestReferenceDateBaselineGuardsUseSourceDates",
+      "backend/internal/db/reference_date_baseline_test.go"
+    ],
+    [
+      "backend/internal/app/investment_dividend_attribution_migration_test.go",
+      "TestDividendAttributionMigrationPreservesAndDiagnosesLegacyDuplicateSourceClaims",
+      "TestDividendAttributionBaselineDiagnosesDamagedDuplicateSourceClaims",
+      "backend/internal/app/investment_dividend_attribution_baseline_test.go"
+    ],
+    [
+      "backend/internal/app/investment_cash_in_lieu_parent_migration_test.go",
+      "TestHistoricalCashEntryMigrationChangesAdmissionWithoutRewritingHistory",
+      "TestHistoricalCashEntryBaselinePreservesOriginalFacts",
+      "backend/internal/app/investment_cash_in_lieu_parent_baseline_test.go"
+    ],
+    [
+      "backend/internal/app/investment_dividend_attribution_migration_test.go",
+      "TestDividendAttributionMigrationPreservesHistoryBackfillsOnlyRecordedShapeAndRefusesLoss",
+      "TestDividendAttributionBaselinePreservesRecordedShape",
+      "backend/internal/app/investment_dividend_attribution_baseline_test.go"
+    ],
+    [
+      "backend/internal/db/sqlite_test.go",
+      "TestMigrateSeededBaselineMatchesFreshSchema",
+      "TestMigrateSeededBaselineMatchesFreshSchema",
+      "backend/internal/db/sqlite_test.go"
+    ],
+    [
+      "backend/internal/db/sqlite_test.go",
+      "TestInitialMigrationDownRemovesTheConsolidatedSchema",
+      "TestInitialMigrationDownRemovesTheConsolidatedSchema",
+      "backend/internal/db/sqlite_test.go"
+    ]
+  ],
+  "method": "Original transition test -> retained final-schema/damage-control test and current path. Four transition-only cases retired; final behavior remains in the normal financial/import/pricing suites. Leaf-case changes are enumerated in the measurement artifact.",
+  "top_level_names_added": [
+    {
+      "file": "backend/cmd/rekenraam/restore_test.go",
+      "test": "TestVerifyBackupReportsIncompatibleBaselineSeparatelyFromNewerSchema"
+    },
+    {
+      "file": "backend/internal/api/investment_gains_statement_test.go",
+      "test": "TestCapitalReturnStatementSchemasPreserveFrozenBytesAndDisclosure"
+    },
+    {
+      "file": "backend/internal/app/investment_cash_in_lieu_parent_baseline_test.go",
+      "test": "TestCashInLieuBaselinePreservesOriginalParent"
+    },
+    {
+      "file": "backend/internal/app/investment_cash_in_lieu_parent_baseline_test.go",
+      "test": "TestHistoricalCashEntryBaselinePreservesOriginalFacts"
+    },
+    {
+      "file": "backend/internal/app/investment_dividend_attribution_baseline_test.go",
+      "test": "TestDividendAttributionBaselineDiagnosesDamagedDuplicateSourceClaims"
+    },
+    {
+      "file": "backend/internal/app/investment_dividend_attribution_baseline_test.go",
+      "test": "TestDividendAttributionBaselinePreservesRecordedShape"
+    },
+    {
+      "file": "backend/internal/app/investment_gains_runs_test.go",
+      "test": "TestGainsRunBaselinePreservesFinancialFacts"
+    },
+    {
+      "file": "backend/internal/app/investment_payment_attribution_baseline_test.go",
+      "test": "TestPaymentAttributionBaselinePreservesImmutableFacts"
+    },
+    {
+      "file": "backend/internal/app/investment_unknown_non_sale_test.go",
+      "test": "TestCapitalReturnUnknownAmountPairsAreEnforced"
+    },
+    {
+      "file": "backend/internal/db/auth_tokens_test.go",
+      "test": "TestPersonalAccessTokenBaselinePreservesHistory"
+    },
+    {
+      "file": "backend/internal/db/authentication_security_events_test.go",
+      "test": "TestAuthenticationSecurityEventsPreserveSignInHistory"
+    },
+    {
+      "file": "backend/internal/db/fx_coverage_progress_baseline_test.go",
+      "test": "TestFXCoverageBaselinePreservesQueuedWork"
+    },
+    {
+      "file": "backend/internal/db/instrument_cleanup_test.go",
+      "test": "TestPostedInstrumentCleanupRefusesBothKindsBeforeVersionRemoval"
+    },
+    {
+      "file": "backend/internal/db/instrument_cleanup_test.go",
+      "test": "TestReferencedInstrumentCleanupRefusesBothKindsAtomically"
+    },
+    {
+      "file": "backend/internal/db/instrument_cleanup_test.go",
+      "test": "TestUnusedInstrumentCleanupTreatsSecurityAndCryptoEqually"
+    },
+    {
+      "file": "backend/internal/db/provider_event_links_baseline_test.go",
+      "test": "TestProviderEventBaselinePreservesSuggestionIdentityAndLinkRequirements"
+    },
+    {
+      "file": "backend/internal/db/reference_date_baseline_test.go",
+      "test": "TestReferenceDateBaselineGuardsUseSourceDates"
+    },
+    {
+      "file": "backend/internal/db/release_seed_test.go",
+      "test": "TestValidateReleaseSeedFixture"
+    },
+    {
+      "file": "backend/internal/db/schema_baseline_test.go",
+      "test": "TestBaselineIndexesKeepOrderedAndForeignKeyLookups"
+    },
+    {
+      "file": "backend/internal/db/schema_baseline_test.go",
+      "test": "TestBaselineTagLinksRefuseMissingOrArchivedTags"
+    },
+    {
+      "file": "backend/internal/db/schema_baseline_test.go",
+      "test": "TestMigrateRefusesIncompatibleDevelopmentBaselinesWithoutWrites"
+    },
+    {
+      "file": "backend/internal/db/schema_baseline_test.go",
+      "test": "TestMigrateRefusesUnversionedPopulatedFilesWithoutCreatingHistory"
+    },
+    {
+      "file": "backend/internal/db/schema_baseline_test.go",
+      "test": "TestMigrateResumesEmptyGooseHistory"
+    },
+    {
+      "file": "backend/internal/db/schema_baseline_test.go",
+      "test": "TestPricingSourceAssignmentGuardRefusesMissingCommodity"
+    },
+    {
+      "file": "backend/internal/db/schema_baseline_test.go",
+      "test": "TestRestoreRefusesIncompatibleBaselineBeforePreservingDestination"
+    },
+    {
+      "file": "backend/internal/db/self_check_incomplete_baseline_test.go",
+      "test": "TestSelfCheckBaselinePreservesRecordedVerdictsAndValidatesIncomplete"
+    },
+    {
+      "file": "backend/internal/db/self_check_warning_baseline_test.go",
+      "test": "TestSelfCheckBaselinePreservesAndValidatesAttributionWarnings"
+    },
+    {
+      "file": "backend/internal/db/sqlite_test.go",
+      "test": "TestCurrentReferenceSelectionUsesConsistentRules"
+    },
+    {
+      "file": "backend/internal/db/throttle_generations_baseline_test.go",
+      "test": "TestThrottleGenerationsPreserveBudgetsAcrossRestart"
+    }
+  ],
+  "top_level_names_removed_or_renamed": [
+    {
+      "file": "backend/internal/api/investment_gains_statement_test.go",
+      "test": "TestCapitalReturnStatementSchemaUpgradePreservesLegacyBytesAndNewFrozenDisclosure"
+    },
+    {
+      "file": "backend/internal/app/crypto_instruments_test.go",
+      "test": "TestCryptoMigrationRefusesLossyDowngradeAtomically"
+    },
+    {
+      "file": "backend/internal/app/investment_cash_in_lieu_parent_migration_test.go",
+      "test": "TestCashInLieuParentMigrationPreservesHistoryAndRefusesMisleadingDowngrade"
+    },
+    {
+      "file": "backend/internal/app/investment_cash_in_lieu_parent_migration_test.go",
+      "test": "TestHistoricalCashEntryMigrationChangesAdmissionWithoutRewritingHistory"
+    },
+    {
+      "file": "backend/internal/app/investment_dividend_attribution_migration_test.go",
+      "test": "TestDividendAttributionMigrationPreservesAndDiagnosesLegacyDuplicateSourceClaims"
+    },
+    {
+      "file": "backend/internal/app/investment_dividend_attribution_migration_test.go",
+      "test": "TestDividendAttributionMigrationPreservesHistoryBackfillsOnlyRecordedShapeAndRefusesLoss"
+    },
+    {
+      "file": "backend/internal/app/investment_gains_runs_test.go",
+      "test": "TestGainsRunMigrationPreservesFinancialFactsAndRefusesPopulatedDowngrade"
+    },
+    {
+      "file": "backend/internal/app/investment_payment_attribution_migration_test.go",
+      "test": "TestPaymentAttributionMigrationPreservesHistoryAndRefusesLossyDowngrade"
+    },
+    {
+      "file": "backend/internal/app/investment_unknown_non_sale_test.go",
+      "test": "TestCapitalReturnForwardMigrationPreservesPopulatedKnownHistory"
+    },
+    {
+      "file": "backend/internal/app/investment_unknown_non_sale_test.go",
+      "test": "TestCapitalReturnUnknownAmountPairsAndDowngradeRefusal"
+    },
+    {
+      "file": "backend/internal/db/auth_tokens_test.go",
+      "test": "TestPersonalAccessTokenMigrationPreservesHistoryAndRefusesLossyDowngrade"
+    },
+    {
+      "file": "backend/internal/db/authentication_security_events_test.go",
+      "test": "TestAuthenticationSecurityEventsMigrationKeepsSignInHistoryAndRefusesLossyDowngrade"
+    },
+    {
+      "file": "backend/internal/db/fx_coverage_progress_migration_test.go",
+      "test": "TestFXCoverageProgressMigrationPreservesQueuedWork"
+    },
+    {
+      "file": "backend/internal/db/import_identity_scope_migration_test.go",
+      "test": "TestImportIdentityScopeMigrationRoundTrips"
+    },
+    {
+      "file": "backend/internal/db/pricing_dependencies_test.go",
+      "test": "TestPriceDependencyMigrationBackfillsDerivationLegs"
+    },
+    {
+      "file": "backend/internal/db/provider_event_links_migration_test.go",
+      "test": "TestProviderEventLinkMigrationPreservesSuggestionsAndRefusesLossyDowngrade"
+    },
+    {
+      "file": "backend/internal/db/reference_date_migration_test.go",
+      "test": "TestReferenceDateMigrationPreservesHistoryAndUsesSourceDates"
+    },
+    {
+      "file": "backend/internal/db/self_check_incomplete_migration_test.go",
+      "test": "TestSelfCheckIncompleteMigrationPreservesHistoricalRuns"
+    },
+    {
+      "file": "backend/internal/db/self_check_warning_migration_test.go",
+      "test": "TestSelfCheckWarningMigrationPreservesHistoryAndRefusesLossyDowngrade"
+    },
+    {
+      "file": "backend/internal/db/sqlite_test.go",
+      "test": "TestCurrentVersionViewsUseConsistentSelectionRules"
+    },
+    {
+      "file": "backend/internal/db/throttle_generations_migration_test.go",
+      "test": "TestThrottleGenerationMigrationPreservesBudgetsAndRestarts"
+    }
+  ],
+  "same_name_file_moves": [],
+  "changed_same_named_controls": [
+    {
+      "test": "TestRecoverOwnerCommandBacksUpDatabaseBeforeMigration",
+      "reason": "Retain verified backup before admission. Obsolete unversioned-auth input now refuses explicitly; password, session and absent migration history remain unchanged."
+    },
+    {
+      "test": "TestRecoveryAndRestoreHelpersEscapeTemporaryRoot/recovery/pre-migration",
+      "reason": "Retain escaped-path/read-only backup assertions; obsolete unversioned input expects explicit baseline refusal."
+    },
+    {
+      "test": "TestMigrateSeededBaselineMatchesFreshSchema",
+      "reason": "Retain baseline-only construction and exact snapshots. Remove obsolete per-migration backfill exceptions; the gross dividend fact is explicit in the rebased seed."
+    },
+    {
+      "test": "TestInitialMigrationDownRemovesTheConsolidatedSchema",
+      "reason": "Retain fresh empty Down(0) control and add fresh startup after it."
+    }
+  ]
+}

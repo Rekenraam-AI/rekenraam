@@ -303,7 +303,7 @@ func TestRestoreCommandSaysNothingWasReplacedWhenItRefusesEarly(t *testing.T) {
 }
 
 func TestRestoreCommandReleasesLockOnFailure(t *testing.T) {
-	for _, name := range []string{"unusable_backup", "source_equals_destination", "newer_schema", "cancelled", "after_preserving", "after_installing"} {
+	for _, name := range []string{"unusable_backup", "source_equals_destination", "newer_schema", "incompatible_baseline", "cancelled", "after_preserving", "after_installing"} {
 		t.Run(name, func(t *testing.T) {
 			databaseURL, backupPath := backupOf(t)
 			path, err := db.ResolveSQLiteFilePath(databaseURL)
@@ -321,6 +321,12 @@ func TestRestoreCommandReleasesLockOnFailure(t *testing.T) {
 				backup, err := db.Open(ctx, db.SQLiteFileURL(backupPath))
 				require.NoError(t, err)
 				_, err = backup.ExecContext(ctx, `UPDATE goose_db_version SET version_id = 9999 WHERE version_id = (SELECT MAX(version_id) FROM goose_db_version)`)
+				require.NoError(t, err)
+				require.NoError(t, backup.Close())
+			case "incompatible_baseline":
+				backup, err := db.Open(ctx, db.SQLiteFileURL(backupPath))
+				require.NoError(t, err)
+				_, err = backup.ExecContext(ctx, `PRAGMA user_version=0`)
 				require.NoError(t, err)
 				require.NoError(t, backup.Close())
 			case "cancelled":
@@ -346,6 +352,10 @@ func TestRestoreCommandReleasesLockOnFailure(t *testing.T) {
 					return result, err
 				})
 			require.Equalf(t, 1, code, "stderr: %s", stderr.String())
+			if name == "incompatible_baseline" {
+				assert.Contains(t, stderr.String(), "incompatible pre-release baseline")
+			}
+
 			assert.Empty(t, stdout.String())
 			require.NoError(t, lockfile.CheckAvailable(path), "every error path must release the lock")
 			info, err := os.Stat(lockfile.Path(path))
@@ -416,4 +426,20 @@ func TestRestoreCommandRerunsCleanlyAfterAnInterruptedReplacement(t *testing.T) 
 	require.NoError(t, err)
 	assert.Equal(t, []string{interrupted}, others)
 	require.NoError(t, lockfile.CheckAvailable(databasePath))
+}
+
+func TestVerifyBackupReportsIncompatibleBaselineSeparatelyFromNewerSchema(t *testing.T) {
+	t.Parallel()
+	databaseURL, backupPath := backupOf(t)
+	backup, err := db.Open(context.Background(), db.SQLiteFileURL(backupPath))
+	require.NoError(t, err)
+	_, err = backup.Exec(`PRAGMA user_version=0; UPDATE goose_db_version SET version_id=27 WHERE version_id=1`)
+	require.NoError(t, err)
+	require.NoError(t, backup.Close())
+	var stdout, stderr bytes.Buffer
+	code := runVerifyBackup(context.Background(), config.Config{DatabaseURL: databaseURL}, []string{"--from", backupPath}, &stdout, &stderr)
+	require.Equalf(t, 0, code, "%s", stderr.String())
+	require.Contains(t, stdout.String(), "integrity:       ok")
+	require.Contains(t, stdout.String(), "incompatible pre-release baseline, cannot restore")
+	require.NotContains(t, stdout.String(), "NEWER")
 }

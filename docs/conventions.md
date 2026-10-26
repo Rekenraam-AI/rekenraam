@@ -432,6 +432,12 @@ When a feature introduces a durable new rule, update one of those documents in t
 - Soft-deletion uses a nullable `deleted_at` timestamp for current state and append-only deletion/restoration events for auditable history. Do not represent soft-delete as a lifecycle status. The transaction implementation is the reference pattern: it hides a transaction from ordinary views while keeping the row durable for audit and recovery.
 - Schema changes require explicit migrations under `backend/migrations`.
 - The migration runner is **`pressly/goose`** with embedded SQL files. Migrations are sequential numbered `.sql` files under `backend/migrations/`. Run at startup; goose tracks applied versions in the database.
+- The v0.1 baseline generation is `20261026` (`PRAGMA user_version`, #405),
+  independent of Goose's forward migration sequence. Additive migrations retain
+  it. An incompatible pre-release rewrite must change it and its refusal/reset
+  tests; installed releases never rewrite their baseline. Startup and restore
+  reject mismatched generations, including obsolete files also numbered 1.
+
 - ADR 0014 selects **`github.com/mattn/go-sqlite3`** with bundled native SQLite
   through CGO, delivered in #195. Production and tests use one driver with
   `fts5,netgo,osusergo` via shared commands; do not link system `libsqlite3`. See
@@ -561,7 +567,8 @@ has actual installations, its migration files are immutable.
   generation. A superseded attempt may finish, retaining its normal verdict
   and event, but never debits, refunds, resets or recreates a replacement or
   missing row. A late failure cannot restart an expired block. Counts and
-  deadlines survive restart and migration 0020. The bound is on admissions
+  deadlines survive restart (originally delivered through migration 0020,
+  now consolidated into the #405 baseline). The bound is on admissions
   within a generation: old guesses may finish after rollover, and intentional
   successful resets admit a fresh budget. It is not a rolling bound on verdict
   timestamps across generations.

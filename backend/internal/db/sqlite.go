@@ -163,6 +163,9 @@ func EnforceSQLiteFilePermissions(databaseURL string) error {
 }
 
 func Migrate(ctx context.Context, database *sql.DB) error {
+	if err := requireCompatibleBaseline(ctx, database); err != nil {
+		return err
+	}
 	provider, err := goose.NewProvider(goose.DialectSQLite3, database, migrations.FS)
 	if err != nil {
 		return fmt.Errorf("create sqlite migration provider: %w", err)
