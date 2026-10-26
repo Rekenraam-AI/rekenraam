@@ -114,6 +114,17 @@ explicit reuse, and the owner declined it: `_stmt_cache_size=0` stays. Remedy
 2, schema slimming in #405, is next. See the
 [#404 record](../reviews/statement-compilation-2026-10-24.md).
 
+**#405 result (2026-10-26).** Remedy 2 is implemented locally. Against the
+R13-inclusive `9b414c08`, the slimmed baseline and obsolete-transition retirement
+lowered the isolated application median 240.7 → 229.6 s. Both original full-gate
+application runs exceed 270 s (271.8/289.0); both proposed runs are below it
+(248.5/262.5). The act threshold no longer fires; investigate and the unmet 30%
+headroom objective remain. These modest suite gains do not establish the same
+gain for production requests. Concurrency, deadlines, FULL and cache policy
+remain unchanged. The [review and evidence](../reviews/schema-baseline-review-2026-10-26.md#measurements-and-validation)
+record native operations, spread, case changes and validation limits. No hosted
+CI observation or further policy amendment is claimed.
+
 ## References
 
 - [ADR 0014](0014-native-sqlite-driver.md), native driver admission.

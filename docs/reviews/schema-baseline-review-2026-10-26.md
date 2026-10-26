@@ -194,15 +194,115 @@ records SQLite, Flyway and 2024/2025 research sources and limits.
 
 ## Measurements and validation
 
-The implementation slice passed the complete native backend race/vet gate,
-frontend validation (778 unit tests), integrated build, fresh release-seed
-generation and native source/consumer round trip. The initial 450-case browser
-smoke run passed 449 cases and timed out once in the error-state route sweep.
-That case passed twice unchanged in isolation and the complete 12-case audits
-group passed on rerun. After the unversioned-file admission correction, the
-rebuilt binary also passed both owner setup/login bootstrap cases. No frontend
-change was justified by the transient timeout. Hosted CI has not been run.
+Implementation: `f4ee790fad60b01efb2262dc626efdb412c97b3b`; original source:
+`9b414c08`. The [measurement artifact](fixtures/schema-baseline-measurements-2026-10-26.json)
+contains source hashes, UTC start times, phase/package timings, case digests,
+case changes and native probe batches. The host exposed ten CPUs (AMD EPYC
+3251), 17.8 GiB at the recorded snapshot, Linux 6.8.0-147 and Go 1.27.3.
+SQLite is bundled 3.53.4 (`mattn/go-sqlite3` 1.14.52). Both sources retain
+CGO/FTS5, FULL, race instrumentation, statement cache 0 and unset GOMAXPROCS.
+The shared gate retains `-p 2 -timeout=5m`.
 
-Final matched measurements follow in the measurement slice. Development trial
-timings and the failed pre-correction head gate are excluded. #405 stays open
-until the required rotations and two full-gate pairs are assessed.
+### Native schema operations
+
+The temporary [probe](fixtures/schema-baseline-probe-2026-10-26_test.go.txt)
+runs five batches of 100 connection open/close operations per fresh schema
+stage, and 100 prepare/close operations for
+`INSERT INTO posting_versions DEFAULT VALUES`. It never executes that insert.
+The medians below include closing each connection or statement. All captured
+SQL is ASCII, so `length(sql)` also equals its byte length.
+
+| Schema | Objects | Stored SQL, bytes | Open + close, ms | Prepare + close, ms |
+|---|---:|---:|---:|---:|
+| Original migration 1 | 457 | 190,814 | 7.469 | 0.286 |
+| Original migration 20 | 499 | 206,026 | 8.224 | 0.305 |
+| Original head 27 | 511 | 217,145 | 8.842 | 0.312 |
+| Proposed head 1 | 489 | 212,067 | 8.236 | 0.293 |
+
+Final stored SQL shrinks **2.3%** (5,078 bytes), not by the migration-file
+ratio. The measured open/close median falls **6.9%**; write-preparation batch
+ranges overlap, so its approximately 0.312 → 0.293 ms medians are weaker
+evidence. Empty-file open/close is about 0.72–0.74 ms. These are sequential
+single-host schema probes, not a randomized experiment, confidence interval or
+production request-latency claim.
+
+### Matched application and shared gates
+
+The [runner](fixtures/schema-baseline-matched.py) prebuilds the application race
+binaries, then executes three interleaved original/proposed rotations. Isolated
+runs retain #402's ten-minute diagnostic deadline; real shared gates retain
+five minutes. No competing test/build jobs run during the accepted measurements.
+A one-off inventory scan overlapped part of original full gate 1; that limits
+attributing command-time differences solely to this change. The earlier development trials
+and failed pre-correction head gate are excluded, with the latter recorded in
+the artifact. Successful original gate 1 was retained because its source did
+not change; both proposed gates use the final implementation.
+
+| Variant | Application seconds, three runs | Median | Leaf cases |
+|---|---|---:|---:|
+| Original | 245.465, 240.712, 229.327 | **240.712** | 2,455 |
+| Proposed | 231.395, 229.568, 215.163 | **229.568** | 2,453 |
+
+All six application runs pass. Each variant has one stable leaf-name digest across
+its three runs, recorded in the artifact. The four unchanged skips are
+opt-in measurement tools. The application changes exactly twelve old leaf
+names into ten: ten renamed final-behavior/damage-control leaves and two
+retired transition-only leaves (crypto downgrade and known-capital-return
+forward migration). The full repository's four retired transition-only tests,
+retained controls, new names and same-name changes are in the
+[case map](fixtures/schema-baseline-test-moves-2026-10-26.json).
+
+The observed median reduction is **4.6%**; paired reductions are about
+4.6–6.2%. Both variants also drift faster in the third rotation, and their
+ranges overlap. This is a modest measured suite gain, not proof that all
+production work is 4.6% faster. Retirement of obsolete transitions contributes;
+only the separate probes isolate schema operations. No result supports
+weakening a financial guard for a larger timing reduction.
+
+| Full gate | Application, s | Database, s | Race execution phase, s | Whole command, s |
+|---|---:|---:|---:|---:|
+| full-base-1 | 271.774 | 220.109 | 371.55 | 421.326 |
+| full-head-1 | 248.514 | 97.684 | 316.85 | 359.606 |
+| full-base-2 | 289.042 | 194.396 | 400.03 | 406.508 |
+| full-head-2 | 262.509 | 102.379 | 340.44 | 347.012 |
+
+All four full gates pass, uncached, including formatting, vet and every race
+package. Command time includes compilation/vet and scheduling; it is not a
+per-package deadline metric. At this R13-inclusive original source both full
+application runs exceed 270 s. At the proposed source neither does, so ADR
+0016's **act** threshold no longer fires. The **investigate** threshold still
+fires: the isolated median exceeds 210 s. The 30% headroom objective is not
+restored; thresholds, concurrency, cache policy and durability are unchanged.
+Reprofile the resulting baseline before choosing further cost work; this
+review does not promote a deadline or cache change into the feature queue.
+
+### Validation and reproduction limits
+
+Frontend validation passed **778 unit tests**, and the integrated build passes.
+Fresh release-seed generation prepares 272 statements and passes the native
+source/consumer round trip, including admission triggers, FKs and existing
+ledger/lot/checkpoint oracles. The original-schema cleanup negative control
+fails only unused crypto; stock cleanup and both referenced/posted controls
+pass. The final-source cleanup controls all pass.
+
+The initial 450-case browser smoke run passed 449 cases and timed out once in
+the error-state route sweep. That case passed twice unchanged in isolation;
+the complete 12-case audits group passed on rerun. After the unversioned-file
+admission correction, the rebuilt binary passed both owner setup/login
+bootstrap cases. No frontend change was justified by that single timeout.
+This remains an explicitly recorded intermittent validation observation.
+Hosted CI has not been run; no push or publication was requested.
+
+To reproduce, use clean original/final checkouts, run the native probe
+separately in each (versions `0,1,20,27` original, `0,1` proposed), and remove
+the temporary Go file before running the matched runner. Export a writable
+GOCACHE and invoke `schema-baseline-matched.py BASE HEAD OUTPUT`, with no
+competing validation jobs. The [reducer](fixtures/schema-baseline-results.py)
+records terminal outcomes/digests and explains the case changes. Resume only
+runs whose already-passing source is unchanged. The schema inventory's own
+script accepts the native captures and reads only index/FK metadata through
+Python SQLite; it does not substitute that engine for native behavior tests.
+
+Local implementation and the required measured acceptance are complete.
+GitHub tracking/publication is unchanged because automatic approval review
+rejected the external follow-up write; the findings and limits remain here.

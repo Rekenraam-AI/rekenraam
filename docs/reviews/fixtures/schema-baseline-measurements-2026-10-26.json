@@ -1,0 +1,521 @@
+{
+  "base": "9b414c08",
+  "head_implementation": "f4ee790fad60b01efb2262dc626efdb412c97b3b",
+  "baseline_identity": 20261026,
+  "host_and_source": {
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "cpu": "AMD EPYC 3251 8-Core Processor",
+    "os_cpu_count": 10,
+    "affinity_cpu_count": 10,
+    "memtotal": "MemTotal:       18635024 kB",
+    "GOMAXPROCS": "unset",
+    "cgroup_cpu.max": "unavailable",
+    "cgroup_memory.max": "unavailable",
+    "base_backend_source_sha256": "b8a08136cea5c1bff44927d5682307c21d11fa9ac92a46b5daf7bd2c1cf38401",
+    "head_backend_source_sha256": "0a09944f2b020a4c6baf2e7d7a130febe8de8d6bae03a52deba06ce06a85a57f"
+  },
+  "configuration": "go1.27.3, mattn/go-sqlite3 v1.14.52 / bundled SQLite 3.53.4; CGO, fts5/netgo/osusergo; FULL; race; statement cache 0; GOMAXPROCS unset; full gate -p 2 -timeout=5m; isolated prebuilt app -test.timeout=10m per #402",
+  "commands": {
+    "matched": "schema-baseline-matched.py BASE HEAD OUTPUT (GOCACHE exported)",
+    "full_gate": "GOFLAGS=-count=1 GO_PHASE_TIMINGS=1 scripts/test-backend.sh"
+  },
+  "application": [
+    {
+      "name": "app-base-1",
+      "package_wall_s": 245.465,
+      "command_wall_s": 245.608,
+      "leaves": 2455,
+      "leaf_work_s": 2397.04,
+      "outcomes": {
+        "pass": 2451,
+        "skip": 4
+      },
+      "skipped_cases": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "leaf_case_name_sha256": "7ebb667e31254f52d55698e8417dafcca15de41d9f953d7372ffac3aa0f6816a",
+      "started_utc": "2026-10-26T13:12:05.808805+00:00"
+    },
+    {
+      "name": "app-base-2",
+      "package_wall_s": 240.712,
+      "command_wall_s": 240.78,
+      "leaves": 2455,
+      "leaf_work_s": 2348.89,
+      "outcomes": {
+        "pass": 2451,
+        "skip": 4
+      },
+      "skipped_cases": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "leaf_case_name_sha256": "7ebb667e31254f52d55698e8417dafcca15de41d9f953d7372ffac3aa0f6816a",
+      "started_utc": "2026-10-26T13:20:02.885467+00:00"
+    },
+    {
+      "name": "app-base-3",
+      "package_wall_s": 229.327,
+      "command_wall_s": 229.397,
+      "leaves": 2455,
+      "leaf_work_s": 2235.63,
+      "outcomes": {
+        "pass": 2451,
+        "skip": 4
+      },
+      "skipped_cases": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "leaf_case_name_sha256": "7ebb667e31254f52d55698e8417dafcca15de41d9f953d7372ffac3aa0f6816a",
+      "started_utc": "2026-10-26T13:27:53.317634+00:00"
+    },
+    {
+      "name": "app-head-1",
+      "package_wall_s": 231.395,
+      "command_wall_s": 231.467,
+      "leaves": 2453,
+      "leaf_work_s": 2236.42,
+      "outcomes": {
+        "pass": 2449,
+        "skip": 4
+      },
+      "skipped_cases": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "leaf_case_name_sha256": "cc0ed1a7c397e7032bb2e7b250ac0502178942c5086e5b20a92f5705668b542f",
+      "started_utc": "2026-10-26T13:16:11.417497+00:00"
+    },
+    {
+      "name": "app-head-2",
+      "package_wall_s": 229.568,
+      "command_wall_s": 229.65,
+      "leaves": 2453,
+      "leaf_work_s": 2247.68,
+      "outcomes": {
+        "pass": 2449,
+        "skip": 4
+      },
+      "skipped_cases": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "leaf_case_name_sha256": "cc0ed1a7c397e7032bb2e7b250ac0502178942c5086e5b20a92f5705668b542f",
+      "started_utc": "2026-10-26T13:24:03.666662+00:00"
+    },
+    {
+      "name": "app-head-3",
+      "package_wall_s": 215.163,
+      "command_wall_s": 215.23,
+      "leaves": 2453,
+      "leaf_work_s": 2102.14,
+      "outcomes": {
+        "pass": 2449,
+        "skip": 4
+      },
+      "skipped_cases": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "leaf_case_name_sha256": "cc0ed1a7c397e7032bb2e7b250ac0502178942c5086e5b20a92f5705668b542f",
+      "started_utc": "2026-10-26T13:31:42.715489+00:00"
+    }
+  ],
+  "full_gate": [
+    {
+      "name": "full-base-1",
+      "command_wall_s": 421.326,
+      "package_wall_s": {
+        "rekenraam/backend/cmd/rekenraam": 83.224,
+        "rekenraam/backend/internal/api": 132.716,
+        "rekenraam/backend/internal/app": 271.774,
+        "rekenraam/backend/internal/appruntime": 6.429,
+        "rekenraam/backend/internal/config": 1.023,
+        "rekenraam/backend/internal/db": 220.109,
+        "rekenraam/backend/internal/exact": 1.033,
+        "rekenraam/backend/internal/marketdata": 1.079,
+        "rekenraam/backend/internal/onlinesource/trading212": 1.068,
+        "rekenraam/backend/internal/recur": 1.024,
+        "rekenraam/backend/internal/secretbox": 1.015,
+        "rekenraam/backend/internal/testdb": 6.256,
+        "rekenraam/backend/internal/totp": 1.02,
+        "rekenraam/backend/internal/web": 1.033,
+        "rekenraam/backend/migrations": 1.017
+      },
+      "phases": {
+        "modules": {
+          "wall_s": 0.01,
+          "user_s": 0.01,
+          "sys_s": 0.01
+        },
+        "vet": {
+          "wall_s": 16.84,
+          "user_s": 94.45,
+          "sys_s": 8.65
+        },
+        "race-compile-vet": {
+          "wall_s": 32.48,
+          "user_s": 73.25,
+          "sys_s": 6.6
+        },
+        "race-tests": {
+          "wall_s": 371.55,
+          "user_s": 1604.8,
+          "sys_s": 953.98
+        }
+      },
+      "started_utc": "2026-10-26T12:49:27.164476+00:00",
+      "exit": 0
+    },
+    {
+      "name": "full-base-2",
+      "command_wall_s": 406.508,
+      "package_wall_s": {
+        "rekenraam/backend/cmd/rekenraam": 107.582,
+        "rekenraam/backend/internal/api": 160.929,
+        "rekenraam/backend/internal/app": 289.042,
+        "rekenraam/backend/internal/appruntime": 7.654,
+        "rekenraam/backend/internal/config": 1.028,
+        "rekenraam/backend/internal/db": 194.396,
+        "rekenraam/backend/internal/exact": 1.031,
+        "rekenraam/backend/internal/marketdata": 1.072,
+        "rekenraam/backend/internal/onlinesource/trading212": 1.089,
+        "rekenraam/backend/internal/recur": 1.043,
+        "rekenraam/backend/internal/secretbox": 1.02,
+        "rekenraam/backend/internal/testdb": 7.728,
+        "rekenraam/backend/internal/totp": 1.025,
+        "rekenraam/backend/internal/web": 1.049,
+        "rekenraam/backend/migrations": 1.022
+      },
+      "phases": {
+        "modules": {
+          "wall_s": 0.01,
+          "user_s": 0.0,
+          "sys_s": 0.01
+        },
+        "vet": {
+          "wall_s": 0.48,
+          "user_s": 0.9,
+          "sys_s": 0.31
+        },
+        "race-compile-vet": {
+          "wall_s": 5.55,
+          "user_s": 10.49,
+          "sys_s": 2.82
+        },
+        "race-tests": {
+          "wall_s": 400.03,
+          "user_s": 1714.75,
+          "sys_s": 999.82
+        }
+      },
+      "started_utc": "2026-10-26T13:35:17.946516+00:00",
+      "exit": 0
+    },
+    {
+      "name": "full-head-1",
+      "command_wall_s": 359.606,
+      "package_wall_s": {
+        "rekenraam/backend/cmd/rekenraam": 65.578,
+        "rekenraam/backend/internal/api": 145.087,
+        "rekenraam/backend/internal/app": 248.514,
+        "rekenraam/backend/internal/appruntime": 3.844,
+        "rekenraam/backend/internal/config": 1.027,
+        "rekenraam/backend/internal/db": 97.684,
+        "rekenraam/backend/internal/exact": 1.031,
+        "rekenraam/backend/internal/marketdata": 1.087,
+        "rekenraam/backend/internal/onlinesource/trading212": 1.093,
+        "rekenraam/backend/internal/recur": 1.039,
+        "rekenraam/backend/internal/secretbox": 1.02,
+        "rekenraam/backend/internal/testdb": 5.444,
+        "rekenraam/backend/internal/totp": 1.04,
+        "rekenraam/backend/internal/web": 1.045,
+        "rekenraam/backend/migrations": 1.02
+      },
+      "phases": {
+        "modules": {
+          "wall_s": 0.01,
+          "user_s": 0.01,
+          "sys_s": 0.01
+        },
+        "vet": {
+          "wall_s": 10.53,
+          "user_s": 36.87,
+          "sys_s": 2.49
+        },
+        "race-compile-vet": {
+          "wall_s": 31.83,
+          "user_s": 68.5,
+          "sys_s": 5.52
+        },
+        "race-tests": {
+          "wall_s": 316.85,
+          "user_s": 1309.54,
+          "sys_s": 796.63
+        }
+      },
+      "started_utc": "2026-10-26T13:06:06.202402+00:00",
+      "exit": 0
+    },
+    {
+      "name": "full-head-2",
+      "command_wall_s": 347.012,
+      "package_wall_s": {
+        "rekenraam/backend/cmd/rekenraam": 74.738,
+        "rekenraam/backend/internal/api": 153.544,
+        "rekenraam/backend/internal/app": 262.509,
+        "rekenraam/backend/internal/appruntime": 4.248,
+        "rekenraam/backend/internal/config": 1.029,
+        "rekenraam/backend/internal/db": 102.379,
+        "rekenraam/backend/internal/exact": 1.035,
+        "rekenraam/backend/internal/marketdata": 1.146,
+        "rekenraam/backend/internal/onlinesource/trading212": 1.082,
+        "rekenraam/backend/internal/recur": 1.044,
+        "rekenraam/backend/internal/secretbox": 1.018,
+        "rekenraam/backend/internal/testdb": 5.433,
+        "rekenraam/backend/internal/totp": 1.026,
+        "rekenraam/backend/internal/web": 1.038,
+        "rekenraam/backend/migrations": 1.019
+      },
+      "phases": {
+        "modules": {
+          "wall_s": 0.01,
+          "user_s": 0.01,
+          "sys_s": 0.01
+        },
+        "vet": {
+          "wall_s": 0.48,
+          "user_s": 0.93,
+          "sys_s": 0.29
+        },
+        "race-compile-vet": {
+          "wall_s": 5.66,
+          "user_s": 10.8,
+          "sys_s": 2.91
+        },
+        "race-tests": {
+          "wall_s": 340.44,
+          "user_s": 1359.12,
+          "sys_s": 777.3
+        }
+      },
+      "started_utc": "2026-10-26T13:42:04.455469+00:00",
+      "exit": 0
+    }
+  ],
+  "probe": {
+    "base": [
+      {
+        "Version": 0,
+        "Objects": {},
+        "SQLBytes": 0,
+        "OpenMS": [
+          0.73632727,
+          0.7453923499999999,
+          0.74437625,
+          0.71239639,
+          0.80127958
+        ],
+        "PrepareMS": null,
+        "open_median_ms": 0.74437625,
+        "prepare_median_ms": null
+      },
+      {
+        "Version": 1,
+        "Objects": {
+          "index": 189,
+          "table": 112,
+          "trigger": 142,
+          "view": 14
+        },
+        "SQLBytes": 190814,
+        "OpenMS": [
+          7.568677070000001,
+          7.23920179,
+          7.1444259500000005,
+          7.46928652,
+          7.48429754
+        ],
+        "PrepareMS": [
+          0.28641007,
+          0.2771642,
+          0.28194824,
+          0.29207440999999995,
+          0.29479573
+        ],
+        "open_median_ms": 7.46928652,
+        "prepare_median_ms": 0.28641007
+      },
+      {
+        "Version": 20,
+        "Objects": {
+          "index": 205,
+          "table": 119,
+          "trigger": 160,
+          "view": 15
+        },
+        "SQLBytes": 206026,
+        "OpenMS": [
+          8.22433226,
+          8.07730416,
+          8.439591199999999,
+          8.30334658,
+          8.0947601
+        ],
+        "PrepareMS": [
+          0.30456310999999997,
+          0.30329879,
+          0.31941042,
+          0.30035318,
+          0.30682262
+        ],
+        "open_median_ms": 8.22433226,
+        "prepare_median_ms": 0.30456310999999997
+      },
+      {
+        "Version": 27,
+        "Objects": {
+          "index": 206,
+          "table": 120,
+          "trigger": 164,
+          "view": 21
+        },
+        "SQLBytes": 217145,
+        "OpenMS": [
+          8.84153737,
+          8.61850919,
+          8.846355630000001,
+          9.96995436,
+          8.39994264
+        ],
+        "PrepareMS": [
+          0.31539219,
+          0.31179115999999996,
+          0.5382705799999999,
+          0.29526354,
+          0.30760884000000005
+        ],
+        "open_median_ms": 8.84153737,
+        "prepare_median_ms": 0.31179115999999996
+      }
+    ],
+    "head": [
+      {
+        "Version": 0,
+        "Objects": {},
+        "SQLBytes": 0,
+        "OpenMS": [
+          0.71760897,
+          0.75125242,
+          0.72905114,
+          0.71747066,
+          0.6979816
+        ],
+        "PrepareMS": null,
+        "open_median_ms": 0.71760897,
+        "prepare_median_ms": null
+      },
+      {
+        "Version": 1,
+        "Objects": {
+          "index": 191,
+          "table": 118,
+          "trigger": 164,
+          "view": 16
+        },
+        "SQLBytes": 212067,
+        "OpenMS": [
+          8.27005087,
+          8.14765184,
+          8.23556042,
+          8.21891029,
+          8.26213183
+        ],
+        "PrepareMS": [
+          0.28834990000000005,
+          0.33599456,
+          0.29305333,
+          0.28879349,
+          0.30809544
+        ],
+        "open_median_ms": 8.23556042,
+        "prepare_median_ms": 0.29305333
+      }
+    ]
+  },
+  "validation": {
+    "frontend_unit_pass": 778,
+    "integrated_build": "pass",
+    "release_seed_round_trip": "pass, 272 statements, native constraints and source snapshots",
+    "browser_initial": "449 passed / 1 transient timeout in the 450-case smoke; route error sweep",
+    "browser_rerun": "same case twice passed; complete audits group 12 passed",
+    "final_binary_bootstrap": "2 passed after startup-admission correction",
+    "negative_control": "original schema: unused stock passes, unused crypto fails; both referenced and posted kinds refuse as expected",
+    "hosted_ci": "not run; no push"
+  },
+  "excluded_development_attempts": [
+    {
+      "name": "full-head-1",
+      "tree": "/home/coder/Repos/rekenraam",
+      "started_utc": "2026-10-26T12:56:28.490817+00:00",
+      "wall_s": 365.205,
+      "exit": 1
+    }
+  ],
+  "measurement_limits": [
+    "Single shared host, no confidence interval or hosted CI claim.",
+    "No competing test/build jobs during accepted runs. A one-off inventory scan overlapped part of original full gate 1; do not attribute its small timing differences solely to this change.",
+    "Schema probe uses five batches of 100 operations per stage; version stages are sequential, not a randomized benchmark.",
+    "Application test names change: retired obsolete transitions, moved final assertions and added controls are separately mapped. Suite-time differences do not isolate production schema cost."
+  ],
+  "leaf_digest_method": "sha256 of sorted leaf names joined with newline and a trailing newline; leaves have no descendant subtest",
+  "application_leaf_names_removed_or_renamed": [
+    "TestCapitalReturnForwardMigrationPreservesPopulatedKnownHistory",
+    "TestCapitalReturnUnknownAmountPairsAndDowngradeRefusal",
+    "TestCashInLieuParentMigrationPreservesHistoryAndRefusesMisleadingDowngrade",
+    "TestCryptoMigrationRefusesLossyDowngradeAtomically",
+    "TestDividendAttributionMigrationPreservesAndDiagnosesLegacyDuplicateSourceClaims",
+    "TestDividendAttributionMigrationPreservesHistoryBackfillsOnlyRecordedShapeAndRefusesLoss",
+    "TestGainsRunMigrationPreservesFinancialFactsAndRefusesPopulatedDowngrade",
+    "TestHistoricalCashEntryMigrationChangesAdmissionWithoutRewritingHistory/cash_and_stock_merger",
+    "TestHistoricalCashEntryMigrationChangesAdmissionWithoutRewritingHistory/share_exchange",
+    "TestHistoricalCashEntryMigrationChangesAdmissionWithoutRewritingHistory/spin_off",
+    "TestHistoricalCashEntryMigrationChangesAdmissionWithoutRewritingHistory/split",
+    "TestPaymentAttributionMigrationPreservesHistoryAndRefusesLossyDowngrade"
+  ],
+  "application_leaf_names_added_or_renamed": [
+    "TestCapitalReturnUnknownAmountPairsAreEnforced",
+    "TestCashInLieuBaselinePreservesOriginalParent",
+    "TestDividendAttributionBaselineDiagnosesDamagedDuplicateSourceClaims",
+    "TestDividendAttributionBaselinePreservesRecordedShape",
+    "TestGainsRunBaselinePreservesFinancialFacts",
+    "TestHistoricalCashEntryBaselinePreservesOriginalFacts/cash_and_stock_merger",
+    "TestHistoricalCashEntryBaselinePreservesOriginalFacts/share_exchange",
+    "TestHistoricalCashEntryBaselinePreservesOriginalFacts/spin_off",
+    "TestHistoricalCashEntryBaselinePreservesOriginalFacts/split",
+    "TestPaymentAttributionBaselinePreservesImmutableFacts"
+  ],
+  "application_median_s": {
+    "base": 240.712,
+    "head": 229.568
+  },
+  "adr0016": {
+    "single_app_investigate_210s": true,
+    "two_full_gate_package_runs_exceed_270s": []
+  }
+}

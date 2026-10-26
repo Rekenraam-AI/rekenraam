@@ -155,3 +155,15 @@ clarified in the same change. Keep all other reference-protection clauses.
 Six more redundant indexes serve descending entity-version sequences already
 supported by reverse scans of unique `(entity_id, version_seq)` keys; verify
 those plans alongside the first six.
+
+## Delivery record
+
+The implementation is committed as `f4ee790f`, following the separately
+committed plan. The [dated review](../reviews/schema-baseline-review-2026-10-26.md)
+records the complete native object diff, test preservation map, research
+cross-check, corrections, rejected alternatives, retained workflow discrepancy
+and final matched measurements. All six isolated application runs and four
+uncached full gates passed. The act threshold clears; investigate remains.
+The browser timeout/reruns, hosted-CI limit and rejected external follow-up
+publication are explicit in that record. No release gate or feature order is
+changed by the retained opportunities.

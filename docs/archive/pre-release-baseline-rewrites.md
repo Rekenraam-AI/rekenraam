@@ -343,10 +343,10 @@ same-baseline databases. Downgrade refuses a database containing saved runs;
 use a verified pre-upgrade backup for rollback. Bundle schema 12 adds
 `investment-gains-runs.csv`; backup/restore retains every original document and
 fingerprint. The investment-foundation self-check diagnoses document corruption
-without recomputing historical figures. See the [reporting policy](plans/investment-reporting-plan.md#immutable-operational-runs-234).
+without recomputing historical figures. See the [reporting policy](../plans/investment-reporting-plan.md#immutable-operational-runs-234).
 
 Forward migration `0027_investment_returns_runs.sql` (R13 slice 6, #119,
 2026-10-25) adds immutable saved returns_v1 runs on the same terms: downgrade
 refuses while any run exists, bundle schema 18 adds
 `investment-returns-runs.csv`, and the same self-check verifies their
-documents. See the [returns plan](plans/investment-returns-plan.md#saved-return-runs-slice-6).
+documents. See the [returns plan](../plans/investment-returns-plan.md#saved-return-runs-slice-6).
