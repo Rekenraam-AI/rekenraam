@@ -51,6 +51,14 @@ export default defineConfig({
     }
   ],
   use: {
+    // A failed attempt keeps a light trace (each action's actionability log,
+    // stacks, console) and a final screenshot under test-results/, which CI
+    // uploads on failure. Without them an intermittent failure cannot be
+    // diagnosed after the run (#414). DOM snapshots and trace screenshots
+    // measured 25–35% slower; this light trace measured 1–6%. Pass --trace=on
+    // to record a full trace while reproducing.
+    trace: { mode: 'retain-on-failure', screenshots: false, snapshots: false, sources: false },
+    screenshot: 'only-on-failure',
     // Sandboxes and CI images often ship a Chromium that is not the revision
     // this Playwright release pins, and cannot download the pinned one. Point
     // `PLAYWRIGHT_CHROMIUM_EXECUTABLE` at the browser that is present instead

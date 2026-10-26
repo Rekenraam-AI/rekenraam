@@ -511,6 +511,15 @@ Step durations can nest and overlap; do not add them together as wall time.
 CI uploads browser timings on successful and failed runs, separately from its
 failure-only debug artifacts.
 
+A failed attempt keeps a lightweight Playwright trace and a final screenshot
+under `e2e/test-results/<case>/` (#414): the trace has every action's
+actionability log, so you can see where a click or fill waited, plus call
+stacks and console output. DOM snapshots, trace screenshots and browser network
+capture are off: full tracing measured 25–35% slower and the light trace 1–6%.
+Use the worker's `app.log` for the server side of a request. Open the trace with
+`pnpm --dir e2e exec playwright show-trace <path>/trace.zip`, or pass `--trace=on`
+to record a full trace while reproducing locally.
+
 The route and sub-view sweeps run in separate projects before ordinary app
 journeys, with their own worker books. Their complete matrices and assertions
 remain selected. Worker-scoped seed fixtures retain one seed per worker book
@@ -897,8 +906,8 @@ Workflow conventions:
   `./scripts/test-e2e-smoke.sh`. Each app/audit job builds the
   single binary and boots a throwaway instance per worker (3 workers per job).
   Together they run every spec except `release-preflight.spec.ts`.
-  The Playwright report and each worker's
-  `app.log` upload as an artifact on failure. The preflight suite
+  The Playwright report, failed attempts' traces and screenshots
+  (`e2e/test-results`) and each worker's `app.log` upload as an artifact on failure. The preflight suite
   stays out of push CI and is run deliberately before a release; it also runs
   weekly and via `workflow_dispatch` in `.github/workflows/release-preflight.yml`,
   because unrun it drifted for months behind a stale selector (#306).
