@@ -23,22 +23,36 @@ The retained trace (`playwright-report-audits`, #414) shows:
   1.34 s. The other audit worker was running sub-view axe steps every ~0.8 s
   throughout; `summary.json` records 3 workers on 4 vCPUs.
 
-All reference requests had failed twice before the wait expired, so this was
-not a backend or retry-timing failure. The 10.1 s snapshot call points to a
-starved renderer/worker rather than an endless spinner. Local repetition did
-not reproduce it (12 focused runs with 3 workers; two full route-sweep runs).
-A local probe at 50× CPU throttling still rendered the alert in ~5 s.
+All reference requests had failed twice before the wait expired, so the
+backend and retry path were not the problem. The page was stuck on
+`referencesLoading`.
+
+## Root cause
+
+TanStack Query's observer only notifies the properties read before the query
+settles. The returns screen gates its form on `accounts.isPending`,
+`currencies.isPending` and `book.isPending`. If a fast response arrives before
+the first render reads those flags, the settling update is dropped and the
+spinner can stay up forever. The CI run's starved renderer widened that
+window; the 10.1 s snapshot was a symptom, not the whole cause.
+
+The first attempt put `referenceError` before `referencesLoading` so a known
+error would outrank a sibling spinner. That made the route-sweep error case
+pass, but the fork CI app suite then failed eight returns tests (and a local
+three-worker run failed seven of ten): the error-first read left `isPending`
+untracked, so the form stayed behind the spinner. The pre-fix screen passed
+five repeated local runs.
 
 ## Changes
 
-- `frontend/src/lib/investments/returns-screen.svelte` now checks
-  `referenceError` before `referencesLoading`. A known failed reference query
-  no longer stays hidden behind the spinner while another reference query is
-  still settling. A temporary mixed-state probe (accounts failed immediately,
-  the other reference requests delayed 8 s) showed the alert at 1.4 s.
+- `frontend/src/lib/investments/returns-screen.svelte` creates the accounts,
+  currencies and book queries with `notifyOnChangeProps: 'all'`. The observer
+  now delivers every result change, so the form cannot miss the settling
+  update. A `showLoading` derived keeps the loading branch first (reading
+  `isPending` before `referenceError`) while a known error still outranks it.
 - `e2e/playwright/route-sweep.spec.ts` raises the bounded alert wait from 10 s
   to 20 s. Successful waits are ~1.4 s, so the happy path is unchanged; the
-  longer bound only absorbs a starved CI renderer. Twenty seconds also keeps a
+  longer bound absorbs a starved CI renderer. Twenty seconds also keeps a
   systematic failure across all 21 routes inside the 600 s test budget, so the
   collected failure messages still reach the assertion.
 
@@ -48,7 +62,11 @@ A local probe at 50× CPU throttling still rendered the alert in ~5 s.
 - `pnpm --dir frontend test`: 61 files, 781 tests passed.
 - `pnpm --dir e2e run test:harness`: 8 Node tests and 4 browser controls passed.
 - Rebuilt with `pnpm build`.
+- Focused `returns keep the form usable` case, 1 worker, ten runs: 10/10 passed.
+- Full `investment-returns.spec.ts`, 3 workers: 10/10 passed.
 - Focused route-sweep error test, 3 workers, `--repeat-each=3`: 3/3 passed.
   A recorded run puts `returns / error` at 1928 ms, matching
   `income coverage / error` at 1896 ms; the failing CI step was 10065 ms.
-- Remote CI still needs the fix commit; this review does not push.
+- Fork CI run 40574145411 (first attempt) passed the audits job but failed the
+  app suite; the final fix needs a fresh run. The upstream PR is
+  [#428](https://github.com/sergeyfarin/rekenraam/pull/428).
