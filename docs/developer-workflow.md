@@ -680,6 +680,11 @@ exists. Forward migration numbers from the previous candidate are historical;
 their capabilities remain in the baseline, not as supported upgrade targets.
 The next additive schema change uses `0002`.
 
+**#417 (2026-10-27):** forward migration `0002_category_version_delete_guard.sql`
+drops the custom-category exemption from `account_versions_no_delete`, so the
+head is **2** on the same baseline identity. Existing #405 databases and
+backups upgrade in place; nothing needs a reset.
+
 The baseline records generation **20261026** in SQLite's `PRAGMA user_version`,
 separately from Goose's forward migration number. Startup refuses older
 candidate files (including old version-1 files) with `incompatible pre-release

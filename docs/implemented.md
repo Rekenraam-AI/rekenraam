@@ -22,6 +22,8 @@ ADR 0013 permits an explicitly declared redesign before any installed release;
 each rewrite updates the checksum, fixtures and upgrade/equivalence tests.
 After the first installed release, schema changes use forward migrations.
 
+Forward migration `0002` (#417) makes the head **2** on the same baseline.
+
 #405 consolidates the previous candidate's 0001–0027 into head **1**, with
 baseline identity `20261026`. It removes two unused provider-lookup tables,
 fifteen indexes (twelve redundant, three belonging to those tables) and five
@@ -238,7 +240,7 @@ existing bank CSV journey.
 
 | Capability | Status | Notes |
 |---|---|---|
-| SQLite migrations + schema version | ✅ | The unused v0.1 candidate baseline in `backend/migrations/0001_initial_schema.sql` is checksum-enforced, auto-run before serving, and covered by fresh/seeded schema equivalence and repeated migration-admission data-preservation tests. No legacy databases exist; source revisions and lot opening guards are consolidated into migration 1. ADR 0013 permits this pre-release redesign; installed-release migrations remain immutable. Migration numbers remain sequential and independent of release numbers. |
+| SQLite migrations + schema version | ✅ | The unused v0.1 candidate baseline in `backend/migrations/0001_initial_schema.sql` is checksum-enforced, auto-run before serving, and covered by fresh/seeded schema equivalence and repeated migration-admission data-preservation tests. No legacy databases exist; source revisions and lot opening guards are consolidated into migration 1, and forward migration 2 (#417) refuses removal of a used category's version like any other used account's. ADR 0013 permits this pre-release redesign; installed-release migrations remain immutable. Migration numbers remain sequential and independent of release numbers. |
 | Connection PRAGMAs (WAL, FK, busy timeout) | ✅ | `db/sqlite.go`; one writer with separate read-only pool (maximum four). [#195](https://github.com/sergeyfarin/rekenraam/issues/195) installs `github.com/mattn/go-sqlite3` v1.14.52 with bundled SQLite 3.53.4 (ADR 0014). ADR 0015 subsequently requires WAL/FULL and FULL consistently across runtime, migrations, tests, direct/replacement opens and auxiliary connections. Shared CGO/FTS5 builds, cancellation/reuse, exact scans, typed errors and native online backup are covered; schema/checksum/seed remain unchanged. See [driver review](reviews/native-sqlite-driver-2026-10-12.md) for the original matched #164 comparison and [FULL review](reviews/sqlite-full-durability-2026-10-12.md) for current validation and settings. |
 | Reusable application runtime | ✅ | `internal/appruntime` owns the database lock, read/write pools, migrations, services, worker lifecycle and existing API/static handler. The `serve` command owns the listener and signals. Shutdown cancels and joins workers before closing pools and the lock; failed startup releases acquired resources. The deployed shape remains one Go binary. |
 | Native backend validation gate | ✅ | ADR 0016 replaces the modernc-era resource limits: race and coverage modes run two packages concurrently with five-minute package deadlines and available Go CPU resources. No fixed four-core cap; all assertions and Go race instrumentation remain. CI's integrated build runs independently. [Scheduling evidence](reviews/native-test-gate-2026-10-12.md). |

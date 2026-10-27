@@ -406,6 +406,11 @@ therefore enforces this contract inside its transaction:
 
 SQLite triggers should reject `UPDATE` and `DELETE` on version tables once this
 is implemented. Corrections create a new version with a clear reason.
+`account_versions_no_delete` allows removing an account version only while the
+account is unused: no system role, no posting versions and no version naming it
+as a parent. Categories have no exception (#417), so a used category refuses
+at the database exactly like a used holding; default-payee references refuse
+through their foreign keys when the account row goes.
 
 ## Current-State Query Strategy
 
