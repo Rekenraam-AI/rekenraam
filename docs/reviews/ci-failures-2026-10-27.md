@@ -67,6 +67,13 @@ five repeated local runs.
 - Focused route-sweep error test, 3 workers, `--repeat-each=3`: 3/3 passed.
   A recorded run puts `returns / error` at 1928 ms, matching
   `income coverage / error` at 1896 ms; the failing CI step was 10065 ms.
-- Fork CI run 40574145411 (first attempt) passed the audits job but failed the
-  app suite; the final fix needs a fresh run. The upstream PR is
-  [#428](https://github.com/sergeyfarin/rekenraam/pull/428).
+- Fork CI run [40580199872](https://github.com/Rekenraam-AI/rekenraam/actions/runs/40580199872)
+  passed all six jobs on `0ec5fbf5`: Frontend Check, Backend Tests, Backend
+  Coverage, Integrated Build, E2E Smoke (app) and E2E Smoke (audits). The app
+  suite finished 442 tests with no failures, and `returns / error` took 2261 ms
+  against the 20 s bound.
+- The first attempt's fork run 40574145411 passed the audits job but failed the
+  app suite, which is what exposed the observer race described above. The
+  upstream PR is [#428](https://github.com/sergeyfarin/rekenraam/pull/428); its
+  `pull_request` run stays `action_required` until a maintainer approves the
+  first-time contributor, so the fork run is the CI evidence for this fix.
