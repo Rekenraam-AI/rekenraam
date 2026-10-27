@@ -173,13 +173,16 @@
 <div class="mt-6 max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8" data-testid="returns-screen">
   <a href="/app/investments" class="inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-2">{m.investments_instrument_view_back()}</a>
 
-  {#if referencesLoading}
-    <Panel><p role="status" class="text-sm text-muted">{m.returns_loading()}</p></Panel>
-  {:else if referenceError}
+  <!-- A known failure outranks a sibling reference query still loading: an
+       errored accounts, currencies or book request must not stay hidden behind
+       the spinner while another one settles. -->
+  {#if referenceError}
     <StatePanel title={m.returns_error_title()} copy={m.returns_error_copy()} alert>
       <APIFormError error={referenceError} />
       <button type="button" class="min-h-11 text-sm text-foreground underline" onclick={() => { accounts.refetch(); currencies.refetch(); book.refetch(); }}>{m.install_gate_retry()}</button>
     </StatePanel>
+  {:else if referencesLoading}
+    <Panel><p role="status" class="text-sm text-muted">{m.returns_loading()}</p></Panel>
   {:else if activeCurrencies.length === 0}
     <StatePanel title={m.returns_no_currency_title()} copy={m.returns_no_currency_copy()}>
       <a href="/app/settings" class="inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-2">{m.returns_no_currency_action()}</a>
