@@ -7,6 +7,11 @@ table, the supplied concept mockup (“Focus first, discover by scrolling”),
 the owner's answers to the first revision's open questions and the owner's
 Firefox New Tab reference.
 
+Superseded for the agreed design by
+[Home and navigation design](../design/home-and-navigation.md), which
+records the owner-approved v3 after three mockup rounds. This file keeps the
+options and reasoning.
+
 Status: exploratory proposal with owner decisions recorded below. Not yet an
 accepted product contract and not a change to roadmap order. No application
 behavior changes. All figures in wireframes and card examples are
