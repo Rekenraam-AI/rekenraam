@@ -27,7 +27,7 @@
         "@tailwindcss/vite": "4.3.3",
         "@types/node": "26.6.5",
         "@vitest/ui": "5.0.5",
-        "bits-ui": "2.19.5",
+        "bits-ui": "2.20.2",
         "clsx": "2.1.1",
         "openapi-typescript": "7.13.0",
         "shadcn-svelte": "1.7.1",
