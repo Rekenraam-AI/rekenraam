@@ -905,9 +905,11 @@ Workflow conventions:
 - Browser journeys run in the `E2E Smoke` job groups of `ci.yml` in every CI run:
   `./scripts/test-e2e-smoke.sh`. Chromium and its apt packages install through
   `scripts/ci-install-chromium.sh` (also used by release preflight): each phase
-  has a 180 s deadline and one retry, the package retry moves apt from the
-  Azure mirror to `archive.ubuntu.com`, and the step has a 15-minute backstop,
-  so a stalled mirror costs one deadline rather than ten minutes (#415). Each app/audit job builds the
+  has a 180 s deadline and one retry. Before the package retry it stops the
+  `apt-get` that `sudo` leaves running, waits for the dpkg lock and moves apt
+  from the Azure mirror to `archive.ubuntu.com`. The step has a 15-minute
+  backstop, so a stalled mirror costs one deadline rather than ten minutes
+  (#415). Each app/audit job builds the
   single binary and boots a throwaway instance per worker (3 workers per job).
   Together they run every spec except `release-preflight.spec.ts`.
   The Playwright report, failed attempts' traces and screenshots

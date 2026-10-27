@@ -11,8 +11,21 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # A normal run needs well under a minute for each phase.
 attempt_seconds="${CHROMIUM_INSTALL_ATTEMPT_SECONDS:-180}"
 
-# GNU timeout signals its whole process group, so apt under sudo stops too.
 attempt() { timeout --kill-after=15 "$attempt_seconds" pnpm --dir "$ROOT/e2e" exec playwright "$@"; }
+
+# Playwright runs apt-get under sudo, which outlives a killed attempt and keeps
+# the dpkg lock: the first hosted run of this script saw the retry refused
+# while the orphan was still downloading. Stop it and wait for the lock.
+stop_timed_out_apt() {
+  local _
+  sudo pkill -x apt-get || true
+  for _ in $(seq 60); do
+    sudo fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock >/dev/null 2>&1 || break
+    sleep 1
+  done
+  # Finish anything the timed-out attempt left half-configured.
+  sudo dpkg --configure -a || true
+}
 
 use_primary_ubuntu_archive() {
   local file
@@ -21,12 +34,14 @@ use_primary_ubuntu_archive() {
       sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' "$file"
     fi
   done
-  # Finish anything the timed-out attempt left half-configured.
-  sudo dpkg --configure -a || true
 }
+
+# Any apt run that still finds the lock held waits instead of failing.
+echo 'DPkg::Lock::Timeout "120";' | sudo tee /etc/apt/apt.conf.d/80-ci-lock-timeout >/dev/null
 
 if ! attempt install-deps chromium; then
   echo "::warning::Chromium system packages failed or exceeded ${attempt_seconds}s; retrying from archive.ubuntu.com"
+  stop_timed_out_apt
   use_primary_ubuntu_archive
   attempt install-deps chromium
 fi
