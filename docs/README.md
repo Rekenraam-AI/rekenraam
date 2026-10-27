@@ -52,6 +52,13 @@ or sequencing change.
 
 ## Initiative and design references
 
+The [Home and navigation design](design/home-and-navigation.md) records the
+owner-approved Home page and light application shell (2026-10-27), with its
+[mockup source](design/home-mockup/README.md); the
+[design review](reviews/focus-first-ui-review-2026-10-27.md) and
+[revised proposal](reviews/focus-first-ui-proposal-revision-2026-10-27.md)
+keep the reasoning. Delivery issues are not yet opened.
+
 [ADR 0019](adrs/0019-financial-effects-and-repairable-attribution.md) and the
 [financial-dependency plan](plans/financial-dependency-simplification-plan.md)
 record the accounting-reason test and cross-family attribution/correction

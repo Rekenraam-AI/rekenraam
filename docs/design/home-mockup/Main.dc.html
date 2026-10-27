@@ -1,0 +1,980 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rekenraam Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.rk.light{--bg:oklch(0.98 0.007 108);--fg:oklch(0.235 0.023 108);--surface:oklch(0.997 0.003 108);--surface-strong:oklch(0.942 0.019 108);--hover:oklch(0.955 0.014 108);--control:oklch(0.997 0.003 108);--border:oklch(0.88 0.018 108);--muted:oklch(0.47 0.035 108);--accent:oklch(0.47 0.14 154);--accent-fg:oklch(0.986 0.01 154);--accent-soft:oklch(0.935 0.04 154);--warn:oklch(0.43 0.1 70);--warn-dot:oklch(0.62 0.13 75);--warn-soft:oklch(0.945 0.045 80);--chart-1:oklch(0.5 0.14 154);--chart-2:oklch(0.62 0.12 175);--chart-3:oklch(0.5 0.1 132);--chart-4:oklch(0.72 0.12 92);--scrim:oklch(0.2 0.02 108 / 0.3);--toast:oklch(0.235 0.023 108);--toast-fg:oklch(0.976 0.009 108);--shadow:0 18px 48px -22px oklch(0.2 0.02 108 / 0.35);--bar-shadow:0 1px 2px oklch(0.2 0.02 108 / 0.06),0 8px 24px -12px oklch(0.2 0.02 108 / 0.18)}
+.rk.dark{--bg:oklch(0.18 0.018 108);--fg:oklch(0.93 0.018 108);--surface:oklch(0.225 0.02 108);--surface-strong:oklch(0.31 0.024 108);--hover:oklch(0.27 0.022 108);--control:oklch(0.25 0.022 108);--border:oklch(0.34 0.026 108);--muted:oklch(0.74 0.026 108);--accent:oklch(0.72 0.13 154);--accent-fg:oklch(0.13 0.022 154);--accent-soft:oklch(0.3 0.06 154);--warn:oklch(0.83 0.12 80);--warn-dot:oklch(0.78 0.13 80);--warn-soft:oklch(0.32 0.055 78);--chart-1:oklch(0.69 0.13 154);--chart-2:oklch(0.74 0.11 175);--chart-3:oklch(0.64 0.1 132);--chart-4:oklch(0.78 0.12 92);--scrim:oklch(0.05 0.01 108 / 0.55);--toast:oklch(0.93 0.018 108);--toast-fg:oklch(0.18 0.018 108);--shadow:0 18px 48px -20px oklch(0 0 0 / 0.7);--bar-shadow:0 8px 24px -12px oklch(0 0 0 / 0.6)}
+.rk{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.rk *{box-sizing:border-box}
+.rk button{font:inherit;color:inherit}
+.rk a{color:var(--accent)}
+.num{font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.sm{width:16px;height:16px}
+.top-in{max-width:1304px;margin:0 auto;padding:14px 32px;display:flex;align-items:center;gap:16px}
+.brand{font-weight:650;letter-spacing:.06em;font-size:14px;display:flex;align-items:center;gap:10px;text-decoration:none;text-transform:uppercase}
+.rk .brand{color:var(--fg)}
+.brand-mark{width:24px;height:24px;border-radius:7px;border:1px solid var(--border);display:grid;grid-template-columns:repeat(3,4px);gap:2.5px;place-content:center}
+.brand-mark span{width:4px;height:4px;border-radius:2px;background:var(--accent)}
+.nav{display:flex;gap:2px;margin-left:12px}
+.nav a{text-decoration:none;padding:8px 12px;border-radius:8px;font-weight:500}
+.rk .nav a{color:var(--muted)}
+.rk .nav a.on{color:var(--fg);background:var(--surface-strong)}
+.rk .nav a:hover{color:var(--fg)}
+.navi{position:relative}
+.navb{display:flex;align-items:center;gap:4px;height:38px;padding:0 8px 0 12px;border:0;border-radius:8px;background:transparent;cursor:pointer;font-weight:500}
+.rk .navb{color:var(--muted)}
+.rk .navb:hover,.rk .navb[aria-expanded="true"]{color:var(--fg);background:var(--hover)}
+.menu.navm{left:0;top:44px;min-width:230px}
+.rk a.mi{text-decoration:none;color:var(--fg)}
+.tile-ic.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.dh.grp{border-top:1px solid var(--border);margin-top:4px;padding-top:10px}
+.pi .pic{width:28px;height:28px;border-radius:8px;background:var(--surface-strong);display:grid;place-items:center;color:var(--muted);flex:none}
+.pi .pic.acc{background:var(--accent-soft);color:var(--accent)}
+.pi small{display:block;color:var(--muted);font-size:12px}
+.spacer{flex:1}
+.tb-icon{width:40px;height:40px;border-radius:8px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none}
+.tb-icon:hover{background:var(--hover);color:var(--fg)}
+.tb-icon.mob{display:none}
+.addwrap{position:relative;display:flex;flex:none}
+.add-btn{height:40px;padding:0 14px 0 12px;border:0;background:var(--accent);color:var(--accent-fg);font-weight:600;display:flex;gap:6px;align-items:center;cursor:pointer;border-radius:8px 0 0 8px}
+.rk .add-btn,.rk .add-caret{color:var(--accent-fg)}
+.add-caret{height:40px;width:34px;border:0;border-left:1px solid oklch(1 0 0 / .25);background:var(--accent);display:grid;place-items:center;cursor:pointer;border-radius:0 8px 8px 0}
+.hero{max-width:720px;margin:0 auto;padding:96px 24px 0;text-align:center}
+.brief{display:flex;flex-direction:column;gap:6px;align-items:center;position:relative}
+.bl{margin:0;font-size:17px;line-height:1.5;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;position:relative}
+.bl b{font-weight:600}
+.bl .mut{color:var(--muted)}
+.bl .warnt{color:var(--warn);font-weight:600}
+.bl .dot{width:7px;height:7px;border-radius:4px;background:var(--warn-dot);flex:none}
+.bl .ok{color:var(--accent)}
+.blbtn{border:0;background:transparent;padding:2px 8px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-size:17px;min-height:36px}
+.blbtn:hover{background:var(--hover)}
+.blbtn .ic{color:var(--muted)}
+.scope{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.slist{list-style:none;margin:10px auto 0;padding:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);max-width:520px;text-align:left}
+.slist li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;min-height:44px}
+.slist li:hover{background:var(--hover)}
+.slist .t{flex:1}
+.slist .d{width:8px;height:8px;border-radius:4px;flex:none}
+.slist .d.warn{background:var(--warn-dot)}
+.slist .d.info{background:var(--muted)}
+.slist a{font-weight:500;text-decoration:none;white-space:nowrap}
+.cmd{position:relative;margin:36px auto 0;max-width:640px;text-align:left}
+.cmd-box{display:flex;align-items:center;gap:12px;height:56px;padding:0 10px 0 20px;border-radius:28px;border:1px solid var(--border);background:var(--surface);box-shadow:var(--bar-shadow)}
+.cmd-box:focus-within{border-color:var(--accent)}
+.cmd-box .ic{color:var(--muted)}
+.cmd-box input{flex:1;min-width:0;border:0;background:transparent;height:54px;font:inherit;font-size:16px;color:var(--fg);outline:none}
+.cmd-box input::placeholder{color:var(--muted)}
+.kbd{font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:2px 8px;margin-right:6px}
+.cmd-drop{position:absolute;left:0;right:0;top:64px;z-index:35;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:6px;max-height:440px;overflow:auto}
+.cmd-scrim{position:fixed;inset:0;z-index:34;background:transparent;border:0;padding:0;width:100%;cursor:default}
+.dh{font-size:12px;color:var(--muted);padding:8px 12px 4px;font-weight:500}
+.pi{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;border:0;background:transparent;text-align:left;cursor:pointer;min-height:44px}
+.rk .pi{color:var(--fg)}
+.pi:hover,.pi.first{background:var(--hover)}
+.pi .ptype{margin-left:auto;color:var(--muted);font-size:12px}
+.pal-empty{padding:20px;text-align:center;color:var(--muted)}
+.shortcuts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;list-style:none;margin:28px auto 0;padding:0;max-width:900px}
+.tile{position:relative;width:104px}
+.tile-a{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 6px 10px;border-radius:12px;text-decoration:none;min-height:100px;border:0;background:transparent;width:100%;cursor:pointer}
+.rk .tile-a{color:var(--fg)}
+.tile-a:hover{background:var(--hover)}
+.tile-ic{width:52px;height:52px;border-radius:14px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--accent)}
+.tile-ic.add{border-style:dashed;color:var(--muted);background:transparent}
+.tile-l{font-size:13px;text-align:center;line-height:1.25;max-width:100%;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.tile-more{position:absolute;top:2px;right:4px;width:30px;height:30px;border-radius:8px;border:0;background:var(--surface);color:var(--muted);display:grid;place-items:center;cursor:pointer;opacity:0}
+.tile:hover .tile-more,.tile:focus-within .tile-more,.tile-more[aria-expanded="true"]{opacity:1}
+.tile .menu{top:34px;left:60px;text-align:left}
+.tile.mobonly{display:none}
+.menu{position:absolute;z-index:30;min-width:250px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px;box-shadow:var(--shadow);display:flex;flex-direction:column;text-align:left}
+.menu.r{right:8px;top:48px}
+.menu.c{left:50%;transform:translateX(-50%);top:40px}
+.menu.addm{right:0;top:46px}
+.menu .mh{font-size:12px;color:var(--muted);padding:6px 12px 4px;font-weight:500}
+.mi{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 12px;border:0;background:transparent;border-radius:6px;cursor:pointer;min-height:40px;font-size:14px}
+.rk .mi{color:var(--fg)}
+.mi:hover{background:var(--hover)}
+.mi:disabled{opacity:.45;cursor:default;background:transparent}
+.mi .hint{margin-left:auto;color:var(--muted);font-size:12px}
+.sep{height:1px;background:var(--border);margin:5px 6px}
+.main{max-width:1304px;margin:0 auto;padding:0 32px 96px}
+.section-h{display:flex;align-items:center;gap:12px;margin:72px 0 16px;flex-wrap:wrap}
+.section-h h2{font-size:18px;margin:0;font-weight:600;letter-spacing:-.01em}
+.section-h .cnt{color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 16px 14px 18px;position:relative;display:flex;flex-direction:column;min-width:0;min-height:260px}
+.card.wide{grid-column:span 2}
+.card.ex{background:transparent;border-style:dashed}
+.card-h{display:flex;align-items:center;gap:8px;min-height:32px}
+.card-t{font-size:13px;font-weight:600;color:var(--muted);margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dots{width:36px;height:36px;border-radius:8px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;margin-right:-8px;flex:none}
+.dots:hover,.dots[aria-expanded="true"]{background:var(--hover);color:var(--fg)}
+.badge{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.info{background:var(--surface-strong);color:var(--muted)}
+.badge.setup{background:var(--accent-soft);color:var(--accent)}
+.fact{font-size:24px;font-weight:600;margin:6px 0 2px;letter-spacing:-.01em;line-height:1.2}
+.sub{color:var(--muted);margin:0;font-size:13px}
+.open{margin-top:auto;padding-top:14px;font-weight:500;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:4px;min-height:28px}
+.open:hover{text-decoration:underline}
+.foot{margin-top:auto;padding-top:14px;display:flex;align-items:center;gap:8px}
+.foot .open{margin:0 0 0 auto;padding:0}
+.addhome{height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:500;font-size:13px}
+.addhome:hover{border-color:var(--accent);color:var(--accent)}
+.ptrack{position:relative;height:8px;border-radius:4px;background:var(--surface-strong);margin-top:14px}
+.pfill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--chart-1)}
+.pace{position:absolute;top:-5px;width:2px;height:18px;border-radius:1px;background:var(--fg)}
+.plegend{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:8px}
+.bars{display:grid;gap:9px;margin-top:16px}
+.bar-row{display:grid;grid-template-columns:92px minmax(0,1fr) 84px;gap:10px;align-items:center;font-size:13px}
+.track{height:8px;border-radius:4px;background:var(--surface-strong);overflow:hidden}
+.fill{display:block;height:100%;background:var(--chart-1);border-radius:4px}
+.amt{text-align:right}
+.rows{margin-top:12px;display:flex;flex-direction:column}
+.lrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:13px}
+.lrow .nm{flex:1;min-width:0}
+.lrow .nm small{display:block;color:var(--muted);font-size:12px}
+.lrow .warnt{color:var(--warn);font-weight:600}
+.lmore{font-size:12px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border)}
+.spark{margin-top:14px}
+.spark svg{width:100%;height:140px;display:block}
+.axis{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px}
+.stack{display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:16px;gap:2px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+.lazy{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-top:10px}
+.explore{margin-top:24px}
+.collapse{margin-left:auto;display:flex;align-items:center;gap:6px;height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 8px}
+.chip{padding:7px 12px;border-radius:999px;border:1px solid var(--border);text-decoration:none;font-size:13px;font-weight:500;background:var(--surface)}
+.rk .chip{color:var(--fg)}
+.chip:hover{background:var(--hover)}
+.cat-h{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:28px 0 12px}
+.slot{border:1.5px dashed var(--border);border-radius:12px;min-height:120px;display:grid;place-items:center;text-align:center;padding:16px;color:var(--muted);font-size:13px}
+.scrim{position:fixed;inset:0;background:var(--scrim);border:0;z-index:40;cursor:default;width:100%;padding:0}
+.panel{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--surface);border-left:1px solid var(--border);z-index:41;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.panel-h{padding:14px 12px 14px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.panel-h h2{margin:0;font-size:17px;flex:1}
+.panel-b{overflow:auto;padding:4px 22px 24px;flex:1}
+.panel-f{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center}
+.psec{padding:18px 0;border-bottom:1px solid var(--border)}
+.psec:last-child{border-bottom:0}
+.psec h3{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 6px;font-weight:600}
+.psec p.help{color:var(--muted);font-size:12.5px;margin:0 0 8px}
+.prow{display:flex;align-items:center;gap:4px;min-height:44px;border-bottom:1px solid var(--border)}
+.prow:last-child{border-bottom:0}
+.prow .name{flex:1;min-width:0}
+.prow .name small{color:var(--muted);font-size:12px;margin-left:6px}
+.sq{width:36px;height:36px;border-radius:8px;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+.sq:hover:not(:disabled){background:var(--hover);color:var(--fg)}
+.sq:disabled{opacity:.35;cursor:default}
+.radio{display:flex;gap:10px;align-items:flex-start;padding:8px 0;cursor:pointer}
+.radio input{margin-top:3px;accent-color:var(--accent);width:16px;height:16px}
+.radio small{display:block;color:var(--muted);font-size:12.5px}
+.sel{height:36px;border:1px solid var(--border);border-radius:8px;padding:0 8px;background:var(--control);color:var(--fg);font:inherit;margin-top:6px}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.achip{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--surface-strong)}
+.pool{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.poolb{height:34px;padding:0 10px;border-radius:8px;border:1px dashed var(--border);background:transparent;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:4px}
+.poolb:hover{border-color:var(--accent);color:var(--accent)}
+.check{display:flex;gap:10px;align-items:center;min-height:40px;cursor:pointer}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+.check small{color:var(--muted);font-size:12.5px;margin-left:4px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:9px;padding:2px;gap:2px}
+.seg button{border:0;background:transparent;padding:6px 14px;border-radius:7px;cursor:pointer;min-height:32px}
+.seg button.on{background:var(--surface-strong);font-weight:600}
+.btn{height:40px;padding:0 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-weight:500;cursor:pointer}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.link{border:0;background:transparent;color:var(--accent);padding:0 6px}
+.dialog{position:fixed;left:50%;top:88px;transform:translateX(-50%);width:min(580px,calc(100% - 24px));background:var(--surface);border:1px solid var(--border);border-radius:14px;z-index:41;box-shadow:var(--shadow);display:flex;flex-direction:column;max-height:calc(100vh - 120px)}
+.dlg-h{display:flex;align-items:center;gap:8px;padding:14px 12px 14px 20px;border-bottom:1px solid var(--border)}
+.dlg-h h2{font-size:17px;margin:0;flex:1}
+.dlg-b{padding:18px 20px;display:grid;gap:14px;overflow:auto}
+.dlg-f{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.frow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font-size:13px;font-weight:500}
+.input{height:40px;border:1px solid var(--border);border-radius:8px;padding:0 10px;background:var(--control);color:var(--fg);font:inherit;width:100%}
+.input.amt{text-align:right;font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--toast);color:var(--toast-fg);border-radius:10px;padding:8px 8px 8px 16px;display:flex;align-items:center;gap:12px;z-index:50;box-shadow:var(--shadow);max-width:calc(100% - 24px)}
+.toast button{height:36px;padding:0 12px;border-radius:7px;border:0;background:transparent;color:var(--toast-fg);font-weight:600;cursor:pointer;text-decoration:underline}
+@media (max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:900px){.nav{display:none}.add-label,.add-caret{display:none}.add-btn{border-radius:8px;padding:0;width:40px;justify-content:center}.tb-icon.mob{display:grid}.top-in{gap:4px;padding:10px 16px}}
+@media (max-width:600px){.hero{padding:40px 16px 0}.bl,.blbtn{font-size:15px}.cmd{margin-top:24px}.cmd-box{height:52px;padding-left:16px}.kbd{display:none}.main{padding:0 16px 72px}.grid{grid-template-columns:minmax(0,1fr)}.card.wide{grid-column:auto}.card{min-height:0}.shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;margin-top:20px}.tile{width:auto}.tile.extra,.tile.addt{display:none}.tile.mobonly{display:block}.tile-ic{width:48px;height:48px}.tile-more{display:none}.section-h{margin-top:40px}.bar-row{grid-template-columns:80px minmax(0,1fr) 76px}}
+</style>
+</helmet>
+<div class="rk {{theme}}" id="top">
+  <header>
+    <div class="top-in">
+      <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>Rekenraam</a>
+      <nav class="nav" aria-label="Sections">
+        <a class="on" href="#top" aria-current="page">Home</a>
+        <sc-for list="{{navSections}}" as="ns" hint-placeholder-count="4">
+          <div class="navi">
+            <button class="navb" type="button" onClick="{{ns.toggle}}" aria-haspopup="menu" aria-expanded="{{ns.openStr}}">{{ns.label}}<svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+            <sc-if value="{{ns.open}}" hint-placeholder-val="{{ false }}">
+              <div class="menu navm" role="menu">
+                <sc-for list="{{ns.pages}}" as="pg" hint-placeholder-count="4">
+                  <a class="mi" role="menuitem" href="#top" onClick="{{closeMenu}}">{{pg.label}}<span class="hint">{{pg.hint}}</span></a>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </nav>
+      <div class="spacer"></div>
+      <button class="tb-icon" type="button" onClick="{{toggleHidden}}" aria-pressed="{{hiddenStr}}" aria-label="Hide amounts" title="Hide amounts">
+        <sc-if value="{{hidden}}" hint-placeholder-val="{{ false }}">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.7 5.1A10.7 10.7 0 0 1 21.9 11.7a1 1 0 0 1 0 .7 10.7 10.7 0 0 1-1.4 2.5"></path><path d="M14.1 14.2a3 3 0 0 1-4.2-4.2"></path><path d="M17.5 17.5A10.7 10.7 0 0 1 2.1 12.3a1 1 0 0 1 0-.7 10.7 10.7 0 0 1 4.4-5.1"></path><path d="m2 2 20 20"></path></svg>
+        </sc-if>
+        <sc-if value="{{shown}}" hint-placeholder-val="{{ true }}">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.1 12.3a1 1 0 0 1 0-.7 10.7 10.7 0 0 1 19.8 0 1 1 0 0 1 0 .7 10.7 10.7 0 0 1-19.8 0"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        </sc-if>
+      </button>
+      <button class="tb-icon" type="button" onClick="{{openCustomize}}" aria-label="Customize Home" title="Customize Home">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4h-7"></path><path d="M10 4H3"></path><path d="M21 12h-9"></path><path d="M8 12H3"></path><path d="M21 20h-5"></path><path d="M12 20H3"></path><path d="M14 2v4"></path><path d="M8 10v4"></path><path d="M16 18v4"></path></svg>
+      </button>
+      <div class="addwrap">
+        <button class="tb-icon" type="button" onClick="{{toggleSettings}}" aria-haspopup="menu" aria-expanded="{{settingsOpenStr}}" aria-label="Settings and account">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        </button>
+        <sc-if value="{{settingsOpen}}" hint-placeholder-val="{{ false }}">
+          <div class="menu addm" role="menu">
+            <a class="mi" role="menuitem" href="#top">Settings</a>
+            <a class="mi" role="menuitem" href="#top">Currencies</a>
+            <a class="mi" role="menuitem" href="#top">Backups and data</a>
+            <a class="mi" role="menuitem" href="#top">Language and appearance</a>
+            <div class="sep"></div>
+            <a class="mi" role="menuitem" href="#top">Sign out</a>
+          </div>
+        </sc-if>
+      </div>
+      <button class="tb-icon mob" type="button" aria-label="All pages">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="hero" aria-label="Overview">
+    <h1 class="sr">Home</h1>
+    <div class="brief">
+      <div class="bl">
+        <sc-if value="{{hlAvailable}}" hint-placeholder-val="{{ true }}">
+          <button class="blbtn" type="button" onClick="{{toggleHeadlineMenu}}" aria-haspopup="menu" aria-expanded="{{hlMenuStr}}">
+            <span>{{hl.label}} <b class="num">{{hl.value}}</b> <span class="mut num">{{hl.change}} since 1 Oct</span></span>
+            <svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
+        </sc-if>
+        <sc-if value="{{hlMissing}}" hint-placeholder-val="{{ false }}">
+          <button class="blbtn" type="button" onClick="{{toggleHeadlineMenu}}" aria-haspopup="menu" aria-expanded="{{hlMenuStr}}">
+            <span>Net worth <span class="warnt">not available</span> <span class="mut">BTC has no price</span></span>
+            <svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
+          <a href="#top" style="font-size: 15px; font-weight: 500">Add a price</a>
+        </sc-if>
+        <sc-if value="{{hlMenu}}" hint-placeholder-val="{{ false }}">
+          <div class="menu c" role="menu">
+            <div class="mh">First line of your briefing</div>
+            <sc-for list="{{hlOptions}}" as="o" hint-placeholder-count="3">
+              <button class="mi" role="menuitemradio" aria-checked="{{o.onStr}}" type="button" onClick="{{o.pick}}">{{o.label}}<span class="hint">{{o.hint}}</span></button>
+            </sc-for>
+            <div class="sep"></div>
+            <button class="mi" role="menuitem" type="button" onClick="{{openCustomize}}">Choose account or set…</button>
+          </div>
+        </sc-if>
+      </div>
+
+      <div class="bl">
+        <button class="blbtn" type="button" onClick="{{toggleStatus}}" aria-expanded="{{statusOpenStr}}" aria-controls="status-list">
+          <sc-if value="{{allClear}}" hint-placeholder-val="{{ false }}">
+            <svg class="ic sm ok" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--accent)"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>
+            <span>All clear, nothing to review</span>
+          </sc-if>
+          <sc-if value="{{notClear}}" hint-placeholder-val="{{ true }}">
+            <span class="dot" aria-hidden="true"></span>
+            <span><b>2 drafts</b> and <b>1 import</b> to review</span>
+            <svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="{{statusChevron}}"></path></svg>
+          </sc-if>
+        </button>
+      </div>
+
+      <p class="scope">{{hl.scope}} · data through 25 Oct</p>
+
+      <sc-if value="{{statusOpen}}" hint-placeholder-val="{{ false }}">
+        <ul class="slist" id="status-list">
+          <sc-for list="{{statusItems}}" as="si" hint-placeholder-count="4">
+            <li><span class="{{si.dotCls}}" aria-hidden="true"></span><span class="t">{{si.text}}</span><a href="#top">{{si.action}}</a></li>
+          </sc-for>
+        </ul>
+      </sc-if>
+    </div>
+
+    <div class="cmd">
+      <sc-if value="{{cmdOpen}}" hint-placeholder-val="{{ false }}">
+        <button class="cmd-scrim" type="button" tabindex="-1" aria-label="Close search" onClick="{{closeCmd}}"></button>
+      </sc-if>
+      <div class="cmd-box" style="position: relative; z-index: 36">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        <input type="text" role="combobox" aria-expanded="{{cmdOpenStr}}" aria-controls="cmd-list" aria-label="Search or type a command" placeholder="Search or type a command: try “albert”, “checking” or “returns”" value="{{query}}" onInput="{{onQuery}}" onFocus="{{openCmd}}">
+        <span class="kbd">/</span>
+      </div>
+      <sc-if value="{{cmdOpen}}" hint-placeholder-val="{{ false }}">
+        <div class="cmd-drop" id="cmd-list" role="listbox">
+          <sc-for list="{{results}}" as="r" hint-placeholder-count="6">
+            <sc-if value="{{r.isHead}}" hint-placeholder-val="{{ false }}"><div class="{{r.headCls}}">{{r.label}}</div></sc-if>
+            <sc-if value="{{r.isItem}}" hint-placeholder-val="{{ true }}">
+              <button class="{{r.cls}}" role="option" aria-selected="{{r.selStr}}" type="button" onClick="{{r.go}}">
+                <span class="{{r.picCls}}" aria-hidden="true">
+                  <sc-if value="{{r.iAdd}}" hint-placeholder-val="{{ false }}"><svg class="ic sm" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></sc-if>
+                  <sc-if value="{{r.iList}}" hint-placeholder-val="{{ false }}"><svg class="ic sm" viewBox="0 0 24 24"><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path></svg></sc-if>
+                  <sc-if value="{{r.iSearch}}" hint-placeholder-val="{{ false }}"><svg class="ic sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></sc-if>
+                  <sc-if value="{{r.iGo}}" hint-placeholder-val="{{ true }}"><svg class="ic sm" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg></sc-if>
+                </span>
+                <span>{{r.label}}<small>{{r.detail}}</small></span>
+                <span class="ptype">{{r.type}}</span>
+              </button>
+            </sc-if>
+          </sc-for>
+          <sc-if value="{{noResults}}" hint-placeholder-val="{{ false }}"><p class="pal-empty">Nothing matches “{{query}}”.</p></sc-if>
+        </div>
+      </sc-if>
+    </div>
+
+    <h2 class="sr">Shortcuts</h2>
+    <ul class="shortcuts">
+      <sc-for list="{{tiles}}" as="t" hint-placeholder-count="5">
+        <li class="{{t.cls}}">
+          <a class="tile-a" href="#top" onClick="{{t.go}}">
+            <span class="{{t.icCls}}" aria-hidden="true">
+              <sc-if value="{{t.iAdd}}" hint-placeholder-val="{{ false }}"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></sc-if>
+              <sc-if value="{{t.iTransfer}}" hint-placeholder-val="{{ false }}"><svg class="ic" viewBox="0 0 24 24"><path d="M8 3 4 7l4 4"></path><path d="M4 7h16"></path><path d="m16 21 4-4-4-4"></path><path d="M20 17H4"></path></svg></sc-if>
+              <sc-if value="{{t.iImport}}" hint-placeholder-val="{{ false }}"><svg class="ic" viewBox="0 0 24 24"><path d="M12 15V3"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path></svg></sc-if>
+              <sc-if value="{{t.iList}}" hint-placeholder-val="{{ false }}"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path></svg></sc-if>
+              <sc-if value="{{t.iChart}}" hint-placeholder-val="{{ false }}"><svg class="ic" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg></sc-if>
+              <sc-if value="{{t.iBank}}" hint-placeholder-val="{{ false }}"><svg class="ic" viewBox="0 0 24 24"><path d="M3 21h18"></path><path d="M6 18v-7"></path><path d="M10 18v-7"></path><path d="M14 18v-7"></path><path d="M18 18v-7"></path><path d="m12 3 9 5H3z"></path></svg></sc-if>
+              <sc-if value="{{t.iScale}}" hint-placeholder-val="{{ false }}"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3v18"></path><path d="M7 21h10"></path><path d="M3 7h18"></path><path d="m6 7-3 7a3 3 0 0 0 6 0z"></path><path d="m18 7-3 7a3 3 0 0 0 6 0z"></path></svg></sc-if>
+              <sc-if value="{{t.iTrend}}" hint-placeholder-val="{{ false }}"><svg class="ic" viewBox="0 0 24 24"><path d="M16 7h6v6"></path><path d="m22 7-8.5 8.5-5-5L2 17"></path></svg></sc-if>
+            </span>
+            <span class="tile-l">{{t.label}}</span>
+          </a>
+          <button class="tile-more" type="button" onClick="{{t.toggleMenu}}" aria-haspopup="menu" aria-expanded="{{t.menuOpenStr}}" aria-label="{{t.menuLabel}}">
+            <svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></svg>
+          </button>
+          <sc-if value="{{t.menuOpen}}" hint-placeholder-val="{{ false }}">
+            <div class="menu" role="menu">
+              <div class="mh">{{t.kind}}</div>
+              <button class="mi" role="menuitem" type="button" onClick="{{t.left}}" disabled="{{t.leftDis}}">Move left</button>
+              <button class="mi" role="menuitem" type="button" onClick="{{t.right}}" disabled="{{t.rightDis}}">Move right</button>
+              <button class="mi" role="menuitem" type="button" onClick="{{openCustomize}}">Rename…</button>
+              <div class="sep"></div>
+              <button class="mi" role="menuitem" type="button" onClick="{{t.remove}}" disabled="{{t.removeDis}}">{{t.removeText}}</button>
+            </div>
+          </sc-if>
+        </li>
+      </sc-for>
+      <li class="tile addt">
+        <button class="tile-a" type="button" onClick="{{toggleAddShortcut}}" aria-haspopup="menu" aria-expanded="{{addScOpenStr}}">
+          <span class="tile-ic add" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+          <span class="tile-l">Add shortcut</span>
+        </button>
+        <sc-if value="{{addScOpen}}" hint-placeholder-val="{{ false }}">
+          <div class="menu" role="menu">
+            <div class="mh">Actions, pages and saved views</div>
+            <sc-for list="{{poolLeft}}" as="pl" hint-placeholder-count="3">
+              <button class="mi" role="menuitem" type="button" onClick="{{pl.add}}">{{pl.label}}<span class="hint">{{pl.kind}}</span></button>
+            </sc-for>
+          </div>
+        </sc-if>
+      </li>
+      <li class="tile mobonly">
+        <button class="tile-a" type="button" onClick="{{openCustomize}}">
+          <span class="tile-ic add" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></svg></span>
+          <span class="tile-l">More</span>
+        </button>
+      </li>
+    </ul>
+  </section>
+
+  <main class="main">
+    <section aria-labelledby="myhome-h">
+      <div class="section-h">
+        <h2 id="myhome-h">My Home</h2>
+        <span class="cnt">{{homeCount}}</span>
+      </div>
+      <div class="grid">
+        <sc-for list="{{homeCards}}" as="w" hint-placeholder-count="5">
+          <article class="{{w.cls}}">
+            <div class="card-h">
+              <h3 class="card-t">{{w.title}}</h3>
+              <sc-if value="{{w.hasBadge}}" hint-placeholder-val="{{ false }}"><span class="{{w.badgeCls}}">{{w.badge}}</span></sc-if>
+              <button class="dots" type="button" onClick="{{w.toggleMenu}}" aria-haspopup="menu" aria-expanded="{{w.menuOpenStr}}" aria-label="{{w.menuLabel}}">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></svg>
+              </button>
+            </div>
+            <sc-if value="{{w.menuOpen}}" hint-placeholder-val="{{ false }}">
+              <div class="menu r" role="menu">
+                <sc-for list="{{w.menuItems}}" as="mi" hint-placeholder-count="4">
+                  <button class="mi" role="menuitem" type="button" onClick="{{mi.act}}" disabled="{{mi.disabled}}">{{mi.label}}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <p class="fact num">{{w.fact}}</p>
+            <p class="sub num">{{w.sub}}</p>
+            <sc-if value="{{w.vBars}}" hint-placeholder-val="{{ false }}">
+              <div class="bars">
+                <sc-for list="{{w.bars}}" as="b" hint-placeholder-count="4">
+                  <div class="bar-row"><span>{{b.label}}</span><span class="track"><span class="fill" style="{{b.style}}"></span></span><span class="amt num">{{b.amount}}</span></div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{w.vBudget}}" hint-placeholder-val="{{ false }}">
+              <div class="ptrack" aria-hidden="true"><div class="pfill" style="width: 70%"></div><div class="pace" style="left: 87%"></div></div>
+              <div class="plegend"><span>70% spent</span><span>│ today, 87% of month</span></div>
+              <div class="rows">
+                <sc-for list="{{w.rows}}" as="r" hint-placeholder-count="3">
+                  <div class="lrow"><span class="nm">{{r.name}}</span><span class="num">{{r.right}}</span><span class="{{r.noteCls}}">{{r.note}}</span></div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{w.vList}}" hint-placeholder-val="{{ false }}">
+              <div class="rows">
+                <sc-for list="{{w.rows}}" as="r" hint-placeholder-count="3">
+                  <div class="lrow"><span class="nm">{{r.name}}<small>{{r.sub}}</small></span><span class="num">{{r.right}}</span></div>
+                </sc-for>
+                <div class="lmore">{{w.more}}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{w.vSpark}}" hint-placeholder-val="{{ false }}">
+              <div class="spark">
+                <svg viewBox="0 0 600 150" preserveAspectRatio="none" role="img" aria-label="{{w.sparkLabel}}">
+                  <path d="M0 37.5H600M0 75H600M0 112.5H600" style="stroke: var(--border); stroke-width: 1; fill: none" vector-effect="non-scaling-stroke"></path>
+                  <path d="{{w.area}}" style="fill: var(--chart-1); fill-opacity: 0.12; stroke: none"></path>
+                  <path d="{{w.line}}" style="fill: none; stroke: var(--chart-1); stroke-width: 2.25" vector-effect="non-scaling-stroke"></path>
+                </svg>
+                <div class="axis"><span>{{w.axisA}}</span><span>{{w.axisB}}</span><span>{{w.axisC}}</span></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{w.vStack}}" hint-placeholder-val="{{ false }}">
+              <div class="stack" aria-hidden="true"><span style="width: 78%; background: var(--chart-1)"></span><span style="width: 14%; background: var(--chart-2)"></span><span style="width: 8%; background: var(--chart-4)"></span></div>
+              <div class="legend"><span><i style="background: var(--chart-1)"></i>Equity 78%</span><span><i style="background: var(--chart-2)"></i>Bonds 14%</span><span><i style="background: var(--chart-4)"></i>Cash 8%</span></div>
+            </sc-if>
+            <sc-if value="{{w.isSetup}}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top: 16px"><button class="btn primary" type="button">{{w.setup}}</button></div>
+            </sc-if>
+            <a class="open" href="#top">Open {{w.page}} →</a>
+          </article>
+        </sc-for>
+      </div>
+      <sc-if value="{{homeEmpty}}" hint-placeholder-val="{{ false }}">
+        <div class="slot">My Home is empty. Add widgets from More to explore below.</div>
+      </sc-if>
+    </section>
+
+    <section class="explore" aria-labelledby="explore-h">
+      <div class="section-h">
+        <h2 id="explore-h">More to explore</h2>
+        <span class="cnt">{{exploreCount}}</span>
+        <button class="collapse" type="button" onClick="{{toggleExplore}}" aria-expanded="{{exploreOpenStr}}" aria-controls="explore-body">
+          <span>{{exploreToggleLabel}}</span>
+          <svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="{{exploreChevron}}"></path></svg>
+        </button>
+      </div>
+      <sc-if value="{{exploreOpen}}" hint-placeholder-val="{{ true }}">
+        <div id="explore-body">
+          <nav class="chips" aria-label="Explore categories">
+            <sc-for list="{{cats}}" as="c" hint-placeholder-count="4">
+              <a class="chip" href="#{{c.anchor}}">{{c.label}} <span style="color: var(--muted)">{{c.n}}</span></a>
+            </sc-for>
+          </nav>
+          <sc-for list="{{cats}}" as="c" hint-placeholder-count="4">
+            <div id="{{c.anchor}}">
+              <h3 class="cat-h">{{c.label}}</h3>
+              <sc-if value="{{c.empty}}" hint-placeholder-val="{{ false }}">
+                <p class="sub">Everything in this group is already on your Home.</p>
+              </sc-if>
+              <div class="grid">
+                <sc-for list="{{c.items}}" as="w" hint-placeholder-count="3">
+                  <article class="{{w.cls}}">
+                    <div class="card-h">
+                      <h4 class="card-t">{{w.title}}</h4>
+                      <sc-if value="{{w.hasBadge}}" hint-placeholder-val="{{ false }}"><span class="{{w.badgeCls}}">{{w.badge}}</span></sc-if>
+                      <button class="dots" type="button" onClick="{{w.toggleMenu}}" aria-haspopup="menu" aria-expanded="{{w.menuOpenStr}}" aria-label="{{w.menuLabel}}">
+                        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></svg>
+                      </button>
+                    </div>
+                    <sc-if value="{{w.menuOpen}}" hint-placeholder-val="{{ false }}">
+                      <div class="menu r" role="menu">
+                        <sc-for list="{{w.menuItems}}" as="mi" hint-placeholder-count="3">
+                          <button class="mi" role="menuitem" type="button" onClick="{{mi.act}}" disabled="{{mi.disabled}}">{{mi.label}}</button>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                    <p class="fact num">{{w.fact}}</p>
+                    <p class="sub num">{{w.sub}}</p>
+                    <sc-if value="{{w.vList}}" hint-placeholder-val="{{ false }}">
+                      <div class="rows">
+                        <sc-for list="{{w.rows}}" as="r" hint-placeholder-count="3">
+                          <div class="lrow"><span class="nm">{{r.name}}<small>{{r.sub}}</small></span><span class="num">{{r.right}}</span></div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{w.vSpark}}" hint-placeholder-val="{{ false }}">
+                      <div class="spark">
+                        <svg viewBox="0 0 600 150" preserveAspectRatio="none" role="img" aria-label="{{w.sparkLabel}}">
+                          <path d="M0 37.5H600M0 75H600M0 112.5H600" style="stroke: var(--border); stroke-width: 1; fill: none" vector-effect="non-scaling-stroke"></path>
+                          <path d="{{w.area}}" style="fill: var(--chart-2); fill-opacity: 0.12; stroke: none"></path>
+                          <path d="{{w.line}}" style="fill: none; stroke: var(--chart-2); stroke-width: 2.25; stroke-dasharray: 6 5" vector-effect="non-scaling-stroke"></path>
+                        </svg>
+                        <div class="axis"><span>{{w.axisA}}</span><span>{{w.axisB}}</span><span>{{w.axisC}}</span></div>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{w.vStack}}" hint-placeholder-val="{{ false }}">
+                      <div class="stack" aria-hidden="true"><span style="width: 78%; background: var(--chart-1)"></span><span style="width: 14%; background: var(--chart-2)"></span><span style="width: 8%; background: var(--chart-4)"></span></div>
+                      <div class="legend"><span><i style="background: var(--chart-1)"></i>Equity 78%</span><span><i style="background: var(--chart-2)"></i>Bonds 14%</span><span><i style="background: var(--chart-4)"></i>Cash 8%</span></div>
+                    </sc-if>
+                    <sc-if value="{{w.lazy}}" hint-placeholder-val="{{ false }}">
+                      <p class="lazy"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Loaded when scrolled into view</p>
+                    </sc-if>
+                    <div class="foot">
+                      <sc-if value="{{w.isSetup}}" hint-placeholder-val="{{ false }}">
+                        <button class="btn primary" type="button">{{w.setup}}</button>
+                      </sc-if>
+                      <sc-if value="{{w.notSetup}}" hint-placeholder-val="{{ true }}">
+                        <button class="addhome" type="button" onClick="{{w.addHome}}" aria-label="{{w.addLabel}}">
+                          <svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>Add to Home
+                        </button>
+                      </sc-if>
+                      <a class="open" href="#top">Open →</a>
+                    </div>
+                  </article>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </section>
+  </main>
+
+  <sc-if value="{{isCustomize}}" hint-placeholder-val="{{ false }}">
+    <button class="scrim" type="button" tabindex="-1" aria-label="Close" onClick="{{closeView}}"></button>
+    <aside class="panel" role="dialog" aria-modal="true" aria-labelledby="cust-h">
+      <div class="panel-h">
+        <h2 id="cust-h">Customize Home</h2>
+        <button class="sq" type="button" onClick="{{closeView}}" aria-label="Close"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+      </div>
+      <div class="panel-b">
+        <div class="psec">
+          <h3>Headline</h3>
+          <label class="radio"><input type="radio" name="hl" checked="{{hlIsNet}}" onChange="{{pickNet}}"><span>Net worth<small>All accounts, converted to EUR</small></span></label>
+          <label class="radio"><input type="radio" name="hl" checked="{{hlIsAcct}}" onChange="{{pickAcct}}"><span>One account<small>Its balance in its own currency</small>
+            <select class="sel" aria-label="Account" onChange="{{onAcct}}" value="{{acct}}"><option value="checking">Checking · ING</option><option value="savings">Savings · ASN</option><option value="brokerage">Brokerage · IBKR</option></select></span></label>
+          <label class="radio"><input type="radio" name="hl" checked="{{hlIsSet}}" onChange="{{pickSet}}"><span>Account set: Liquid accounts<small>A named set you choose; same conversion rules as reports</small>
+            <span class="chiprow"><span class="achip">Checking</span><span class="achip">Savings</span><span class="achip">Revolut</span><button class="btn link" type="button" style="height: 24px; font-size: 12px">Edit set</button></span></span></label>
+        </div>
+        <div class="psec">
+          <h3>To review</h3>
+          <p class="help">The second line appears only when something needs you, and says “All clear” otherwise. Failures are always shown.</p>
+          <label class="check"><input type="checkbox" checked="{{true}}"><span>Also mention notes<small>stale prices, unassigned dividends</small></span></label>
+        </div>
+        <div class="psec">
+          <h3>Shortcuts</h3>
+          <p class="help">Add transaction can be moved but not removed.</p>
+          <sc-for list="{{panelShortcuts}}" as="s" hint-placeholder-count="5">
+            <div class="prow">
+              <span class="name">{{s.label}}<small>{{s.kind}}</small></span>
+              <button class="sq" type="button" onClick="{{s.up}}" disabled="{{s.upDis}}" aria-label="{{s.upLabel}}"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+              <button class="sq" type="button" onClick="{{s.down}}" disabled="{{s.downDis}}" aria-label="{{s.downLabel}}"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg></button>
+              <button class="sq" type="button" onClick="{{s.remove}}" disabled="{{s.removeDis}}" aria-label="{{s.removeLabel}}"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+            </div>
+          </sc-for>
+          <div class="pool">
+            <sc-for list="{{poolLeft}}" as="pl" hint-placeholder-count="3">
+              <button class="poolb" type="button" onClick="{{pl.add}}"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>{{pl.label}}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div class="psec">
+          <h3>My Home order</h3>
+          <p class="help">Top to bottom. Anything removed goes back to More to explore. On desktop you can also drag cards.</p>
+          <sc-for list="{{panelHome}}" as="h" hint-placeholder-count="5">
+            <div class="prow">
+              <span class="name">{{h.title}}<small>{{h.size}}</small></span>
+              <button class="sq" type="button" onClick="{{h.up}}" disabled="{{h.upDis}}" aria-label="{{h.upLabel}}"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+              <button class="sq" type="button" onClick="{{h.down}}" disabled="{{h.downDis}}" aria-label="{{h.downLabel}}"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg></button>
+              <button class="sq" type="button" onClick="{{h.remove}}" aria-label="{{h.removeLabel}}"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+            </div>
+          </sc-for>
+        </div>
+        <div class="psec">
+          <h3>More to explore</h3>
+          <label class="check"><input type="checkbox" checked="{{exploreOpen}}" onChange="{{toggleExplore}}"><span>Show expanded</span></label>
+          <p class="help">It can be collapsed but not removed: it is where every feature can always be found.</p>
+        </div>
+      </div>
+      <div class="panel-f">
+        <button class="btn" type="button" onClick="{{reset}}">Reset Home</button>
+        <button class="btn primary" type="button" onClick="{{closeView}}">Done</button>
+      </div>
+    </aside>
+  </sc-if>
+
+  <sc-if value="{{isAdd}}" hint-placeholder-val="{{ false }}">
+    <button class="scrim" type="button" tabindex="-1" aria-label="Close" onClick="{{closeView}}"></button>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="add-h">
+      <div class="dlg-h">
+        <h2 id="add-h">Add transaction</h2>
+        <button class="sq" type="button" onClick="{{closeView}}" aria-label="Close"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+      </div>
+      <div class="dlg-b">
+        <div class="seg" role="group" aria-label="Type" style="justify-self: start">
+          <button type="button" class="{{txExpenseCls}}" onClick="{{txExpense}}">Expense</button>
+          <button type="button" class="{{txIncomeCls}}" onClick="{{txIncome}}">Income</button>
+          <button type="button" class="{{txTransferCls}}" onClick="{{txTransfer}}">Transfer</button>
+        </div>
+        <div class="frow">
+          <div class="field"><label for="tx-date">Date</label><input class="input" id="tx-date" type="text" value="27 Oct 2026"></div>
+          <div class="field"><label for="tx-acct">Account</label><select class="input" id="tx-acct"><option>Checking · ING</option><option>Savings · ASN</option></select></div>
+        </div>
+        <div class="frow">
+          <div class="field"><label for="tx-payee">Payee</label><input class="input" id="tx-payee" type="text" placeholder="e.g. Albert Heijn" value="{{txPayee}}" onInput="{{onPayee}}"></div>
+          <div class="field"><label for="tx-cat">{{txSecondLabel}}</label><input class="input" id="tx-cat" type="text" placeholder="{{txSecondPlaceholder}}" value="{{txCat}}" onInput="{{onCat}}"></div>
+        </div>
+        <div class="frow">
+          <div class="field"><label for="tx-amt">Amount (EUR)</label><input class="input amt" id="tx-amt" type="text" inputmode="decimal" placeholder="0.00"></div>
+          <div class="field"><label for="tx-memo">Memo</label><input class="input" id="tx-memo" type="text" placeholder="Optional"></div>
+        </div>
+      </div>
+      <div class="dlg-f">
+        <button class="btn" type="button" onClick="{{closeView}}">Cancel</button>
+        <button class="btn" type="button" onClick="{{saveTx}}">Save and add another</button>
+        <button class="btn primary" type="button" onClick="{{saveTx}}">Save</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+    <div class="toast" role="status">
+      <span>{{toast}}</span>
+      <sc-if value="{{canUndo}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{undo}}">Undo</button></sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"startWith":{"editor":"enum","options":["home","customize","palette","add"],"default":"home"},"allClear":{"editor":"boolean","default":false},"missingPrice":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":3500}}'>
+class Component extends DCLogic {
+  st() { return this.state || {}; }
+  lay() {
+    const s = this.st();
+    return {
+      home: s.home || ['spending', 'budgets', 'accounts', 'recurring', 'networth'],
+      shortcuts: s.shortcuts || ['add', 'transfer', 'import', 'transactions', 'reports', 'checking']
+    };
+  }
+  commit(patch, msg, undoable) {
+    const prev = this.lay();
+    clearTimeout(this._t);
+    if (msg) this._t = setTimeout(() => this.setState({ toast: null }), 7000);
+    this.setState(Object.assign({ menu: null, toast: msg || null, prev: undoable === false ? null : prev }, patch));
+  }
+  renderVals() {
+    const s = this.st();
+    const p = this.props || {};
+    const hidden = !!s.hidden;
+    const view = s.view !== undefined ? s.view : (p.startWith === 'customize' || p.startWith === 'add' ? p.startWith : 'none');
+    const cmdOpen = s.cmdOpen !== undefined ? s.cmdOpen : p.startWith === 'palette';
+    const L = this.lay();
+    const home = L.home, shortcuts = L.shortcuts;
+    const menu = s.menu || null;
+    const headline = s.headline || 'networth';
+    const acct = s.acct || 'checking';
+    const exploreOpen = s.exploreOpen !== false;
+    const statusOpen = !!s.statusOpen;
+    const showMoves = s.showMoves !== false;
+    const allClear = !!p.allClear;
+    const missing = !!p.missingPrice && headline === 'networth';
+    const m = (v) => hidden ? '€ ••••••' : v;
+    const without = (arr, id) => arr.filter((x) => x !== id);
+    const swap = (arr, i, j) => { const a = arr.slice(); const t = a[i]; a[i] = a[j]; a[j] = t; return a; };
+    const closeMenu = () => this.setState({ menu: null });
+    const toggle = (id) => () => this.setState({ menu: menu === id ? null : id });
+
+    const path = (vals) => {
+      const lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+      const pts = vals.map((v, i) => [Math.round(i * 600 / (vals.length - 1) * 10) / 10, Math.round((135 - (v - lo) / (hi - lo || 1) * 115) * 10) / 10]);
+      const line = 'M' + pts.map((q) => q[0] + ' ' + q[1]).join(' L');
+      return { line: line, area: line + ' L600 150 L0 150 Z' };
+    };
+    const nw = path([1040180, 1046200, 1039900, 1052400, 1061800, 1058300, 1070900, 1083500, 1079200, 1094600, 1104500, 1124380]);
+    const fc = path([38940, 36200, 37400, 35100, 33800, 36900, 34600, 31200, 27800, 22400, 19900, 18400]);
+
+    const defs = [
+      { id: 'spending', cat: 'everyday', title: 'Spending this month', page: 'Spending report', fact: m('€3,720.40'), sub: 'of ' + m('€5,300.00') + ' budgeted · by category', vis: 'bars',
+        bars: [['Housing', 100, '€1,450.00'], ['Groceries', 42, '€612.30'], ['Transport', 20, '€284.10'], ['Dining out', 16, '€231.00'], ['Other', 79, '€1,143.00']] },
+      { id: 'budgets', cat: 'everyday', title: 'Budgets · October', page: 'Budgets', fact: m('€1,579.60') + ' left', sub: 'On pace: 70% spent, 87% of the month gone', vis: 'budget',
+        rows: [{ name: 'Groceries', right: m('€612.30') + ' of ' + m('€700.00'), note: '', noteCls: '' }, { name: 'Dining out', right: m('€231.00') + ' of ' + m('€200.00'), note: hidden ? 'over' : '€31 over', noteCls: 'warnt' }, { name: 'Transport', right: m('€284.10') + ' of ' + m('€350.00'), note: '', noteCls: '' }] },
+      { id: 'cashflow', cat: 'everyday', title: 'Cashflow · October', page: 'Cashflow report', fact: '+' + m('€2,140.00'), sub: 'Liquid accounts', vis: 'list',
+        rows: [{ name: 'Money in', sub: 'salary, refunds', right: m('€8,960.00') }, { name: 'Money out', sub: 'spending, transfers out', right: m('€6,820.00') }] },
+      { id: 'accounts', cat: 'everyday', title: 'Accounts', page: 'Accounts', fact: '14 accounts', sub: 'Largest balances', vis: 'list',
+        rows: [{ name: 'Brokerage', sub: 'IBKR · EUR', right: m('€612,340.18') }, { name: 'Savings', sub: 'ASN · EUR', right: m('€31,500.00') }, { name: 'Checking', sub: 'ING · EUR', right: m('€4,210.55') }], more: '+ 11 more accounts' },
+      { id: 'networth', cat: 'wealth', title: 'Net worth · 12 months', page: 'Net worth report', fact: '+' + m('€84,200'), sub: 'Nov 2025 – Oct 2026 · month-end values', vis: 'spark', wide: true, line: nw.line, area: nw.area, axis: ['Nov 2025', 'May', 'Oct 2026'], sparkLabel: 'Net worth rose from 1.04 to 1.12 million euro over 12 months' },
+      { id: 'holdings', cat: 'wealth', title: 'Holdings', page: 'Investments', fact: '12 positions', sub: 'Largest by known value', vis: 'list',
+        rows: [{ name: 'VWRL', sub: 'Vanguard FTSE All-World', right: m('€208,190.00') }, { name: 'AAPL', sub: 'Apple', right: m('€61,420.50') }, { name: 'BTC', sub: 'Bitcoin', right: m('€38,910.00') }] },
+      { id: 'returns', cat: 'wealth', title: 'Returns · year to date', page: 'Returns', fact: '+7.4%', sub: 'Time-weighted · 1 Jan – 27 Oct · all investment accounts', lazy: true },
+      { id: 'allocation', cat: 'wealth', title: 'Allocation', page: 'Returns', fact: 'Equity 78%', sub: 'Known value only · 1 position unpriced', vis: 'stack', lazy: true },
+      { id: 'income', cat: 'wealth', title: 'Dividend income', page: 'Income', fact: '3 to assign', sub: m('€412.80') + ' confirmed this year', badge: 'Review', tone: 'warn', vis: 'list',
+        rows: [{ name: 'VWRL', sub: '25 Sep · unassigned cash', right: m('€96.40') }, { name: 'AAPL', sub: '14 Aug · unassigned cash', right: m('€18.22') }] },
+      { id: 'recurring', cat: 'planning', title: 'Recurring', page: 'Recurring', fact: 'Next: Rent on 1 Nov', sub: '9 schedules active', badge: '2 drafts', tone: 'warn', vis: 'list',
+        rows: [{ name: 'Rent', sub: '1 Nov · Checking', right: '−' + m('€1,450.00') }, { name: 'Energy', sub: '3 Nov · Checking', right: '−' + m('€142.00') }, { name: 'Salary', sub: '25 Nov · Checking', right: '+' + m('€6,820.00') }], more: '2 drafts awaiting review' },
+      { id: 'forecast', cat: 'planning', title: 'Forecast · liquid cash', page: 'Forecast', fact: m('€18,400') + ' on 31 Dec', sub: 'Includes recurring schedules and learned spending', badge: 'Estimate', tone: 'info', vis: 'spark', lazy: true, line: fc.line, area: fc.area, axis: ['Today', 'Nov', '31 Dec'], sparkLabel: 'Projected liquid cash falls to about 18 thousand euro by 31 December' },
+      { id: 'imports', cat: 'data', title: 'Imports', page: 'Import', fact: '1 batch in review', sub: 'Last import 2 days ago', badge: 'Review', tone: 'warn', vis: 'list',
+        rows: [{ name: 'ING CSV · October', sub: '42 rows · 3 need a category', right: 'Continue' }] },
+      { id: 'reconcile', cat: 'data', title: 'Reconciliation', page: 'Reconcile', fact: '4 of 14 accounts', sub: 'reconciled in the last 60 days', vis: 'list',
+        rows: [{ name: 'Checking', sub: 'last reconciled', right: '12 Sep' }, { name: 'Savings', sub: 'last reconciled', right: '30 Sep' }] },
+      { id: 'prices', cat: 'data', title: 'Prices & FX', page: 'Pricing', fact: '3 prices from 24 Oct', sub: 'Not refreshed since', badge: 'Stale', tone: 'info', vis: 'list',
+        rows: [{ name: 'VWRL', sub: 'last price', right: '24 Oct' }, { name: 'AAPL', sub: 'last price', right: '24 Oct' }, { name: 'BTC', sub: 'last price', right: '24 Oct' }] },
+      { id: 'backups', cat: 'data', title: 'Backups', page: 'Backups', fact: 'Not set up', sub: 'Protect your books with automatic backups', badge: 'Set up', tone: 'setup', setup: 'Set up backups' }
+    ];
+    const byId = {};
+    defs.forEach((d) => { byId[d.id] = d; });
+
+    const menuFor = (d) => {
+      const items = [];
+      const hi2 = home.indexOf(d.id);
+      if (hi2 >= 0) {
+        items.push({ label: 'Move up', disabled: hi2 === 0, act: () => this.commit({ home: swap(home, hi2, hi2 - 1) }) });
+        items.push({ label: 'Move down', disabled: hi2 === home.length - 1, act: () => this.commit({ home: swap(home, hi2, hi2 + 1) }) });
+        items.push({ label: d.wide ? 'Make standard size' : 'Make wide', act: () => this.commit({}, 'Size: standard or wide, where a widget supports it', false) });
+        items.push({ label: 'Settings…', act: closeMenu });
+        items.push({ label: 'Remove from My Home', act: () => this.commit({ home: without(home, d.id) }, d.title + ' moved to More to explore') });
+      } else {
+        items.push({ label: 'Add to My Home', act: () => this.commit({ home: home.concat([d.id]) }, d.title + ' added to My Home') });
+        items.push({ label: 'Add to top of My Home', act: () => this.commit({ home: [d.id].concat(home) }, d.title + ' added to the top of My Home') });
+        if (!d.setup) items.push({ label: 'Settings…', act: closeMenu });
+      }
+      items.push({ label: 'Open ' + d.page, act: closeMenu });
+      return items;
+    };
+
+    const card = (d, zone) => {
+      const id = zone + ':' + d.id;
+      return Object.assign({}, d, {
+        cls: 'card' + (d.wide && zone === 'home' ? ' wide' : '') + (zone === 'explore' ? ' ex' : ''),
+        hasBadge: !!d.badge, badgeCls: 'badge ' + (d.tone || 'info'),
+        menuOpen: menu === id, menuOpenStr: menu === id ? 'true' : 'false',
+        toggleMenu: toggle(id), menuItems: menuFor(d), menuLabel: 'Options for ' + d.title,
+        vBars: d.vis === 'bars', vBudget: d.vis === 'budget', vList: d.vis === 'list', vSpark: d.vis === 'spark', vStack: d.vis === 'stack',
+        bars: (d.bars || []).map((b) => ({ label: b[0], style: 'width: ' + b[1] + '%', amount: m(b[2]) })),
+        axisA: d.axis ? d.axis[0] : '', axisB: d.axis ? d.axis[1] : '', axisC: d.axis ? d.axis[2] : '',
+        more: d.more || '',
+        isSetup: !!d.setup, notSetup: !d.setup,
+        lazy: !!d.lazy && zone === 'explore',
+        addHome: () => this.commit({ home: home.concat([d.id]) }, d.title + ' added to My Home'),
+        addLabel: 'Add ' + d.title + ' to My Home'
+      });
+    };
+
+    const homeCards = home.map((id) => card(byId[id], 'home'));
+    const used = {};
+    home.forEach((id) => { used[id] = true; });
+    const catDefs = [['everyday', 'Everyday'], ['wealth', 'Wealth & investments'], ['planning', 'Planning'], ['data', 'Ledger & data']];
+    const cats = catDefs.map((c) => {
+      const items = defs.filter((d) => d.cat === c[0] && !used[d.id]).map((d) => card(d, 'explore'));
+      return { label: c[1], anchor: 'cat-' + c[0], items: items, n: String(items.length), empty: items.length === 0 };
+    });
+    const exploreTotal = defs.filter((d) => !used[d.id]).length;
+
+    const pool = {
+      add: { label: 'Add transaction', kind: 'Action · always available', icon: 'add' },
+      transfer: { label: 'Transfer', kind: 'Action', icon: 'transfer' },
+      import: { label: 'Import file', kind: 'Action', icon: 'import' },
+      transactions: { label: 'Transactions', kind: 'Page', icon: 'list' },
+      reports: { label: 'Spending by category', kind: 'Saved view', icon: 'chart' },
+      checking: { label: 'Checking', kind: 'Account register', icon: 'bank' },
+      reconcile: { label: 'Reconcile Checking', kind: 'Action', icon: 'scale' },
+      investments: { label: 'Investments', kind: 'Page', icon: 'trend' },
+      savings: { label: 'Savings', kind: 'Account register', icon: 'bank' },
+      returns: { label: 'Returns YTD', kind: 'Saved view', icon: 'chart' }
+    };
+    const tiles = shortcuts.map((id, i) => {
+      const t = pool[id];
+      const mid = 'sc:' + id;
+      return {
+        label: t.label, kind: t.kind,
+        cls: 'tile' + (i >= 3 ? ' extra' : ''),
+        icCls: 'tile-ic' + (id === 'add' ? ' primary' : ''),
+        iAdd: t.icon === 'add',
+        go: id === 'add' ? () => this.setState({ view: 'add', menu: null, txPayee: '', txCat: '' }) : closeMenu,
+        removeDis: id === 'add', removeText: id === 'add' ? 'Always available' : 'Remove shortcut',
+        iTransfer: t.icon === 'transfer', iImport: t.icon === 'import', iList: t.icon === 'list', iChart: t.icon === 'chart', iBank: t.icon === 'bank', iScale: t.icon === 'scale', iTrend: t.icon === 'trend',
+        menuOpen: menu === mid, menuOpenStr: menu === mid ? 'true' : 'false', toggleMenu: toggle(mid), menuLabel: 'Options for shortcut ' + t.label,
+        left: () => this.commit({ shortcuts: swap(shortcuts, i, i - 1) }), leftDis: i === 0,
+        right: () => this.commit({ shortcuts: swap(shortcuts, i, i + 1) }), rightDis: i === shortcuts.length - 1,
+        remove: () => this.commit({ shortcuts: without(shortcuts, id) }, 'Shortcut ' + t.label + ' removed')
+      };
+    });
+    const poolLeft = Object.keys(pool).filter((k) => shortcuts.indexOf(k) < 0).map((k) => ({
+      label: pool[k].label, kind: pool[k].kind,
+      add: () => this.commit({ shortcuts: shortcuts.concat([k]) }, 'Shortcut ' + pool[k].label + ' added')
+    }));
+    const panelShortcuts = shortcuts.map((id, i) => ({
+      label: pool[id].label, kind: pool[id].kind,
+      up: () => this.commit({ shortcuts: swap(shortcuts, i, i - 1) }), upDis: i === 0, upLabel: 'Move ' + pool[id].label + ' earlier',
+      down: () => this.commit({ shortcuts: swap(shortcuts, i, i + 1) }), downDis: i === shortcuts.length - 1, downLabel: 'Move ' + pool[id].label + ' later',
+      remove: () => this.commit({ shortcuts: without(shortcuts, id) }, 'Shortcut ' + pool[id].label + ' removed'), removeLabel: 'Remove ' + pool[id].label, removeDis: id === 'add'
+    }));
+    const panelHome = home.map((id, i) => ({
+      title: byId[id].title, size: byId[id].wide ? 'wide' : '',
+      up: () => this.commit({ home: swap(home, i, i - 1) }), upDis: i === 0, upLabel: 'Move ' + byId[id].title + ' up',
+      down: () => this.commit({ home: swap(home, i, i + 1) }), downDis: i === home.length - 1, downLabel: 'Move ' + byId[id].title + ' down',
+      remove: () => this.commit({ home: without(home, id) }, byId[id].title + ' moved to More to explore'), removeLabel: 'Remove ' + byId[id].title + ' from My Home'
+    }));
+
+    const accts = {
+      checking: { label: 'Checking', value: '€4,210.55', change: '−€1,320.10', scope: 'Checking · ING · EUR' },
+      savings: { label: 'Savings', value: '€31,500.00', change: '+€500.00', scope: 'Savings · ASN · EUR' },
+      brokerage: { label: 'Brokerage', value: '€612,340.18', change: '+€11,240.00', scope: 'Brokerage · IBKR · EUR · 3 prices from 24 Oct' }
+    };
+    let hlRaw;
+    if (headline === 'account') hlRaw = accts[acct];
+    else if (headline === 'set') hlRaw = { label: 'Liquid accounts', value: '€38,940.12', change: '+€2,140.00', scope: 'Liquid accounts: Checking, Savings, Revolut · EUR' };
+    else hlRaw = { label: 'Net worth', value: '€1,124,380.42', change: '+€19,880.10', scope: 'All 14 accounts in EUR · 3 prices from 24 Oct' };
+    const hl = { label: hlRaw.label, value: m(hlRaw.value), change: m(hlRaw.change), scope: hlRaw.scope };
+    const setHl = (h) => () => this.setState({ headline: h, menu: null });
+    const hlOptions = [
+      { label: 'Net worth', hint: 'default', pick: setHl('networth'), onStr: headline === 'networth' ? 'true' : 'false' },
+      { label: 'Checking · ING', hint: 'one account', pick: () => this.setState({ headline: 'account', acct: 'checking', menu: null }), onStr: headline === 'account' ? 'true' : 'false' },
+      { label: 'Liquid accounts', hint: '3 accounts', pick: setHl('set'), onStr: headline === 'set' ? 'true' : 'false' }
+    ];
+
+    const statusItems = [
+      { dotCls: 'd warn', text: '2 recurring drafts awaiting review', action: 'Review drafts' },
+      { dotCls: 'd warn', text: '1 import batch in review · 42 rows', action: 'Continue import' },
+      { dotCls: 'd info', text: 'Note: 3 dividends not yet assigned', action: 'Assign' },
+      { dotCls: 'd info', text: 'Note: 3 prices last refreshed 24 Oct', action: 'Open pricing' }
+    ];
+
+    const palItems = [
+      ['Add transaction', 'Command'], ['Transfer between accounts', 'Command'], ['Import a file', 'Command'], ['Reconcile an account', 'Command'],
+      ['Transactions', 'Page'], ['Accounts', 'Page'], ['Budgets', 'Page'], ['Recurring', 'Page'], ['Forecast', 'Page'],
+      ['Reports · Spending', 'Page'], ['Reports · Net worth', 'Page'], ['Reports · Cashflow', 'Page'], ['Investments', 'Page'], ['Investments · Returns', 'Page'], ['Investments · Income', 'Page'], ['Pricing', 'Page'], ['Settings · Backups', 'Page'],
+      ['Checking · ING', 'Account'], ['Savings · ASN', 'Account'], ['Brokerage · IBKR', 'Account'], ['Revolut', 'Account'],
+      ['Groceries', 'Category'], ['Dining out', 'Category'], ['Housing', 'Category'],
+      ['VWRL · Vanguard FTSE All-World', 'Instrument'], ['AAPL · Apple', 'Instrument']
+    ];
+    const raw = (s.query || '').trim();
+    const q = raw.toLowerCase();
+    const closeCmd = () => this.setState({ cmdOpen: false, query: '' });
+    const openAddWith = (payee, cat) => () => this.setState({ view: 'add', cmdOpen: false, query: '', txPayee: payee, txCat: cat });
+    const out = [];
+    const head = (label) => out.push({ isHead: true, isItem: false, label: label, headCls: out.length ? 'dh grp' : 'dh' });
+    const item = (o) => out.push(Object.assign({ isHead: false, isItem: true, detail: '', type: '', iAdd: false, iList: false, iSearch: false, iGo: false, picCls: 'pic', go: closeCmd }, o));
+    const pageItem = (it) => item({ label: it[0], type: it[1], iAdd: it[0] === 'Add transaction', iGo: it[0] !== 'Add transaction', picCls: it[0] === 'Add transaction' ? 'pic acc' : 'pic', go: it[0] === 'Add transaction' ? openAddWith('', '') : closeCmd });
+    const payees = [['Albert Heijn', 214, 'Groceries'], ['Jumbo', 61, 'Groceries'], ['Action', 18, 'Household'], ['Ace & Tate', 2, 'Clothing']];
+    if (!q) {
+      head('Suggested');
+      const suggested = ['Add transaction', 'Transactions', 'Checking · ING', 'Reports · Spending', 'Investments · Returns'];
+      palItems.filter((it) => suggested.indexOf(it[0]) >= 0).forEach(pageItem);
+    } else {
+      const pm = payees.filter((pp) => pp[0].toLowerCase().indexOf(q) >= 0);
+      if (pm.length) {
+        const P = pm[0];
+        head('Payee · ' + P[0]);
+        item({ label: 'Add expense at ' + P[0], detail: 'Opens the editor prefilled · ' + P[2] + ' (last used)', type: 'Action', iAdd: true, picCls: 'pic acc', go: openAddWith(P[0], P[2]) });
+        item({ label: 'Transactions with ' + P[0], detail: P[1] + ' transactions · filtered by payee', type: 'Filter', iList: true });
+        pm.slice(1, 3).forEach((o) => item({ label: 'Transactions with ' + o[0], detail: o[1] + ' transactions', type: 'Filter', iList: true }));
+      }
+      const others = palItems.filter((it) => it[0].toLowerCase().indexOf(q) >= 0 || it[1].toLowerCase().indexOf(q) >= 0).slice(0, 6);
+      if (others.length) {
+        head('Pages, accounts and categories');
+        others.forEach(pageItem);
+      }
+      head('Everything');
+      item({ label: 'Search all transactions for “' + raw + '”', detail: 'Payees, descriptions, references and notes', type: 'Search', iSearch: true });
+    }
+    let firstSet = false;
+    const results = out.map((r) => {
+      const first = r.isItem && !firstSet;
+      if (first) firstSet = true;
+      return Object.assign(r, { cls: 'pi' + (first ? ' first' : ''), selStr: first ? 'true' : 'false' });
+    });
+    const navDefs = [
+      ['ledger', 'Ledger', [['Transactions', ''], ['Accounts', ''], ['Categories', ''], ['Import', '1 in review'], ['Reconcile', '']]],
+      ['investments', 'Investments', [['Overview', ''], ['Instruments', ''], ['Returns', ''], ['Income', '3 to assign'], ['Prices & FX', '']]],
+      ['planning', 'Planning', [['Budgets', ''], ['Recurring', '2 drafts'], ['Forecast', '']]],
+      ['reports', 'Reports', [['Spending', ''], ['Cashflow', ''], ['Net worth', ''], ['Export', 'CSV · QIF']]]
+    ];
+    const navSections = navDefs.map((n) => ({
+      label: n[1], open: menu === 'nav:' + n[0], openStr: menu === 'nav:' + n[0] ? 'true' : 'false', toggle: toggle('nav:' + n[0]),
+      pages: n[2].map((x) => ({ label: x[0], hint: x[1] }))
+    }));
+
+    const txType = s.txType || 'expense';
+    const setView = (v) => () => this.setState({ view: v, menu: null, cmdOpen: false });
+
+    return {
+      theme: p.theme === 'dark' ? 'dark' : 'light',
+      hidden: hidden, shown: !hidden, hiddenStr: hidden ? 'true' : 'false',
+      toggleHidden: () => this.setState({ hidden: !hidden }),
+      openCustomize: setView('customize'), openAdd: setView('add'),
+      closeView: () => this.setState({ view: 'none', menu: null }),
+      isCustomize: view === 'customize', isAdd: view === 'add',
+      closeMenu: closeMenu,
+      navSections: navSections,
+      settingsOpen: menu === 'settings', settingsOpenStr: menu === 'settings' ? 'true' : 'false', toggleSettings: toggle('settings'),
+      txPayee: s.txPayee || '', txCat: s.txCat || '',
+      onPayee: (e) => this.setState({ txPayee: e.target.value }), onCat: (e) => this.setState({ txCat: e.target.value }),
+      hl: hl, hlMenu: menu === 'headline', hlMenuStr: menu === 'headline' ? 'true' : 'false', toggleHeadlineMenu: toggle('headline'), hlOptions: hlOptions,
+      hlAvailable: !missing, hlMissing: missing,
+      allClear: allClear, notClear: !allClear,
+      statusOpen: statusOpen && !allClear, statusOpenStr: statusOpen ? 'true' : 'false',
+      statusChevron: statusOpen ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6',
+      toggleStatus: () => this.setState({ statusOpen: !statusOpen }),
+      statusItems: statusItems,
+      showMoves: showMoves, toggleMoves: () => this.setState({ showMoves: !showMoves }),
+      moveA: hidden ? '••••' : '+€6,240', moveB: hidden ? '••••' : '€31',
+      cmdOpen: cmdOpen, cmdOpenStr: cmdOpen ? 'true' : 'false',
+      openCmd: () => this.setState({ cmdOpen: true, menu: null }), closeCmd: () => this.setState({ cmdOpen: false }),
+      query: s.query || '', onQuery: (e) => this.setState({ query: e.target.value, cmdOpen: true }),
+      dropHeading: q ? 'Results' : 'Suggested',
+      results: results, noResults: results.length === 0,
+      tiles: tiles, poolLeft: poolLeft,
+      addScOpen: menu === 'addsc', addScOpenStr: menu === 'addsc' ? 'true' : 'false', toggleAddShortcut: toggle('addsc'),
+      homeCards: homeCards, homeEmpty: home.length === 0, homeCount: home.length + (home.length === 1 ? ' widget' : ' widgets'),
+      exploreOpen: exploreOpen, exploreOpenStr: exploreOpen ? 'true' : 'false',
+      exploreToggleLabel: exploreOpen ? 'Collapse' : 'Show all',
+      exploreChevron: exploreOpen ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6',
+      toggleExplore: () => this.setState({ exploreOpen: !exploreOpen }),
+      exploreCount: exploreTotal + ' more widgets, shown as they would look on your Home',
+      cats: cats,
+      hlIsNet: headline === 'networth', hlIsAcct: headline === 'account', hlIsSet: headline === 'set',
+      pickNet: setHl('networth'), pickAcct: setHl('account'), pickSet: setHl('set'),
+      acct: acct, onAcct: (e) => this.setState({ acct: e.target.value, headline: 'account' }),
+      panelShortcuts: panelShortcuts, panelHome: panelHome,
+      reset: () => this.commit({ home: null, shortcuts: null, headline: 'networth', showMoves: true }, 'Home reset to defaults'),
+      txExpenseCls: txType === 'expense' ? 'on' : '', txIncomeCls: txType === 'income' ? 'on' : '', txTransferCls: txType === 'transfer' ? 'on' : '',
+      txExpense: () => this.setState({ txType: 'expense' }), txIncome: () => this.setState({ txType: 'income' }), txTransfer: () => this.setState({ txType: 'transfer' }),
+      txSecondLabel: txType === 'transfer' ? 'To account' : 'Category',
+      txSecondPlaceholder: txType === 'transfer' ? 'e.g. Savings · ASN' : 'e.g. Groceries',
+      saveTx: () => { this.setState({ view: 'none' }); this.commit({}, 'Mockup only: nothing was saved', false); },
+      hasToast: !!s.toast, toast: s.toast || '', canUndo: !!s.prev,
+      undo: () => this.setState({ home: s.prev.home, shortcuts: s.prev.shortcuts, prev: null, toast: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

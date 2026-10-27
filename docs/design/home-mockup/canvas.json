@@ -1,0 +1,129 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-27T15:30:00Z"
+  },
+  "title": "Rekenraam Home mockup",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 3500,
+      "title": "Home v3 · desktop (interactive)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Phone.dc.html": {
+      "x": 1520,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Home · phone 390 × 844",
+      "is_interactive": true
+    },
+    "PhoneScrolled.dc.html": {
+      "x": 4560,
+      "y": 0,
+      "w": 390,
+      "h": 5200,
+      "title": "Phone · full scroll",
+      "is_interactive": true
+    },
+    "Customize.dc.html": {
+      "x": 0,
+      "y": 4020,
+      "w": 1440,
+      "h": 1000,
+      "title": "Customize panel",
+      "is_interactive": true
+    },
+    "Palette.dc.html": {
+      "x": 1520,
+      "y": 4020,
+      "w": 1440,
+      "h": 1000,
+      "title": "Command bar open",
+      "is_interactive": true
+    },
+    "AddTransaction.dc.html": {
+      "x": 3040,
+      "y": 4020,
+      "w": 1440,
+      "h": 1000,
+      "title": "Add transaction (header button)",
+      "is_interactive": true
+    },
+    "Dark.dc.html": {
+      "x": 0,
+      "y": 5440,
+      "w": 1440,
+      "h": 3500,
+      "title": "Dark theme",
+      "is_interactive": true
+    },
+    "MissingPrice.dc.html": {
+      "x": 1520,
+      "y": 5440,
+      "w": 1440,
+      "h": 1000,
+      "title": "Headline when a price is missing",
+      "is_interactive": true
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Phone.dc.html",
+    "PhoneScrolled.dc.html",
+    "Customize.dc.html",
+    "Palette.dc.html",
+    "AddTransaction.dc.html",
+    "Dark.dc.html",
+    "MissingPrice.dc.html"
+  ],
+  "notes": {
+    "row1": {
+      "x": 0,
+      "y": -320,
+      "text": "Home v3: two-line briefing, command bar, shortcuts, widgets",
+      "kind": "title1",
+      "maxW": 2380
+    },
+    "row2": {
+      "x": 0,
+      "y": 3720,
+      "text": "Overlays: Customize, Go to…, Add transaction",
+      "kind": "title1",
+      "maxW": 4480
+    },
+    "row3": {
+      "x": 0,
+      "y": 5140,
+      "text": "Dark theme and honest incomplete data",
+      "kind": "title1",
+      "maxW": 2960
+    },
+    "review": {
+      "x": 1990,
+      "y": 0,
+      "w": 380,
+      "fill": "orange",
+      "size": "m",
+      "text": "v3 changes from your feedback:\n\n1. Two briefing lines only: headline and what needs review; the coverage line stays small\n2. Add transaction is the first shortcut (can move, cannot be removed)\n3. Header: section menus replace the left sidebar; settings under the cog\n4. Command bar: type “albert” for add-expense, payee filter and full search\n5. More to explore widgets have Settings in ⋯\n\nAll amounts are sample data."
+    },
+    "try": {
+      "x": 1990,
+      "y": 560,
+      "w": 380,
+      "fill": "blue",
+      "size": "m",
+      "text": "Try in Play:\n• Ledger / Investments / Planning / Reports menus\n• type “albert”, then “Add expense at Albert Heijn”\n• ▾ on the net worth line switches headline\n• the “to review” line expands\n• ⋯ on cards: move, resize, remove (Undo)\n• gear-sliders icon opens Customize"
+    }
+  },
+  "designSystems": []
+}

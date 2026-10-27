@@ -10,6 +10,9 @@ implementation instructions. No application behavior changes in this commit.
 Evidence is source and API-contract inspection; no rendered prototype,
 performance measurement or usability study was performed.
 
+A [revised proposal](focus-first-ui-proposal-revision-2026-10-27.md)
+builds on this review and supersedes its customization model and slice order.
+
 ## Recommendation
 
 Proceed with a bounded Home experiment. The strongest idea is a useful,
