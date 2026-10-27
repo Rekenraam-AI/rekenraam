@@ -36,8 +36,6 @@ func TestThrottleGenerationsPreserveBudgetsAcrossRestart(t *testing.T) {
 	original := budgets(database)
 	require.NoError(t, Migrate(ctx, database))
 	after := captureLedgerState(t, database)
-	delete(before, "count:goose_db_version")
-	delete(after, "count:goose_db_version")
 	assert.Equal(t, before, after, "no financial, credential, event or other user row changes")
 	assert.Equal(t, original, budgets(database), "no counter/deadline reset on upgrade")
 	var distinct, populated int

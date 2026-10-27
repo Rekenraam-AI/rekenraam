@@ -287,9 +287,11 @@ func captureLedgerState(t *testing.T, database *sql.DB) map[string]string {
 
 	// Row counts across every table that carries user data, so a table that
 	// loses or gains rows is caught even where no query below inspects it.
+	// Goose's own history grows with each forward migration; it is not data.
 	rows, err := database.QueryContext(ctx, `
 		SELECT name FROM sqlite_master
 		WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'transaction_search%'
+			AND name != 'goose_db_version'
 		ORDER BY name
 	`)
 	require.NoError(t, err)
@@ -1229,7 +1231,7 @@ func TestMigrationsProduceTheExpectedSchema(t *testing.T) {
 
 	version, err := EmbeddedMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(1), version, "the complete unused v0.1 schema is one baseline")
+	assert.Equal(t, int64(2), version, "the unused v0.1 baseline plus #417's category-version delete guard")
 
 	ctx := context.Background()
 	database, err := Open(ctx, SQLiteFileURL(filepath.Join(t.TempDir(), "schema.sqlite")))

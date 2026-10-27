@@ -184,7 +184,8 @@ below is execution order, not a chain of hard dependencies.
    retry) and [#416](https://github.com/sergeyfarin/rekenraam/issues/416)
    (an axe contrast flake). The other three are bounded P3 items:
    [#417](https://github.com/sergeyfarin/rekenraam/issues/417) (database-level
-   category-version deletion guard),
+   category-version deletion guard; delivered 2026-10-27 as forward migration
+   `0002`),
    [#419](https://github.com/sergeyfarin/rekenraam/issues/419) (reprofile the
    race suite while ADR 0016's investigate threshold still fires) and
    [#420](https://github.com/sergeyfarin/rekenraam/issues/420)
