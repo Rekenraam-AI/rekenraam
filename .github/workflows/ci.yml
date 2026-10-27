@@ -122,7 +122,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Install Chromium
-        run: pnpm --dir e2e exec playwright install --with-deps chromium
+        # Each phase has a deadline and one retry (#415); this is the backstop.
+        timeout-minutes: 15
+        run: ./scripts/ci-install-chromium.sh
       # The suite builds the single binary once and boots one instance per
       # worker, each against its own throwaway SQLite file; see
       # e2e/playwright/support/fixtures.ts. release-preflight stays out of this

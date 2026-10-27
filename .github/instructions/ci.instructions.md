@@ -28,6 +28,10 @@ description: "Use when editing GitHub Actions workflows, job structure, CI trigg
   key for race, coverage, build and each E2E suite; explicit successful save
   steps retain source-only refreshes. Do not re-enable setup-go caching beside
   it or give matrix jobs the same primary key. E2E inherits Go cache paths.
+- A setup step must not fail or stall a job on runner I/O or network (#415).
+  Keep cache keys out of `hashFiles` over large trees (the Go source key uses
+  git object IDs and fails open), and install Chromium through
+  `scripts/ci-install-chromium.sh`, which bounds and retries each phase.
 - Keep shared validation wrappers and CI commands aligned. Optimize measured
   browser cost before changing coverage or validation frequency.
 - Avoid matrix complexity until there is a real need.

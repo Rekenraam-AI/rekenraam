@@ -903,7 +903,11 @@ Workflow conventions:
   strict) always report. `scripts/test-ci-events.py` pins this policy and runs
   in the `Backend Tests` job. Evidence: `docs/reviews/ci-event-overlap-2026-10-23.md`.
 - Browser journeys run in the `E2E Smoke` job groups of `ci.yml` in every CI run:
-  `./scripts/test-e2e-smoke.sh`. Each app/audit job builds the
+  `./scripts/test-e2e-smoke.sh`. Chromium and its apt packages install through
+  `scripts/ci-install-chromium.sh` (also used by release preflight): each phase
+  has a 180 s deadline and one retry, the package retry moves apt from the
+  Azure mirror to `archive.ubuntu.com`, and the step has a 15-minute backstop,
+  so a stalled mirror costs one deadline rather than ten minutes (#415). Each app/audit job builds the
   single binary and boots a throwaway instance per worker (3 workers per job).
   Together they run every spec except `release-preflight.spec.ts`.
   The Playwright report, failed attempts' traces and screenshots
@@ -952,10 +956,16 @@ Successful exact hits skip saving. Save and restore steps log actual keys,
 paths, source commit, cache sizes and transfer durations; the job summary also
 records the primary and matched restore keys.
 
-The source digest includes backend, frontend, API, shared scripts, workspace
-manifests/lockfile and CI cache configuration, before installs/generated output.
-A source-only change refreshes the key without changing `go.sum`; unchanged
-source reruns reuse it. There are no timestamp or run-ID keys. One writer per
+The source digest covers backend, frontend, API, shared scripts, workspace
+manifests/lockfile and CI cache configuration. `scripts/ci-go-cache.sh` takes it
+from the git object IDs of those paths in the checked-out commit (#415), so it
+is instant and never sees installs or generated output; `hashFiles` over the
+same trees once exceeded Actions' fixed 120 s expression limit and failed the
+job. A source-only change refreshes the key without changing `go.sum`;
+unchanged source reruns reuse it. There are no timestamp or run-ID keys, except
+that a run which cannot compute the fingerprint warns and uses a run-unique
+source (`unavailable-<run>-<attempt>`): an exact miss that still restores by
+prefix, never a failed job. One writer per
 workload (including one per E2E suite), branch-scoped caches and the existing
 per-ref workflow cancellation avoid competing job writers. Storage is bounded
 by GitHub's configured repository cache quota and inactivity eviction; this
