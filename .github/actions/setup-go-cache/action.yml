@@ -29,8 +29,8 @@ runs:
       shell: bash
       env:
         GO_CACHE_WORKLOAD: ${{ inputs.workload }}
-        # Computed before generated frontend/embed output or dependencies exist.
-        GO_CACHE_SOURCE: ${{ hashFiles('backend/**', 'frontend/**', 'api/**', 'scripts/**', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', '.github/actions/setup-go-cache/**', '.github/workflows/ci.yml') }}
+      # The script fingerprints the source inputs from git object IDs; hashFiles
+      # over these trees once exceeded the 120 s expression limit (#415).
       run: ./scripts/ci-go-cache.sh
     - name: Restore Go cache
       id: cache

@@ -179,7 +179,9 @@ below is execution order, not a chain of hard dependencies.
    capital-return reversal flake that turned `main` red once; failed attempts
    now keep traces, and the cause awaits a recurrence),
    [#415](https://github.com/sergeyfarin/rekenraam/issues/415) (runner
-   setup stalls) and [#416](https://github.com/sergeyfarin/rekenraam/issues/416)
+   setup stalls; delivered 2026-10-27: the Go cache source key uses git object
+   IDs and fails open, and Chromium installs with per-phase deadlines and one
+   retry) and [#416](https://github.com/sergeyfarin/rekenraam/issues/416)
    (an axe contrast flake). The other three are bounded P3 items:
    [#417](https://github.com/sergeyfarin/rekenraam/issues/417) (database-level
    category-version deletion guard),

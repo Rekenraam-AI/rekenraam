@@ -121,8 +121,8 @@ dupes="$(
       grep -oE 'uses:[[:space:]]*[^@[:space:]]+' "$wf" | sed -E 's/uses:[[:space:]]*/uses /' |
         grep -vE '^uses (actions/(checkout|setup-[a-z]+|cache|upload-artifact|download-artifact)|pnpm/action-setup)$' || true
       grep -E '^[[:space:]]*(-[[:space:]]+)?run:[[:space:]]*[^|>[:space:]]' "$wf" | sed -E 's/^[[:space:]]*(-[[:space:]]+)?run:[[:space:]]*/run /' |
-        # Chromium is setup shared by the independent browser workflows (#347).
-        grep -vE '^run (pnpm install|pnpm --dir e2e exec playwright install --with-deps chromium$)' || true
+        # Chromium is setup shared by the independent browser workflows (#347, #415).
+        grep -vE '^run (pnpm install|\./scripts/ci-install-chromium\.sh$)' || true
     } | sort -u | sed "s|\$|	$wf|"
   done | sort | awk -F'\t' '
     $1 == prev { files = files ", " $2; n++; next }
