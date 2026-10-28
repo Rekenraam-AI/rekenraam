@@ -729,6 +729,12 @@ has actual installations, its migration files are immutable.
 
 ## Security And Deployment Conventions
 
+- Release artifacts follow [ADR 0020](adrs/0020-release-signing-and-platform-targets.md):
+  sign a manifest of the finished downloads with Sigstore keyless OIDC, verify
+  the exact expected workflow/ref identity and hashes, and retain the bundle.
+  Finish platform-native signing before generating release checksums. Candidate
+  workflows do not create tags or publish releases; actual publication needs
+  explicit owner instruction and installed-release migration safeguards.
 - The codebase is destined for public open-source release (AGPL-3.0, per `docs/product-requirements.md`). Treat the repository and its full git history as public: never commit secrets, real credentials, personal data, or real financial records — including in test fixtures, docs examples, and `.archive/`. Test values must be obviously fake.
 - Security must not depend on source secrecy. Any mechanism that would break if an attacker read the code is wrong by design.
 - Treat local-network deployment as safer than public deployment, but never as fully trusted.

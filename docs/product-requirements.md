@@ -43,6 +43,13 @@ Primary product goal:
 - Open source (decided 2026-07-02): the app will be open source under AGPL-3.0, with sole copyright retained so later dual-licensing or a first-party hosted offering stays possible. Closed source is rejected: trust and auditability are the value proposition of self-hosted finance software, and the distribution channels (marketplaces, self-host directories) effectively require an OSS license. If substantial external contributions are ever accepted, add a DCO or lightweight CLA at that point to preserve the dual-licensing option.
 - The repository is public (verified 2026-09-27); announcing the project and listing it in marketplaces remain separate events. The public-repository security hygiene (history scan, LICENSE, SECURITY.md and scanning) must be maintained, and the announcement waits for the remaining release gates in `docs/roadmap.md`. Reports UI, exports and CSV import already ship.
 - Security must never depend on the code being secret. Open-sourcing adds process requirements — private vulnerability disclosure, dependency and secret scanning, signed releases — not architectural ones.
+- Release signing uses Sigstore keyless GitHub Actions OIDC with Cosign
+  (owner decision 2026-10-28, [ADR 0020](adrs/0020-release-signing-and-platform-targets.md)).
+  Initial server downloads target Linux amd64/arm64 with an explicit libc
+  baseline. Candidate preparation and actual publication are separate; a
+  release still requires explicit owner instruction and readiness acceptance.
+  Platform-specific packaging/signing can be added for a future desktop
+  target without changing this signing choice; desktop scope remains separate.
 - The first non-negotiable report set is net worth, cashflow, and spending by category.
 - The first mandatory export formats are CSV export of core ledger data and QIF export.
 - Attachments such as statement PDFs and receipts are intentionally out of scope for now.

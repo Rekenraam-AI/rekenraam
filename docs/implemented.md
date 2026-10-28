@@ -922,6 +922,14 @@ separate release gates.
 
 ### Shared capabilities and validation
 
+- Release candidate preparation (#333), ADR 0020: manual native Linux
+  amd64/arm64 workflow, reproducible unsigned-build comparison, deterministic
+  packaging, actual migration/checksum metadata, packaged-server smoke and
+  keyless manifest-signing/verification tooling are present. The candidate
+  workflow has no release-publication permission. Hosted OIDC/native ARM and
+  candidate preflight evidence remain required before #333 acceptance; this
+  is preparation, not a published or approved installed release. See
+  [candidate commands](developer-workflow.md#release-candidates-333).
 - Financial relationship design review (#391), 2026-10-23:
   [source-pinned family inventory](reviews/financial-dependency-inventory-2026-10-23.md)
   covers cash attribution, real allocations, source identity, prices/reports,

@@ -164,6 +164,13 @@ settings, E2E timing, the API contract audit, resetting a disposable dev
 database and local password recovery are documented in the
 [developer workflow](docs/developer-workflow.md).
 
+Release preparation uses a manual Linux amd64/arm64 candidate workflow with
+Sigstore keyless signing; it does not publish a release. Local packaging starts
+with `./scripts/build-release-candidate.sh v0.1.0-rc.1 amd64 dist/candidate-linux`
+from a clean committed Linux checkout. Candidate download verification and
+the remaining release gates are documented in
+[Release candidates](docs/developer-workflow.md#release-candidates-333).
+
 | Path | What's there |
 |---|---|
 | `backend/` | Go server, services, SQLite migrations, tests |

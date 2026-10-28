@@ -472,6 +472,85 @@ built on a newer libc may not run on an older host: build for the actual target
 baseline or use the container. The delivery review records measured local and
 container dependencies and same-input repeated-build hashes.
 
+### Release candidates (#333)
+
+[ADR 0020](adrs/0020-release-signing-and-platform-targets.md) adopts Sigstore
+keyless GitHub Actions OIDC signing with Cosign. Initial server targets are
+Linux amd64 and arm64 on Ubuntu 24.04 / glibc 2.39. Build jobs use native
+architecture runners, inspect actual ELF requirements and record the exact
+runner/toolchain inputs. The Debian trixie Docker runtime is unchanged.
+
+The manual `Release Candidate` workflow (`release-candidate.yml`) runs only
+from `main` in this repository. It creates Actions artifacts with a
+`vMAJOR.MINOR.PATCH-rc.N` label, without creating a tag or release. It builds
+both platforms, compares an unsigned repeated build, boots the packaged
+server with a disposable database, and runs the focused browser release
+preflight on amd64. A separate OIDC-enabled job then signs `SHA256SUMS` and
+verifies its signature, expected identity, file hashes and tamper controls.
+No ordinary build job gets an OIDC grant.
+
+After the workflow has been committed and pushed, an operator can request a
+candidate explicitly:
+
+```sh
+gh workflow run release-candidate.yml --ref main -f version=v0.1.0-rc.1
+```
+
+Download only the final `signed-release-candidate` Actions artifact; the
+intermediate platform artifacts have no common signature. It contains the two
+`.tar.gz` downloads, `RELEASE-NOTES.md`, `SHA256SUMS` and
+`SHA256SUMS.sigstore.json`. Each platform archive contains the executable,
+license, `BUILDINFO.json` and `MIGRATIONS.sha256`. Metadata includes the actual
+highest migration and all hashes, source SHA, architecture, required libraries,
+glibc symbol ceiling, Go build info, Node/pnpm/compiler/libc versions, runner
+image and build-input hashes. Retain the artifacts and hosted run evidence
+outside the workflow's 14-day Actions retention when accepting a candidate.
+
+Install the pinned Cosign 3.1.4 from its
+[official release](https://github.com/sigstore/cosign/releases/tag/v3.1.4).
+Verify before extracting or running a downloaded executable:
+
+```sh
+gh run download RUN_ID -n signed-release-candidate -D /tmp/rekenraam-candidate
+./scripts/verify-release.sh /tmp/rekenraam-candidate \
+  https://github.com/sergeyfarin/rekenraam/.github/workflows/release-candidate.yml@refs/heads/main
+```
+
+The expected identity above is the verifier's trust policy; do not substitute
+an identity supplied inside downloaded files. The verifier checks the GitHub
+Actions issuer, authenticates the manifest, then refuses changed/missing files,
+unlisted extras, duplicate paths and symlinks. To repeat the real signature and
+wrong-identity/manifest/archive controls, run:
+
+```sh
+./scripts/test-release-signature.sh /tmp/rekenraam-candidate \
+  https://github.com/sergeyfarin/rekenraam/.github/workflows/release-candidate.yml@refs/heads/main
+```
+
+Local packaging requires a clean committed checkout and the Linux native
+toolchains from Daily Commands, plus Python 3 and binutils (`readelf`):
+
+```sh
+python3 scripts/test-release-artifacts.py
+./scripts/build-release-candidate.sh v0.1.0-rc.1 amd64 dist/candidate-linux
+```
+
+Use the host's matching architecture (`arm64` on ARM), and an empty output
+directory for each attempt. The script compares unsigned builds, packages
+deterministically, then boots the extracted archive. It creates no signature;
+local key-pair verification is not GitHub OIDC evidence. Ubuntu 24.04 native
+hosted validation remains necessary for the declared runtime baseline.
+
+Actual release publication is a separate, explicitly authorized step. Before
+the first installed `v0.1.0`, pin every included migration in
+`backend/migrations/freeze_test.go` and activate the documented installed-release
+upgrade and branch/PR policies. Resolve the roadmap's remaining release gates,
+use an exact approved release-tag identity, and publish the verified assets
+through a draft with release immutability enabled. No publication job is
+provided by the candidate workflow. A future Wails Windows target adds
+Authenticode-signed executables/installers before the shared checksum/signature
+stage; the Windows publisher certificate/provider is selected then.
+
 ### E2E
 
 ```sh

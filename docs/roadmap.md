@@ -59,7 +59,8 @@ below is execution order, not a chain of hard dependencies.
    [#336](https://github.com/sergeyfarin/rekenraam/issues/336) and owner
    image-advisory disposition
    [#337](https://github.com/sergeyfarin/rekenraam/issues/337). Signing
-   [#333](https://github.com/sergeyfarin/rekenraam/issues/333) and the upstream
+   [#333](https://github.com/sergeyfarin/rekenraam/issues/333) (signing decision
+   accepted; candidate validation remains) and the upstream
    driver-release prerequisite
    [#356](https://github.com/sergeyfarin/rekenraam/issues/356) retain separate
    acceptance. Release remains on hold; these gates do not block accepted
@@ -241,11 +242,16 @@ runtime-image disposition remains #337.
 1. Complete native terminology sign-off (#102); see Current focus and the
    [review packet](reviews/localization-native-review-2026-10-13.md).
 2. Produce signed release artifacts with checksums and reproducibility notes
-   [#333](https://github.com/sergeyfarin/rekenraam/issues/333). Signing still
-   needs an owner decision on identity (Sigstore keyless via GitHub OIDC or a
-   held key) and a release workflow. Existing CI/scanning/measurement/preflight
-   workflows validate the app; no release job exists. Preserve the
-   [verified reproducibility conditions](developer-workflow.md#reproducibility).
+   [#333](https://github.com/sergeyfarin/rekenraam/issues/333). The owner accepted
+   Sigstore keyless GitHub Actions OIDC/Cosign and initial Linux amd64/arm64
+   targets on 2026-10-28 ([ADR 0020](adrs/0020-release-signing-and-platform-targets.md)).
+   Complete the manual candidate workflow's native-platform, signature/tamper
+   and preflight evidence; preserve the
+   [reproducibility conditions](developer-workflow.md#reproducibility).
+   Actual publication remains a separate owner-authorized release cut, with
+   all migration checksums frozen and installed-release policies activated.
+   Future Wails/Windows packaging can add Authenticode before final checksums;
+   no desktop implementation or Windows signing-provider choice is implied.
 3. Prepare adoption assets [#335](https://github.com/sergeyfarin/rekenraam/issues/335):
    seeded demo, README screenshots and a short migration walkthrough, leading
    with exact decimals, append-only versions and trial balance for the

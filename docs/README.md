@@ -84,6 +84,12 @@ diagnostics, including missing-payer CSV income. #394/#395 still own historical-
 entry and typed cash/reinvestment field corrections; #390 remains the wider
 product/workflow audit.
 
+[ADR 0020](adrs/0020-release-signing-and-platform-targets.md) records the owner
+decision for keyless release signing, initial Linux targets and the future
+Windows native-signing boundary. Candidate preparation and verification
+commands live in [Developer Workflow](developer-workflow.md#release-candidates-333);
+#333 owns remaining candidate/release acceptance.
+
 [ADR 0018](adrs/0018-personal-access-token-boundary.md) and the
 [personal-access-token contract](plans/personal-access-tokens-plan.md) define
 #334's read-only owner API grants, credential lifecycle and security events.

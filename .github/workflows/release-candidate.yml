@@ -1,0 +1,125 @@
+name: Release Candidate
+
+# ADR 0020: preparation only. No tag/release creation or contents-write grant.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Candidate label (vMAJOR.MINOR.PATCH-rc.N)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CGO_ENABLED: "1"
+  CANDIDATE_VERSION: ${{ inputs.version }}
+
+jobs:
+  build:
+    name: Candidate Linux ${{ matrix.arch }}
+    if: github.repository == 'sergeyfarin/rekenraam' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Validate candidate label and packaging contract
+        run: |
+          python3 scripts/release-artifacts.py validate-version "$CANDIDATE_VERSION"
+          python3 scripts/test-release-artifacts.py
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "24"
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build, compare, smoke and package
+        env:
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: ./scripts/build-release-candidate.sh "$CANDIDATE_VERSION" "$TARGET_ARCH" dist/candidate
+      - name: Install Chromium for candidate preflight
+        if: matrix.arch == 'amd64'
+        timeout-minutes: 15
+        run: ./scripts/ci-install-chromium.sh
+      - name: Run candidate release preflight
+        if: matrix.arch == 'amd64'
+        env:
+          E2E_SKIP_BUILD: "1"
+        run: ./scripts/test-release-preflight.sh
+      - name: Upload platform candidate
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: candidate-linux-${{ matrix.arch }}
+          path: dist/candidate/*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain failed preflight evidence
+        if: failure() && matrix.arch == 'amd64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: candidate-preflight-failure
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+            e2e/timing-results/
+            backend/var/e2e/*/app.log
+
+  sign:
+    name: Sign and verify candidate downloads
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: candidate-linux-*
+          merge-multiple: true
+          path: dist/candidate
+      - name: Install pinned Cosign
+        run: |
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 120 \
+            https://github.com/sigstore/cosign/releases/download/v3.1.4/cosign-linux-amd64 \
+            --output "$RUNNER_TEMP/cosign"
+          echo "424e2c97d0b45fd7a6b608a87f090f35633f4c23ece5f092d48bba11aaf4bbfa  $RUNNER_TEMP/cosign" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/cosign"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Assemble and sign finished downloads
+        run: |
+          python3 scripts/release-artifacts.py assemble --version "$CANDIDATE_VERSION" --input dist/candidate
+          cosign sign-blob --yes dist/candidate/SHA256SUMS --bundle dist/candidate/SHA256SUMS.sigstore.json
+      - name: Verify signature, checksums and negative controls
+        run: |
+          ./scripts/test-release-signature.sh dist/candidate \
+            https://github.com/sergeyfarin/rekenraam/.github/workflows/release-candidate.yml@refs/heads/main
+      - name: Upload verified signed candidate
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: signed-release-candidate
+          path: dist/candidate/*
+          if-no-files-found: error
+          retention-days: 14
