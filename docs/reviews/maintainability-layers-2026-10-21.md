@@ -193,7 +193,7 @@ cleanup; this report's historical remaining-work list does not undo that deliver
 ## Forecast calendar admission repair
 
 Delivered 2026-10-21 for [#380](https://github.com/sergeyfarin/rekenraam/issues/380)
-in commit [`c74e4a04`](https://github.com/sergeyfarin/rekenraam/commit/c74e4a04),
+in commit [`9fea1d45`](https://github.com/sergeyfarin/rekenraam/commit/9fea1d45),
 against working baseline `00811aa0`. Forecast URL parsing and form validity now
 reuse `isCalendarDate`; no forecast financial-date `Date.parse` admission check
 remains. Invalid February 31, non-leap February 29, April 31 and month 13 links
