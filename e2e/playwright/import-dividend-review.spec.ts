@@ -97,3 +97,61 @@ test('[acceptance] historical cash dividend repair keeps the original payment an
   expect(repaired.version_id).not.toBe(legacy.version_id);
   expect(repaired.note_markdown).toBe('Keep the owner note');
 });
+
+test('a dividend repair keeps its reviewed version when the list refreshes behind unsaved fields', async ({ page }) => {
+  test.skip(Boolean(process.env.E2E_BASE_URL), 'historical source-link fixture needs the disposable local e2e database');
+  const f = await dividendSource(page);
+  const reviews = await apiJSON<{ rows: Array<{ batch_id: number; row_id: number; state: string; resolution: { account_id?: number } }> }>(page, 'GET', '/api/v1/import-dividends');
+  const row = reviews.rows.find(r => r.state === 'pending' && r.resolution.account_id === f.cash.id)!;
+  expect(row).toBeTruthy();
+  const today = todayISO();
+  const original = {
+    transaction_date: today, description: 'Dividend repair refetch',
+    journal_entries: [{ entry_date: today, entry_kind: 'ordinary', postings: [
+      { account_id: f.cash.id, commodity_id: f.currencyID, quantity_value: '8500', quantity_scale: 2 },
+      { account_id: f.income.id, commodity_id: f.currencyID, quantity_value: '-8500', quantity_scale: 2 }
+    ] }]
+  };
+  const legacy = await apiJSON<{ id: number; version_id: number }>(page, 'POST', '/api/v1/transactions', f.csrfToken, original);
+  linkLegacyCashDividend(row.row_id, legacy.id, f.cash.id);
+  await page.clock.install();
+  await page.goto(`/app/import/dividends?batch_id=${row.batch_id}`);
+  const form = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Repair previously imported cash payment', exact: true }) });
+  await form.getByRole('button', { name: 'Declare source cash as gross with no withholding', exact: true }).click();
+  await form.getByRole('combobox', { name: 'Income account', exact: true }).selectOption(String(f.income.id));
+  const reason = form.getByLabel('Reason for repair', { exact: true });
+  await reason.fill('Keep my unsaved repair');
+
+  // Another tab changes the classification while this form still holds the
+  // original income account. A refetch must not bless those old fields with
+  // the newer version token.
+  const otherIncome = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', f.csrfToken, {
+    name: `New dividend classification ${legacy.id}`, account_class: 'income', account_kind: 'income',
+    default_commodity_id: f.currencyID, allows_postings: true, opened_on: today, effective_from: today
+  });
+  const newer = await apiJSON<{ version_id: number }>(page, 'PATCH', `/api/v1/transactions/${legacy.id}`, f.csrfToken, {
+    ...original, expected_version_id: legacy.version_id,
+    journal_entries: [{ ...original.journal_entries[0], postings: [original.journal_entries[0].postings[0],
+      { ...original.journal_entries[0].postings[1], account_id: otherIncome.id }]
+    }]
+  });
+  await page.clock.fastForward('00:45');
+  const refetched = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/import-dividends' && response.ok());
+  await page.context().setOffline(true);
+  await page.context().setOffline(false);
+  const refreshed = await (await refetched).json() as { rows: Array<{ row_id: number; expected_transaction_version_id: number }> };
+  expect(refreshed.rows.find(r => r.row_id === row.row_id)?.expected_transaction_version_id).toBe(newer.version_id);
+  await expect(reason).toHaveValue('Keep my unsaved repair');
+  await expect(form.getByRole('combobox', { name: 'Income account', exact: true })).toHaveValue(String(f.income.id));
+
+  const previewed = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/reconciliation-impact'));
+  await form.getByRole('button', { name: 'Repair dividend attribution', exact: true }).click();
+  const response = await previewed;
+  expect(response.request().postDataJSON().expected_transaction_version_id).toBe(legacy.version_id);
+  expect(response.status()).toBe(409);
+  await expect(form.getByText('This entry changed in another tab or window while you were editing it. Reload it and make your change again.', { exact: true })).toBeVisible();
+  const after = await apiJSON<{ version_id: number; transaction_kind: string; journal_entries: Array<{ postings: Array<{ account_id: number }> }> }>(page, 'GET', `/api/v1/transactions/${legacy.id}`);
+  expect(after.version_id).toBe(newer.version_id);
+  expect(after.transaction_kind).toBe('ordinary');
+  expect(after.journal_entries.flatMap(entry => entry.postings.map(posting => posting.account_id))).toContain(otherIncome.id);
+});

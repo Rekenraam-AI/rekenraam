@@ -798,6 +798,14 @@ non-trivial diff (yours or reviewed):
     own diagnostic. `investments-payment-in-lieu.spec.ts` saturates an owned
     book with 21 unrelated records to keep that evidence.
 
+69. **New version token attached to old form fields** — imported-dividend
+    repair captured its editable resolution once but read the version token
+    from reactive list props (#433). A reconnect preserved unsaved input while
+    silently accepting the newer version. Capture fields and token together;
+    reload both only deliberately. Exercise a concurrent category edit followed
+    by list refetch through the real browser/API, then require the stale refusal
+    and unchanged newer journal (`import-dividend-review.spec.ts`).
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

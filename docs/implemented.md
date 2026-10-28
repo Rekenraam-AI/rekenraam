@@ -915,6 +915,12 @@ those rules through current authorities/readers, records hand-derived
 counterexamples and passes 38 focused race controls. Final product dispositions
 and proposal selection remain; these audit outputs change no runtime policy.
 
+- #433 (2026-10-28): imported-dividend repair captures the reviewed transaction
+  version with its editable fields. A reconnect/refetch retains unsaved input
+  and its original token; a concurrent classification edit is refused rather
+  than overwritten. The phone browser regression exercises the real API and
+  keeps the newer journal/version intact.
+
 - #397 (2026-10-24): `requireKnownBasisSelfCheckPasses` owns strict known-basis
   assertions; the unknown-basis helper and independent financial oracles stay
   distinct. #398's owned browser books are recorded under Accessibility.

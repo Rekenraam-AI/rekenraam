@@ -18,6 +18,9 @@
     instruments: InvestmentInstrumentResponse[]; csrfToken: string; onSaved: (id: number, repaired: boolean) => void | Promise<void>;
   } = $props();
   let resolution = $state<ImportResolution>(untrack(() => ({ ...review.resolution })));
+  // Bind the token to these editable fields, not a newer list response.
+  // Background refetch preserves the form; it must preserve its version too.
+  const expectedTransactionVersionID = untrack(() => review.expected_transaction_version_id);
   let reason = $state('');
   let pending = $state(false);
   let error = $state<unknown>();
@@ -31,7 +34,7 @@
   const currency = $derived(review.source_currency || currencies.find(c => c.id === resolution.commodity_id)?.code || '—');
   const source = $derived({ cash_valid: !!parsedCash, kind: 'dividend' as const, instrument_code: review.source_instrument, gross_amount: '', withholding_amount: '' });
   function request(reviewed: ReviewedCheckpoints = []) {
-    return { resolution, expected_transaction_version_id: review.expected_transaction_version_id, reason, reconciliation_override: false, ...checkpointOverride(reviewed) };
+    return { resolution, expected_transaction_version_id: expectedTransactionVersionID, reason, reconciliation_override: false, ...checkpointOverride(reviewed) };
   }
   async function save(reviewed: ReviewedCheckpoints = []) {
     pending = true; error = undefined;

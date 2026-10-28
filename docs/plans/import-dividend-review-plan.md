@@ -53,3 +53,8 @@ pending beside valid cash rows, new-instrument cleanup/retry, historical same-ID
 repair, exact cash and metadata preservation, stale/duplicate/discard and injected
 late rollback, reconciliation refusal/override, native correction/export, reimport,
 real API boundaries and the 390px review/repair journey.
+
+The open repair form captures `expected_transaction_version_id` alongside its
+editable resolution (#433). Background review-list refetch preserves both;
+it cannot authorize stale fields with a newer transaction version. Concurrent
+edits use the existing stale-version refusal and explicit reload recovery.
