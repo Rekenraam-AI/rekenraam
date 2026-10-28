@@ -88,9 +88,11 @@ provenance diagnostics. The completed
 records #391's dispositions, independent figures and reproducible counterfactuals.
 The [dividend/tax delivery evidence](reviews/dividend-attribution-repair-2026-10-23.md)
 records #393's optional/clearable payer, immutable tax shape, source identity and
-diagnostics, including missing-payer CSV income. #394/#395 still own historical-parent
-entry and typed cash/reinvestment field corrections; #390 remains the wider
-product/workflow audit.
+diagnostics, including missing-payer CSV income. #394/#395 deliver historical-parent
+entry and typed cash/reinvestment field corrections. #390's
+[coverage and selection](reviews/product-complexity-coverage-2026-10-28.md)
+maps every capability family and selects six workflows/twelve rules for its
+wider product/workflow audit; necessity evidence and final dispositions remain.
 
 [ADR 0020](adrs/0020-release-signing-and-platform-targets.md) records the owner
 decision for keyless release signing, initial Linux targets and the future
