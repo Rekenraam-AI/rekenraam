@@ -9,7 +9,7 @@ Other questions have exactly one home each:
 - Ticket acceptance, state, priority and discussion: [GitHub Issues](https://github.com/sergeyfarin/rekenraam/issues).
 - What ships today: [implemented features](implemented.md).
 - All R-number references, including completed initiatives: [initiative index](implemented.md#roadmap-initiative-index).
-- Feature design contracts: `docs/plans/`. They never define a sequence.
+- Feature design contracts: `docs/plans/` and `docs/design/`. They never define a sequence.
 - Resolving a historical local code to its issue: `docs/backlog.md`.
 
 Do not restate shipped detail here; when a focus item ships, delete it and
@@ -91,6 +91,34 @@ below is execution order, not a chain of hard dependencies.
    TypeScript/OpenAPI-generator compatibility when considering the upgrade;
    its old blocker text is not fresh compatibility evidence.
 
+### Next product initiative — UI overhaul
+
+Implement the owner-approved [Home and navigation design](design/home-and-navigation.md)
+recorded in [commit `457dd74`](https://github.com/sergeyfarin/rekenraam/commit/457dd74a8344caa962bfdf29fe8dd18a69254102),
+with its [v3 mockup](design/home-mockup/README.md). The design is approved;
+application implementation is not delivered. This follows the retained
+maintenance slots, ahead of deliberately later initiatives. Owner-dependent
+readiness and release evidence continue in parallel.
+
+Deliver incrementally using the design's proposed split:
+
+1. **Shell and search:** replace the sidebar and duplicate top bar with a
+   light header, section/settings menus, hide amounts and compact shared search.
+2. **Home:** two-line briefing, central command bar, shortcut tiles led by
+   Add transaction, default My Home and real-size More to explore widgets,
+   backed by a composed Home read and a shared transaction-entry dialog.
+3. **Personalization:** server-persisted layout and revision-checked API,
+   headline choices, Customize panel, item actions with Undo, sizes and settings.
+4. **Search depth:** payee actions with editor prefill and last-used category,
+   payee filtering and full-text transaction search.
+5. **Widget depth:** lazy expanded returns, allocation and forecast charts,
+   then further widgets for existing capabilities.
+
+Open bounded GitHub slice issues with acceptance and validation before starting
+implementation. Preserve every existing route and financial contract, explicit
+scope/completeness, localization, both themes and usable phone/keyboard flows.
+R7a's broader entry helpers and configurable shortcut presets remain separate.
+
 ## Deliberately later
 
 These are valuable, but they are not allowed to displace the current plan:
@@ -168,6 +196,9 @@ and record either the parity gained or the deliberate gap retained.
 The [comparison's 2026-10-26 local status update](competitor-comparison.md)
 records accepted delivery boundaries. Targets/drift (#411), advisory
 rebalancing (#412), R6 import depth and R7a convenience remain deliberate gaps.
+The planned UI overhaul addresses Home discovery and navigation; those
+presentation gaps remain until it ships, without changing financial metric or
+tax parity claims.
 Actual's import/rules and PocketSmith's planning workflows justify auditing
 everyday migration and planning usability. Verify the core journeys before
 expanding integrations; provider signup/coverage claims need fresh
