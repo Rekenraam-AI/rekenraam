@@ -95,7 +95,10 @@ maps every capability family and selects six workflows/twelve rules for its
 wider product/workflow audit. The
 [necessity evidence](reviews/product-complexity-necessity-2026-10-28.md)
 traces those rules through current authorities and consumers with independent
-counterexamples and 38 focused race controls; final dispositions remain.
+counterexamples and 38 focused race controls. The
+[final disposition](reviews/product-complexity-disposition-2026-10-28.md)
+completes #390's bounded first pass, records rejected/deferred refactoring
+opportunities and the two separately delivered browser fixes #433/#434.
 
 [ADR 0020](adrs/0020-release-signing-and-platform-targets.md) records the owner
 decision for keyless release signing, initial Linux targets and the future

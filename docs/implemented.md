@@ -905,15 +905,19 @@ their compilation/schema follow-ups are delivered: #397/#398/#399/#400/#401,
 The separate financial-field correction feature #395 shipped 2026-10-26 in
 three slices (cash dividends/standalone withholding, payments in lieu,
 reinvestments); its [delivery record](plans/financial-dependency-simplification-plan.md#financial-field-correction-delivery-395)
-retains the accepted behavior. Product-policy audit #390 is separate and open;
+retains the accepted behavior. Product-policy audit #390's bounded first pass
+is complete (2026-10-28), separately from the mechanical audit;
 #391/#388/#389/#392/#393/#394 contracts are delivered under ADR 0019.
 Its [2026-10-28 coverage output](reviews/product-complexity-coverage-2026-10-28.md)
 maps all capability families, reconciles #284's 34 rule groups and selects six
 workflows/twelve rules. The
 [necessity output](reviews/product-complexity-necessity-2026-10-28.md) traces
 those rules through current authorities/readers, records hand-derived
-counterexamples and passes 38 focused race controls. Final product dispositions
-and proposal selection remain; these audit outputs change no runtime policy.
+counterexamples and passes 38 focused race controls. The
+[final disposition](reviews/product-complexity-disposition-2026-10-28.md)
+retains necessary safeguards, preserves delivered ADR 0019 relaxations and
+records two new bounded findings, both fixed below. No further product-policy
+change or exhaustive application/release certification is implied.
 
 - #433 (2026-10-28): imported-dividend repair captures the reviewed transaction
   version with its editable fields. A reconnect/refetch retains unsaved input

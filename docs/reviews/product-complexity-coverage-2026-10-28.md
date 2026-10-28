@@ -7,6 +7,10 @@ not a claim that every product rule has been justified. It changes no runtime,
 schema, API or accepted product policy. The
 [roadmap](../roadmap.md#current-focus) retains work order.
 
+Subsequent delivery: the [final disposition](product-complexity-disposition-2026-10-28.md)
+completes this bounded pass and records two separately fixed browser findings
+(#433/#434). Selection-time remaining-work statements below are historical.
+
 ## What remains after the delivered inputs
 
 The live issue and its three comments were read on 2026-10-28. #391's
@@ -101,7 +105,7 @@ or split those implementation-oriented groups according to user outcomes.
 | I1–I4, I6, I8–I9 | Typed operations, side/knowledge/method, lineage, atomic writer and gain acknowledgement reuse #391 and current delivery controls. No fresh every-family review. |
 | I5, I7 | Real fraction conservation versus parent standing selected (rules 5–6); #401 now shares corporate-action correction preparation. |
 | I10 | Historical permanent-entitlement retention is superseded by #388/#389 and ADR 0019 (rule 3). The global write-time payment replay is gone. Do not optimize or restore it. |
-| I11–I12 | Report/preview consumers sampled where affected, including forecast basis (rule 12). #399 already shares browser review plumbing; no second extraction proposal. |
+| I11–I12 | Report/preview consumers sampled where affected, including forecast basis (rule 12). #400 already shares browser review plumbing; no second extraction proposal. |
 | S1–S9 | Threat/recovery reasons sampled in the capability map; deep security/durability review deferred. Their dated controls are reused, not counted as a seventh workflow or proved necessary by financial totals. |
 
 ## Stop boundary and validation

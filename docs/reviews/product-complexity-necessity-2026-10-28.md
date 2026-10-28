@@ -6,6 +6,11 @@ Runtime/test source: `83f1e38b01cb66c65ce643e5edd5c4a7a2fe9164`.
 The intervening coverage commit `cd7720c8` changes documentation only.
 Exactly the selected six workflows and twelve rules are examined here.
 
+Subsequent [final disposition](product-complexity-disposition-2026-10-28.md)
+completes the audit. Its further browser review found and fixed #433's
+form/token refetch mismatch and #434's estimate-source presentation. The
+38 passing backend controls below do not claim to cover those browser states.
+
 This supplies necessity evidence and provisional rule-level conclusions, not
 final proposal selection or whole-application acceptance. No runtime, schema,
 API, test expectation or accepted policy changes. Final disposition and zero

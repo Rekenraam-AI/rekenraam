@@ -79,13 +79,6 @@ below is execution order, not a chain of hard dependencies.
      Reprofile before choosing more suite-cost work; apply ADR 0016's act
      rule if two uncached full-gate package runs again exceed 270 s.
 
-   The separate product-policy audit
-   [#390](https://github.com/sergeyfarin/rekenraam/issues/390) remains open;
-   its behavior-changing acceptance is distinct from maintenance. Its
-   [coverage and bounded selection](reviews/product-complexity-coverage-2026-10-28.md)
-   and [necessity evidence](reviews/product-complexity-necessity-2026-10-28.md)
-   are recorded; final dispositions and proposal selection remain. Delivered
-   ADR 0019 contracts do not restore retired attribution blockers.
 3. **Continue independent readiness work.**
    [#102](https://github.com/sergeyfarin/rekenraam/issues/102) needs native
    terminology review. Assign a reviewer per drafted non-English language

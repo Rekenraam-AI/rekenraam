@@ -400,6 +400,14 @@ complexity and rejected simplifications. Do not build a universal rule engine,
 require zero warnings, measure success by deleted LOC, or make an exhaustive
 new audit a prerequisite to every local improvement.
 
+The [2026-10-28 final disposition](../reviews/product-complexity-disposition-2026-10-28.md)
+completes #390's bounded first pass: six workflows/twelve rules, retained
+accounting/source/reconciliation/planning protections and delivered ADR 0019
+relaxations. Two small browser correctness findings (#433/#434) are separately
+fixed; no additional financial-policy change or dependency framework is adopted.
+Unreviewed families and owner/release evidence remain explicitly outside that
+audit's acceptance.
+
 ### Financial Field Correction Delivery (#395)
 
 **Slice 1, cash dividends and standalone withholding (2026-10-26).** The

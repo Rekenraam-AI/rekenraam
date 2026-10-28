@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-28",
+  "audit_start": "000d44e2",
+  "original_runtime": "83f1e38b01cb66c65ce643e5edd5c4a7a2fe9164",
+  "final_runtime": "76f643d8e036d1d67d93bca74b435470d312ce9d",
+  "fixes": [
+    {
+      "issue": 433,
+      "commit": "dd9e8579",
+      "regression": "a dividend repair keeps its reviewed version when the list refreshes behind unsaved fields",
+      "baseline": "Expected original form token 1; received refreshed token 2.",
+      "after": "Original token retained, preview 409 TRANSACTION_VERSION_STALE, newer category/journal/version preserved."
+    },
+    {
+      "issue": 434,
+      "commit": "76f643d8",
+      "regression": "[acceptance] estimated spending is opt-in, explained and reversible",
+      "baseline": "Expanded real learned Wednesday had no Estimated spending label; existing source branch defaults to Recurring template.",
+      "after": "Estimate label, no recurring-record link, seven columns with learned overlay; core case verifies six."
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "pnpm",
+        "build"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "./scripts/test-frontend.sh"
+      ],
+      "exit_code": 0,
+      "svelte_errors": 0,
+      "svelte_warnings": 0,
+      "unit_files": 61,
+      "unit_tests": 781
+    },
+    {
+      "env": {
+        "E2E_SKIP_BUILD": "1"
+      },
+      "argv": [
+        "pnpm",
+        "--dir",
+        "e2e",
+        "exec",
+        "playwright",
+        "test",
+        "--project",
+        "app",
+        "--workers",
+        "2",
+        "playwright/import-dividend-review.spec.ts",
+        "playwright/editor-refetch.spec.ts",
+        "playwright/forecast.spec.ts",
+        "playwright/forecast-learning.spec.ts"
+      ],
+      "exit_code": 0,
+      "passed": 18,
+      "skipped": 0,
+      "failed": 0,
+      "spec_counts": {
+        "import-dividend-review": 3,
+        "editor-refetch": 2,
+        "forecast": 8,
+        "forecast-learning": 5
+      }
+    }
+  ],
+  "limits": [
+    "Synthetic local app/provider fixtures; no live provider calls or owner acceptance.",
+    "No backend/API/schema change; reuse original backend evidence at its pinned source.",
+    "Local commits only; push and hosted CI pending."
+  ]
+}
