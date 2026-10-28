@@ -218,8 +218,9 @@ func TestVerifyBackupSaysSoWhenTheConfiguredKeyIsTheWrongOne(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	run(context.Background(), []string{"verify-backup", "--from", backupPath}, strings.NewReader(""), stdout, stderr)
+	exitCode := run(context.Background(), []string{"verify-backup", "--from", backupPath}, strings.NewReader(""), stdout, stderr)
 
+	require.Equalf(t, 0, exitCode, "a wrong sealed-data key must warn without failing a restorable backup: %s", stderr.String())
 	assert.Contains(t, stdout.String(), "does NOT decrypt with the configured key",
 		"a key that cannot open the data must be reported, not passed over")
 }
@@ -234,8 +235,9 @@ func TestVerifyBackupExplainsTheCostWhenNoKeyIsConfigured(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	run(context.Background(), []string{"verify-backup", "--from", backupPath}, strings.NewReader(""), stdout, stderr)
+	exitCode := run(context.Background(), []string{"verify-backup", "--from", backupPath}, strings.NewReader(""), stdout, stderr)
 
+	require.Equalf(t, 0, exitCode, "a missing sealed-data key must warn without failing a restorable backup: %s", stderr.String())
 	output := stdout.String()
 	assert.Contains(t, output, "is not set here")
 	assert.Contains(t, output, "would have to be set up again")
