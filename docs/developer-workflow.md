@@ -692,7 +692,7 @@ baseline`, before running migrations. Populated unversioned files also refuse;
 `recover-owner` still backs them up before refusing admission without resetting
 credentials. Restore refuses backups from that
 baseline before preserving or replacing the destination. `verify-backup`
-reports the mismatch. Export with the original build before updating, then
+reports the mismatch and exits `3`, distinct from an unusable file (`1`). Export with the original build before updating, then
 reset only disposable development data using the procedure above. A genuinely
 newer forward-schema backup with the same baseline still has its separate
 "newer schema" refusal. Never use restore across this boundary.

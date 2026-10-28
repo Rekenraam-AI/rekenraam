@@ -14,6 +14,12 @@ import (
 	"rekenraam/backend/internal/secretbox"
 )
 
+// verifyBackupUnrestorableExitCode distinguishes an intact backup this build
+// cannot restore from an unusable file (1). Scripts that chain
+// `verify-backup ... && restore ...`, or monitoring jobs that only look at the
+// status, must not treat either refusal as verified.
+const verifyBackupUnrestorableExitCode = 3
+
 func runVerifyBackup(ctx context.Context, cfg config.Config, args []string, stdout io.Writer, stderr io.Writer) int {
 	flagSet := flag.NewFlagSet("verify-backup", flag.ContinueOnError)
 	flagSet.SetOutput(stderr)
@@ -38,10 +44,13 @@ func runVerifyBackup(ctx context.Context, cfg config.Config, args []string, stdo
 	fmt.Fprintf(stdout, "size:            %d bytes\n", inspection.ByteSize)
 	fmt.Fprintf(stdout, "integrity:       ok (integrity_check and foreign_key_check)\n")
 	fmt.Fprintf(stdout, "schema version:  %d (this build knows %d)\n", inspection.SchemaVersion, inspection.BinaryVersion)
+	restorable := true
 	if inspection.BaselineIdentity != db.BaselineIdentity {
 		fmt.Fprintf(stdout, "baseline:        %d (this build requires %d); incompatible pre-release baseline, cannot restore\n", inspection.BaselineIdentity, db.BaselineIdentity)
+		restorable = false
 	} else if inspection.SchemaVersion > inspection.BinaryVersion {
 		fmt.Fprintln(stdout, "                 this backup is NEWER than this build and cannot be restored by it")
+		restorable = false
 	}
 
 	for _, table := range sortedKeys(inspection.RowCounts) {
@@ -50,6 +59,9 @@ func runVerifyBackup(ctx context.Context, cfg config.Config, args []string, stdo
 
 	reportSealedData(ctx, cfg, inspection, stdout)
 
+	if !restorable {
+		return verifyBackupUnrestorableExitCode
+	}
 	return 0
 }
 

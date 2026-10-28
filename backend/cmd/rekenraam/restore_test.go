@@ -438,8 +438,26 @@ func TestVerifyBackupReportsIncompatibleBaselineSeparatelyFromNewerSchema(t *tes
 	require.NoError(t, backup.Close())
 	var stdout, stderr bytes.Buffer
 	code := runVerifyBackup(context.Background(), config.Config{DatabaseURL: databaseURL}, []string{"--from", backupPath}, &stdout, &stderr)
-	require.Equalf(t, 0, code, "%s", stderr.String())
+	require.Equalf(t, 3, code, "a backup with an incompatible baseline must not look verified: %s", stderr.String())
 	require.Contains(t, stdout.String(), "integrity:       ok")
 	require.Contains(t, stdout.String(), "incompatible pre-release baseline, cannot restore")
 	require.NotContains(t, stdout.String(), "NEWER")
+}
+
+// A newer forward schema is also intact but unrestorable, so it must reach the
+// same distinct status rather than exit 0 after printing the warning.
+func TestVerifyBackupReportsNewerSchemaWithAnUnrestorableExitStatus(t *testing.T) {
+	t.Parallel()
+	databaseURL, backupPath := backupOf(t)
+	backup, err := db.Open(context.Background(), db.SQLiteFileURL(backupPath))
+	require.NoError(t, err)
+	_, err = backup.Exec(`UPDATE goose_db_version SET version_id = 9999 WHERE version_id = (SELECT MAX(version_id) FROM goose_db_version)`)
+	require.NoError(t, err)
+	require.NoError(t, backup.Close())
+	var stdout, stderr bytes.Buffer
+	code := runVerifyBackup(context.Background(), config.Config{DatabaseURL: databaseURL}, []string{"--from", backupPath}, &stdout, &stderr)
+	require.Equalf(t, 3, code, "a backup newer than this build must not look verified: %s", stderr.String())
+	require.Contains(t, stdout.String(), "integrity:       ok")
+	require.Contains(t, stdout.String(), "this backup is NEWER than this build and cannot be restored by it")
+	require.NotContains(t, stdout.String(), "incompatible pre-release baseline")
 }
