@@ -6,7 +6,7 @@ disclosure. Returns/allocation remain R13; saved alternative/FX projections,
 broker comparisons, tax policy and formal postings remain outside this contract.
 
 ADR [0012](../adrs/0012-investment-ledger-subledger-and-reporting-boundaries.md)
-governs this plan. The [roadmap](../roadmap.md#r18--reproducible-investment-basis-and-gains-projections)
+governs this plan. The [roadmap](../roadmap.md#current-focus)
 owns sequencing; [#203](https://github.com/sergeyfarin/rekenraam/issues/203)
 owns the bounded observation-selection delivery. The delivered slices below
 add operational and alternative-method basis profiles and explicit immutable

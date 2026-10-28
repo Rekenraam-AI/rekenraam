@@ -39,12 +39,120 @@ Historical migration numbers cited elsewhere in this ledger refer to the
 pre-consolidation candidate; their capabilities now belong to baseline 1.
 
 
-Last documentation reconciliation: 2026-10-17 against `f35cc723`, GitHub
+Roadmap delivery reconciliation: 2026-10-28 against `2f0a9fda` and live GitHub
+issue state. Completed initiatives, maintenance and release prerequisites are
+recorded here; remaining work stays in the roadmap. This documentation review
+does not rerun runtime acceptance or certify a release.
+
+Last broad documentation reconciliation: 2026-10-17 against `f35cc723`, GitHub
 closures and selected implementation/test consumers. See the
 [app-state review](reviews/app-state-and-audit-plan-2026-10-17.md) for coverage
 and the proposed audits; this is not a fresh execution of all acceptance tests.
 R12a closed 2026-08-30; ADR 0012
 governs the journal/subledger boundary and ADR 0013 the R16 operation model.
+
+## Roadmap initiative index
+
+Every R-number used so far, retained here so completed initiative references
+stay resolvable. ✅ means bounded delivery shipped; ⏸ means deliberately later.
+The [roadmap](roadmap.md) alone owns current focus and future placement.
+
+| Slice | Name | Status | Primary document |
+|---|---|---|---|
+| R1 | Reconcile workflow screen (trust loop) | ✅ | `docs/implemented.md` (Reconciliation) |
+| R2 | Reports users can act on | ✅ | `docs/plans/reports-plan.md` |
+| R3 | Portable **and protected** core data (CSV/QIF export, backups, restore, self-check) | ✅ | `docs/plans/data-portability-plan.md` |
+| R3a | Accessibility regression coverage | ✅ | `docs/implemented.md` (Accessibility) |
+| R4 | QIF import | ✅ | `docs/implemented.md` (Import Pipeline) |
+| R5 | Ordinary-bank CSV import + profiles | ✅ | `docs/plans/import-plan.md` |
+| R6 | Import depth (XLSX/OFX, matching, rollback) | ⏸ | `docs/plans/import-plan.md` |
+| R7 | Trading 212 online connections + lots | ✅ | `docs/plans/trading212-import-plan.md` |
+| R7a | Daily-entry convenience | ⏸ | [roadmap](roadmap.md#deliberately-later) |
+| R8 | Budgets | ✅ | `docs/plans/budgets-plan.md` |
+| R9 | Recurring transactions | ✅ | `docs/plans/recurring-transactions-plan.md` |
+| R10 | Projected balances / forecasting | ✅ | `docs/plans/projected-balances-plan.md` |
+| R11 | Pricing/FX management UI | ✅ | `docs/plans/pricing-management-plan.md` |
+| R12 | Investments UI + gains reporting | ✅ | `docs/plans/investments-plan.md` |
+| R12a | Investment journal/subledger integrity correction | ✅ | `docs/plans/investment-integrity-plan.md`, ADR 0012 |
+| R13 | Investment return analytics (portfolio and per-instrument) | ✅ | [returns contract](plans/investment-returns-plan.md) |
+| R14 | Receipts & attachments (capture, OCR, inbox) | ⏸ | `docs/plans/receipts-plan.md` |
+| R14a | Attachment storage + manual attach (scope decision still required) | ⏸ | `docs/plans/receipts-plan.md` |
+| R15 | Connections expansion (IBKR Flex → GoCardless) | ⏸ | `docs/plans/connections-plan.md` |
+| R16 | Investment lifecycle completeness (correction, transfers, basis actions, splits, short sales) | ✅ bounded gates | `docs/plans/investment-operation-refactor-plan.md`; ADR 0013 |
+| R17 | Crypto instrument type + `PriceProvider` registry and quote adapters | ✅ | `docs/plans/quote-providers-crypto-plan.md` |
+| R18 | Reproducible investment basis + gains projections | ✅ | ADR 0012; `docs/plans/investment-reporting-plan.md` |
+
+## Adopted delivery and scope decisions
+
+### Decisions adopted 2026-08-05
+
+The `docs/reviews/roadmap-review-2026-07-19.md` (§3, §4) proposals were
+decided by the owner on 2026-08-05. **All were accepted**, with scope fences
+recorded in the governing feature plans:
+
+| Proposal | Decision |
+|---|---|
+| §3a EU import correctness (T-35, T-36) | Accepted — fixed as defects *and* a hard pre-announcement gate |
+| §3b R3 backups + trial-balance self-check | Accepted — self-check is read-only; a documented restore path ships with it |
+| §3c Minimal import rules v1 in R5 | Accepted — contains-match, preview-time only, no retroactive apply |
+| §3d R10 forecasting promotion | Accepted — planning loop is **R9 → R10 → R8** |
+| §3e Investment lifecycle completeness | Accepted — R16 framework in `docs/plans/investment-operation-refactor-plan.md`; each structural action still needs its posting, basis, and date specification before implementation |
+| §3f Personal-access tokens | Accepted — scoped, expiring, hashed, revocable; before announcement |
+| §4.1 Crypto-holding expat persona | Accepted — new R17, after R16, with a standing guardrail in `product-requirements.md` |
+
+The three remaining `plans/` questions were decided the same day:
+
+| Question | Decision |
+|---|---|
+| Connections sequencing | Order adopted, **contents amended**: the quote-provider slice moves into R17 (it builds the `PriceProvider` registry once). the original R15 order was IBKR Flex → GoCardless → #111 producer |
+| Receipts R14a pull-forward | **No** — but R3 designs the backup/self-check with a documented attachments hook, and R14a ships after R5 |
+| GoCardless / IBKR "verify" items | Not a decision — reclassified as blocking slice-start preconditions on GC-1 and IBKR-1 in `connections-plan.md` |
+
+These are historical sequencing decisions. The [roadmap](roadmap.md) owns
+current placement; #111 has since shipped ahead of the original R15 order.
+R14a was kept after R5 rather than pulled forward alongside R3. The Yahoo
+Finance quote-provider question was decided the same day (ship it, labeled
+unofficial) — `docs/plans/connections-plan.md`.
+
+Other resolved product decisions:
+
+- First non-English UI languages were decided 2026-08-19: Spanish, French,
+  Dutch, German and Russian (`product-requirements.md`). Catalog parity ships;
+  native terminology review remains #102.
+- Decided 2026-10-18: no settings/metadata interchange or bundle importer.
+  The native backup is the only full-installation round trip; the bundle is a
+  portable ledger export. See `product-requirements.md` and decision 14 of the
+  [data portability plan](plans/data-portability-plan.md).
+
+### Completed announcement prerequisites
+
+R2 reports, R3 exports/backups/restore/self-check and R5 CSV/profile import
+are accepted. The R9 → R10 → R8 planning loop is also accepted. Area sections
+below record current capabilities and retained limits; the
+[completed roadmap record through R10](reviews/completed-roadmap-2026-09-27.md)
+preserves earlier acceptance detail.
+
+EU import correctness (T-35/T-36) was fixed and regression-tested for QIF on
+2026-08-06. The 2026-09-12 CSV recheck found T-91: both adapters detected dates
+file-wide but decimal separators per value, misreading a German `1.234` as
+1.234 rather than 1234. Both now use file-wide separator detection; the Import
+Pipeline section records later refusal and warning behavior.
+
+Personal-access tokens (#334, 2026-10-20) and their independent audit #357
+ship, with #359 fixed. Adjacent expiry and reservation audits #360/#366 are
+complete with #362–#365 fixed. The
+[delivery record](reviews/personal-access-tokens-delivery-2026-10-20.md) retains
+16 browser cases, shared gates and selector finding #358; the
+[token](reviews/personal-access-token-audit-2026-10-20.md),
+[expiry](reviews/authentication-expiry-audit-2026-10-20.md) and
+[reservation](reviews/throttle-reservation-audit-2026-10-20.md) reports retain
+bounded evidence. Actual deployment acceptance remains separate (#336).
+
+Native-build reproducibility was rechecked 2026-10-12 (#195): identical Go/C
+toolchain, source and embedded frontend inputs produce matching hashes with
+`-trimpath`, CGO and the pinned bundled engine. Linux artifacts link libc/libm;
+fully static linking is separate work. See
+[Reproducibility](developer-workflow.md#reproducibility). Signing remains #333.
 
 ## Provider independence policy — 2026-10-15
 
@@ -489,7 +597,7 @@ report guarantee is added.
 | Review actions and posting-impact preview | ✅ | Authenticated skip with reason and blocked retry; atomic occurrence/audit updates guarded by template revision and prior attempt audit ID. Archived blocked items remain skippable; retry requires enabled/unarchived. `GET /transactions/{id}/post/reconciliation-impact` validates the saved draft as posted and previews stored-position checkpoint impact. Posting still rechecks. Existing DELETE now discards edited drafts newest-version first (T-81), preserving the skipped identity and audits. OpenAPI, typed client and six-locale conflict message ship. |
 | Recurring screens | ✅ | `/app/recurring`: templates and paginated due inbox, all states, six locales, draft-count nav badge and mobile/keyboard review dialogs. Shared editor saves templates without transactions and edits drafts without posting, preserving exact amounts, tags and clearing legs. Pause/resume/archive, skip/retry, explicit post/discard and bulk post with per-draft reconciliation checks. Partial bulk failures keep completed posts and leave only remaining drafts for review. Acceptance closed T-82/T-83/T-84; see `docs/reviews/r9-acceptance-review-2026-08-31.md`. |
 
-## Investments (Phase 6) — ✅ Bounded R16/R17/R18 workflows shipped; returns and adapter extensions remain
+## Investments (Phase 6) — ✅ Bounded R13/R16/R17/R18 workflows shipped; target allocation and adapter extensions remain
 
 The bounded #114 transfer/basis-action family is complete as of the
 [2026-10-09 closure audit](reviews/in-kind-basis-actions-audit-2026-10-09.md).
@@ -758,6 +866,62 @@ converting coefficients to `Number`.
 
 ## Cross-cutting — ✅ foundations in place; audit coverage is bounded
 
+### Engineering audit and accepted maintenance delivery (2026-10-24..28)
+
+The cross-app engineering audit's twelve original areas and subsequent bounded
+engineering reviews are delivered. The
+[audit brief](reviews/app-state-and-audit-plan-2026-10-17.md) links scenario,
+finding and shared-gate evidence with explicit limits; #326's URL selections
+and corrected route evidence are recorded in the
+[delivery report](reviews/url-selection-delivery-2026-10-21.md). Umbrella #260
+remains open for owner acceptance #336/#337; dated engineering evidence does
+not establish actual deployment or household readiness.
+
+#284's six measurement slices and
+[final owner-reviewed dispositions](reviews/maintainability-audit-2026-10-24.md)
+complete the bounded maintainability audit. All accepted candidates 1–6 and
+their compilation/schema follow-ups are delivered: #397/#398/#399/#400/#401,
+#402/#404/#405. Area rows below and above describe their capabilities.
+The separate financial-field correction feature #395 shipped 2026-10-26 in
+three slices (cash dividends/standalone withholding, payments in lieu,
+reinvestments); its [delivery record](plans/financial-dependency-simplification-plan.md#financial-field-correction-delivery-395)
+retains the accepted behavior. Product-policy audit #390 is separate and open;
+#391/#388/#389/#392/#393/#394 contracts are delivered under ADR 0019.
+
+- #397 (2026-10-24): `requireKnownBasisSelfCheckPasses` owns strict known-basis
+  assertions; the unknown-basis helper and independent financial oracles stay
+  distinct. #398's owned browser books are recorded under Accessibility.
+- #402 (2026-10-24): [profiling](reviews/race-suite-cost-2026-10-24.md)
+  attributes 4.5% of application race CPU to migration replay. Schema loading,
+  statement compilation and added tests explain the growth; no
+  coverage-preserving test change was justified. The ADR 0016 amendment
+  replaces the old 200 s trigger with explicit investigate/act thresholds.
+  The independent false FTS5 integrity finding #403 is fixed (see self-check).
+- #404 (2026-10-24): [measured explicit statement reuse](reviews/statement-compilation-2026-10-24.md)
+  lowered the app median 223.3 → 219.4 s and full-gate pair to 255.5/274.1 s.
+  The native cache measured −4.4% (about 2.7% beyond explicit reuse); the owner
+  declined it and `_stmt_cache_size=0` stays. See Statement compilation below.
+- #405 (2026-10-26): the [schema review](reviews/schema-baseline-review-2026-10-26.md)
+  records the consolidated baseline and workflow findings. Native object count
+  fell 511 → 489 and stored SQL fell 2.3%, with all 164 triggers retained.
+  App median fell 240.7 → 229.6 s; the full-gate application pair fell 271.8/289.0 →
+  248.5/262.5 s. The act threshold stopped firing; investigate still fires.
+  Hosted CI passed at `0ac0a6cf`. The baseline/reset contract is recorded at
+  the top of this ledger; current head is 2 after #417.
+- #418 (2026-10-26): unused `InstrumentSearchProvider` and
+  `InstrumentSearchCandidate` declarations removed after the schema review.
+  #417's deletion guard and #420's backup-verification exit status are
+  recorded under Foundation and Exports & Backups respectively.
+- #415 (2026-10-27): Go-cache source keys use git object IDs and fail open if
+  unavailable; Chromium installation has per-phase deadlines and one retry.
+  These bound runner setup stalls without removing validation.
+
+Remaining follow-ups #414/#416/#419 and explicitly deferred candidates 7–13
+belong to the [roadmap](roadmap.md); completed maintenance does not close the
+separate release gates.
+
+### Shared capabilities and validation
+
 - Financial relationship design review (#391), 2026-10-23:
   [source-pinned family inventory](reviews/financial-dependency-inventory-2026-10-23.md)
   covers cash attribution, real allocations, source identity, prices/reports,
@@ -953,8 +1117,8 @@ hand-derived budget, recurring, forecast and learned-spending evidence.
 
 XLSX/OFX/QFX import adapters, per-split import mapping and batch rollback,
 a second online bank/broker import connection, loan/liability helpers,
-R13 saved return runs (the returns read, screen, TTWROR chart, allocation
-and benchmark ship) and general report snapshots beyond R18
-operational gains/statement documents. Multiple quote adapters and the
-Twelve Data reviewed dividend producer already ship.
+target allocation/drift and advisory rebalancing, and general report snapshots
+beyond saved R13 returns and R18 operational gains/statement documents.
+Multiple quote adapters and the Twelve Data reviewed dividend producer already
+ship.
 The [roadmap](roadmap.md) owns sequencing; GitHub Issues own delivery status.
