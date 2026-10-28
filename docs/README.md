@@ -52,6 +52,14 @@ or sequencing change.
 
 ## Initiative and design references
 
+The [public website contract](design/public-website.md) records the approved
+Paper & pine design, factual copy, six-locale static build and separate
+publication boundary. [Website source](../website/README.md) documents local
+commands and synthetic screenshot capture; deployment instructions are in
+[Public website](developer-workflow.md#public-website). This is only part of
+the adoption work tracked by #335; the interactive demo and migration
+walkthrough remain separate.
+
 The [Home and navigation design](design/home-and-navigation.md) records the
 owner-approved Home page and light application shell (2026-10-27), with its
 [mockup source](design/home-mockup/README.md); the

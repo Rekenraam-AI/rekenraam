@@ -55,6 +55,16 @@ Primary product goal:
 - Attachments such as statement PDFs and receipts are intentionally out of scope for now.
 - The minimum mobile requirement is responsive support for full core workflows, including transaction entry.
 
+## Public Project Website
+
+The public project website is a separate static presentation of the self-hosted
+app, with factual privacy, double-entry and investment descriptions, real
+synthetic-data screenshots and a prominent development notice. It supports the
+app's six locales, identifies draft translation status and links to the
+independent retirement planner. It is not a hosted financial-data service.
+The [website contract](design/public-website.md) records the approved design and
+the separate publication boundary; release/announcement gates still apply.
+
 ## Provider Independence And Incomplete Data
 
 Owner decision (2026-10-15), governed by

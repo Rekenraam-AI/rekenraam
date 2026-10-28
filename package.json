@@ -16,7 +16,12 @@
     "check:post-merge": "./scripts/check-post-merge.sh",
     "measure:large-book": "./scripts/measure-large-book.sh",
     "measure:payment-in-lieu-density": "./scripts/measure-payment-in-lieu-density.sh",
-    "build": "./scripts/build-single-binary.sh"
+    "build": "./scripts/build-single-binary.sh",
+    "website:dev": "node website/preview.mjs --dev",
+    "website:build": "node website/build.mjs",
+    "website:preview": "node website/preview.mjs",
+    "website:check": "node --test --test-isolation=none website/build.test.mjs",
+    "website:check-browser": "pnpm --dir e2e exec playwright test --config=website-check.config.ts"
   },
   "devDependencies": {
     "concurrently": "10.0.6",

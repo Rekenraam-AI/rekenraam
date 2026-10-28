@@ -1,0 +1,59 @@
+name: Website
+
+# Preparing an artifact and publishing the public site are separate actions.
+# Dispatch with publish=false for a build-only rehearsal.
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish this revision to the configured GitHub Pages site
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: pnpm/action-setup@v6.1.0
+      # The website has no npm dependencies and does not need the app toolchain.
+      - name: Validate translations and generated pages
+        run: pnpm website:check
+      - name: Build static website
+        run: pnpm website:build
+      - name: Retain build for review
+        uses: actions/upload-artifact@v7
+        with:
+          name: rekenraam-website
+          path: website/build/
+          include-hidden-files: true
+      - name: Prepare Pages artifact
+        if: ${{ inputs.publish }}
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: website/build/
+
+  deploy:
+    if: ${{ inputs.publish }}
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish reviewed website
+        id: deployment
+        uses: actions/deploy-pages@v5

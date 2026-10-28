@@ -596,6 +596,11 @@ has actual installations, its migration files are immutable.
 
 ## Frontend Conventions
 
+- These application conventions govern `frontend/`. The separate public
+  project site in `website/` uses build-time JSON catalogs with strict parity
+  against the app's locale set, and complete HTML pages per language; see
+  [the website contract](design/public-website.md). Its static distribution
+  does not introduce an app server, API or alternate ledger runtime.
 - SvelteKit builds static output with `@sveltejs/adapter-static`; production does not run a SvelteKit server.
 - Do not add `+page.server.ts`, `+layout.server.ts`, `+server.ts`, SvelteKit form actions, or production server hooks without first accepting an ADR that changes the runtime shape.
 - Frontend routes may rely on the Go static handler's SPA fallback for extensionless browser paths. Missing asset-like paths with file extensions should 404.

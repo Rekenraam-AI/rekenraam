@@ -32,6 +32,9 @@ vite.config.ts.timestamp-*
 /frontend/package
 /frontend/.vercel
 
+# Public project website (independent static build)
+/website/build
+
 # Backend
 /backend/bin
 /backend/coverage.out

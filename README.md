@@ -159,6 +159,18 @@ Checks and build:
 pnpm build                     # writes dist/rekenraam
 ```
 
+The separate public website is in [`website/`](website/README.md). It has no
+backend or npm dependencies and builds complete pages in the app's six languages:
+
+```sh
+pnpm website:dev              # http://127.0.0.1:1889
+pnpm website:check            # translation and static-output checks
+pnpm website:build            # writes website/build; does not publish
+```
+
+Browser checks, screenshot capture and manual GitHub Pages setup are documented
+in [Public website](docs/developer-workflow.md#public-website).
+
 The full browser suite is `./scripts/test-e2e.sh`. Focused Go commands, Go cache
 settings, E2E timing, the API contract audit, resetting a disposable dev
 database and local password recovery are documented in the
@@ -175,6 +187,7 @@ the remaining release gates are documented in
 |---|---|
 | `backend/` | Go server, services, SQLite migrations, tests |
 | `frontend/` | SvelteKit app, compiled for embedding |
+| `website/` | Public project website, built separately as static HTML |
 | `api/` | OpenAPI contract and Bruno requests |
 | `e2e/` | Playwright browser journeys |
 | `deploy/` | Docker build and Compose example |

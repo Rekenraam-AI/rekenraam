@@ -32,6 +32,7 @@ checks; CI must not need a separate warm-up or skip catalog validation.
 
 | Changed | Run |
 |---|---|
+| `website/**` | `pnpm website:check` and `pnpm website:build`; `pnpm website:check-browser` for presentation/navigation changes (separate static site; no app server). See `website/README.md`. |
 | `backend/**` | `./scripts/test-backend.sh` (= `go test -race -p 2 -timeout=5m ./...`), plus `./scripts/go-backend.sh vet ./...`, `gofmt -l .` in `backend/` |
 | Backend coverage check (optional, same script) | `COVERAGE=1 ./scripts/test-backend.sh` — non-race coverage pass, prints the merged total; CI enforces a soft floor (`scripts/check-coverage-floor.sh`) |
 | `frontend/**` | `./scripts/test-frontend.sh` (openapi:generate + paraglide:compile + svelte-check); `pnpm --dir frontend run test` for unit-tested logic |

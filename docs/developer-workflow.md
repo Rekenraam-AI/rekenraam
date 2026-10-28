@@ -87,6 +87,86 @@ Then open `http://localhost:1888`. Vite proxies `/api` to the backend on the
 development host, so the frontend port is the only required forward. Use an
 HTTPS reverse proxy for direct access from phones or other LAN clients.
 
+### Public website
+
+The separate `website/` project renders static HTML for the app's six locales.
+It needs Node 24 and no npm dependencies or Go server. The website source and
+the self-hosted application have independent builds; `pnpm build` still builds
+only the app. See the [website contract](design/public-website.md) for content,
+localization, privacy and publication boundaries.
+
+```sh
+pnpm website:dev              # build + loopback preview, watch catalogs/assets
+pnpm website:check            # catalog parity, prerendered content, links, paths
+pnpm website:build            # website/build/, default origin rekenraam.com
+pnpm website:preview          # existing build at http://127.0.0.1:1889
+pnpm website:check-browser    # needs E2E dependencies and Playwright Chromium
+```
+
+The dev command watches catalogs and assets; restart it after editing the
+build template. `WEBSITE_PORT` changes the preview port. Stop the preview before
+browser checks, which own port 1889. Website checks/build run in the existing
+Frontend Check CI job. The browser command checks all locales at 320, 390, 768
+and 1280 px, light/dark accessibility, theme persistence, image loading, no
+external asset requests and language navigation without JavaScript.
+
+The site uses `/` for English and `/nl/`, `/de/`, `/fr/`, `/es/`, `/ru/` for
+the other languages. Catalogs and all user-facing metadata live under
+`website/locales/`. Their language set is checked against
+`frontend/project.inlang/settings.json`; native-language review remains #102.
+All images/CSS/scripts are local. There are no analytics or external fonts.
+
+The README's spending screenshot is reused during the build. Refresh the
+other screenshots from the synthetic reference book with:
+
+```sh
+pnpm build
+pnpm --dir e2e exec playwright test --config=website.config.ts
+```
+
+This generator creates and removes a disposable database, refuses
+`E2E_BASE_URL`, redirects optional provider traffic to the test-only stub
+address, and captures the transaction register and investment lot details.
+It does not start a provider or read an existing installation. Images and
+capture provenance belong in `website/assets/`; only presentation assets go
+into the public build. Screenshots remain English with localized captions and
+alternative text.
+
+For a temporary project-path build instead of a custom domain:
+
+```sh
+SITE_ORIGIN=https://sergeyfarin.github.io SITE_BASE_PATH=/rekenraam pnpm website:build
+SITE_BASE_PATH=/rekenraam pnpm website:preview
+```
+
+For `rekenraam.com`, leave both variables unset. The build includes canonical
+and alternate-language links, a sitemap, robots.txt, a 404 page and `.nojekyll`.
+
+#### GitHub Pages publication
+
+Preparing the source and building an artifact do not publish the site. Keep
+the existing roadmap's release/announcement gates and #335's separate public
+hosting authorization. The manual **Website** workflow defaults to
+`publish=false`, producing a review artifact without deployment. No push or
+ordinary CI run deploys the website.
+
+When public publication is explicitly authorized:
+
+1. Verify ownership of `rekenraam.com` in GitHub and set the repository's Pages
+   source to **GitHub Actions**.
+2. Set the Pages custom domain to `rekenraam.com` before pointing DNS at GitHub.
+3. Configure the apex domain using GitHub's documented DNS records, preserving
+   the existing `retirement.rekenraam.com` record and its independent hosting.
+   Optionally configure `www` as documented by GitHub. Enable **Enforce HTTPS**
+   after certificate provisioning.
+4. Dispatch **Website** on the reviewed revision with `publish=true`. Its Pages
+   deployment uses the `github-pages` environment and the built static artifact.
+
+Use the current [GitHub custom-domain guide](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
+for DNS values. The workflow does not change DNS, create a release or deploy
+the finance app. GitHub Actions custom-domain configuration lives in Pages
+settings; the build does not supply a `CNAME` file.
+
 ### Backend Validation
 
 The bounded runtime OpenAPI audit (#349) reuses named synthetic HTTP consumers:

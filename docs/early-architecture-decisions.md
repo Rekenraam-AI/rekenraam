@@ -16,6 +16,11 @@ Small-business accounting, tax filing, hosted service operations, bank sync, and
 
 ## Runtime Shape
 
+The public project website is an independent static build under `website/`,
+hosted separately from personal installations. It has no app backend or
+financial persistence; [its contract](design/public-website.md) governs the
+website-specific translation and publishing boundary.
+
 Use the existing production shape: a Go backend serving a statically built SvelteKit frontend from one binary. Docker should package the same app shape rather than introducing a second production architecture.
 
 The frontend runtime is static SvelteKit output built with `@sveltejs/adapter-static` and embedded into the Go binary. Go owns all production server behavior: API routes, authentication, cookies, headers, persistence, logging, and static-file serving. The Go static handler serves real frontend assets directly, returns 404 for missing asset files, and falls back to the SvelteKit `index.html` shell for extensionless browser routes so deep links and refreshes work.
