@@ -485,7 +485,7 @@
                   </tr>
                   {#if detailOpen}
                     <tr id={`forecast-detail-${point.date}`} class="border-b border-border">
-                      <td colspan="6" class="p-3">
+                      <td colspan={selectedLearnedSeries ? 7 : 6} class="p-3">
                         <ForecastEvents
                           date={point.date}
                           basisToken={data.basis_token}

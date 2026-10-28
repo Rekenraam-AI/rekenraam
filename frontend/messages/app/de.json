@@ -589,6 +589,7 @@
   "forecast_event_source_posted": "Gebucht",
   "forecast_event_source_draft": "Gespeicherter Entwurf",
   "forecast_event_source_template": "Wiederkehrende Vorlage",
+  "forecast_event_source_estimated": "Geschätzte Ausgaben",
   "forecast_event_carried": "Vorgetragen",
   "forecast_event_payee": "Zahlungsempfänger: {payee}",
   "forecast_event_review_transactions": "Transaktionen prüfen",

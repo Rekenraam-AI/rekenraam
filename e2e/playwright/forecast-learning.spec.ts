@@ -105,6 +105,16 @@ test('[acceptance] estimated spending is opt-in, explained and reversible', asyn
   await expect(groupCard).toContainText('Trained on');
   await expect(groupCard).toContainText('historical variation, not a range the future is expected to fall in');
   await expect(groupCard).toContainText('Longer projections continue the same assumptions and were not tested.');
+  // The next Wednesday's learned outflow is an estimate, not a saved
+  // recurring entry. Its detail must keep that distinction too.
+  const daysToWednesday = (3 - new Date(`${todayISO()}T00:00:00Z`).getUTCDay() + 7) % 7 || 7;
+  const estimateDay = daysFromTodayISO(daysToWednesday);
+  await table.locator(`button[aria-controls="forecast-detail-${estimateDay}"]`).click();
+  const details = page.locator(`#forecast-detail-${estimateDay}`);
+  await expect(details.getByText('Estimated spending', { exact: true })).toBeVisible();
+  await expect(details.getByText('Recurring template', { exact: true })).toHaveCount(0);
+  await expect(details.getByRole('link', { name: 'Review recurring entries', exact: true })).toHaveCount(0);
+  await expect(details.locator('td')).toHaveAttribute('colspan', '7');
   // No probability language is ever shown.
   await expect(page.getByText(/confidence|probability|95%/i)).toHaveCount(0);
 

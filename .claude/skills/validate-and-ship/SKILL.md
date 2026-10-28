@@ -806,6 +806,15 @@ non-trivial diff (yours or reviewed):
     by list refetch through the real browser/API, then require the stale refusal
     and unchanged newer journal (`import-dividend-review.spec.ts`).
 
+70. **A new event source falling through to an old meaning** — forecast day
+    details treated every non-posted/non-draft event as a recurring template,
+    including learned estimates with no saved record (#434). Map labels, tone
+    and navigation exhaustively over the API source union; an unknown source
+    must not silently acquire another source's meaning. Expand real learned
+    events in browser coverage, require an estimate label and no recurring
+    link, and keep the detail span aligned with visible columns
+    (`forecast-learning.spec.ts`, `forecast.spec.ts`).
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

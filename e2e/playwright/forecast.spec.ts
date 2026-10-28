@@ -37,6 +37,7 @@ test('[acceptance] forecasts recorded and recurring movements without posting', 
   await expect(page.getByText('forecast screen fixture', { exact: true })).toBeVisible();
   await expect(page.getByText('Posted', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Review transactions' })).toHaveAttribute('href', '/app/transactions');
+  await expect(page.locator('tr[id^="forecast-detail-"] > td')).toHaveAttribute('colspan', '6');
   await page.getByRole('button', { name: 'Close details' }).click();
 
   await page.getByLabel('Combined currency').selectOption(String(currencyID));

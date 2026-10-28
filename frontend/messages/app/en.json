@@ -625,6 +625,7 @@
   "forecast_event_source_posted": "Posted",
   "forecast_event_source_draft": "Saved draft",
   "forecast_event_source_template": "Recurring template",
+  "forecast_event_source_estimated": "Estimated spending",
   "forecast_event_carried": "Carried forward",
   "forecast_event_payee": "Payee: {payee}",
   "forecast_event_review_transactions": "Review transactions",

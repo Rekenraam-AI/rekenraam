@@ -589,6 +589,7 @@
   "forecast_event_source_posted": "Geboekt",
   "forecast_event_source_draft": "Opgeslagen concept",
   "forecast_event_source_template": "Periodiek sjabloon",
+  "forecast_event_source_estimated": "Geschatte uitgaven",
   "forecast_event_carried": "Doorgeschoven",
   "forecast_event_payee": "Begunstigde: {payee}",
   "forecast_event_review_transactions": "Transacties bekijken",

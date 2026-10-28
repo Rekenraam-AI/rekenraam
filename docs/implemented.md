@@ -920,6 +920,11 @@ and proposal selection remain; these audit outputs change no runtime policy.
   and its original token; a concurrent classification edit is refused rather
   than overwritten. The phone browser regression exercises the real API and
   keeps the newer journal/version intact.
+- #434 (2026-10-28): forecast day details explicitly label learned movements as
+  estimated spending in six catalogs and omit nonexistent recurring-entry links.
+  The source presentation covers all four API variants, and the detail row
+  spans seven columns with estimates or six without. Real-history browser
+  coverage retains opt-in/off, exact ledger preservation and accessibility.
 
 - #397 (2026-10-24): `requireKnownBasisSelfCheckPasses` owns strict known-basis
   assertions; the unknown-basis helper and independent financial oracles stay

@@ -63,17 +63,18 @@
     return account?.name?.trim() || account?.code?.trim() || m.forecast_account_number({ id });
   }
 
-  function sourceLabel(source: ForecastEvent['source']): string {
-    if (source === 'posted') return m.forecast_event_source_posted();
-    if (source === 'draft') return m.forecast_event_source_draft();
-    return m.forecast_event_source_template();
-  }
-
-  function sourceTone(source: ForecastEvent['source']): 'positive' | 'warning' | 'accent' {
-    if (source === 'posted') return 'positive';
-    if (source === 'draft') return 'warning';
-    return 'accent';
-  }
+  // Exhaustive over the wire enum: a new source must define its meaning and
+  // navigation instead of falling through to a saved recurring record.
+  const sources = {
+    posted: { label: () => m.forecast_event_source_posted(), tone: 'positive', review: 'transactions' },
+    draft: { label: () => m.forecast_event_source_draft(), tone: 'warning', review: 'recurring' },
+    template: { label: () => m.forecast_event_source_template(), tone: 'accent', review: 'recurring' },
+    estimated_spending: { label: () => m.forecast_event_source_estimated(), tone: 'warning', review: null }
+  } satisfies Record<ForecastEvent['source'], {
+    label: () => string;
+    tone: 'positive' | 'warning' | 'accent';
+    review: 'transactions' | 'recurring' | null;
+  }>;
 </script>
 
 <section class="rounded-(--radius-panel) border border-border bg-surface-strong/35 p-4" aria-labelledby={`forecast-events-${date}`}>
@@ -97,20 +98,23 @@
   {:else if items.length > 0}
     <ol class="mt-4 space-y-3">
       {#each items as event (event.key)}
+        {@const source = sources[event.source]}
         <li>
           <article class="rounded-(--radius-control) border border-border bg-surface p-3">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
-                  <StatusBadge tone={sourceTone(event.source)}>{sourceLabel(event.source)}</StatusBadge>
+                  <StatusBadge tone={source.tone}>{source.label()}</StatusBadge>
                   {#if event.carried_forward}<StatusBadge tone="warning">{m.forecast_event_carried()}</StatusBadge>{/if}
                 </div>
                 <p class="mt-2 break-words font-medium text-foreground">{event.description || '—'}</p>
                 {#if event.payee_name}<p class="mt-1 text-sm text-muted">{m.forecast_event_payee({ payee: event.payee_name })}</p>{/if}
               </div>
-              <a href={event.source === 'posted' ? '/app/transactions' : '/app/recurring'} class="font-semibold text-accent underline underline-offset-2">
-                {event.source === 'posted' ? m.forecast_event_review_transactions() : m.forecast_event_review_recurring()}
-              </a>
+              {#if source.review}
+                <a href={source.review === 'transactions' ? '/app/transactions' : '/app/recurring'} class="font-semibold text-accent underline underline-offset-2">
+                  {source.review === 'transactions' ? m.forecast_event_review_transactions() : m.forecast_event_review_recurring()}
+                </a>
+              {/if}
             </div>
 
             <dl class="mt-3 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[max-content_1fr]">

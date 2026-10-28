@@ -460,6 +460,10 @@ category/group/model fields and a stable key
 date/account/currency ordering; rank estimates after core sources when earlier
 sort keys tie. Enforce the same stale-basis rejection. Event totals
 reconcile separately to learned deltas; do not imply they sum to a core delta.
+Day details label this source as estimated spending, without navigation to a
+saved transaction or recurring template that does not exist (#434). Presentation
+explicitly covers every API event source; the expanded row spans the learned
+view's seven columns (six with the overlay off).
 
 UI shows three distinguishable choices: Recorded only / With recurring / With
 estimated spending. Same currency axes and exact tables remain. The last view is

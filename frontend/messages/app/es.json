@@ -589,6 +589,7 @@
   "forecast_event_source_posted": "Contabilizado",
   "forecast_event_source_draft": "Borrador guardado",
   "forecast_event_source_template": "Plantilla periódica",
+  "forecast_event_source_estimated": "Gasto estimado",
   "forecast_event_carried": "Trasladado",
   "forecast_event_payee": "Beneficiario: {payee}",
   "forecast_event_review_transactions": "Revisar transacciones",

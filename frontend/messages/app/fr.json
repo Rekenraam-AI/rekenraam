@@ -589,6 +589,7 @@
   "forecast_event_source_posted": "Comptabilisé",
   "forecast_event_source_draft": "Brouillon enregistré",
   "forecast_event_source_template": "Modèle récurrent",
+  "forecast_event_source_estimated": "Dépenses estimées",
   "forecast_event_carried": "Reporté",
   "forecast_event_payee": "Bénéficiaire : {payee}",
   "forecast_event_review_transactions": "Consulter les transactions",

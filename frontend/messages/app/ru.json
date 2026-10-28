@@ -589,6 +589,7 @@
   "forecast_event_source_posted": "Проведено",
   "forecast_event_source_draft": "Сохранённый черновик",
   "forecast_event_source_template": "Регулярный шаблон",
+  "forecast_event_source_estimated": "Оценочные расходы",
   "forecast_event_carried": "Перенесено",
   "forecast_event_payee": "Получатель: {payee}",
   "forecast_event_review_transactions": "Перейти к транзакциям",
