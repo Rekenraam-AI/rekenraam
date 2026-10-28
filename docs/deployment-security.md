@@ -304,6 +304,15 @@ whether sealed rows decrypt under the configured `REKENRAAM_SECRET_KEY`. Run it
 on a schedule of your own choosing — a backup nobody has ever opened is a
 hypothesis.
 
+Its exit status is `0` when this build can restore the backup, `1` when the
+file cannot be inspected, `2` for a usage error, and `3` when the file is
+intact but this build cannot restore it: a different pre-release baseline or a
+schema newer than the binary. Only `0` means the check passed, so
+`verify-backup --from <path> && restore --from <path>` and monitoring jobs that
+test the status stop for both refusals. A sealed-data warning, including a key
+that cannot decrypt the sample, does not change the status: this build can
+still restore the ledger, and only the sealed rows would be unreadable.
+
 `rekenraam restore --from <path>` installs one. It refuses while the server is
 running, proved by an advisory lock the server process holds for its whole life
 rather than inferred from an idle connection or a missing `-wal` file. It

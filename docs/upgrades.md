@@ -38,6 +38,12 @@ no `backup` subcommand to reach for instead.
    ./rekenraam verify-backup --from <backup path>
    ```
 
+   It exits `0` only when this build can restore that file, and `3` when the
+   baseline does not match or the schema is newer than this binary; do not
+   continue with a backup that exits `3`. The other statuses are `1` for a file
+   that cannot be inspected and `2` for a usage error. The full meanings are in
+   [Restore](deployment-security.md#restore).
+
    Copy that key somewhere outside the backup directory when encrypted
    connection or MFA secrets are in use. It is deliberately not in the backup,
    and without it a restored database keeps its ledger but loses multi-factor

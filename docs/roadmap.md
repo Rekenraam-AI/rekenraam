@@ -171,7 +171,7 @@ below is execution order, not a chain of hard dependencies.
    | 2 — delivered 2026-10-24 | [#402](https://github.com/sergeyfarin/rekenraam/issues/402) | [Measured](reviews/race-suite-cost-2026-10-24.md): migration replay is 4.5% of application race CPU; growth is schema size (per-connection load, statement compilation) plus new tests. No coverage-preserving test change is justified. Explicit thresholds (ADR 0016 amendment) replace the 200 s trigger; the owner sequenced compilation-cost work as #404. |
    | 3 — delivered 2026-10-24 | [#398](https://github.com/sergeyfarin/rekenraam/issues/398) | Book-wide self-check assertions run in a per-test owned book (`support/owned-book.ts`) with exact status, counts and samples and no outcome branching; transaction facts read the per-transaction diagnostic; a saturated owned book (21 unrelated records) pins the sample cap. |
    | 4 — delivered 2026-10-24 | [#404](https://github.com/sergeyfarin/rekenraam/issues/404) | [Measured](reviews/statement-compilation-2026-10-24.md): 22% of compile time repeats inside a transaction, 47% only across transactions. Track A (statement sets in five hot loops) lowered the app median 223.3 → 219.4 s and the full-gate pair to 255.5/274.1 s, so the act threshold no longer fires (thinly); investigate still does. The native cache measured −4.4% (≈2.7% beyond A) and the owner declined it; `_stmt_cache_size=0` stays. |
-   | 5 — delivered 2026-10-26 | [#405](https://github.com/sergeyfarin/rekenraam/issues/405) | [Reviewed and measured](reviews/schema-baseline-review-2026-10-26.md): one baseline, two dormant tables/fifteen indexes/five views removed; all 164 triggers retained. Fix unused crypto cleanup and validate seed generation through its native consumer. Application median 240.7 → 229.6 s; full-gate application pair 271.8/289.0 → 248.5/262.5 s. Act no longer fires; investigate remains. Follow-ups #417 (category-version deletion guard), #418 (dead search declarations; delivered 2026-10-26), #419 (reprofile), #420 (`verify-backup` exit status). Hosted CI green at `0ac0a6cf`; the earlier unrelated E2E app flake is #414. |
+   | 5 — delivered 2026-10-26 | [#405](https://github.com/sergeyfarin/rekenraam/issues/405) | [Reviewed and measured](reviews/schema-baseline-review-2026-10-26.md): one baseline, two dormant tables/fifteen indexes/five views removed; all 164 triggers retained. Fix unused crypto cleanup and validate seed generation through its native consumer. Application median 240.7 → 229.6 s; full-gate application pair 271.8/289.0 → 248.5/262.5 s. Act no longer fires; investigate remains. Follow-ups #417 (category-version deletion guard), #418 (dead search declarations; delivered 2026-10-26), #419 (reprofile), #420 (`verify-backup` exit status; delivered 2026-10-28). Hosted CI green at `0ac0a6cf`; the earlier unrelated E2E app flake is #414. |
 
    #405's retained follow-ups are outside this queue.
    Three are CI/browser reliability:
@@ -189,7 +189,7 @@ below is execution order, not a chain of hard dependencies.
    [#419](https://github.com/sergeyfarin/rekenraam/issues/419) (reprofile the
    race suite while ADR 0016's investigate threshold still fires) and
    [#420](https://github.com/sergeyfarin/rekenraam/issues/420)
-   (`verify-backup` exit status). After #405, ADR 0016's app-median
+   (`verify-backup` exit status; delivered 2026-10-28). After #405, ADR 0016's app-median
    "investigate" threshold still fires. Reprofile (#419) before new suite-cost
    work if a full-gate run again exceeds 270 s.
 
