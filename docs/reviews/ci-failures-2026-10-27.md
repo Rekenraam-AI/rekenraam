@@ -77,3 +77,28 @@ five repeated local runs.
   upstream PR is [#428](https://github.com/sergeyfarin/rekenraam/pull/428); its
   `pull_request` run stays `action_required` until a maintainer approves the
   first-time contributor, so the fork run is the CI evidence for this fix.
+
+## Regression coverage
+
+`e2e/playwright/investment-returns.spec.ts` adds
+`a failed reference request outranks a pending sibling, and Retry recovers`.
+The test holds `/api/v1/currencies` open, fails `/api/v1/accounts` twice (the
+query client retries once), asserts the translated error is visible while the
+sibling is still pending, then releases the sibling and clicks Retry to assert
+the form comes back. It fails deterministically on both pre-fix shapes:
+
+- the pre-#428 screen (`{#if referencesLoading}` first) failed 4/4 runs at the
+  alert step, because the pending sibling kept the spinner up;
+- #428 with `notifyOnChangeProps` removed failed 5/5 runs; the captured failure
+  is at the Retry step, where the form never returns, because the error branch
+  short-circuits before reading `isPending` and the settled refetch leaves a
+  stale snapshot.
+
+A separate happy-path fast-response case was deliberately not added. It is not
+deterministic: the focused `returns keep the form usable` case passed only 1 of
+6 runs with the notification fix removed, so such a test gates a regression on
+luck. The ten returns tests already exercise that path, and the Retry step is
+the controlled version of the same event: a settled success must be observed
+after an error clears. Pinning the observer contract itself needs a
+component-level test, which this repo does not have (Vitest runs in `node` with
+no Svelte plugin or DOM); adding that harness is a separate decision.
