@@ -191,7 +191,13 @@ test.describe('route sweep (#278)', () => {
         await page.goto(route.path(ids));
         await expect(page).toHaveURL((url) => url.pathname === new URL(route.path(ids), url).pathname);
         const alert = page.getByRole('alert').first();
-        const shown = await alert.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true, () => false);
+        // The alert normally appears in ~1.4s. A 4-vCPU CI runner can starve
+        // this worker while the sub-view sweep runs axe (one run saw the
+        // failure snapshot itself take 10.1s), so keep the wait bounded but
+        // long enough that a stalled renderer is not reported as a stuck state.
+        // Twenty seconds also keeps a systematic failure across all 21 routes
+        // inside the test's 600s budget, so the collected messages survive.
+        const shown = await alert.waitFor({ state: 'visible', timeout: 20_000 }).then(() => true, () => false);
         if (!shown) {
           const shownText = (await page.locator('main').innerText()).replace(/\s+/g, ' ').split('AUTHENTICATED WORKSPACE').pop()!.slice(0, 700);
           failures.push(`${route.name}: no error alert when its data fails; shows: ${shownText}`);
