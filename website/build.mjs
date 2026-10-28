@@ -56,7 +56,7 @@ function renderPage(locale, t, config, notFound = false) {
   const canonical = `${config.origin}${localePath(locale, config)}`;
   const links = languageLinks(locale, config);
   const heading = notFound ? t.notFoundTitle : t.metaTitle;
-  const screenshot = (file, caption, alt, primary = false) => `<figure class="screenshot${primary ? ' screenshot-primary' : ''}">
+  const screenshot = (file, caption, alt, primary = false) => `<figure class="screenshot" data-gallery-slide data-caption="${e(caption)}">
     <a class="screenshot-link" href="${asset(file)}" aria-label="${e(`${t.openScreenshot}: ${caption}`)}"><img src="${asset(file)}" alt="${e(alt)}" width="${primary ? 2880 : 1440}" height="${primary ? 2224 : 1050}" ${primary ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"></a>
     <figcaption><span>${e(caption)}</span><a href="${asset(file)}">${e(t.openScreenshot)} <span aria-hidden="true">↗</span></a></figcaption>
   </figure>`;
@@ -64,32 +64,35 @@ function renderPage(locale, t, config, notFound = false) {
   const main = notFound ? `<main id="content" class="not-found container"><p class="eyebrow">Rekenraam</p><h1>${e(t.notFoundTitle)}</h1><p>${e(t.notFoundBody)}</p><a class="button" href="${localePath(locale, config)}">${e(t.notFoundLink)}</a></main>` : `<main id="content">
     <section class="hero container" aria-labelledby="intro-title">
       <div><p class="eyebrow">${e(t.heroLabel)}</p><h1 id="intro-title">${e(t.heroTitle)}</h1></div>
-      <div class="hero-description"><p>${e(t.heroDescription)}</p><div class="actions"><a class="button" href="${source}#try-it">${e(t.heroSource)} <span aria-hidden="true">↗</span></a><a href="#status">${e(t.heroStatus)}</a></div></div>
+      <div class="actions"><a class="button" href="${source}#try-it">${e(t.heroSource)} <span aria-hidden="true">↗</span></a><a href="#status">${e(t.heroStatus)}</a></div>
     </section>
-    <div class="container report-preview">${screenshot('reports-spending.png', t.reportCaption, t.reportAlt, true)}<p class="caption-note">${e(t.screenshotNote)}</p></div>
-    <section id="features" class="container section" aria-labelledby="features-title">
-      <div class="section-heading"><p class="eyebrow">${e(t.featuresLabel)}</p><h2 id="features-title">${e(t.featuresTitle)}</h2></div>
-      <div class="principles">
-        <article><h3>${e(t.privacyTitle)}</h3><p>${e(t.privacyBody)}</p></article>
-        <article><h3>${e(t.ledgerTitle)}</h3><p>${e(t.ledgerBody)}</p></article>
-        <article><h3>${e(t.investmentTitle)}</h3><p>${e(t.investmentBody)}</p></article>
+    <section id="screenshots" class="container screenshot-showcase" data-gallery aria-label="${e(t.navScreenshots)}">
+      <div class="gallery-slides">${screenshot('reports-spending.png', t.reportCaption, t.reportAlt, true)}${screenshot('transactions.png', t.transactionsCaption, t.transactionsAlt)}${screenshot('investments.png', t.investmentsCaption, t.investmentsAlt)}</div>
+      <div class="gallery-controls" data-gallery-controls role="group" aria-label="${e(t.navScreenshots)}" hidden>
+        <button type="button" data-gallery-previous aria-label="${e(t.previousScreenshot)}"><span aria-hidden="true">←</span></button>
+        ${[t.reportCaption, t.transactionsCaption, t.investmentsCaption].map((caption, index) => `<button type="button" data-gallery-select="${index}" aria-label="${e(caption)}" aria-pressed="${index === 0}">${index + 1}</button>`).join('')}
+        <button type="button" data-gallery-next aria-label="${e(t.nextScreenshot)}"><span aria-hidden="true">→</span></button>
       </div>
-      <div class="included"><h3>${e(t.detailsTitle)}</h3><dl>${t.details.map(item => `<div><dt>${e(item.title)}</dt><dd>${e(item.body)}</dd></div>`).join('')}</dl></div>
+      <p class="sr-only" data-gallery-announcement aria-live="polite" aria-atomic="true"></p>
+      <p class="caption-note">${e(t.screenshotNote)}</p>
     </section>
-    <section id="screenshots" class="container section" aria-labelledby="screenshots-title">
-      <div class="section-heading"><p class="eyebrow">${e(t.screenshotsLabel)}</p><h2 id="screenshots-title">${e(t.screenshotsTitle)}</h2></div>
-      <div class="screenshot-grid">${screenshot('transactions.png', t.transactionsCaption, t.transactionsAlt)}${screenshot('investments.png', t.investmentsCaption, t.investmentsAlt)}</div>
-      <p class="section-note">${e(t.investmentDetail)}</p>
+    <section id="features" class="container section" aria-label="${e(t.navFeatures)}">
+      <div class="features-grid">
+        <article><h2>${e(t.storageTitle)}</h2><p>${e(t.storageBody)}</p></article>
+        <article><h2>${e(t.ledgerTitle)}</h2><p>${e(t.ledgerBody)}</p></article>
+        <article><h2>${e(t.investmentTitle)}</h2><p>${e(t.investmentBody)}</p></article>
+        <article><h2>${e(t.budgetTitle)}</h2><p>${e(t.budgetBody)}</p></article>
+      </div>
     </section>
     <section id="running" class="container section split-section" aria-labelledby="setup-title">
-      <div class="section-heading"><p class="eyebrow">${e(t.setupLabel)}</p><h2 id="setup-title">${e(t.setupTitle)}</h2></div>
+      <div class="section-heading"><h2 id="setup-title">${e(t.setupTitle)}</h2></div>
       <div class="section-body"><p>${e(t.setupBody)}</p><p>${e(t.setupMaintenance)}</p><div class="text-links"><a href="${source}#try-it">${e(t.setupInstall)} <span aria-hidden="true">↗</span></a><a href="${source}/blob/main/docs/deployment-security.md">${e(t.setupSecurity)} <span aria-hidden="true">↗</span></a></div></div>
     </section>
     <section id="status" class="status-section" aria-labelledby="status-title"><div class="container split-section">
-      <div class="section-heading"><p class="eyebrow">${e(t.statusLabel)}</p><h2 id="status-title">${e(t.statusTitle)}</h2></div>
+      <div class="section-heading"><h2 id="status-title">${e(t.statusTitle)}</h2></div>
       <div class="section-body"><p>${e(t.statusBody)}</p><p>${e(t.statusLimits)}</p><p>${e(t.translationNote)}</p><div class="text-links"><a href="${source}/blob/main/docs/roadmap.md">${e(t.statusRoadmap)} <span aria-hidden="true">↗</span></a><a href="${source}/blob/main/docs/implemented.md">${e(t.statusFeatures)} <span aria-hidden="true">↗</span></a><a href="${source}/issues">${e(t.statusIssues)} <span aria-hidden="true">↗</span></a></div></div>
     </div></section>
-    <aside class="container retirement section" aria-labelledby="retirement-title"><div><p class="eyebrow">${e(t.retirementLabel)}</p><h2 id="retirement-title">${e(t.retirementTitle)}</h2><p>${e(t.retirementBody)}</p></div><a href="https://retirement.rekenraam.com">${e(t.retirementLink)} <span aria-hidden="true">↗</span></a></aside>
+    <aside class="container retirement section" aria-labelledby="retirement-title"><div><h2 id="retirement-title">${e(t.retirementTitle)}</h2><p>${e(t.retirementBody)}</p></div><a href="https://retirement.rekenraam.com">retirement.rekenraam.com <span aria-hidden="true">↗</span></a></aside>
   </main>`;
 
   return `<!doctype html>
@@ -114,6 +117,7 @@ function renderPage(locale, t, config, notFound = false) {
   <link rel="icon" href="${asset('favicon.svg')}" type="image/svg+xml">
   <link rel="stylesheet" href="${asset('site.css')}">
   <script src="${asset('theme.js')}" defer></script>
+  ${notFound ? '' : `<script src="${asset('gallery.js')}" defer></script>`}
 </head>
 <body>
   <a class="skip-link" href="#content">${e(t.skipLink)}</a>

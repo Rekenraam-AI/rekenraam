@@ -108,7 +108,9 @@ build template. `WEBSITE_PORT` changes the preview port. Stop the preview before
 browser checks, which own port 1889. Website checks/build run in the existing
 Frontend Check CI job. The browser command checks all locales at 320, 390, 768
 and 1280 px, light/dark accessibility, theme persistence, image loading, no
-external asset requests and language navigation without JavaScript.
+external asset requests and language navigation without JavaScript. Screenshot
+checks cover the manual carousel's selection, wraparound, keyboard focus,
+announcements and three-image fallback without scripts.
 
 The site uses `/` for English and `/nl/`, `/de/`, `/fr/`, `/es/`, `/ru/` for
 the other languages. Catalogs and all user-facing metadata live under

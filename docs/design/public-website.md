@@ -20,6 +20,20 @@ notice beside the introduction and retain development/upgrade limits, the
 AI-use disclosure and the translation-review status. Source capability claims
 from `docs/implemented.md`; the README can lag behind recent delivery.
 
+The owner's copy revision groups features into four peers: self-hosting and
+data control (including import/export and backup/restore), the double-entry
+multi-currency ledger, investments and crypto, and budgets/reports. Each has
+one description. Omit a summary paragraph that repeats these groups, generic
+section introductions, and a second inventory of investment methods beneath
+screenshots. Keep deployment instructions, project limits and translation
+review notes concise and separate from the feature descriptions.
+
+The main screenshot area is a manual carousel containing the spending report,
+transaction register and investment positions, with numbered selection,
+previous/next controls and full-image links. Never rotate automatically.
+Announce selections without moving keyboard focus. Without JavaScript, display
+all three figures with their captions and links.
+
 The retirement planner at `retirement.rekenraam.com` is a separate tool. Link
 to it without implying that it shares a login, database or hosting lifecycle.
 
@@ -41,8 +55,9 @@ app catalogs; this work does not sign off #102.
 
 Load all website assets from the site's own origin. Do not add analytics,
 tracking scripts, remote fonts, forms for financial data or app API calls.
-The sole runtime script switches appearance, with an optional preference in
-local browser storage. Hosting-provider access logs remain outside this claim.
+Local runtime scripts switch appearance and screenshots; only the appearance
+preference uses local browser storage. Hosting-provider access logs remain
+outside this claim.
 Screenshots are English and explicitly labeled as fictional sample data.
 
 The site has no interactive app demo yet. A future demo must distinguish

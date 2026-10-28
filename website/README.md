@@ -28,7 +28,9 @@ translation boundary and never downloads translation code or content.
 
 All routes, language links and content work without JavaScript. CSS adapts to
 system appearance; `assets/theme.js` adds a local theme preference when scripts
-and storage are available. The website has no analytics or external assets.
+and storage are available. `assets/gallery.js` adds manual screenshot navigation
+without automatic rotation; all three screenshots remain visible without
+JavaScript. The website has no analytics or external assets.
 
 Default output targets `https://rekenraam.com`. To check a project-path build:
 

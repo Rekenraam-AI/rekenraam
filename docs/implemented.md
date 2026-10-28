@@ -57,11 +57,14 @@ The independently built [public website](../website/README.md) implements the
 owner-approved [Paper & pine direction](design/public-website.md) (2026-10-28,
 related #335). It contains factual self-hosting, privacy, double-entry and
 investment descriptions; explicit pre-release/upgrade limits; three real
-synthetic-data screenshots; a link to the separate retirement planner; and
-complete English, Dutch, German, French, Spanish and Russian pages. Native
-review is still pending. All content and language links work without JavaScript;
-the only runtime script handles local theme preference. There are no external
-assets, analytics or app API calls.
+synthetic-data screenshots in a manual carousel; a link to the separate
+retirement planner; and complete English, Dutch, German, French, Spanish and
+Russian pages. Native review is still pending. All content and language links
+work without JavaScript;
+local scripts handle theme preference and screenshot selection. The features
+are grouped equally into self-hosting/data control, the double-entry
+multi-currency ledger, investments/crypto and budgets/reports. There are no
+external assets, analytics or app API calls.
 
 The static build, locale/link checks, website browser checks and an optional
 manual GitHub Pages workflow are prepared locally. This records website-source

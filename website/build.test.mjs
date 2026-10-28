@@ -17,7 +17,7 @@ test('all app locales have complete website catalogs and fully rendered pages', 
     const html = await readFile(join(result.outputDirectory, locale === 'en' ? '' : locale, 'index.html'), 'utf8');
     assert.ok(html.includes(`<html lang="${locale}">`));
     // Content must be in HTML, including when scripts are disabled or crawlers visit.
-    for (const key of ['heroTitle', 'privacyTitle', 'ledgerTitle', 'investmentTitle', 'developmentLabel', 'retirementTitle']) {
+    for (const key of ['heroTitle', 'storageTitle', 'ledgerTitle', 'investmentTitle', 'budgetTitle', 'developmentLabel', 'retirementTitle']) {
       const escaped = catalogs[locale][key].replaceAll('&', '&amp;');
       assert.ok(html.includes(escaped), `${locale}: missing prerendered ${key}`);
     }
