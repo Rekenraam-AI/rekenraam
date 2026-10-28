@@ -106,6 +106,55 @@ test('[acceptance] returns show an empty book, then exact figures and reasons on
   await expect(allocation.getByText("The portfolio's value is zero or negative, so shares cannot be shown.")).toBeVisible();
 });
 
+// #428: the screen must not gate a known reference failure behind a sibling
+// reference query that is still pending, and Retry must recover once both can
+// succeed. The route sweep fails every request at once, so it never exercises
+// this order: here `currencies` is held open while `accounts` fails twice
+// (the query client retries once).
+test('a failed reference request outranks a pending sibling, and Retry recovers', async ({ page }) => {
+  const { currencyID } = await readyForLedger(page);
+
+  let failAccounts = true;
+  let releaseCurrencies = () => {};
+  const currenciesReleased = new Promise<void>((resolve) => {
+    releaseCurrencies = resolve;
+  });
+
+  await page.route('**/api/v1/currencies**', async (route) => {
+    const request = route.request();
+    if (request.method() !== 'GET' || new URL(request.url()).pathname !== '/api/v1/currencies') return route.continue();
+    await currenciesReleased;
+    return route.continue();
+  });
+  await page.route('**/api/v1/accounts**', async (route) => {
+    const request = route.request();
+    if (request.method() !== 'GET' || !failAccounts) return route.continue();
+    await route.fulfill({
+      status: 500,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'reference probe failure' } })
+    });
+  });
+
+  await page.goto(`/app/investments/returns?reporting_currency_id=${currencyID}`);
+
+  // `currencies` is still pending when `accounts` has failed for good. The
+  // error must show now; the pre-#428 branch order kept the spinner up.
+  await expect(page.getByRole('alert').first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Returns could not be loaded', { exact: true })).toBeVisible();
+  await expect(page.getByText('Loading returns…', { exact: true })).toHaveCount(0);
+  await expectNoAccessibilityViolations(page, 'returns reference error');
+
+  // Retry re-runs all three reference queries; now they can succeed.
+  failAccounts = false;
+  releaseCurrencies();
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+
+  await expect(page.getByLabel('From', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show returns', exact: true })).toBeEnabled();
+  await expect(page.getByText('Returns could not be loaded', { exact: true })).toHaveCount(0);
+});
+
 test('returns keep the form usable when a period is invalid', async ({ page }) => {
   const { currencyID } = await readyForLedger(page);
   await page.goto(`/app/investments/returns?reporting_currency_id=${currencyID}`);
