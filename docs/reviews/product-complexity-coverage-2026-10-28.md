@@ -107,7 +107,9 @@ or split those implementation-oriented groups according to user outcomes.
 ## Stop boundary and validation
 
 No new proposal or implementation issue is created by this selection. The next
-output supplies twelve necessity traces, independent arithmetic/counterexamples,
+output, now recorded in the
+[necessity review](product-complexity-necessity-2026-10-28.md), supplies twelve
+necessity traces, independent arithmetic/counterexamples,
 matched valid controls and explicit test/probe provenance. The final output
 will choose dispositions and zero to five proposals, reusing existing owners
 where applicable; none of these outputs reopens delivered #391 work or creates

@@ -1,0 +1,765 @@
+{
+  "source": "83f1e38b01cb66c65ce643e5edd5c4a7a2fe9164",
+  "date": "2026-10-28",
+  "command": [
+    "./scripts/go-backend.sh",
+    "test",
+    "-race",
+    "-p",
+    "2",
+    "-timeout=5m",
+    "-count=1",
+    "-json",
+    "./internal/api",
+    "./internal/app",
+    "-run",
+    "^(TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting|TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance|TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure|TestCashInLieuHistoricalParentEntryAllFamilies|TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies|TestChainedCashNeutralCorrectionsPreserveCashCheckpoint|TestConcurrentRecurringGeneratorsWithIndependentDatabasePools|TestCorrectionMovingSettlementAcrossBoundaryInvalidates|TestDiscardingGeneratedDraftPreservesOccurrenceAndCannotRegenerate|TestDividendPayerAssignClearAndOmissionPreserveReconciledAmounts|TestDividendProviderIdentityExcludesCorrectedPaymentDescendants|TestDividendSourceAttributionRepairPreservesEvidenceAndWholePaymentIdentity|TestEveryLifecycleWriteRefusesASupersededVersion|TestForecastBasisChangesAfterFinancialMutation|TestForecastConcurrentMaterializationKeepsOneBasis|TestForecastReadsLeaveLedgerReportsAndExportsUnchanged|TestForecastServiceUsesRealRecurringGenerationAndPromotion|TestHistoricalCashEntryStorageKeepsOriginalParentIntegrity|TestImportAuditHeldAndFailedRowsResumeInTheirBatch|TestImportBatchOverrideIsBoundToTheReviewedCheckpointUnion|TestImportDividendRepairAPIKeepsSamePaymentAndRejectsStaleVersion|TestImportedDividendRepairKeepsTransactionCashSourceAndNativeCorrections|TestImportedDividendRepairLateIdentityFailureRollsBackAllFacts|TestLedgerAuditJourneyBalancesOnBothDateAxesThroughLifecycleAndReReconciliation|TestOrdinaryMetadataEditOfAReconciledTransactionStillCommits|TestOverrideReviewedAgainstOneCheckpointIsRefusedOnceTheSetGrows|TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts|TestPaymentInLieuRecordsUnassignedCashWithoutInventingAShort|TestPlanningAuditBudgetMonthHandDerivedFigures|TestPlanningAuditForecastFixtureAThroughRealConsumers|TestPostingMoveAcrossEarlierSameDayCheckpointRequiresOverride|TestRecurringGenerationRollsBackDraftAuditAndOccurrenceOnFailure|TestReorderRefusalNamesTheCheckpointsAndTheOverrideIsBoundToThem|TestReviewedDividendMissingPayerCanRemainUnassignedWithoutInventingTax|TestSeparateWithholdingWithoutPayerPreservesShapeAndExactCoverage|TestStaleBrowserSaveAfterNewerAmountEditIsRefusedAndKeepsTheNewerAmount|TestStaleMetadataEditCannotOverwriteANewerReconciledAmount|TestTrading212DividendUnknownEconomicsStayPendingWhileCashCommits)$"
+  ],
+  "runtime_sources_unchanged_since_source": true,
+  "exit_code": 0,
+  "wall_seconds": 42.258,
+  "selected_top_level_count": 38,
+  "selections": {
+    "./internal/api": [
+      "TestLedgerAuditJourneyBalancesOnBothDateAxesThroughLifecycleAndReReconciliation",
+      "TestStaleBrowserSaveAfterNewerAmountEditIsRefusedAndKeepsTheNewerAmount",
+      "TestOverrideReviewedAgainstOneCheckpointIsRefusedOnceTheSetGrows",
+      "TestReorderRefusalNamesTheCheckpointsAndTheOverrideIsBoundToThem",
+      "TestImportAuditHeldAndFailedRowsResumeInTheirBatch",
+      "TestImportBatchOverrideIsBoundToTheReviewedCheckpointUnion",
+      "TestImportDividendRepairAPIKeepsSamePaymentAndRejectsStaleVersion",
+      "TestDiscardingGeneratedDraftPreservesOccurrenceAndCannotRegenerate",
+      "TestForecastBasisChangesAfterFinancialMutation",
+      "TestForecastReadsLeaveLedgerReportsAndExportsUnchanged",
+      "TestPlanningAuditForecastFixtureAThroughRealConsumers",
+      "TestPlanningAuditBudgetMonthHandDerivedFigures"
+    ],
+    "./internal/app": [
+      "TestStaleMetadataEditCannotOverwriteANewerReconciledAmount",
+      "TestEveryLifecycleWriteRefusesASupersededVersion",
+      "TestOrdinaryMetadataEditOfAReconciledTransactionStillCommits",
+      "TestSeparateWithholdingWithoutPayerPreservesShapeAndExactCoverage",
+      "TestDividendPayerAssignClearAndOmissionPreserveReconciledAmounts",
+      "TestPaymentInLieuRecordsUnassignedCashWithoutInventingAShort",
+      "TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts",
+      "TestDividendProviderIdentityExcludesCorrectedPaymentDescendants",
+      "TestDividendSourceAttributionRepairPreservesEvidenceAndWholePaymentIdentity",
+      "TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance",
+      "TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting",
+      "TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies",
+      "TestCashInLieuHistoricalParentEntryAllFamilies",
+      "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure",
+      "TestHistoricalCashEntryStorageKeepsOriginalParentIntegrity",
+      "TestTrading212DividendUnknownEconomicsStayPendingWhileCashCommits",
+      "TestImportedDividendRepairKeepsTransactionCashSourceAndNativeCorrections",
+      "TestImportedDividendRepairLateIdentityFailureRollsBackAllFacts",
+      "TestReviewedDividendMissingPayerCanRemainUnassignedWithoutInventingTax",
+      "TestCorrectionMovingSettlementAcrossBoundaryInvalidates",
+      "TestChainedCashNeutralCorrectionsPreserveCashCheckpoint",
+      "TestPostingMoveAcrossEarlierSameDayCheckpointRequiresOverride",
+      "TestConcurrentRecurringGeneratorsWithIndependentDatabasePools",
+      "TestRecurringGenerationRollsBackDraftAuditAndOccurrenceOnFailure",
+      "TestForecastConcurrentMaterializationKeepsOneBasis",
+      "TestForecastServiceUsesRealRecurringGenerationAndPromotion"
+    ]
+  },
+  "missing": [],
+  "nonpassing": [],
+  "completed": [
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Test": "TestDiscardingGeneratedDraftPreservesOccurrenceAndCannotRegenerate",
+      "Action": "pass",
+      "Elapsed": 0.3
+    },
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Test": "TestForecastBasisChangesAfterFinancialMutation",
+      "Action": "pass",
+      "Elapsed": 1.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Test": "TestForecastReadsLeaveLedgerReportsAndExportsUnchanged",
+      "Action": "pass",
+      "Elapsed": 0.4
+    },
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Test": "TestImportAuditHeldAndFailedRowsResumeInTheirBatch",
+      "Action": "pass",
+      "Elapsed": 1.69
+    },
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Test": "TestImportBatchOverrideIsBoundToTheReviewedCheckpointUnion",
+      "Action": "pass",
+      "Elapsed": 1.72
+    },
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Test": "TestImportDividendRepairAPIKeepsSamePaymentAndRejectsStaleVersion",
+      "Action": "pass",
+      "Elapsed": 1.41
+    },
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Test": "TestLedgerAuditJourneyBalancesOnBothDateAxesThroughLifecycleAndReReconciliation",
+      "Action": "pass",
+      "Elapsed": 2.46
+    },
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Test": "TestOverrideReviewedAgainstOneCheckpointIsRefusedOnceTheSetGrows",
+      "Action": "pass",
+      "Elapsed": 1.37
+    },
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Test": "TestPlanningAuditBudgetMonthHandDerivedFigures",
+      "Action": "pass",
+      "Elapsed": 1.77
+    },
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Test": "TestPlanningAuditForecastFixtureAThroughRealConsumers",
+      "Action": "pass",
+      "Elapsed": 1.99
+    },
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Test": "TestReorderRefusalNamesTheCheckpointsAndTheOverrideIsBoundToThem",
+      "Action": "pass",
+      "Elapsed": 1.09
+    },
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Test": "TestStaleBrowserSaveAfterNewerAmountEditIsRefusedAndKeepsTheNewerAmount",
+      "Action": "pass",
+      "Elapsed": 1.1
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting",
+      "Action": "pass",
+      "Elapsed": 5.02
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting/cash_and_stock_merger",
+      "Action": "pass",
+      "Elapsed": 1.16
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting/share_exchange",
+      "Action": "pass",
+      "Elapsed": 1.14
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting/spin_off",
+      "Action": "pass",
+      "Elapsed": 1.17
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuAllParentsRefuseInsufficientUnitsWithoutWriting/split",
+      "Action": "pass",
+      "Elapsed": 1.54
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance",
+      "Action": "pass",
+      "Elapsed": 5.73
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance/cash_and_stock_merger",
+      "Action": "pass",
+      "Elapsed": 0.82
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance/share_exchange",
+      "Action": "pass",
+      "Elapsed": 1.39
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance/spin_off",
+      "Action": "pass",
+      "Elapsed": 0.85
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuAllParentsReplaceByActualReplayAndRetainProvenance/split",
+      "Action": "pass",
+      "Elapsed": 2.67
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure",
+      "Action": "pass",
+      "Elapsed": 4.42
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/cash_and_stock_merger",
+      "Action": "pass",
+      "Elapsed": 0.64
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/cash_and_stock_merger/insufficient_0.75",
+      "Action": "pass",
+      "Elapsed": 0.04
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/cash_and_stock_merger/invalid_election",
+      "Action": "pass",
+      "Elapsed": 0.04
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/cash_and_stock_merger/negative",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/cash_and_stock_merger/original_date",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/cash_and_stock_merger/payment_date",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/cash_and_stock_merger/whole_unit",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/cash_and_stock_merger/wrong_type",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/cash_and_stock_merger/zero",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/share_exchange",
+      "Action": "pass",
+      "Elapsed": 1.52
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/share_exchange/insufficient_0.75",
+      "Action": "pass",
+      "Elapsed": 0.12
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/share_exchange/invalid_election",
+      "Action": "pass",
+      "Elapsed": 0.09
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/share_exchange/negative",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/share_exchange/original_date",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/share_exchange/payment_date",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/share_exchange/whole_unit",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/share_exchange/wrong_type",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/share_exchange/zero",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/spin_off",
+      "Action": "pass",
+      "Elapsed": 0.59
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/spin_off/insufficient_0.75",
+      "Action": "pass",
+      "Elapsed": 0.05
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/spin_off/invalid_election",
+      "Action": "pass",
+      "Elapsed": 0.03
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/spin_off/negative",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/spin_off/original_date",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/spin_off/payment_date",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/spin_off/whole_unit",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/spin_off/wrong_type",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/spin_off/zero",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/split",
+      "Action": "pass",
+      "Elapsed": 1.66
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/split/insufficient_0.75",
+      "Action": "pass",
+      "Elapsed": 0.12
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/split/invalid_election",
+      "Action": "pass",
+      "Elapsed": 0.15
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/split/negative",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/split/original_date",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/split/payment_date",
+      "Action": "pass",
+      "Elapsed": 0.02
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/split/whole_unit",
+      "Action": "pass",
+      "Elapsed": 0.02
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/split/wrong_type",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalEntryKeepsFinancialRefusalsAndRollsBackLateFailure/split/zero",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalParentEntryAllFamilies",
+      "Action": "pass",
+      "Elapsed": 5.9
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalParentEntryAllFamilies/cash_and_stock_merger/replaced",
+      "Action": "pass",
+      "Elapsed": 0.47
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalParentEntryAllFamilies/cash_and_stock_merger/reversed",
+      "Action": "pass",
+      "Elapsed": 0.4
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalParentEntryAllFamilies/share_exchange/replaced",
+      "Action": "pass",
+      "Elapsed": 0.8
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalParentEntryAllFamilies/share_exchange/reversed",
+      "Action": "pass",
+      "Elapsed": 0.47
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalParentEntryAllFamilies/spin_off/replaced",
+      "Action": "pass",
+      "Elapsed": 0.48
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalParentEntryAllFamilies/spin_off/reversed",
+      "Action": "pass",
+      "Elapsed": 0.44
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalParentEntryAllFamilies/split/replaced",
+      "Action": "pass",
+      "Elapsed": 1.43
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuHistoricalParentEntryAllFamilies/split/reversed",
+      "Action": "pass",
+      "Elapsed": 1.41
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies",
+      "Action": "pass",
+      "Elapsed": 3.34
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies/cash_and_stock_merger",
+      "Action": "pass",
+      "Elapsed": 0.69
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies/share_exchange",
+      "Action": "pass",
+      "Elapsed": 0.99
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies/spin_off",
+      "Action": "pass",
+      "Elapsed": 0.88
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCashInLieuParentReversalRetainsSpecificLotAndLaterSaleDependencies/split",
+      "Action": "pass",
+      "Elapsed": 0.78
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestChainedCashNeutralCorrectionsPreserveCashCheckpoint",
+      "Action": "pass",
+      "Elapsed": 2.06
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestConcurrentRecurringGeneratorsWithIndependentDatabasePools",
+      "Action": "pass",
+      "Elapsed": 0.54
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestCorrectionMovingSettlementAcrossBoundaryInvalidates",
+      "Action": "pass",
+      "Elapsed": 1.87
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestDividendPayerAssignClearAndOmissionPreserveReconciledAmounts",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestDividendPayerAssignClearAndOmissionPreserveReconciledAmounts/dividend",
+      "Action": "pass",
+      "Elapsed": 2.18
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestDividendPayerAssignClearAndOmissionPreserveReconciledAmounts/embedded_tax",
+      "Action": "pass",
+      "Elapsed": 2.23
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestDividendPayerAssignClearAndOmissionPreserveReconciledAmounts/separate_tax",
+      "Action": "pass",
+      "Elapsed": 2.17
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestDividendProviderIdentityExcludesCorrectedPaymentDescendants",
+      "Action": "pass",
+      "Elapsed": 0.72
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestDividendSourceAttributionRepairPreservesEvidenceAndWholePaymentIdentity",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestDividendSourceAttributionRepairPreservesEvidenceAndWholePaymentIdentity/generated",
+      "Action": "pass",
+      "Elapsed": 2.22
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestDividendSourceAttributionRepairPreservesEvidenceAndWholePaymentIdentity/linked",
+      "Action": "pass",
+      "Elapsed": 2.24
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestEveryLifecycleWriteRefusesASupersededVersion",
+      "Action": "pass",
+      "Elapsed": 2.44
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestEveryLifecycleWriteRefusesASupersededVersion/soft_delete",
+      "Action": "pass",
+      "Elapsed": 0.36
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestEveryLifecycleWriteRefusesASupersededVersion/unvoid",
+      "Action": "pass",
+      "Elapsed": 0.36
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestEveryLifecycleWriteRefusesASupersededVersion/update",
+      "Action": "pass",
+      "Elapsed": 1.31
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestEveryLifecycleWriteRefusesASupersededVersion/void",
+      "Action": "pass",
+      "Elapsed": 0.4
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestForecastConcurrentMaterializationKeepsOneBasis",
+      "Action": "pass",
+      "Elapsed": 0.64
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestForecastServiceUsesRealRecurringGenerationAndPromotion",
+      "Action": "pass",
+      "Elapsed": 1.53
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestHistoricalCashEntryStorageKeepsOriginalParentIntegrity",
+      "Action": "pass",
+      "Elapsed": 2.02
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestHistoricalCashEntryStorageKeepsOriginalParentIntegrity/missing_parent",
+      "Action": "pass",
+      "Elapsed": 0.08
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestHistoricalCashEntryStorageKeepsOriginalParentIntegrity/wrong_book",
+      "Action": "pass",
+      "Elapsed": 0.07
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestHistoricalCashEntryStorageKeepsOriginalParentIntegrity/wrong_holding",
+      "Action": "pass",
+      "Elapsed": 0.07
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestHistoricalCashEntryStorageKeepsOriginalParentIntegrity/wrong_instrument",
+      "Action": "pass",
+      "Elapsed": 0.1
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestHistoricalCashEntryStorageKeepsOriginalParentIntegrity/wrong_type",
+      "Action": "pass",
+      "Elapsed": 0.05
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestImportedDividendRepairKeepsTransactionCashSourceAndNativeCorrections",
+      "Action": "pass",
+      "Elapsed": 0.81
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestImportedDividendRepairLateIdentityFailureRollsBackAllFacts",
+      "Action": "pass",
+      "Elapsed": 1.35
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestOrdinaryMetadataEditOfAReconciledTransactionStillCommits",
+      "Action": "pass",
+      "Elapsed": 0.44
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts",
+      "Action": "pass",
+      "Elapsed": 2.81
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/assign_supported",
+      "Action": "pass",
+      "Elapsed": 0.23
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/null_clears",
+      "Action": "pass",
+      "Elapsed": 0.18
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/omission_preserves",
+      "Action": "pass",
+      "Elapsed": 0.2
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/partial_stays_partial",
+      "Action": "pass",
+      "Elapsed": 0.18
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestPaymentAttributionRepairPreservesReconciledCashAndOriginalFacts/value_repairs",
+      "Action": "pass",
+      "Elapsed": 0.19
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestPaymentInLieuRecordsUnassignedCashWithoutInventingAShort",
+      "Action": "pass",
+      "Elapsed": 1.81
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestPostingMoveAcrossEarlierSameDayCheckpointRequiresOverride",
+      "Action": "pass",
+      "Elapsed": 0.65
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestRecurringGenerationRollsBackDraftAuditAndOccurrenceOnFailure",
+      "Action": "pass",
+      "Elapsed": 0.42
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestReviewedDividendMissingPayerCanRemainUnassignedWithoutInventingTax",
+      "Action": "pass",
+      "Elapsed": 0.42
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestSeparateWithholdingWithoutPayerPreservesShapeAndExactCoverage",
+      "Action": "pass",
+      "Elapsed": 1.8
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestStaleMetadataEditCannotOverwriteANewerReconciledAmount",
+      "Action": "pass",
+      "Elapsed": 0.56
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Test": "TestTrading212DividendUnknownEconomicsStayPendingWhileCashCommits",
+      "Action": "pass",
+      "Elapsed": 0.6
+    }
+  ],
+  "packages": [
+    {
+      "Package": "rekenraam/backend/internal/api",
+      "Action": "pass",
+      "Elapsed": 5.272
+    },
+    {
+      "Package": "rekenraam/backend/internal/app",
+      "Action": "pass",
+      "Elapsed": 9.051
+    }
+  ],
+  "execution_environment": {
+    "successful_run": "Local loopback sockets permitted; synthetic httptest providers only. No live provider access.",
+    "restricted_attempt": "API selection passed; app package panicked in httptest.NewServer because socket binding was denied. Unchanged selection rerun with loopback allowed.",
+    "race_limit": "Go application/driver-wrapper code instrumented; bundled SQLite C is not race-instrumented."
+  }
+}

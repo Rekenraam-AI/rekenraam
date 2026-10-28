@@ -83,7 +83,8 @@ below is execution order, not a chain of hard dependencies.
    [#390](https://github.com/sergeyfarin/rekenraam/issues/390) remains open;
    its behavior-changing acceptance is distinct from maintenance. Its
    [coverage and bounded selection](reviews/product-complexity-coverage-2026-10-28.md)
-   are recorded; necessity evidence and final dispositions remain. Delivered
+   and [necessity evidence](reviews/product-complexity-necessity-2026-10-28.md)
+   are recorded; final dispositions and proposal selection remain. Delivered
    ADR 0019 contracts do not restore retired attribution blockers.
 3. **Continue independent readiness work.**
    [#102](https://github.com/sergeyfarin/rekenraam/issues/102) needs native

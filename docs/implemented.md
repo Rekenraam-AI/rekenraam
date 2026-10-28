@@ -909,8 +909,11 @@ retains the accepted behavior. Product-policy audit #390 is separate and open;
 #391/#388/#389/#392/#393/#394 contracts are delivered under ADR 0019.
 Its [2026-10-28 coverage output](reviews/product-complexity-coverage-2026-10-28.md)
 maps all capability families, reconciles #284's 34 rule groups and selects six
-workflows/twelve rules. This delivers selection only; necessity evidence and
-final product dispositions remain outside that output.
+workflows/twelve rules. The
+[necessity output](reviews/product-complexity-necessity-2026-10-28.md) traces
+those rules through current authorities/readers, records hand-derived
+counterexamples and passes 38 focused race controls. Final product dispositions
+and proposal selection remain; these audit outputs change no runtime policy.
 
 - #397 (2026-10-24): `requireKnownBasisSelfCheckPasses` owns strict known-basis
   assertions; the unknown-basis helper and independent financial oracles stay

@@ -92,7 +92,10 @@ diagnostics, including missing-payer CSV income. #394/#395 deliver historical-pa
 entry and typed cash/reinvestment field corrections. #390's
 [coverage and selection](reviews/product-complexity-coverage-2026-10-28.md)
 maps every capability family and selects six workflows/twelve rules for its
-wider product/workflow audit; necessity evidence and final dispositions remain.
+wider product/workflow audit. The
+[necessity evidence](reviews/product-complexity-necessity-2026-10-28.md)
+traces those rules through current authorities and consumers with independent
+counterexamples and 38 focused race controls; final dispositions remain.
 
 [ADR 0020](adrs/0020-release-signing-and-platform-targets.md) records the owner
 decision for keyless release signing, initial Linux targets and the future
