@@ -62,6 +62,11 @@ const icon = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" ari
 let hidden = false;
 let theme = 'system';
 try { hidden = localStorage.getItem('navigation-prototype-hidden') === 'true'; theme = localStorage.getItem('navigation-prototype-theme') || 'system'; } catch { /* File previews may deny storage. */ }
+// Open design questions the owner compares in the prototype bar: section menus or plain links,
+// sentence case or capitals for section labels, and a left account rail on account pages.
+const options = { sections: 'menus', caps: 'sentence', rail: 'off' };
+try { Object.assign(options, JSON.parse(localStorage.getItem('navigation-prototype-options') || '{}')); } catch { /* Optional browser persistence. */ }
+const lastPage = {};
 let scenario = 'everyday';
 let route;
 let searchScope = '';
@@ -137,26 +142,37 @@ function attentionHint(path) {
   if (scenario === 'empty') return '';
   return path === '/app/import' ? '1 batch' : path === '/app/recurring' ? '2 drafts' : path === '/app/investments/income' ? '3 to assign' : '';
 }
-function pageLinks(pages, section = '') {
+// Tabs show only the number; the sentence stays for screen readers and in menus.
+function countBadge(hint) {
+  if (!hint) return '';
+  const failed = hint === 'Check unavailable';
+  return `<span class="count${failed ? ' failed' : ''}" aria-hidden="true">${failed ? '!' : hint.split(' ')[0]}</span><span class="sr-only">, ${hint}</span>`;
+}
+function pageLinks(pages, section = '', compact = false) {
   return pages.map(([name, path]) => {
     const isParent = ['/app/accounts', '/app/categories', '/app/investments/instruments'].includes(path) && route.path.startsWith(`${path}/`);
     const home = registry.find(page => page.path === path)?.section;
     const hint = section && home !== section ? `in ${home}` : attentionHint(path);
-    return `<a href="${href(path)}" ${route.path === path ? 'aria-current="page"' : isParent ? 'aria-current="true"' : ''}>${name}<small class="muted">${hint}</small></a>`;
+    return `<a href="${href(path)}" ${route.path === path ? 'aria-current="page"' : isParent ? 'aria-current="true"' : ''}>${name}${compact ? countBadge(hint) : `<small class="muted">${hint}</small>`}</a>`;
   }).join('');
 }
+function sectionNeedsAttention(pages) { return pages.some(([, path]) => attentionHint(path)); }
 function pins() {
   return scenario === 'empty' ? '<p class="muted">No pinned accounts yet.</p>' : accounts.filter(a => a.pinned).map(account => link(`${account.name} ${money(account.balance)}`, accountPath(account.id))).join('');
 }
 function renderShell(info) {
-  const menus = Object.entries(sections).filter(([name]) => name !== 'Settings').map(([name, pages]) => `
-    <div class="nav-item"><button class="nav-trigger" data-disclosure="nav-${name}" aria-expanded="false" aria-controls="nav-${name}" ${info.section === name ? 'aria-current="true"' : ''}>${name} ▾</button>
+  // Menus show their counts when opened; plain links have nowhere else to hint, so they get a dot.
+  const dot = pages => sectionNeedsAttention(pages) ? '<span class="attn-dot" aria-hidden="true"></span>' : '';
+  const menus = Object.entries(sections).filter(([name]) => name !== 'Settings').map(([name, pages]) => options.sections === 'links'
+    // Links: a section opens its last-visited page and the tab row does the rest.
+    ? `<div class="nav-item"><a class="nav-trigger" href="${href(lastPage[name] || pages[0][1])}" ${info.section === name ? 'aria-current="true"' : ''}>${name}${dot(pages)}</a></div>`
+    : `<div class="nav-item"><button class="nav-trigger" data-disclosure="nav-${name}" aria-expanded="false" aria-controls="nav-${name}" ${info.section === name ? 'aria-current="true"' : ''}>${name}${icon('chevron', 'nav-chev')}</button>
     <div id="nav-${name}" class="disclosure ${name === 'Ledger' ? 'ledger' : ''}" hidden><div>${pageLinks(pages, name)}</div>${name === 'Ledger' ? `<div><p class="menu-caption">Pinned accounts</p>${pins()}</div>` : ''}</div></div>`).join('');
   const isHome = route.path === '/app';
   // Only the section's own pages form its tab row; Settings keeps its side list instead.
   const tabs = info.section !== 'Settings' && sections[info.section] ? sections[info.section].filter(([, path]) => registry.find(page => page.path === path)?.section === info.section) : null;
   $('#shell').innerHTML = `<div class="shell-inner">
-    <a class="brand" href="#/app" ${isHome ? 'aria-current="page"' : ''} aria-label="Rekenraam Home"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span><span class="brand-name">Rekenraam</span></a>
+    <a class="brand" href="#/app" ${isHome ? 'aria-current="page"' : ''} aria-label="Rekenraam Home"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span></a>
     <nav class="desktop-nav" aria-label="Sections">${menus}</nav>
     <div class="shell-actions">
       ${isHome ? '' : `<button data-search class="compact-search" aria-label="Search pages, accounts or commands">${icon('search')}<span class="search-copy">Search…</span><kbd class="search-copy">/</kbd></button>`}
@@ -170,12 +186,12 @@ function renderShell(info) {
       <button class="mobile-toggle icon-button" data-disclosure="mobile-pages" aria-label="All pages" aria-expanded="false" aria-controls="mobile-pages">${icon('menu')}</button>
     </div></div>
     <nav id="mobile-pages" class="mobile-pages" aria-label="All pages" hidden>${link('Home', '/app')}${Object.entries(sections).filter(([name]) => name !== 'Settings').map(([name, pages]) => `<details><summary>${name}</summary>${pageLinks(pages, name)}${name === 'Ledger' ? `<p class="menu-caption">Pinned accounts</p>${pins()}` : ''}</details>`).join('')}<details><summary>Settings</summary>${pageLinks(sections.Settings)}</details></nav>
-    ${tabs ? `<nav class="section-tabs" aria-label="${info.section} pages">${pageLinks(tabs)}</nav>` : ''}`;
+    ${tabs ? `<nav class="section-tabs" aria-label="${info.section} pages"><div class="tabs-inner">${pageLinks(tabs, '', true)}</div></nav>` : ''}`;
   $('#theme').value = theme;
 }
 function heading(info, scope = '', add = false, extra = '') {
   const breadcrumb = info.object ? `<nav class="breadcrumbs" aria-label="Breadcrumb">${link(info.object, info.object === 'Accounts' ? '/app/accounts' : info.object === 'Categories' ? '/app/categories' : '/app/investments/instruments')} › ${esc(info.name)}</nav>` : '';
-  return `${breadcrumb}<div class="page-heading"><div><h1>${info.object ? `<button class="object-trigger" data-scope="${info.object}">${esc(info.name)} ▾</button>` : esc(info.name)}</h1>${scope ? `<p class="scope">${scope}</p>` : ''}</div><div class="page-actions">${extra}${add ? `<button class="primary" data-add>${icon('plus')}Add transaction</button>` : ''}</div></div>`;
+  return `${breadcrumb}<div class="page-heading"><div><h1>${info.object ? `<button class="object-trigger" data-scope="${info.object}">${esc(info.name)}${icon('chevron', 'nav-chev')}</button>` : esc(info.name)}</h1>${scope ? `<p class="scope">${scope}</p>` : ''}</div><div class="page-actions">${extra}${add ? `<button class="primary" data-add>${icon('plus')}Add transaction</button>` : ''}</div></div>`;
 }
 
 // ---- Home -----------------------------------------------------------------
@@ -356,7 +372,16 @@ function registerRows(account) {
   return `<tr><td>27 Mar</td><td>${link('Albert Heijn', '/app/transactions?payee_id=30')}</td><td>${link('Groceries', '/app/categories/10')}</td><td class="numeric">${money('−€42.15')}</td></tr><tr><td>25 Mar</td><td>Salary</td><td>Income</td><td class="numeric">${money('+€3,200.00')}</td></tr>`;
 }
 const segmented = (label, views, current) => `<nav class="segmented" aria-label="${label}">${views.map(([name, path, key]) => link(name, path, key === current ? 'on" aria-current="true' : '')).join('')}</nav>`;
+// Option under review: the inverted-L layout most finance apps use, an account list beside the register.
+function accountRail(current) {
+  const groups = [...new Set(accounts.filter(a => !a.closed).map(a => a.institution))];
+  return `<nav class="rail" aria-label="Accounts">${groups.map(group => `<p class="rail-group">${esc(group)}</p>${accounts.filter(a => a.institution === group && !a.closed).map(a => `<a href="${href(accountPath(a.id))}" ${a.id === current.id ? 'aria-current="page"' : ''}><span>${esc(a.name)}</span>${money(a.balance)}</a>`).join('')}`).join('')}${link('All accounts', '/app/accounts', 'rail-all')}</nav>`;
+}
 function renderRegister(info) {
+  if (options.rail === 'on') return `<div class="rail-layout">${accountRail(currentAccount())}<div class="rail-main">${registerBody(info)}</div></div>`;
+  return registerBody(info);
+}
+function registerBody(info) {
   const account = currentAccount();
   const extra = account.brokerage ? '<button data-invest>Record trade or dividend</button>' : '';
   const positions = account.brokerage ? `<section class="card"><h2>Positions</h2><ul class="rows"><li><span>${link('VWRL', '/app/investments/instruments/20')}<br><small class="muted">Vanguard FTSE All-World · 96 units</small></span>${scenario === 'missing' ? 'No price' : money('€8,400.00')}</li></ul><p class="scope">Each position is an instrument held in this account, not a separate account.</p></section>` : '';
@@ -386,7 +411,7 @@ function renderImport(info) {
 function renderReconcile(info) {
   const account = currentAccount();
   return `${heading(info, `${esc(account.detail)} · sample statement at 29 Oct`)}
-    <section class="card"><h2>Statement for <button class="object-trigger" data-scope="Accounts">${esc(account.name)} ▾</button></h2>
+    <section class="card"><h2>Statement for <button class="object-trigger" data-scope="Accounts">${esc(account.name)}${icon('chevron', 'nav-chev')}</button></h2>
     ${reconciliationFinished ? '<p role="status">Sample reconciliation finished. No checkpoint was written.</p>' : `<p>Statement balance ${money(account.balance)} · difference ${money('€0.00')}</p><p>Review the selected entries and exact statement before finishing.</p>${reconciliationPreview ? `<div><h3>Review checkpoint</h3><p>Account: ${esc(account.name)} · 29 Oct 2026 · difference ${money('€0.00')}</p><button class="primary" data-finish-reconcile>Finish sample reconciliation</button></div>` : '<button class="primary" data-preview-reconcile>Preview reconciliation</button>'}`}
     <div class="actions">${link('Open account register', accountPath(account.id))}</div></section>`;
 }
@@ -464,7 +489,9 @@ function render(navigated = false) {
   route = readRoute();
   const info = pageInfo();
   if (old?.path === '/app/reconcile' && old.canonical !== route.canonical) { reconciliationPreview = false; reconciliationFinished = false; }
+  if (info.section && sections[info.section]?.some(([, path]) => path === route.path)) lastPage[info.section] = route.path;
   renderShell(info);
+  document.documentElement.dataset.caps = options.caps;
   $('#main').className = info.object === 'Accounts' || ['Transactions', 'Import'].includes(info.name) ? 'fluid' : route.path === '/app' ? 'home' : '';
   $('#main').innerHTML = route.path === '/app' ? renderHome() : info.object === 'Accounts' ? renderRegister(info) : route.path === '/app/reports/spending' ? renderSpending(info) : info.name === 'Import' ? renderImport(info) : info.name === 'Reconcile' ? renderReconcile(info) : renderOther(info);
   if ($('[data-theme-select]')) $('[data-theme-select]').value = theme;
@@ -474,6 +501,7 @@ function render(navigated = false) {
 // The hash changes before render runs, so remember Home's scroll as it happens.
 let lastHomeScroll = 0;
 addEventListener('scroll', () => { if (route?.path === '/app') lastHomeScroll = scrollY; }, { passive: true });
+for (const [key, value] of Object.entries(options)) $(`#opt-${key}`).value = value;
 render();
 window.addEventListener('hashchange', () => render(true));
 
@@ -769,6 +797,8 @@ document.addEventListener('submit', event => {
 document.addEventListener('change', event => {
   if (event.target.matches('[data-theme-select]')) { theme = event.target.value; applyTheme(); $('#theme').value = theme; }
   if (event.target.id === 'theme') { theme = event.target.value; applyTheme(); try { localStorage.setItem('navigation-prototype-theme', theme); } catch { /* Optional browser persistence. */ } }
+  const option = event.target.id?.match(/^opt-(sections|caps|rail)$/)?.[1];
+  if (option) { options[option] = event.target.value; try { localStorage.setItem('navigation-prototype-options', JSON.stringify(options)); } catch { /* Optional browser persistence. */ } render(); }
   if (event.target.id === 'scenario') { scenario = event.target.value; reconciliationPreview = false; reconciliationFinished = false; render(); }
   if (event.target.name === 'cz-headline') changeLayout({ headline: event.target.value }, '', false);
   if (event.target.id === 'cz-explore') { layout.exploreOpen = event.target.checked; render(); }

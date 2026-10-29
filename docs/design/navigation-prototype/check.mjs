@@ -23,18 +23,18 @@ try {
   await go('/app');
 
   // Exercise actual disclosures and links rather than only visiting fixture URLs.
-  await page.getByRole('button', { name: 'Ledger ▾', exact: true }).click();
+  await page.getByRole('button', { name: 'Ledger', exact: true }).click();
   await page.locator('#nav-Ledger').getByRole('link', { name: 'Checking' }).click();
-  await expect(page.locator('main h1')).toHaveText('Checking ▾');
+  await expect(page.locator('main h1')).toHaveText('Checking');
   await expect(page.getByRole('navigation', { name: 'Ledger pages' }).getByRole('link', { name: 'Accounts', exact: true })).toHaveAttribute('aria-current', 'true');
   await page.locator('[name="q"]').fill('March');
   await page.getByRole('button', { name: 'Apply filters' }).click();
   await expect(page).toHaveURL(/q=March/);
-  await page.getByRole('button', { name: 'Checking ▾', exact: true }).click();
+  await page.getByRole('button', { name: 'Checking', exact: true }).click();
   await page.locator('#search-input').fill('Savings');
   await page.locator('#search-input').press('Enter');
   await expect(page).toHaveURL(/accounts\/2\/register\?month=2026-03&q=March/);
-  await expect(page.locator('main h1')).toHaveText('Savings ▾');
+  await expect(page.locator('main h1')).toHaveText('Savings');
 
   // Entry keeps the page's account and unsaved fields while cancel is resolved.
   await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
@@ -71,7 +71,7 @@ try {
   const homeScroll = await page.evaluate(() => scrollY);
   await page.getByRole('link', { name: 'Open spending report →' }).click();
   await page.locator('main').getByRole('link', { name: 'Groceries', exact: true }).click();
-  await expect(page.locator('main h1')).toHaveText('Groceries ▾');
+  await expect(page.locator('main h1')).toHaveText('Groceries');
   await page.goBack();
   await expect(page.locator('main h1')).toHaveText('Spending');
   await page.goBack();
@@ -164,7 +164,7 @@ try {
       await page.getByRole('button', { name: 'All pages', exact: true }).click();
       await page.locator('#mobile-pages').getByText('Ledger', { exact: true }).click();
       await page.locator('#mobile-pages').getByRole('link', { name: 'Savings' }).click();
-      await expect(page.locator('main h1')).toHaveText('Savings ▾');
+      await expect(page.locator('main h1')).toHaveText('Savings');
     }
     await page.locator('main h1 button').click();
     await expect(page.locator('#search-input')).toBeFocused();
@@ -186,9 +186,28 @@ try {
       await page.screenshot({ path: resolve(screenshotDir, `register-${width}.png`), fullPage: true });
     }
   }
+  // Options under review in the prototype bar stay accessible and keep the page within the viewport.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await go('/app/accounts/1/register');
+  for (const [id, value] of [['#opt-sections', 'links'], ['#opt-caps', 'caps'], ['#opt-rail', 'on']]) await page.locator(id).selectOption(value);
+  await expect(page.getByRole('navigation', { name: 'Accounts' }).getByRole('link', { name: /Checking/ })).toHaveAttribute('aria-current', 'page');
+  await page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name: 'Investments' }).click();
+  // A section link reopens that section's last-visited page.
+  await expect(page.getByRole('navigation', { name: 'Investments pages' }).locator('[aria-current="page"]')).toHaveCount(1);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const path of ['/app/accounts/1/register', '/app/investments/income']) {
+      await go(path);
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Option overflow: ${width} ${path}`);
+      const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+      assert.deepEqual(audit.violations.map(v => v.id), [], `Options accessibility: ${width} ${path}`);
+    }
+  }
+  if (screenshotDir) { await page.setViewportSize({ width: 1440, height: 900 }); await go('/app/accounts/1/register'); await page.screenshot({ path: resolve(screenshotDir, 'options-register-1440.png') }); }
+  for (const [id, value] of [['#opt-sections', 'menus'], ['#opt-caps', 'sentence'], ['#opt-rail', 'off']]) await page.locator(id).selectOption(value);
   assert.deepEqual(errors, [], 'Browser errors');
   assert.deepEqual(remoteRequests, [], 'Prototype must not contact a remote service');
-  console.log(`Passed: ${destinations.length} destinations; entry, scoped switching, review, reconciliation, legacy links and Back; 42 page accessibility/reflow checks; Home command bar, payee prefill, widget moves with Undo and Customize; 3 open switchers; masking; zero remote requests.`);
+  console.log(`Passed: ${destinations.length} destinations; entry, scoped switching, review, reconciliation, legacy links and Back; 42 page accessibility/reflow checks; Home command bar, payee prefill, widget moves with Undo and Customize; 3 open switchers; header options (links, capitals, account rail); masking; zero remote requests.`);
 } finally {
   await browser.close();
 }
