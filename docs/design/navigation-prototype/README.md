@@ -18,8 +18,8 @@ approved canvas remains the reference for Home styling and personalization.
 ## Home in this prototype
 
 Home follows the [approved design](../home-and-navigation.md#home-layout) and
-the v3 canvas: two briefing lines (headline with ▾ switcher, review line that
-expands into a list) and the coverage line under them; the command bar inline
+the v3 canvas: two briefing lines (headline with ▾ switcher, and a status
+line linking to the Review page); the command bar inline
 under the briefing, with grouped results (*Payee*, *Pages, accounts and
 categories*, *Everything*) and *Narrow to* chips; shortcut tiles led by Add
 transaction with ⋯ menus and *Add shortcut*; My Home with the five default
@@ -166,11 +166,11 @@ Overview pages. The prototype bar still offers the earlier *Menus* behaviour
 for comparison. Capitals and a left account rail were tried and rejected.
 
 Sample books for valuation: *Missing valuation* has three unpriced
-instruments (Home shows Cash with a linked "Net worth not shown: 3
-instruments have no price"; counted, and one grouped review item);
-*Stale prices at scale* has 180 of 240 prices older than 7 days (the total
-stays, the coverage line counts them with the oldest date, and one grouped
-review item links to Prices filtered to out-of-date prices).
+instruments (Home shows Cash, and the status line reads "Net worth needs 3
+prices · 2 more →"; one grouped review item); *Stale prices at scale* has
+180 of 240 prices older than 7 days (the total stays, the status line reads
+"180 prices out of date · 2 more →", and one grouped review item with the
+oldest date links to Prices filtered to out-of-date prices).
 
 Home's review line no longer expands into a list above the search: it links
 to a *Review* page (`/app/review`), also reached from the header's Review

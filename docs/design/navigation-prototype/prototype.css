@@ -173,6 +173,14 @@ p { margin: 0 0 12px; }
 .dot.warn { background: var(--warn-dot); }
 .dot.info { background: var(--muted); }
 .brief > .scope { margin: 4px 0 0; }
+/* The status line wraps as text, so a phone gets at most two lines, never one per item. */
+.bl.status { display: block; text-align: center; }
+.bl.status > * { vertical-align: middle; }
+.bl.status .dot { display: inline-block; margin-right: 6px; }
+.bl.status > .muted { margin: 0 6px; }
+.bl.status a.bl-review { display: inline; padding: 0; }
+.bl.status a.bl-review .ic { display: inline-block; vertical-align: middle; margin-left: 4px; }
+#headline-menu > button { flex-direction: column; align-items: flex-start; gap: 0; }
 .slist { list-style: none; margin: 10px auto 0; padding: 6px; width: 100%; max-width: 520px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); text-align: left; }
 .slist li { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border-radius: 8px; }
 .slist li:hover { background: var(--hover); }
@@ -320,6 +328,7 @@ dialog::backdrop { background: oklch(0.1 0.01 108 / .45); }
   main.home { padding-top: 0; }
   .hero { padding-top: 32px; }
   .bl, .bl h1, .bl-review { font-size: 16px; }
+  .bl-switch { width: 28px; }
   .cmd { margin-top: 24px; }
   .grid, .split-layout, .form-grid, .settings-layout { grid-template-columns: minmax(0, 1fr); }
   .card.wide { grid-column: auto; }

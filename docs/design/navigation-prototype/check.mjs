@@ -104,16 +104,25 @@ try {
   await expect(page.locator('main h1')).toContainText('Cash €36,837');
   await expect(page.locator('main h1')).not.toContainText('56,750');
   await expect(page.locator('#home-networth')).toContainText('Unavailable');
-  // Several missing prices are counted in one sentence and one review item, not listed one by one.
-  await expect(page.locator('#home-networth-notice').getByRole('link')).toHaveText('Net worth not shown: 3 instruments have no price');
-  await expect(page.locator('#home-networth-notice a')).toHaveAttribute('href', '#/app/pricing?coverage=missing');
+  // Home's briefing is two lines: the reason joins the review line, counted, and links to the missing prices.
+  const status = page.locator('main .brief .status');
+  await expect(status).toHaveText(/^Net worth needs 3 prices\s*·\s*2 more$/);
+  await expect(status.getByRole('link', { name: 'Net worth needs 3 prices' })).toHaveAttribute('href', '#/app/pricing?coverage=missing');
+  await expect(page.locator('main .brief > *')).toHaveCount(2);
+  // A headline that never needed prices is kept; the line only counts what is missing.
+  await page.locator('.bl-switch').click();
+  await page.locator('[data-headline="checking"]').click();
+  await expect(page.locator('main h1')).toContainText('Checking');
+  await expect(status).toContainText('3 prices missing');
+  await page.locator('.bl-switch').click();
+  await page.locator('[data-headline="networth"]').click();
   await openReview();
   await expect(page.locator('main').getByRole('link', { name: /3 instruments have no price/ })).toHaveCount(1);
   await go('/app');
   // Hundreds of out-of-date prices keep the total, disclosed as one count and one review item.
   await page.locator('#scenario').selectOption('stale');
   await expect(page.locator('main h1')).toContainText('€56,750');
-  await expect(page.locator('main .brief .scope')).toContainText('180 of 240 prices older than 7 days');
+  await expect(page.locator('main .brief .status')).toHaveText(/^180 prices out of date\s*·\s*2 more$/);
   await openReview();
   await expect(page.locator('main').getByRole('link', { name: '180 prices out of date' })).toHaveCount(1);
   await go('/app');

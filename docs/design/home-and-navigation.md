@@ -36,18 +36,18 @@ Background and reasoning:
   makes a total unavailable, never silently partial, and never shown as a
   labelled partial either (decided 2026-10-29).
 - When the net worth headline is unavailable, Home shows **Cash** instead
-  (open cash accounts: checking, savings, cash and e-money, in the reporting
-  currency), which needs no price, with a notice under it that links to
-  Prices filtered to the missing ones: "Net worth not shown: 3 instruments
-  have no price". The scope line names the
-  cash accounts. If cash itself lacks an FX rate, only the notice shows. A
-  chosen account or account-set headline is never replaced.
+  (open checking, savings, cash and e-money accounts in the reporting
+  currency), which needs no price, and the status line says why: "Net worth
+  needs 3 prices", linking to Prices filtered to the missing ones. If cash
+  itself lacks an FX rate, only the status line shows. A chosen headline that
+  needs no price is never replaced; the line then reads "3 prices missing".
 - An out-of-date price still values its position at that price and never
-  blocks a total; the coverage line counts them with the oldest date ("180 of
-  240 prices older than 7 days, oldest 3 Sep") and the review list holds one
-  grouped item, never one per instrument (proposed 2026-10-29). Several
-  missing prices are likewise counted ("3 instruments have no price") and
-  grouped, linking to Prices filtered to the missing ones.
+  blocks a total; Home counts them ("180 prices out of date", linking to
+  Prices filtered to them), the Review page adds the oldest date, and the
+  review list holds one grouped item, never one per instrument (proposed
+  2026-10-29). Several missing prices are likewise counted and grouped.
+- Home names nothing that grows with the book: accounts, instruments and
+  review items appear as counts, never as lists.
 - Customization never changes financial data.
 
 ## Application shell (whole app)
@@ -122,21 +122,27 @@ widget area:
 
 1. **Briefing**: two lines, same type size, regular weight with amounts in
    medium weight.
-   1. Headline: net worth (default), one account, or a named set of
-      accounts, with absolute change since the start of the month. ▾ switches
-      the headline. The change is coloured by its sign in a dark, quiet green
+   1. Headline: net worth (default), cash, one account, or a named set of
+      accounts, with absolute change since the start of the month (“+€2,140
+      in Oct”). ▾ switches the headline; the menu gives each choice's scope as
+      a count (“All 5 accounts”, “3 cash accounts”), never an account list. The change is coloured by its sign in a dark, quiet green
       or red (never bright), and stays neutral while amounts are hidden; the
       sign itself still carries the meaning.
-   2. To review: “2 drafts and 1 import to review →”, a link to the
+   2. Status: “2 drafts and 1 import to review →”, a link to the
       [Review page](#review-page); nothing expands above the search (owner,
       2026-10-29: the list distracted, and the line already signals the
-      work). “All clear, nothing to review” only after a successful check
-      with no actionable items. An unchecked or failed source has its own
-      visible state.
+      work). A price problem leads the line because it explains the
+      headline, and the rest becomes a count: “Net worth needs 3 prices ·
+      2 more →”. The header's Review button carries the total, so the line
+      never repeats it. “All clear, nothing to review” only after a successful
+      check with no actionable items. An unchecked or failed source has its
+      own visible state.
 
-   Below them, one small muted line states what the number covers: “All 14
-   accounts in EUR · 3 prices from 24 Oct · data through 25 Oct”. It belongs
-   to the number, so it is not a widget and not a briefing line.
+   Nothing else sits in the briefing (owner, 2026-10-29: four lines were too
+   many). The headline's label is its scope; account lists, the reporting
+   currency and data freshness live in the headline menu, the Review page's
+   Status section and the reports. Both lines fit one line each on a 390px
+   phone in the sample books.
 2. **Command bar**: large, centred search and command field.
 3. **Shortcuts**: a centred row of tiles.
 
