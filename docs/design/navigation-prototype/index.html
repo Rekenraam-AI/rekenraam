@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home · Rekenraam design prototype</title>
+  <link rel="stylesheet" href="prototype.css">
+  <script src="prototype.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <aside class="prototype-bar" aria-label="Prototype controls">
+    <span><strong>Design prototype</strong> · synthetic data · no app connection</span>
+    <label>Sample book <select id="scenario">
+      <option value="everyday">Everyday</option>
+      <option value="empty">Empty</option>
+      <option value="missing">Missing valuation</option>
+      <option value="failed">Review unavailable</option>
+    </select></label>
+  </aside>
+  <header id="shell"></header>
+  <main id="main" tabindex="-1"></main>
+  <p id="notice" role="status" aria-live="polite"></p>
+  <dialog id="search-dialog" aria-labelledby="search-title">
+    <div class="dialog-heading"><h2 id="search-title">Search</h2><button data-close="search-dialog" aria-label="Close search">×</button></div>
+    <div class="search-tools">
+      <button id="scope-chip" hidden></button>
+      <label class="search-label" for="search-input">Search pages, accounts and commands</label>
+      <input id="search-input" type="search" role="combobox" aria-expanded="true" aria-controls="search-results" aria-autocomplete="list" autocomplete="off">
+      <div id="scope-options" class="actions"></div>
+      <label id="closed-control" hidden><input id="show-closed" type="checkbox"> Include closed accounts</label>
+    </div>
+    <div id="search-results" role="listbox" aria-label="Search results"></div>
+    <p class="muted dialog-help">↑ ↓ choose · Enter opens · Escape returns to your page</p>
+  </dialog>
+  <dialog id="entry-dialog" aria-labelledby="entry-title">
+    <form id="entry-form">
+      <div class="dialog-heading"><h2 id="entry-title">Add transaction</h2><button type="button" data-cancel-entry aria-label="Close transaction editor">×</button></div>
+      <p class="muted">Sample editor. Saving demonstrates the interaction only.</p>
+      <div class="form-grid">
+        <label>Date<input name="date" type="date" value="2026-10-29" required></label>
+        <label>Account<select name="account" id="entry-account"></select></label>
+        <label>Payee<input name="payee" autocomplete="off" required></label>
+        <label>Category<select name="category"><option>Groceries</option><option>Housing</option><option>Transport</option></select></label>
+        <label>Amount (EUR)<input name="amount" inputmode="decimal" placeholder="0.00" required></label>
+        <label>Memo<input name="memo"></label>
+      </div>
+      <p id="discard-warning" hidden>Unsaved changes. Keep editing or discard this sample entry.</p>
+      <div class="actions entry-actions">
+        <button type="button" data-cancel-entry>Cancel</button>
+        <button id="keep-entry" type="button" hidden>Keep editing</button>
+        <button id="discard-entry" type="button" hidden>Discard sample entry</button>
+        <button type="submit" class="primary">Save sample entry</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="help-dialog" aria-labelledby="help-title">
+    <div class="dialog-heading"><h2 id="help-title">Keyboard help</h2><button data-close="help-dialog" aria-label="Close help">×</button></div>
+    <p><kbd>/</kbd> or <kbd>Ctrl / ⌘ K</kbd> opens search. <kbd>N</kbd> opens entry. <kbd>?</kbd> opens this help.</p>
+    <p>Single-key shortcuts stay inactive while you type in a field.</p>
+  </dialog>
+</body>
+</html>

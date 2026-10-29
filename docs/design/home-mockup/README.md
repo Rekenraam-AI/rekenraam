@@ -5,6 +5,11 @@ Source of the interactive mockup behind the
 after the owner approved the third round. All amounts, payees and accounts
 are sample data.
 
+For the later navigation decisions and clickable destinations beyond Home,
+use the standalone [navigation prototype](../navigation-prototype/README.md)
+(2026-10-29). It opens directly in a browser and complements this approved
+canvas; it is not application implementation.
+
 These files are the source of a Claude Design canvas, not application code.
 Each `.dc.html` file is one artboard and expects the canvas runtime
 (`support.js`), so it does not open as a normal web page. The published

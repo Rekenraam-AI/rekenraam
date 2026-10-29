@@ -68,6 +68,9 @@ owner-approved Home page and light application shell (2026-10-27), with its
 keep the reasoning. The
 [navigation and pages review](reviews/navigation-and-pages-options-2026-10-29.md)
 holds the options behind its navigation decisions (#435). Delivery is tracked in #441.
+The [navigation prototype](design/navigation-prototype/README.md) adds
+browser-openable destinations and a bounded walkthrough for implementation
+preparation; the production overhaul remains undelivered.
 
 [ADR 0019](adrs/0019-financial-effects-and-repairable-attribution.md) and the
 [financial-dependency plan](plans/financial-dependency-simplification-plan.md)

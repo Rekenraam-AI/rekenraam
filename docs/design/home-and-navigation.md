@@ -19,6 +19,10 @@ Background and reasoning:
   options considered and the owner's first decisions. Where it differs from
   this document, this document wins.
 - [Mockup](home-mockup/README.md): the interactive v3 canvas, with sample data.
+- [Navigation prototype](navigation-prototype/README.md): browser-openable
+  implementation-preparation companion (2026-10-29), with registers, report
+  drill-down, import review and reconciliation. Synthetic data only; it does
+  not deliver the shell, Home or object-navigation slices.
 
 ## Principles
 
@@ -81,7 +85,10 @@ widget area:
       accounts, with absolute change since the start of the month. ▾ switches
       the headline.
    2. To review: “2 drafts and 1 import to review”, expanding in place to a
-      list with links; “All clear, nothing to review” when empty.
+      list with links; “All clear, nothing to review” only after a successful
+      check with no actionable items. An unchecked or failed source has its
+      own visible state; informational notes remain expandable when there
+      are no actionable items.
 
    Below them, one small muted line states what the number covers: “All 14
    accounts in EUR · 3 prices from 24 Oct · data through 25 Oct”. It belongs
