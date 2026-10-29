@@ -36,6 +36,17 @@ Deliberate differences from the canvas, recorded in the design document:
   widgets show *No data yet* instead of sample values.
 - The Prices widget covers security prices only; FX rates stay in Settings.
 
+## Second owner review (2026-10-29)
+
+After the owner's ten comments: widgets are denser and section headings carry
+no counts; the brand is the Home link; accounts are grouped by institution
+with an *Institutions* view; a brokerage is one account showing its cash and
+positions (no holding accounts in lists); page actions say *Add transaction*
+(brokerages add *Record trade or dividend*); "Trash" became Transactions ›
+*Deleted*; Settings has five pages, and *Preferences* holds language, theme
+and the Home page settings. The full capability map is in the
+[navigation review](../../reviews/navigation-and-pages-options-2026-10-29.md#coverage-review-after-the-prototype-2026-10-29).
+
 ## What to review
 
 - All approved section/settings menu entries lead to distinct destinations.
@@ -100,14 +111,14 @@ pnpm exec node docs/design/navigation-prototype/check.mjs /tmp/rekenraam-navigat
 The focused check exercises links and context retention, editor cancellation,
 review and reconciliation, legacy URLs, Back restoration, the Home command
 bar and payee prefill, widget moves with Undo and Customize reset, amount
-masking, 36 axe/reflow cases over six representative pages at 1440/390/320px
+masking, 42 axe/reflow cases over seven representative pages at 1440/390/320px
 in both themes, open switchers, browser errors and absence of remote requests.
 This checks the design artifact only. It is not production integration,
 financial-correctness validation or native terminology sign-off.
 
 Passed locally on 2026-10-29 after the Home revision: 28 menu/pin
 destinations, the walkthrough's automated journeys, all 36 page axe/reflow
-cases and three open switchers,
+cases (42 after the second review) and three open switchers,
 masking and zero remote requests. JavaScript syntax, local Markdown targets
 and `git diff --check` also passed. Acceptance was tightened in
 [#436](https://github.com/sergeyfarin/rekenraam/issues/436) and

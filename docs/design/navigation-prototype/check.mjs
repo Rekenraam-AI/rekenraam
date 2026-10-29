@@ -37,7 +37,7 @@ try {
   await expect(page.locator('main h1')).toHaveText('Savings ▾');
 
   // Entry keeps the page's account and unsaved fields while cancel is resolved.
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
   await expect(page.locator('#entry-account')).toHaveValue('2');
   await page.locator('[name="payee"]').fill('Unsaved sample');
   await page.keyboard.press('Escape');
@@ -48,7 +48,7 @@ try {
   await expect(page.locator('[name="payee"]')).toHaveValue('Unsaved sample');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Discard sample entry' }).click();
-  await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Add transaction', exact: true })).toBeFocused();
   await page.getByRole('link', { name: 'Reconcile this account' }).click();
   await page.getByRole('button', { name: 'Preview reconciliation' }).click();
   await expect(page.getByRole('heading', { name: 'Review checkpoint' })).toBeVisible();
@@ -105,6 +105,18 @@ try {
   await expect(page.getByRole('link', { name: 'Set up accounts' })).toBeVisible();
   await page.locator('#scenario').selectOption('everyday');
 
+  // Old settings and trash links land on their new homes; brokerage shows positions, not holding accounts.
+  await go('/app/settings/trash');
+  await expect(page).toHaveURL(/transactions\?view=deleted/);
+  await expect(page.getByRole('heading', { name: 'Deleted transactions' })).toBeVisible();
+  await go('/app/settings/appearance');
+  await expect(page.locator('main h1')).toHaveText('Preferences');
+  await expect(page.getByRole('button', { name: 'Customize Home…' })).toBeVisible();
+  await go('/app/accounts');
+  await expect(page.getByRole('heading', { name: 'DEGIRO' })).toBeVisible();
+  await expect(page.locator('main')).not.toContainText('holding');
+  await go('/app');
+
   // Home's command bar is the shared search, inline: payee actions prefill the editor without posting.
   await page.locator('#home-cmd').fill('albert');
   await expect(page.locator('#home-cmd-list').getByRole('group', { name: 'Payee · Albert Heijn' })).toBeVisible();
@@ -138,7 +150,7 @@ try {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
     for (const theme of ['light', 'dark']) {
       await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
-      for (const path of ['/app', '/app/settings/security', '/app/accounts/1/register', '/app/reports/spending', '/app/import?batch_id=october', '/app/reconcile?account_id=1']) {
+      for (const path of ['/app', '/app/settings/preferences', '/app/accounts?view=institutions', '/app/accounts/1/register', '/app/reports/spending', '/app/import?batch_id=october', '/app/reconcile?account_id=1']) {
         await go(path);
         // A reload restores the prototype's chosen theme, so apply the test theme after go.
         await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
@@ -176,7 +188,7 @@ try {
   }
   assert.deepEqual(errors, [], 'Browser errors');
   assert.deepEqual(remoteRequests, [], 'Prototype must not contact a remote service');
-  console.log(`Passed: ${destinations.length} destinations; entry, scoped switching, review, reconciliation, legacy links and Back; 36 page accessibility/reflow checks; Home command bar, payee prefill, widget moves with Undo and Customize; 3 open switchers; masking; zero remote requests.`);
+  console.log(`Passed: ${destinations.length} destinations; entry, scoped switching, review, reconciliation, legacy links and Back; 42 page accessibility/reflow checks; Home command bar, payee prefill, widget moves with Undo and Customize; 3 open switchers; masking; zero remote requests.`);
 } finally {
   await browser.close();
 }

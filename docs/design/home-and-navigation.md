@@ -62,9 +62,13 @@ header on every page.
   Reports menu marked *in Investments*; a section's tab row holds only its own
   pages, so the row never changes under the pointer.
 
+- **Left side:** the Rekenraam mark and name is the Home link (marked current
+  on Home); there is no separate *Home* item. Phones keep *Home* at the top
+  of the menu.
 - **Right side:** hide amounts (eye), Customize (Home only), and a settings
-  menu (Settings, Security, Backups and data, Language and appearance,
-  Trash, Sign out) with an inline Light / Dark / System theme choice.
+  menu listing the settings pages (General, Preferences, Currencies and FX
+  rates, Security, Data and backups), an inline Light / Dark / System theme
+  choice and Sign out.
 - **Search:** on every page except Home the header has a compact search
   field with the same behaviour as Home's command bar (below). On Home the
   large central bar replaces it, so there is never more than one search
@@ -165,6 +169,9 @@ Searching account, category or instrument notes is later work.
 - Each widget has a ⋯ menu: Move up/down, size, Settings… (period, accounts
   and similar where relevant), Remove from My Home, Open the full page. In
   More to explore: Add to My Home, Add to top, Settings…, Open.
+- Widgets are compact: small title, one key figure, at most three or four
+  rows or a short chart, and a single *Open* link. White space belongs to the
+  page around them, not inside them. Section headings carry no counts.
 - Default My Home: Spending this month, Budgets, Accounts, Recurring, Net
   worth trend (wide).
 - The Accounts widget lists the owner's pinned accounts, the same list as the
@@ -238,6 +245,16 @@ steppers or filters. On phones the tab row scrolls horizontally.
   attention source, width) drives menus, tabs, document titles, breadcrumbs
   and the search's page results. A unit test fails when a `+page.svelte`
   route is missing from it.
+- Views inside pages: Transactions *All · Drafts · Deleted* (deleted
+  transactions replace the Settings "Trash", which only ever held
+  transactions); Accounts *Accounts · Institutions*; Categories *Categories ·
+  Tags*; Import *Files · Connections · Rules and profiles · Dividends*;
+  Investments Overview *Positions · Splits · Suggestions*.
+- Settings has five pages in one side list, the same list as the settings
+  menu: *General* (default currency, time zone, version), *Preferences*
+  (language, theme and the Home page: the Customize panel and Reset),
+  *Currencies and FX rates*, *Security*, *Data and backups* (backups,
+  self-check, a link to Export). The settings overview's link cards go.
 - Placement of today's sub-views: dividend review is a view inside Import;
   split history is a section on the instrument page; investment suggestions
   are review items (menu count and Home's review list), reached from
@@ -285,6 +302,16 @@ keyboard help.
   *Categories › Housing › Energy*). A holding's register and its instrument
   page link to each other.
 - **Payees** get a *Ledger → Payees* page (#443).
+- **Accounts are grouped by institution**, each group headed by the
+  institution and its country. The Accounts page has an *Institutions* view:
+  name, country, its accounts and how data arrives (file, profile or online
+  connection), with add, edit and archive.
+- **A brokerage is one account** with cash and positions. Per-instrument
+  holding accounts stay in the ledger model but are never listed as
+  accounts, pinned or offered in the account switcher; their positions show
+  on the brokerage account page and on the instrument page.
+- **Page actions name what they add:** *Add transaction*; brokerage accounts,
+  instruments and Investments Overview also show *Record trade or dividend*.
 - Before #442 fixes grouping and the pin limit, count a real book (accounts
   by kind, holdings per broker, closed accounts, categories by depth, payees,
   postings per account over 90 days) and record the result in the review.

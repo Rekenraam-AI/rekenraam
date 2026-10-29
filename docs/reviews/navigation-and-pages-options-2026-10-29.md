@@ -451,3 +451,106 @@ copy is enough. Record the result here.
 - #443 Payees page (D9).
 - Moving FX rates (D8) and an account panel (O3) get their own issues only if
   later chosen.
+
+## Coverage review after the prototype (2026-10-29)
+
+Owner feedback on the navigation prototype raised ten points (widget density,
+holding accounts, institutions, the *Add* label, Home duplicated by the brand,
+Trash, Home settings in Settings). This section checks every capability the
+app ships today, from [implemented.md](../implemented.md) and the screens
+under `frontend/src`, against the new navigation, and records what else
+the check found. Accepted answers are in the
+[design](../design/home-and-navigation.md#navigation-beyond-the-header).
+
+### Where every capability lives
+
+| Capability (today's place) | New place |
+|---|---|
+| Transactions list, filters, search, editor, splits, posting dates, reorder (`/app/transactions`) | Ledger › Transactions (*All*) |
+| Drafts (recurring and imported) | Ledger › Transactions › *Drafts*; Home review line |
+| Soft-deleted transactions and restore (`/app/settings/trash`, "Trash") | Ledger › Transactions › *Deleted*. Only transactions are ever deleted; voided ones stay in the ledger under *All* |
+| Void, unvoid, correct, correction chain, audit history | Transaction detail panel (unchanged) |
+| Account list, lifecycle (close, reopen, archive), account editor (`/app/accounts`) | Ledger › Accounts, grouped by institution; closed behind *Show closed* |
+| Institutions CRUD and archive (only inside the account editor; "standalone UI minimal") | Ledger › Accounts › *Institutions* view |
+| Account register, reconcile from register | Account page, switcher, pins |
+| Security holding accounts (one per instrument per broker, listed as accounts) | Not listed as accounts. Positions inside the brokerage account page and on the instrument page; the ledger model is unchanged |
+| Categories tree, editor, category activity | Ledger › Categories |
+| Tags: CRUD and archive in the API; used only in the editor and import rules, no screen | Ledger › Categories › *Tags* view (#444) |
+| Payees: API list, archive, restore; no screen | Ledger › Payees (#443) |
+| File import (QIF, CSV), staging, review, commit, resume | Ledger › Import › *Files* |
+| Trading 212 connection, auto-refresh (inside the import page) | Ledger › Import › *Connections*; the institution row says how data arrives |
+| CSV profiles and import rules (inside the import page) | Ledger › Import › *Rules and profiles* |
+| Grouped unknown-payee resolution | Inside a batch review (unchanged) |
+| Dividend import review (`/app/import/dividends`) | Ledger › Import › *Dividends*, with a count |
+| Reconcile sessions, checkpoints, void checkpoint, re-reconcile | Ledger › Reconcile |
+| Positions and lots (`/app/investments` Portfolio) | Investments › Overview › *Positions* |
+| Buy, sell, dividend, reinvest, write-off, transfers, short sale, corporate actions, corrections | *Record trade or dividend* on Overview, the instrument page and a brokerage account; commands in search |
+| Split history and correction | Instrument page, and Overview › *Splits* |
+| Provider dividend suggestions and the read-only automation rules list | Overview › *Suggestions* with a count; Home review list |
+| Instruments | Investments › Instruments |
+| Realized gains, saved gains runs, alternative-method comparison | Investments › Gains (also in the Reports menu) |
+| Returns, allocation, saved returns runs | Investments › Returns |
+| Dividend income coverage | Investments › Income |
+| Security prices, coverage, history, manual price, void (`/app/pricing`) | Investments › Prices |
+| Currencies, FX rates, refresh schedule, failed refresh work (`/app/settings/currencies`) | Settings › Currencies and FX rates |
+| Budgets, recurring templates and due inbox, forecast | Planning › Budgets, Recurring (*Due*, *Templates*), Forecast |
+| Spending/income, cashflow, net worth incl. unsettled trades, report CSV, print | Reports › Spending, Cashflow, Net worth |
+| Ledger CSV, QIF, archive bundle, preview (inside `/app/settings/data`) | Reports › Export |
+| Scheduled backups, retention, status; ledger self-check and history | Settings › Data and backups; failures in Home's review line |
+| Language, theme | Settings › Preferences (one page) |
+| Home layout | Settings › Preferences › *Home page*, and the Customize panel on Home |
+| Default currency, time zone, version, last backup (settings overview) | Settings › General |
+| Two-step sign-in, sessions, personal access tokens | Settings › Security |
+| Sign out, theme quick switch | Settings menu |
+| Restore and verify-backup | Command line only (unchanged); Data and backups explains it |
+
+Every current route is either kept or redirected: `/app/settings/language`
+and `/app/settings/appearance` go to Preferences, `/app/settings/trash` to
+Transactions › Deleted, `/app/import/dividends` to Import › Dividends, and
+the old `?view=` and `?tab=` addresses to their pages.
+
+### Duplications found
+
+- **Brand and Home link** both opened Home. The brand is now the Home link
+  (marked current on Home); phones keep *Home* at the top of the menu.
+- **Ledger menu**: *Accounts* in the pages column and *All accounts* under the
+  pins. The pins column no longer repeats it.
+- **Settings overview** (`/app/settings`) repeats the side list as cards. It
+  becomes *General*, which shows facts (default currency, time zone,
+  version), not links.
+- **Language and Appearance** are two thin pages under one menu entry. They
+  merge into *Preferences*, which also holds the Home page settings.
+- **Customize** opens from four places (header on Home, the headline menu,
+  the More tile, Preferences). Kept: all open the same panel, each where the
+  owner happens to be.
+- **Gains** in Investments and the Reports menu: one page, the Reports entry
+  is marked *in Investments*.
+
+### Gaps and defects found in the current app
+
+- `/app/settings/data` is missing from the settings side list
+  (`routes/app/settings/+layout.svelte` lists Overview, Appearance, Language,
+  Currencies, Security, Trash). Backups and export are reachable only from
+  the overview cards.
+- "Trash" sounds like a general bin but holds only soft-deleted
+  transactions.
+- Holding accounts appear in the account list tree next to everyday
+  accounts; nothing filters them out.
+- Institutions, tags and payees have APIs but no screen to manage them.
+- The import page carries five jobs (files, connections, rules, profiles,
+  dividend review) in one long screen.
+- *Add* on account and category pages does not say what it adds. It is now
+  *Add transaction*; a brokerage also shows *Record trade or dividend*.
+
+### How other apps place the same things
+
+Monarch keeps institutions (connections), categories, merchants, rules and
+tags under Settings and shows investment holdings inside their account.
+Firefly III groups them as *Classification* (categories, tags) and
+*Automation* (rules, recurring). Actual and YNAB list accounts in a sidebar
+grouped by type. Quicken, like Monarch, lists a brokerage as one account with
+its holdings inside. Rekenraam keeps weekly tasks (categories, payees, import,
+reconcile) in Ledger and puts set-and-forget configuration (rules, profiles,
+connections) beside the task that uses it (Import), rather than burying it in
+Settings. Investment positions follow Monarch and Quicken: inside the brokerage
+account, never as accounts of their own.

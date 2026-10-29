@@ -116,7 +116,7 @@ Deliver incrementally using the design's proposed split:
    then further widgets for existing capabilities.
 
 Tracking issue #441; slices #436–#440, object navigation #442, Payees page
-#443. Navigation decisions (#435) are recorded in the design. Preserve every existing route and financial contract, explicit
+#443, Tags view #444. Navigation decisions (#435) are recorded in the design. Preserve every existing route and financial contract, explicit
 scope/completeness, localization, both themes and usable phone/keyboard flows.
 R7a's broader entry helpers and configurable shortcut presets remain separate.
 
