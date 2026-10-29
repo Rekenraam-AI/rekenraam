@@ -964,6 +964,16 @@ validation.
   248.5/262.5 s. The act threshold stopped firing; investigate still fires.
   Hosted CI passed at `0ac0a6cf`. The baseline/reset contract is recorded at
   the top of this ledger; current head is 2 after #417.
+- #419 (2026-10-29): [post-baseline profiling](reviews/race-suite-reprofile-2026-10-29.md)
+  records six matched application race passes, a complete profile and native
+  probes at `d524eecf` / `f4ee790f`. Current isolated median is 226.3 s; both
+  full gates time out in the application package at 300 s, with all other
+  packages passing. Both ADR 0016 triggers fire. Preparation and connection
+  setup remain 30.69% / 17.79% of sampled CPU; migration work is 0.82%.
+  The ranked remedy is a bounded production read-query compilation experiment.
+  Its [issue draft](reviews/race-suite-remedy-issue-draft-2026-10-29.md) awaits
+  explicit GitHub-publication authorization after automatic approval review
+  rejection; that acceptance remains open. No runtime or test-policy change.
 - #418 (2026-10-26): unused `InstrumentSearchProvider` and
   `InstrumentSearchCandidate` declarations removed after the schema review.
   #417's deletion guard and #420's backup-verification exit status are

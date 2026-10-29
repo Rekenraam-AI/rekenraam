@@ -127,6 +127,34 @@ Backend Tests and Coverage pass at `4b3ef084`; hosted runners are not a timing
 measurement. No further policy amendment is made. Reprofiling the new baseline
 against the investigate threshold is #419.
 
+**#419 result (2026-10-29).** At `d524eecf`, three uncached isolated
+application runs have median **226.3 s**; interleaved fresh #405 runs have
+median **219.5 s**, with a large same-source spread. Both unchanged full gates
+now **time out at 300 s** in the application package; all other packages pass.
+The durations are censored, not completed timings. Both investigate and act
+fire; the response is required before the next feature slice. The complete
+profiled application run passes, separately from the timing median.
+
+Explicit preparation is **30.69%** of sampled CPU and driver connection setup
+(including schema load) **17.79%**. Migration work is **0.82%**; 19.33% is
+unattributed external code, not safely assignable to those buckets. Ranked
+recommendation: (1) a bounded, equivalence-preserving compilation experiment
+on foundation self-check, effective lot movements and replay-intent reads;
+(2) further trigger/view slimming only with a specific semantic-equivalence
+case and measured gain; (3) an explicit owner resource/deadline decision if
+bounded production optimization cannot clear act. The first candidate's
+preparation union is 9.11% of CPU: halving it suggests 4.55% CPU savings,
+roughly 10 isolated seconds only if wall time scales proportionally. It does
+not promise 30% headroom. No deadline, concurrency, durability, cache or
+coverage policy changes here; the global cache remains declined.
+
+The [report and evidence](../reviews/race-suite-reprofile-2026-10-29.md)
+record phase/package timings, case digests, profile attribution and probes.
+The chosen remedy has a [reviewable issue draft](../reviews/race-suite-remedy-issue-draft-2026-10-29.md).
+Automatic approval review rejected GitHub publication without explicit user
+authorization, so filing remains pending and #419's third acceptance item
+remains open. This does not clear the act rule or authorize a feature slice.
+
 ## References
 
 - [ADR 0014](0014-native-sqlite-driver.md), native driver admission.
@@ -135,3 +163,4 @@ against the investigate threshold is #419.
 - [#164](https://github.com/sergeyfarin/rekenraam/issues/164), development feedback.
 - [Race-suite cost investigation](../reviews/race-suite-cost-2026-10-24.md), #402 amendment.
 - [Statement compilation cost](../reviews/statement-compilation-2026-10-24.md), #404 result.
+- [Post-baseline race reprofile](../reviews/race-suite-reprofile-2026-10-29.md), #419 result.

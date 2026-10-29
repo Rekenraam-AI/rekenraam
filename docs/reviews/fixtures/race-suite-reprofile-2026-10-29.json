@@ -1,0 +1,1368 @@
+{
+  "issue": 419,
+  "sources": {
+    "base": "f4ee790fad60b01efb2262dc626efdb412c97b3b",
+    "head": "d524eecf4be639494597ea7b2f6fcc6b3969c7fc",
+    "base_binary_sha256": "644d3869791b92e6aab3c92753bb32ff926056a0a2f0a637698fc0091102a0bf",
+    "head_binary_sha256": "f4a21ca42c852a1e63945f9e35e7886e2a410ad27ca4128655a86b60824411ed"
+  },
+  "conditions": {
+    "recorded_utc": "2026-10-29T10:33:00.131239+00:00",
+    "base_sha": "f4ee790fad60b01efb2262dc626efdb412c97b3b",
+    "head_sha": "d524eecf4be639494597ea7b2f6fcc6b3969c7fc",
+    "backend_diff_at_start": "",
+    "host": {
+      "kernel": "6.8.0-147-generic",
+      "cpu_count": 10,
+      "affinity_cpus": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "cpu_model": "AMD EPYC 3251 8-Core Processor",
+      "mem_total_kib": 19665672,
+      "go": "go version go1.27.3 linux/amd64",
+      "compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+      "GOMAXPROCS": null,
+      "GOCACHE": "/tmp/rekenraam-419/go-cache",
+      "GOMODCACHE": "/home/coder/go/pkg/mod",
+      "sqlite": "3.53.4 bundled by github.com/mattn/go-sqlite3 v1.14.52"
+    },
+    "excluded_setup_attempts": [
+      "Default Go cache was read-only under the sandbox; copied build cache into writable /tmp before measurements.",
+      "First prebuilt application attempt stopped immediately: sandbox forbade httptest loopback socket. All accepted runs use the same unsandboxed environment."
+    ],
+    "constraints": {
+      "race": true,
+      "full_synchronous": true,
+      "statement_cache_size": 0,
+      "full_gate_packages": 2,
+      "package_timeout_s": 300,
+      "fixed_parallelism_or_cpu_cap": false
+    }
+  },
+  "runs": [
+    {
+      "name": "compile-base",
+      "tree": "/tmp/rekenraam-419/base",
+      "command": [
+        "./scripts/go-backend.sh",
+        "test",
+        "-race",
+        "-c",
+        "-o",
+        "/tmp/rekenraam-419/accepted/base-app.test",
+        "./internal/app"
+      ],
+      "started_utc": "2026-10-29T10:32:45.592628+00:00",
+      "wall_s": 2.711,
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "compile-head",
+      "tree": "/home/coder/Repos/rekenraam",
+      "command": [
+        "./scripts/go-backend.sh",
+        "test",
+        "-race",
+        "-c",
+        "-o",
+        "/tmp/rekenraam-419/accepted/head-app.test",
+        "./internal/app"
+      ],
+      "started_utc": "2026-10-29T10:32:48.303951+00:00",
+      "wall_s": 2.672,
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "app-base-1",
+      "tree": "/tmp/rekenraam-419/base/backend/internal/app",
+      "command": [
+        "go",
+        "tool",
+        "test2json",
+        "-t",
+        "-p",
+        "rekenraam/backend/internal/app",
+        "/tmp/rekenraam-419/accepted/base-app.test",
+        "-test.v=test2json",
+        "-test.count=1",
+        "-test.timeout=5m"
+      ],
+      "started_utc": "2026-10-29T10:32:50.976849+00:00",
+      "wall_s": 182.17,
+      "exit": 0,
+      "log_sha256": "4420b132b5d3658bb71d2d2ea9604c22f2d920a7e2c7f1e0fda91ce18eb7ad80",
+      "package_wall_s": 182.103,
+      "leaves": 2453,
+      "leaf_work_s": 1781.4,
+      "leaf_case_name_sha256": "cc0ed1a7c397e7032bb2e7b250ac0502178942c5086e5b20a92f5705668b542f",
+      "outcomes": {
+        "pass": 2449,
+        "skip": 4
+      },
+      "skips": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "slowest_leaves": [
+        {
+          "name": "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass",
+          "wall_s": 23.28
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/cash_in_lieu",
+          "wall_s": 16.32
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_cash_in_lieu",
+          "wall_s": 16.2
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/capital_return_then_sale",
+          "wall_s": 15.56
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_sale",
+          "wall_s": 15.36
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/write_off",
+          "wall_s": 15.25
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/partial_sale",
+          "wall_s": 14.98
+        },
+        {
+          "name": "TestRecurringDuePreservesMoreThanOnePage",
+          "wall_s": 8.56
+        },
+        {
+          "name": "TestForecastInputAndOutputBudgets/converted_series_counts_toward_output_budget",
+          "wall_s": 8.2
+        },
+        {
+          "name": "TestInvestmentAuditTransferCorporateActionChain/pooled_lot",
+          "wall_s": 6.7
+        },
+        {
+          "name": "TestInvestmentAuditTransferCorporateActionChain/source_lots",
+          "wall_s": 6.43
+        },
+        {
+          "name": "TestPriceHistoryTraversesMoreThanFiveHundredRowsWithBoundCursor",
+          "wall_s": 5.92
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/specific_lot",
+          "wall_s": 5.34
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/fifo",
+          "wall_s": 5.21
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/average_cost",
+          "wall_s": 4.99
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/lifo",
+          "wall_s": 4.91
+        },
+        {
+          "name": "TestFXCoverageCursorSurvivesReopenAcrossManyGapsAndPairs",
+          "wall_s": 4.87
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/long/lifo",
+          "wall_s": 4.77
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/long/fifo",
+          "wall_s": 4.75
+        },
+        {
+          "name": "TestThrottleRolloverRealConsumersPreserveReplacementBudget/mfa_code/success",
+          "wall_s": 4.59
+        }
+      ]
+    },
+    {
+      "name": "app-head-1",
+      "tree": "/home/coder/Repos/rekenraam/backend/internal/app",
+      "command": [
+        "go",
+        "tool",
+        "test2json",
+        "-t",
+        "-p",
+        "rekenraam/backend/internal/app",
+        "/tmp/rekenraam-419/accepted/head-app.test",
+        "-test.v=test2json",
+        "-test.count=1",
+        "-test.timeout=5m"
+      ],
+      "started_utc": "2026-10-29T10:35:53.147683+00:00",
+      "wall_s": 224.993,
+      "exit": 0,
+      "log_sha256": "76ab9d1176ac537cf137f27766a786e029696fa7b0b2abf4080df6dc31606324",
+      "package_wall_s": 224.904,
+      "leaves": 2476,
+      "leaf_work_s": 2197.79,
+      "leaf_case_name_sha256": "7d5ee6c814b12f0c286f9b689d6a8f0c5f55031ce9cd77219a831f4f8287e157",
+      "outcomes": {
+        "pass": 2472,
+        "skip": 4
+      },
+      "skips": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "slowest_leaves": [
+        {
+          "name": "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass",
+          "wall_s": 33.47
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_cash_in_lieu",
+          "wall_s": 20.65
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/cash_in_lieu",
+          "wall_s": 19.72
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/capital_return_then_sale",
+          "wall_s": 19.1
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_sale",
+          "wall_s": 19.03
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/write_off",
+          "wall_s": 18.85
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/partial_sale",
+          "wall_s": 18.55
+        },
+        {
+          "name": "TestForecastInputAndOutputBudgets/converted_series_counts_toward_output_budget",
+          "wall_s": 14.25
+        },
+        {
+          "name": "TestRecurringDuePreservesMoreThanOnePage",
+          "wall_s": 9.17
+        },
+        {
+          "name": "TestInvestmentAuditTransferCorporateActionChain/pooled_lot",
+          "wall_s": 6.94
+        },
+        {
+          "name": "TestInvestmentAuditTransferCorporateActionChain/source_lots",
+          "wall_s": 6.58
+        },
+        {
+          "name": "TestPriceHistoryTraversesMoreThanFiveHundredRowsWithBoundCursor",
+          "wall_s": 5.94
+        },
+        {
+          "name": "TestFXCoverageCursorSurvivesReopenAcrossManyGapsAndPairs",
+          "wall_s": 5.41
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/lifo",
+          "wall_s": 5.36
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/average_cost",
+          "wall_s": 5.3
+        },
+        {
+          "name": "TestThrottleRolloverRealConsumersPreserveReplacementBudget/mfa_password_release/success",
+          "wall_s": 5.25
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/fifo",
+          "wall_s": 5.23
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/specific_lot",
+          "wall_s": 5.14
+        },
+        {
+          "name": "TestReauthSuccessClearsTheSessionBudget",
+          "wall_s": 5.13
+        },
+        {
+          "name": "TestThrottleRolloverRealConsumersPreserveReplacementBudget/mfa_code/success",
+          "wall_s": 5.06
+        }
+      ]
+    },
+    {
+      "name": "app-head-2",
+      "tree": "/home/coder/Repos/rekenraam/backend/internal/app",
+      "command": [
+        "go",
+        "tool",
+        "test2json",
+        "-t",
+        "-p",
+        "rekenraam/backend/internal/app",
+        "/tmp/rekenraam-419/accepted/head-app.test",
+        "-test.v=test2json",
+        "-test.count=1",
+        "-test.timeout=5m"
+      ],
+      "started_utc": "2026-10-29T10:39:38.140864+00:00",
+      "wall_s": 226.331,
+      "exit": 0,
+      "log_sha256": "4d69a05fcd75f678e7c62d08a33e96739227f3d6661791cd41f666cdbb692f3d",
+      "package_wall_s": 226.265,
+      "leaves": 2476,
+      "leaf_work_s": 2218.63,
+      "leaf_case_name_sha256": "7d5ee6c814b12f0c286f9b689d6a8f0c5f55031ce9cd77219a831f4f8287e157",
+      "outcomes": {
+        "pass": 2472,
+        "skip": 4
+      },
+      "skips": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "slowest_leaves": [
+        {
+          "name": "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass",
+          "wall_s": 30.52
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/cash_in_lieu",
+          "wall_s": 16.53
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_cash_in_lieu",
+          "wall_s": 16.49
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/capital_return_then_sale",
+          "wall_s": 16.3
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_sale",
+          "wall_s": 15.59
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/partial_sale",
+          "wall_s": 15.25
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/write_off",
+          "wall_s": 14
+        },
+        {
+          "name": "TestForecastInputAndOutputBudgets/converted_series_counts_toward_output_budget",
+          "wall_s": 9.35
+        },
+        {
+          "name": "TestInvestmentAuditTransferCorporateActionChain/pooled_lot",
+          "wall_s": 9.29
+        },
+        {
+          "name": "TestInvestmentAuditTransferCorporateActionChain/source_lots",
+          "wall_s": 8.89
+        },
+        {
+          "name": "TestRecurringDuePreservesMoreThanOnePage",
+          "wall_s": 8.32
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/fifo",
+          "wall_s": 7.12
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/average_cost",
+          "wall_s": 6.96
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/lifo",
+          "wall_s": 6.92
+        },
+        {
+          "name": "TestPriceHistoryTraversesMoreThanFiveHundredRowsWithBoundCursor",
+          "wall_s": 6.72
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/specific_lot",
+          "wall_s": 6.34
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/long/fifo",
+          "wall_s": 6.15
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/long/specific_lot",
+          "wall_s": 6.07
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/long/average_cost",
+          "wall_s": 5.8
+        },
+        {
+          "name": "TestFXCoverageCursorSurvivesReopenAcrossManyGapsAndPairs",
+          "wall_s": 5.49
+        }
+      ]
+    },
+    {
+      "name": "app-base-2",
+      "tree": "/tmp/rekenraam-419/base/backend/internal/app",
+      "command": [
+        "go",
+        "tool",
+        "test2json",
+        "-t",
+        "-p",
+        "rekenraam/backend/internal/app",
+        "/tmp/rekenraam-419/accepted/base-app.test",
+        "-test.v=test2json",
+        "-test.count=1",
+        "-test.timeout=5m"
+      ],
+      "started_utc": "2026-10-29T10:43:24.472534+00:00",
+      "wall_s": 219.527,
+      "exit": 0,
+      "log_sha256": "ec62fda991965761882f9aa7bada823e93cc9a0a8f5c09657dc8595cc5080ab4",
+      "package_wall_s": 219.452,
+      "leaves": 2453,
+      "leaf_work_s": 2146.39,
+      "leaf_case_name_sha256": "cc0ed1a7c397e7032bb2e7b250ac0502178942c5086e5b20a92f5705668b542f",
+      "outcomes": {
+        "pass": 2449,
+        "skip": 4
+      },
+      "skips": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "slowest_leaves": [
+        {
+          "name": "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass",
+          "wall_s": 23.54
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_cash_in_lieu",
+          "wall_s": 17.3
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/cash_in_lieu",
+          "wall_s": 16.84
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/partial_sale",
+          "wall_s": 16.61
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_sale",
+          "wall_s": 16.6
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/write_off",
+          "wall_s": 16.25
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/capital_return_then_sale",
+          "wall_s": 15.88
+        },
+        {
+          "name": "TestForecastInputAndOutputBudgets/converted_series_counts_toward_output_budget",
+          "wall_s": 13.07
+        },
+        {
+          "name": "TestPriceHistoryTraversesMoreThanFiveHundredRowsWithBoundCursor",
+          "wall_s": 10.2
+        },
+        {
+          "name": "TestRecurringDuePreservesMoreThanOnePage",
+          "wall_s": 9.57
+        },
+        {
+          "name": "TestFXCoverageCursorSurvivesReopenAcrossManyGapsAndPairs",
+          "wall_s": 5.98
+        },
+        {
+          "name": "TestInvestmentAuditTransferCorporateActionChain/source_lots",
+          "wall_s": 5.75
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/fifo",
+          "wall_s": 5.55
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/average_cost",
+          "wall_s": 5.41
+        },
+        {
+          "name": "TestInvestmentAuditTransferCorporateActionChain/pooled_lot",
+          "wall_s": 5.32
+        },
+        {
+          "name": "TestFXCoverageFailedDatesDoNotStarveHistoryAndRetainBoundedRetry/future_date",
+          "wall_s": 5.25
+        },
+        {
+          "name": "TestFXCoverageFailedDatesDoNotStarveHistoryAndRetainBoundedRetry/malformed",
+          "wall_s": 5.24
+        },
+        {
+          "name": "TestFXCoverageFailedDatesDoNotStarveHistoryAndRetainBoundedRetry/unsupported",
+          "wall_s": 5.19
+        },
+        {
+          "name": "TestFXCoverageFailedDatesDoNotStarveHistoryAndRetainBoundedRetry/missing_date",
+          "wall_s": 5.15
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/specific_lot",
+          "wall_s": 5.14
+        }
+      ]
+    },
+    {
+      "name": "app-base-3",
+      "tree": "/tmp/rekenraam-419/base/backend/internal/app",
+      "command": [
+        "go",
+        "tool",
+        "test2json",
+        "-t",
+        "-p",
+        "rekenraam/backend/internal/app",
+        "/tmp/rekenraam-419/accepted/base-app.test",
+        "-test.v=test2json",
+        "-test.count=1",
+        "-test.timeout=5m"
+      ],
+      "started_utc": "2026-10-29T10:47:03.999953+00:00",
+      "wall_s": 223.62,
+      "exit": 0,
+      "log_sha256": "6496694cd7fe55d9cfccaa61eec00d0f5c7b5d72a32b1e13e8552d63fe655b7c",
+      "package_wall_s": 223.548,
+      "leaves": 2453,
+      "leaf_work_s": 2185.26,
+      "leaf_case_name_sha256": "cc0ed1a7c397e7032bb2e7b250ac0502178942c5086e5b20a92f5705668b542f",
+      "outcomes": {
+        "pass": 2449,
+        "skip": 4
+      },
+      "skips": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "slowest_leaves": [
+        {
+          "name": "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass",
+          "wall_s": 32.76
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_cash_in_lieu",
+          "wall_s": 17.37
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/cash_in_lieu",
+          "wall_s": 17.31
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/capital_return_then_sale",
+          "wall_s": 16.9
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_sale",
+          "wall_s": 16.28
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/partial_sale",
+          "wall_s": 16.26
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/write_off",
+          "wall_s": 16.1
+        },
+        {
+          "name": "TestRecurringDuePreservesMoreThanOnePage",
+          "wall_s": 8.98
+        },
+        {
+          "name": "TestForecastInputAndOutputBudgets/converted_series_counts_toward_output_budget",
+          "wall_s": 8.3
+        },
+        {
+          "name": "TestInvestmentAuditTransferCorporateActionChain/pooled_lot",
+          "wall_s": 6.85
+        },
+        {
+          "name": "TestInvestmentAuditTransferCorporateActionChain/source_lots",
+          "wall_s": 6.5
+        },
+        {
+          "name": "TestPriceHistoryTraversesMoreThanFiveHundredRowsWithBoundCursor",
+          "wall_s": 6.14
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/lifo",
+          "wall_s": 5.99
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/average_cost",
+          "wall_s": 5.95
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/fifo",
+          "wall_s": 5.87
+        },
+        {
+          "name": "TestConsecutiveRestoresEachKeepTheirOwnSafetyCopy",
+          "wall_s": 5.7
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/specific_lot",
+          "wall_s": 5.57
+        },
+        {
+          "name": "TestFXCoverageCursorSurvivesReopenAcrossManyGapsAndPairs",
+          "wall_s": 5.29
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/long/lifo",
+          "wall_s": 5.27
+        },
+        {
+          "name": "TestInstrumentReturnsShortsGetNoReturn",
+          "wall_s": 5.26
+        }
+      ]
+    },
+    {
+      "name": "app-head-3",
+      "tree": "/home/coder/Repos/rekenraam/backend/internal/app",
+      "command": [
+        "go",
+        "tool",
+        "test2json",
+        "-t",
+        "-p",
+        "rekenraam/backend/internal/app",
+        "/tmp/rekenraam-419/accepted/head-app.test",
+        "-test.v=test2json",
+        "-test.count=1",
+        "-test.timeout=5m"
+      ],
+      "started_utc": "2026-10-29T10:50:47.620191+00:00",
+      "wall_s": 228.371,
+      "exit": 0,
+      "log_sha256": "a1b7f84d2e187f9a6875823c7b04c59f27597591297f89b3e50f23925d80fdec",
+      "package_wall_s": 228.302,
+      "leaves": 2476,
+      "leaf_work_s": 2226.53,
+      "leaf_case_name_sha256": "7d5ee6c814b12f0c286f9b689d6a8f0c5f55031ce9cd77219a831f4f8287e157",
+      "outcomes": {
+        "pass": 2472,
+        "skip": 4
+      },
+      "skips": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "slowest_leaves": [
+        {
+          "name": "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass",
+          "wall_s": 31.74
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_cash_in_lieu",
+          "wall_s": 16.52
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/cash_in_lieu",
+          "wall_s": 16.44
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/capital_return_then_sale",
+          "wall_s": 16.22
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/partial_sale",
+          "wall_s": 15.85
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_sale",
+          "wall_s": 15.8
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/write_off",
+          "wall_s": 15.47
+        },
+        {
+          "name": "TestPriceHistoryTraversesMoreThanFiveHundredRowsWithBoundCursor",
+          "wall_s": 9.82
+        },
+        {
+          "name": "TestRecurringDuePreservesMoreThanOnePage",
+          "wall_s": 9.77
+        },
+        {
+          "name": "TestForecastInputAndOutputBudgets/converted_series_counts_toward_output_budget",
+          "wall_s": 9.25
+        },
+        {
+          "name": "TestFXCoverageCursorSurvivesReopenAcrossManyGapsAndPairs",
+          "wall_s": 6.6
+        },
+        {
+          "name": "TestFXCoverageFailedDatesDoNotStarveHistoryAndRetainBoundedRetry/missing_date",
+          "wall_s": 5.85
+        },
+        {
+          "name": "TestFXCoverageFailedDatesDoNotStarveHistoryAndRetainBoundedRetry/unsupported",
+          "wall_s": 5.84
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/lifo",
+          "wall_s": 5.35
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/average_cost",
+          "wall_s": 5.32
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/specific_lot",
+          "wall_s": 5.29
+        },
+        {
+          "name": "TestInstrumentReturnsShortsGetNoReturn",
+          "wall_s": 5.26
+        },
+        {
+          "name": "TestFXCoverageFailedDatesDoNotStarveHistoryAndRetainBoundedRetry/malformed",
+          "wall_s": 5.2
+        },
+        {
+          "name": "TestFXCoverageFailedDatesDoNotStarveHistoryAndRetainBoundedRetry/future_date",
+          "wall_s": 5.16
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/fifo",
+          "wall_s": 5.16
+        }
+      ]
+    },
+    {
+      "name": "full-head-1",
+      "tree": "/home/coder/Repos/rekenraam",
+      "command": [
+        "./scripts/test-backend.sh"
+      ],
+      "started_utc": "2026-10-29T10:54:35.992069+00:00",
+      "wall_s": 421.438,
+      "exit": 1,
+      "log_sha256": "b3cf9c50ffd44766b4f289f5938b88e75030e9a375c7a79003b3c5e34c1d7898",
+      "package_wall_s": {
+        "rekenraam/backend/cmd/rekenraam": 80.611,
+        "rekenraam/backend/internal/api": 185.322,
+        "rekenraam/backend/internal/app": 300.194,
+        "rekenraam/backend/internal/appruntime": 4.983,
+        "rekenraam/backend/internal/config": 1.034,
+        "rekenraam/backend/internal/db": 114.972,
+        "rekenraam/backend/internal/exact": 1.04,
+        "rekenraam/backend/internal/marketdata": 1.086,
+        "rekenraam/backend/internal/onlinesource/trading212": 1.152,
+        "rekenraam/backend/internal/recur": 1.066,
+        "rekenraam/backend/internal/secretbox": 1.033,
+        "rekenraam/backend/internal/testdb": 6.461,
+        "rekenraam/backend/internal/totp": 1.035,
+        "rekenraam/backend/internal/web": 1.053,
+        "rekenraam/backend/migrations": 1.025
+      },
+      "package_status": {
+        "rekenraam/backend/cmd/rekenraam": "ok",
+        "rekenraam/backend/internal/api": "ok",
+        "rekenraam/backend/internal/app": "FAIL",
+        "rekenraam/backend/internal/appruntime": "ok",
+        "rekenraam/backend/internal/config": "ok",
+        "rekenraam/backend/internal/db": "ok",
+        "rekenraam/backend/internal/exact": "ok",
+        "rekenraam/backend/internal/marketdata": "ok",
+        "rekenraam/backend/internal/onlinesource/trading212": "ok",
+        "rekenraam/backend/internal/recur": "ok",
+        "rekenraam/backend/internal/secretbox": "ok",
+        "rekenraam/backend/internal/testdb": "ok",
+        "rekenraam/backend/internal/totp": "ok",
+        "rekenraam/backend/internal/web": "ok",
+        "rekenraam/backend/migrations": "ok"
+      },
+      "timeout": true,
+      "phases": {
+        "modules": {
+          "wall_s": 0.01,
+          "user_s": 0.01,
+          "sys_s": 0.02
+        },
+        "vet": {
+          "wall_s": 6.43,
+          "user_s": 34.58,
+          "sys_s": 2.47
+        },
+        "race-compile-vet": {
+          "wall_s": 30.34,
+          "user_s": 67.83,
+          "sys_s": 5.96
+        },
+        "race-tests": {
+          "wall_s": 384.18,
+          "user_s": 1558.52,
+          "sys_s": 907.52
+        }
+      }
+    },
+    {
+      "name": "full-head-2",
+      "tree": "/home/coder/Repos/rekenraam",
+      "command": [
+        "./scripts/test-backend.sh"
+      ],
+      "started_utc": "2026-10-29T11:02:28.264362+00:00",
+      "wall_s": 384.209,
+      "exit": 1,
+      "log_sha256": "8eb7898f576610f3f07ff29bb1a217194bbbed0c8fdbfce41b5fd8c6ea70d50c",
+      "package_wall_s": {
+        "rekenraam/backend/cmd/rekenraam": 71.72,
+        "rekenraam/backend/internal/api": 187.444,
+        "rekenraam/backend/internal/app": 300.275,
+        "rekenraam/backend/internal/appruntime": 5.268,
+        "rekenraam/backend/internal/config": 1.033,
+        "rekenraam/backend/internal/db": 121.536,
+        "rekenraam/backend/internal/exact": 1.048,
+        "rekenraam/backend/internal/marketdata": 1.105,
+        "rekenraam/backend/internal/onlinesource/trading212": 1.119,
+        "rekenraam/backend/internal/recur": 1.051,
+        "rekenraam/backend/internal/secretbox": 1.027,
+        "rekenraam/backend/internal/testdb": 6.788,
+        "rekenraam/backend/internal/totp": 1.038,
+        "rekenraam/backend/internal/web": 1.068,
+        "rekenraam/backend/migrations": 1.04
+      },
+      "package_status": {
+        "rekenraam/backend/cmd/rekenraam": "ok",
+        "rekenraam/backend/internal/api": "ok",
+        "rekenraam/backend/internal/app": "FAIL",
+        "rekenraam/backend/internal/appruntime": "ok",
+        "rekenraam/backend/internal/config": "ok",
+        "rekenraam/backend/internal/db": "ok",
+        "rekenraam/backend/internal/exact": "ok",
+        "rekenraam/backend/internal/marketdata": "ok",
+        "rekenraam/backend/internal/onlinesource/trading212": "ok",
+        "rekenraam/backend/internal/recur": "ok",
+        "rekenraam/backend/internal/secretbox": "ok",
+        "rekenraam/backend/internal/testdb": "ok",
+        "rekenraam/backend/internal/totp": "ok",
+        "rekenraam/backend/internal/web": "ok",
+        "rekenraam/backend/migrations": "ok"
+      },
+      "timeout": true,
+      "phases": {
+        "modules": {
+          "wall_s": 0.02,
+          "user_s": 0.02,
+          "sys_s": 0.01
+        },
+        "vet": {
+          "wall_s": 0.63,
+          "user_s": 1.16,
+          "sys_s": 0.41
+        },
+        "race-compile-vet": {
+          "wall_s": 6.88,
+          "user_s": 13.15,
+          "sys_s": 3.58
+        },
+        "race-tests": {
+          "wall_s": 376.12,
+          "user_s": 1593.29,
+          "sys_s": 888.45
+        }
+      }
+    },
+    {
+      "name": "profile-head",
+      "tree": "/home/coder/Repos/rekenraam/backend/internal/app",
+      "command": [
+        "go",
+        "tool",
+        "test2json",
+        "-t",
+        "-p",
+        "rekenraam/backend/internal/app",
+        "/tmp/rekenraam-419/accepted/head-app.test",
+        "-test.v=test2json",
+        "-test.count=1",
+        "-test.timeout=5m",
+        "-test.cpuprofile=/tmp/rekenraam-419/accepted/head.cpu"
+      ],
+      "started_utc": "2026-10-29T11:08:52.474285+00:00",
+      "wall_s": 275.938,
+      "exit": 0,
+      "log_sha256": "62df62f0ff7206fa9d584a2362f87d27278452bf3f5f7fda93c8a0d962fed7e9",
+      "package_wall_s": 275.842,
+      "leaves": 2476,
+      "leaf_work_s": 2684.49,
+      "leaf_case_name_sha256": "7d5ee6c814b12f0c286f9b689d6a8f0c5f55031ce9cd77219a831f4f8287e157",
+      "outcomes": {
+        "pass": 2472,
+        "skip": 4
+      },
+      "skips": [
+        "TestLargeBookExportAndSelfCheckStayBounded",
+        "TestMeasureReplaySelfCheckRuntime",
+        "TestPaymentInLieuAdmissionCostByDensity",
+        "TestPaymentInLieuAttributionCostByDensity"
+      ],
+      "slowest_leaves": [
+        {
+          "name": "TestTransferChainDeeperThanFormerRoundLimitPropagatesInOnePass",
+          "wall_s": 43.12
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_cash_in_lieu",
+          "wall_s": 21.21
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/cash_in_lieu",
+          "wall_s": 21.19
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/capital_return_then_sale",
+          "wall_s": 19.52
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/closed_sale",
+          "wall_s": 19.41
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/write_off",
+          "wall_s": 19.3
+        },
+        {
+          "name": "TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore/partial_sale",
+          "wall_s": 19.21
+        },
+        {
+          "name": "TestForecastInputAndOutputBudgets/converted_series_counts_toward_output_budget",
+          "wall_s": 13.04
+        },
+        {
+          "name": "TestRecurringDuePreservesMoreThanOnePage",
+          "wall_s": 12
+        },
+        {
+          "name": "TestInvestmentAuditTransferCorporateActionChain/pooled_lot",
+          "wall_s": 9.35
+        },
+        {
+          "name": "TestInvestmentAuditTransferCorporateActionChain/source_lots",
+          "wall_s": 8.84
+        },
+        {
+          "name": "TestPriceHistoryTraversesMoreThanFiveHundredRowsWithBoundCursor",
+          "wall_s": 7.87
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/average_cost",
+          "wall_s": 7.18
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/fifo",
+          "wall_s": 7.1
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/lifo",
+          "wall_s": 7.05
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/short/specific_lot",
+          "wall_s": 6.69
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/long/specific_lot",
+          "wall_s": 6.15
+        },
+        {
+          "name": "TestReauthSuccessClearsTheSessionBudget",
+          "wall_s": 6.14
+        },
+        {
+          "name": "TestInvestmentAuditCommandRegisterAndRestoredExport/long/lifo",
+          "wall_s": 6.1
+        },
+        {
+          "name": "TestFXCoverageCursorSurvivesReopenAcrossManyGapsAndPairs",
+          "wall_s": 6.05
+        }
+      ]
+    }
+  ],
+  "medians_s": {
+    "base": 219.452,
+    "head": 226.265
+  },
+  "leaf_names_added": [
+    "TestDividendCorrectedExDateContradictingProviderEvidenceWarns",
+    "TestGainsFXStatementConvertsOnlyTheCorrectedDividendIncome/amount_and_date_correction",
+    "TestGainsFXStatementConvertsOnlyTheCorrectedDividendIncome/currency_correction",
+    "TestInvestmentIncomeCountsOnlyTheEffectivePrimaryJournal/amount_correction",
+    "TestInvestmentIncomeCountsOnlyTheEffectivePrimaryJournal/currency_and_date_correction",
+    "TestInvestmentIncomeCountsOnlyTheEffectivePrimaryJournal/reinvestment_correction",
+    "TestInvestmentIncomeCountsOnlyTheEffectivePrimaryJournal/reversal",
+    "TestPaymentInLieuFieldCorrectionKeepsProviderLinkAndDedupe",
+    "TestReplaceDividendCorrectsDateCashAccountAndCurrency",
+    "TestReplaceDividendDateAcrossReconciledBoundaryRequiresOverride/into_the_reconciled_period",
+    "TestReplaceDividendDateAcrossReconciledBoundaryRequiresOverride/out_of_the_reconciled_period",
+    "TestReplaceDividendDateAcrossReconciledBoundaryRequiresOverride/within_the_reconciled_period",
+    "TestReplacePaymentInLieuCorrectsDateCashAccountAndCurrency",
+    "TestReplacePaymentInLieuDateAcrossReconciledBoundaryRequiresOverride",
+    "TestReplaceReinvestedDividendChangesInstrumentAndCostCurrency",
+    "TestReplaceReinvestedDividendDateAcrossCheckpointRequiresOverride",
+    "TestReplaceReinvestedDividendDateAfterDependentSaleNamesSale",
+    "TestReplaceReinvestedDividendDateReplaysAverageCostSale",
+    "TestReplaceReinvestedDividendMovesDateAndRestatesLaterSale",
+    "TestReplaceReinvestedDividendMovesHoldingAndReplaysBothPositions",
+    "TestReplaceReinvestedDividendRefusesInvalidatedSpecificLotElection",
+    "TestReplaceStandaloneWithholdingCorrectsDateAndCashAccount",
+    "TestReplaceTransferredReinvestmentFieldChangeNamesTransfer"
+  ],
+  "leaf_names_removed": [],
+  "leaf_work_by_name_set_s": {
+    "base": [
+      {
+        "common": 1781.4,
+        "variant_only": 0
+      },
+      {
+        "common": 2146.39,
+        "variant_only": 0
+      },
+      {
+        "common": 2185.26,
+        "variant_only": 0
+      }
+    ],
+    "head": [
+      {
+        "common": 2170.43,
+        "variant_only": 27.36
+      },
+      {
+        "common": 2189.47,
+        "variant_only": 29.16
+      },
+      {
+        "common": 2200.97,
+        "variant_only": 25.56
+      }
+    ]
+  },
+  "leaf_digest_method": "sha256 of sorted leaf names joined by newline with trailing newline",
+  "adr0016": {
+    "investigate": true,
+    "act_packages": [
+      "rekenraam/backend/internal/app"
+    ]
+  },
+  "profile": {
+    "sha256": "7ee98d2a0654fa0cf30e08586b98cb7da99729868d6692c371b610c1be39433d",
+    "reports": {
+      "cumulative": {
+        "command": [
+          "go",
+          "tool",
+          "pprof",
+          "-top",
+          "-nodecount=60",
+          "-cum",
+          "/tmp/rekenraam-419/accepted/head-app.test",
+          "/tmp/rekenraam-419/accepted/head.cpu"
+        ],
+        "text": "File: head-app.test\nBuild ID: e353b30d461a463fb63f5f5127702048d6133a58\nType: cpu\nTime: 2026-10-29 12:08:52 CET\nDuration: 272.68s, Total samples = 1530.40s (561.24%)\nShowing nodes accounting for 1262.15s, 82.47% of 1530.40s total\nDropped 5355 nodes (cum <= 7.65s)\nShowing top 60 nodes out of 320\n      flat  flat%   sum%        cum   cum%\n         0     0%     0%   1082.20s 70.71%  testing.tRunner\n   961.60s 62.83% 62.83%    966.53s 63.16%  runtime.cgocall\n     0.95s 0.062% 62.90%    639.84s 41.81%  database/sql.withLock\n     0.44s 0.029% 62.92%    478.77s 31.28%  github.com/mattn/go-sqlite3.(*SQLiteConn).prepare\n     0.09s 0.0059% 62.93%    470.46s 30.74%  github.com/mattn/go-sqlite3.(*SQLiteConn).prepare.func2 (inline)\n     0.11s 0.0072% 62.94%    469.71s 30.69%  github.com/mattn/go-sqlite3._Cfunc__sqlite3_prepare_v2_internal\n     0.06s 0.0039% 62.94%    444.71s 29.06%  database/sql.(*DB).retry\n     0.24s 0.016% 62.96%    432.23s 28.24%  github.com/mattn/go-sqlite3.(*SQLiteConn).prepareWithCache\n     0.53s 0.035% 62.99%    368.02s 24.05%  database/sql.(*DB).queryDC\n     0.24s 0.016% 63.01%    359.88s 23.52%  database/sql.(*DB).queryDC.func1\n     0.21s 0.014% 63.02%    358.24s 23.41%  database/sql.ctxDriverQuery\n     0.20s 0.013% 63.03%    358.03s 23.39%  github.com/mattn/go-sqlite3.(*SQLiteConn).QueryContext\n     0.30s  0.02% 63.05%    357.83s 23.38%  github.com/mattn/go-sqlite3.(*SQLiteConn).query\n   295.89s 19.33% 82.39%    295.89s 19.33%  runtime._ExternalCode\n         0     0% 82.39%    295.89s 19.33%  runtime._System\n     0.12s 0.0078% 82.40%    272.90s 17.83%  database/sql.(*DB).conn\n         0     0% 82.40%    272.30s 17.79%  database/sql.dsnConnector.Connect\n     0.02s 0.0013% 82.40%    272.30s 17.79%  github.com/mattn/go-sqlite3.(*SQLiteDriver).Open\n         0     0% 82.40%    269.46s 17.61%  github.com/mattn/go-sqlite3.(*SQLiteDriver).Open.func6\n         0     0% 82.40%    269.40s 17.60%  github.com/mattn/go-sqlite3.(*SQLiteDriver).Open.func6.1 (inline)\n         0     0% 82.40%    269.40s 17.60%  github.com/mattn/go-sqlite3._Cfunc_sqlite3_exec\n     0.09s 0.0059% 82.40%    262.42s 17.15%  database/sql.(*Tx).QueryContext\n         0     0% 82.40%    247.77s 16.19%  database/sql.(*DB).PingContext\n     0.01s 0.00065% 82.40%    247.76s 16.19%  database/sql.(*DB).PingContext.func1\n         0     0% 82.40%    177.72s 11.61%  rekenraam/backend/internal/db.Open\n     0.02s 0.0013% 82.40%    168.37s 11.00%  rekenraam/backend/internal/app.(*SelfCheckService).RunSelfCheck\n     0.02s 0.0013% 82.41%    164.44s 10.74%  rekenraam/backend/internal/app.(*SelfCheckService).executeChecks\n     0.01s 0.00065% 82.41%    150.74s  9.85%  rekenraam/backend/internal/testdb.Open\n     0.01s 0.00065% 82.41%    147.59s  9.64%  rekenraam/backend/internal/app.newInvestmentsTestFixtureWithOptions\n         0     0% 82.41%    144.63s  9.45%  rekenraam/backend/internal/app.newInvestmentsTestFixture\n     0.06s 0.0039% 82.41%    141.57s  9.25%  github.com/mattn/go-sqlite3.(*SQLiteConn).exec\n         0     0% 82.41%       140s  9.15%  rekenraam/backend/internal/app.openConnectionTestDatabase\n     0.14s 0.0091% 82.42%    134.04s  8.76%  database/sql.(*DB).execDC\n     0.02s 0.0013% 82.42%    133.57s  8.73%  rekenraam/backend/internal/db.insertTransactionWithAuditEventTx\n     0.07s 0.0046% 82.43%    133.01s  8.69%  database/sql.(*DB).execDC.func2\n     0.04s 0.0026% 82.43%    131.91s  8.62%  database/sql.ctxDriverExec\n     0.02s 0.0013% 82.43%    131.87s  8.62%  github.com/mattn/go-sqlite3.(*SQLiteConn).ExecContext\n     0.08s 0.0052% 82.44%    130.88s  8.55%  database/sql.(*DB).QueryContext\n     0.07s 0.0046% 82.44%    130.78s  8.55%  database/sql.(*DB).QueryContext.func1\n     0.04s 0.0026% 82.44%    130.69s  8.54%  database/sql.(*DB).query\n     0.04s 0.0026% 82.45%    123.57s  8.07%  rekenraam/backend/internal/db.runInvestmentJournalsWithGuardTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n         0     0% 82.45%    121.55s  7.94%  rekenraam/backend/internal/db.createTransactionWithAuditTx\n     0.01s 0.00065% 82.45%    116.40s  7.61%  rekenraam/backend/internal/app.requireInvestmentSelfCheckPasses\n     0.10s 0.0065% 82.45%    113.82s  7.44%  rekenraam/backend/internal/db.(*TransactionRepository).insertTransactionVersion\n         0     0% 82.45%    108.52s  7.09%  rekenraam/backend/internal/app.mustRunInvestmentSelfCheck\n         0     0% 82.45%     96.59s  6.31%  rekenraam/backend/internal/db.executeInvestmentJournalsWithGuardTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n     0.07s 0.0046% 82.46%     95.94s  6.27%  database/sql.(*Tx).ExecContext\n         0     0% 82.46%     93.23s  6.09%  rekenraam/backend/internal/app.requireKnownBasisSelfCheckPasses\n     0.13s 0.0085% 82.47%     78.45s  5.13%  database/sql.(*Rows).Next\n     0.01s 0.00065% 82.47%     76.56s  5.00%  rekenraam/backend/internal/db.executeInvestmentWriteTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n         0     0% 82.47%     76.55s  5.00%  rekenraam/backend/internal/db.executeInvestmentWriteWithGuardTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n     0.01s 0.00065% 82.47%     75.61s  4.94%  rekenraam/backend/internal/db.(*InvestmentRepository).createTransactionAndLot\n         0     0% 82.47%     73.89s  4.83%  rekenraam/backend/internal/app.(*InvestmentService).buy\n         0     0% 82.47%     73.68s  4.81%  rekenraam/backend/internal/app.(*InvestmentService).Buy\n     0.01s 0.00065% 82.47%     70.10s  4.58%  rekenraam/backend/internal/db.runInvestmentJournalsWithGuardTx[go.shape.struct { rekenraam/backend/internal/db.disposals []rekenraam/backend/internal/db.LotDisposalRecord; rekenraam/backend/internal/db.decision rekenraam/backend/internal/db.DisposalDecisionRecord }]\n     0.07s 0.0046% 82.47%     67.41s  4.40%  rekenraam/backend/internal/db.(*statementSet).ExecContext\n         0     0% 82.47%     66.76s  4.36%  rekenraam/backend/internal/db.(*InvestmentRepository).CreateTransactionAndLot (inline)\n         0     0% 82.47%     65.79s  4.30%  database/sql.(*DB).Close\n         0     0% 82.47%     65.74s  4.30%  database/sql.(*driverConn).finalClose\n         0     0% 82.47%     65.73s  4.29%  database/sql.(*driverConn).finalClose.func2\n"
+      },
+      "flat": {
+        "command": [
+          "go",
+          "tool",
+          "pprof",
+          "-top",
+          "-nodecount=60",
+          "/tmp/rekenraam-419/accepted/head-app.test",
+          "/tmp/rekenraam-419/accepted/head.cpu"
+        ],
+        "text": "File: head-app.test\nBuild ID: e353b30d461a463fb63f5f5127702048d6133a58\nType: cpu\nTime: 2026-10-29 12:08:52 CET\nDuration: 272.68s, Total samples = 1530.40s (561.24%)\nShowing nodes accounting for 1380.46s, 90.20% of 1530.40s total\nDropped 5355 nodes (cum <= 7.65s)\nShowing top 60 nodes out of 320\n      flat  flat%   sum%        cum   cum%\n   961.60s 62.83% 62.83%    966.53s 63.16%  runtime.cgocall\n   295.89s 19.33% 82.17%    295.89s 19.33%  runtime._ExternalCode\n    18.59s  1.21% 83.38%     18.59s  1.21%  golang.org/x/crypto/argon2.xorBlocksSSE2\n    18.44s  1.20% 84.59%     18.44s  1.20%  runtime.futex\n    17.91s  1.17% 85.76%     17.91s  1.17%  racecall\n    17.44s  1.14% 86.90%     17.44s  1.14%  golang.org/x/crypto/argon2.blamkaSSE4\n    12.28s   0.8% 87.70%     12.28s   0.8%  golang.org/x/crypto/argon2.mixBlocksSSE2\n    11.76s  0.77% 88.47%     11.76s  0.77%  runtime.memclrNoHeapPointers\n     3.57s  0.23% 88.70%     52.95s  3.46%  golang.org/x/crypto/argon2.processBlockSSE\n     2.64s  0.17% 88.87%      7.68s   0.5%  runtime.tryDeferToSpanScan\n     1.82s  0.12% 88.99%      8.32s  0.54%  runtime.scanObject\n     1.70s  0.11% 89.10%     10.79s  0.71%  runtime.newobject\n     1.62s  0.11% 89.21%     55.24s  3.61%  golang.org/x/crypto/argon2.processBlocks.func1\n     1.26s 0.082% 89.29%     29.94s  1.96%  runtime.mallocgc\n     0.97s 0.063% 89.36%      9.39s  0.61%  runtime.mallocgcSmallScanNoHeader\n     0.95s 0.062% 89.42%    639.84s 41.81%  database/sql.withLock\n     0.91s 0.059% 89.48%      8.06s  0.53%  runtime.checkptrAlignment\n     0.85s 0.056% 89.53%     34.11s  2.23%  database/sql.(*Rows).close\n     0.74s 0.048% 89.58%     17.55s  1.15%  runtime.findRunnable\n     0.68s 0.044% 89.62%     62.22s  4.07%  database/sql.(*Rows).nextLocked\n     0.53s 0.035% 89.66%    368.02s 24.05%  database/sql.(*DB).queryDC\n     0.52s 0.034% 89.69%      8.66s  0.57%  github.com/mattn/go-sqlite3.(*SQLiteRows).readStepResultLocked\n     0.50s 0.033% 89.73%     55.25s  3.61%  github.com/mattn/go-sqlite3.(*SQLiteRows).Next\n     0.49s 0.032% 89.76%      8.92s  0.58%  runtime.scanSpan\n     0.44s 0.029% 89.79%    478.77s 31.28%  github.com/mattn/go-sqlite3.(*SQLiteConn).prepare\n     0.43s 0.028% 89.82%      8.42s  0.55%  database/sql.(*Rows).scanLocked\n     0.42s 0.027% 89.84%     15.75s  1.03%  runtime.makeslice\n     0.40s 0.026% 89.87%     24.93s  1.63%  runtime.gcDrain\n     0.32s 0.021% 89.89%     24.35s  1.59%  runtime.schedule\n     0.30s  0.02% 89.91%    357.83s 23.38%  github.com/mattn/go-sqlite3.(*SQLiteConn).query\n     0.30s  0.02% 89.93%     22.52s  1.47%  github.com/mattn/go-sqlite3.(*SQLiteRows).Close\n     0.30s  0.02% 89.95%     30.20s  1.97%  github.com/mattn/go-sqlite3.(*SQLiteStmt).Close\n     0.30s  0.02% 89.97%      8.36s  0.55%  runtime.markroot\n     0.26s 0.017% 89.98%     63.41s  4.14%  database/sql.(*Rows).Next.func1\n     0.24s 0.016% 90.00%    359.88s 23.52%  database/sql.(*DB).queryDC.func1\n     0.24s 0.016% 90.02%    432.23s 28.24%  github.com/mattn/go-sqlite3.(*SQLiteConn).prepareWithCache\n     0.21s 0.014% 90.03%    358.24s 23.41%  database/sql.ctxDriverQuery\n     0.20s 0.013% 90.04%    358.03s 23.39%  github.com/mattn/go-sqlite3.(*SQLiteConn).QueryContext\n     0.20s 0.013% 90.06%     43.63s  2.85%  runtime.systemstack\n     0.16s  0.01% 90.07%     46.85s  3.06%  database/sql.(*Row).Scan\n     0.14s 0.0091% 90.08%    134.04s  8.76%  database/sql.(*DB).execDC\n     0.14s 0.0091% 90.08%     45.32s  2.96%  github.com/mattn/go-sqlite3._Cfunc__sqlite3_step_internal\n     0.13s 0.0085% 90.09%     78.45s  5.13%  database/sql.(*Rows).Next\n     0.12s 0.0078% 90.10%    272.90s 17.83%  database/sql.(*DB).conn\n     0.12s 0.0078% 90.11%      9.68s  0.63%  sync.(*Pool).Get\n     0.11s 0.0072% 90.12%      9.15s   0.6%  database/sql.(*Rows).Scan\n     0.11s 0.0072% 90.12%    469.71s 30.69%  github.com/mattn/go-sqlite3._Cfunc__sqlite3_prepare_v2_internal\n     0.11s 0.0072% 90.13%     27.73s  1.81%  github.com/mattn/go-sqlite3._Cfunc_sqlite3_finalize\n     0.11s 0.0072% 90.14%     47.95s  3.13%  rekenraam/backend/internal/db.(*statementSet).prepare\n     0.11s 0.0072% 90.15%     12.96s  0.85%  runtime.wakep\n     0.10s 0.0065% 90.15%    113.82s  7.44%  rekenraam/backend/internal/db.(*TransactionRepository).insertTransactionVersion\n     0.09s 0.0059% 90.16%     32.64s  2.13%  database/sql.(*Rows).Close\n     0.09s 0.0059% 90.16%     22.64s  1.48%  database/sql.(*Rows).close.func1\n     0.09s 0.0059% 90.17%    262.42s 17.15%  database/sql.(*Tx).QueryContext\n     0.09s 0.0059% 90.18%    470.46s 30.74%  github.com/mattn/go-sqlite3.(*SQLiteConn).prepare.func2 (inline)\n     0.09s 0.0059% 90.18%     45.49s  2.97%  github.com/mattn/go-sqlite3.(*SQLiteRows).Next.func1 (inline)\n     0.09s 0.0059% 90.19%     11.76s  0.77%  runtime.futexwakeup\n     0.09s 0.0059% 90.19%     12.01s  0.78%  runtime.startm\n     0.08s 0.0052% 90.20%    130.88s  8.55%  database/sql.(*DB).QueryContext\n     0.07s 0.0046% 90.20%    130.78s  8.55%  database/sql.(*DB).QueryContext.func1\n"
+      },
+      "prepare_callers": {
+        "command": [
+          "go",
+          "tool",
+          "pprof",
+          "-top",
+          "-nodecount=60",
+          "-cum",
+          "-focus=_Cfunc__sqlite3_prepare_v2_internal",
+          "-ignore=\\(\\*SQLiteDriver\\).Open",
+          "/tmp/rekenraam-419/accepted/head-app.test",
+          "/tmp/rekenraam-419/accepted/head.cpu"
+        ],
+        "text": "File: head-app.test\nBuild ID: e353b30d461a463fb63f5f5127702048d6133a58\nType: cpu\nTime: 2026-10-29 12:08:52 CET\nDuration: 272.68s, Total samples = 1530.40s (561.24%)\nActive filters:\n   focus=_Cfunc__sqlite3_prepare_v2_internal\n   ignore=\\(\\*SQLiteDriver\\).Open\nShowing nodes accounting for 468.93s, 30.64% of 1530.40s total\nDropped 2715 nodes (cum <= 7.65s)\nShowing top 60 nodes out of 333\n      flat  flat%   sum%        cum   cum%\n         0     0%     0%    469.71s 30.69%  database/sql.withLock\n         0     0%     0%    469.71s 30.69%  github.com/mattn/go-sqlite3.(*SQLiteConn).prepare\n         0     0%     0%    469.71s 30.69%  github.com/mattn/go-sqlite3.(*SQLiteConn).prepare.func2 (inline)\n     0.11s 0.0072% 0.0072%    469.71s 30.69%  github.com/mattn/go-sqlite3._Cfunc__sqlite3_prepare_v2_internal\n   468.82s 30.63% 30.64%    469.60s 30.68%  runtime.cgocall\n         0     0% 30.64%       469s 30.65%  testing.tRunner\n         0     0% 30.64%    423.42s 27.67%  github.com/mattn/go-sqlite3.(*SQLiteConn).prepareWithCache\n         0     0% 30.64%    345.88s 22.60%  database/sql.(*DB).queryDC\n         0     0% 30.64%    345.88s 22.60%  database/sql.(*DB).queryDC.func1\n         0     0% 30.64%    345.88s 22.60%  database/sql.ctxDriverQuery\n         0     0% 30.64%    345.88s 22.60%  github.com/mattn/go-sqlite3.(*SQLiteConn).QueryContext\n         0     0% 30.64%    345.88s 22.60%  github.com/mattn/go-sqlite3.(*SQLiteConn).query\n         0     0% 30.64%    245.69s 16.05%  database/sql.(*Tx).QueryContext\n         0     0% 30.64%    127.87s  8.36%  rekenraam/backend/internal/app.(*SelfCheckService).RunSelfCheck\n         0     0% 30.64%    126.75s  8.28%  rekenraam/backend/internal/app.(*SelfCheckService).executeChecks\n         0     0% 30.64%    118.66s  7.75%  database/sql.(*DB).retry\n         0     0% 30.64%    100.18s  6.55%  database/sql.(*DB).QueryContext\n         0     0% 30.64%    100.18s  6.55%  database/sql.(*DB).QueryContext.func1\n         0     0% 30.64%    100.18s  6.55%  database/sql.(*DB).query\n         0     0% 30.64%     79.39s  5.19%  rekenraam/backend/internal/db.runInvestmentJournalsWithGuardTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n         0     0% 30.64%     79.23s  5.18%  rekenraam/backend/internal/db.insertTransactionWithAuditEventTx\n         0     0% 30.64%     77.54s  5.07%  database/sql.(*DB).execDC\n         0     0% 30.64%     77.54s  5.07%  database/sql.(*DB).execDC.func2\n         0     0% 30.64%     77.54s  5.07%  database/sql.ctxDriverExec\n         0     0% 30.64%     77.54s  5.07%  github.com/mattn/go-sqlite3.(*SQLiteConn).ExecContext\n         0     0% 30.64%     77.54s  5.07%  github.com/mattn/go-sqlite3.(*SQLiteConn).exec\n         0     0% 30.64%     70.64s  4.62%  rekenraam/backend/internal/app.requireInvestmentSelfCheckPasses\n         0     0% 30.64%     70.53s  4.61%  rekenraam/backend/internal/db.createTransactionWithAuditTx\n         0     0% 30.64%     67.12s  4.39%  rekenraam/backend/internal/db.(*TransactionRepository).insertTransactionVersion\n         0     0% 30.64%     64.03s  4.18%  rekenraam/backend/internal/app.mustRunInvestmentSelfCheck\n         0     0% 30.64%     61.14s  4.00%  rekenraam/backend/internal/db.executeInvestmentJournalsWithGuardTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n         0     0% 30.64%     59.72s  3.90%  database/sql.(*Tx).QueryRowContext (partial-inline)\n         0     0% 30.64%     59.06s  3.86%  database/sql.(*Tx).ExecContext\n         0     0% 30.64%     56.49s  3.69%  rekenraam/backend/internal/db.EffectiveLotMovements\n         0     0% 30.64%     50.24s  3.28%  rekenraam/backend/internal/app.requireKnownBasisSelfCheckPasses\n         0     0% 30.64%     48.48s  3.17%  rekenraam/backend/internal/db.executeInvestmentWriteTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n         0     0% 30.64%     48.48s  3.17%  rekenraam/backend/internal/db.executeInvestmentWriteWithGuardTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n         0     0% 30.64%     47.97s  3.13%  rekenraam/backend/internal/db.(*InvestmentRepository).createTransactionAndLot\n         0     0% 30.64%     46.29s  3.02%  database/sql.(*DB).prepareDC\n         0     0% 30.64%     46.29s  3.02%  database/sql.(*DB).prepareDC.func2\n         0     0% 30.64%     46.29s  3.02%  database/sql.(*Tx).PrepareContext\n         0     0% 30.64%     46.29s  3.02%  database/sql.(*driverConn).prepareLocked\n         0     0% 30.64%     46.29s  3.02%  database/sql.ctxDriverPrepare\n         0     0% 30.64%     46.29s  3.02%  github.com/mattn/go-sqlite3.(*SQLiteConn).PrepareContext\n         0     0% 30.64%     46.25s  3.02%  rekenraam/backend/internal/db.(*statementSet).prepare\n         0     0% 30.64%     45.56s  2.98%  rekenraam/backend/internal/app.(*InvestmentService).buy\n         0     0% 30.64%     45.53s  2.98%  rekenraam/backend/internal/app.(*InvestmentService).Buy\n         0     0% 30.64%     43.29s  2.83%  rekenraam/backend/internal/db.runInvestmentJournalsWithGuardTx[go.shape.struct { rekenraam/backend/internal/db.disposals []rekenraam/backend/internal/db.LotDisposalRecord; rekenraam/backend/internal/db.decision rekenraam/backend/internal/db.DisposalDecisionRecord }]\n         0     0% 30.64%     43.08s  2.81%  rekenraam/backend/internal/db.(*statementSet).ExecContext\n         0     0% 30.64%     42.27s  2.76%  rekenraam/backend/internal/app.(*SelfCheckService).investmentFoundationCheck\n         0     0% 30.64%     41.87s  2.74%  rekenraam/backend/internal/db.(*InvestmentRepository).CreateTransactionAndLot (inline)\n         0     0% 30.64%     40.65s  2.66%  rekenraam/backend/internal/db.investmentReplayIntentsQuery\n         0     0% 30.64%     33.98s  2.22%  database/sql.(*DB).QueryRowContext (partial-inline)\n         0     0% 30.64%     32.83s  2.15%  rekenraam/backend/internal/db.(*InvestmentRepository).writeTransactionAndDisposeLots\n         0     0% 30.64%     30.54s  2.00%  rekenraam/backend/internal/db.executeInvestmentJournalsWithGuardTx[go.shape.struct { rekenraam/backend/internal/db.disposals []rekenraam/backend/internal/db.LotDisposalRecord; rekenraam/backend/internal/db.decision rekenraam/backend/internal/db.DisposalDecisionRecord }]\n         0     0% 30.64%     29.77s  1.95%  rekenraam/backend/internal/db.replayCorrectedPositionSideTx\n         0     0% 30.64%     28.50s  1.86%  rekenraam/backend/internal/db.(*SelfCheckRepository).CountStructuralAnomaly\n         0     0% 30.64%     27.84s  1.82%  rekenraam/backend/internal/db.runInvestmentJournalsWithGuardTx[go.shape.struct {}]\n         0     0% 30.64%     27.27s  1.78%  rekenraam/backend/internal/app.(*InvestmentService).sell\n         0     0% 30.64%     27.04s  1.77%  rekenraam/backend/internal/db.runInvestmentReplayTx\n"
+      },
+      "connection_open": {
+        "command": [
+          "go",
+          "tool",
+          "pprof",
+          "-top",
+          "-nodecount=60",
+          "-cum",
+          "-focus=\\(\\*SQLiteDriver\\).Open",
+          "/tmp/rekenraam-419/accepted/head-app.test",
+          "/tmp/rekenraam-419/accepted/head.cpu"
+        ],
+        "text": "File: head-app.test\nBuild ID: e353b30d461a463fb63f5f5127702048d6133a58\nType: cpu\nTime: 2026-10-29 12:08:52 CET\nDuration: 272.68s, Total samples = 1530.40s (561.24%)\nActive filters:\n   focus=\\(\\*SQLiteDriver\\).Open\nShowing nodes accounting for 271.69s, 17.75% of 1530.40s total\nDropped 1544 nodes (cum <= 7.65s)\nShowing top 60 nodes out of 84\n      flat  flat%   sum%        cum   cum%\n         0     0%     0%    272.30s 17.79%  database/sql.(*DB).conn\n         0     0%     0%    272.30s 17.79%  database/sql.(*DB).retry\n         0     0%     0%    272.30s 17.79%  database/sql.dsnConnector.Connect\n     0.02s 0.0013% 0.0013%    272.30s 17.79%  github.com/mattn/go-sqlite3.(*SQLiteDriver).Open\n   271.67s 17.75% 17.75%    271.73s 17.76%  runtime.cgocall\n         0     0% 17.75%    271.73s 17.76%  testing.tRunner\n         0     0% 17.75%    269.46s 17.61%  github.com/mattn/go-sqlite3.(*SQLiteDriver).Open.func6\n         0     0% 17.75%    269.40s 17.60%  github.com/mattn/go-sqlite3.(*SQLiteDriver).Open.func6.1 (inline)\n         0     0% 17.75%    269.40s 17.60%  github.com/mattn/go-sqlite3._Cfunc_sqlite3_exec\n         0     0% 17.75%    247.70s 16.19%  database/sql.(*DB).PingContext\n         0     0% 17.75%    247.70s 16.19%  database/sql.(*DB).PingContext.func1\n         0     0% 17.75%    176.50s 11.53%  rekenraam/backend/internal/db.Open\n         0     0% 17.75%    144.80s  9.46%  rekenraam/backend/internal/testdb.Open\n         0     0% 17.75%    130.71s  8.54%  rekenraam/backend/internal/app.openConnectionTestDatabase\n         0     0% 17.75%    114.74s  7.50%  rekenraam/backend/internal/app.newInvestmentsTestFixtureWithOptions\n         0     0% 17.75%    112.56s  7.35%  rekenraam/backend/internal/app.newInvestmentsTestFixture\n         0     0% 17.75%     64.21s  4.20%  rekenraam/backend/internal/db.OpenReadOnly\n         0     0% 17.75%     59.01s  3.86%  rekenraam/backend/internal/app.selfCheckOver\n         0     0% 17.75%     59.01s  3.86%  rekenraam/backend/internal/app.selfCheckReader\n         0     0% 17.75%     28.13s  1.84%  rekenraam/backend/internal/app.requireKnownBasisSelfCheckPasses\n         0     0% 17.75%     27.65s  1.81%  rekenraam/backend/internal/db.(*InvestmentRepository).gainsSnapshot\n         0     0% 17.75%     26.88s  1.76%  rekenraam/backend/internal/db.(*InvestmentRepository).LiveGainsSnapshot (inline)\n         0     0% 17.75%     26.64s  1.74%  rekenraam/backend/internal/app.requireInvestmentSelfCheckPasses\n         0     0% 17.75%     24.02s  1.57%  database/sql.(*DB).QueryContext\n         0     0% 17.75%     24.02s  1.57%  database/sql.(*DB).QueryContext.func1\n         0     0% 17.75%     24.02s  1.57%  database/sql.(*DB).QueryRowContext (inline)\n         0     0% 17.75%     24.02s  1.57%  database/sql.(*DB).query\n         0     0% 17.75%     23.33s  1.52%  rekenraam/backend/internal/app.mustRunInvestmentSelfCheck\n         0     0% 17.75%     19.70s  1.29%  rekenraam/backend/internal/db.OnlineBackupSQLiteDatabase\n         0     0% 17.75%     19.58s  1.28%  rekenraam/backend/internal/app.(*InvestmentService).ReadReturns\n         0     0% 17.75%     19.47s  1.27%  rekenraam/backend/internal/db.consolidateBackupFile\n         0     0% 17.75%     11.41s  0.75%  rekenraam/backend/internal/app.TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore.func1\n         0     0% 17.75%     10.92s  0.71%  rekenraam/backend/internal/app.TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore.func1.1\n         0     0% 17.75%     10.59s  0.69%  rekenraam/backend/internal/app.newInvestTestFixtureWithOptions\n         0     0% 17.75%     10.50s  0.69%  rekenraam/backend/internal/app.newInvestTestFixture\n         0     0% 17.75%      9.02s  0.59%  rekenraam/backend/internal/app.(*returnsFixture).readInstruments\n         0     0% 17.75%      8.51s  0.56%  rekenraam/backend/internal/db.InspectBackup\n         0     0% 17.75%      8.40s  0.55%  rekenraam/backend/internal/db.RestoreSQLiteDatabase\n         0     0% 17.75%      8.36s  0.55%  rekenraam/backend/internal/app.requireHealthyUnresolvedBook\n         0     0% 17.75%      7.31s  0.48%  rekenraam/backend/internal/app.newAuthEventTestService\n         0     0% 17.75%      7.30s  0.48%  rekenraam/backend/internal/app.(*InvestmentService).withGainsReader\n         0     0% 17.75%      6.99s  0.46%  rekenraam/backend/internal/db.VerifySQLiteBackupStats\n         0     0% 17.75%      6.77s  0.44%  rekenraam/backend/internal/db.VerifySQLiteBackup (inline)\n         0     0% 17.75%      6.59s  0.43%  rekenraam/backend/internal/app.(*fxProgressFixture).drain\n         0     0% 17.75%      6.59s  0.43%  rekenraam/backend/internal/app.(*fxProgressFixture).tick\n         0     0% 17.75%      6.35s  0.41%  rekenraam/backend/internal/app.TestThrottleRolloverRealConsumersPreserveReplacementBudget.func1\n         0     0% 17.75%      6.22s  0.41%  rekenraam/backend/internal/app.TestInvestmentAuditCommandRegisterAndRestoredExport.func1\n         0     0% 17.75%      5.83s  0.38%  rekenraam/backend/internal/app.(*InvestmentService).ReadGainsStatement\n         0     0% 17.75%      5.83s  0.38%  rekenraam/backend/internal/app.throttleAuditPause\n         0     0% 17.75%      5.73s  0.37%  rekenraam/backend/internal/app.TestFXCoverageFailedDatesDoNotStarveHistoryAndRetainBoundedRetry.func1\n         0     0% 17.75%      5.70s  0.37%  rekenraam/backend/internal/app.newReturnsFixture\n         0     0% 17.75%      5.68s  0.37%  rekenraam/backend/internal/app.(*returnsFixture).read\n         0     0% 17.75%      4.83s  0.32%  rekenraam/backend/internal/app.newBackupHarness\n         0     0% 17.75%      4.27s  0.28%  rekenraam/backend/internal/app.newCashParentCase\n         0     0% 17.75%      4.03s  0.26%  rekenraam/backend/internal/app.(*InvestmentService).GainsStatement\n         0     0% 17.75%      3.91s  0.26%  rekenraam/backend/internal/app.newMFATestService\n         0     0% 17.75%      3.77s  0.25%  rekenraam/backend/internal/app.(*BackupService).RunBackup\n         0     0% 17.75%      3.77s  0.25%  rekenraam/backend/internal/app.(*BackupService).produceBackup\n         0     0% 17.75%      3.31s  0.22%  rekenraam/backend/internal/app.TestUnknownNonSaleExportResolutionAndRestoreRetainOriginalNulls.func1\n         0     0% 17.75%      3.24s  0.21%  rekenraam/backend/internal/app.TestFinancialClosedPositionGainIgnoresDecimalRepresentation.func1\n"
+      },
+      "other_native": {
+        "command": [
+          "go",
+          "tool",
+          "pprof",
+          "-top",
+          "-nodecount=60",
+          "-cum",
+          "-focus=runtime.cgocall",
+          "-ignore=\\(\\*SQLiteDriver\\).Open|_Cfunc__sqlite3_prepare_v2_internal",
+          "/tmp/rekenraam-419/accepted/head-app.test",
+          "/tmp/rekenraam-419/accepted/head.cpu"
+        ],
+        "text": "File: head-app.test\nBuild ID: e353b30d461a463fb63f5f5127702048d6133a58\nType: cpu\nTime: 2026-10-29 12:08:52 CET\nDuration: 272.68s, Total samples = 1530.40s (561.24%)\nActive filters:\n   focus=runtime.cgocall\n   ignore=\\(\\*SQLiteDriver\\).Open|_Cfunc__sqlite3_prepare_v2_internal\nShowing nodes accounting for 221.11s, 14.45% of 1530.40s total\nDropped 2805 nodes (cum <= 7.65s)\nShowing top 60 nodes out of 323\n      flat  flat%   sum%        cum   cum%\n         0     0%     0%       227s 14.83%  testing.tRunner\n   221.11s 14.45% 14.45%    225.20s 14.72%  runtime.cgocall\n         0     0% 14.45%    150.79s  9.85%  database/sql.withLock\n         0     0% 14.45%     65.25s  4.26%  database/sql.(*driverConn).finalClose\n         0     0% 14.45%     65.25s  4.26%  database/sql.(*driverConn).finalClose.func2\n         0     0% 14.45%     65.25s  4.26%  github.com/mattn/go-sqlite3.(*SQLiteConn).Close\n         0     0% 14.45%     65.23s  4.26%  database/sql.(*DB).Close\n         0     0% 14.45%     65.22s  4.26%  github.com/mattn/go-sqlite3.(*SQLiteConn).Close.func1 (inline)\n         0     0% 14.45%     65.22s  4.26%  github.com/mattn/go-sqlite3._Cfunc_sqlite3_close_v2\n         0     0% 14.45%     60.40s  3.95%  github.com/mattn/go-sqlite3.(*SQLiteConn).exec\n         0     0% 14.45%     58.06s  3.79%  database/sql.(*Rows).Next\n         0     0% 14.45%     52.90s  3.46%  testing.(*common).Cleanup.func1\n         0     0% 14.45%     52.90s  3.46%  testing.(*common).runCleanup\n         0     0% 14.45%     52.90s  3.46%  testing.tRunner.func2\n         0     0% 14.45%     52.35s  3.42%  github.com/mattn/go-sqlite3.(*SQLiteStmt).exec\n         0     0% 14.45%     52.35s  3.42%  github.com/mattn/go-sqlite3.(*SQLiteStmt).execSync\n         0     0% 14.45%     51.04s  3.34%  github.com/mattn/go-sqlite3.(*SQLiteStmt).execSync.func2 (inline)\n         0     0% 14.45%     50.99s  3.33%  github.com/mattn/go-sqlite3._Cfunc__sqlite3_step_row_internal\n         0     0% 14.45%     50.89s  3.33%  database/sql.(*DB).execDC\n         0     0% 14.45%     50.89s  3.33%  database/sql.(*DB).execDC.func2\n         0     0% 14.45%     50.89s  3.33%  database/sql.ctxDriverExec\n         0     0% 14.45%     50.89s  3.33%  github.com/mattn/go-sqlite3.(*SQLiteConn).ExecContext\n         0     0% 14.45%     49.62s  3.24%  database/sql.(*Rows).Next.func1\n         0     0% 14.45%     49.62s  3.24%  database/sql.(*Rows).nextLocked\n         0     0% 14.45%     48.01s  3.14%  github.com/mattn/go-sqlite3.(*SQLiteRows).Next\n         0     0% 14.45%     45.22s  2.95%  github.com/mattn/go-sqlite3.(*SQLiteRows).Next.func1 (inline)\n         0     0% 14.45%     45.17s  2.95%  github.com/mattn/go-sqlite3._Cfunc__sqlite3_step_internal\n         0     0% 14.45%     42.63s  2.79%  database/sql.(*DB).retry\n         0     0% 14.45%     39.91s  2.61%  rekenraam/backend/internal/testdb.Open.func1\n         0     0% 14.45%     37.37s  2.44%  rekenraam/backend/internal/db.insertTransactionWithAuditEventTx\n         0     0% 14.45%     33.95s  2.22%  rekenraam/backend/internal/db.createTransactionWithAuditTx\n         0     0% 14.45%     32.05s  2.09%  database/sql.(*Tx).ExecContext\n         0     0% 14.45%     31.96s  2.09%  rekenraam/backend/internal/db.(*TransactionRepository).insertTransactionVersion\n         0     0% 14.45%     30.54s  2.00%  database/sql.(*Row).Scan\n         0     0% 14.45%     29.86s  1.95%  rekenraam/backend/internal/app.(*SelfCheckService).RunSelfCheck\n         0     0% 14.45%     28.20s  1.84%  rekenraam/backend/internal/db.runInvestmentJournalsWithGuardTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n         0     0% 14.45%     27.83s  1.82%  rekenraam/backend/internal/app.(*SelfCheckService).executeChecks\n         0     0% 14.45%     27.68s  1.81%  github.com/mattn/go-sqlite3.(*SQLiteStmt).Close\n         0     0% 14.45%     27.68s  1.81%  github.com/mattn/go-sqlite3.(*SQLiteStmt).Close.func1 (inline)\n         0     0% 14.45%     27.62s  1.80%  github.com/mattn/go-sqlite3._Cfunc_sqlite3_finalize\n         0     0% 14.45%     23.31s  1.52%  github.com/mattn/go-sqlite3.(*SQLiteConn).execNoArgs\n         0     0% 14.45%     23.01s  1.50%  github.com/mattn/go-sqlite3.(*SQLiteConn).execNoArgs.func1 (inline)\n         0     0% 14.45%     22.97s  1.50%  github.com/mattn/go-sqlite3._Cfunc__sqlite3_exec_no_args\n         0     0% 14.45%     22.92s  1.50%  rekenraam/backend/internal/db.executeInvestmentJournalsWithGuardTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n         0     0% 14.45%     21.50s  1.40%  rekenraam/backend/internal/db.(*statementSet).ExecContext\n         0     0% 14.45%     21.30s  1.39%  database/sql.(*Stmt).ExecContext\n         0     0% 14.45%     21.30s  1.39%  database/sql.(*Stmt).ExecContext.func1\n         0     0% 14.45%     21.30s  1.39%  database/sql.resultFromStatement\n         0     0% 14.45%     21.22s  1.39%  database/sql.ctxDriverStmtExec\n         0     0% 14.45%     21.22s  1.39%  github.com/mattn/go-sqlite3.(*SQLiteStmt).ExecContext\n         0     0% 14.45%     20.25s  1.32%  database/sql.(*Rows).Close\n         0     0% 14.45%     20.25s  1.32%  database/sql.(*Rows).close\n         0     0% 14.45%     20.25s  1.32%  database/sql.(*Rows).close.func1\n         0     0% 14.45%     20.25s  1.32%  github.com/mattn/go-sqlite3.(*SQLiteRows).Close\n         0     0% 14.45%     18.84s  1.23%  database/sql.(*DB).ExecContext\n         0     0% 14.45%     18.84s  1.23%  database/sql.(*DB).ExecContext.func1\n         0     0% 14.45%     18.84s  1.23%  database/sql.(*DB).exec\n         0     0% 14.45%     18.47s  1.21%  rekenraam/backend/internal/db.executeInvestmentWriteTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n         0     0% 14.45%     18.47s  1.21%  rekenraam/backend/internal/db.executeInvestmentWriteWithGuardTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n         0     0% 14.45%     18.16s  1.19%  rekenraam/backend/internal/db.(*InvestmentRepository).createTransactionAndLot\n"
+      },
+      "outside_native": {
+        "command": [
+          "go",
+          "tool",
+          "pprof",
+          "-top",
+          "-nodecount=60",
+          "-cum",
+          "-ignore=runtime.cgocall",
+          "/tmp/rekenraam-419/accepted/head-app.test",
+          "/tmp/rekenraam-419/accepted/head.cpu"
+        ],
+        "text": "File: head-app.test\nBuild ID: e353b30d461a463fb63f5f5127702048d6133a58\nType: cpu\nTime: 2026-10-29 12:08:52 CET\nDuration: 272.68s, Total samples = 1530.40s (561.24%)\nActive filters:\n   ignore=runtime.cgocall\nShowing nodes accounting for 407.38s, 26.62% of 1530.40s total\nDropped 4909 nodes (cum <= 7.65s)\nShowing top 60 nodes out of 211\n      flat  flat%   sum%        cum   cum%\n   295.89s 19.33% 19.33%    295.89s 19.33%  runtime._ExternalCode\n         0     0% 19.33%    295.89s 19.33%  runtime._System\n         0     0% 19.33%    115.13s  7.52%  testing.tRunner\n     1.62s  0.11% 19.44%     55.24s  3.61%  golang.org/x/crypto/argon2.processBlocks.func1\n     3.57s  0.23% 19.67%     52.95s  3.46%  golang.org/x/crypto/argon2.processBlockSSE\n         0     0% 19.67%     52.84s  3.45%  golang.org/x/crypto/argon2.processBlockXOR (inline)\n     0.20s 0.013% 19.69%     43.29s  2.83%  runtime.systemstack\n     1.26s 0.082% 19.77%     29.93s  1.96%  runtime.mallocgc\n     0.02s 0.0013% 19.77%     26.29s  1.72%  runtime.gcBgMarkWorker\n         0     0% 19.77%     24.94s  1.63%  runtime.gcBgMarkWorker.func2\n     0.40s 0.026% 19.80%     24.93s  1.63%  runtime.gcDrain\n     0.06s 0.0039% 19.80%     24.48s  1.60%  runtime.mcall\n     0.32s 0.021% 19.82%     24.35s  1.59%  runtime.schedule\n     0.13s 0.0085% 19.83%     20.39s  1.33%  database/sql.(*Rows).Next\n     0.95s 0.062% 19.89%     19.45s  1.27%  database/sql.withLock\n    18.59s  1.21% 21.11%     18.59s  1.21%  golang.org/x/crypto/argon2.xorBlocksSSE2\n    18.40s  1.20% 22.31%     18.40s  1.20%  runtime.futex\n         0     0% 22.31%     18.29s  1.20%  runtime.gcDrainMarkWorkerDedicated (inline)\n    17.91s  1.17% 23.48%     17.91s  1.17%  racecall\n     0.53s 0.035% 23.51%     17.64s  1.15%  database/sql.(*DB).queryDC\n     0.74s 0.048% 23.56%     17.55s  1.15%  runtime.findRunnable\n    17.44s  1.14% 24.70%     17.44s  1.14%  golang.org/x/crypto/argon2.blamkaSSE4\n         0     0% 24.70%     17.11s  1.12%  rekenraam/backend/internal/db.createTransactionWithAuditTx\n     0.02s 0.0013% 24.70%     17.01s  1.11%  rekenraam/backend/internal/db.insertTransactionWithAuditEventTx\n     0.16s  0.01% 24.71%     16.31s  1.07%  database/sql.(*Row).Scan\n     0.04s 0.0026% 24.72%     15.99s  1.04%  rekenraam/backend/internal/db.runInvestmentJournalsWithGuardTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n     0.42s 0.027% 24.74%     15.75s  1.03%  runtime.makeslice\n     0.10s 0.0065% 24.75%     14.78s  0.97%  rekenraam/backend/internal/db.(*TransactionRepository).insertTransactionVersion\n     0.09s 0.0059% 24.76%     13.89s  0.91%  database/sql.(*Tx).QueryContext\n     0.85s 0.056% 24.81%     13.86s  0.91%  database/sql.(*Rows).close\n     0.26s 0.017% 24.83%     13.79s   0.9%  database/sql.(*Rows).Next.func1\n         0     0% 24.83%     13.58s  0.89%  runtime.goexit0\n     0.11s 0.0072% 24.84%     12.96s  0.85%  runtime.wakep\n     0.68s 0.044% 24.88%     12.60s  0.82%  database/sql.(*Rows).nextLocked\n         0     0% 24.88%     12.54s  0.82%  rekenraam/backend/internal/db.executeInvestmentJournalsWithGuardTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n     0.09s 0.0059% 24.89%     12.39s  0.81%  database/sql.(*Rows).Close\n    12.28s   0.8% 25.69%     12.28s   0.8%  golang.org/x/crypto/argon2.mixBlocksSSE2\n     0.09s 0.0059% 25.69%     12.01s  0.78%  runtime.startm\n    11.76s  0.77% 26.46%     11.76s  0.77%  runtime.memclrNoHeapPointers\n     0.09s 0.0059% 26.47%     11.74s  0.77%  runtime.futexwakeup\n     0.06s 0.0039% 26.47%     11.72s  0.77%  database/sql.(*DB).retry\n     0.06s 0.0039% 26.48%     11.68s  0.76%  runtime.notewakeup\n         0     0% 26.48%     11.63s  0.76%  runtime.mallocgcLarge\n     1.70s  0.11% 26.59%     10.79s  0.71%  runtime.newobject\n     0.02s 0.0013% 26.59%     10.64s   0.7%  rekenraam/backend/internal/app.(*SelfCheckService).RunSelfCheck\n     0.02s 0.0013% 26.59%     10.39s  0.68%  runtime.park_m\n     0.01s 0.00065% 26.59%     10.34s  0.68%  rekenraam/backend/internal/db.runInvestmentJournalsWithGuardTx[go.shape.struct { rekenraam/backend/internal/db.disposals []rekenraam/backend/internal/db.LotDisposalRecord; rekenraam/backend/internal/db.decision rekenraam/backend/internal/db.DisposalDecisionRecord }]\n         0     0% 26.59%     10.26s  0.67%  rekenraam/backend/internal/app.(*InvestmentService).buy\n         0     0% 26.59%     10.10s  0.66%  rekenraam/backend/internal/app.(*InvestmentService).Buy\n     0.02s 0.0013% 26.59%      9.86s  0.64%  rekenraam/backend/internal/app.(*SelfCheckService).executeChecks\n     0.12s 0.0078% 26.60%      9.68s  0.63%  sync.(*Pool).Get\n     0.04s 0.0026% 26.60%      9.67s  0.63%  runtime.memclrNoHeapPointersChunked\n         0     0% 26.60%      9.62s  0.63%  github.com/pressly/goose/v3/internal/sqlparser.ParseSQLMigration\n         0     0% 26.60%      9.62s  0.63%  github.com/pressly/goose/v3/internal/sqlparser.parse\n         0     0% 26.60%      9.62s  0.63%  golang.org/x/sync/errgroup.(*Group).Go.func1\n     0.01s 0.00065% 26.60%      9.62s  0.63%  rekenraam/backend/internal/db.executeInvestmentWriteTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n         0     0% 26.60%      9.61s  0.63%  rekenraam/backend/internal/db.executeInvestmentWriteWithGuardTx[go.shape.ad6b052b05a6eb5526ca2cde963e56be2c28acf94757a4a894f95e9da9ba3e51]\n     0.24s 0.016% 26.62%      9.50s  0.62%  database/sql.(*DB).queryDC.func1\n     0.01s 0.00065% 26.62%      9.49s  0.62%  rekenraam/backend/internal/db.(*InvestmentRepository).createTransactionAndLot\n         0     0% 26.62%      9.40s  0.61%  rekenraam/backend/internal/app.TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore.func1\n"
+      },
+      "migration": {
+        "command": [
+          "go",
+          "tool",
+          "pprof",
+          "-top",
+          "-nodecount=60",
+          "-cum",
+          "-focus=pressly/goose",
+          "/tmp/rekenraam-419/accepted/head-app.test",
+          "/tmp/rekenraam-419/accepted/head.cpu"
+        ],
+        "text": "File: head-app.test\nBuild ID: e353b30d461a463fb63f5f5127702048d6133a58\nType: cpu\nTime: 2026-10-29 12:08:52 CET\nDuration: 272.68s, Total samples = 1530.40s (561.24%)\nActive filters:\n   focus=pressly/goose\nShowing nodes accounting for 10.29s, 0.67% of 1530.40s total\nDropped 196 nodes (cum <= 7.65s)\nShowing top 60 nodes out of 105\n      flat  flat%   sum%        cum   cum%\n         0     0%     0%      9.62s  0.63%  github.com/pressly/goose/v3/internal/sqlparser.ParseSQLMigration\n         0     0%     0%      9.62s  0.63%  github.com/pressly/goose/v3/internal/sqlparser.parse\n         0     0%     0%      9.62s  0.63%  golang.org/x/sync/errgroup.(*Group).Go.func1\n     0.01s 0.00065% 0.00065%      9.31s  0.61%  github.com/pressly/goose/v3/internal/sqlparser.endsWithSemicolon\n         0     0% 0.00065%      9.24s   0.6%  runtime.mallocgc\n     0.01s 0.00065% 0.0013%      9.03s  0.59%  sync.(*Pool).Get\n         0     0% 0.0013%      8.98s  0.59%  github.com/pressly/goose/v3/internal/sqlparser.init.func1\n         0     0% 0.0013%      8.96s  0.59%  runtime.makeslice\n         0     0% 0.0013%      8.17s  0.53%  github.com/pressly/goose/v3/internal/sqlparser.ParseAllFromFS.func1\n         0     0% 0.0013%      7.99s  0.52%  runtime.mallocgcLarge\n     6.78s  0.44%  0.44%      6.78s  0.44%  runtime.memclrNoHeapPointers\n     0.03s 0.002%  0.45%      6.78s  0.44%  runtime.memclrNoHeapPointersChunked\n         0     0%  0.45%      2.91s  0.19%  github.com/pressly/goose/v3.(*Provider).Up\n         0     0%  0.45%      2.91s  0.19%  github.com/pressly/goose/v3.(*Provider).runMigrations\n         0     0%  0.45%      2.91s  0.19%  github.com/pressly/goose/v3.(*Provider).up\n         0     0%  0.45%      2.91s  0.19%  rekenraam/backend/internal/db.Migrate\n         0     0%  0.45%      2.91s  0.19%  testing.tRunner\n         0     0%  0.45%      2.90s  0.19%  github.com/pressly/goose/v3.(*Provider).runIndividually\n         0     0%  0.45%      2.90s  0.19%  github.com/pressly/goose/v3.beginTx\n         0     0%  0.45%      2.83s  0.18%  github.com/pressly/goose/v3.(*Provider).runIndividually.func1\n         0     0%  0.45%      2.82s  0.18%  github.com/pressly/goose/v3.(*Provider).runMigration\n         0     0%  0.45%      2.82s  0.18%  github.com/pressly/goose/v3.(*Provider).runSQL\n     0.02s 0.0013%  0.45%      2.78s  0.18%  database/sql.withLock\n     0.01s 0.00065%  0.45%      2.74s  0.18%  database/sql.(*DB).execDC\n         0     0%  0.45%      2.74s  0.18%  database/sql.(*Tx).ExecContext\n         0     0%  0.45%      2.74s  0.18%  github.com/mattn/go-sqlite3.(*SQLiteConn).exec\n     2.71s  0.18%  0.63%      2.74s  0.18%  runtime.cgocall\n         0     0%  0.63%      2.73s  0.18%  github.com/mattn/go-sqlite3.(*SQLiteConn).execNoArgs\n         0     0%  0.63%      2.69s  0.18%  github.com/mattn/go-sqlite3.(*SQLiteConn).execNoArgs.func1 (inline)\n         0     0%  0.63%      2.69s  0.18%  github.com/mattn/go-sqlite3._Cfunc__sqlite3_exec_no_args\n         0     0%  0.63%      2.67s  0.17%  database/sql.(*DB).execDC.func2\n         0     0%  0.63%      2.67s  0.17%  database/sql.ctxDriverExec\n         0     0%  0.63%      2.67s  0.17%  github.com/mattn/go-sqlite3.(*SQLiteConn).ExecContext\n     0.01s 0.00065%  0.63%      1.55s   0.1%  runtime.systemstack\n         0     0%  0.63%      1.45s 0.095%  github.com/pressly/goose/v3/internal/sqlparser.ParseAllFromFS.func2\n         0     0%  0.63%         1s 0.065%  runtime.deductAssistCredit\n         0     0%  0.63%         1s 0.065%  runtime.gcAssistAlloc\n         0     0%  0.63%      0.99s 0.065%  runtime.gcAssistAlloc.func2\n         0     0%  0.63%      0.99s 0.065%  runtime.gcAssistAlloc1\n     0.01s 0.00065%  0.63%      0.99s 0.065%  runtime.gcDrainN\n         0     0%  0.63%      0.95s 0.062%  runtime.(*mcache).allocLarge\n     0.30s  0.02%  0.65%      0.71s 0.046%  runtime.(*sweepLocked).sweep\n         0     0%  0.65%      0.70s 0.046%  rekenraam/backend/internal/app_test.TestInvestmentSlice1FreshAndSeededBundleContract.func1\n     0.04s 0.0026%  0.65%      0.66s 0.043%  runtime.sweepone\n         0     0%  0.65%      0.64s 0.042%  runtime.deductSweepCredit\n         0     0%  0.65%      0.57s 0.037%  rekenraam/backend/internal/app.TestConsecutiveRestoresEachKeepTheirOwnSafetyCopy\n     0.01s 0.00065%  0.65%      0.41s 0.027%  runtime.scanSpan\n         0     0%  0.65%      0.36s 0.024%  rekenraam/backend/internal/app.TestRestoreRefusesSourceEqualsDestination\n     0.12s 0.0078%  0.66%      0.35s 0.023%  runtime.scanObject\n         0     0%  0.66%      0.33s 0.022%  rekenraam/backend/internal/app.TestRestoreRefusesNewerSchema\n         0     0%  0.66%      0.33s 0.022%  runtime.(*mheap).alloc\n     0.01s 0.00065%  0.66%      0.33s 0.022%  runtime.(*mheap).alloc.func1\n     0.08s 0.0052%  0.66%      0.33s 0.022%  runtime.tryDeferToSpanScan\n         0     0%  0.66%      0.31s  0.02%  rekenraam/backend/internal/app.TestRestorePreservesUncheckpointedWALContent\n         0     0%  0.66%      0.30s  0.02%  rekenraam/backend/internal/app.TestSealedDataDecryptsAfterRestoreWithRetainedKey\n     0.06s 0.0039%  0.67%      0.27s 0.018%  runtime.scanObjectsSmall\n         0     0%  0.67%      0.26s 0.017%  rekenraam/backend/internal/app.TestRestoreDrillMatchesSourceTrialBalance\n         0     0%  0.67%      0.25s 0.016%  runtime.(*mheap).reclaim\n     0.03s 0.002%  0.67%      0.25s 0.016%  runtime.(*mheap).reclaimChunk\n     0.05s 0.0033%  0.67%      0.24s 0.016%  bufio.(*Scanner).Scan\n"
+      },
+      "self_check": {
+        "command": [
+          "go",
+          "tool",
+          "pprof",
+          "-top",
+          "-nodecount=60",
+          "-cum",
+          "-focus=SelfCheckService.*RunSelfCheck",
+          "/tmp/rekenraam-419/accepted/head-app.test",
+          "/tmp/rekenraam-419/accepted/head.cpu"
+        ],
+        "text": "File: head-app.test\nBuild ID: e353b30d461a463fb63f5f5127702048d6133a58\nType: cpu\nTime: 2026-10-29 12:08:52 CET\nDuration: 272.68s, Total samples = 1530.40s (561.24%)\nActive filters:\n   focus=SelfCheckService.*RunSelfCheck\nShowing nodes accounting for 158.08s, 10.33% of 1530.40s total\nDropped 1037 nodes (cum <= 7.65s)\nShowing top 60 nodes out of 155\n      flat  flat%   sum%        cum   cum%\n     0.02s 0.0013% 0.0013%    168.37s 11.00%  rekenraam/backend/internal/app.(*SelfCheckService).RunSelfCheck\n         0     0% 0.0013%    168.37s 11.00%  testing.tRunner\n     0.02s 0.0013% 0.0026%    164.44s 10.74%  rekenraam/backend/internal/app.(*SelfCheckService).executeChecks\n      157s 10.26% 10.26%    157.55s 10.29%  runtime.cgocall\n     0.18s 0.012% 10.27%    140.64s  9.19%  database/sql.withLock\n     0.07s 0.0046% 10.28%    129.17s  8.44%  github.com/mattn/go-sqlite3.(*SQLiteConn).prepare\n     0.05s 0.0033% 10.28%    128.54s  8.40%  github.com/mattn/go-sqlite3.(*SQLiteConn).prepareWithCache\n         0     0% 10.28%    127.93s  8.36%  github.com/mattn/go-sqlite3.(*SQLiteConn).prepare.func2 (inline)\n         0     0% 10.28%    127.87s  8.36%  github.com/mattn/go-sqlite3._Cfunc__sqlite3_prepare_v2_internal\n     0.08s 0.0052% 10.29%    127.16s  8.31%  database/sql.(*DB).queryDC\n     0.03s 0.002% 10.29%    127.12s  8.31%  database/sql.(*Tx).QueryContext\n     0.02s 0.0013% 10.29%    124.99s  8.17%  database/sql.(*DB).queryDC.func1\n     0.06s 0.0039% 10.29%    124.77s  8.15%  database/sql.ctxDriverQuery\n     0.03s 0.002% 10.30%    124.71s  8.15%  github.com/mattn/go-sqlite3.(*SQLiteConn).QueryContext\n     0.05s 0.0033% 10.30%    124.68s  8.15%  github.com/mattn/go-sqlite3.(*SQLiteConn).query\n         0     0% 10.30%     85.05s  5.56%  rekenraam/backend/internal/app.mustRunInvestmentSelfCheck\n         0     0% 10.30%     64.93s  4.24%  rekenraam/backend/internal/app.requireKnownBasisSelfCheckPasses\n         0     0% 10.30%     62.18s  4.06%  rekenraam/backend/internal/app.requireInvestmentSelfCheckPasses\n     0.03s 0.002% 10.30%     48.83s  3.19%  rekenraam/backend/internal/app.(*SelfCheckService).investmentFoundationCheck\n     0.04s 0.0026% 10.30%     33.28s  2.17%  rekenraam/backend/internal/db.(*SelfCheckRepository).CountStructuralAnomaly\n         0     0% 10.30%     26.59s  1.74%  rekenraam/backend/internal/app.(*SelfCheckService).investmentReplayCheck\n         0     0% 10.30%     26.58s  1.74%  rekenraam/backend/internal/db.(*SelfCheckRepository).InvestmentReplayEquivalence\n     0.02s 0.0013% 10.30%     26.38s  1.72%  rekenraam/backend/internal/db.(*SelfCheckRepository).positionReplayEquivalence\n         0     0% 10.30%     24.56s  1.60%  database/sql.(*Rows).Next\n         0     0% 10.30%     24.55s  1.60%  rekenraam/backend/internal/app.(*SelfCheckService).sqliteIntegrityCheck\n         0     0% 10.30%     24.55s  1.60%  rekenraam/backend/internal/db.(*SelfCheckRepository).SQLiteIntegrity\n     0.02s 0.0013% 10.31%     24.18s  1.58%  rekenraam/backend/internal/app.(*SelfCheckService).lotReconciliationCheck\n         0     0% 10.31%     23.34s  1.53%  rekenraam/backend/internal/db.EffectiveLotMovements\n         0     0% 10.31%     20.08s  1.31%  database/sql.(*Rows).Next.func1\n     0.10s 0.0065% 10.31%     19.95s  1.30%  database/sql.(*Rows).nextLocked\n         0     0% 10.31%     19.09s  1.25%  rekenraam/backend/internal/app.requireHealthyUnresolvedBook\n     0.05s 0.0033% 10.32%     18.95s  1.24%  github.com/mattn/go-sqlite3.(*SQLiteRows).Next\n         0     0% 10.32%     18.27s  1.19%  rekenraam/backend/internal/app.(*SelfCheckService).investmentAttributionCheck\n     0.02s 0.0013% 10.32%     18.07s  1.18%  github.com/mattn/go-sqlite3.(*SQLiteRows).Next.func1 (inline)\n     0.02s 0.0013% 10.32%     18.04s  1.18%  github.com/mattn/go-sqlite3._Cfunc__sqlite3_step_internal\n         0     0% 10.32%     13.41s  0.88%  database/sql.(*Tx).QueryRowContext (inline)\n         0     0% 10.32%     12.78s  0.84%  rekenraam/backend/internal/db.(*SelfCheckRepository).SelfCheckLotEvents\n         0     0% 10.32%     12.21s   0.8%  rekenraam/backend/internal/db.investmentReplayIntentsQuery\n         0     0% 10.32%     11.46s  0.75%  rekenraam/backend/internal/db.simulateInvestmentReplaySideTx\n         0     0% 10.32%     11.33s  0.74%  rekenraam/backend/internal/db.runInvestmentReplayTx\n         0     0% 10.32%     11.19s  0.73%  rekenraam/backend/internal/app.TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore.func1\n         0     0% 10.32%     11.19s  0.73%  rekenraam/backend/internal/app.TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore.func1.1\n         0     0% 10.32%     11.19s  0.73%  rekenraam/backend/internal/app.TestInvestmentDiagnosticAuditResolutionLifecycleAndRestore.func1.1.1\n     0.01s 0.00065% 10.32%     10.87s  0.71%  rekenraam/backend/internal/app.(*SelfCheckService).commodityPositionSignCheck\n         0     0% 10.32%      9.88s  0.65%  rekenraam/backend/internal/db.(*SelfCheckRepository).SelfCheckShortLotQuantityEvents (inline)\n     0.01s 0.00065% 10.32%      9.88s  0.65%  rekenraam/backend/internal/db.shortLotQuantityEvents\n         0     0% 10.32%      9.65s  0.63%  database/sql.(*Row).Scan\n         0     0% 10.32%      9.42s  0.62%  rekenraam/backend/internal/app.TestInvestmentAuditCommandRegisterAndRestoredExport.func1\n         0     0% 10.32%      9.42s  0.62%  rekenraam/backend/internal/app.TestInvestmentAuditCommandRegisterAndRestoredExport.func1.1\n     0.01s 0.00065% 10.32%      9.09s  0.59%  database/sql.(*Rows).Close\n     0.06s 0.0039% 10.32%      9.07s  0.59%  database/sql.(*Rows).close\n         0     0% 10.32%      8.84s  0.58%  rekenraam/backend/internal/app.(*SelfCheckService).disposalAllocationCheck\n         0     0% 10.32%      8.84s  0.58%  rekenraam/backend/internal/db.(*SelfCheckRepository).StreamDisposalAllocationSets\n     0.04s 0.0026% 10.33%      8.07s  0.53%  rekenraam/backend/internal/db.applyInvestmentReplayIntentTx\n     0.03s 0.002% 10.33%      7.73s  0.51%  github.com/mattn/go-sqlite3.(*SQLiteStmt).Close\n         0     0% 10.33%      7.73s  0.51%  rekenraam/backend/internal/app.(*SelfCheckService).balanceChecks\n     0.01s 0.00065% 10.33%      7.72s   0.5%  rekenraam/backend/internal/db.(*SelfCheckRepository).StreamPostedPostings\n         0     0% 10.33%      7.66s   0.5%  rekenraam/backend/internal/db.(*SelfCheckRepository).DividendAttributions (inline)\n         0     0% 10.33%      7.66s   0.5%  rekenraam/backend/internal/db.dividendAttributions\n         0     0% 10.33%      7.57s  0.49%  database/sql.(*Rows).close.func1\n"
+      }
+    },
+    "buckets": {
+      "total_cpu_s": 1530.4,
+      "disjoint_cpu_s": {
+        "remaining_test_runtime": 492.5,
+        "unattributed_external": 295.89,
+        "connection_setup": 272.3,
+        "statement_prepare": 469.71
+      },
+      "overlapping_cpu_s": {
+        "goose": 12.53,
+        "fixture_open": 150.74,
+        "close": 65.73,
+        "replay_intents": 48.46,
+        "replay_intents_prepare": 40.65,
+        "target_union_prepare": 139.41,
+        "read_only_open": 64.34,
+        "self_check": 168.37,
+        "self_check_prepare": 127.87,
+        "foundation": 48.85,
+        "foundation_prepare": 42.27,
+        "effective_lot_movements": 65.28,
+        "effective_lot_movements_prepare": 56.49,
+        "read_only_open_prepare": 0.01,
+        "fixture_open_prepare": 0.07,
+        "goose_prepare": 0.02
+      }
+    }
+  },
+  "native_probes": {
+    "runs": [
+      {
+        "label": "base",
+        "started_utc": "2026-10-29T11:14:51.907906+00:00",
+        "wall_s": 23.766,
+        "exit": 0,
+        "command": [
+          "./scripts/go-backend.sh",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=5m",
+          "-run",
+          "^TestSchemaBaseline405Probe$",
+          "./internal/db"
+        ]
+      },
+      {
+        "label": "head",
+        "started_utc": "2026-10-29T11:15:15.673865+00:00",
+        "wall_s": 23.471,
+        "exit": 0,
+        "command": [
+          "./scripts/go-backend.sh",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=5m",
+          "-run",
+          "^TestSchemaBaseline405Probe$",
+          "./internal/db"
+        ]
+      }
+    ],
+    "base": [
+      {
+        "Version": 0,
+        "Objects": {},
+        "SQLBytes": 0,
+        "OpenMS": [
+          1.2119936599999999,
+          1.03465969,
+          1.2954325800000002,
+          1.06491794,
+          1.04858951
+        ],
+        "PrepareMS": null,
+        "open_median_ms": 1.06491794,
+        "prepare_median_ms": null
+      },
+      {
+        "Version": 1,
+        "Objects": {
+          "index": 191,
+          "table": 118,
+          "trigger": 164,
+          "view": 16
+        },
+        "SQLBytes": 212067,
+        "OpenMS": [
+          11.89783436,
+          10.72054576,
+          10.561675630000002,
+          11.62888744,
+          10.864106679999999
+        ],
+        "PrepareMS": [
+          0.33116963,
+          0.33168593,
+          0.48087926000000003,
+          0.34216351,
+          0.34979697
+        ],
+        "open_median_ms": 10.864106679999999,
+        "prepare_median_ms": 0.34216351
+      }
+    ],
+    "head": [
+      {
+        "Version": 0,
+        "Objects": {},
+        "SQLBytes": 0,
+        "OpenMS": [
+          0.90441386,
+          0.8522900699999999,
+          1.16824577,
+          0.8965512099999999,
+          0.92481912
+        ],
+        "PrepareMS": null,
+        "open_median_ms": 0.90441386,
+        "prepare_median_ms": null
+      },
+      {
+        "Version": 2,
+        "Objects": {
+          "index": 191,
+          "table": 118,
+          "trigger": 164,
+          "view": 16
+        },
+        "SQLBytes": 211776,
+        "OpenMS": [
+          11.36158322,
+          11.016016890000001,
+          10.84753018,
+          10.775894019999999,
+          10.79244303
+        ],
+        "PrepareMS": [
+          0.35788211,
+          0.32553246999999996,
+          0.36381837,
+          0.37132890999999996,
+          0.36292706
+        ],
+        "open_median_ms": 10.84753018,
+        "prepare_median_ms": 0.36292706
+      }
+    ]
+  }
+}
