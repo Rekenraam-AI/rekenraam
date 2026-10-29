@@ -985,5 +985,6 @@
   "nav_skip_to_content": "Перейти к содержимому",
   "nav_in_section": "{page} · в разделе «{section}»",
   "nav_overview_pages": "Страницы раздела",
-  "theme_name_system": "Системная"
+  "theme_name_system": "Системная",
+  "nav_hide_amounts": "Скрыть суммы"
 }

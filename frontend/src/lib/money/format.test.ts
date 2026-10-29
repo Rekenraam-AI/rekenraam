@@ -214,3 +214,27 @@ describe('formatRatio (#106)', () => {
     expect(formatRatio({ value: '5', scale: 0 }, { value: '0', scale: 0 }, 8, 'en-US')).toBe('\u2014');
   });
 });
+
+describe('hide amounts (#456)', () => {
+  it('masks every exact display path, including quantities and rates, in every locale', async () => {
+    const { amountPrivacy } = await import('./privacy.svelte.ts');
+    const { maskFinancialText } = await import('./format');
+    amountPrivacy.hidden = true;
+    try {
+      for (const locale of ['en', 'nl', 'de', 'es', 'fr', 'ru']) {
+        for (const value of ['0', '12345678901234567890', '-12345678901234567890']) {
+          expect(formatQuantity(value, 4, locale)).toBe('••••');
+          expect(formatMoney(value, 4, 2, locale)).toBe('••••');
+          expect(formatExactMoney(value, 4, 2, locale)).toBe('••••');
+          expect(formatRatio({ value, scale: 4 }, { value: '2', scale: 0 }, 8, locale)).toBe('••••');
+        }
+        expect(formatQuantity('', 2, locale)).toBe('');
+        expect(formatRatio({ value: '1', scale: 0 }, { value: '0', scale: 0 }, 8, locale)).toBe('—');
+        expect(maskFinancialText('unparsed 12.34')).toBe('••••');
+        expect(formatLedgerAmount('12345', 2)).toBe('123.45');
+        expect(parseDecimalAmount('123.45', { locale: 'en' })?.value).toBe('12345');
+      }
+    } finally { amountPrivacy.hidden = false; }
+    expect(formatQuantity('12345', 2, 'en')).toBe('123.45');
+  });
+});

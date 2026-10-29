@@ -985,5 +985,6 @@
   "nav_skip_to_content": "Naar inhoud",
   "nav_in_section": "{page} · in {section}",
   "nav_overview_pages": "Pagina's in dit onderdeel",
-  "theme_name_system": "Systeem"
+  "theme_name_system": "Systeem",
+  "nav_hide_amounts": "Bedragen verbergen"
 }

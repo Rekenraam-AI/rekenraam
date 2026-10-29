@@ -116,7 +116,7 @@ Deliver incrementally, tracked in #441, in this order:
    Review button, settings menu), a tab row of real page routes driven by one
    route registry, hide amounts, compact shared search and one attention read
    for counts. Header, registry and tab routes #455 are delivered (see the
-   capability ledger). Continue with #456 (hide amounts), #457 (search),
+   capability ledger). Hide amounts #456 is delivered. Continue with #457 (search),
    #458 (attention read, Review count) and
    #459 (page actions, widths, `?` help); #460 reviews the remaining route
    paths afterwards.

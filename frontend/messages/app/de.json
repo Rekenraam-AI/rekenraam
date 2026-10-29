@@ -985,5 +985,6 @@
   "nav_skip_to_content": "Zum Inhalt springen",
   "nav_in_section": "{page} · in {section}",
   "nav_overview_pages": "Seiten in diesem Bereich",
-  "theme_name_system": "System"
+  "theme_name_system": "System",
+  "nav_hide_amounts": "Beträge ausblenden"
 }

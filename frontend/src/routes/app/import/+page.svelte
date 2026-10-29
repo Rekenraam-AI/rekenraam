@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { maskFinancialText } from '#lib/money/format.ts';
   import { onDestroy } from 'svelte';
   import { parseISO } from 'date-fns';
   import { getLocale } from '#lib/paraglide/runtime.js';
@@ -564,8 +565,8 @@
     const value = w.value ?? '';
     switch (w.code) {
       case 'unrecognized_date': return m.import_warning_unrecognized_date({ value });
-      case 'unrecognized_amount': return m.import_warning_unrecognized_amount({ value });
-      case 'unrecognized_split_amount': return m.import_warning_unrecognized_split_amount({ value });
+      case 'unrecognized_amount': return m.import_warning_unrecognized_amount({ value: maskFinancialText(value) });
+      case 'unrecognized_split_amount': return m.import_warning_unrecognized_split_amount({ value: maskFinancialText(value) });
       case 'decimal_separator_conflict':
         return value ? m.import_warning_decimal_separator_conflict({ value }) : m.import_warning_decimal_separator_undecided();
       case 'date_layout_conflict': return m.import_warning_date_layout_conflict({ value });
@@ -1687,7 +1688,7 @@
               >
                 <td class="px-4 py-2.5 tabular-nums text-muted">{norm.date}</td>
                 <td class="px-4 py-2.5 font-medium text-foreground">{cryptoSummary || res.payee_name || norm.payee_hint || '—'}</td>
-                <td class="px-4 py-2.5 tabular-nums text-right text-foreground">{norm.amount}</td>
+                <td class="px-4 py-2.5 tabular-nums text-right text-foreground">{maskFinancialText(norm.amount)}</td>
                 <td class="max-w-xs px-4 py-2.5 text-muted">
                   <span class="block truncate">{norm.memo || '—'}</span>
                   {#if res.applied_rule_name}

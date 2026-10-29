@@ -416,7 +416,12 @@ keyboard help.
   editable fields.
 - Hide amounts is applied in `$lib/money/format.ts`, covers chart labels,
   leaves exports, edit fields and stored data unchanged, and is remembered
-  per browser.
+  per browser. Read-only security quantities, prices and FX ratios are masked
+  too, using the same fixed four bullets regardless of magnitude. Dimensionless
+  percentage returns, allocation/spending shares, dates, counts, identifiers and
+  chart geometry remain visible. This is a presentation control: editable fields
+  and raw source files are visible when deliberately opened; exports retain exact
+  data. Masking is read before the first render and synchronized across tabs.
 - Sign-in, setup and recovery lose the root top bar and get a minimal header
   with name, language and theme.
 - Back to Home restores its scroll position.

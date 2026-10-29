@@ -10,7 +10,7 @@
   import InvestmentIncomeFields from './investment-income-fields.svelte';
   import ReconciliationConfirm from '#lib/investments/reconciliation-confirm.svelte';
   import { parseDecimalAmount } from '#lib/money/amount.ts';
-  import { formatQuantity } from '#lib/money/format.ts';
+  import { maskFinancialText, formatQuantity } from '#lib/money/format.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import { m } from '#lib/paraglide/messages.js';
   let { review, accounts, currencies, instruments, csrfToken, onSaved }: {
@@ -28,7 +28,7 @@
   let fieldsRevision = $state(0);
   const repaired = $derived(review.state === 'repairable');
   const parsedCash = $derived(parseDecimalAmount(review.source_cash_amount, { locale: 'en' }));
-  const cash = $derived(parsedCash ? formatQuantity(parsedCash.value, parsedCash.scale, getLocale()) : review.source_cash_amount);
+  const cash = $derived(parsedCash ? formatQuantity(parsedCash.value, parsedCash.scale, getLocale()) : maskFinancialText(review.source_cash_amount));
   const sourceDate = $derived(parseISO(review.source_date));
   const date = $derived(isValid(sourceDate) ? new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium' }).format(sourceDate) : review.source_date);
   const currency = $derived(review.source_currency || currencies.find(c => c.id === resolution.commodity_id)?.code || '—');

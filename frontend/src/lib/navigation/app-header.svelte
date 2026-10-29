@@ -1,5 +1,8 @@
 <script lang="ts">
   import { afterNavigate } from '$app/navigation';
+  import Eye from '@lucide/svelte/icons/eye';
+  import EyeOff from '@lucide/svelte/icons/eye-off';
+  import { amountPrivacy, setAmountsHidden } from '#lib/money/privacy.svelte.ts';
   import Menu from '@lucide/svelte/icons/menu';
   import X from '@lucide/svelte/icons/x';
   import { m } from '#lib/paraglide/messages.js';
@@ -107,6 +110,11 @@
       </div>
 
       <div class="ml-auto flex items-center gap-1">
+        <button type="button" aria-label={m.nav_hide_amounts()} title={m.nav_hide_amounts()}
+          aria-pressed={amountPrivacy.hidden} onclick={() => setAmountsHidden(!amountPrivacy.hidden)}
+          class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted transition hover:bg-control-hover hover:text-foreground">
+          {#if amountPrivacy.hidden}<EyeOff size={18} aria-hidden="true" />{:else}<Eye size={18} aria-hidden="true" />{/if}
+        </button>
         <SettingsMenu currentRoute={entry?.route} {signOutPending} {signOutError} {onSignOut} />
       </div>
     </header>

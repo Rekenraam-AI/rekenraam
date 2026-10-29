@@ -174,6 +174,37 @@ test.describe('route sweep (#278)', () => {
     });
   }
 
+  test('every route masks read-only financial figures (#456)', async ({ page, routeBook: ids }) => {
+    test.setTimeout(240_000);
+    await ensureBrowserSession(page);
+    await page.evaluate(() => localStorage.setItem('rekenraam-hide-amounts', 'true'));
+    let masked = 0;
+    for (const route of routes) {
+      await test.step(route.name, async () => {
+        await page.goto(route.path(ids));
+        await settle(page, route.path(ids));
+        await expect(page.getByRole('button', { name: 'Hide amounts', exact: true })).toHaveAttribute('aria-pressed', 'true');
+        const evidence = await page.locator('main').evaluate((main) => {
+          const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
+          const leaks: string[] = [];
+          let masks = 0;
+          while (walker.nextNode()) {
+            const node = walker.currentNode;
+            if (node.parentElement?.closest('input, textarea, select, script, style')) continue;
+            const text = node.textContent?.trim() ?? '';
+            if (text.includes('••••')) masks++;
+            // Read-only money cells and SVG labels must not retain decimal digits.
+            if (node.parentElement?.closest('.tabular-nums, .font-mono, svg') && /\d[,.]\d{2}/.test(text) && !text.includes('%')) leaks.push(text);
+          }
+          return { leaks, masks };
+        });
+        expect(evidence.leaks, route.name).toEqual([]);
+        masked += evidence.masks;
+      });
+    }
+    expect(masked).toBeGreaterThan(20); // Populated financial reads, never an empty-page pass.
+  });
+
   // Longer German, French and Russian copy is what breaks a phone layout, and
   // the declared page language is what a screen reader reads it in.
   test('every route fits the phone and declares its language in every locale', async ({ page, routeBook: ids }) => {

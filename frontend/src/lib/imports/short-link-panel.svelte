@@ -4,7 +4,7 @@
   import APIFormError from '#lib/components/api-form-error.svelte';
   import type { AccountResponse } from '#lib/api/accounts.ts';
   import { importShortCandidates, importShortCandidatesQueryKey, linkImportShort, type ImportShortCandidate } from '#lib/api/imports.ts';
-  import { formatQuantity, joinCommodityAmount } from '#lib/money/format.ts';
+  import { maskFinancialText, formatQuantity, joinCommodityAmount } from '#lib/money/format.ts';
   import { m } from '#lib/paraglide/messages.js';
   import { getLocale } from '#lib/paraglide/runtime.js';
 
@@ -95,9 +95,9 @@
         <dt class="text-muted">{m.import_preview_short_link_source_date()}</dt>
         <dd class="text-foreground tabular-nums">{date(source.date)}</dd>
         <dt class="text-muted">{m.import_preview_short_link_source_quantity()}</dt>
-        <dd class="text-foreground tabular-nums break-all">{source.quantity || m.import_preview_short_link_unknown()}</dd>
+        <dd class="text-foreground tabular-nums break-all">{maskFinancialText(source.quantity) || m.import_preview_short_link_unknown()}</dd>
         <dt class="text-muted">{m.import_preview_short_link_source_cash()}</dt>
-        <dd class="text-foreground tabular-nums break-all">{source.net_value ? joinCommodityAmount(source.net_currency, source.net_value) : m.import_preview_short_link_unknown()}</dd>
+        <dd class="text-foreground tabular-nums break-all">{source.net_value ? joinCommodityAmount(source.net_currency, maskFinancialText(source.net_value)) : m.import_preview_short_link_unknown()}</dd>
       </dl>
     </section>
     {#if candidates.length === 0}

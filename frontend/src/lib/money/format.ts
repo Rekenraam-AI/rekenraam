@@ -1,3 +1,12 @@
+import { amountPrivacy } from './privacy.svelte.ts';
+
+export const hiddenAmount = '••••';
+
+/** Raw source evidence still uses the same presentation privacy boundary. */
+export function maskFinancialText(value: string): string {
+  return amountPrivacy.hidden && value ? hiddenAmount : value;
+}
+
 import { divideAmountsForDisplay, roundAmountForDisplay, type ScaledAmount } from './amount';
 
 /**
@@ -51,6 +60,7 @@ import { divideAmountsForDisplay, roundAmountForDisplay, type ScaledAmount } fro
  */
 export function formatQuantity(value: string, scale: number, locale: string): string {
   if (!value || value === '') return '';
+  if (amountPrivacy.hidden) return hiddenAmount;
 
   const isNegative = value.startsWith('-');
   const absStr = isNegative ? value.slice(1) : value;

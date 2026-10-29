@@ -51,6 +51,12 @@ and the proposed audits; this is not a fresh execution of all acceptance tests.
 R12a closed 2026-08-30; ADR 0012
 governs the journal/subledger boundary and ADR 0013 the R16 operation model.
 
+- **Hide amounts (#456):** browser-persisted header eye button masks read-only
+  money, security quantities, prices and FX ratios through the shared formatter,
+  including chart labels, tooltips and accessible descriptions. Raw import
+  amount evidence follows the same boundary. Editors and exports remain exact;
+  percentage shares/returns and chart geometry remain visible.
+
 ## Project website source
 
 The independently built [public website](../website/README.md) implements the

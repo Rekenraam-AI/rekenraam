@@ -5,6 +5,7 @@
   import '../app.css';
   import { createQueryClient } from '#lib/query-client.ts';
   import PublicHeader from '#lib/navigation/public-header.svelte';
+  import { syncAmountPrivacy } from '#lib/money/privacy.svelte.ts';
   import { initializeTheme } from '#lib/theme.svelte.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
 
@@ -23,6 +24,8 @@
     document.documentElement.lang = getLocale();
   });
 </script>
+
+<svelte:window onstorage={syncAmountPrivacy} />
 
 <QueryClientProvider client={queryClient}>
   <div class="min-h-screen">

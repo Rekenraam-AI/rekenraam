@@ -270,6 +270,12 @@ test('a report exports CSV a spreadsheet can read, and prints without its chrome
   );
   await expect(page.getByRole('table')).toBeVisible();
 
+  // #456: privacy affects presentation, never portable financial data.
+  await page.getByRole('button', { name: 'Hide amounts', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Hide amounts', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('table')).not.toContainText('1,234.56');
+  await expect(page.getByRole('table')).toContainText('••••');
+
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download CSV' }).click();
   const file = await download;
