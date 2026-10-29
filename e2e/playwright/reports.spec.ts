@@ -34,7 +34,7 @@ test('spending report ranks categories, nets refunds, and ignores transfers', as
   // never appear as spending.
   await postTransfer(page, today, checking.id, savings.id, currencyID, 25000);
 
-  await page.goto(`/app/reports?view=spending&group_by=category&start_date=${today}&end_date=${today}&bucket=month&account_id=${checking.id}&account_id=${savings.id}&include_descendants=false`);
+  await page.goto(`/app/reports/spending?group_by=category&start_date=${today}&end_date=${today}&bucket=month&account_id=${checking.id}&account_id=${savings.id}&include_descendants=false`);
 
   const table = page.getByRole('table');
   await expect(table).toBeVisible();
@@ -85,7 +85,7 @@ test('report filters narrow the result and travel in the URL', async ({ page }) 
   await postTransaction(page, today, checking.id, category('expense_transport_fuel'), currencyID, 7000);
   await postTransaction(page, today, savings.id, category('expense_housing_rent_mortgage'), currencyID, 9000);
 
-  await page.goto(`/app/reports?view=spending&group_by=category&start_date=${today}&end_date=${today}&bucket=month&account_id=${checking.id}&account_id=${savings.id}&include_descendants=false`);
+  await page.goto(`/app/reports/spending?group_by=category&start_date=${today}&end_date=${today}&bucket=month&account_id=${checking.id}&account_id=${savings.id}&include_descendants=false`);
 
   const table = page.getByRole('table');
   await expect(table.locator('tbody tr')).toHaveCount(3);
@@ -110,11 +110,11 @@ test('report filters narrow the result and travel in the URL', async ({ page }) 
 
   // Net worth cannot express a category, so that control is not offered there;
   // the selection survives in the URL for the trip back.
-  await page.getByRole('button', { name: 'Net worth', exact: true }).click();
+  await page.getByRole('link', { name: 'Net worth', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Filters' })).not.toContainText('Categories');
   await expect(page).toHaveURL(/category_id=/);
 
-  await page.getByRole('button', { name: 'Spending', exact: true }).click();
+  await page.getByRole('link', { name: 'Spending', exact: true }).click();
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
 
   // Clearing drops the dimension from the URL rather than writing it empty.
@@ -132,7 +132,7 @@ test('report filters narrow the result and travel in the URL', async ({ page }) 
 
   // The account filter must reach the net-worth calculation, not just the URL:
   // checking alone is -110.00 where both accounts together are -200.00.
-  await page.getByRole('button', { name: 'Net worth', exact: true }).click();
+  await page.getByRole('link', { name: 'Net worth', exact: true }).click();
   const netWorth = page.getByRole('table');
   await expect(netWorth).toContainText('-110.00');
   await expect(netWorth).not.toContainText('-200.00');
@@ -157,7 +157,7 @@ test('a spending row drills down to exactly its transactions', async ({ page }) 
   await postTransaction(page, today, checking.id, category('expense_food_groceries'), currencyID, 4200);
   await postTransaction(page, today, checking.id, category('expense_transport_fuel'), currencyID, 3100);
 
-  await page.goto(`/app/reports?view=spending&group_by=category&start_date=${today}&end_date=${today}&bucket=month`);
+  await page.goto(`/app/reports/spending?group_by=category&start_date=${today}&end_date=${today}&bucket=month`);
 
   // Both the visual summary and detail table expose the same drill-down.
   await page.getByRole('link', { name: 'Groceries' }).first().click();
@@ -222,7 +222,7 @@ test('cashflow separates spending from transfers and names its cash scope', asyn
   // run, and every spec posts to today, so the default scope would also pick up
   // the other specs' cash accounts.
   const scoped = `&account_id=${checking.id}&account_id=${savings.id}`;
-  await page.goto(`/app/reports?view=cashflow&start_date=${today}&end_date=${today}&bucket=day${scoped}`);
+  await page.goto(`/app/reports/cashflow?start_date=${today}&end_date=${today}&bucket=day${scoped}`);
 
   const table = page.getByRole('table');
   await expect(table).toBeVisible();
@@ -238,13 +238,13 @@ test('cashflow separates spending from transfers and names its cash scope', asyn
 
   // Narrowing to checking alone turns the internal transfer into financing
   // movement, because savings is now outside the measured set.
-  await page.goto(`/app/reports?view=cashflow&start_date=${today}&end_date=${today}&bucket=day&account_id=${checking.id}`);
+  await page.goto(`/app/reports/cashflow?start_date=${today}&end_date=${today}&bucket=day&account_id=${checking.id}`);
   // 1000 - 60 - 200 - 150.
   await expect(page.getByRole('table').locator('tbody tr').first()).toContainText('+590.00');
 
   // Without an account filter the scope is the named liquid-cash default, and
   // the transfer policy is stated rather than assumed.
-  await page.goto(`/app/reports?view=cashflow&start_date=${today}&end_date=${today}&bucket=day`);
+  await page.goto(`/app/reports/cashflow?start_date=${today}&end_date=${today}&bucket=day`);
   await expect(page.getByText(/Measuring your \d+ active cash accounts/)).toBeVisible();
   await expect(page.getByText(/is shown as a transfer, never as spending/)).toBeVisible();
 });
@@ -266,7 +266,7 @@ test('a report exports CSV a spreadsheet can read, and prints without its chrome
   await postTransaction(page, today, checking.id, groceries.id, currencyID, 123456);
 
   await page.goto(
-    `/app/reports?view=cashflow&start_date=${today}&end_date=${today}&bucket=day&account_id=${checking.id}`
+    `/app/reports/cashflow?start_date=${today}&end_date=${today}&bucket=day&account_id=${checking.id}`
   );
   await expect(page.getByRole('table')).toBeVisible();
 
@@ -297,7 +297,7 @@ test('a report exports CSV a spreadsheet can read, and prints without its chrome
   // same report describe it the same way.
   await page.emulateMedia({ media: 'print' });
   await expect(page.getByRole('button', { name: 'Download CSV' })).toBeHidden();
-  await expect(page.getByRole('navigation', { name: 'Report' })).toBeHidden();
+  await expect(page.getByRole('navigation', { name: 'Reports pages' })).toBeHidden();
   await expect(page.getByRole('table')).toBeVisible();
   // The shell's context line, not the view's own basis note — both say "posted
   // transactions only", and the point here is that the period and basis survive
@@ -331,7 +331,7 @@ test('a cashflow row drills down to the categories behind it', async ({ page }) 
   await postTransfer(page, today, checking.id, card.id, currencyID, 25000);
 
   await page.goto(
-    `/app/reports?view=cashflow&start_date=${today}&end_date=${today}&bucket=day&account_id=${checking.id}`
+    `/app/reports/cashflow?start_date=${today}&end_date=${today}&bucket=day&account_id=${checking.id}`
   );
 
   const cashflowRow = page.getByRole('table').locator('tbody tr').first();
@@ -340,7 +340,7 @@ test('a cashflow row drills down to the categories behind it', async ({ page }) 
   // The outflow figure is the link into its own breakdown.
   await cashflowRow.getByRole('link', { name: '110.00' }).click();
 
-  await expect(page).toHaveURL(/view=spending/);
+  await expect(page).toHaveURL(/\/app\/reports\/spending\?/);
   await expect(page).toHaveURL(/mode=spending/);
   await expect(page).toHaveURL(new RegExp(`account_id=${checking.id}`));
 
@@ -386,7 +386,7 @@ test('[acceptance] one multi-currency journey travels through every report witho
   const range = `start_date=${today}&end_date=${today}&bucket=day`;
 
   // --- Spending: one category, two commodities, ranked separately.
-  await page.goto(`/app/reports?view=spending&group_by=category&${range}${scoped}`);
+  await page.goto(`/app/reports/spending?group_by=category&${range}${scoped}`);
   const spendingTable = page.getByRole('table');
   await expect(spendingTable).toBeVisible();
   await expect(spendingTable).toContainText('65.00');
@@ -403,7 +403,7 @@ test('[acceptance] one multi-currency journey travels through every report witho
   await expect(page.getByRole('img')).toHaveCount(0);
 
   // --- Cashflow: the same postings, still per commodity, still separate.
-  await page.goto(`/app/reports?view=cashflow&${range}${scoped}`);
+  await page.goto(`/app/reports/cashflow?${range}${scoped}`);
   const cashflowTable = page.getByRole('table');
   await expect(cashflowTable).toBeVisible();
   await expect(cashflowTable).toContainText('-65.00');
@@ -420,7 +420,7 @@ test('[acceptance] one multi-currency journey travels through every report witho
   expect(content).not.toContain('-90.00');
 
   // --- Net worth: two rows for one bucket, one per commodity.
-  await page.goto(`/app/reports?view=net-worth&${range}${scoped}`);
+  await page.goto(`/app/reports/net-worth?${range}${scoped}`);
   const netWorthRows = page.getByRole('table').locator('tbody tr');
   await expect(netWorthRows).toHaveCount(2);
   await expect(page.getByRole('table')).toContainText('-65.00');
@@ -428,7 +428,7 @@ test('[acceptance] one multi-currency journey travels through every report witho
 
   // --- A commodity filter narrows to one commodity, survives in the URL, and
   // the report becomes single-commodity again — chart and all.
-  await page.goto(`/app/reports?view=spending&group_by=category&${range}${scoped}&commodity_id=${eurID}`);
+  await page.goto(`/app/reports/spending?group_by=category&${range}${scoped}&commodity_id=${eurID}`);
   const filtered = page.getByRole('table');
   await expect(filtered).toContainText('25.00');
   await expect(filtered).not.toContainText('65.00');
@@ -437,12 +437,12 @@ test('[acceptance] one multi-currency journey travels through every report witho
 
   // --- Drilling from one commodity's cashflow row carries that commodity, so
   // the breakdown never widens into the other one.
-  await page.goto(`/app/reports?view=cashflow&${range}${scoped}`);
+  await page.goto(`/app/reports/cashflow?${range}${scoped}`);
   const eurRow = page.getByRole('table').locator('tbody tr').filter({ hasText: 'EUR' }).first();
   await eurRow.getByRole('link', { name: '25.00' }).click();
 
   await expect(page).toHaveURL(new RegExp(`commodity_id=${eurID}`));
-  await expect(page).toHaveURL(/view=spending/);
+  await expect(page).toHaveURL(/\/app\/reports\/spending\?/);
   const breakdown = page.getByRole('table');
   await expect(breakdown).toContainText('25.00');
   await expect(breakdown).not.toContainText('65.00');
@@ -471,7 +471,7 @@ test('a report keeps each measure at its own scale, in the table and the export'
   await postScaledTransaction(page, today, checking.id, category('expense_food_groceries'), currencyID, '100', 0, false);
 
   await page.goto(
-    `/app/reports?view=cashflow&start_date=${today}&end_date=${today}&bucket=day&account_id=${checking.id}`
+    `/app/reports/cashflow?start_date=${today}&end_date=${today}&bucket=day&account_id=${checking.id}`
   );
 
   const row = page.getByRole('table').locator('tbody tr').first();
@@ -602,7 +602,7 @@ test('[acceptance] the shared report scenario downloads exactly its declared fig
   for (const mode of ['expense', 'income'] as const) {
     const expected = scenario.reports.spending[mode];
     await page.goto(
-      `/app/reports?view=spending&group_by=category${mode === 'income' ? '&mode=income' : ''}&${scope(scenario.reports.spending.accounts)}`
+      `/app/reports/spending?group_by=category${mode === 'income' ? '&mode=income' : ''}&${scope(scenario.reports.spending.accounts)}`
     );
     await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(expected.length);
     const rows = (await downloadReportCSV(page))
@@ -612,7 +612,7 @@ test('[acceptance] the shared report scenario downloads exactly its declared fig
   }
 
   // --- Cashflow: one row per commodity, every measure exact.
-  await page.goto(`/app/reports?view=cashflow&${scope(scenario.reports.cashflow.accounts)}`);
+  await page.goto(`/app/reports/cashflow?${scope(scenario.reports.cashflow.accounts)}`);
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(scenario.reports.cashflow.rows.length);
   const cashflow = (await downloadReportCSV(page))
     .filter((fields) => commodities.has(fields[2]))
@@ -632,7 +632,7 @@ test('[acceptance] the reference book downloads its register cashflow', async ({
   const { period, cashflow } = book.register;
   const scope = cashflow.accounts.map((key) => `&account_id=${ids.get(key)}`).join('');
   await page.goto(
-    `/app/reports?view=cashflow&start_date=${period.start_date}&end_date=${period.end_date}&bucket=quarter&include_descendants=false${scope}`
+    `/app/reports/cashflow?start_date=${period.start_date}&end_date=${period.end_date}&bucket=quarter&include_descendants=false${scope}`
   );
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(cashflow.rows.length);
   const commodities = new Set(cashflow.rows.map((row) => row.commodity));
@@ -662,7 +662,7 @@ test('[acceptance] reference spending and net worth CSVs equal the API and regis
   for (const direction of ['expense', 'income'] as const) {
     const mode = direction === 'expense' ? 'spending' : 'income';
     const query = `${range}&bucket=quarter&group_by=category&mode=${mode}${scope(spending.accounts)}`;
-    await page.goto(`/app/reports?view=spending&${query}`);
+    await page.goto(`/app/reports/spending?${query}`);
     await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(spending[direction].length);
     const actual = (await downloadReportCSV(page)).filter((row) => categoryKeys.has(row[0])).map(([label, commodity, amount]) => ({
       category: categoryKeys.get(label), commodity, amount: normalizeReportDecimal(amount)
@@ -680,7 +680,7 @@ test('[acceptance] reference spending and net worth CSVs equal the API and regis
   // cannot change the register. Month ends have no transfer-clearing residual.
   const accounts = [...spending.accounts, 'hold_fifo', 'hold_avg', 'hold_gift', 'hold_short'];
   const query = `${range}&bucket=month&reporting_currency_id=${ids.get('EUR')}${scope(accounts)}`;
-  await page.goto(`/app/reports?view=net-worth&${query}`);
+  await page.goto(`/app/reports/net-worth?${query}`);
   const count = netWorth.reduce((sum, row) => sum + row.totals.length + (row.converted_eur === null ? 0 : 1), 0);
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(count);
   const csv = (await downloadReportCSV(page)).filter((row) => netWorth.some((figure) => figure.as_of === row[1]));
@@ -883,7 +883,7 @@ test('[acceptance] a reporting currency restates every report without touching t
   const range = `start_date=${today}&end_date=${today}&bucket=day`;
 
   // --- Without a reporting currency, nothing about the report changes.
-  await page.goto(`/app/reports?view=spending&group_by=category&${range}${scoped}`);
+  await page.goto(`/app/reports/spending?group_by=category&${range}${scoped}`);
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(2);
   await expect(page.getByRole('table')).not.toContainText('restated');
   // Bars across unlike commodities would be a comparison the ledger cannot make.
@@ -916,13 +916,13 @@ test('[acceptance] a reporting currency restates every report without touching t
 
   // --- The selection is a property of the screen, not of one report: it
   // survives a view switch, and each report restates on its own basis.
-  await page.getByRole('button', { name: 'Cashflow', exact: true }).click();
+  await page.getByRole('link', { name: 'Cashflow', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`reporting_currency_id=${eurID}`));
   const cashflowRestated = page.getByRole('table').locator('tbody tr').filter({ hasText: 'restated' });
   await expect(cashflowRestated).toHaveCount(1);
   await expect(cashflowRestated).toContainText('-30.00');
 
-  await page.getByRole('button', { name: 'Net worth', exact: true }).click();
+  await page.getByRole('link', { name: 'Net worth', exact: true }).click();
   const netWorthRestated = page.getByRole('table').locator('tbody tr').filter({ hasText: 'restated' });
   await expect(netWorthRestated).toHaveCount(1);
   await expect(netWorthRestated).toContainText('-30.00');

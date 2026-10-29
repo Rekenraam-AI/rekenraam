@@ -1,6 +1,5 @@
 <script lang="ts">
   import ObservationStatus from '#lib/valuation/observation-status.svelte';
-  import { untrack } from 'svelte';
   import { page } from '$app/state';
   import { createQuery } from '@tanstack/svelte-query';
   import TrendingUp from '@lucide/svelte/icons/trending-up';
@@ -20,8 +19,6 @@
   import SplitActivity from '#lib/investments/split-activity.svelte';
   import InvestmentEntry from '#lib/investments/investment-entry.svelte';
   import PositionSideBadge from '#lib/investments/position-side-badge.svelte';
-  import InstrumentsPanel from '#lib/investments/instruments-panel.svelte';
-  import GainsReport from '#lib/investments/gains-report.svelte';
   import EventSuggestions from '#lib/investments/event-suggestions.svelte';
   import { parseISO } from 'date-fns';
   import { formatScaledValue } from './investment-labels';
@@ -120,9 +117,18 @@
     return pos.position_side === 'short' ? negateCoefficient(pos.quantity_value) : pos.quantity_value;
   }
 
-  // Tab navigation
-  type Tab = 'portfolio' | 'gains' | 'splits' | 'suggestions' | 'instruments';
-  let activeTab = $state<Tab>(untrack(() => page.url.searchParams.get('tab') === 'instruments' ? 'instruments' : page.url.searchParams.get('tab') === 'splits' ? 'splits' : 'portfolio'));
+  // In-page views of the Overview. Instruments and Gains are their own
+  // routes (#436); these stay views, read from the URL on every navigation so a
+  // link to another view of this page switches it.
+  type Tab = 'portfolio' | 'splits' | 'suggestions';
+  const activeTab = $derived.by<Tab>(() => {
+    const tab = page.url.searchParams.get('tab');
+    return tab === 'splits' || tab === 'suggestions' ? tab : 'portfolio';
+  });
+
+  function tabHref(tab: Tab): string {
+    return tab === 'portfolio' ? '/app/investments' : `/app/investments?tab=${tab}`;
+  }
 
   // Badge: count pending suggestions
   const suggestionsQuery = createQuery(() => ({
@@ -136,25 +142,20 @@
 </script>
 
 <div>
-  <div class="p-4 sm:p-6 lg:p-8">
-    <a href="/app/pricing" class="mb-3 inline-block min-h-11 text-sm font-semibold underline underline-offset-4">{m.pricing_title()}</a>
-    <a href="/app/investments/income" class="mb-3 ml-4 inline-block min-h-11 text-sm font-semibold underline underline-offset-4">{m.income_coverage_title()}</a>
-    <a href="/app/investments/returns" class="mb-3 ml-4 inline-block min-h-11 text-sm font-semibold underline underline-offset-4">{m.returns_open()}</a>
+  <div>
     <p class="mb-3 text-sm text-muted"><a href="https://www.coingecko.com/en/api" target="_blank" rel="noreferrer" class="underline">{m.quotes_attribution()}</a></p>
-    <!-- Tab navigation -->
-    <div class="mb-5 flex items-center gap-1 overflow-x-auto border-b border-border">
-      {#each (['portfolio', 'instruments', 'gains', 'splits', 'suggestions'] as const) as tab}
-        <button
-          type="button"
-          onclick={() => { activeTab = tab; }}
-          class="relative -mb-px flex shrink-0 items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition
+    <!-- View navigation -->
+    <nav aria-label={m.investments_title()} class="mb-5 flex items-center gap-1 overflow-x-auto border-b border-border">
+      {#each (['portfolio', 'splits', 'suggestions'] as const) as tab (tab)}
+        <a
+          href={tabHref(tab)}
+          aria-current={activeTab === tab ? 'page' : undefined}
+          class="relative -mb-px flex min-h-11 shrink-0 items-center gap-1.5 px-4 text-sm font-medium transition
             {activeTab === tab
               ? 'border-b-2 border-foreground text-foreground'
               : 'text-muted hover:text-foreground'}"
         >
           {#if tab === 'portfolio'}{m.investments_tab_portfolio()}
-          {:else if tab === 'instruments'}{m.quotes_instruments()}
-          {:else if tab === 'gains'}{m.investments_tab_gains()}
           {:else if tab === 'splits'}{m.investments_split_history_title()}
           {:else}{m.investments_tab_suggestions()}
           {/if}
@@ -163,12 +164,11 @@
               {pendingCount}
             </span>
           {/if}
-        </button>
+        </a>
       {/each}
-    </div>
+    </nav>
 
     <!-- Portfolio tab action buttons -->
-    {#if activeTab === 'instruments'}<InstrumentsPanel {csrfToken} />{/if}
     {#if activeTab === 'portfolio'}
     <div class="mb-4 flex flex-wrap gap-2">
       <InvestmentEntry />
@@ -348,11 +348,6 @@
         {/if}
       </div>
     {/if}
-    {/if}
-
-    <!-- Gains tab -->
-    {#if activeTab === 'gains'}
-      <GainsReport {csrfToken} />
     {/if}
 
     {#if activeTab === 'splits'}<SplitActivity {csrfToken}/>{/if}

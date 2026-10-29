@@ -37,7 +37,7 @@ test('gains show currency units, retain share precision and render same-day sale
   }});
   });
   await page.goto('/app/investments');
-  await page.getByRole('button', { name: 'Gains', exact: true }).click();
+  await page.getByRole('link', { name: 'Gains', exact: true }).click();
   await expect(page.locator('tbody tr')).toHaveCount(5);
   await expect(page.getByRole('cell', { name: '1.234567', exact: true })).toHaveCount(5);
   await expect(page.getByRole('cell', { name: 'EUR 1.23', exact: true })).toBeVisible();

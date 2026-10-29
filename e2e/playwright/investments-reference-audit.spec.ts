@@ -13,7 +13,7 @@ test('[acceptance] reference gains match the register in live comparisons and th
   const { book, ids } = seeded;
   const register = book.register.gains;
   await page.goto('/app/investments');
-  await page.getByRole('button', { name: 'Gains', exact: true }).click();
+  await page.getByRole('link', { name: 'Gains', exact: true }).click();
   await page.getByLabel('From', { exact: true }).fill(book.register.period.start_date);
   await page.getByLabel('To', { exact: true }).fill(book.register.period.end_date);
   await page.getByRole('button', { name: 'Apply', exact: true }).click();

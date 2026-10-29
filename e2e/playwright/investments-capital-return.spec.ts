@@ -69,7 +69,7 @@ test('a return of capital beyond the basis previews its excess, then is reversed
     page, 'GET', `/api/v1/transactions?account_id=${cash.id}`);
   const receipt = transactions.transactions.find((transaction) => transaction.transaction_date === daysFromTodayISO(-5));
   expect(receipt).toBeTruthy();
-  await page.getByRole('button', { name: 'Gains', exact: true }).click();
+  await page.getByRole('link', { name: 'Gains', exact: true }).click();
   const summary = page.getByRole('region', { name: 'Return-of-capital results' });
   const card = summary.getByRole('article').filter({ hasText: name });
   await expect(card).toContainText('3.00');
@@ -94,7 +94,7 @@ test('a return of capital beyond the basis previews its excess, then is reversed
     return value === null ? null : BigInt(value) > 0n;
   }).toBe(true);
   await page.goto('/app/investments');
-  await page.getByRole('button', { name: 'Gains', exact: true }).click();
+  await page.getByRole('link', { name: 'Gains', exact: true }).click();
   // The region renders a loading panel first; wait for its loaded state (empty
   // or listing other receipts) before checking this one is gone.
   const results = page.getByRole('region', { name: 'Return-of-capital results' });

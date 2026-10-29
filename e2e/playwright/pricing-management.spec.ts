@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { readyForLedger, ensureCurrency } from './support/ledger';
 import { apiJSON } from './support/api';
 import { daysFromTodayISO, todayISO } from './support/dates';
+import { useDarkTheme } from './support/session';
 
 test.use({ viewport: { width: 390, height: 844 } });
 const messages = (locale = 'en') => JSON.parse(readFileSync(new URL(`../../frontend/messages/pricing/${locale}.json`, import.meta.url), 'utf8'));
@@ -13,7 +14,7 @@ async function setup(page: Page, locale = 'en') {
   const usd = await ensureCurrency(page, csrfToken, 'USD', 'US Dollar');
   const base = currencyID === eur ? usd : eur;
   await page.evaluate(value => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
-  await page.goto(`/app/pricing?base_commodity_id=${base}&quote_commodity_id=${currencyID}`);
+  await page.goto(`/app/investments/prices?base_commodity_id=${base}&quote_commodity_id=${currencyID}`);
   await expect(page.locator('#pricing-history-base')).toHaveValue(String(base));
   return { csrfToken, base, quote: currencyID };
 }
@@ -23,8 +24,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     const s = await setup(page, locale);
     const editable = (value: string) => value.replace('.', locale === 'en' ? '.' : ',');
     const m = messages(locale);
-    const appMessages = JSON.parse(readFileSync(new URL(`../../frontend/messages/settings/${locale}.json`, import.meta.url), 'utf8'));
-    if (locale === 'en') await page.getByRole('button', { name: appMessages.theme_switch_to_dark }).click();
+    if (locale === 'en') await useDarkTheme(page);
     const add = page.getByRole('button', { name: m.pricing_add, exact: true });
     await add.focus(); await page.keyboard.press('Enter');
     const dialog = page.getByRole('dialog', { name: m.pricing_add, exact: true });
@@ -109,7 +109,7 @@ test('[acceptance] workspace loading, recoverable error and empty history remain
   await readyForLedger(page); const m=messages();
   let release!:()=>void;const wait=new Promise<void>(resolve=>{release=resolve;});
   await page.route('**/api/v1/pricing/workspace*',async route=>{await wait;await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:{code:'RESOURCE_BUSY',message:'fixture'}})});},{times:2});
-  await page.goto('/app/pricing');await expect(page.getByText(m.pricing_loading,{exact:true})).toBeVisible();release();
+  await page.goto('/app/investments/prices');await expect(page.getByText(m.pricing_loading,{exact:true})).toBeVisible();release();
   await expect(page.getByText(m.pricing_error,{exact:true})).toBeVisible();
   await page.getByRole('button',{name:m.pricing_refresh,exact:true}).first().click();
   await expect(page.locator('#pricing-history-base')).toBeVisible();
@@ -123,7 +123,7 @@ test('[acceptance] empty configured instrument and older history pages are reach
   const instrument=await apiJSON<{commodity_id:number}>(page,'POST','/api/v1/investments/instruments',s.csrfToken,{
     commodity_code:name,instrument_type:'stock',display_name:name,symbol:name,quote_commodity_id:s.quote,trading_commodity_id:s.quote,quantity_scale:0,price_scale:2
   });
-  await page.goto(`/app/pricing?base_commodity_id=${instrument.commodity_id}&quote_commodity_id=${s.quote}`);
+  await page.goto(`/app/investments/prices?base_commodity_id=${instrument.commodity_id}&quote_commodity_id=${s.quote}`);
   await expect(page.getByText(m.pricing_history_empty,{exact:true})).toBeVisible();
   const missingCard=page.locator('li').filter({has:page.getByRole('button',{name:m.pricing_pair.replace('{base}',name).replace('{quote}',(await apiJSON<{currencies:Array<{id:number;code:string}>}>(page,'GET','/api/v1/currencies')).currencies.find(c=>c.id===s.quote)!.code),exact:true})});
   await expect(missingCard).toContainText(m.pricing_missing);
@@ -162,7 +162,7 @@ test('[acceptance] a manual total-return price feeds a total-return benchmark at
     commodity_code: 'TRIDX', instrument_type: 'other', display_name: 'Total-return index', symbol: 'TRIDX',
     quote_commodity_id: currencyID, trading_commodity_id: currencyID, quantity_scale: 0, price_scale: 2, effective_from: opened
   });
-  await page.goto(`/app/pricing?base_commodity_id=${index.commodity_id}&quote_commodity_id=${currencyID}`);
+  await page.goto(`/app/investments/prices?base_commodity_id=${index.commodity_id}&quote_commodity_id=${currencyID}`);
   await expect(page.locator('#pricing-history-base')).toHaveValue(String(index.commodity_id));
   const record = async (date: string, amount: string) => {
     await page.getByRole('button', { name: m.pricing_add, exact: true }).click();

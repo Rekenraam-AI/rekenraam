@@ -6,8 +6,12 @@ export type ThemeName = (typeof themeNames)[number];
 export type BaseColorName = (typeof baseColorNames)[number];
 export type AccentColorName = (typeof accentColorNames)[number];
 
+/** What the owner chose: a fixed theme, or whatever the system prefers. */
+export type ThemePreference = ThemeName | 'system';
+
 type ThemeState = {
   name: ThemeName;
+  preference: ThemePreference;
   initialized: boolean;
   baseColor: BaseColorName;
   accentColor: AccentColorName;
@@ -19,6 +23,7 @@ const accentColorStorageKey = 'rekenraam-accent-color';
 
 export const themeState = $state<ThemeState>({
   name: 'light',
+  preference: 'system',
   initialized: false,
   baseColor: 'olive',
   accentColor: 'emerald'
@@ -32,7 +37,9 @@ export function initializeTheme(): void {
     return;
   }
 
-  syncTheme(readStoredTheme() ?? readSystemTheme());
+  const storedTheme = readStoredTheme();
+  themeState.preference = storedTheme ?? 'system';
+  syncTheme(storedTheme ?? readSystemTheme());
   syncAppearance(readStoredBaseColor() ?? 'olive', readStoredAccentColor() ?? 'emerald');
   themeState.initialized = true;
 
@@ -50,12 +57,25 @@ export function setTheme(themeName: ThemeName): void {
     window.localStorage.setItem(storageKey, themeName);
   }
 
+  themeState.preference = themeName;
   syncTheme(themeName);
   themeState.initialized = true;
 }
 
-export function toggleTheme(): void {
-  setTheme(themeState.name === 'light' ? 'dark' : 'light');
+/** Forgets the stored theme so the page follows the system again. */
+export function setThemePreference(preference: ThemePreference): void {
+  if (preference !== 'system') {
+    setTheme(preference);
+    return;
+  }
+
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem(storageKey);
+  }
+
+  themeState.preference = 'system';
+  syncTheme(readSystemTheme());
+  themeState.initialized = true;
 }
 
 export function setBaseColor(baseColor: BaseColorName): void {
@@ -83,6 +103,7 @@ export function resetAppearance(): void {
     window.localStorage.removeItem(accentColorStorageKey);
   }
 
+  themeState.preference = 'system';
   syncTheme(readSystemTheme());
   syncAppearance('olive', 'emerald');
   themeState.initialized = true;

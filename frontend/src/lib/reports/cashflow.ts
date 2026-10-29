@@ -270,7 +270,6 @@ export function cashflowDrillDownHref(
   if (amount === '0') return undefined;
 
   const params = new URLSearchParams();
-  params.set('view', 'spending');
   params.set('group_by', 'category');
   // An inflow is money from income counterparts, an outflow money to expense
   // counterparts — exactly the spending report's direction switch.
@@ -289,5 +288,5 @@ export function cashflowDrillDownHref(
   // the breakdown to the others would answer a question the row did not ask.
   params.append('commodity_id', String(row.commodityID));
 
-  return `/app/reports?${params.toString()}`;
+  return `/app/reports/spending?${params.toString()}`;
 }

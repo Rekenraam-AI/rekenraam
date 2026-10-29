@@ -144,7 +144,7 @@
   const button = 'min-h-10 rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground hover:bg-control-hover focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50';
 </script>
 
-<div class="space-y-5 p-4 sm:p-6">
+<div class="space-y-5">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div class="flex gap-2" role="group" aria-label={m.recurring_views()}>
       <button class={button} aria-pressed={tab === 'due'} onclick={() => selectTab('due')}>{m.recurring_due()}</button>

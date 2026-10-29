@@ -77,7 +77,7 @@ test('an instrument view lists its activity and pre-fills the instrument and its
   });
 
   await page.goto('/app/investments');
-  await page.getByRole('tab', { name: 'Instruments' }).or(page.getByRole('button', { name: 'Instruments', exact: true })).first().click();
+  await page.getByRole('link', { name: 'Instruments', exact: true }).click();
   await page.getByRole('link', { name: `View activity for ${name}` }).click();
   await expect(page).toHaveURL(new RegExp(`/app/investments/instruments/${instrument.commodity_id}$`));
   await expect(page.getByRole('heading', { name: new RegExp(name) })).toBeVisible();

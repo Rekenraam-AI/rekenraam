@@ -225,7 +225,7 @@ test.describe('on a phone', () => {
       .locator('tbody tr', { hasText: name })
       .filter({ hasText: daysFromTodayISO(-10) });
     await page.goto('/app/investments');
-    await page.getByRole('button', { name: 'Gains', exact: true }).click();
+    await page.getByRole('link', { name: 'Gains', exact: true }).click();
     await expect(saleRow).toContainText('140.00');
     await clientNavigate(page, `/app/transactions?transaction_id=${reinvestment.transaction.id}`);
     await page.getByRole('button', { name: 'Correct reinvested dividend…' }).click();
@@ -249,7 +249,7 @@ test.describe('on a phone', () => {
         .map((gain) => ((BigInt(gain.realized_gain_value) * 100n) / 10n ** BigInt(gain.realized_gain_scale)).toString());
     }).toEqual(['9000']);
     await clientNavigate(page, '/app/investments');
-    await page.getByRole('button', { name: 'Gains', exact: true }).click();
+    await page.getByRole('link', { name: 'Gains', exact: true }).click();
     await expect(saleRow).toContainText('90.00');
     await expect(saleRow).not.toContainText('140.00');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

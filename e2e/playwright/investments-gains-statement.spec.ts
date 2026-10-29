@@ -68,7 +68,7 @@ test.describe('period statement', () => {
     });
 
     await page.goto('/app/investments');
-    await page.getByRole('button', { name: 'Gains', exact: true }).click();
+    await page.getByRole('link', { name: 'Gains', exact: true }).click();
     const statement = page.getByTestId('gains-statement');
     const showPeriod = async (fromDaysAgo: number) => {
       await statement.getByLabel('Period start').fill(daysFromTodayISO(-fromDaysAgo));
@@ -129,7 +129,7 @@ test.describe('period statement', () => {
       });
       await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
       await page.goto('/app/investments');
-      await page.getByRole('button', { name: tab, exact: true }).click();
+      await page.getByRole('link', { name: tab, exact: true }).click();
       await expect(page.getByRole('heading', { name: title })).toBeVisible();
       await expect(page.getByTestId('gains-statement-row').first()).toBeVisible();
     });

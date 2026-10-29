@@ -2,6 +2,7 @@ import { expect, test, type Page } from './support/fixtures';
 import { apiJSON, csrfTokenFor } from './support/api';
 import { createCashAccount, readyForLedger } from './support/ledger';
 import { expectNoAccessibilityViolations } from './support/a11y';
+import { useDarkTheme } from './support/session';
 
 async function templateForm(page:Page,name:string,account:string){
  await page.getByRole('button',{name:'New template',exact:true}).click();
@@ -86,7 +87,7 @@ test('[acceptance] recurring drafts remain reachable after archive and mobile di
  await page.getByRole('button',{name:'Due for review',exact:true}).click();
  card=page.getByRole('article',{name,exact:true});
  await expect(card).toContainText('Archived template');
- await page.getByRole('button',{name:'Switch to dark theme'}).click();
+ await useDarkTheme(page);
  await expectNoAccessibilityViolations(page,'recurring mobile due inbox');
  await page.screenshot({path:'/tmp/r9-due-mobile.png',fullPage:true});
  await card.getByRole('button',{name:'Discard draft'}).click();

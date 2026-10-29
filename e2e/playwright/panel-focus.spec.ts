@@ -152,7 +152,7 @@ test.describe('at desktop width', () => {
     await page.getByRole('button').filter({ hasText: name }).click();
     await expect(page.getByRole('complementary', { name: 'Lot detail' })).toBeVisible();
     expect(await page.locator('[inert]').count(), 'no inert page beside the lot column').toBe(0);
-    await page.getByRole('link', { name: 'Transactions' }).first().click();
-    await expect(page).toHaveURL(/\/app\/transactions/);
+    await page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name: 'Ledger', exact: true }).click();
+    await expect(page).toHaveURL(/\/app\/ledger$/);
   });
 });

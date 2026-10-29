@@ -229,15 +229,15 @@ const subViews: SubView[] = [
     }
   },
   {
-    name: 'price form (add)', group: 'dialog', path: () => '/app/pricing',
+    name: 'price form (add)', group: 'dialog', path: () => '/app/investments/prices',
     open: (c) => clickAndDialog(c, 'pricing_add')
   },
   {
-    name: 'price form (correct)', group: 'dialog', path: () => '/app/pricing',
+    name: 'price form (correct)', group: 'dialog', path: () => '/app/investments/prices',
     open: async (c) => { await pricingPair(c); return clickAndDialog(c, 'pricing_correct'); }
   },
   {
-    name: 'price form (withdraw)', group: 'dialog', path: () => '/app/pricing',
+    name: 'price form (withdraw)', group: 'dialog', path: () => '/app/investments/prices',
     open: async (c) => { await pricingPair(c); return clickAndDialog(c, 'pricing_void'); }
   },
   {

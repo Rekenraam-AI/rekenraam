@@ -18,7 +18,7 @@ export async function ensureBrowserSession(page: Page) {
   const freshHeading = page.getByRole('heading', { name: 'Create the owner account' });
   const loginHeading = page.getByRole('heading', { name: 'Sign in to continue' });
   const currencyHeading = page.getByRole('heading', { name: 'Choose default currencies' });
-  const overviewHeading = page.getByRole('heading', { name: 'Overview' });
+  const overviewHeading = page.getByRole('heading', { name: 'Home', exact: true });
 
   await expect(freshHeading.or(loginHeading).or(currencyHeading).or(overviewHeading)).toBeVisible({ timeout: 10_000 });
 
@@ -46,11 +46,33 @@ export async function ensureBrowserSession(page: Page) {
  */
 export async function completeCurrencySetupIfNeeded(page: Page) {
   const currencyHeading = page.getByRole('heading', { name: 'Choose default currencies' });
-  const overviewHeading = page.getByRole('heading', { name: 'Overview' });
+  const overviewHeading = page.getByRole('heading', { name: 'Home', exact: true });
 
   await expect(currencyHeading.or(overviewHeading)).toBeVisible({ timeout: 10_000 });
   if (await currencyHeading.isVisible()) {
     await page.getByRole('button', { name: /USD/ }).first().click();
     await page.getByRole('button', { name: 'Save currencies' }).click();
   }
+}
+
+/** Signs out through the header's settings menu, where Sign out lives (#436). */
+export async function signOut(page: Page) {
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+}
+
+/** Switches to the dark theme through the header's settings menu (#436). */
+export async function useDarkTheme(page: Page) {
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('group', { name: 'Theme' }).getByRole('button', { name: 'Dark', exact: true }).click();
+  await page.keyboard.press('Escape');
+}
+
+/** Goes to Home through the header, by the phone menu when the sections are collapsed. */
+export async function goHomeInApp(page: Page) {
+  const sections = page.getByRole('navigation', { name: 'Sections', exact: true });
+  if (!(await sections.getByRole('link', { name: 'Home', exact: true }).isVisible())) {
+    await page.getByRole('button', { name: /^Menu:/ }).click();
+  }
+  await sections.getByRole('link', { name: 'Home', exact: true }).click();
 }

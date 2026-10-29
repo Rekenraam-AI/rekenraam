@@ -56,7 +56,7 @@
 </script>
 
 <PageHeader title={m.income_coverage_title()} copy={m.income_coverage_help()} />
-<div class="mt-6 max-w-4xl space-y-5 px-4 sm:px-6 lg:px-8">
+<div class="mt-6 max-w-4xl space-y-5">
   <a href="/app/investments" class="inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-2">{m.investments_instrument_view_back()}</a>
 
   {#if loading}

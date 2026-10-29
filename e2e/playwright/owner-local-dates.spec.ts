@@ -47,13 +47,13 @@ test('[acceptance] financial defaults use owner-local today across midnight and 
     const buy = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Record buy', exact: true }) });
     await expect(buy.getByLabel('Date', { exact: true })).toHaveValue(today);
 
-    await page.goto('/app/reports');
+    await page.goto('/app/reports/net-worth');
     await expect(page).toHaveURL(new RegExp(`end_date=${today}`));
     expect(new URL(page.url()).searchParams.get('start_date')).toBe(`${today.slice(0, 4)}-01-01`);
-    await page.goto('/app/reports?start_date=2020-01-01&end_date=2020-02-29&bucket=day');
+    await page.goto('/app/reports/net-worth?start_date=2020-01-01&end_date=2020-02-29&bucket=day');
     await expect(page.getByLabel('End date', { exact: true })).toHaveValue('2020-02-29');
 
-    await page.goto('/app/pricing');
+    await page.goto('/app/investments/prices');
     await page.getByRole('button', { name: 'Add manual observation', exact: true }).click();
     await expect(page.locator('#price-date')).toHaveValue(today);
     await page.locator('#price-date').fill('2020-02-29');

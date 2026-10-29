@@ -85,7 +85,7 @@ test('a short sale is opened and covered on mobile with its result shown first',
   await expect(form).toBeHidden();
   await expect(page.getByRole('button', { name: new RegExp(s.name) })).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Gains' }).click();
+  await page.getByRole('link', { name: 'Gains', exact: true }).click();
   const realized = page.getByRole('row').filter({ hasText: s.name });
   await expect(realized.getByTestId('position-side-short')).toBeVisible();
   await expect(realized).toContainText('30.00');

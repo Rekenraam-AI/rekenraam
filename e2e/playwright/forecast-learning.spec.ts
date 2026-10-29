@@ -75,7 +75,7 @@ test('[acceptance] estimated spending is opt-in, explained and reversible', asyn
 
   const base = `/app/forecast?horizon_days=30&account_id=${account.id}&include_descendants=false`;
   await page.goto(base);
-  await expect(page.getByRole('heading', { name: 'Projected balances' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Forecast', exact: true })).toBeVisible();
 
   // Off by default: no estimate anywhere on the screen.
   const toggle = page.getByTestId('forecast-learning-toggle');

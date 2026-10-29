@@ -171,7 +171,7 @@ test('a journal-free split is inspected, corrected, settled and reversed by oper
   await page.getByRole('button', { name: 'Preview split' }).click();
   await expect(page.getByRole('region', { name: 'What changes' })).toContainText('Holding change: 0');
   await page.getByRole('button', { name: 'Record split' }).last().click();
-  await page.getByRole('button', { name: 'Splits', exact: true }).click();
+  await page.getByRole('link', { name: 'Splits', exact: true }).click();
   const active = page.getByRole('article').filter({ hasText: s.holdingLabel.split(' · ')[0] }).filter({ hasText: 'Active' });
   await expect(active).toContainText('Holding change: 0');
   await active.getByRole('button', { name: 'Correct split…' }).click();
@@ -185,7 +185,7 @@ test('a journal-free split is inspected, corrected, settled and reversed by oper
   await expect(active).toContainText('3:2');
   await s.trade('buy', 30, '1', '10000');
   await page.reload();
-  await page.getByRole('button', { name: 'Splits', exact: true }).click();
+  await page.getByRole('link', { name: 'Splits', exact: true }).click();
   await expect(active).toContainText('Holding change: 0.5');
   await active.getByRole('button', { name: 'Record cash in lieu', exact: true }).click();
   const settlement = page.getByRole('dialog', { name: 'Record cash in lieu', exact: true });

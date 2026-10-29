@@ -65,7 +65,7 @@ for (const [locale, tab, method, noteLabel] of locales) {
     const name = await setup(page, locale);
     await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
     await page.goto('/app/investments');
-    await page.getByRole('button', { name: tab, exact: true }).click();
+    await page.getByRole('link', { name: tab, exact: true }).click();
     const comparison = page.getByTestId('alternative-gains');
     await comparison.getByRole('combobox').selectOption('person_pooled_average');
     await expect(comparison.getByRole('heading')).toContainText(method);

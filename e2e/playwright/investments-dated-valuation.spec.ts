@@ -39,7 +39,7 @@ test('gains value positions as of a chosen date and name the profile at 390px', 
   await price(daysFromTodayISO(-2), 5000);
 
   await page.goto('/app/investments');
-  await page.getByRole('button', { name: 'Gains', exact: true }).click();
+  await page.getByRole('link', { name: 'Gains', exact: true }).click();
   const row = page.getByRole('row').filter({ hasText: name });
   await expect(row).toContainText('250.00'); // 5 × 50.00 today
   await expect(page.getByTestId('gains-profile')).toContainText(todayISO());

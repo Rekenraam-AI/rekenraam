@@ -65,7 +65,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     await expect(history.getByRole('article')).toHaveCount(3);
     await expect(history.getByRole('article').filter({ hasText: settings.investments_roc_current })).toContainText(settings.investments_roc_no_excess);
     await page.goto('/app/investments');
-    await page.getByRole('button', { name: settings.investments_tab_gains, exact: true }).click();
+    await page.getByRole('link', { name: settings.investments_tab_gains, exact: true }).click();
     const summary = page.getByRole('region', { name: settings.investments_roc_summary_title });
     await expect(summary.getByRole('article').filter({ hasText: suffix })).toHaveCount(1);
     await expect(summary.getByRole('article').filter({ hasText: suffix })).toContainText(settings.investments_roc_no_excess);
@@ -99,7 +99,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     });
     await apiJSON(page, 'POST', '/api/v1/investments/return-of-capital', csrfToken, { ...receiptTerms, holding_account_id: unknown.id });
     await page.goto('/app/investments');
-    await page.getByRole('button', { name: settings.investments_tab_gains, exact: true }).click();
+    await page.getByRole('link', { name: settings.investments_tab_gains, exact: true }).click();
     const unknownCard = summary.getByRole('article').filter({ hasText: `Unknown ${suffix}` });
     await expect(unknownCard).toContainText(settings.investments_roc_unresolved);
     await expect(summary.getByRole('article').filter({ hasText: `Holding ${suffix}` })).toHaveCount(0);
@@ -116,7 +116,7 @@ test('return-of-capital summary exposes loading, error and empty states', async 
     await route.fulfill({ status: 200, json: { currencies: [], realized: [], unrealized: [], realized_totals: [], capital_returns: [] } });
   });
   await page.goto('/app/investments');
-  await page.getByRole('button', { name: 'Gains', exact: true }).click();
+  await page.getByRole('link', { name: 'Gains', exact: true }).click();
   const summary = page.getByRole('region', { name: 'Return-of-capital results' });
   await expect(summary.getByRole('status')).toBeVisible();
   finishLoading();
@@ -124,6 +124,6 @@ test('return-of-capital summary exposes loading, error and empty states', async 
   await page.unrouteAll({ behavior: 'wait' });
   await page.route('**/api/v1/investments/gains?*', (route) => route.fulfill({ status: 500, json: { error: { code: 'INTERNAL_ERROR', message: 'failure' } } }));
   await page.reload();
-  await page.getByRole('button', { name: 'Gains', exact: true }).click();
+  await page.getByRole('link', { name: 'Gains', exact: true }).click();
   await expect(summary.getByRole('alert')).toBeVisible({ timeout: 15000 });
 });

@@ -5,7 +5,7 @@
 
 <!-- The first screen a new user meets still needs a name (R3a). -->
 <svelte:head>
-  <title>{m.app_shell_nav_title()}</title>
+  <title>{m.app_name()}</title>
 </svelte:head>
 
 <InstallGate />

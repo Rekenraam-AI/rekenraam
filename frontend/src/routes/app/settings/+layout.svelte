@@ -1,63 +1,24 @@
 <script lang="ts">
   import { page } from '$app/state';
   import type { Snippet } from 'svelte';
-  import Coins from '@lucide/svelte/icons/coins';
-  import Database from '@lucide/svelte/icons/database';
-  import Languages from '@lucide/svelte/icons/languages';
-  import Palette from '@lucide/svelte/icons/palette';
-  import Settings2 from '@lucide/svelte/icons/settings-2';
-  import ShieldCheck from '@lucide/svelte/icons/shield-check';
-  import Trash2 from '@lucide/svelte/icons/trash-2';
   import { m } from '#lib/paraglide/messages.js';
+  import { routeIcons } from '#lib/navigation/icons.ts';
+  import { sectionTabs } from '#lib/navigation/routes.ts';
 
   let { children }: { children?: Snippet } = $props();
 
   const pathname = $derived(page.url.pathname);
 
-  const sections = $derived([
-    {
-      href: '/app/settings',
-      label: m.settings_nav_overview(),
-      icon: Settings2,
-      active: pathname === '/app/settings'
-    },
-    {
-      href: '/app/settings/appearance',
-      label: m.settings_nav_appearance(),
-      icon: Palette,
-      active: pathname.startsWith('/app/settings/appearance')
-    },
-    {
-      href: '/app/settings/language',
-      label: m.settings_card_language_title(),
-      icon: Languages,
-      active: pathname.startsWith('/app/settings/language')
-    },
-    {
-      href: '/app/settings/currencies',
-      label: m.settings_nav_currencies(),
-      icon: Coins,
-      active: pathname.startsWith('/app/settings/currencies')
-    },
-    {
-      href: '/app/settings/data',
-      label: m.settings_data_title(),
-      icon: Database,
-      active: pathname.startsWith('/app/settings/data')
-    },
-    {
-      href: '/app/settings/security',
-      label: m.settings_nav_security(),
-      icon: ShieldCheck,
-      active: pathname.startsWith('/app/settings/security')
-    },
-    {
-      href: '/app/settings/trash',
-      label: m.settings_nav_trash(),
-      icon: Trash2,
-      active: pathname.startsWith('/app/settings/trash')
-    }
-  ]);
+  // The pages come from the route registry, the same list as the header's
+  // settings menu, so the two cannot disagree (#436).
+  const sections = $derived(
+    sectionTabs('settings').map((entry) => ({
+      href: entry.route,
+      label: entry.title(),
+      icon: routeIcons[entry.icon],
+      active: entry.route === '/app/settings' ? pathname === entry.route : pathname.startsWith(entry.route)
+    }))
+  );
 </script>
 
 <div class="grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)]">

@@ -53,6 +53,10 @@
 
   type ReportView = 'net-worth' | 'spending' | 'cashflow';
 
+  // Each report is its own route (#436); the tab row switches between them
+  // and carries the query string, so the period and filters survive.
+  let { view }: { view: ReportView } = $props();
+
   const locale = $derived(getLocale());
   const dateFormatter = $derived(
     new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric' })
@@ -66,14 +70,6 @@
     return parseReportRange(page.url.searchParams);
   }
 
-  function parseView(): ReportView {
-    const view = page.url.searchParams.get('view');
-    if (view === 'spending' || view === 'cashflow') {
-      return view;
-    }
-    return 'net-worth';
-  }
-
   function parseGroupBy(): SpendingGroupBy {
     return page.url.searchParams.get('group_by') === 'payee' ? 'payee' : 'category';
   }
@@ -83,7 +79,6 @@
   }
 
   const activeFilters = $derived.by(parseFilters);
-  const view = $derived.by(parseView);
   const reportFilters = $derived(parseReportFilters(page.url.searchParams));
   // Not part of ReportFilterState: a filter narrows what a report is about, and
   // this changes nothing about that. Every exact figure is present either way.
@@ -114,7 +109,7 @@
   });
 
   // A link with a missing or malformed range is repaired in place, never
-  // rebuilt: `/app/reports?view=spending&group_by=payee&account_id=12` asks a
+  // rebuilt: `/app/reports/spending?group_by=payee&account_id=12` asks a
   // specific question, and answering it with the default net-worth report would
   // silently discard every selection the sender made.
   $effect(() => {
@@ -123,7 +118,7 @@
     }
     const repaired = repairReportRange(page.url.searchParams, ownerToday());
     if (repaired) {
-      void goto(`/app/reports?${repaired.toString()}`, {
+      void goto(`${page.url.pathname}?${repaired.toString()}`, {
         replaceState: true,
         reset: false
       });
@@ -345,7 +340,7 @@
     params.set('start_date', startDate);
     params.set('end_date', endDate);
     params.set('bucket', bucket);
-    void goto(`/app/reports?${params.toString()}`, { reset: false });
+    void goto(`${page.url.pathname}?${params.toString()}`, { reset: false });
   }
 
   // Every control writes the URL, then the typed query follows. Switching one
@@ -353,7 +348,7 @@
   function setParam(name: string, value: string) {
     const params = new URLSearchParams(page.url.search);
     params.set(name, value);
-    void goto(`/app/reports?${params.toString()}`, { reset: false });
+    void goto(`${page.url.pathname}?${params.toString()}`, { reset: false });
   }
 
   // Filter selections apply immediately rather than waiting for Apply: the date
@@ -362,14 +357,14 @@
   // stays in the URL, so switching back to spending restores it.
   function applyReportFilters(next: ReportFilterState) {
     const params = writeReportFilters(page.url.searchParams, next);
-    void goto(`/app/reports?${params.toString()}`, { reset: false });
+    void goto(`${page.url.pathname}?${params.toString()}`, { reset: false });
   }
 
   // The selection is kept even where it currently adds nothing, so a range that
   // later spans a second currency starts restating without being re-picked.
   function applyReportingCurrency(commodityID: number | null) {
     const params = withReportingCurrency(page.url.searchParams, commodityID);
-    void goto(`/app/reports?${params.toString()}`, { reset: false });
+    void goto(`${page.url.pathname}?${params.toString()}`, { reset: false });
   }
 </script>
 
@@ -448,22 +443,6 @@
     </div>
   </Panel>
 
-  <nav aria-label={m.reports_view_switch_legend()} class="mt-5 flex flex-wrap gap-2">
-    {#each [{ value: 'net-worth' as const, label: m.reports_view_net_worth() }, { value: 'spending' as const, label: m.reports_view_spending() }, { value: 'cashflow' as const, label: m.reports_view_cashflow() }] as choice (choice.value)}
-      <button
-        type="button"
-        aria-current={view === choice.value ? 'page' : undefined}
-        onclick={() => setParam('view', choice.value)}
-        class={`h-9 rounded-(--radius-control) border px-3 text-sm font-medium transition ${
-          view === choice.value
-            ? 'border-accent bg-accent text-accent-foreground'
-            : 'border-border bg-control text-foreground hover:bg-control-hover'
-        }`}
-      >
-        {choice.label}
-      </button>
-    {/each}
-  </nav>
   </div>
 
   {#if view === 'cashflow'}

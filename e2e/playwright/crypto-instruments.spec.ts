@@ -13,7 +13,7 @@ test('crypto instrument, holding, explicit quotes and CSV lots work on a phone',
   const date = todayISO();
   const cash = await createCashAccount(page, csrfToken, `Crypto cash ${suffix}`, currencyID, date);
 
-  await page.goto('/app/investments?tab=instruments');
+  await page.goto('/app/investments/instruments');
   await page.getByRole('button', { name: 'Add instrument', exact: true }).click();
   let form = page.getByRole('form', { name: 'Add instrument', exact: true });
   await form.getByLabel('Name', { exact: true }).fill(name);

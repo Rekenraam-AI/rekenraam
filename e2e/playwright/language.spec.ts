@@ -28,6 +28,9 @@ test('switches the interface language and keeps it across navigation', async ({ 
   await expect(page.getByRole('heading', { name: 'Отчёты', level: 1 })).toBeVisible();
   // Assistive technology reads the page in the language it declares (#325).
   await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
+  await page.locator('main').getByRole('link', { name: 'Чистые активы', exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/reports\/net-worth\?/);
+  await expect(page.getByRole('heading', { name: 'Чистые активы', level: 1 })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Группировка' })).toBeVisible();
 
   await page.goto('/app/settings/language');

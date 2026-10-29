@@ -3,26 +3,14 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { createQuery } from '@tanstack/svelte-query';
-  import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
-  import LogOut from '@lucide/svelte/icons/log-out';
+  import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import { recurringSummaryQueryOptions } from '#lib/api/recurring.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
-  import Repeat from '@lucide/svelte/icons/repeat';
-  import RefreshCw from '@lucide/svelte/icons/refresh-cw';
-  import Settings from '@lucide/svelte/icons/settings';
-  import Tags from '@lucide/svelte/icons/tags';
-  import WalletCards from '@lucide/svelte/icons/wallet-cards';
-  import Receipt from '@lucide/svelte/icons/receipt';
-  import Scale from '@lucide/svelte/icons/scale';
-  import ArrowDownToLine from '@lucide/svelte/icons/arrow-down-to-line';
-  import TrendingUp from '@lucide/svelte/icons/trending-up';
-  import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
-  import ChartSpline from '@lucide/svelte/icons/chart-spline';
-  import ChartPie from '@lucide/svelte/icons/chart-pie';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import PageHeader from '#lib/components/page-header.svelte';
   import Panel from '#lib/components/panel.svelte';
-  import StatusBadge from '#lib/components/status-badge.svelte';
+  import AppHeader from '#lib/navigation/app-header.svelte';
+  import { canonicalURL, routeFor, sectionFor } from '#lib/navigation/routes.ts';
   import { authSessionQueryOptions, logout } from '#lib/api/auth.ts';
   import { setupStatusQueryOptions } from '#lib/api/setup.ts';
   import { APIClientError } from '#lib/api/client.ts';
@@ -67,86 +55,36 @@
     return setupQuery.data?.install_state !== 'configured' || !sessionQuery.data?.authenticated;
   });
 
-  const nextStepLabel = $derived.by(() => {
-    const nextStep = setupQuery.data?.current_step;
+  // An old `?view=`/`?tab=` link or a moved page is replaced by its canonical
+  // route before the page renders, keeping every other parameter (#436).
+  const legacyTarget = $derived(canonicalURL(page.url));
 
-    if (!nextStep) {
-      return null;
-    }
-
-    return m.install_gate_next_step({ step: nextStep.replaceAll('_', ' ') });
-  });
-
-  const installStateLabel = $derived.by(() => {
-    switch (setupQuery.data?.install_state) {
-      case 'fresh':
-        return m.app_shell_install_state_fresh();
-      case 'configured':
-        return m.app_shell_install_state_configured();
-      case 'recovery_required':
-        return m.app_shell_install_state_recovery_required();
-      default:
-        return setupQuery.data?.install_state ?? 'unknown';
+  $effect(() => {
+    if (browser && legacyTarget) {
+      void goto(`${legacyTarget.pathname}${legacyTarget.search}${legacyTarget.hash}`, { replaceState: true });
     }
   });
 
+  const entry = $derived(routeFor(page.url.pathname));
+  // An overview's tab says "Overview"; its heading and document title name
+  // the section instead.
+  const pageTitle = $derived.by(() => {
+    if (!entry) return m.app_name();
+    if (entry.route === '/app/settings') return m.settings_title();
+    const section = sectionFor(entry.section);
+    return section && section.overview === entry.route ? section.title() : entry.title();
+  });
+  // Settings pages share one heading; the side list beside it names the page.
+  const heading = $derived(entry?.section === 'settings' ? m.settings_title() : pageTitle);
+
+  // Until the composed attention read (#458), the recurring summary is the one
+  // count the shell shows.
   const recurringSummary = createQuery(() => ({ ...recurringSummaryQueryOptions(), enabled: shellState === 'ready' && !shouldRedirectHome }));
-  const isRecurringRoute = $derived(page.url.pathname.startsWith('/app/recurring'));
-  const isOverviewRoute = $derived(page.url.pathname === '/app');
-  const isAccountsRoute = $derived(page.url.pathname.startsWith('/app/accounts'));
-  const isCategoriesRoute = $derived(page.url.pathname.startsWith('/app/categories'));
-  const isTransactionsRoute = $derived(page.url.pathname.startsWith('/app/transactions'));
-  const isReconcileRoute = $derived(page.url.pathname.startsWith('/app/reconcile'));
-  const isImportRoute = $derived(page.url.pathname.startsWith('/app/import'));
-  const isSettingsRoute = $derived(page.url.pathname.startsWith('/app/settings'));
-  const isInvestmentsRoute = $derived(page.url.pathname.startsWith('/app/investments'));
-  const isReportsRoute = $derived(page.url.pathname.startsWith('/app/reports'));
-  const isForecastRoute = $derived(page.url.pathname.startsWith('/app/forecast'));
-  const isBudgetsRoute = $derived(page.url.pathname.startsWith('/app/budgets'));
-
-  const isPricingRoute = $derived(page.url.pathname.startsWith('/app/pricing'));
-  const headerTitle = $derived(
-    isPricingRoute ? m.pricing_title() : isBudgetsRoute ? m.budgets_title() : isRecurringRoute ? m.recurring_title() : isAccountsRoute
-      ? m.accounts_title()
-      : isCategoriesRoute
-        ? m.categories_title()
-        : isTransactionsRoute
-          ? m.transactions_page_title()
-          : isReconcileRoute
-            ? m.reconcile_title()
-            : isImportRoute
-              ? m.import_title()
-              : isSettingsRoute
-                ? m.settings_title()
-                : isInvestmentsRoute
-                  ? m.investments_title()
-                  : isForecastRoute
-                    ? m.forecast_title()
-                  : isReportsRoute
-                    ? m.reports_title()
-                  : m.app_shell_header_title()
-  );
-  const headerCopy = $derived(
-    isPricingRoute ? m.pricing_copy() : isBudgetsRoute ? m.budgets_copy() : isRecurringRoute ? m.recurring_shell_copy() : isAccountsRoute
-      ? m.accounts_shell_copy()
-      : isCategoriesRoute
-        ? m.categories_shell_copy()
-        : isTransactionsRoute
-          ? m.transactions_page_copy()
-          : isReconcileRoute
-            ? m.reconcile_shell_copy()
-            : isImportRoute
-              ? m.import_shell_copy()
-              : isSettingsRoute
-                ? m.settings_shell_copy()
-                : isInvestmentsRoute
-                  ? m.investments_shell_copy()
-                  : isForecastRoute
-                    ? m.forecast_shell_copy()
-                  : isReportsRoute
-                    ? m.reports_shell_copy()
-                  : m.app_shell_header_copy()
-  );
+  const badges = $derived.by(() => {
+    const count = recurringSummary.data?.draft_count ?? 0;
+    const formatted = new Intl.NumberFormat(getLocale()).format(count);
+    return new Map([['/app/recurring', { count, label: m.recurring_badge({ count: formatted }) }]]);
+  });
 
   $effect(() => {
     if (browser && shouldRedirectHome) {
@@ -188,27 +126,25 @@
 <!--
   A page with no <title> is a tab a reader cannot tell apart and, for a screen
   reader, a navigation that announces nothing (R3a, axe rule document-title).
-  Derived from the heading the shell already computes, so the two cannot drift.
+  Read from the route registry, the same source as the heading and the tabs.
 -->
 <svelte:head>
-  <title>{headerTitle} · {m.app_shell_nav_title()}</title>
+  <title>{pageTitle} · {m.app_name()}</title>
 </svelte:head>
 
 {#if shellState === 'loading'}
   <main class="min-h-screen px-4 py-14 sm:px-6 lg:px-8">
     <div class="mx-auto max-w-3xl">
-      <StatusBadge>{m.app_shell_badge()}</StatusBadge>
-      <h1 class="mt-4 text-2xl font-semibold tracking-tight text-balance">{m.app_shell_loading_title()}</h1>
-      <p class="mt-3 text-sm leading-6 text-muted">{m.app_shell_loading_copy()}</p>
+      <h1 class="text-2xl font-semibold tracking-tight text-balance">{m.shell_loading_title()}</h1>
+      <p class="mt-3 text-sm leading-6 text-muted">{m.shell_loading_copy()}</p>
     </div>
   </main>
 {:else if shellState === 'error'}
   <main class="min-h-screen px-4 py-14 sm:px-6 lg:px-8">
     <div class="mx-auto max-w-3xl">
       <Panel>
-        <StatusBadge tone="danger">{m.app_shell_badge()}</StatusBadge>
-        <h1 class="mt-4 text-2xl font-semibold tracking-tight text-balance">{m.app_shell_error_title()}</h1>
-        <p class="mt-3 text-sm leading-6 text-muted">{m.app_shell_error_copy()}</p>
+        <h1 class="text-2xl font-semibold tracking-tight text-balance">{m.shell_error_title()}</h1>
+        <p class="mt-3 text-sm leading-6 text-muted">{m.shell_error_copy()}</p>
 
         <div class="mt-6 space-y-4">
           <APIFormError error={shellError} id="app-shell-error" />
@@ -218,211 +154,26 @@
             onclick={refreshShell}
           >
             <RefreshCw size={16} aria-hidden="true" />
-            {m.app_shell_retry()}
+            {m.shell_retry()}
           </button>
         </div>
       </Panel>
     </div>
   </main>
-{:else if !shouldRedirectHome}
-  <main class="min-h-screen lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
-    <aside data-print-hide class="border-b border-border bg-sidebar px-4 py-4 lg:min-h-screen lg:border-b-0 lg:border-r lg:px-4 lg:py-5">
-      <div class="flex items-center justify-between gap-3 lg:block">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">{m.app_shell_badge()}</p>
-          <h1 class="mt-1 text-xl font-semibold tracking-tight text-balance">{m.app_name()}</h1>
-        </div>
+{:else if !shouldRedirectHome && !legacyTarget}
+  <AppHeader
+    {entry}
+    search={page.url.search}
+    {badges}
+    signOutPending={logoutPending}
+    signOutError={logoutError}
+    onSignOut={handleLogout}
+  />
 
-        <StatusBadge tone={setupQuery.data?.install_state === 'configured' ? 'positive' : 'warning'}>
-          {installStateLabel}
-        </StatusBadge>
-      </div>
-
-      <nav
-        class="mt-5 flex gap-2 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0"
-        aria-label={m.app_shell_nav_title()}
-      >
-        <a
-          href="/app"
-          aria-current={isOverviewRoute ? 'page' : undefined}
-          class:bg-selected={isOverviewRoute}
-          class:text-selected-foreground={isOverviewRoute}
-          class:bg-transparent={!isOverviewRoute}
-          class:text-foreground={!isOverviewRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover"
-        >
-          <LayoutDashboard size={16} aria-hidden="true" />
-          {m.app_shell_nav_overview()}
-        </a>
-        <a
-          href="/app/accounts"
-          aria-current={isAccountsRoute ? 'page' : undefined}
-          class:bg-selected={isAccountsRoute}
-          class:text-selected-foreground={isAccountsRoute}
-          class:bg-transparent={!isAccountsRoute}
-          class:text-foreground={!isAccountsRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover"
-        >
-          <WalletCards size={16} aria-hidden="true" />
-          {m.app_shell_nav_accounts()}
-        </a>
-        <a
-          href="/app/categories"
-          aria-current={isCategoriesRoute ? 'page' : undefined}
-          class:bg-selected={isCategoriesRoute}
-          class:text-selected-foreground={isCategoriesRoute}
-          class:bg-transparent={!isCategoriesRoute}
-          class:text-foreground={!isCategoriesRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover"
-        >
-          <Tags size={16} aria-hidden="true" />
-          {m.app_shell_nav_categories()}
-        </a>
-        <a
-          href="/app/transactions"
-          aria-current={isTransactionsRoute ? 'page' : undefined}
-          class:bg-selected={isTransactionsRoute}
-          class:text-selected-foreground={isTransactionsRoute}
-          class:bg-transparent={!isTransactionsRoute}
-          class:text-foreground={!isTransactionsRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover"
-        >
-          <Receipt size={16} aria-hidden="true" />
-          {m.app_shell_nav_transactions()}
-        </a>
-        <a href="/app/recurring" aria-current={isRecurringRoute ? 'page' : undefined}
-          class:bg-selected={isRecurringRoute} class:text-selected-foreground={isRecurringRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover">
-          <Repeat size={16} aria-hidden="true" />{m.recurring_title()}
-          {#if recurringSummary.data?.draft_count}
-            <span class="rounded-full bg-foreground px-2 text-xs text-background" aria-label={m.recurring_badge({count:new Intl.NumberFormat(getLocale()).format(recurringSummary.data.draft_count)})}>{new Intl.NumberFormat(getLocale()).format(recurringSummary.data.draft_count)}</span>
-          {/if}
-        </a>
-        <a
-          href="/app/budgets"
-          aria-current={isBudgetsRoute ? 'page' : undefined}
-          class:bg-selected={isBudgetsRoute}
-          class:text-selected-foreground={isBudgetsRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover"
-        >
-          <ChartPie size={16} aria-hidden="true" />
-          {m.budgets_title()}
-        </a>
-        <a
-          href="/app/reconcile"
-          aria-current={isReconcileRoute ? 'page' : undefined}
-          class:bg-selected={isReconcileRoute}
-          class:text-selected-foreground={isReconcileRoute}
-          class:bg-transparent={!isReconcileRoute}
-          class:text-foreground={!isReconcileRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover"
-        >
-          <Scale size={16} aria-hidden="true" />
-          {m.reconcile_nav()}
-        </a>
-        <a
-          href="/app/investments"
-          aria-current={isInvestmentsRoute ? 'page' : undefined}
-          class:bg-selected={isInvestmentsRoute}
-          class:text-selected-foreground={isInvestmentsRoute}
-          class:bg-transparent={!isInvestmentsRoute}
-          class:text-foreground={!isInvestmentsRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover"
-        >
-          <TrendingUp size={16} aria-hidden="true" />
-          {m.investments_nav()}
-        </a>
-        <a href="/app/pricing" aria-current={isPricingRoute ? 'page' : undefined}
-          class:bg-selected={isPricingRoute} class:text-selected-foreground={isPricingRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover">
-          <TrendingUp size={16} aria-hidden="true" />{m.pricing_title()}
-        </a>
-        <a
-          href="/app/forecast"
-          aria-current={isForecastRoute ? 'page' : undefined}
-          class:bg-selected={isForecastRoute}
-          class:text-selected-foreground={isForecastRoute}
-          class:bg-transparent={!isForecastRoute}
-          class:text-foreground={!isForecastRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover"
-        >
-          <ChartSpline size={16} aria-hidden="true" />
-          {m.forecast_nav()}
-        </a>
-        <a
-          href="/app/reports"
-          aria-current={isReportsRoute ? 'page' : undefined}
-          class:bg-selected={isReportsRoute}
-          class:text-selected-foreground={isReportsRoute}
-          class:bg-transparent={!isReportsRoute}
-          class:text-foreground={!isReportsRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover"
-        >
-          <ChartNoAxesCombined size={16} aria-hidden="true" />
-          {m.reports_nav()}
-        </a>
-        <a
-          href="/app/import"
-          aria-current={isImportRoute ? 'page' : undefined}
-          class:bg-selected={isImportRoute}
-          class:text-selected-foreground={isImportRoute}
-          class:bg-transparent={!isImportRoute}
-          class:text-foreground={!isImportRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover"
-        >
-          <ArrowDownToLine size={16} aria-hidden="true" />
-          {m.import_nav()}
-        </a>
-        <a
-          href="/app/settings"
-          aria-current={isSettingsRoute ? 'page' : undefined}
-          class:bg-selected={isSettingsRoute}
-          class:text-selected-foreground={isSettingsRoute}
-          class:bg-transparent={!isSettingsRoute}
-          class:text-foreground={!isSettingsRoute}
-          class="flex min-w-fit items-center gap-2 rounded-(--radius-control) px-3 py-2 text-sm font-semibold transition hover:bg-control-hover"
-        >
-          <Settings size={16} aria-hidden="true" />
-          {m.app_shell_nav_settings()}
-        </a>
-      </nav>
-
-      <div class="mt-5 hidden rounded-(--radius-panel) border border-border bg-surface/70 p-3 lg:block">
-        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">{m.app_shell_status_title()}</p>
-        <div class="mt-3 space-y-2 text-sm leading-5">
-          <p class="text-foreground">
-            {m.app_shell_status_install_state({ state: installStateLabel })}
-          </p>
-          <p class="text-muted">
-            {m.app_shell_status_session({ username: sessionQuery.data?.user?.username ?? '' })}
-          </p>
-
-          {#if nextStepLabel}
-            <p class="text-muted">{nextStepLabel}</p>
-          {/if}
-        </div>
-      </div>
-
-      <div class="mt-5 space-y-3">
-        <APIFormError error={logoutError} id="app-shell-logout-error" />
-        <button
-          type="button"
-          class="inline-flex w-full items-center justify-center gap-2 rounded-(--radius-control) border border-border bg-control px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
-          onclick={handleLogout}
-          disabled={logoutPending}
-        >
-          <LogOut size={16} aria-hidden="true" />
-          {logoutPending ? m.app_shell_logout_pending() : m.app_shell_logout()}
-        </button>
-      </div>
-    </aside>
-
-    <section class="min-w-0">
-      <PageHeader eyebrow={m.app_shell_header_eyebrow()} title={headerTitle} copy={headerCopy} />
-
-      <div class="px-4 py-4 sm:px-6 lg:px-8">
-        {@render children()}
-      </div>
-    </section>
+  <main id="main-content" tabindex="-1" class="mx-auto min-h-screen max-w-[100rem] px-4 pb-10 pt-5 outline-none sm:px-6 lg:px-8">
+    {#if !entry?.ownHeader}
+      <PageHeader title={heading} />
+    {/if}
+    {@render children()}
   </main>
 {/if}

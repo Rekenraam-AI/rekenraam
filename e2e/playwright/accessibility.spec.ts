@@ -29,7 +29,7 @@ test('[acceptance] the sign-in screen is usable without a mouse', async ({ page 
 test('[acceptance] the overview and its navigation are accessible', async ({ page }) => {
   await ensureBrowserSession(page);
   await page.goto('/app');
-  await expect(page.getByRole('heading', { name: 'Overview' }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Home', exact: true }).first()).toBeVisible();
 
   await expectNoAccessibilityViolations(page, 'overview');
 
@@ -152,7 +152,7 @@ test('[acceptance] every report view is accessible', async ({ page }) => {
   const today = todayISO();
 
   for (const view of ['net-worth', 'spending', 'cashflow']) {
-    await page.goto(`/app/reports?view=${view}&start_date=${today}&end_date=${today}&bucket=month`);
+    await page.goto(`/app/reports/${view}?start_date=${today}&end_date=${today}&bucket=month`);
     await expect(page.getByRole('heading').first()).toBeVisible();
     await expectNoAccessibilityViolations(page, `reports: ${view}`);
   }
@@ -186,7 +186,7 @@ test('the reporting-currency select is never operable before its fade finishes',
     await route.continue();
   });
 
-  await page.goto(`/app/reports?view=spending&start_date=${today}&end_date=${today}&bucket=month`);
+  await page.goto(`/app/reports/spending?start_date=${today}&end_date=${today}&bucket=month`);
   await expect(page.getByRole('heading').first()).toBeVisible();
   await expect(page.locator('select')).toBeDisabled();
 

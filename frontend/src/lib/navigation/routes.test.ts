@@ -1,0 +1,113 @@
+import { readdirSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { canonicalURL, currentTab, routeFor, routes, sectionTabs, sections, tabHref } from './routes';
+
+const routesDir = join(import.meta.dirname, '../../routes');
+
+/** Every `+page.svelte` under src/routes/app as a SvelteKit route id. */
+function pageRoutes(dir = join(routesDir, 'app')): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return pageRoutes(path);
+    if (entry.name !== '+page.svelte') return [];
+    const route = relative(routesDir, dir).split(sep).join('/');
+    return [`/${route}`];
+  });
+}
+
+function url(path: string): URL {
+  return new URL(path, 'https://rekenraam.test');
+}
+
+describe('route registry', () => {
+  it('lists every /app page and nothing that does not exist', () => {
+    const pages = pageRoutes().sort();
+    const registered = routes.map((entry) => entry.route).sort();
+    expect(registered).toEqual(pages);
+  });
+
+  it('opens each section on its own first tab', () => {
+    for (const section of sections) {
+      const [first] = sectionTabs(section.id);
+      expect(first?.route).toBe(section.overview);
+      expect(routeFor(section.overview)?.section).toBe(section.id);
+    }
+  });
+
+  it('keeps a detail page parent inside its own section', () => {
+    for (const entry of routes.filter((item) => item.parent)) {
+      const parent = routeFor(entry.parent!);
+      expect(parent?.tab, entry.route).toBe(true);
+      expect(parent?.section, entry.route).toBe(entry.section);
+    }
+  });
+
+  it('never lists a legacy route as a tab', () => {
+    expect(routes.filter((entry) => entry.legacy && entry.tab)).toEqual([]);
+  });
+
+  it('gives every route localized search and presentation metadata', () => {
+    for (const entry of routes) {
+      expect(entry.titleKey, entry.route).toBeTruthy();
+      expect(entry.title(), entry.route).not.toBe('');
+      expect(entry.icon, entry.route).toBeDefined();
+      expect(entry.keywords, entry.route).toContain(entry.titleKey);
+      expect(['narrow', 'standard', 'fluid'], entry.route).toContain(entry.width);
+      expect(entry.legacy || entry.route === '/app' || entry.tab || entry.parent, entry.route).toBeTruthy();
+    }
+  });
+
+  it('matches dynamic segments and marks the parent tab current', () => {
+    expect(routeFor('/app/accounts/12/register')?.route).toBe('/app/accounts/[id]/register');
+    expect(currentTab(routeFor('/app/accounts/12/register'))).toBe('/app/accounts');
+    expect(currentTab(routeFor('/app/investments/instruments/7'))).toBe('/app/investments/instruments');
+    expect(routeFor('/app/accounts/12')).toBeUndefined();
+    expect(routeFor('/app/reports/spending/')?.route).toBe('/app/reports/spending');
+  });
+
+  it('carries report filters between reports and nowhere else', () => {
+    const spending = routeFor('/app/reports/spending');
+    const cashflow = routeFor('/app/reports/cashflow')!;
+    const overview = routeFor('/app/reports')!;
+    expect(tabHref(cashflow, spending, '?start_date=2026-03-01&account_id=4')).toBe(
+      '/app/reports/cashflow?start_date=2026-03-01&account_id=4'
+    );
+    expect(tabHref(overview, spending, '?start_date=2026-03-01')).toBe('/app/reports');
+    expect(tabHref(cashflow, routeFor('/app/forecast'), '?horizon_days=30')).toBe('/app/reports/cashflow');
+  });
+});
+
+describe('legacy links', () => {
+  it.each([
+    ['/app/pricing?base_commodity_id=3&quote_commodity_id=1', '/app/investments/prices?base_commodity_id=3&quote_commodity_id=1'],
+    [
+      '/app/reports?view=spending&group_by=payee&account_id=1&account_id=2&reporting_currency_id=5',
+      '/app/reports/spending?group_by=payee&account_id=1&account_id=2&reporting_currency_id=5'
+    ],
+    ['/app/reports?view=cashflow&start_date=2026-03-01&end_date=2026-03-31', '/app/reports/cashflow?start_date=2026-03-01&end_date=2026-03-31'],
+    // The old page defaulted to net worth, so a link without a view meant it.
+    ['/app/reports?start_date=2020-01-01&end_date=2020-02-29&bucket=day', '/app/reports/net-worth?start_date=2020-01-01&end_date=2020-02-29&bucket=day'],
+    ['/app/reports?view=unknown&run_id=4', '/app/reports/net-worth?run_id=4'],
+    ['/app/investments?tab=instruments', '/app/investments/instruments'],
+    ['/app/investments?tab=gains&run_id=9', '/app/investments/gains?run_id=9']
+  ])('%s reaches %s', (from, to) => {
+    const next = canonicalURL(url(from));
+    expect(next && `${next.pathname}${next.search}`).toBe(to);
+  });
+
+  it('keeps the hash', () => {
+    expect(canonicalURL(url('/app/pricing#form'))?.hash).toBe('#form');
+  });
+
+  it.each([
+    '/app/reports',
+    '/app/reports/spending?view=spending',
+    '/app/investments',
+    '/app/investments?tab=splits&split_operation_id=4',
+    '/app/investments?tab=suggestions',
+    '/app/transactions?view=drafts'
+  ])('leaves %s alone', (path) => {
+    expect(canonicalURL(url(path))).toBeNull();
+  });
+});

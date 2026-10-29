@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { apiJSON } from './support/api';
 import { readyForLedger, ensureCurrency } from './support/ledger';
 import { todayISO } from './support/dates';
+import { useDarkTheme } from './support/session';
 
 test.use({ viewport: { width: 390, height: 844 } });
 
@@ -63,7 +64,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     const m = messages(locale);
     await page.evaluate(value => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
     await page.goto('/app/investments');
-    if (locale === 'en') await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+    if (locale === 'en') await useDarkTheme(page);
     const action = page.getByRole('button', { name: m.investments_record_write_off, exact: true });
     await action.focus();
     await page.keyboard.press('Enter');

@@ -39,7 +39,7 @@ test('live holdings disclose manual priority, future-only and stale quotes at 39
   await expect(page.getByRole('button',{name:new RegExp(names[0])})).toContainText('1.23');
   await expect(page.getByRole('button',{name:new RegExp(names[1])})).toContainText('Only future prices available');
   await expect(page.getByRole('button',{name:new RegExp(names[2])})).toContainText('Stale price (over 7 days)');
-  await page.getByRole('button',{name:'Gains',exact:true}).focus();
+  await page.getByRole('link',{name:'Gains',exact:true}).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('row').filter({hasText:names[0]})).toContainText('2.46');
   const region=page.getByRole('region',{name:'Unrealized gains',exact:true});
@@ -72,7 +72,7 @@ test('reporting FX shares priority and explains unusable coverage while retainin
   const provider=await price('official_fixing','not_applicable',90,todayISO());
   await price('manual','total_return',99,todayISO(),true);
   await price('manual','raw',200,daysFromTodayISO(1),true);
-  const url=`/app/reports?view=spending&group_by=category&start_date=${todayISO()}&end_date=${todayISO()}&account_id=${cash.id}&include_descendants=false&reporting_currency_id=${quote}`;
+  const url=`/app/reports/spending?group_by=category&start_date=${todayISO()}&end_date=${todayISO()}&account_id=${cash.id}&include_descendants=false&reporting_currency_id=${quote}`;
   await page.goto(url);
   await expect(page.getByText('Prices use the latest eligible date', {exact:false})).toBeVisible();
   await expect(page.getByRole('table')).toContainText('80.00');

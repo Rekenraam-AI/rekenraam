@@ -42,7 +42,7 @@ test.describe.serial('saved gains reports', () => {
     });
 
     await page.goto('/app/investments');
-    await page.getByRole('button', { name: 'Gains', exact: true }).click();
+    await page.getByRole('link', { name: 'Gains', exact: true }).click();
     await page.getByLabel('From', { exact: true }).fill(daysFromTodayISO(-35));
     await page.getByLabel('To', { exact: true }).fill(todayISO());
     await page.getByRole('button', { name: 'Apply', exact: true }).click();
@@ -90,7 +90,7 @@ test.describe.serial('saved gains reports', () => {
       await readyForLedger(page);
       await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
       await page.goto('/app/investments');
-      await page.getByRole('button', { name: tab, exact: true }).click();
+      await page.getByRole('link', { name: tab, exact: true }).click();
       const list = page.getByTestId('gains-runs');
       await expect(list.getByRole('heading', { name: title, exact: true })).toBeVisible();
       await list.getByRole('button', { name: new RegExp(`^#?${gainsRun.id} ·|^№${gainsRun.id} ·`) }).click();

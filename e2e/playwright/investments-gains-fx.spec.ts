@@ -50,7 +50,7 @@ test.describe.serial('gains FX conversion', () => {
 
     const open = async () => {
       await page.goto('/app/investments');
-      await page.getByRole('button', { name: 'Gains', exact: true }).click();
+      await page.getByRole('link', { name: 'Gains', exact: true }).click();
       await page.getByRole('combobox', { name: 'Convert gains to', exact: true }).selectOption(String(nzd));
     };
     await open();
@@ -98,7 +98,7 @@ test.describe.serial('gains FX conversion', () => {
       const cad = await ensureCurrency(page, csrfToken, 'CAD', 'Canadian Dollar');
       await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
       await page.goto('/app/investments');
-      await page.getByRole('button', { name: tab, exact: true }).click();
+      await page.getByRole('link', { name: tab, exact: true }).click();
       const translated = page.getByTestId('gains-fx-controls');
       await expect(translated.getByRole('heading', { name: title, exact: true })).toBeVisible();
       await translated.getByRole('combobox').first().selectOption(String(cad));

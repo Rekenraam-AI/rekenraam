@@ -43,6 +43,15 @@ description: SvelteKit frontend rules for Rekenraam - static adapter constraints
 - Build screens from the shared primitives (`PageHeader`, `Panel`,
   `StatePanel`, status badges — see `frontend/src/lib/components/`) before
   adding route-local styling.
+- **Shell and navigation (#436):** a new `/app` page gets an entry in the
+  route registry `#lib/navigation/routes.ts` (section, title key, icon, width, `tab`, `parent`
+  for detail pages, `ownHeader` if it renders `PageHeader` itself) and a row in
+  `e2e/playwright/route-sweep.spec.ts`; both have tests that fail otherwise.
+  The shell draws the header, the section's tab row and the page `h1`, so a
+  page never adds its own top-level navigation or horizontal page padding.
+  A page is a route; a view inside it reads `page.url` on every navigation
+  (never once with `untrack`). Moving a page keeps the old path as a `legacy`
+  entry redirected by `canonicalURL`. Rules: `docs/conventions.md` → Frontend.
 - Every modal is `ModalDialog` (`#lib/components/modal-dialog.svelte`, #327):
   wrap it in `{#if}`, pass `onCancel` and `pending`, and keep Cancel before a
   destructive confirm. Never hand-roll a `fixed inset-0` + `aria-modal`

@@ -126,7 +126,7 @@ test.describe.serial('imported cash payments', () => {
       await readyForLedger(page);
       await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
       await page.goto('/app/investments');
-      await page.getByRole('button', { name: tab, exact: true }).click();
+      await page.getByRole('link', { name: tab, exact: true }).click();
       const statement = page.getByTestId('gains-statement').first();
       const disclosure = statement.locator('[data-line="unclassified-dividends"]');
       await expect(disclosure).toContainText(label);

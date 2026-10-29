@@ -181,7 +181,7 @@
 </script>
 
 <PageHeader title={m.returns_title()} copy={m.returns_help()} />
-<div class="mt-6 max-w-5xl space-y-5 px-4 sm:px-6 lg:px-8" data-testid="returns-screen">
+<div class="mt-6 max-w-5xl space-y-5" data-testid="returns-screen">
   <a href="/app/investments" class="inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-2">{m.investments_instrument_view_back()}</a>
 
   <!-- A known failure outranks a sibling reference query still loading: an

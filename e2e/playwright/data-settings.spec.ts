@@ -138,7 +138,7 @@ test('an unsaved backup-policy edit does not survive as if it were saved', async
   // Leave without saving, then come back — by navigating inside the app, which
   // is what a user does. A full reload would prove nothing here: it discards
   // the client cache the unsaved edit could be hiding in.
-  await page.getByRole('link', { name: 'Settings', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Settings sections' }).getByRole('link', { name: 'Overview', exact: true }).click();
   await expect(page).toHaveURL(/\/app\/settings$/);
   await page.getByRole('link').filter({ hasText: 'Data' }).first().click();
   await expect(page.getByTestId('data-settings')).toBeVisible();
@@ -151,7 +151,7 @@ test('an unsaved backup-policy edit does not survive as if it were saved', async
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByText('Saved.')).toBeVisible();
 
-  await page.getByRole('link', { name: 'Settings', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Settings sections' }).getByRole('link', { name: 'Overview', exact: true }).click();
   await expect(page).toHaveURL(/\/app\/settings$/);
   await page.getByRole('link').filter({ hasText: 'Data' }).first().click();
   await expect(page.getByTestId('backup-retention')).toHaveValue(edited);

@@ -56,7 +56,7 @@ async function heldProviderListing(page: Page, prefix: string, side: 'long' | 's
 test('[acceptance] a provider dividend is reviewed, completed and posted through the native command', async ({ page }) => {
   const { cash, income, instrument, name, exDate, paymentDate } = await heldProviderListing(page, 'E2EDIV');
   await page.goto('/app/investments');
-  await page.getByRole('button', { name: /^Suggestions/ }).click();
+  await page.getByRole('link', { name: /^Suggestions/ }).click();
   await page.getByRole('button', { name: 'Check provider dividends', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Dividend check queued for listings:');
 
@@ -96,7 +96,7 @@ test('a provider revision of a staged dividend is disclosed without reopening th
   // #254: the stub revises E2EDIVREV listings from 0.50 to 0.55 on the second fetch.
   const { name, exDate } = await heldProviderListing(page, 'E2EDIVREV');
   await page.goto('/app/investments');
-  await page.getByRole('button', { name: /^Suggestions/ }).click();
+  await page.getByRole('link', { name: /^Suggestions/ }).click();
   const check = page.getByRole('button', { name: 'Check provider dividends', exact: true });
   await check.click();
   const card = page.getByTestId('event-suggestion').filter({ hasText: name });
@@ -135,7 +135,7 @@ test('a short-only provider dividend links the payment in lieu the owner already
   });
 
   await page.goto('/app/investments');
-  await page.getByRole('button', { name: /^Suggestions/ }).click();
+  await page.getByRole('link', { name: /^Suggestions/ }).click();
   await page.getByRole('button', { name: 'Check provider dividends', exact: true }).click();
   const card = page.getByTestId('event-suggestion').filter({ hasText: name });
   await expect(card).toBeVisible({ timeout: 30_000 });
@@ -163,7 +163,7 @@ test('a short-only provider dividend links the payment in lieu the owner already
 test('a repaired dividend shows source mismatch and keeps its original provider evidence', async ({ page }) => {
   const s = await heldProviderListing(page, 'E2EDIVPAYER');
   await page.goto('/app/investments');
-  await page.getByRole('button', { name: /^Suggestions/ }).click();
+  await page.getByRole('link', { name: /^Suggestions/ }).click();
   await page.getByRole('button', { name: 'Check provider dividends', exact: true }).click();
   const card = page.getByTestId('event-suggestion').filter({ hasText: s.name });
   await expect(card).toBeVisible({ timeout: 30_000 });
@@ -196,7 +196,7 @@ test('a repaired dividend shows source mismatch and keeps its original provider 
   await expect(page.getByTestId('investment-attribution-diagnostic')).toContainText('Some attribution context is missing');
   await expect(page.getByTestId('investment-attribution-diagnostic')).not.toContainText('These details differ');
   await page.goto('/app/investments');
-  await page.getByRole('button', { name: /^Suggestions/ }).click();
+  await page.getByRole('link', { name: /^Suggestions/ }).click();
   const history = page.getByRole('listitem').filter({ hasText: s.name }).filter({ hasText: 'Accepted' });
   await expect(history.getByTestId('settled-event-evidence')).toContainText('Announced per share');
   await expect(history.getByTestId('settled-event-evidence')).toContainText('0.5');

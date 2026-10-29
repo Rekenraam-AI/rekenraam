@@ -35,7 +35,7 @@ test('alternative basis methods compare with operational gains without changing 
     adjustment_basis: 'raw', price_value: 3000, price_scale: 2, valuation_date: todayISO(), is_manual: true
   });
   await page.goto('/app/investments');
-  await page.getByRole('button', { name: 'Gains', exact: true }).click();
+  await page.getByRole('link', { name: 'Gains', exact: true }).click();
   const comparison = page.getByTestId('alternative-gains');
   const method = comparison.getByLabel('Compare basis method');
   const position = comparison.getByRole('row').filter({ hasText: name });

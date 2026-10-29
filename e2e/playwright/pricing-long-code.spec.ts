@@ -50,7 +50,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
         localStorage.setItem('PARAGLIDE_LOCALE', locale);
         localStorage.setItem('rekenraam-theme', theme);
       }, { locale, theme });
-      await page.goto('/app/pricing');
+      await page.goto('/app/investments/prices');
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       await expect(page.locator('#pricing-history-base')).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

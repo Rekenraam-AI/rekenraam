@@ -3,6 +3,7 @@ import { apiJSON, csrfTokenFor } from './support/api';
 import { daysFromTodayISO, todayISO } from './support/dates';
 import { createCashAccount, ensureCurrency, readyForLedger } from './support/ledger';
 import { expectNoAccessibilityViolations } from './support/a11y';
+import { useDarkTheme } from './support/session';
 
 // Handlers that read a fetched response can still be running when the page
 // closes (a refetch after the last assertion); without this the test fails
@@ -24,8 +25,8 @@ test('[acceptance] forecasts recorded and recurring movements without posting', 
   await postForecastTransaction(page, daysFromTodayISO(1), account.id, expense.id, currencyID, '-2500', '2500');
 
   await page.goto(`/app/forecast?horizon_days=30&account_id=${account.id}&include_descendants=false`);
-  await expect(page.getByRole('heading', { name: 'Projected balances' })).toBeVisible();
-  await expect(page.getByRole('navigation').getByRole('link', { name: 'Forecast' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { name: 'Forecast', exact: true })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Planning pages' }).getByRole('link', { name: 'Forecast' })).toHaveAttribute('aria-current', 'page');
 
   const summary = page.getByRole('heading', { name: `${account.name} · USD` }).locator('..');
   await expect(summary).toContainText('USD 100.00');
@@ -202,7 +203,7 @@ test('[acceptance] forecast is usable on mobile and by keyboard in both themes',
   await expect(page.getByText('No included event affects this day and selected series.', { exact: true })).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+  await useDarkTheme(page);
   await expectNoAccessibilityViolations(page, 'forecast event details');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
@@ -298,7 +299,7 @@ test('forecast renders all new messages in a non-English locale', async ({ page 
   await page.goto('/app/settings/language');
   await page.getByRole('button', { name: 'Русский' }).click();
   await page.goto(`/app/forecast?horizon_days=30&account_id=${account.id}&include_descendants=false`);
-  await expect(page.getByRole('heading', { name: 'Прогнозные остатки' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Прогноз', exact: true })).toBeVisible();
   await expect(page.getByText('В этом периоде нет запланированных изменений', { exact: true })).toBeVisible();
   await page.goto('/app/settings/language');
   await page.getByRole('button', { name: 'English' }).click();

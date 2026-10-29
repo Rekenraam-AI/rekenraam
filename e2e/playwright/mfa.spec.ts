@@ -13,7 +13,7 @@
 
 import { expect, type Page, test } from './support/fixtures';
 import { apiJSON, csrfTokenFor } from './support/api';
-import { ensureBrowserSession } from './support/session';
+import { ensureBrowserSession, signOut } from './support/session';
 import { currentStep, secretFromOTPAuthURI, totpCode } from './support/totp';
 import { activateBrowserMFA } from './support/mfa-enrollment';
 
@@ -123,7 +123,7 @@ test.describe.serial('two-factor authentication journey', () => {
     await page.getByRole('button', { name: 'Verify' }).click();
 
     await expect(page).toHaveURL(/\/app$/);
-    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
   });
 
   test('accepts a recovery code once and then refuses it', async ({ page }) => {
@@ -135,10 +135,10 @@ test.describe.serial('two-factor authentication journey', () => {
     await page.getByRole('button', { name: 'Verify' }).click();
 
     await expect(page).toHaveURL(/\/app$/);
-    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
 
     // A recovery code is single-use: spending it again must not get back in.
-    await page.getByRole('button', { name: 'Sign out' }).click();
+    await signOut(page);
     await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible();
     await signInWithPassword(page);
     await page.getByLabel('Authentication code').fill(recoveryCode);
@@ -154,7 +154,7 @@ async function ensureBrowserSessionThroughMFA(page: Page) {
   await signInWithPassword(page);
 
   const codeField = page.getByLabel('Authentication code');
-  const overviewHeading = page.getByRole('heading', { name: 'Overview' });
+  const overviewHeading = page.getByRole('heading', { name: 'Home', exact: true });
   await expect(codeField.or(overviewHeading)).toBeVisible({ timeout: 10_000 });
   if (await codeField.isVisible()) {
     await codeField.fill(nextAuthenticatorCode());

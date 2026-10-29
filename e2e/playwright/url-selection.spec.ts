@@ -2,6 +2,7 @@ import { expect, test, type Page } from './support/fixtures';
 import { apiJSON, csrfTokenFor } from './support/api';
 import { readyForLedger, ensureCurrency } from './support/ledger';
 import { seedReferenceBook } from './support/reference-book';
+import { goHomeInApp } from './support/session';
 
 // #326: run against the production binary, including a fresh document for
 // reload/shared links and real browser history for Back. Filter tweaks must
@@ -9,8 +10,8 @@ import { seedReferenceBook } from './support/reference-book';
 async function revisit(page: Page, assertSelection: (page: Page) => Promise<void>, destination = '/app/transactions') {
   const selectedURL = page.url();
   // Exercise SvelteKit's in-app navigation and popstate restoration too.
-  await page.getByRole('link', { name: 'Transactions', exact: true }).click();
-  await expect(page).toHaveURL((url) => url.pathname === '/app/transactions');
+  await goHomeInApp(page);
+  await expect(page).toHaveURL((url) => url.pathname === '/app');
   await page.goBack();
   await expect(page).toHaveURL(selectedURL);
   await assertSelection(page);

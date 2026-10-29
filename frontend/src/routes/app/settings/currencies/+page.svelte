@@ -403,7 +403,7 @@
   }
 </script>
 
-<a href="/app/pricing" class="mb-4 inline-block min-h-11 text-sm font-semibold underline underline-offset-4">{m.pricing_title()}</a>
+<a href="/app/investments/prices" class="mb-4 inline-block min-h-11 text-sm font-semibold underline underline-offset-4">{m.pricing_title()}</a>
 
 {#if isLoading}
   <StatePanel title={m.currencies_loading_title()} copy={m.currencies_loading_copy()} />

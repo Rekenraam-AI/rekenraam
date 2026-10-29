@@ -829,6 +829,24 @@ non-trivial diff (yours or reviewed):
     seeds long codes explicitly, and checks page, control and rendered-text
     bounds in six locales and both themes, including correction review.
 
+72. **Translated accessible names splitting their visible label** — the
+    instruments list's Dutch and German activity links inserted the instrument
+    name between the words of the visible action, failing axe's `label-in-name`
+    rule (#455). Keep the visible phrase together in the accessible name in
+    every locale. Catalog parity cannot check this. Moving a view to its own
+    route must add it to the route sweep; the instruments list had previously
+    lived behind `?tab=instruments` and escaped that coverage. Named check:
+    `route-sweep.spec.ts` → `every route fits the phone and declares its
+    language in every locale`.
+
+73. **An active tab geometrically visible beneath an overflow fade** —
+    `scrollIntoView` placed a middle Investments tab at the scroller's edge,
+    beneath its 40px mask (#455). Match scroll padding to the fade width and
+    keep the active tab visible after resize and font changes. Named check:
+    `shell-navigation.spec.ts` → `the current tab stays visible when a
+    desktop page narrows to phone width` tests both a last and a middle tab
+    against the unmasked bounds.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

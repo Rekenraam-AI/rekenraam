@@ -28,9 +28,9 @@ test('[acceptance] server year controls investment entry, gains and unchosen dis
     const form = page.locator('form').filter({ has: page.getByRole('heading', { name, exact: true }) });
     await expect(form.getByLabel(dateLabel, { exact: true })).toHaveValue('2027-01-01');
   }
-  await page.goto('/app/investments?tab=gains');
+  await page.goto('/app/investments/gains');
   // The portfolio tab is driven by local UI state.
-  await page.getByRole('button', { name: 'Gains', exact: true }).click();
+  await page.getByRole('link', { name: 'Gains', exact: true }).click();
   await expect(page.getByLabel('From', { exact: true })).toHaveValue('2027-01-01');
   await expect(page.getByLabel('To', { exact: true })).toHaveValue('2027-12-31');
   await page.goto('/app/investments');
@@ -68,7 +68,7 @@ test('[acceptance] pricing captures its editable date while refreshed server tod
     const response = await route.fetch();
     await route.fulfill({ response, json: { ...await response.json(), owner_today: ownerDate } });
   });
-  await page.goto('/app/pricing');
+  await page.goto('/app/investments/prices');
   const add = page.getByRole('button', { name: 'Add manual observation', exact: true });
   await add.click();
   const date = page.locator('#price-date');

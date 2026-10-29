@@ -46,7 +46,7 @@ function statement(page: Page) {
 async function visit(page: Page, locale: string, tab: string) {
   await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
   await page.goto('/app/investments');
-  await page.getByRole('button', { name: tab, exact: true }).click();
+  await page.getByRole('link', { name: tab, exact: true }).click();
   const { live, row } = statement(page);
   await live.locator('input[type="date"]').first().fill(daysFromTodayISO(-30));
   await live.locator('form').getByRole('button').click();

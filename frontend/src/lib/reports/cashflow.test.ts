@@ -199,8 +199,9 @@ describe('cashflowDrillDownHref', () => {
 
   it('sends the outflow to spending over the same range and accounts', () => {
     const href = cashflowDrillDownHref(row, 'out', [4, 5], 'week');
-    const params = new URLSearchParams(href?.split('?')[1]);
-    expect(params.get('view')).toBe('spending');
+    const [path, query] = href?.split('?') ?? [];
+    const params = new URLSearchParams(query);
+    expect(path).toBe('/app/reports/spending');
     expect(params.get('mode')).toBe('spending');
     expect(params.get('start_date')).toBe('2026-06-01');
     expect(params.get('end_date')).toBe('2026-06-30');

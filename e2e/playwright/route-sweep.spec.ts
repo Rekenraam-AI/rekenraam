@@ -1,4 +1,6 @@
-import { expect, test as base, type Page } from './support/fixtures';
+import { readdirSync } from 'node:fs';
+import path from 'node:path';
+import { expect, repoRoot, test as base, type Page } from './support/fixtures';
 import { seedReferenceBook } from './support/reference-book';
 import { accessibilityViolations, type AxeViolation } from './support/a11y';
 import { ensureBrowserSession } from './support/session';
@@ -32,35 +34,54 @@ const test = base.extend<object, { routeBook: Map<string, number> }>({
 // language fetch nothing, and the overview reads only /health, which the shell
 // gate needs too. The Settings overview shows a failed status inline in each
 // value rather than as one alert (#329).
-type Route = { name: string; path: (ids: Map<string, number>) => string; data: boolean; inlineErrors?: true };
+type Route = {
+  name: string;
+  /** The SvelteKit route id this entry covers, for the coverage check below. */
+  route: string;
+  path: (ids: Map<string, number>) => string;
+  data: boolean;
+  inlineErrors?: true;
+};
 
 const routes: Route[] = [
-  { name: 'overview', path: () => '/app', data: false },
-  { name: 'accounts', path: () => '/app/accounts', data: true },
-  { name: 'account register', path: (ids) => `/app/accounts/${ids.get('checking')}/register`, data: true },
-  { name: 'categories', path: () => '/app/categories', data: true },
-  { name: 'category detail', path: (ids) => `/app/categories/${ids.get('groceries')}`, data: true },
-  { name: 'transactions', path: () => '/app/transactions', data: true },
-  { name: 'reconcile', path: () => '/app/reconcile', data: true },
-  { name: 'import', path: () => '/app/import', data: true },
-  { name: 'dividend repair', path: () => '/app/import/dividends', data: true },
-  { name: 'investments', path: () => '/app/investments', data: true },
-  { name: 'instrument', path: (ids) => `/app/investments/instruments/${ids.get('REF')}`, data: true },
-  { name: 'income coverage', path: () => '/app/investments/income', data: true },
-  { name: 'returns', path: () => '/app/investments/returns', data: true },
-  { name: 'pricing', path: () => '/app/pricing', data: true },
-  { name: 'reports', path: () => '/app/reports?view=net-worth&start_date=2026-01-01&end_date=2026-03-31&bucket=month', data: true },
-  { name: 'budgets', path: () => '/app/budgets', data: true },
-  { name: 'recurring', path: () => '/app/recurring', data: true },
-  { name: 'forecast', path: () => '/app/forecast', data: true },
-  { name: 'settings', path: () => '/app/settings', data: true, inlineErrors: true },
-  { name: 'appearance', path: () => '/app/settings/appearance', data: false },
-  { name: 'currencies', path: () => '/app/settings/currencies', data: true },
-  { name: 'language', path: () => '/app/settings/language', data: false },
-  { name: 'security', path: () => '/app/settings/security', data: true },
-  { name: 'data', path: () => '/app/settings/data', data: true },
-  { name: 'trash', path: () => '/app/settings/trash', data: true }
+  { name: 'home', route: '/app', path: () => '/app', data: false },
+  { name: 'ledger overview', route: '/app/ledger', path: () => '/app/ledger', data: false },
+  { name: 'accounts', route: '/app/accounts', path: () => '/app/accounts', data: true },
+  { name: 'account register', route: '/app/accounts/[id]/register', path: (ids) => `/app/accounts/${ids.get('checking')}/register`, data: true },
+  { name: 'categories', route: '/app/categories', path: () => '/app/categories', data: true },
+  { name: 'category detail', route: '/app/categories/[id]', path: (ids) => `/app/categories/${ids.get('groceries')}`, data: true },
+  { name: 'transactions', route: '/app/transactions', path: () => '/app/transactions', data: true },
+  { name: 'reconcile', route: '/app/reconcile', path: () => '/app/reconcile', data: true },
+  { name: 'import', route: '/app/import', path: () => '/app/import', data: true },
+  { name: 'dividend repair', route: '/app/import/dividends', path: () => '/app/import/dividends', data: true },
+  { name: 'investments', route: '/app/investments', path: () => '/app/investments', data: true },
+  { name: 'instruments', route: '/app/investments/instruments', path: () => '/app/investments/instruments', data: true },
+  { name: 'instrument', route: '/app/investments/instruments/[id]', path: (ids) => `/app/investments/instruments/${ids.get('REF')}`, data: true },
+  { name: 'income coverage', route: '/app/investments/income', path: () => '/app/investments/income', data: true },
+  { name: 'returns', route: '/app/investments/returns', path: () => '/app/investments/returns', data: true },
+  { name: 'gains', route: '/app/investments/gains', path: () => '/app/investments/gains', data: true },
+  { name: 'prices', route: '/app/investments/prices', path: () => '/app/investments/prices', data: true },
+  { name: 'planning overview', route: '/app/planning', path: () => '/app/planning', data: false },
+  { name: 'budgets', route: '/app/budgets', path: () => '/app/budgets', data: true },
+  { name: 'recurring', route: '/app/recurring', path: () => '/app/recurring', data: true },
+  { name: 'forecast', route: '/app/forecast', path: () => '/app/forecast', data: true },
+  { name: 'reports overview', route: '/app/reports', path: () => '/app/reports', data: false },
+  { name: 'spending', route: '/app/reports/spending', path: () => `/app/reports/spending?${reportRange}`, data: true },
+  { name: 'cashflow', route: '/app/reports/cashflow', path: () => `/app/reports/cashflow?${reportRange}`, data: true },
+  { name: 'net worth', route: '/app/reports/net-worth', path: () => `/app/reports/net-worth?${reportRange}`, data: true },
+  { name: 'settings', route: '/app/settings', path: () => '/app/settings', data: true, inlineErrors: true },
+  { name: 'appearance', route: '/app/settings/appearance', path: () => '/app/settings/appearance', data: false },
+  { name: 'currencies', route: '/app/settings/currencies', path: () => '/app/settings/currencies', data: true },
+  { name: 'language', route: '/app/settings/language', path: () => '/app/settings/language', data: false },
+  { name: 'security', route: '/app/settings/security', path: () => '/app/settings/security', data: true },
+  { name: 'data', route: '/app/settings/data', path: () => '/app/settings/data', data: true },
+  { name: 'trash', route: '/app/settings/trash', path: () => '/app/settings/trash', data: true }
 ];
+
+// Old paths that only redirect (#436); the redirect itself is unit-tested.
+const legacyRoutes = new Set(['/app/pricing']);
+
+const reportRange = 'start_date=2026-01-01&end_date=2026-03-31&bucket=month';
 
 const viewports = {
   desktop: { width: 1280, height: 900 },
@@ -100,6 +121,23 @@ async function horizontalOverflow(page: Page): Promise<number> {
 function describeViolations(violations: AxeViolation[]): string {
   return violations.map((v) => `[${v.impact ?? 'unknown'}] ${v.id}: ${v.targets.join(' | ')}`).join('; ');
 }
+
+/** Every `+page.svelte` under frontend/src/routes/app, as a route id. */
+function pageRoutes(dir = path.join(repoRoot, 'frontend/src/routes/app')): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return pageRoutes(full);
+    if (entry.name !== '+page.svelte') return [];
+    return ['/' + path.relative(path.join(repoRoot, 'frontend/src/routes'), dir).split(path.sep).join('/')];
+  });
+}
+
+// A page added without a sweep entry would never be audited (#436).
+base('the sweep covers every app page', () => {
+  const swept = new Set(routes.map((route) => route.route));
+  const missing = pageRoutes().filter((route) => !swept.has(route) && !legacyRoutes.has(route));
+  expect(missing, `pages missing from the route sweep: ${missing.join(', ')}`).toEqual([]);
+});
 
 test.describe('route sweep (#278)', () => {
   // Each check takes minutes; spread them over workers so the push smoke

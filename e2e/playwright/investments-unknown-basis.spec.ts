@@ -56,7 +56,7 @@ test('an unknown-basis transfer in leaves a later sale gain unresolved', async (
     cash_amount_scale: 2, cash_commodity_id: currencyID, cost_basis_method: 'fifo'
   });
 
-  await page.getByRole('button', { name: 'Gains', exact: true }).click();
+  await page.getByRole('link', { name: 'Gains', exact: true }).click();
   const realized = page.getByRole('row').filter({ hasText: name });
   await expect(realized.filter({ hasText: 'Unresolved — cost basis unknown' })).toHaveCount(1);
   await expect(page.getByText(/Unresolved: 1 with unknown cost basis/)).toBeVisible();

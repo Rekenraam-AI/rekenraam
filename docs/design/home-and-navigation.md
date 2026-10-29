@@ -427,7 +427,8 @@ Sequencing belongs in the roadmap; acceptance in the issues.
 
 | Slice | Issue |
 |---|---|
-| Shell: header, section and settings menus, tab row of real routes, route registry, hide amounts, shared search, attention read; retires the sidebar and the duplicate top bar | #436 |
+| Shell: header, section links and settings menu, tab row of real routes, route registry, hide amounts, shared search, attention read; retires the sidebar and the duplicate top bar | #436 (header, registry and tab routes #455; hide amounts #456; search #457; attention read #458; page header, widths and `?` help #459) |
+| Route paths of pages outside their section | #460 |
 | Home: briefing, command bar, shortcuts with the shared Add transaction dialog, default My Home and More to explore, composed Home read | #437 |
 | Review page: everything needing attention and background status | #453 |
 | Settings in five pages; Trash becomes Transactions › Deleted; ledger export moves to Reports › Export | #446 |

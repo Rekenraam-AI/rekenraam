@@ -74,7 +74,9 @@ at the R2 acceptance review (see the table at the end of this document):
 exact per-commodity totals and add optional conversions using
 `observed_on_or_before` (`backend/internal/app/valuation.go`). The frontend
 selector, restated rows, coverage notices, charts, and CSV output ship in
-`frontend/src/lib/reports/` and `/app/reports`.
+`frontend/src/lib/reports/` and `/app/reports/{net-worth,spending,cashflow}`.
+Since #455, `/app/reports` is the section overview; old report URLs with
+query parameters redirect to the corresponding report and retain its filters.
 
 - *Selection policy (#203):* shared `live_raw_v1` compatible unadjusted quote
   selection; same-date manual/override then exact then approximate priority.
@@ -270,7 +272,7 @@ their own.
 
 UI:
 
-- `/app/reports` opens on net worth with a sensible, URL-visible recent date
+- `/app/reports/net-worth` opens with a sensible, URL-visible recent date
   preset. It offers date range, bucket, account, and commodity filters.
 - Show a chart only as a summary of a bucket table. The table provides bucket,
   commodity, and net-worth total. **As shipped it carries no asset and liability

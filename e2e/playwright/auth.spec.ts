@@ -1,5 +1,5 @@
 import { expect, test } from './support/fixtures';
-import { completeCurrencySetupIfNeeded } from './support/session';
+import { completeCurrencySetupIfNeeded, signOut } from './support/session';
 
 test('bootstraps the owner account, signs out, and signs back in', async ({ page }) => {
   await page.goto('/');
@@ -13,10 +13,8 @@ test('bootstraps the owner account, signs out, and signs back in', async ({ page
   await completeCurrencySetupIfNeeded(page);
 
   await expect(page).toHaveURL(/\/app$/);
-  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
-
-  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
+  await signOut(page);
 
   await expect(page).toHaveURL('/');
   await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible();
@@ -26,7 +24,7 @@ test('bootstraps the owner account, signs out, and signs back in', async ({ page
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   await expect(page).toHaveURL(/\/app$/);
-  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
 });
 
 test('shows translated feedback for wrong owner password', async ({ page }) => {
@@ -47,9 +45,9 @@ async function ensureOwnerExistsAndReachLogin(page: Parameters<typeof test>[0]['
 
   const freshHeading = page.getByRole('heading', { name: 'Create the owner account' });
   const loginHeading = page.getByRole('heading', { name: 'Sign in to continue' });
-  const signOutButton = page.getByRole('button', { name: 'Sign out' });
+  const settingsMenu = page.getByRole('button', { name: 'Settings', exact: true });
 
-  await expect(freshHeading.or(loginHeading).or(signOutButton)).toBeVisible({ timeout: 5000 });
+  await expect(freshHeading.or(loginHeading).or(settingsMenu)).toBeVisible({ timeout: 5000 });
 
   if (await freshHeading.isVisible()) {
     await page.getByLabel('Username').fill('owner');
@@ -57,9 +55,9 @@ async function ensureOwnerExistsAndReachLogin(page: Parameters<typeof test>[0]['
     await page.getByRole('button', { name: 'Create owner' }).click();
     await completeCurrencySetupIfNeeded(page);
     await expect(page).toHaveURL(/\/app$/);
-    await page.getByRole('button', { name: 'Sign out' }).click();
-  } else if (await signOutButton.isVisible()) {
-    await signOutButton.click();
+    await signOut(page);
+  } else if (await settingsMenu.isVisible()) {
+    await signOut(page);
   }
 
   await expect(page).toHaveURL('/');
