@@ -155,6 +155,25 @@ The owner authorized publication on 2026-10-29; the chosen remedy is filed as
 acceptance. This completes #419's measurement scope, not the remedy. The act
 rule remains in force before the next feature slice.
 
+**#445 result (2026-10-29).** The bounded read-query experiment reduces
+preparation of one transfer replay statement by **26.9–27.6%** across three
+alternating native measurements. Query results and observed execution plans
+are unchanged. All six isolated application race runs retain the same 2,476
+leaf cases; original/proposed medians are **215.5 / 221.9 s**. This does not
+demonstrate a suite speedup. Both fresh original full gates are already below
+270 s (254.8 / 260.6 s), so the difference from #419's historical timeouts
+cannot be attributed to the query change.
+
+Both proposed uncached full gates pass at **263.4 / 269.2 s** in the
+application package. The #445 clearance criterion (both below 270 s) is met
+on this pair, with only **0.8 s** to the threshold in the slower run. The act
+trigger no longer fires on the measured pair; investigate and the unmet
+**30% headroom** objective remain. Keep monitoring under the existing
+thresholds. No deadline, scheduling, cache, durability, coverage or schema
+policy changes. The [report](../reviews/investment-read-preparation-2026-10-29.md)
+retains SQL, fixture/semantic controls, exact sources, all matched timings and
+their limits.
+
 ## References
 
 - [ADR 0014](0014-native-sqlite-driver.md), native driver admission.
@@ -164,3 +183,4 @@ rule remains in force before the next feature slice.
 - [Race-suite cost investigation](../reviews/race-suite-cost-2026-10-24.md), #402 amendment.
 - [Statement compilation cost](../reviews/statement-compilation-2026-10-24.md), #404 result.
 - [Post-baseline race reprofile](../reviews/race-suite-reprofile-2026-10-29.md), #419 result.
+- [Investment read preparation](../reviews/investment-read-preparation-2026-10-29.md), #445 result.

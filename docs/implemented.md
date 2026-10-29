@@ -975,6 +975,15 @@ validation.
   [#445](https://github.com/sergeyfarin/rekenraam/issues/445) with measurable
   acceptance. #419's measurement scope is complete; the act rule remains in
   force. No runtime or test-policy change.
+- #445 (2026-10-29): [transfer replay planning](reviews/investment-read-preparation-2026-10-29.md)
+  constrains link/source-lot lookups after effective-operation selection.
+  Preparation falls 26.9–27.6% for that statement; observed plans and row
+  hashes match across populated, corrected and reversed fixtures. Every
+  existing assertion and the 2,476-leaf case digest remain. Isolated medians
+  are 215.5 / 221.9 s, so no suite speedup is established. Both proposed full
+  gates pass at 263.4 / 269.2 s, meeting the below-270 criterion with only
+  0.8 s to the threshold. Investigate and the unmet 30% headroom objective
+  remain; durability, race, scheduling, deadlines and cache policy are unchanged.
 - #418 (2026-10-26): unused `InstrumentSearchProvider` and
   `InstrumentSearchCandidate` declarations removed after the schema review.
   #417's deletion guard and #420's backup-verification exit status are
@@ -983,7 +992,7 @@ validation.
   unavailable; Chromium installation has per-phase deadlines and one retry.
   These bound runner setup stalls without removing validation.
 
-Remaining follow-ups #414/#416/#445 and explicitly deferred candidates 7–13
+Remaining follow-ups #414/#416 and explicitly deferred candidates 7–13
 belong to the [roadmap](roadmap.md); completed maintenance does not close the
 separate release gates.
 

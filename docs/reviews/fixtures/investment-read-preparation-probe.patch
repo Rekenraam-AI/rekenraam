@@ -1,0 +1,497 @@
+--- a/backend/internal/db/investment_effective_movements.go
++++ b/backend/internal/db/investment_effective_movements.go
+@@ -165 +165 @@
+-	rows, err := source.QueryContext(ctx, `
++	rows, err := capture445Query(ctx, source, `
+@@ -247 +247 @@
+-	rows, err := source.QueryContext(ctx, `
++	rows, err := capture445Query(ctx, source, `
+@@ -287 +287 @@
+-	rows, err := source.QueryContext(ctx, `
++	rows, err := capture445Query(ctx, source, `
+@@ -337 +337 @@
+-	rows, err := source.QueryContext(ctx, `
++	rows, err := capture445Query(ctx, source, `
+@@ -376 +376 @@
+-	rows, err := source.QueryContext(ctx, `
++	rows, err := capture445Query(ctx, source, `
+@@ -447 +447 @@
+-	rows, err := source.QueryContext(ctx, `
++	rows, err := capture445Query(ctx, source, `
+@@ -510 +510 @@
+-	rows, err := source.QueryContext(ctx, `
++	rows, err := capture445Query(ctx, source, `
+--- a/backend/internal/db/investment_replay_intents.go
++++ b/backend/internal/db/investment_replay_intents.go
+@@ -163 +163 @@
+-	openings, err := reader.QueryContext(ctx, `
++	openings, err := capture445Query(ctx, reader, `
+@@ -223 +223 @@
+-	disposals, err := reader.QueryContext(ctx, `
++	disposals, err := capture445Query(ctx, reader, `
+@@ -279 +279 @@
+-		transfers, err := reader.QueryContext(ctx, `
++		transfers, err := capture445Query(ctx, reader, `
+@@ -443 +443 @@
+-	selected, err := reader.QueryContext(ctx, `
++	selected, err := capture445Query(ctx, reader, `
+@@ -606 +606 @@
+-	rows, err := reader.QueryContext(ctx, `
++	rows, err := capture445Query(ctx, reader, `
+@@ -653 +653 @@
+-		events, err := reader.QueryContext(ctx, `
++		events, err := capture445Query(ctx, reader, `
+@@ -712 +712 @@
+-	rows, err := reader.QueryContext(ctx, `SELECT source_lot_id, quantity_value, quantity_scale,
++	rows, err := capture445Query(ctx, reader, `SELECT source_lot_id, quantity_value, quantity_scale,
+@@ -752 +752 @@
+-	rows, err := reader.QueryContext(ctx, `
++	rows, err := capture445Query(ctx, reader, `
+@@ -824 +824 @@
+-	rows, err := reader.QueryContext(ctx, `WITH RECURSIVE roots(operation_id, root_id) AS (
++	rows, err := capture445Query(ctx, reader, `WITH RECURSIVE roots(operation_id, root_id) AS (
+--- a/backend/internal/db/investment_capital_return.go
++++ b/backend/internal/db/investment_capital_return.go
+@@ -481 +481 @@
+-	rows, err := reader.QueryContext(ctx, `
++	rows, err := capture445Query(ctx, reader, `
+@@ -536 +536 @@
+-	revisions, err := reader.QueryContext(ctx, `SELECT id FROM latest_investment_capital_return_revisions
++	revisions, err := capture445Query(ctx, reader, `SELECT id FROM latest_investment_capital_return_revisions
+@@ -556 +556 @@
+-	rows, err := reader.QueryContext(ctx, query, args...)
++	rows, err := capture445Query(ctx, reader, query, args...)
+@@ -765 +765 @@
+-	rows, err := reader.QueryContext(ctx, `SELECT e.lot_id, COALESCE(l.operation_id, 0), l.opened_on, e.quantity_value, e.quantity_scale
++	rows, err := capture445Query(ctx, reader, `SELECT e.lot_id, COALESCE(l.operation_id, 0), l.opened_on, e.quantity_value, e.quantity_scale
+--- a/backend/internal/db/self_check.go
++++ b/backend/internal/db/self_check.go
+@@ -606 +606 @@
+-	rows, err := transaction.QueryContext(ctx, query, args...)
++	rows, err := capture445Query(ctx, transaction, query, args...)
+--- /dev/null
++++ b/backend/internal/db/capture445.go
+@@ -0,0 +1,32 @@
++package db
++
++import (
++	"context"
++	"database/sql"
++	"encoding/json"
++	"fmt"
++	"os"
++	"runtime"
++)
++
++var capture445Phase string
++var capture445Rows []map[string]any
++
++func Capture445Phase(phase string) { capture445Phase = phase }
++func Capture445Save(path string) error {
++	b, e := json.MarshalIndent(capture445Rows, "", "  ")
++	if e != nil {
++		return e
++	}
++	capture445Rows = nil
++	return os.WriteFile(path, b, 0600)
++}
++func capture445Query(ctx context.Context, source interface {
++	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
++}, query string, args ...any) (*sql.Rows, error) {
++	if capture445Phase != "" {
++		pc, file, line, _ := runtime.Caller(1)
++		capture445Rows = append(capture445Rows, map[string]any{"phase": capture445Phase, "caller": runtime.FuncForPC(pc).Name(), "location": fmt.Sprintf("%s:%d", file, line), "sql": query, "args": args})
++	}
++	return source.QueryContext(ctx, query, args...)
++}
+--- /dev/null
++++ b/backend/internal/app/capture445_test.go
+@@ -0,0 +1,132 @@
++package app
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"github.com/stretchr/testify/require"
++	"os"
++	"path/filepath"
++	"rekenraam/backend/internal/db"
++	"rekenraam/backend/internal/exact"
++	"testing"
++)
++
++func TestCapture445Queries(t *testing.T) {
++	t.Parallel()
++	ctx := context.Background()
++	out := os.Getenv("CAPTURE445_OUTPUT")
++	require.NoError(t, os.MkdirAll(out, 0700))
++	scenarios := append([]struct {
++		name   string
++		record func(*testing.T, *investmentsTestFixture) []recordedOperation
++	}{}, capabilityScenarios...)
++	scenarios = append(scenarios, struct {
++		name   string
++		record func(*testing.T, *investmentsTestFixture) []recordedOperation
++	}{"corrected transfer and dependent sale", func(t *testing.T, f *investmentsTestFixture) []recordedOperation {
++		destination := seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
++		date := "2026-06-01"
++		buy := buyOn(t, f, date, 3, 3000)
++		chainTransfer(t, f, f.holdingAccountID, destination, *buy.LotID, date)
++		saleInput := sellInput(f, date, 1)
++		saleInput.HoldingAccountID = destination
++		_, err := f.investmentService.Sell(ctx, saleInput)
++		require.NoError(t, err)
++		first, err := acknowledgedReplaceBuy(ctx, f.investmentService, replaceBuyPrice(f, buy, date, 3, 6000))
++		require.NoError(t, err)
++		_, err = acknowledgedReplaceBuy(ctx, f.investmentService, replaceBuyPrice(f, first.Replacement, date, 3, 9000))
++		require.NoError(t, err)
++		requireInvestmentSelfCheckPasses(t, f)
++		return nil
++	}})
++	scenarios = append(scenarios, struct {
++		name   string
++		record func(*testing.T, *investmentsTestFixture) []recordedOperation
++	}{"fifty-lot transfer", func(t *testing.T, f *investmentsTestFixture) []recordedOperation {
++		destination := seedTestAccountWithClass(t, f.database, "active", true, "asset", "security_holding")
++		date := "2026-06-01"
++		var allocations []InvestmentLotAllocationInput
++		for i := 0; i < 50; i++ {
++			buy := buyOn(t, f, date, 10, 1000)
++			allocations = append(allocations, InvestmentLotAllocationInput{LotID: *buy.LotID, QuantityValue: exact.New(5), QuantityScale: 0})
++		}
++		input := InternalTransferInput{OwnerUserID: f.ownerUserID, EffectiveOn: date, SourceAccountID: f.holdingAccountID, DestinationAccountID: destination, CommodityID: f.stockCommodityID, CostCommodityID: f.eurCommodityID, Allocations: allocations, SourceEvidenceJSON: `{"source":"owner"}`, ChangeReason: "measurement"}
++		_, err := f.investmentService.InternalTransfer(ctx, input)
++		require.NoError(t, err)
++		requireInvestmentSelfCheckPasses(t, f)
++		return nil
++	}})
++	large := scenarios[len(scenarios)-1]
++	scenarios = append(scenarios, struct {
++		name   string
++		record func(*testing.T, *investmentsTestFixture) []recordedOperation
++	}{"reversed fifty-lot transfer", func(t *testing.T, f *investmentsTestFixture) []recordedOperation {
++		large.record(t, f)
++		var transactionID int64
++		require.NoError(t, f.database.QueryRow(`SELECT v.transaction_id FROM investment_operations o JOIN investment_operation_journal_links l ON l.operation_id=o.id AND l.role='primary' JOIN transaction_versions v ON v.id=l.transaction_version_id WHERE o.operation_kind='internal_transfer'`).Scan(&transactionID))
++		_, err := acknowledgedReverseTransfer(ctx, f.investmentService, reverseTransferInput(f, transactionID))
++		require.NoError(t, err)
++		requireInvestmentSelfCheckPasses(t, f)
++		return nil
++	}})
++	for i, scenario := range scenarios {
++		f := newInvestmentsTestFixture(t)
++		scenario.record(t, f)
++		for _, filter := range []db.EffectiveMovementFilter{{}, {PositionSide: "long"}, {PositionSide: "short"}, {DisposalsOnly: true}} {
++			db.Capture445Phase("movements")
++			_, err := db.EffectiveLotMovements(ctx, f.database, BookID, filter)
++			require.NoError(t, err)
++		}
++		db.Capture445Phase("")
++		positions, err := f.database.Query(`SELECT DISTINCT account_id,commodity_id,cost_commodity_id,position_side FROM investment_lots`)
++		require.NoError(t, err)
++		type position struct {
++			account, commodity, cost int64
++			side                     string
++		}
++		var ps []position
++		for positions.Next() {
++			var p position
++			require.NoError(t, positions.Scan(&p.account, &p.commodity, &p.cost, &p.side))
++			ps = append(ps, p)
++		}
++		require.NoError(t, positions.Close())
++		for _, p := range ps {
++			db.Capture445Phase("replay")
++			_, err := db.NewInvestmentRepository(f.database).ListInvestmentReplayIntents(ctx, BookID, p.account, p.commodity, p.cost, p.side)
++			require.NoError(t, err)
++		}
++		db.Capture445Phase("")
++		reader, err := db.OpenReadOnly(ctx, dbURL445(t, f))
++		require.NoError(t, err)
++		snapshot, err := reader.BeginTx(ctx, nil)
++		require.NoError(t, err)
++		db.Capture445Phase("foundation")
++		service := NewSelfCheckService(db.NewSelfCheckRepository(f.database, reader))
++		_, err = service.investmentFoundationCheck(db.WithReferenceDate(ctx, "2026-10-29"), snapshot)
++		require.NoError(t, err)
++		db.Capture445Phase("")
++		require.NoError(t, snapshot.Rollback())
++		require.NoError(t, reader.Close())
++		base := filepath.Join(out, fmt.Sprintf("fixture-%d", i))
++		require.NoError(t, db.Capture445Save(base+"-queries.json"))
++		require.NoError(t, db.BackupSQLiteDatabase(ctx, f.database, base+".sqlite"))
++		counts := map[string]int{}
++		for _, table := range []string{"investment_operations", "investment_lots", "investment_lot_events", "investment_disposal_revisions", "investment_transfer_link_revisions", "transaction_versions", "posting_versions"} {
++			var n int
++			require.NoError(t, f.database.QueryRow("SELECT COUNT(*) FROM "+table).Scan(&n))
++			counts[table] = n
++		}
++		body, err := json.MarshalIndent(map[string]any{"name": scenario.name, "counts": counts}, "", "  ")
++		require.NoError(t, err)
++		require.NoError(t, os.WriteFile(base+"-info.json", body, 0600))
++	}
++}
++func dbURL445(t *testing.T, f *investmentsTestFixture) string {
++	t.Helper()
++	var seq int
++	var name, path string
++	require.NoError(t, f.database.QueryRow("PRAGMA database_list").Scan(&seq, &name, &path))
++	return db.SQLiteFileURL(path)
++}
+--- /dev/null
++++ b/backend/cmd/measure445/main.go
+@@ -0,0 +1,172 @@
++package main
++
++import (
++	"context"
++	"crypto/sha256"
++	"database/sql/driver"
++	"encoding/json"
++	"fmt"
++	"io"
++	"os"
++	"path/filepath"
++	"rekenraam/backend/internal/db"
++	"sort"
++	"strings"
++	"time"
++)
++
++type Query struct {
++	Phase    string `json:"phase"`
++	Caller   string `json:"caller"`
++	Location string `json:"location"`
++	SQL      string `json:"sql"`
++	Args     []any  `json:"args"`
++}
++
++func main() {
++	if err := run(); err != nil {
++		fmt.Fprintln(os.Stderr, err)
++		os.Exit(1)
++	}
++}
++func run() error {
++	ctx := context.Background()
++	files, e := filepath.Glob(filepath.Join(os.Args[1], "fixture-*-queries.json"))
++	if e != nil {
++		return e
++	}
++	var results []map[string]any
++	for _, file := range files {
++		var queries []Query
++		f, e := os.Open(file)
++		if e != nil {
++			return e
++		}
++		d := json.NewDecoder(f)
++		d.UseNumber()
++		e = d.Decode(&queries)
++		f.Close()
++		if e != nil {
++			return e
++		}
++		database, e := db.Open(ctx, db.SQLiteFileURL(strings.TrimSuffix(file, "-queries.json")+".sqlite"))
++		if e != nil {
++			return e
++		}
++		conn, e := database.Conn(ctx)
++		if e != nil {
++			return e
++		}
++		seen := map[string]bool{}
++		for _, q := range queries {
++			argJSON, _ := json.Marshal(q.Args)
++			key := q.SQL + string(argJSON)
++			if seen[key] {
++				continue
++			}
++			seen[key] = true
++			if only := os.Getenv("QUERY445_ONLY"); only != "" && !strings.Contains(q.Caller, only) {
++				continue
++			}
++			args := make([]driver.Value, len(q.Args))
++			for i, v := range q.Args {
++				if n, ok := v.(json.Number); ok {
++					number, e := n.Int64()
++					if e != nil {
++						return e
++					}
++					args[i] = number
++				} else {
++					args[i] = v
++				}
++			}
++			var prepares, executes []float64
++			var count int
++			var fingerprint string
++			err := conn.Raw(func(raw any) error {
++				native := raw.(driver.Conn)
++				for batch := 0; batch < 5; batch++ {
++					before := time.Now()
++					for i := 0; i < 100; i++ {
++						s, e := native.Prepare(q.SQL)
++						if e != nil {
++							return e
++						}
++						if e = s.Close(); e != nil {
++							return e
++						}
++					}
++					prepares = append(prepares, float64(time.Since(before).Nanoseconds())/100/1e3)
++				}
++				s, e := native.Prepare(q.SQL)
++				if e != nil {
++					return e
++				}
++				defer s.Close()
++				read := func(hash bool) (int, string, error) {
++					rows, e := s.Query(args)
++					if e != nil {
++						return 0, "", e
++					}
++					defer rows.Close()
++					values := make([]driver.Value, len(rows.Columns()))
++					n := 0
++					h := sha256.New()
++					for {
++						e := rows.Next(values)
++						if e == io.EOF {
++							break
++						}
++						if e != nil {
++							return 0, "", e
++						}
++						n++
++						if hash {
++							body, e := json.Marshal(values)
++							if e != nil {
++								return 0, "", e
++							}
++							h.Write(body)
++						}
++					}
++					return n, fmt.Sprintf("%x", h.Sum(nil)), nil
++				}
++				count, fingerprint, e = read(true)
++				if e != nil {
++					return e
++				}
++				for batch := 0; batch < 5; batch++ {
++					before := time.Now()
++					for i := 0; i < 20; i++ {
++						n, _, e := read(false)
++						if e != nil {
++							return e
++						}
++						if n != count {
++							return fmt.Errorf("unstable row count")
++						}
++					}
++					executes = append(executes, float64(time.Since(before).Nanoseconds())/20/1e6)
++				}
++				return nil
++			})
++			if err != nil {
++				return fmt.Errorf("%s: %w", q.Caller, err)
++			}
++			prep := append([]float64(nil), prepares...)
++			sort.Float64s(prep)
++			exec := append([]float64(nil), executes...)
++			sort.Float64s(exec)
++			row := map[string]any{"fixture": filepath.Base(file), "phase": q.Phase, "caller": q.Caller, "location": q.Location, "sql": q.SQL, "sql_sha256": fmt.Sprintf("%x", sha256.Sum256([]byte(q.SQL))), "args": q.Args, "prepare_us": prepares, "prepare_median_us": prep[2], "execute_ms": executes, "execute_median_ms": exec[2], "rows": count, "rows_sha256": fingerprint}
++			results = append(results, row)
++		}
++		conn.Close()
++		database.Close()
++		fmt.Println(filepath.Base(file), "queries", len(seen))
++	}
++	b, e := json.MarshalIndent(results, "", "  ")
++	if e != nil {
++		return e
++	}
++	return os.WriteFile(os.Args[2], append(b, '\n'), 0600)
++}
+--- /dev/null
++++ b/backend/cmd/plan445/main.go
+@@ -0,0 +1,78 @@
++package main
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"os"
++	"path/filepath"
++	"rekenraam/backend/internal/db"
++	"strings"
++)
++
++type query struct {
++	Caller, SQL string
++	Args        []any
++}
++
++func main() {
++	if e := run(); e != nil {
++		panic(e)
++	}
++}
++func run() error {
++	files, _ := filepath.Glob(filepath.Join(os.Args[1], "fixture-*-queries.json"))
++	var out []map[string]any
++	for _, file := range files {
++		f, e := os.Open(file)
++		if e != nil {
++			return e
++		}
++		d := json.NewDecoder(f)
++		d.UseNumber()
++		var qs []query
++		e = d.Decode(&qs)
++		f.Close()
++		if e != nil {
++			return e
++		}
++		database, e := db.Open(context.Background(), db.SQLiteFileURL(strings.TrimSuffix(file, "-queries.json")+".sqlite"))
++		if e != nil {
++			return e
++		}
++		for _, q := range qs {
++			for i, v := range q.Args {
++				if n, ok := v.(json.Number); ok {
++					q.Args[i], e = n.Int64()
++					if e != nil {
++						return e
++					}
++				}
++			}
++			rows, e := database.Query("EXPLAIN QUERY PLAN "+q.SQL, q.Args...)
++			if e != nil {
++				return e
++			}
++			var plan []string
++			for rows.Next() {
++				var id, parent, unused int
++				var detail string
++				if e = rows.Scan(&id, &parent, &unused, &detail); e != nil {
++					return e
++				}
++				plan = append(plan, detail)
++			}
++			if e = rows.Close(); e != nil {
++				return e
++			}
++			out = append(out, map[string]any{"fixture": filepath.Base(file), "caller": q.Caller, "args": q.Args, "plan": plan})
++		}
++		database.Close()
++	}
++	b, e := json.MarshalIndent(out, "", "  ")
++	if e != nil {
++		return e
++	}
++	fmt.Println(string(b))
++	return nil
++}

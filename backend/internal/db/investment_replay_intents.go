@@ -276,6 +276,9 @@ func investmentReplayIntentsQuery(ctx context.Context, reader queryer, bookID, a
 	// A short position has only openings and covers: transfers, splits and
 	// basis actions select long lots (#173), so none can touch it.
 	if side == PositionSideLong {
+		// Pin links and their source-lot lookups after the effective operation
+		// to bound SQLite's join-order planning (#445). The remaining inner
+		// joins can still choose their event/effect indexes.
 		transfers, err := reader.QueryContext(ctx, `
 		SELECT f.operation_id, o.operation_kind, f.effective_on, x.link_seq, x.source_lot_id,
 			COALESCE(revision.source_lot_id, x.source_lot_id), src.operation_id, src.opened_on,
@@ -289,9 +292,9 @@ func investmentReplayIntentsQuery(ctx context.Context, reader queryer, bookID, a
 			COALESCE(f.basis_fraction_scale, f.cash_basis_fraction_scale),
 			merger.id, merger.proceeds_value, merger.proceeds_scale
 		FROM investment_transfer_facts f
-		JOIN investment_transfer_lot_links x ON x.operation_id = f.operation_id
 		JOIN effective_investment_operations o ON o.id = f.operation_id
-		JOIN investment_lots src ON src.id = x.source_lot_id
+		CROSS JOIN investment_transfer_lot_links x ON x.operation_id = f.operation_id
+		CROSS JOIN investment_lots src ON src.id = x.source_lot_id
 		JOIN investment_operation_lot_effects effect ON effect.operation_id = f.operation_id
 		-- A spin-off's parent side is a basis reduction (#180).
 		JOIN investment_lot_events e ON e.id = effect.lot_event_id AND e.lot_id = x.source_lot_id
