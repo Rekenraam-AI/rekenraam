@@ -79,7 +79,7 @@ and the Home page settings. The full capability map is in the
    Albert Heijn*; check the prefilled payee and category, then cancel. Remove a
    widget with its ⋯ menu, undo, add one from More to explore, and reset in
    Customize.
-2. From Home, open Ledger → Checking. Apply March and a search filter.
+2. From Home, open Ledger (its Overview), then the pinned Checking account. Apply March and a search filter.
 3. Open Checking ▾, type Savings and press Enter. Check that the applicable
    filters remain. Remove the scope chip and observe that results become global.
 4. Open Add; check the selected account, type a payee, then press Escape.
@@ -87,11 +87,11 @@ and the Home page settings. The full capability map is in the
    without adding a journal or changing the displayed fixture balances.
 5. Follow Reconcile this account, preview, then finish the sample. Switch the
    account before previewing to check context.
-6. Return Home, expand review and continue the import batch. Choose a category
+6. Return Home, follow the status line to Review and continue the import batch. Choose a category
    and review the sample changes; the batch remains uncommitted.
 7. Open Spending, drill into Groceries, then use Back twice. Check Home's
-   scroll and expanded review. Repeat on a 390px phone and with only a keyboard.
-8. Try both themes, hide amounts, the three alternate sample books and
+   scroll position. Repeat on a 390px phone and with only a keyboard.
+8. Try both themes, hide amounts, the alternate sample books and
    320px reflow. Open a pin or report link in a new tab.
 
 Record task time, wrong turns, context loss and whether each figure's scope
@@ -176,7 +176,7 @@ against a 3-month interval (Home shows Cash, and the status line reads "Net
 worth needs a value for House · 3 more →"; the pension is one of the 3 and
 appears on the Review page with its interval).
 
-Home's review line no longer expands into a list above the search: it links
+Home's status line no longer expands into a list above the search: it links
 to a *Review* page (`/app/review`), also reached from the header's Review
 button with its count. The page has *Needs action*, *Notes* and *Status* (backups,
 self-check, price and FX refresh, connections, staged imports).

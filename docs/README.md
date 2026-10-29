@@ -105,6 +105,11 @@ counterexamples and 38 focused race controls. The
 completes #390's bounded first pass, records rejected/deferred refactoring
 opportunities and the two separately delivered browser fixes #433/#434.
 
+[ADR 0021](adrs/0021-entered-asset-values.md) records the owner decision
+(2026-10-29) that house, vehicle and pension values are dated values beside the
+ledger rather than adjustment postings, with estimate and assessed (WOZ) bases,
+roll-forward, update intervals and depreciation schedules; #454 delivers it.
+
 [ADR 0020](adrs/0020-release-signing-and-platform-targets.md) records the owner
 decision for keyless release signing, initial Linux targets and the future
 Windows native-signing boundary. Candidate preparation and verification

@@ -110,7 +110,7 @@ header on every page.
   (cards, widgets, menus, dialogs) is never translucent. The page background
   is a light neutral off-white with white cards.
 - **Right side:** a *Review* button with the count of items needing action
-  (the same count as Home's review line, `!` when the check failed), hide
+  (the total behind Home's status line, `!` when the check failed), hide
   amounts (eye), Customize (Home only), and a settings
   menu listing the settings pages (General, Preferences, Currencies and FX
   rates, Security, Data and backups), an inline Light / Dark / System theme
@@ -161,11 +161,12 @@ widget area:
    phone in the sample books.
 2. **Command bar**: large, centred search and command field.
 3. **Shortcuts**: a centred row of tiles.
+4. **My Home**: the owner's widgets, full width. It has no visible heading;
+   the widgets follow the shortcuts directly (owner, 2026-10-29).
+5. **More to explore**: every other widget, full width, by category.
 
 On phones the command bar opens the same search full screen when tapped, so
 results are not squeezed under a keyboard.
-4. **My Home**: the owner's widgets, full width.
-5. **More to explore**: every other widget, full width, by category.
 
 ### What belongs in the briefing
 
@@ -179,18 +180,19 @@ always count as items to review.
 
 ### Review page
 
-`/app/review`, reached from Home's review line, the header's Review button
+`/app/review`, reached from Home's status line, the header's Review button
 and search; not a section. One read (the attention read) feeds it, the
 header count and Home's line.
 
 - **Needs action:** drafts, import batches, missing or out-of-date prices,
-  dividend suggestions, failed backups, self-check or refresh runs. Each is one
+  rates and entered values (#454), dividend suggestions, failed backups, self-check or refresh runs. Each is one
   grouped line with a count and a link to the page that resolves it, never one
   line per instrument or row.
 - **Notes:** informational items that need no action now.
 - **Status:** the state of background work, whether or not anything is
   wrong: last backup and retention, ledger self-check, price and FX refresh,
-  each online connection's last download, staged file imports. Each row links
+  each online connection's last download, staged file imports, and entered
+  values once #454 lands. Each row links
   to where it is configured.
 - The page states when it was checked; a failed check says so with Retry and
   never shows "All clear".
@@ -275,8 +277,8 @@ composed Home read model are specified in the design review.
 
 ## Customization
 
-- One Customize panel (sliders icon on Home): headline choice including an
-  account or a named account set; whether review notes are mentioned;
+- One Customize panel (sliders icon on Home): headline choice (net worth,
+  cash, an account or a named account set); whether review notes are mentioned;
   shortcut list with reorder and remove; My Home order with reorder and
   remove; More to explore expanded or collapsed; Reset Home.
 - Item-level changes from ⋯ menus save immediately and offer Undo.
@@ -295,7 +297,8 @@ defaults. Because it lives in the database it is included in backups.
 
 ## Accessibility and responsiveness
 
-- Real buttons and links, disclosure navigation for section menus and
+- Real buttons and links (sections are plain links), disclosure buttons
+  for the phone menu, settings menu and headline menu, and
   combobox semantics for search and the switcher, visible focus, focus
   kept on a moved item with a live-region announcement, about 44px touch
   targets, reduced-motion support, both themes at WCAG AA contrast.
@@ -346,7 +349,7 @@ steppers or filters. On phones the tab row scrolls horizontally.
   Overview; ledger CSV and QIF export move to *Reports → Export*, while
   *Settings → Data* keeps backup and restore and links there; FX rates stay
   in *Settings → Currencies*. Settings keeps its own side list.
-- Menu counts and Home's review line come from one attention read, replacing
+- Tab counts and Home's status line come from one attention read, replacing
   the shell's recurring-summary query.
 
 ### Page header

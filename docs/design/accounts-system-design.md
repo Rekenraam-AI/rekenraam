@@ -680,8 +680,11 @@ Recommended account shapes:
   `allows_postings=true`. Use this for unpaid purchases, delayed outgoing
   transfers, and other temporary amounts the user owes.
 - Property or vehicle: asset/property or asset/vehicle, default commodity set to
-  the relevant valuation commodity. Valuation changes should be explicit
-  transactions or later price observations, not silent account edits.
+  the relevant valuation commodity. Value changes are entered values kept
+  beside the ledger, never adjustment postings or silent account edits
+  ([ADR 0021](../adrs/0021-entered-asset-values.md), #454). The ledger holds
+  purchase, improvements and sale; a pension or other statement-based account
+  can opt into entered values the same way.
 
 Receivable and payable balances must not be auto-summed across currencies or
 other commodities. Reports may present converted totals only when they choose an

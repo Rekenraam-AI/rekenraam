@@ -90,6 +90,10 @@ When a feature introduces a durable new rule, update one of those documents in t
   otherwise; never infer cost basis from current holdings alone. ADR 0012
   separates the canonical journal, investment subledger, read-side basis and
   valuation projections, and optional accounting postings.
+- Entered asset values (house, vehicle, pension) are dated, versioned values
+  beside the ledger with an `estimate` or `assessed` basis; recording, revising
+  or voiding one never posts, and an account needing a value is never counted
+  as zero ([ADR 0021](adrs/0021-entered-asset-values.md)).
 - An investment write is one domain operation across the journal and investment
   subledger. Buy, sell, write-off, transfer, corporate-action, edit, correction,
   void, unvoid, soft-delete, and restore paths must commit, reverse, or correct

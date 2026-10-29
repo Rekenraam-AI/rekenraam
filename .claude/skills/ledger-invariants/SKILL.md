@@ -170,6 +170,10 @@ Persistence) and `docs/product-requirements.md`. When in doubt, read those.
   report choosing FIFO/LIFO/average or an as-of price never mutates journal or
   operational lot facts. For an open position, `commodity_trading` contains a raw
   clearing/cash-flow residual, not a method-independent realized gain.
+- Entered asset values (house, vehicle, pension; ADR 0021) live beside the
+  ledger: dated, versioned, basis `estimate` or `assessed`, rolled forward by
+  later postings, ended by closure or sale. Recording one never posts; an
+  account needing a value with none is missing, never zero.
 - Every investment lifecycle mutation must preserve journal and subledger
   atomically. Generic transaction edit/correct/void/unvoid/soft-delete/restore
   must reject an investment-linked transaction unless the path also appends the

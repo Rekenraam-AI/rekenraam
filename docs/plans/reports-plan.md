@@ -203,6 +203,10 @@ their own.
 - Take each bucket’s balance as of the bucket end, using account versions and
   postings valid through that date. Do not derive a time series by summing
   current account balances backward in the frontend.
+- Accounts with entered values (house, vehicle, pension) are valued at the
+  latest value on or before the bucket end plus later postings, with missing
+  and out-of-date coverage ([ADR 0021](../adrs/0021-entered-asset-values.md),
+  #454, not yet delivered).
 - **Trade-date recognition** ([#410](https://github.com/sergeyfarin/rekenraam/issues/410),
   owner decision 2026-10-25). A trade posts its units and their
   `commodity_trading` leg on the trade date, and its cash and clearing leg on

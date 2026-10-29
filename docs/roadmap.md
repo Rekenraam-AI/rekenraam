@@ -113,7 +113,7 @@ Deliver incrementally, tracked in #441, in this order:
 2. **Home (#437):** two-line briefing, central command bar, shortcut tiles led
    by Add transaction, compact default My Home and real-size More to explore
    widgets, backed by a composed Home read and a shared transaction-entry
-   dialog. Its review line links to the **Review page (#453)**, which lists
+   dialog. Its status line links to the **Review page (#453)**, which lists
    everything needing attention and the status of background work.
 3. **Pages in their new places**, in any order after #436: settings in five
    pages with Trash moved to Transactions › Deleted and export to Reports
@@ -191,9 +191,10 @@ These are valuable, but they are not allowed to displace the current plan:
   evidence work, not a gate for accepted R13 delivery.
 - Values you enter [#454](https://github.com/sergeyfarin/rekenraam/issues/454):
   house, vehicle and pension values with a per-account update interval, so
-  net worth reports them as missing or out of date like prices. Needs a
-  storage decision first (valuation observation recommended over a
-  balance-adjustment posting). #437 and #453 do not wait for it.
+  net worth reports them as missing or out of date like prices. Storage is
+  decided ([ADR 0021](adrs/0021-entered-asset-values.md): dated values beside
+  the ledger, never postings); ready in three slices. #437 and #453 do not
+  wait for it.
 - Original maintainability candidates 7–13 remain
   [explicitly deferred without issues](reviews/maintainability-audit-2026-10-24.md#explicitly-deferred-inventory-original-ranks-713).
   Revisit only on the recorded trigger and refreshed evidence; open a bounded

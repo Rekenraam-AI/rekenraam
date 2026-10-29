@@ -87,6 +87,22 @@ Owner decision (2026-10-15), governed by
   Existing per-report complete-only aggregate and immutable-statement rules stay
   in force. A provider-only gap cannot block delivery of an independent feature.
 
+## Entered Asset Values
+
+Owner decision (2026-10-29), governed by
+[ADR 0021](adrs/0021-entered-asset-values.md) and delivered in #454:
+
+- A house, vehicle, pension or other asset no provider prices gets dated values
+  the owner enters, kept beside the ledger. The ledger records only real money
+  movements; entering a value never posts a transaction.
+- A value is an `estimate` (net worth's default) or `assessed` (an official
+  tax value such as the Dutch WOZ, with its valuation date and tax year). Each
+  account says which one net worth uses; no silent fallback between them.
+- Missing and out-of-date entered values follow the same rules as prices:
+  missing makes net worth unavailable, out of date is used and counted against
+  a per-account update interval. Vehicle depreciation is a schedule producing
+  estimates, never a posting.
+
 ## Decisions To Confirm Before Implementation
 
 - No remaining product-wide decisions block Phase 0 foundation coding. Feature-specific decisions remain listed below and should be resolved before their related slices.
