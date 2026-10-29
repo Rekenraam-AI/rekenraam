@@ -111,8 +111,8 @@ Deliver incrementally using the design's proposed split:
 5. **Widget depth:** lazy expanded returns, allocation and forecast charts,
    then further widgets for existing capabilities.
 
-Open bounded GitHub slice issues with acceptance and validation before starting
-implementation. Preserve every existing route and financial contract, explicit
+Tracking issue #441; slices #436–#440, object navigation #442, Payees page
+#443. Navigation decisions (#435) are recorded in the design. Preserve every existing route and financial contract, explicit
 scope/completeness, localization, both themes and usable phone/keyboard flows.
 R7a's broader entry helpers and configurable shortcut presets remain separate.
 

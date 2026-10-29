@@ -65,7 +65,9 @@ owner-approved Home page and light application shell (2026-10-27), with its
 [mockup source](design/home-mockup/README.md); the
 [design review](reviews/focus-first-ui-review-2026-10-27.md) and
 [revised proposal](reviews/focus-first-ui-proposal-revision-2026-10-27.md)
-keep the reasoning. Delivery issues are not yet opened.
+keep the reasoning. The
+[navigation and pages review](reviews/navigation-and-pages-options-2026-10-29.md)
+holds the options behind its navigation decisions (#435). Delivery is tracked in #441.
 
 [ADR 0019](adrs/0019-financial-effects-and-repairable-attribution.md) and the
 [financial-dependency plan](plans/financial-dependency-simplification-plan.md)

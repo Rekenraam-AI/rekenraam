@@ -3,8 +3,12 @@
 Owner-approved design direction, 2026-10-27, for the new Home page and the
 application shell around it. It records what was agreed after three mockup
 rounds; it does not set delivery order. Order lives in the
-[roadmap](../roadmap.md) and acceptance in GitHub issues, which still need to
-be opened for the slices below.
+[roadmap](../roadmap.md) and acceptance in GitHub issues: tracking #441,
+slices #436–#440, object navigation #442 and the Payees page #443. The
+navigation decisions of 2026-10-29 (#435) are recorded in
+[Navigation beyond the header](#navigation-beyond-the-header); their options
+and reasoning are in the
+[navigation and pages review](../reviews/navigation-and-pages-options-2026-10-29.md).
 
 Background and reasoning:
 
@@ -37,20 +41,25 @@ header on every page.
   hairline, not a coloured band. Colour is reserved for content and the
   primary shortcut.
 - **Sections:** Home · Ledger · Investments · Planning · Reports. Each
-  section opens a menu of its pages; a page that needs attention shows a
+  section opens a menu of its pages, built as a disclosure (button and list
+  of links, opened by click or Enter, not hover); a page that needs attention shows a
   short count in the menu (for example “Import · 1 in review”). A section is
   navigation only: it never changes account scope, currency or book.
 
   | Section | Pages |
   |---|---|
-  | Ledger | Transactions, Accounts, Categories, Import, Reconcile |
-  | Investments | Overview, Instruments, Returns, Income, Prices & FX |
+  | Ledger | Transactions, Accounts, Categories, Payees, Import, Reconcile |
+  | Investments | Overview, Instruments, Returns, Income, Gains, Prices |
   | Planning | Budgets, Recurring, Forecast |
-  | Reports | Spending, Cashflow, Net worth, Export |
+  | Reports | Spending, Cashflow, Net worth, Gains, Export |
+
+  The Ledger menu also shows up to six pinned accounts with balances and
+  *All accounts*. Gains is one page under Investments, also listed in
+  Reports.
 
 - **Right side:** hide amounts (eye), Customize (Home only), and a settings
-  menu (Settings, Currencies, Backups and data, Language and appearance,
-  Sign out).
+  menu (Settings, Security, Backups and data, Language and appearance,
+  Trash, Sign out) with an inline Light / Dark / System theme choice.
 - **Search:** on every page except Home the header has a compact search
   field with the same behaviour as Home's command bar (below). On Home the
   large central bar replaces it, so there is never more than one search
@@ -177,16 +186,105 @@ defaults. Because it lives in the database it is included in backups.
 
 ## Accessibility and responsiveness
 
-- Real buttons and links, menu and combobox semantics, visible focus, focus
+- Real buttons and links, disclosure navigation for section menus and
+  combobox semantics for search and the switcher, visible focus, focus
   kept on a moved item with a live-region announcement, about 44px touch
   targets, reduced-motion support, both themes at WCAG AA contrast.
 - One vertical page scroll; no nested card scrollers, sticky hero or
   horizontal carousels. Check 320px reflow and long translations in all six
   locales.
 
+## Navigation beyond the header
+
+Accepted 2026-10-29 (#435). Options and the path map with estimated entry
+counts are in the
+[navigation and pages review](../reviews/navigation-and-pages-options-2026-10-29.md).
+
+### Three levels
+
+| Level | Examples | Tool |
+|---|---|---|
+| Section | Ledger, Investments, Planning, Reports, settings | Header menus |
+| Page | Transactions, Accounts, Returns, Budgets, Spending | A tab row of the section's fixed pages, under the header |
+| Object | Accounts, categories, instruments, payees, import batches | List page, scoped search (switcher), pins, breadcrumbs. Never tabs. |
+
+Views and filters inside a page (Due / Templates, budget month, spending by
+category or payee, active / closed) stay in the page as segmented controls,
+steppers or filters. On phones the tab row scrolls horizontally.
+
+### Pages and routes
+
+- Every tab is a real route (`/app/reports/spending`,
+  `/app/investments/instruments`, `/app/investments/gains`…); old `?view=` and
+  `?tab=` links redirect.
+- One typed route registry (route, section, title key, icon, search keywords,
+  attention source, width) drives menus, tabs, document titles, breadcrumbs
+  and the search's page results. A unit test fails when a `+page.svelte`
+  route is missing from it.
+- Placement of today's sub-views: dividend review is a view inside Import;
+  split history is a section on the instrument page; investment suggestions
+  are review items (menu count and Home's review list), reached from
+  Overview; ledger CSV and QIF export move to *Reports → Export*, while
+  *Settings → Data* keeps backup and restore and links there; FX rates stay
+  in *Settings → Currencies*. Settings keeps its own side list.
+- Menu counts and Home's review line come from one attention read, replacing
+  the shell's recurring-summary query.
+
+### Page header
+
+Breadcrumb on detail pages, the title or the object switcher, a scope line
+where the page has one, and a slot on the right for the page's main action.
+The shell's description paragraph is dropped; help text moves into empty
+states. Transactions, account registers and category pages put *Add* in the
+action slot, prefilled for that page, so entry works on phones without a
+keyboard shortcut. Widths: narrow (about 720px) for Home's top and forms,
+standard (about 1200px) for reports, budgets and investments, fluid (up to
+about 1600px) for registers, transactions and import review. `?` opens
+keyboard help.
+
+### Objects
+
+- **Switcher = scoped search.** On a detail page the object's name is a
+  button (*Checking ▾*) that opens the shared search with a scope chip
+  (*Accounts ×*). Scoped, it lists one kind, grouped (accounts by class and
+  institution with balances, categories as a tree, instruments held first),
+  and Enter reopens the current page for the chosen object, keeping period,
+  filters, view and sort where they apply; a filter that cannot apply is
+  dropped and shown in the scope line. Removing the chip makes it the global
+  search, whose results open an object's default page. The global search's
+  empty state offers the same chips. Reconcile uses it to pick the account.
+- **Pins.** Up to six accounts, chosen by the owner, shown in the Ledger menu
+  with balances. On first use the app offers once to pin the three to five
+  accounts with the most postings in the last 90 days; afterwards only the
+  owner changes the list. The switcher may show a labelled *Recent* group
+  below the pins.
+- **Accounts page** is the complete index, grouped by class and institution,
+  with a filter and active / closed / all. Holdings collapse under their
+  broker with a count.
+- **Holdings** are left out of the account switcher and pins by default and
+  reached through Instruments and their broker; typing still finds them.
+- **Closed and archived** objects are hidden by default and one control away.
+- **Breadcrumbs** follow the hierarchy (*Accounts › DEGIRO › VWRL*,
+  *Categories › Housing › Energy*). A holding's register and its instrument
+  page link to each other.
+- **Payees** get a *Ledger → Payees* page (#443).
+- Before #442 fixes grouping and the pin limit, count a real book (accounts
+  by kind, holdings per broker, closed accounts, categories by depth, payees,
+  postings per account over 90 days) and record the result in the review.
+
+### Other shell details
+
+- Hide amounts is applied in `$lib/money/format.ts`, covers chart labels,
+  leaves exports, edit fields and stored data unchanged, and is remembered
+  per browser.
+- Sign-in, setup and recovery lose the root top bar and get a minimal header
+  with name, language and theme.
+- Back to Home restores its scroll position and expanded state.
+
 ## Delivery slices (proposed)
 
-Sequencing belongs in the roadmap. Proposed split for GitHub issues:
+Sequencing belongs in the roadmap. Slice issues: #436, #437, #438, #439, #440 in
+the order below.
 
 1. **Shell and search:** light header, section menus, settings menu, hide
    amounts, compact search over pages, accounts, categories, instruments and
@@ -211,5 +309,10 @@ Sequencing belongs in the roadmap. Proposed split for GitHub issues:
 - A fixed-order map with a separate shortlist: replaced by My Home plus More
   to explore.
 - Compact previews in More to explore: real-size widgets instead.
+- Hover-opened section menus and `role="menu"` for site navigation.
+- A separate object picker beside the search: the switcher is the search
+  with a scope chip.
+- Tabs for objects such as accounts or instruments.
+- Usage-ordered pins that rearrange themselves.
 - Workspaces with separate layouts, bottom navigation on phones, usage-based
   automatic placement.
