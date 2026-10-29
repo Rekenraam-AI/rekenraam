@@ -99,12 +99,12 @@
   {#if mode === 'correct'}<p class="mt-2 text-sm text-muted">{m.pricing_correction_copy()}</p>{/if}
   <APIFormError error={error} id="price-form-error" />
   <form class="mt-4 space-y-4" onsubmit={(event) => { event.preventDefault(); void review(); }}>
-    <fieldset disabled={pending || reviewing} class="grid gap-3 sm:grid-cols-2">
+    <fieldset disabled={pending || reviewing} class="grid min-w-0 gap-3 sm:grid-cols-2 [&>label]:min-w-0">
       {#if mode !== 'void'}
-        <label class="grid gap-1 text-sm" for="price-base">{m.pricing_base()}<select id="price-base" bind:value={base} disabled={mode === 'correct'} class="min-h-11 w-full rounded-(--radius-control) border border-border bg-control px-3">
+        <label class="grid gap-1 text-sm" for="price-base">{m.pricing_base()}<select id="price-base" bind:value={base} disabled={mode === 'correct'} class="min-h-11 min-w-0 w-full rounded-(--radius-control) border border-border bg-control px-3">
           <option value={0}>{m.pricing_choose()}</option>{#each workspace.commodities as commodity}<option value={commodity.id}>{commodity.code}</option>{/each}
         </select></label>
-        <label class="grid gap-1 text-sm" for="price-quote">{m.pricing_quote()}<select id="price-quote" bind:value={quote} disabled={mode === 'correct'} class="min-h-11 w-full rounded-(--radius-control) border border-border bg-control px-3">
+        <label class="grid gap-1 text-sm" for="price-quote">{m.pricing_quote()}<select id="price-quote" bind:value={quote} disabled={mode === 'correct'} class="min-h-11 min-w-0 w-full rounded-(--radius-control) border border-border bg-control px-3">
           <option value={0}>{m.pricing_choose()}</option>{#each workspace.commodities.filter(item => item.kind === 'currency') as commodity}<option value={commodity.id}>{commodity.code}</option>{/each}
         </select></label>
         <label class="grid gap-1 text-sm" for="price-date">{m.pricing_date()}<input id="price-date" type="date" required bind:value={valuationDate} disabled={mode === 'correct'} class="min-h-11 min-w-0 w-full rounded-(--radius-control) border border-border bg-control px-3" /></label>
@@ -134,7 +134,7 @@
       <h3 class="font-semibold">{m.pricing_review_title()}</h3>
       <p class="text-sm text-muted">{m.pricing_mutation_copy()}</p>
       {#if mode !== 'void' && parsedPrice && parsedQuantity}
-        <p class="break-words font-semibold">{m.pricing_amount_pair({ price: formatQuantity(parsedPrice.value, parsedPrice.scale, locale), quote: workspace.commodities.find(item => item.id === quote)?.code ?? '', base: formatQuantity(parsedQuantity.value, parsedQuantity.scale, locale), instrument: workspace.commodities.find(item => item.id === base)?.code ?? '' })}</p>
+        <p class="wrap-anywhere font-semibold">{m.pricing_amount_pair({ price: formatQuantity(parsedPrice.value, parsedPrice.scale, locale), quote: workspace.commodities.find(item => item.id === quote)?.code ?? '', base: formatQuantity(parsedQuantity.value, parsedQuantity.scale, locale), instrument: workspace.commodities.find(item => item.id === base)?.code ?? '' })}</p>
         <p>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(parseISO(valuationDate))}</p>
         {#if (mode === 'correct' ? basis : sentBasis) !== 'raw'}<p>{m.pricing_adjustment_basis()}: {basisLabels[mode === 'correct' ? basis : sentBasis] ?? basis}</p>{/if}
         <p class="text-sm text-muted">{m.pricing_owner_assertion()}</p>

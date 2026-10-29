@@ -64,7 +64,7 @@
       {#if workspace.coverage.length === 0}<p class="mt-4 text-sm text-muted">{m.pricing_coverage_empty()}</p>
       {:else}<ul class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{#each workspace.coverage as item}
         <li class="min-w-0 space-y-2 rounded-(--radius-panel) border border-border p-3">
-          <button type="button" onclick={() => { base = item.base_commodity_id; quote = item.quote_commodity_id; }} class="min-h-11 text-left font-semibold underline underline-offset-4">{m.pricing_pair({ base: codes.get(item.base_commodity_id) ?? '', quote: codes.get(item.quote_commodity_id) ?? '' })}</button>
+          <button type="button" onclick={() => { base = item.base_commodity_id; quote = item.quote_commodity_id; }} class="min-h-11 max-w-full wrap-anywhere text-left font-semibold underline underline-offset-4">{m.pricing_pair({ base: codes.get(item.base_commodity_id) ?? '', quote: codes.get(item.quote_commodity_id) ?? '' })}</button>
           <div><StatusBadge tone={item.status === 'usable' ? 'positive' : 'warning'}>{item.status === 'usable' ? m.pricing_usable() : item.status === 'stale' ? m.pricing_stale() : m.pricing_missing()}</StatusBadge></div>
           {#if item.age_days !== undefined}<p class="text-sm text-muted">{m.pricing_age({ days: new Intl.NumberFormat(locale).format(item.age_days) })}</p>{/if}
           {#if item.observation}<PriceDetail price={item.observation} {workspace} />{:else}<p class="text-sm text-muted">{m.pricing_missing_copy()}</p><ObservationStatus status={item.reason} />{/if}
@@ -75,8 +75,8 @@
       <h2 class="text-lg font-semibold">{m.pricing_history()}</h2>
       <p class="mt-2 text-sm text-muted">{m.pricing_history_copy()}</p>
       <div class="mt-4 grid gap-3 sm:grid-cols-2">
-        <label class="grid gap-1 text-sm" for="pricing-history-base">{m.pricing_base()}<select id="pricing-history-base" bind:value={base} class="min-h-11 w-full rounded-(--radius-control) border border-border bg-control px-3"><option value={0}>{m.pricing_choose()}</option>{#each workspace.commodities as commodity}<option value={commodity.id}>{commodity.code}</option>{/each}</select></label>
-        <label class="grid gap-1 text-sm" for="pricing-history-quote">{m.pricing_quote()}<select id="pricing-history-quote" bind:value={quote} class="min-h-11 w-full rounded-(--radius-control) border border-border bg-control px-3"><option value={0}>{m.pricing_choose()}</option>{#each workspace.commodities.filter(item => item.kind === 'currency') as commodity}<option value={commodity.id}>{commodity.code}</option>{/each}</select></label>
+        <label class="grid min-w-0 gap-1 text-sm" for="pricing-history-base">{m.pricing_base()}<select id="pricing-history-base" bind:value={base} class="min-h-11 min-w-0 w-full rounded-(--radius-control) border border-border bg-control px-3"><option value={0}>{m.pricing_choose()}</option>{#each workspace.commodities as commodity}<option value={commodity.id}>{commodity.code}</option>{/each}</select></label>
+        <label class="grid min-w-0 gap-1 text-sm" for="pricing-history-quote">{m.pricing_quote()}<select id="pricing-history-quote" bind:value={quote} class="min-h-11 min-w-0 w-full rounded-(--radius-control) border border-border bg-control px-3"><option value={0}>{m.pricing_choose()}</option>{#each workspace.commodities.filter(item => item.kind === 'currency') as commodity}<option value={commodity.id}>{commodity.code}</option>{/each}</select></label>
       </div>
       <label class="mt-3 flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" bind:checked={includeVoided} />{m.pricing_include_retired()}</label>
       {#if base <= 0 || quote <= 0 || base === quote}<p class="mt-4 text-sm text-muted">{m.pricing_choose_pair()}</p>

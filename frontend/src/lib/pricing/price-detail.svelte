@@ -16,8 +16,8 @@
   function timestamp(value?: string) { return value ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'long', timeZone: 'UTC' }).format(parseISO(value)) : m.pricing_not_recorded(); }
 </script>
 
-<div class="min-w-0 space-y-2">
-  <p class="break-words font-semibold">{m.pricing_amount_pair({ price: formatQuantity(price.price_value, price.price_scale, locale), quote: codes.get(price.quote_commodity_id) ?? '', base: formatQuantity(price.base_quantity_value, price.base_quantity_scale, locale), instrument: codes.get(price.base_commodity_id) ?? '' })}</p>
+<div class="min-w-0 space-y-2 wrap-anywhere">
+  <p class="font-semibold">{m.pricing_amount_pair({ price: formatQuantity(price.price_value, price.price_scale, locale), quote: codes.get(price.quote_commodity_id) ?? '', base: formatQuantity(price.base_quantity_value, price.base_quantity_scale, locale), instrument: codes.get(price.base_commodity_id) ?? '' })}</p>
   <p class="text-sm text-muted">{m.pricing_observation_identity({ id: new Intl.NumberFormat(locale).format(price.id), date: date(price.valuation_date), source })}</p>
   <div class="flex flex-wrap gap-2">
     {#if price.voided_at}<StatusBadge tone="warning">{m.pricing_retired()}</StatusBadge>{/if}
@@ -27,7 +27,7 @@
     {#if price.adjustment_basis === 'total_return'}<StatusBadge>{m.pricing_basis_total()} · {m.pricing_benchmark_only()}</StatusBadge>{/if}
   </div>
   {#if detailed}
-    <dl class="grid gap-2 text-sm sm:grid-cols-2 [&_dt]:text-muted [&_dd]:break-words">
+    <dl class="grid gap-2 text-sm sm:grid-cols-2 [&_dt]:text-muted">
       <div><dt>{m.pricing_quote_type()}</dt><dd>{quoteLabels[price.quote_type] ?? price.quote_type}</dd></div>
       <div><dt>{m.pricing_adjustment_basis()}</dt><dd>{adjustmentLabels[price.adjustment_basis] ?? price.adjustment_basis}</dd></div>
       <div><dt>{m.pricing_observed_at()}</dt><dd>{timestamp(price.observed_at)}</dd></div>

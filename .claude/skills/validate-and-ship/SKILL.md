@@ -820,6 +820,15 @@ non-trivial diff (yours or reviewed):
     link, and keep the detail span aligned with visible columns
     (`forecast-learning.spec.ts`, `forecast.spec.ts`).
 
+71. **Long identifiers setting a grid's intrinsic width** — pricing's pair
+    button and native selects expanded the phone layout even when cards used
+    `min-w-0` (#387). Constrain controls and their grid labels, and use
+    `wrap-anywhere` for complete identifiers and exact price/unit text so their
+    minimum content width can shrink. Never mask it with page overflow hiding
+    or truncate financial evidence. `pricing-long-code.spec.ts` owns its book,
+    seeds long codes explicitly, and checks page, control and rendered-text
+    bounds in six locales and both themes, including correction review.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 
