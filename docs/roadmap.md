@@ -53,6 +53,10 @@ below is execution order, not a chain of hard dependencies.
 
 ### Current focus
 
+The [UI overhaul](#current-product-initiative--ui-overhaul) is the current
+product initiative (owner decision 2026-10-29), starting with #436. The items
+below continue alongside it and do not block it.
+
 1. **Resolve the remaining owner/release gates in parallel with maintenance.**
    [#260](https://github.com/sergeyfarin/rekenraam/issues/260) remains open for
    actual owner deployment/household evidence
@@ -94,14 +98,15 @@ below is execution order, not a chain of hard dependencies.
    TypeScript/OpenAPI-generator compatibility when considering the upgrade;
    its old blocker text is not fresh compatibility evidence.
 
-### Next product initiative — UI overhaul
+### Current product initiative — UI overhaul
 
 Implement the owner-approved [Home and navigation design](design/home-and-navigation.md)
 recorded in [commit `457dd74`](https://github.com/sergeyfarin/rekenraam/commit/457dd74a8344caa962bfdf29fe8dd18a69254102),
 with its [v3 mockup](design/home-mockup/README.md). The design is approved;
-application implementation is not delivered. This follows the retained
-maintenance slots, ahead of deliberately later initiatives. Owner-dependent
-readiness and release evidence continue in parallel.
+application implementation is not delivered. The owner made it the current
+initiative on 2026-10-29, after the remaining maintenance items (#414, #416)
+were judged not to block it; they, owner-dependent readiness and release
+evidence continue in parallel. Implementation starts with #436.
 
 Deliver incrementally, tracked in #441, in this order:
 
