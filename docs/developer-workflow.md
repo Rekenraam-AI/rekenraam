@@ -676,10 +676,19 @@ A failed attempt keeps a lightweight Playwright trace and a final screenshot
 under `e2e/test-results/<case>/` (#414): the trace has every action's
 actionability log, so you can see where a click or fill waited, plus call
 stacks and console output. DOM snapshots, trace screenshots and browser network
-capture are off: full tracing measured 25–35% slower and the light trace 1–6%.
+capture are off by default: full tracing measured 25–35% slower and the light
+trace 1–6%.
 Use the worker's `app.log` for the server side of a request. Open the trace with
 `pnpm --dir e2e exec playwright show-trace <path>/trace.zip`, or pass `--trace=on`
 to record a full trace while reproducing locally.
+
+`investments-capital-return-reads.spec.ts` additionally keeps DOM snapshots and
+browser network evidence for its seven cases (#414), with trace screenshots
+and sources still off. Its reversal phases are named timing steps, so a stalled
+click is separate from navigation, reason entry and submit. All other specs
+retain the global light trace. The
+[2026-10-29 follow-up](reviews/capital-return-stall-2026-10-29.md) records the
+failure-artifact control, tracing cost and current reproduction limits.
 
 The route and sub-view sweeps run in separate projects before ordinary app
 journeys, with their own worker books. Their complete matrices and assertions

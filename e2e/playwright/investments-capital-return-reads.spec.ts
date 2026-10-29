@@ -5,7 +5,14 @@ import { apiJSON } from './support/api';
 import { readyForLedger } from './support/ledger';
 import { todayISO } from './support/dates';
 
-test.use({ viewport: { width: 390, height: 844 } });
+test.use({
+  viewport: { width: 390, height: 844 },
+  // #414's original stall predates failure tracing. Keep DOM snapshots
+  // and browser network evidence for this small spec so the next occurrence
+  // can distinguish a missing control, actionability wait and lost dialog.
+  // Other journeys retain the lighter global trace; trace screenshots stay off.
+  trace: { mode: 'retain-on-failure', snapshots: true, screenshots: false, sources: false }
+});
 function ago(days: number) { const date = new Date(); date.setDate(date.getDate() - days); return todayISO(date); }
 
 for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
@@ -62,13 +69,23 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     const summary = page.getByRole('region', { name: settings.investments_roc_summary_title });
     await expect(summary.getByRole('article').filter({ hasText: suffix })).toHaveCount(1);
     await expect(summary.getByRole('article').filter({ hasText: suffix })).toContainText(settings.investments_roc_no_excess);
-    await page.goto(`/app/transactions?transaction_id=${receipt.transaction.id}`);
-    await page.getByRole('button', { name: settings.transactions_investment_reverse_capital_return_action, exact: true }).click();
+    await test.step('load the capital-return transaction for reversal', async () => {
+      await page.goto(`/app/transactions?transaction_id=${receipt.transaction.id}`);
+    });
+    await test.step('click the capital-return reversal action', async () => {
+      await page.getByRole('button', { name: settings.transactions_investment_reverse_capital_return_action, exact: true }).click();
+    });
     const reversal = page.getByRole('alertdialog');
-    await reversal.locator('input').fill('notice withdrawn');
+    await test.step('enter the capital-return reversal reason', async () => {
+      await reversal.locator('input').fill('notice withdrawn');
+    });
     // Stable control id avoids tying financial verification to translated text.
-    await reversal.getByRole('button').last().click();
-    await expect(reversal).toBeHidden();
+    await test.step('submit the capital-return reversal', async () => {
+      await reversal.getByRole('button').last().click();
+    });
+    await test.step('wait for the capital-return reversal dialog to close', async () => {
+      await expect(reversal).toBeHidden();
+    });
     await page.goto(`/app/transactions?transaction_id=${receipt.transaction.id}`);
     await expect(history.getByRole('article')).toHaveCount(3);
     await expect(history).not.toContainText(settings.investments_roc_current);

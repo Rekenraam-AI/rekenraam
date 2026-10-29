@@ -1,0 +1,382 @@
+{
+  "issue": 414,
+  "reviewed_on": "2026-10-29",
+  "source": "ecc8c201",
+  "window_after_utc": "2026-10-26T22:21:36Z",
+  "selection": "latest 50 CI workflow runs, after the previous investigation comment, excluding cancelled runs",
+  "selected_runs": 40,
+  "available_app_artifacts": 37,
+  "app_attempts": 16364,
+  "capital_return_attempts": 259,
+  "capital_return_failures": 0,
+  "capital_return_max_duration_ms": 9018,
+  "capital_return_max_mean_click_ms": 365.333,
+  "slow_operation_threshold_ms": 2500,
+  "slow_operation_measure": "total Click or Fill duration divided by calls within one attempt, not an individual-call maximum",
+  "slow_operation_attempts": 0,
+  "runs": [
+    {
+      "id": 40833141957,
+      "created_at": "2026-10-29T07:04:57Z",
+      "head": "14867c45fa5418e14b1a7c85f9907723d2609ef7",
+      "conclusion": "success",
+      "app_attempts": 444,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 226.0
+    },
+    {
+      "id": 40813041339,
+      "created_at": "2026-10-29T03:35:56Z",
+      "head": "7869f98337c3cd73454b6a73f61bba531ed6b70b",
+      "conclusion": "success",
+      "app_attempts": 444,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 200.0
+    },
+    {
+      "id": 40763705306,
+      "created_at": "2026-10-28T20:29:12Z",
+      "head": "83f1e38b01cb66c65ce643e5edd5c4a7a2fe9164",
+      "conclusion": "success",
+      "app_attempts": 443,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 272.667
+    },
+    {
+      "id": 40753435712,
+      "created_at": "2026-10-28T19:20:35Z",
+      "head": "e16cd88240fa046211bc20f26510267b8f74a1ec",
+      "conclusion": "success",
+      "app_attempts": 443,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 269.667
+    },
+    {
+      "id": 40744667067,
+      "created_at": "2026-10-28T18:23:29Z",
+      "head": "2f0a9fda2d53c37f0f09245876d15d30a630b441",
+      "conclusion": "success",
+      "app_attempts": 443,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 332.5
+    },
+    {
+      "id": 40736803314,
+      "created_at": "2026-10-28T17:33:12Z",
+      "head": "dabfca0967292fc5fabb35492b602f56eed0ab65",
+      "conclusion": "success",
+      "app_attempts": 443,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 299.667
+    },
+    {
+      "id": 40734905029,
+      "created_at": "2026-10-28T17:21:19Z",
+      "head": "14a8315102367f2cc43c9ebfff6168d7a8d1c3d4",
+      "conclusion": "success",
+      "app_attempts": 443,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 236.333
+    },
+    {
+      "id": 40731028756,
+      "created_at": "2026-10-28T16:57:26Z",
+      "head": "8f362e24a52a69aba1b0c777922ff4c4cd7b59f2",
+      "conclusion": "success",
+      "app_attempts": 443,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 326.0
+    },
+    {
+      "id": 40727032879,
+      "created_at": "2026-10-28T16:32:54Z",
+      "head": "107bdfbd31218d77e1e2cdf12303b2118dfee896",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 223.667
+    },
+    {
+      "id": 40714747264,
+      "created_at": "2026-10-28T15:19:19Z",
+      "head": "2717c096cc79d0cb91c0937f9f5a09120505bb36",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 304.0
+    },
+    {
+      "id": 40710936310,
+      "created_at": "2026-10-28T14:56:37Z",
+      "head": "1ad7cfe661a55cbad02aacce23c6d183d42759a4",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 316.667
+    },
+    {
+      "id": 40629782034,
+      "created_at": "2026-10-28T03:59:47Z",
+      "head": "a35590dab45a2fd67d3ee4c0e06e53e9689dde4d",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 211.333
+    },
+    {
+      "id": 40584858368,
+      "created_at": "2026-10-27T21:12:57Z",
+      "head": "9804e4d2c276945d037e3b9a9abf8658de849610",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 331.667
+    },
+    {
+      "id": 40584823169,
+      "created_at": "2026-10-27T21:12:34Z",
+      "head": "453277f71db80eebd6715a9cf9340278ba11944d",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 296.0
+    },
+    {
+      "id": 40582283238,
+      "created_at": "2026-10-27T20:55:12Z",
+      "head": "db8a71776c248083619a47b55c956424e20d38b9",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 323.333
+    },
+    {
+      "id": 40582028079,
+      "created_at": "2026-10-27T20:53:28Z",
+      "head": "457dd74a8344caa962bfdf29fe8dd18a69254102",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 280.333
+    },
+    {
+      "id": 40580212845,
+      "created_at": "2026-10-27T20:40:58Z",
+      "head": "0ec5fbf50fb670ea3fc64368422ca86b0c3b93c5",
+      "conclusion": "failure",
+      "app_attempts": null,
+      "capital_return_attempts": 0,
+      "capital_return_max_mean_click_ms": 0,
+      "unavailable": "no valid artifacts found to download"
+    },
+    {
+      "id": 40574066647,
+      "created_at": "2026-10-27T19:59:51Z",
+      "head": "098d44d014bcb48f386546fdd1ead383680c473a",
+      "conclusion": "failure",
+      "app_attempts": null,
+      "capital_return_attempts": 0,
+      "capital_return_max_mean_click_ms": 0,
+      "unavailable": "no valid artifacts found to download"
+    },
+    {
+      "id": 40559643992,
+      "created_at": "2026-10-27T18:24:13Z",
+      "head": "8b64a5a9b79abe537bd6a9ca6ee0faa8f5afe9a0",
+      "conclusion": "failure",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 305.333
+    },
+    {
+      "id": 40480574511,
+      "created_at": "2026-10-27T09:24:46Z",
+      "head": "a42a44d5d67e6bfebb3951164f9edc61fa7f31d2",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 270.667
+    },
+    {
+      "id": 40478132822,
+      "created_at": "2026-10-27T09:05:16Z",
+      "head": "3c1a22f20d2320891133c338d5dad8124bfff7f3",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 231.0
+    },
+    {
+      "id": 40476459132,
+      "created_at": "2026-10-27T08:51:32Z",
+      "head": "3c1a22f20d2320891133c338d5dad8124bfff7f3",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 239.667
+    },
+    {
+      "id": 40472865766,
+      "created_at": "2026-10-27T08:20:53Z",
+      "head": "50fb4f0796c6005febe6f8cb6d92f11e92ac6d1e",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 302.333
+    },
+    {
+      "id": 40471288128,
+      "created_at": "2026-10-27T08:06:48Z",
+      "head": "521e01b915034c1b0e65d91dfa07f17df9129976",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 227.0
+    },
+    {
+      "id": 40467905238,
+      "created_at": "2026-10-27T07:34:11Z",
+      "head": "521e01b915034c1b0e65d91dfa07f17df9129976",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 360.667
+    },
+    {
+      "id": 40466620937,
+      "created_at": "2026-10-27T07:21:21Z",
+      "head": "d47fd91e5589cbc78a63bd8fd90b76a561fa1c08",
+      "conclusion": "failure",
+      "app_attempts": null,
+      "capital_return_attempts": 0,
+      "capital_return_max_mean_click_ms": 0,
+      "unavailable": "no artifact matches any of the names or patterns provided"
+    },
+    {
+      "id": 40464531990,
+      "created_at": "2026-10-27T07:00:51Z",
+      "head": "75a92a07e5c79c34398f9b42346351096b6fd94b",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 330.0
+    },
+    {
+      "id": 40463229691,
+      "created_at": "2026-10-27T06:47:48Z",
+      "head": "2db488ddfb234d9f1a6876175da8526cf80a0a50",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 259.667
+    },
+    {
+      "id": 40463204388,
+      "created_at": "2026-10-27T06:47:32Z",
+      "head": "3c3f237669fbf989b1ae98402ea1eac3340143cb",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 322.667
+    },
+    {
+      "id": 40461925586,
+      "created_at": "2026-10-27T06:34:36Z",
+      "head": "8ab460cabb1aa71b2f20a22c17559ecc75e1f12b",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 287.667
+    },
+    {
+      "id": 40461881632,
+      "created_at": "2026-10-27T06:34:10Z",
+      "head": "1916b0139d46187469fee8a29b3d837f0a493fa2",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 274.667
+    },
+    {
+      "id": 40460727636,
+      "created_at": "2026-10-27T06:22:36Z",
+      "head": "70838b6fc12f3161832bf7735f3adbdfcce751d7",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 225.667
+    },
+    {
+      "id": 40460575589,
+      "created_at": "2026-10-27T06:21:03Z",
+      "head": "923fbe8d6ff95e25c2d351d4947caea1978b9b77",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 300.667
+    },
+    {
+      "id": 40460543484,
+      "created_at": "2026-10-27T06:20:45Z",
+      "head": "5d91d0c09a7d0b37993c8cf1beb80123143a3a75",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 336.333
+    },
+    {
+      "id": 40460406178,
+      "created_at": "2026-10-27T06:19:24Z",
+      "head": "3ff4d37b36c54515ed31c10212a986dc3e7c3f9e",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 212.667
+    },
+    {
+      "id": 40459309959,
+      "created_at": "2026-10-27T06:08:17Z",
+      "head": "5e456cf18cd1b600b88af8ada7db0748eed60922",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 306.333
+    },
+    {
+      "id": 40459297769,
+      "created_at": "2026-10-27T06:08:10Z",
+      "head": "6f23a64e5ad8b421e4d2dfd14ee360bd76022cfd",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 299.0
+    },
+    {
+      "id": 40459293880,
+      "created_at": "2026-10-27T06:08:07Z",
+      "head": "bafa20c055ae694cd5437250440bcef4d0313d7f",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 211.667
+    },
+    {
+      "id": 40459071399,
+      "created_at": "2026-10-27T06:05:52Z",
+      "head": "b667f94e5787aabff0a9e794e926fd875311c60f",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 222.0
+    },
+    {
+      "id": 40459042963,
+      "created_at": "2026-10-27T06:05:35Z",
+      "head": "276ec69f951554c0fda6bd25fa600198c1a5dee9",
+      "conclusion": "success",
+      "app_attempts": 442,
+      "capital_return_attempts": 7,
+      "capital_return_max_mean_click_ms": 365.333
+    }
+  ]
+}
