@@ -145,25 +145,26 @@ uses actual `/app/...` routes served by the existing Go/static SvelteKit app.
 The frontend route registry, dialog primitives, composed reads and cache
 invalidation must be implemented in their slices, not copied from this artifact.
 
-## Header revision and open options (2026-10-29)
+## Header revision (2026-10-29)
 
 After the owner found the two header rows "not neat", the rows were given
-distinct roles: sections are quiet text (current section in darker ink and
-weight, no filled pill, a small muted chevron); pages are underline tabs on
-the header's hairline, with attention shown as a number badge (*Income 3*)
-whose full sentence stays for screen readers and in menus. The brand is the
-mark alone (32px, accessible name "Rekenraam Home") so the header is the same
-on every page. Header rows are 56px and 40px. The header is sticky with a
-translucent, blurred background, solid under `prefers-reduced-transparency`;
-content (widgets, cards, menus) stays opaque. The page background is a light
-neutral off-white (`oklch(0.975 0.003 100)`) with white cards.
+distinct roles. Sections are sentence-case text without chevrons or dots;
+the current section is a soft tinted pill. Pages are underline tabs on the
+header's hairline, with attention shown as a number badge (*Income 3*) whose
+full sentence stays for screen readers and in menus. The brand is the mark
+alone (32px, accessible name "Rekenraam Home"), the same on every page.
+Header rows are 56px and 40px. The header is sticky with a translucent,
+blurred background, solid under `prefers-reduced-transparency`; content
+(widgets, cards, menus) stays opaque. The page background is a light neutral
+off-white (`oklch(0.975 0.003 100)`) with white cards. Home has no *My Home*
+heading; widgets follow the shortcuts directly.
 
-Three choices remain open and can be switched in the prototype bar:
+The owner rejected capitals and a left account rail (accounts beside a
+register distract from the account in hand). Still open, and switchable in
+the prototype bar: **Sections** as *Menus* (the accepted design: disclosure
+menus with counts and pins) or *Links* (a section opens a page directly and
+the tab row is the only page list).
 
-- **Sections:** *Menus* (accepted design: disclosure menus with counts and
-  pins) or *Links* (a section opens its last-visited page; the tab row is the
-  only page list; attention shows as a dot).
-- **Labels:** sentence case or capitals for section labels.
-- **Account rail:** an optional left column of accounts by institution on
-  account pages (option O3 of the review, the inverted-L layout of most
-  finance apps). Hidden below 900px.
+The *Missing valuation* sample now has three unpriced instruments: the
+headline counts them, the review line includes them, and review lists them as
+one item linking to Prices filtered to missing prices.

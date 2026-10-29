@@ -84,13 +84,9 @@ input[type="checkbox"], input[type="radio"] { min-height: auto; }
 .nav-trigger, .home-link { border-color: transparent; background: transparent; color: var(--muted); font-weight: 500; }
 .desktop-nav .nav-trigger { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 6px 12px; font-size: 14px; text-decoration: none; border-radius: 8px; }
 .nav-trigger:hover, .nav-trigger[aria-expanded="true"] { color: var(--fg); background: var(--hover); }
-/* The current section is marked by ink and weight, not a filled pill; the tab row below carries the stronger marker. */
-.desktop-nav .nav-trigger[aria-current] { background: transparent; color: var(--fg) !important; font-weight: 600; }
-.desktop-nav .nav-trigger[aria-current]:hover, .desktop-nav .nav-trigger[aria-current][aria-expanded="true"] { background: var(--hover); }
+/* The current section is a soft tinted pill; the pages below use an underline, so the two levels never look alike. */
+.desktop-nav .nav-trigger[aria-current] { background: var(--strong); color: var(--fg) !important; font-weight: 600; }
 .nav-chev { width: 14px; height: 14px; opacity: .55; }
-.nav-trigger[aria-expanded="true"] .nav-chev { transform: rotate(180deg); }
-.attn-dot { width: 6px; height: 6px; border-radius: 3px; background: var(--warn-dot); margin-left: 2px; align-self: flex-start; margin-top: 6px; }
-:root[data-caps="caps"] .desktop-nav .nav-trigger { text-transform: uppercase; letter-spacing: .06em; font-size: 12.5px; }
 .home-link { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 12px; text-decoration: none; border-radius: var(--radius); }
 .icon-button { width: 44px; padding: 0; border-color: transparent; background: transparent; color: var(--muted); }
 .icon-button:hover { color: var(--fg); }
@@ -118,19 +114,6 @@ input[type="checkbox"], input[type="radio"] { min-height: auto; }
 .section-tabs a:focus-visible { outline-offset: -2px; }
 .count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; font-size: 11px; font-weight: 600; line-height: 1; background: var(--warn-soft); color: var(--warning); }
 .count.failed { background: var(--warning); color: var(--bg); }
-/* Option under review: account rail beside account pages. */
-.rail-layout { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 32px; align-items: start; }
-.rail-main { min-width: 0; }
-.rail { position: sticky; top: 112px; display: flex; flex-direction: column; gap: 1px; font-size: 14px; }
-.rail-group { margin: 14px 10px 4px; font-size: 12px; color: var(--muted); }
-.rail-group:first-child { margin-top: 0; }
-.rail a { display: flex; justify-content: space-between; gap: 8px; min-height: 36px; align-items: center; padding: 4px 10px; border-radius: 8px; color: var(--fg); text-decoration: none; }
-.rail a:hover { background: var(--hover); }
-.rail a .money { color: var(--muted); font-size: 13px; }
-.rail a[aria-current] { font-weight: 600; }
-.rail a[aria-current] .money { color: var(--fg); }
-.rail .rail-all { margin-top: 10px; color: var(--accent); }
-@media (max-width: 900px) { .rail-layout { grid-template-columns: minmax(0, 1fr); } .rail { display: none; } }
 .mobile-pages { padding: 12px 24px; border-bottom: 1px solid var(--border); }
 .mobile-pages details { padding: 4px 0; }
 .mobile-pages summary { min-height: 44px; padding: 10px 0; cursor: pointer; }
@@ -230,6 +213,7 @@ kbd { font: inherit; font-size: 12px; color: var(--muted); border: 1px solid var
 
 /* Home: widgets */
 .home-section { margin-top: 56px; }
+.home-section.my-home { margin-top: 32px; }
 .section-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .section-head h2 { margin: 0; }
 .section-head button { margin-left: auto; min-height: 36px; }
@@ -342,6 +326,7 @@ dialog::backdrop { background: oklch(0.1 0.01 108 / .45); }
   .more-tile { display: block; }
   .tile-menu { left: auto; right: 0; transform: none; }
   .home-section { margin-top: 40px; }
+  .home-section.my-home { margin-top: 24px; }
   .tabs-inner { padding-inline: 16px; gap: 20px; }
   .page-heading { gap: 10px; }
   h1 { font-size: 22px; }

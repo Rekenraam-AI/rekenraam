@@ -62,10 +62,9 @@ const icon = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" ari
 let hidden = false;
 let theme = 'system';
 try { hidden = localStorage.getItem('navigation-prototype-hidden') === 'true'; theme = localStorage.getItem('navigation-prototype-theme') || 'system'; } catch { /* File previews may deny storage. */ }
-// Open design questions the owner compares in the prototype bar: section menus or plain links,
-// sentence case or capitals for section labels, and a left account rail on account pages.
-const options = { sections: 'menus', caps: 'sentence', rail: 'off' };
-try { Object.assign(options, JSON.parse(localStorage.getItem('navigation-prototype-options') || '{}')); } catch { /* Optional browser persistence. */ }
+// Open design question the owner compares in the prototype bar: section menus or plain links.
+const options = { sections: 'menus' };
+try { options.sections = JSON.parse(localStorage.getItem('navigation-prototype-options') || '{}').sections === 'links' ? 'links' : 'menus'; } catch { /* Optional browser persistence. */ }
 const lastPage = {};
 let scenario = 'everyday';
 let route;
@@ -156,17 +155,14 @@ function pageLinks(pages, section = '', compact = false) {
     return `<a href="${href(path)}" ${route.path === path ? 'aria-current="page"' : isParent ? 'aria-current="true"' : ''}>${name}${compact ? countBadge(hint) : `<small class="muted">${hint}</small>`}</a>`;
   }).join('');
 }
-function sectionNeedsAttention(pages) { return pages.some(([, path]) => attentionHint(path)); }
 function pins() {
   return scenario === 'empty' ? '<p class="muted">No pinned accounts yet.</p>' : accounts.filter(a => a.pinned).map(account => link(`${account.name} ${money(account.balance)}`, accountPath(account.id))).join('');
 }
 function renderShell(info) {
-  // Menus show their counts when opened; plain links have nowhere else to hint, so they get a dot.
-  const dot = pages => sectionNeedsAttention(pages) ? '<span class="attn-dot" aria-hidden="true"></span>' : '';
   const menus = Object.entries(sections).filter(([name]) => name !== 'Settings').map(([name, pages]) => options.sections === 'links'
     // Links: a section opens its last-visited page and the tab row does the rest.
-    ? `<div class="nav-item"><a class="nav-trigger" href="${href(lastPage[name] || pages[0][1])}" ${info.section === name ? 'aria-current="true"' : ''}>${name}${dot(pages)}</a></div>`
-    : `<div class="nav-item"><button class="nav-trigger" data-disclosure="nav-${name}" aria-expanded="false" aria-controls="nav-${name}" ${info.section === name ? 'aria-current="true"' : ''}>${name}${icon('chevron', 'nav-chev')}</button>
+    ? `<div class="nav-item"><a class="nav-trigger" href="${href(lastPage[name] || pages[0][1])}" ${info.section === name ? 'aria-current="true"' : ''}>${name}</a></div>`
+    : `<div class="nav-item"><button class="nav-trigger" data-disclosure="nav-${name}" aria-expanded="false" aria-controls="nav-${name}" ${info.section === name ? 'aria-current="true"' : ''}>${name}</button>
     <div id="nav-${name}" class="disclosure ${name === 'Ledger' ? 'ledger' : ''}" hidden><div>${pageLinks(pages, name)}</div>${name === 'Ledger' ? `<div><p class="menu-caption">Pinned accounts</p>${pins()}</div>` : ''}</div></div>`).join('');
   const isHome = route.path === '/app';
   // Only the section's own pages form its tab row; Settings keeps its side list instead.
@@ -207,6 +203,10 @@ function spark(values, label) {
   const line = `M${pts.join(' L')}`;
   return `<svg class="spark" viewBox="0 0 600 150" preserveAspectRatio="none" role="img" aria-label="${esc(label)}"><path class="spark-area" d="${line} L600 150 L0 150 Z"/><path class="spark-line" d="${line}"/></svg>`;
 }
+// The missing-valuation sample has several unpriced instruments: sentences name one, count several.
+const unpriced = ['VWRL', 'IWDA', 'ASML'];
+const unpricedText = () => unpriced.length === 1 ? `${unpriced[0]} has no price` : `${unpriced.length} instruments have no price`;
+const missingPricesPath = '/app/pricing?coverage=missing';
 function widgetDefs() {
   const missing = scenario === 'missing';
   const empty = scenario === 'empty';
@@ -222,12 +222,12 @@ function widgetDefs() {
     // Shows the owner's pins, the same list as the Ledger menu, rather than a second "largest balances" ranking.
     { id: 'accounts', cat: 'Everyday', title: 'Accounts', open: ['All accounts', '/app/accounts'], fact: '5 open accounts', sub: 'Pinned accounts · balances at 29 Oct',
       body: `<ul class="rows">${accounts.filter(a => a.pinned).map(a => `<li>${link(a.name, accountPath(a.id))}<span>${sm(a.balance)}</span></li>`).join('')}</ul><p class="scope">+ 2 more open accounts · 1 closed</p>` },
-    { id: 'networth', cat: 'Wealth & investments', title: 'Net worth · 12 months', wide: true, open: ['Open net worth report', '/app/reports/net-worth'], fact: missing ? 'Unavailable' : sm('+€7,850.05'), sub: missing ? 'VWRL has no price for 29 Oct; the total is not shown partially' : 'Nov 2025 – Oct 2026 · month-end values · EUR',
+    { id: 'networth', cat: 'Wealth & investments', title: 'Net worth · 12 months', wide: true, open: ['Open net worth report', '/app/reports/net-worth'], fact: missing ? 'Unavailable' : sm('+€7,850.05'), sub: missing ? `${unpricedText()} for 29 Oct; the total is not shown partially` : 'Nov 2025 – Oct 2026 · month-end values · EUR',
       body: missing ? '' : spark([48900, 49600, 49100, 50400, 51300, 50900, 52200, 53100, 52800, 53970, 54610, 56750], 'Net worth rose from about 48.9 to 56.8 thousand euro over 12 months') },
-    { id: 'holdings', cat: 'Wealth & investments', title: 'Holdings', open: ['Open investments', '/app/investments'], fact: '1 position', sub: missing ? 'Known value only · 1 position unpriced' : 'Largest by value · 29 Oct',
-      body: list([[link('VWRL', '/app/investments/instruments/20'), 'Vanguard FTSE All-World · DEGIRO brokerage', missing ? 'No price' : sm('€8,400.00')]]) },
+    { id: 'holdings', cat: 'Wealth & investments', title: 'Holdings', open: ['Open investments', '/app/investments'], fact: missing ? '3 positions' : '1 position', sub: missing ? `Known value only · ${unpriced.length} positions unpriced` : 'Largest by value · 29 Oct',
+      body: list(missing ? unpriced.map(code => [link(code, '/app/investments/instruments/20'), 'DEGIRO brokerage', 'No price']) : [[link('VWRL', '/app/investments/instruments/20'), 'Vanguard FTSE All-World · DEGIRO brokerage', sm('€8,400.00')]]) },
     { id: 'returns', cat: 'Wealth & investments', title: 'Returns · year to date', open: ['Open returns', '/app/investments/returns'], fact: missing ? 'Unavailable' : '+7.4%', sub: 'Time-weighted · 1 Jan – 29 Oct · all investment accounts', body: '' },
-    { id: 'allocation', cat: 'Wealth & investments', title: 'Allocation', open: ['Open returns', '/app/investments/returns'], fact: missing ? 'Unavailable' : 'Equity 41%', sub: missing ? '1 position unpriced' : 'Investment accounts · market value 29 Oct',
+    { id: 'allocation', cat: 'Wealth & investments', title: 'Allocation', open: ['Open returns', '/app/investments/returns'], fact: missing ? 'Unavailable' : 'Equity 41%', sub: missing ? `${unpriced.length} positions unpriced` : 'Investment accounts · market value 29 Oct',
       body: missing ? '' : '<div class="stack" role="img" aria-label="Equity 41 percent, cash 59 percent"><span style="width:41%"></span><span style="width:59%"></span></div><p class="scope">Equity 41% · Cash 59%</p>' },
     { id: 'income', cat: 'Wealth & investments', title: 'Dividend income', badge: ['Review', 'warn'], open: ['Open income', '/app/investments/income'], fact: '3 to assign', sub: `${sm('€412.80')} confirmed this year`,
       body: list([['VWRL', '25 Sep · unassigned cash', sm('€96.40')]]) },
@@ -239,8 +239,8 @@ function widgetDefs() {
       body: list([[link('ING CSV · October', '/app/import?batch_id=october'), '42 rows · 3 need a category', '']]) },
     { id: 'reconcile', cat: 'Ledger & data', title: 'Reconciliation', open: ['Open reconcile', '/app/reconcile'], fact: '2 of 5 accounts', sub: 'reconciled in the last 60 days',
       body: list([['Checking', 'last reconciled', '12 Sep'], ['Savings', 'last reconciled', '30 Sep']]) },
-    { id: 'prices', cat: 'Ledger & data', title: 'Prices', badge: missing ? ['Missing', 'warn'] : ['Up to date', 'info'], open: ['Open prices', '/app/pricing'], fact: missing ? 'VWRL has no price' : '1 price from 29 Oct', sub: 'FX rates are in Settings › Currencies and FX rates',
-      body: missing ? `<p>${link('Add a VWRL price', '/app/pricing?base_commodity_id=20')}</p>` : '' },
+    { id: 'prices', cat: 'Ledger & data', title: 'Prices', badge: missing ? ['Missing', 'warn'] : ['Up to date', 'info'], open: ['Open prices', '/app/pricing'], fact: missing ? `${unpriced.length} missing` : '1 price from 29 Oct', sub: 'FX rates are in Settings › Currencies and FX rates',
+      body: missing ? `<p>${unpriced.join(', ')} · ${link('Add missing prices', missingPricesPath)}</p>` : '' },
     { id: 'backups', cat: 'Ledger & data', title: 'Backups', badge: ['Set up', 'setup'], open: ['Open backups and data', '/app/settings/data'], fact: 'Not set up', sub: 'Protect your books with automatic backups',
       body: `<p>${link('Set up backups', '/app/settings/data', 'button')}</p>` }
   ];
@@ -264,7 +264,8 @@ function reviewItems() {
     ['warn', link('2 recurring drafts awaiting review', '/app/recurring?tab=due')],
     ['warn', link('1 import batch to review · 3 rows need a category', '/app/import?batch_id=october')],
     ['info', link('Note: 3 dividends not yet assigned', '/app/investments/income')],
-    ...(scenario === 'missing' ? [['warn', link('VWRL has no price for the valuation date', '/app/pricing?base_commodity_id=20')]] : [])
+    // Many missing prices are one review item, not one per instrument; the Prices page lists them.
+    ...(scenario === 'missing' ? [['warn', `${link(`${unpricedText()} for 29 Oct`, missingPricesPath)}<small class="muted"> · ${unpriced.join(', ')}</small>`]] : [])
   ].map(([tone, text]) => `<li><span class="dot ${tone}"></span><span class="t">${text}</span></li>`).join('');
 }
 function shortcutTile(id, index) {
@@ -308,13 +309,13 @@ function renderHome() {
   const h = headlines[layout.headline];
   const missing = scenario === 'missing' && layout.headline === 'networth';
   const line1 = empty ? 'Your book is ready for its first account'
-    : missing ? `Net worth <span class="muted">not available</span> · VWRL has no price · ${link('Add a price', '/app/pricing?base_commodity_id=20')}`
+    : missing ? `Net worth <span class="muted">not available</span> · ${unpricedText()} · ${link(unpriced.length === 1 ? 'Add a price' : 'Add prices', missingPricesPath)}`
     : `${h.label} <strong>${sm(h.value)}</strong> <span class="muted">·</span> <span class="${hidden ? '' : h.change.startsWith('−') ? 'loss' : 'gain'}">${sm(h.change)}</span> <span class="muted">since 1 Oct</span>`;
   const switcher = empty ? '' : `<div class="nav-item"><button class="bl-switch" data-disclosure="headline-menu" aria-expanded="false" aria-controls="headline-menu" aria-label="Change headline">${icon('chevron')}</button>
     <div id="headline-menu" class="disclosure center" hidden>${Object.entries(headlines).map(([id, v]) => `<button data-headline="${id}" aria-pressed="${layout.headline === id}">${v.label}<small class="muted">${id === 'networth' ? 'default' : id === 'checking' ? 'one account' : 'account set'}</small></button>`).join('')}<button data-customize>Customize Home…</button></div></div>`;
   const line2 = empty ? '<p class="bl"><span class="ok">All clear, nothing to review</span></p>'
-    : `<p class="bl"><button id="home-review" class="bl-review" aria-expanded="${reviewExpanded}" aria-controls="home-review-list"><span class="dot warn"></span>${scenario === 'failed' ? '<span class="warning">Review status unavailable</span>' : '<span><strong>2 drafts</strong> and <strong>1 import</strong> to review</span>'}${icon('chevron', reviewExpanded ? 'flip' : '')}</button></p>`;
-  const scope = empty ? 'No accounts or transactions yet' : missing ? 'All 5 open accounts in EUR · 1 required price missing · transactions through 28 Oct' : h.scope;
+    : `<p class="bl"><button id="home-review" class="bl-review" aria-expanded="${reviewExpanded}" aria-controls="home-review-list"><span class="dot warn"></span>${scenario === 'failed' ? '<span class="warning">Review status unavailable</span>' : scenario === 'missing' ? `<span><strong>2 drafts</strong>, <strong>1 import</strong> and <strong>${unpriced.length} prices</strong> to review</span>` : '<span><strong>2 drafts</strong> and <strong>1 import</strong> to review</span>'}${icon('chevron', reviewExpanded ? 'flip' : '')}</button></p>`;
+  const scope = empty ? 'No accounts or transactions yet' : missing ? `All 5 open accounts in EUR · ${unpriced.length} required prices missing · transactions through 28 Oct` : h.scope;
   const defs = widgetDefs();
   const byId = Object.fromEntries(defs.map(d => [d.id, d]));
   const rest = defs.filter(d => !layout.home.includes(d.id));
@@ -331,7 +332,7 @@ function renderHome() {
       </div>
       ${renderShortcuts()}
     </section>
-    <section class="home-section" aria-labelledby="my-home-title"><div class="section-head"><h2 id="my-home-title">My Home</h2></div>
+    <section class="home-section my-home" aria-label="My Home">
       ${empty ? `<div class="card onboarding"><h3>Start with an account</h3><p>Add an account before entering or importing transactions. The widgets below fill in as data arrives.</p>${link('Set up accounts', '/app/accounts', 'button primary')}</div>` : ''}
       ${layout.home.length ? `<div class="grid">${layout.home.map(id => widgetCard(byId[id], 'home')).join('')}</div>` : '<p class="muted">My Home is empty. Add widgets from More to explore below.</p>'}
     </section>
@@ -372,16 +373,7 @@ function registerRows(account) {
   return `<tr><td>27 Mar</td><td>${link('Albert Heijn', '/app/transactions?payee_id=30')}</td><td>${link('Groceries', '/app/categories/10')}</td><td class="numeric">${money('−€42.15')}</td></tr><tr><td>25 Mar</td><td>Salary</td><td>Income</td><td class="numeric">${money('+€3,200.00')}</td></tr>`;
 }
 const segmented = (label, views, current) => `<nav class="segmented" aria-label="${label}">${views.map(([name, path, key]) => link(name, path, key === current ? 'on" aria-current="true' : '')).join('')}</nav>`;
-// Option under review: the inverted-L layout most finance apps use, an account list beside the register.
-function accountRail(current) {
-  const groups = [...new Set(accounts.filter(a => !a.closed).map(a => a.institution))];
-  return `<nav class="rail" aria-label="Accounts">${groups.map(group => `<p class="rail-group">${esc(group)}</p>${accounts.filter(a => a.institution === group && !a.closed).map(a => `<a href="${href(accountPath(a.id))}" ${a.id === current.id ? 'aria-current="page"' : ''}><span>${esc(a.name)}</span>${money(a.balance)}</a>`).join('')}`).join('')}${link('All accounts', '/app/accounts', 'rail-all')}</nav>`;
-}
 function renderRegister(info) {
-  if (options.rail === 'on') return `<div class="rail-layout">${accountRail(currentAccount())}<div class="rail-main">${registerBody(info)}</div></div>`;
-  return registerBody(info);
-}
-function registerBody(info) {
   const account = currentAccount();
   const extra = account.brokerage ? '<button data-invest>Record trade or dividend</button>' : '';
   const positions = account.brokerage ? `<section class="card"><h2>Positions</h2><ul class="rows"><li><span>${link('VWRL', '/app/investments/instruments/20')}<br><small class="muted">Vanguard FTSE All-World · 96 units</small></span>${scenario === 'missing' ? 'No price' : money('€8,400.00')}</li></ul><p class="scope">Each position is an instrument held in this account, not a separate account.</p></section>` : '';
@@ -474,7 +466,7 @@ function renderOther(info) {
   if (info.name === 'Transactions') return renderTransactions(info);
   if (info.name === 'Payees') return `${heading(info, 'Payee management belongs to #443')}<section class="card"><h2>Albert Heijn</h2><p>214 transactions · last used 27 Oct</p>${link('Transactions with Albert Heijn', '/app/transactions?payee_id=30', 'button')}</section>`;
   if (info.name === 'Recurring') return `${heading(info, 'Drafts and templates are separate views')}${segmented('Recurring views', [['Due', '/app/recurring?tab=due', 'due'], ['Templates', '/app/recurring?tab=templates', 'templates']], route.params.get('tab') === 'templates' ? 'templates' : 'due')}<section class="card"><h2>${route.params.get('tab') === 'templates' ? 'Templates' : '2 drafts awaiting review'}</h2><p>Sample review destination; posting drafts is outside this navigation prototype.</p></section>`;
-  if (info.name === 'Net worth') return `${heading(info, '29 Oct 2026 · same 5 open sample accounts in EUR')}<section class="card"><h2>Valuation</h2><p class="fact">${scenario === 'missing' ? 'Unavailable · VWRL price missing' : money('€56,750.05')}</p>${link('Inspect accounts', '/app/accounts')}</section>`;
+  if (info.name === 'Net worth') return `${heading(info, '29 Oct 2026 · same 5 open sample accounts in EUR')}<section class="card"><h2>Valuation</h2><p class="fact">${scenario === 'missing' ? `Unavailable · ${unpricedText()}` : money('€56,750.05')}</p>${link('Inspect accounts', '/app/accounts')}</section>`;
   if (info.name === 'Export') return `${heading(info, 'Whole-ledger files; each report also downloads its own table as CSV')}<section class="card"><h2>Ledger CSV, QIF and archive</h2><p>Navigation destination only. No sample files are generated.</p>${link('Backups live in Settings › Data and backups', '/app/settings/data')}</section>`;
   if (info.section === 'Settings') return renderSettings(info);
   if (route.path === '/app/investments') {
@@ -491,7 +483,6 @@ function render(navigated = false) {
   if (old?.path === '/app/reconcile' && old.canonical !== route.canonical) { reconciliationPreview = false; reconciliationFinished = false; }
   if (info.section && sections[info.section]?.some(([, path]) => path === route.path)) lastPage[info.section] = route.path;
   renderShell(info);
-  document.documentElement.dataset.caps = options.caps;
   $('#main').className = info.object === 'Accounts' || ['Transactions', 'Import'].includes(info.name) ? 'fluid' : route.path === '/app' ? 'home' : '';
   $('#main').innerHTML = route.path === '/app' ? renderHome() : info.object === 'Accounts' ? renderRegister(info) : route.path === '/app/reports/spending' ? renderSpending(info) : info.name === 'Import' ? renderImport(info) : info.name === 'Reconcile' ? renderReconcile(info) : renderOther(info);
   if ($('[data-theme-select]')) $('[data-theme-select]').value = theme;
@@ -797,7 +788,7 @@ document.addEventListener('submit', event => {
 document.addEventListener('change', event => {
   if (event.target.matches('[data-theme-select]')) { theme = event.target.value; applyTheme(); $('#theme').value = theme; }
   if (event.target.id === 'theme') { theme = event.target.value; applyTheme(); try { localStorage.setItem('navigation-prototype-theme', theme); } catch { /* Optional browser persistence. */ } }
-  const option = event.target.id?.match(/^opt-(sections|caps|rail)$/)?.[1];
+  const option = event.target.id?.match(/^opt-(sections)$/)?.[1];
   if (option) { options[option] = event.target.value; try { localStorage.setItem('navigation-prototype-options', JSON.stringify(options)); } catch { /* Optional browser persistence. */ } render(); }
   if (event.target.id === 'scenario') { scenario = event.target.value; reconciliationPreview = false; reconciliationFinished = false; render(); }
   if (event.target.name === 'cz-headline') changeLayout({ headline: event.target.value }, '', false);

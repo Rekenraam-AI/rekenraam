@@ -101,6 +101,10 @@ try {
   await page.locator('#scenario').selectOption('missing');
   await expect(page.locator('main h1')).toContainText('Net worth not available');
   await expect(page.locator('#home-networth')).toContainText('Unavailable');
+  // Several missing prices are counted in one sentence and one review item, not listed one by one.
+  await expect(page.locator('main h1')).toContainText('3 instruments have no price');
+  await expandReview();
+  await expect(page.locator('#home-review-list').getByRole('link', { name: /3 instruments have no price/ })).toHaveCount(1);
   await page.locator('#scenario').selectOption('empty');
   await expect(page.getByRole('link', { name: 'Set up accounts' })).toBeVisible();
   await page.locator('#scenario').selectOption('everyday');
@@ -186,11 +190,10 @@ try {
       await page.screenshot({ path: resolve(screenshotDir, `register-${width}.png`), fullPage: true });
     }
   }
-  // Options under review in the prototype bar stay accessible and keep the page within the viewport.
+  // The section-links option under review stays accessible and keep the page within the viewport.
   await page.setViewportSize({ width: 1440, height: 1000 });
   await go('/app/accounts/1/register');
-  for (const [id, value] of [['#opt-sections', 'links'], ['#opt-caps', 'caps'], ['#opt-rail', 'on']]) await page.locator(id).selectOption(value);
-  await expect(page.getByRole('navigation', { name: 'Accounts' }).getByRole('link', { name: /Checking/ })).toHaveAttribute('aria-current', 'page');
+  await page.locator('#opt-sections').selectOption('links');
   await page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name: 'Investments' }).click();
   // A section link reopens that section's last-visited page.
   await expect(page.getByRole('navigation', { name: 'Investments pages' }).locator('[aria-current="page"]')).toHaveCount(1);
@@ -204,10 +207,10 @@ try {
     }
   }
   if (screenshotDir) { await page.setViewportSize({ width: 1440, height: 900 }); await go('/app/accounts/1/register'); await page.screenshot({ path: resolve(screenshotDir, 'options-register-1440.png') }); }
-  for (const [id, value] of [['#opt-sections', 'menus'], ['#opt-caps', 'sentence'], ['#opt-rail', 'off']]) await page.locator(id).selectOption(value);
+  await page.locator('#opt-sections').selectOption('menus');
   assert.deepEqual(errors, [], 'Browser errors');
   assert.deepEqual(remoteRequests, [], 'Prototype must not contact a remote service');
-  console.log(`Passed: ${destinations.length} destinations; entry, scoped switching, review, reconciliation, legacy links and Back; 42 page accessibility/reflow checks; Home command bar, payee prefill, widget moves with Undo and Customize; 3 open switchers; header options (links, capitals, account rail); masking; zero remote requests.`);
+  console.log(`Passed: ${destinations.length} destinations; entry, scoped switching, review, reconciliation, legacy links and Back; 42 page accessibility/reflow checks; Home command bar, payee prefill, widget moves with Undo and Customize; 3 open switchers; section links option; several missing prices; masking; zero remote requests.`);
 } finally {
   await browser.close();
 }
