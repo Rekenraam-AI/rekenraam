@@ -71,8 +71,10 @@ below is execution order, not a chain of hard dependencies.
    - [#414](https://github.com/sergeyfarin/rekenraam/issues/414), P3:
      investigate the capital-return reversal browser stall. Failure traces
      are retained; the cause awaits recurrence evidence.
-   - [#416](https://github.com/sergeyfarin/rekenraam/issues/416): identify and
-     resolve the dividend-entry axe contrast flake without excluding coverage.
+   - [#416](https://github.com/sergeyfarin/rekenraam/issues/416): confirm the
+     dividend-entry contrast fix on hosted CI after publication. The
+     [local fix and regression evidence](reviews/dividend-entry-contrast-2026-10-29.md)
+     are delivered with all existing accessibility coverage retained.
    - [#419](https://github.com/sergeyfarin/rekenraam/issues/419), P3:
      reprofile the race suite against the #405 baseline. ADR 0016's
      investigate threshold still fires; the measured act threshold does not.

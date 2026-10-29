@@ -20,6 +20,45 @@ async function cents(page: Page, accountID: number): Promise<string> {
   return total.toString();
 }
 
+for (const theme of ['light', 'dark']) {
+  test(`dividend submit is fully opaque as soon as it becomes enabled in ${theme}`, async ({ page }) => {
+    const { csrfToken, currencyID } = await readyForLedger(page);
+    const copy = JSON.parse(readFileSync(new URL('../../frontend/messages/settings/ru.json', import.meta.url), 'utf8')) as Record<string, string>;
+    const account = async (accountClass: string, kind: string) => apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+      name: `Opacity ${kind} ${Date.now()}`, account_class: accountClass, account_kind: kind,
+      default_commodity_id: currencyID, allows_postings: true, opened_on: '2021-01-01'
+    });
+    const cash = await account('asset', 'brokerage_cash');
+    const income = await account('income', 'income');
+    await page.evaluate(({ theme }) => {
+      localStorage.setItem('PARAGLIDE_LOCALE', 'ru');
+      localStorage.setItem('rekenraam-theme', theme);
+    }, { theme });
+    await page.goto('/app/investments');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await page.getByRole('button', { name: copy.investments_record_dividend, exact: true }).click();
+    const entry = page.getByRole('dialog', { name: copy.investments_dividend_title, exact: true });
+    await entry.locator('#div-cash-account').selectOption(String(cash.id));
+    await entry.locator('#div-income-account').selectOption(String(income.id));
+    await expect(entry.locator('button[type="submit"]')).toBeDisabled();
+
+    // Change the last required field and measure in the same browser task,
+    // after Svelte's microtask flush. A Playwright round trip can miss the
+    // first frames of the old 150 ms disabled-opacity transition (#416).
+    const enabled = await entry.evaluate(async dialog => {
+      const submit = dialog.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+      const amount = dialog.querySelector<HTMLInputElement>('#div-amount')!;
+      const disabledOpacity = getComputedStyle(submit).opacity;
+      amount.value = '100';
+      amount.dispatchEvent(new Event('input', { bubbles: true }));
+      await Promise.resolve();
+      return { disabledOpacity, disabled: submit.disabled, opacity: getComputedStyle(submit).opacity };
+    });
+    expect(enabled).toEqual({ disabledOpacity: '0.5', disabled: false, opacity: '1' });
+    await expectNoAccessibilityViolations(page, `enabled dividend entry in ${theme}`);
+  });
+}
+
 for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
   for (const shape of ['dividend', 'embedded_tax', 'separate_tax']) {
   test(`${shape} payer entry, assignment and clearing work in ${locale}`, async ({ page }) => {
