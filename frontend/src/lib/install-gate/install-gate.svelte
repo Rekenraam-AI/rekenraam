@@ -273,7 +273,7 @@
 
 </script>
 
-<main class="min-h-screen px-6 py-16 sm:px-10">
+<main class="px-6 py-16 sm:px-10">
   <section class="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
     <InstallGateHero
       {completedSteps}
