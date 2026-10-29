@@ -2,11 +2,12 @@
 
 // Design fixtures only. This artifact has no API client or financial calculator.
 const sections = {
-  Ledger: [['Transactions', '/app/transactions'], ['Accounts', '/app/accounts'], ['Categories', '/app/categories'], ['Payees', '/app/payees'], ['Import', '/app/import'], ['Reconcile', '/app/reconcile']],
+  // Each section opens on its Overview. Ledger's Overview is the accounts list with ledger actions.
+  Ledger: [['Overview', '/app/ledger'], ['Transactions', '/app/transactions'], ['Categories', '/app/categories'], ['Payees', '/app/payees'], ['Import', '/app/import'], ['Reconcile', '/app/reconcile']],
   Investments: [['Overview', '/app/investments'], ['Instruments', '/app/investments/instruments'], ['Returns', '/app/investments/returns'], ['Income', '/app/investments/income'], ['Gains', '/app/investments/gains'], ['Prices', '/app/pricing']],
-  Planning: [['Budgets', '/app/budgets'], ['Recurring', '/app/recurring'], ['Forecast', '/app/forecast']],
+  Planning: [['Overview', '/app/planning'], ['Budgets', '/app/budgets'], ['Recurring', '/app/recurring'], ['Forecast', '/app/forecast']],
   // Gains belongs to Investments; Reports lists it in its menu only, so a tab row never holds another section's page.
-  Reports: [['Spending', '/app/reports/spending'], ['Cashflow', '/app/reports/cashflow'], ['Net worth', '/app/reports/net-worth'], ['Gains', '/app/investments/gains'], ['Export', '/app/reports/export']],
+  Reports: [['Overview', '/app/reports'], ['Spending', '/app/reports/spending'], ['Cashflow', '/app/reports/cashflow'], ['Net worth', '/app/reports/net-worth'], ['Gains', '/app/investments/gains'], ['Export', '/app/reports/export']],
   // One list for the settings side list and the header's settings menu. Deleted transactions live in Ledger, not here.
   Settings: [['General', '/app/settings'], ['Preferences', '/app/settings/preferences'], ['Currencies and FX rates', '/app/settings/currencies'], ['Security', '/app/settings/security'], ['Data and backups', '/app/settings/data']]
 };
@@ -30,10 +31,11 @@ const institutions = [
 const categories = [{ id: '10', name: 'Groceries', detail: 'Everyday › Groceries' }, { id: '11', name: 'Energy', detail: 'Housing › Energy' }];
 const instruments = [{ id: '20', name: 'VWRL', detail: 'Vanguard FTSE All-World · held at DEGIRO' }];
 const payees = [{ id: '30', name: 'Albert Heijn', count: 214, category: 'Groceries' }, { id: '31', name: 'Jumbo', count: 61, category: 'Groceries' }];
-const registry = [{ name: 'Home', path: '/app', section: 'Home' }];
+// Review is reached from Home's review line and the header's review button, not from a section.
+const registry = [{ name: 'Home', path: '/app', section: 'Home' }, { name: 'Review', path: '/app/review', section: 'Home' }];
 for (const [section, pages] of Object.entries(sections)) {
   for (const [name, path] of pages) {
-    if (!registry.some(page => page.path === path)) registry.push({ name, path, section });
+    if (!registry.some(page => page.path === path)) registry.push({ name, path, section, title: name === 'Overview' ? `${section} overview` : name });
   }
 }
 const $ = selector => document.querySelector(selector);
@@ -56,16 +58,17 @@ const paths = {
   sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
   more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
   chevron: '<path d="m6 9 6 6 6-6"/>',
-  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>'
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',
+  arrow: '<path d="M5 12h14m-6-6 6 6-6 6"/>'
 };
 const icon = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths[name]}</svg>`;
 let hidden = false;
 let theme = 'system';
 try { hidden = localStorage.getItem('navigation-prototype-hidden') === 'true'; theme = localStorage.getItem('navigation-prototype-theme') || 'system'; } catch { /* File previews may deny storage. */ }
 // Open design question the owner compares in the prototype bar: section menus or plain links.
-const options = { sections: 'menus' };
-try { options.sections = JSON.parse(localStorage.getItem('navigation-prototype-options') || '{}').sections === 'links' ? 'links' : 'menus'; } catch { /* Optional browser persistence. */ }
-const lastPage = {};
+const options = { sections: 'links' };
+try { options.sections = JSON.parse(localStorage.getItem('navigation-prototype-options') || '{}').sections === 'menus' ? 'menus' : 'links'; } catch { /* Optional browser persistence. */ }
 let scenario = 'everyday';
 let route;
 let searchScope = '';
@@ -77,7 +80,6 @@ let entryDirty = false;
 let reconciliationPreview = false;
 let reconciliationFinished = false;
 let homeScroll = 0;
-let reviewExpanded = false;
 let noticeTimer;
 // Home layout lives in memory here; production stores it per owner and book on the server (#438).
 const defaultLayout = () => ({ headline: 'networth', home: ['spending', 'budgets', 'accounts', 'recurring', 'networth'], shortcuts: ['add', 'transfer', 'import', 'transactions', 'spending', 'checking'], exploreOpen: true });
@@ -110,7 +112,8 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme
 function readRoute() {
   const url = new URL(location.hash.slice(1) || '/app', 'https://prototype.invalid');
   // Same destinations as the proposed route migration; keep unrelated filters.
-  if (url.pathname === '/app/reports') {
+  if (url.pathname === '/app/accounts') url.pathname = '/app/ledger';
+  if (url.pathname === '/app/reports' && url.searchParams.has('view')) {
     const view = url.searchParams.get('view') || 'spending';
     url.pathname = `/app/reports/${['spending', 'cashflow', 'net-worth'].includes(view) ? view : 'spending'}`;
     url.searchParams.delete('view');
@@ -149,7 +152,7 @@ function countBadge(hint) {
 }
 function pageLinks(pages, section = '', compact = false) {
   return pages.map(([name, path]) => {
-    const isParent = ['/app/accounts', '/app/categories', '/app/investments/instruments'].includes(path) && route.path.startsWith(`${path}/`);
+    const isParent = (path === '/app/ledger' && route.path.startsWith('/app/accounts/')) || (['/app/categories', '/app/investments/instruments'].includes(path) && route.path.startsWith(`${path}/`));
     const home = registry.find(page => page.path === path)?.section;
     const hint = section && home !== section ? `in ${home}` : attentionHint(path);
     return `<a href="${href(path)}" ${route.path === path ? 'aria-current="page"' : isParent ? 'aria-current="true"' : ''}>${name}${compact ? countBadge(hint) : `<small class="muted">${hint}</small>`}</a>`;
@@ -160,18 +163,19 @@ function pins() {
 }
 function renderShell(info) {
   const menus = Object.entries(sections).filter(([name]) => name !== 'Settings').map(([name, pages]) => options.sections === 'links'
-    // Links: a section opens its last-visited page and the tab row does the rest.
-    ? `<div class="nav-item"><a class="nav-trigger" href="${href(lastPage[name] || pages[0][1])}" ${info.section === name ? 'aria-current="true"' : ''}>${name}</a></div>`
+    // Links: a section opens its Overview and the tab row does the rest.
+    ? `<div class="nav-item"><a class="nav-trigger" href="${href(pages[0][1])}" ${info.section === name ? 'aria-current="true"' : ''}>${name}</a></div>`
     : `<div class="nav-item"><button class="nav-trigger" data-disclosure="nav-${name}" aria-expanded="false" aria-controls="nav-${name}" ${info.section === name ? 'aria-current="true"' : ''}>${name}</button>
     <div id="nav-${name}" class="disclosure ${name === 'Ledger' ? 'ledger' : ''}" hidden><div>${pageLinks(pages, name)}</div>${name === 'Ledger' ? `<div><p class="menu-caption">Pinned accounts</p>${pins()}</div>` : ''}</div></div>`).join('');
   const isHome = route.path === '/app';
   // Only the section's own pages form its tab row; Settings keeps its side list instead.
   const tabs = info.section !== 'Settings' && sections[info.section] ? sections[info.section].filter(([, path]) => registry.find(page => page.path === path)?.section === info.section) : null;
   $('#shell').innerHTML = `<div class="shell-inner">
-    <a class="brand" href="#/app" ${isHome ? 'aria-current="page"' : ''} aria-label="Rekenraam Home"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span></a>
+    <a class="brand" href="#/app" ${isHome ? 'aria-current="page"' : ''}>Home</a>
     <nav class="desktop-nav" aria-label="Sections">${menus}</nav>
     <div class="shell-actions">
       ${isHome ? '' : `<button data-search class="compact-search" aria-label="Search pages, accounts or commands">${icon('search')}<span class="search-copy">Search…</span><kbd class="search-copy">/</kbd></button>`}
+      ${(() => { const n = reviewCount(); const failed = scenario === 'failed'; return `<a class="icon-button review-link" href="${href('/app/review')}" ${route.path === '/app/review' ? 'aria-current="page"' : ''} aria-label="Review${failed ? ', status unavailable' : n ? `, ${n} items need action` : ''}" title="Review">${icon('inbox')}${failed ? '<span class="count failed" aria-hidden="true">!</span>' : n ? `<span class="count" aria-hidden="true">${n}</span>` : ''}</a>`; })()}
       <button id="hide-amounts" class="icon-button" aria-label="Hide amounts" aria-pressed="${hidden}" title="Hide amounts">${icon(hidden ? 'eyeOff' : 'eye')}</button>
       ${isHome ? `<button class="icon-button" data-customize aria-label="Customize Home" title="Customize Home">${icon('sliders')}</button>` : ''}
       <div class="nav-item"><button class="nav-trigger icon-button" data-disclosure="settings-menu" aria-label="Settings and appearance" aria-expanded="false" aria-controls="settings-menu">${icon('gear')}</button>
@@ -186,8 +190,8 @@ function renderShell(info) {
   $('#theme').value = theme;
 }
 function heading(info, scope = '', add = false, extra = '') {
-  const breadcrumb = info.object ? `<nav class="breadcrumbs" aria-label="Breadcrumb">${link(info.object, info.object === 'Accounts' ? '/app/accounts' : info.object === 'Categories' ? '/app/categories' : '/app/investments/instruments')} › ${esc(info.name)}</nav>` : '';
-  return `${breadcrumb}<div class="page-heading"><div><h1>${info.object ? `<button class="object-trigger" data-scope="${info.object}">${esc(info.name)}${icon('chevron', 'nav-chev')}</button>` : esc(info.name)}</h1>${scope ? `<p class="scope">${scope}</p>` : ''}</div><div class="page-actions">${extra}${add ? `<button class="primary" data-add>${icon('plus')}Add transaction</button>` : ''}</div></div>`;
+  const breadcrumb = info.object ? `<nav class="breadcrumbs" aria-label="Breadcrumb">${link(info.object === 'Accounts' ? 'Ledger' : info.object, info.object === 'Accounts' ? '/app/ledger' : info.object === 'Categories' ? '/app/categories' : '/app/investments/instruments')} › ${esc(info.name)}</nav>` : '';
+  return `${breadcrumb}<div class="page-heading"><div><h1>${info.object ? `<button class="object-trigger" data-scope="${info.object}">${esc(info.name)}${icon('chevron', 'nav-chev')}</button>` : esc(info.title || info.name)}</h1>${scope ? `<p class="scope">${scope}</p>` : ''}</div><div class="page-actions">${extra}${add ? `<button class="primary" data-add>${icon('plus')}Add transaction</button>` : ''}</div></div>`;
 }
 
 // ---- Home -----------------------------------------------------------------
@@ -207,8 +211,13 @@ function spark(values, label) {
 const unpriced = ['VWRL', 'IWDA', 'ASML'];
 const unpricedText = () => unpriced.length === 1 ? `${unpriced[0]} has no price` : `${unpriced.length} instruments have no price`;
 const missingPricesPath = '/app/pricing?coverage=missing';
+// Out-of-date prices still value a position (at its last price) and never block a total;
+// they are disclosed as one count with the oldest date and one grouped review item.
+const stale = { count: 180, of: 240, oldest: '3 Sep', path: '/app/pricing?coverage=stale' };
+const staleText = () => `${stale.count} of ${stale.of} prices older than 7 days, oldest ${stale.oldest}`;
 function widgetDefs() {
   const missing = scenario === 'missing';
+  const old = scenario === 'stale';
   const empty = scenario === 'empty';
   const bars = rows => `<div class="w-bars">${rows.map(([name, width, value, path]) => `<div class="bar-row">${link(name, path)}<span class="bar" aria-hidden="true"><span style="width:${width}%"></span></span>${sm(value)}</div>`).join('')}</div>`;
   const list = rows => `<ul class="rows">${rows.map(([name, sub, right]) => `<li><span>${name}<br><small class="muted">${sub}</small></span><span>${right}</span></li>`).join('')}</ul>`;
@@ -220,11 +229,11 @@ function widgetDefs() {
     { id: 'cashflow', cat: 'Everyday', title: 'Cashflow · October', open: ['Open cashflow report', '/app/reports/cashflow'], fact: sm('+€2,140.00'), sub: 'Liquid accounts · posted actuals · EUR',
       body: list([['Money in', 'salary, refunds', sm('€8,960.00')], ['Money out', 'spending, transfers out', sm('€6,820.00')]]) },
     // Shows the owner's pins, the same list as the Ledger menu, rather than a second "largest balances" ranking.
-    { id: 'accounts', cat: 'Everyday', title: 'Accounts', open: ['All accounts', '/app/accounts'], fact: '5 open accounts', sub: 'Pinned accounts · balances at 29 Oct',
+    { id: 'accounts', cat: 'Everyday', title: 'Accounts', open: ['All accounts', '/app/ledger'], fact: '5 open accounts', sub: 'Pinned accounts · balances at 29 Oct',
       body: `<ul class="rows">${accounts.filter(a => a.pinned).map(a => `<li>${link(a.name, accountPath(a.id))}<span>${sm(a.balance)}</span></li>`).join('')}</ul><p class="scope">+ 2 more open accounts · 1 closed</p>` },
     { id: 'networth', cat: 'Wealth & investments', title: 'Net worth · 12 months', wide: true, open: ['Open net worth report', '/app/reports/net-worth'], fact: missing ? 'Unavailable' : sm('+€7,850.05'), sub: missing ? `${unpricedText()} for 29 Oct; the total is not shown partially` : 'Nov 2025 – Oct 2026 · month-end values · EUR',
       body: missing ? '' : spark([48900, 49600, 49100, 50400, 51300, 50900, 52200, 53100, 52800, 53970, 54610, 56750], 'Net worth rose from about 48.9 to 56.8 thousand euro over 12 months') },
-    { id: 'holdings', cat: 'Wealth & investments', title: 'Holdings', open: ['Open investments', '/app/investments'], fact: missing ? '3 positions' : '1 position', sub: missing ? `Known value only · ${unpriced.length} positions unpriced` : 'Largest by value · 29 Oct',
+    { id: 'holdings', cat: 'Wealth & investments', title: 'Holdings', open: ['Open investments', '/app/investments'], fact: missing ? '3 positions' : old ? `${stale.of} positions` : '1 position', sub: missing ? `Known value only · ${unpriced.length} positions unpriced` : old ? `Largest by value · ${stale.count} at prices older than 7 days` : 'Largest by value · 29 Oct',
       body: list(missing ? unpriced.map(code => [link(code, '/app/investments/instruments/20'), 'DEGIRO brokerage', 'No price']) : [[link('VWRL', '/app/investments/instruments/20'), 'Vanguard FTSE All-World · DEGIRO brokerage', sm('€8,400.00')]]) },
     { id: 'returns', cat: 'Wealth & investments', title: 'Returns · year to date', open: ['Open returns', '/app/investments/returns'], fact: missing ? 'Unavailable' : '+7.4%', sub: 'Time-weighted · 1 Jan – 29 Oct · all investment accounts', body: '' },
     { id: 'allocation', cat: 'Wealth & investments', title: 'Allocation', open: ['Open returns', '/app/investments/returns'], fact: missing ? 'Unavailable' : 'Equity 41%', sub: missing ? `${unpriced.length} positions unpriced` : 'Investment accounts · market value 29 Oct',
@@ -239,8 +248,8 @@ function widgetDefs() {
       body: list([[link('ING CSV · October', '/app/import?batch_id=october'), '42 rows · 3 need a category', '']]) },
     { id: 'reconcile', cat: 'Ledger & data', title: 'Reconciliation', open: ['Open reconcile', '/app/reconcile'], fact: '2 of 5 accounts', sub: 'reconciled in the last 60 days',
       body: list([['Checking', 'last reconciled', '12 Sep'], ['Savings', 'last reconciled', '30 Sep']]) },
-    { id: 'prices', cat: 'Ledger & data', title: 'Prices', badge: missing ? ['Missing', 'warn'] : ['Up to date', 'info'], open: ['Open prices', '/app/pricing'], fact: missing ? `${unpriced.length} missing` : '1 price from 29 Oct', sub: 'FX rates are in Settings › Currencies and FX rates',
-      body: missing ? `<p>${unpriced.join(', ')} · ${link('Add missing prices', missingPricesPath)}</p>` : '' },
+    { id: 'prices', cat: 'Ledger & data', title: 'Prices', badge: missing ? ['Missing', 'warn'] : old ? ['Out of date', 'warn'] : ['Up to date', 'info'], open: ['Open prices', '/app/pricing'], fact: missing ? `${unpriced.length} missing` : old ? `${stale.count} out of date` : '1 price from 29 Oct', sub: 'FX rates are in Settings › Currencies and FX rates',
+      body: missing ? `<p>${unpriced.join(', ')} · ${link('Add missing prices', missingPricesPath)}</p>` : old ? `<p>Oldest ${stale.oldest} · ${link('Review out-of-date prices', stale.path)}</p>` : '' },
     { id: 'backups', cat: 'Ledger & data', title: 'Backups', badge: ['Set up', 'setup'], open: ['Open backups and data', '/app/settings/data'], fact: 'Not set up', sub: 'Protect your books with automatic backups',
       body: `<p>${link('Set up backups', '/app/settings/data', 'button')}</p>` }
   ];
@@ -258,16 +267,38 @@ const shortcutPool = {
   savings: { label: 'Savings', icon: 'bank', path: accountPath('2') },
   returns: { label: 'Returns year to date', icon: 'trend', path: '/app/investments/returns' }
 };
-function reviewItems() {
-  if (scenario === 'failed') return '<li><span class="dot warn"></span><span class="t">Review status could not be checked.</span><button data-retry>Retry check</button></li>';
+function reviewEntries() {
+  if (scenario === 'empty' || scenario === 'failed') return [];
   return [
     ['warn', link('2 recurring drafts awaiting review', '/app/recurring?tab=due')],
     ['warn', link('1 import batch to review · 3 rows need a category', '/app/import?batch_id=october')],
     ['info', link('Note: 3 dividends not yet assigned', '/app/investments/income')],
     // Many missing prices are one review item, not one per instrument; the Prices page lists them.
+    ...(scenario === 'stale' ? [['warn', `${link(`${stale.count} prices out of date`, stale.path)}<small class="muted"> · oldest ${stale.oldest} · positions use their last price</small>`]] : []),
     ...(scenario === 'missing' ? [['warn', `${link(`${unpricedText()} for 29 Oct`, missingPricesPath)}<small class="muted"> · ${unpriced.join(', ')}</small>`]] : [])
-  ].map(([tone, text]) => `<li><span class="dot ${tone}"></span><span class="t">${text}</span></li>`).join('');
+  ];
 }
+// One page for everything that needs attention and the state of background work.
+function renderReview(info) {
+  const entries = reviewEntries();
+  const rows = tone => entries.filter(([t]) => t === tone).map(([t, text]) => `<li><span class="dot ${t}"></span><span class="t">${text}</span></li>`).join('');
+  const action = rows('warn'), notes = rows('info');
+  const status = [
+    ['Backups', 'Last backup 29 Oct 03:00 · kept 14', '/app/settings/data'],
+    ['Ledger self-check', 'Passed 28 Oct', '/app/settings/data'],
+    ['Prices', scenario === 'stale' ? `<span class="warning">${staleText()}</span>` : scenario === 'missing' ? `<span class="warning">${unpricedText()}</span>` : 'Refreshed 29 Oct 06:00', '/app/pricing'],
+    ['FX rates', 'Refreshed 29 Oct 06:00', '/app/settings/currencies'],
+    ['Trading 212', 'Last download 29 Oct 07:10 · 4 rows', '/app/import?view=connections'],
+    ['File imports', '1 batch staged, not committed', '/app/import']
+  ];
+  const failed = scenario === 'failed';
+  return `${heading({ ...info, title: 'Review' }, 'Everything that needs your attention, and the state of background work · checked 29 Oct 08:00')}
+    ${failed ? '<section class="card review-card"><h2>Needs action</h2><p class="warning">Review status could not be checked.</p><button data-retry>Retry check</button></section>'
+      : `<section class="card review-card"><h2>Needs action</h2>${action ? `<ul class="rows review-rows">${action}</ul>` : '<p class="ok">All clear, nothing to review.</p>'}</section>`}
+    ${notes ? `<section class="card review-card"><h2>Notes</h2><ul class="rows review-rows">${notes}</ul></section>` : ''}
+    <section class="card review-card"><h2>Status</h2>${scenario === 'empty' ? '<p class="muted">Nothing runs yet. Set up backups and prices when you add accounts.</p>' : `<div class="table-region" role="region" aria-label="Status of background work" tabindex="0"><table><tbody>${status.map(([name, value, path]) => `<tr><th scope="row">${link(name, path)}</th><td>${value}</td></tr>`).join('')}</tbody></table></div>`}</section>`;
+}
+function reviewCount() { return reviewEntries().filter(([tone]) => tone === 'warn').length; }
 function shortcutTile(id, index) {
   const s = shortcutPool[id];
   const inner = `<span class="tile-ic ${id === 'add' ? 'primary' : ''}">${icon(s.icon)}</span><span class="tile-l">${esc(s.label)}</span>`;
@@ -314,15 +345,15 @@ function renderHome() {
   const switcher = empty ? '' : `<div class="nav-item"><button class="bl-switch" data-disclosure="headline-menu" aria-expanded="false" aria-controls="headline-menu" aria-label="Change headline">${icon('chevron')}</button>
     <div id="headline-menu" class="disclosure center" hidden>${Object.entries(headlines).map(([id, v]) => `<button data-headline="${id}" aria-pressed="${layout.headline === id}">${v.label}<small class="muted">${id === 'networth' ? 'default' : id === 'checking' ? 'one account' : 'account set'}</small></button>`).join('')}<button data-customize>Customize Home…</button></div></div>`;
   const line2 = empty ? '<p class="bl"><span class="ok">All clear, nothing to review</span></p>'
-    : `<p class="bl"><button id="home-review" class="bl-review" aria-expanded="${reviewExpanded}" aria-controls="home-review-list"><span class="dot warn"></span>${scenario === 'failed' ? '<span class="warning">Review status unavailable</span>' : scenario === 'missing' ? `<span><strong>2 drafts</strong>, <strong>1 import</strong> and <strong>${unpriced.length} prices</strong> to review</span>` : '<span><strong>2 drafts</strong> and <strong>1 import</strong> to review</span>'}${icon('chevron', reviewExpanded ? 'flip' : '')}</button></p>`;
-  const scope = empty ? 'No accounts or transactions yet' : missing ? `All 5 open accounts in EUR · ${unpriced.length} required prices missing · transactions through 28 Oct` : h.scope;
+    : `<p class="bl"><a id="home-review" class="bl-review" href="${href('/app/review')}"><span class="dot warn"></span>${scenario === 'failed' ? '<span class="warning">Review status unavailable</span>' : scenario === 'missing' || scenario === 'stale' ? `<span><strong>2 drafts</strong>, <strong>1 import</strong> and <strong>${scenario === 'stale' ? stale.count : unpriced.length} prices</strong> to review</span>` : '<span><strong>2 drafts</strong> and <strong>1 import</strong> to review</span>'}${icon('arrow')}</a></p>`;
+  const scope = empty ? 'No accounts or transactions yet' : scenario === 'stale' && layout.headline === 'networth' ? `All 5 open accounts in EUR · <span class="warning">${staleText()}</span> · transactions through 28 Oct` : missing ? `All 5 open accounts in EUR · ${unpriced.length} required prices missing · transactions through 28 Oct` : h.scope;
   const defs = widgetDefs();
   const byId = Object.fromEntries(defs.map(d => [d.id, d]));
   const rest = defs.filter(d => !layout.home.includes(d.id));
   const groups = ['Everyday', 'Wealth & investments', 'Planning', 'Ledger & data'].map(cat => [cat, rest.filter(d => d.cat === cat)]);
   return `<section class="hero" aria-label="Briefing">
       <div class="brief"><div class="bl headline"><h1>${line1}</h1>${switcher}</div>${line2}<p class="scope">${scope}</p>
-      ${empty ? '' : `<ul id="home-review-list" class="slist" ${reviewExpanded ? '' : 'hidden'}>${reviewItems()}</ul>`}</div>
+</div>
       <div class="cmd" role="search">
         <div class="cmd-box">${icon('search')}${homeScope ? `<button id="home-scope-chip" class="chip" aria-label="Remove ${homeScope} scope">${homeScope} ×</button>` : ''}
           <label class="sr-only" for="home-cmd">Search pages, accounts, payees and commands</label>
@@ -333,7 +364,7 @@ function renderHome() {
       ${renderShortcuts()}
     </section>
     <section class="home-section my-home" aria-label="My Home">
-      ${empty ? `<div class="card onboarding"><h3>Start with an account</h3><p>Add an account before entering or importing transactions. The widgets below fill in as data arrives.</p>${link('Set up accounts', '/app/accounts', 'button primary')}</div>` : ''}
+      ${empty ? `<div class="card onboarding"><h3>Start with an account</h3><p>Add an account before entering or importing transactions. The widgets below fill in as data arrives.</p>${link('Set up accounts', '/app/ledger', 'button primary')}</div>` : ''}
       ${layout.home.length ? `<div class="grid">${layout.home.map(id => widgetCard(byId[id], 'home')).join('')}</div>` : '<p class="muted">My Home is empty. Add widgets from More to explore below.</p>'}
     </section>
     <section class="home-section" id="explore" aria-labelledby="explore-title"><div class="section-head"><h2 id="explore-title">More to explore</h2><span class="muted">Add any of the widgets below to the home page</span>
@@ -410,7 +441,7 @@ function renderReconcile(info) {
 function renderAccounts(info) {
   const view = route.params.get('view') || 'accounts';
   const showClosed = route.params.get('closed') === '1';
-  const views = segmented('Account views', [['Accounts', '/app/accounts', 'accounts'], ['Institutions', '/app/accounts?view=institutions', 'institutions']], view);
+  const views = segmented('Account views', [['Accounts', '/app/ledger', 'accounts'], ['Institutions', '/app/ledger?view=institutions', 'institutions']], view);
   if (view === 'institutions') {
     return `${heading(info, 'Banks, brokers and other providers your accounts belong to', false, '<button data-sample>Add institution</button>')}${views}
       <section class="card"><div class="table-region" role="region" aria-label="Institutions" tabindex="0"><table><thead><tr><th>Institution</th><th>Country</th><th>Accounts</th><th>How data arrives</th></tr></thead><tbody>${institutions.map(i => {
@@ -420,10 +451,14 @@ function renderAccounts(info) {
   }
   const groups = institutions.map(i => [i, accounts.filter(a => a.institution === i.name && (showClosed || !a.closed))]).filter(([, list]) => list.length);
   const closed = accounts.filter(a => a.closed).length;
-  return `${heading(info, 'Grouped by institution · balances at 29 Oct · EUR', false, '<button data-sample>Add account</button>')}${views}
+  // Ledger's Overview: the ledger's actions, pinned accounts first, then every account by institution.
+  const pinned = accounts.filter(a => a.pinned && !a.closed);
+  const actions = `<button data-sample>Transfer</button>${link('Import file', '/app/import', 'button')}${link('Reconcile', '/app/reconcile', 'button')}<button data-sample>Add account</button>`;
+  return `${heading(info, 'Accounts by institution · balances at 29 Oct · EUR', true, actions)}${views}
+    ${pinned.length && scenario !== 'empty' ? `<section class="card account-list pinned-list" aria-labelledby="pinned-title"><div class="account-group"><div class="group-head"><h2 id="pinned-title">Pinned</h2><span class="muted">Shown first here and on Home</span></div><ul class="rows">${pinned.map(a => `<li><span>${link(esc(a.name), accountPath(a.id))} <small class="muted">· ${esc(a.institution)}</small></span>${money(a.balance)}</li>`).join('')}</ul></div></section>` : ''}
     <section class="card account-list">${groups.map(([i, list]) => `<div class="account-group"><div class="group-head"><h2>${esc(i.name)}</h2><span class="muted">${esc(i.country)}</span></div>
       <ul class="rows">${list.map(a => `<li><span>${a.pinned ? '<span class="pin" aria-hidden="true">★</span><span class="sr-only">Pinned: </span>' : ''}${link(esc(a.name), accountPath(a.id))} <small class="muted">· ${esc(a.kind)}${a.closed ? ' · closed' : ''}${a.note ? ` · ${hidden ? 'cash and positions' : esc(a.note)}` : ''}</small></span>${money(a.balance)}</li>`).join('')}</ul></div>`).join('')}</section>
-    <p>${showClosed ? link('Hide closed accounts', '/app/accounts') : link(`Show closed accounts (${closed})`, '/app/accounts?closed=1')}</p>`;
+    <p>${showClosed ? link('Hide closed accounts', '/app/ledger') : link(`Show closed accounts (${closed})`, '/app/ledger?closed=1')}</p>`;
 }
 function renderIndex(info, objects, makePath) {
   return `${heading(info, 'Sample index · detail pages also support scoped search', info.name === 'Categories')}
@@ -458,7 +493,14 @@ function renderSettings(info) {
     <section class="card">${pages[info.name] || ''}</section></div>`;
 }
 function renderOther(info) {
-  if (info.name === 'Accounts') return renderAccounts(info);
+  if (route.path === '/app/ledger') return renderAccounts(info);
+  if (route.path === '/app/planning') return `${heading(info, 'October · what needs attention this month')}<div class="grid">
+    <section class="card"><h2>Budgets</h2><p class="fact">${money('€1,580')} left</p><p class="scope">70% spent, 87% of the month gone</p>${link('Open budgets →', '/app/budgets')}</section>
+    <section class="card"><h2>Recurring</h2><p class="fact">2 due</p><p class="scope">Drafts waiting for review</p>${link('Review due →', '/app/recurring?tab=due')}</section>
+    <section class="card"><h2>Forecast</h2><p class="fact">${money('€2,940')}</p><p class="scope">Lowest liquid balance in the next 90 days, 24 Nov · estimate</p>${link('Open forecast →', '/app/forecast')}</section></div>`;
+  if (route.path === '/app/reports') return `${heading(info, 'Every report, with its last figure; saved reports below')}<div class="grid">
+    ${[['Spending', 'Oct · €3,720 across 14 categories', '/app/reports/spending'], ['Cashflow', 'Oct · +€1,140 net', '/app/reports/cashflow'], ['Net worth', '29 Oct · €56,750', '/app/reports/net-worth'], ['Gains (in Investments)', 'Year to date · realized', '/app/investments/gains'], ['Export', 'Ledger CSV, QIF and archive', '/app/reports/export']].map(([name, fact, path]) => `<section class="card"><h2>${link(name, path)}</h2><p class="scope">${hidden ? 'Amounts hidden' : fact}</p></section>`).join('')}</div>
+    <section class="card"><h2>Saved reports</h2><p class="muted">Saved filters and periods appear here.</p></section>`;
   if (info.name === 'Categories') return renderCategories(info);
   if (route.path === '/app/investments/instruments') return renderIndex(info, instruments, id => `/app/investments/instruments/${id}`);
   if (info.object === 'Categories') return `${heading(info, 'October · expense category · posted actuals', true)}<section class="card"><h2>Category activity</h2><p>${link('View matching transactions', `/app/transactions?category_id=${route.path.split('/').at(-1)}`)}</p>${link('Open spending report', '/app/reports/spending')}</section>`;
@@ -466,7 +508,7 @@ function renderOther(info) {
   if (info.name === 'Transactions') return renderTransactions(info);
   if (info.name === 'Payees') return `${heading(info, 'Payee management belongs to #443')}<section class="card"><h2>Albert Heijn</h2><p>214 transactions · last used 27 Oct</p>${link('Transactions with Albert Heijn', '/app/transactions?payee_id=30', 'button')}</section>`;
   if (info.name === 'Recurring') return `${heading(info, 'Drafts and templates are separate views')}${segmented('Recurring views', [['Due', '/app/recurring?tab=due', 'due'], ['Templates', '/app/recurring?tab=templates', 'templates']], route.params.get('tab') === 'templates' ? 'templates' : 'due')}<section class="card"><h2>${route.params.get('tab') === 'templates' ? 'Templates' : '2 drafts awaiting review'}</h2><p>Sample review destination; posting drafts is outside this navigation prototype.</p></section>`;
-  if (info.name === 'Net worth') return `${heading(info, '29 Oct 2026 · same 5 open sample accounts in EUR')}<section class="card"><h2>Valuation</h2><p class="fact">${scenario === 'missing' ? `Unavailable · ${unpricedText()}` : money('€56,750.05')}</p>${link('Inspect accounts', '/app/accounts')}</section>`;
+  if (info.name === 'Net worth') return `${heading(info, '29 Oct 2026 · same 5 open sample accounts in EUR')}<section class="card"><h2>Valuation</h2><p class="fact">${scenario === 'missing' ? `Unavailable · ${unpricedText()}` : money('€56,750.05')}</p>${link('Inspect accounts', '/app/ledger')}</section>`;
   if (info.name === 'Export') return `${heading(info, 'Whole-ledger files; each report also downloads its own table as CSV')}<section class="card"><h2>Ledger CSV, QIF and archive</h2><p>Navigation destination only. No sample files are generated.</p>${link('Backups live in Settings › Data and backups', '/app/settings/data')}</section>`;
   if (info.section === 'Settings') return renderSettings(info);
   if (route.path === '/app/investments') {
@@ -481,12 +523,11 @@ function render(navigated = false) {
   route = readRoute();
   const info = pageInfo();
   if (old?.path === '/app/reconcile' && old.canonical !== route.canonical) { reconciliationPreview = false; reconciliationFinished = false; }
-  if (info.section && sections[info.section]?.some(([, path]) => path === route.path)) lastPage[info.section] = route.path;
   renderShell(info);
-  $('#main').className = info.object === 'Accounts' || ['Transactions', 'Import'].includes(info.name) ? 'fluid' : route.path === '/app' ? 'home' : '';
-  $('#main').innerHTML = route.path === '/app' ? renderHome() : info.object === 'Accounts' ? renderRegister(info) : route.path === '/app/reports/spending' ? renderSpending(info) : info.name === 'Import' ? renderImport(info) : info.name === 'Reconcile' ? renderReconcile(info) : renderOther(info);
+  $('#main').className = info.object === 'Accounts' || route.path === '/app/ledger' || ['Transactions', 'Import'].includes(info.name) ? 'fluid' : route.path === '/app' ? 'home' : '';
+  $('#main').innerHTML = route.path === '/app' ? renderHome() : info.object === 'Accounts' ? renderRegister(info) : route.path === '/app/reports/spending' ? renderSpending(info) : info.name === 'Import' ? renderImport(info) : info.name === 'Reconcile' ? renderReconcile(info) : route.path === '/app/review' ? renderReview(info) : renderOther(info);
   if ($('[data-theme-select]')) $('[data-theme-select]').value = theme;
-  document.title = `${info.name} · Rekenraam design prototype`;
+  document.title = `${info.title || info.name} · Rekenraam design prototype`;
   if (navigated) { $('#main').focus({ preventScroll: true }); requestAnimationFrame(() => scrollTo(0, route.path === '/app' ? homeScroll : 0)); }
 }
 // The hash changes before render runs, so remember Home's scroll as it happens.
@@ -758,7 +799,7 @@ document.addEventListener('click', event => {
     hidden = !hidden;
     try { localStorage.setItem('navigation-prototype-hidden', String(hidden)); } catch { /* Optional browser persistence. */ }
     render(); $('#hide-amounts').focus();
-  } else if (target.id === 'home-review') { reviewExpanded = !reviewExpanded; render(); $('#home-review').focus(); }
+  }
   else if (target.id === 'explore-toggle') { layout.exploreOpen = !layout.exploreOpen; render(); $('#explore-toggle').focus(); }
   else if (target.dataset.headline) { changeLayout({ headline: target.dataset.headline }, '', false); focusAfter('.bl-switch'); }
   else if (target.dataset.w) widgetAction(target.dataset.w, target.dataset.id);

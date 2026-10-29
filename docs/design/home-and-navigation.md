@@ -34,6 +34,12 @@ Background and reasoning:
 - Desktop is the priority. Phones (360–390px) must stay fully usable.
 - Every figure states its scope and completeness. A missing price or rate
   makes a total unavailable, never silently partial.
+- An out-of-date price still values its position at that price and never
+  blocks a total; the coverage line counts them with the oldest date ("180 of
+  240 prices older than 7 days, oldest 3 Sep") and the review list holds one
+  grouped item, never one per instrument (proposed 2026-10-29). Several
+  missing prices are likewise counted ("3 instruments have no price") and
+  grouped, linking to Prices filtered to the missing ones.
 - Customization never changes financial data.
 
 ## Application shell (whole app)
@@ -44,28 +50,44 @@ header on every page.
 - **Surface:** the header uses the page background, separated by space or a
   hairline, not a coloured band. Colour is reserved for content and the
   primary shortcut.
-- **Sections:** Home · Ledger · Investments · Planning · Reports. Each
-  section opens a menu of its pages, built as a disclosure (button and list
-  of links, opened by click or Enter, not hover); a page that needs attention shows a
-  short count in the menu (for example “Import · 1 in review”). A section is
-  navigation only: it never changes account scope, currency or book.
+- **Sections:** Home · Ledger · Investments · Planning · Reports, in
+  sentence case. Each section is a plain link to its *Overview* page; the
+  tab row under the header lists the section's pages, so there are no
+  section menus (owner decision 2026-10-29, revising D2; reasoning in the
+  [review](../reviews/navigation-and-pages-options-2026-10-29.md#d2-section-menus)).
+  The current section has a soft tinted pill; the current page an underline.
+  A page that needs attention shows a number badge on its tab (*Import 1*),
+  with the full sentence for screen readers. A section is navigation only: it
+  never changes account scope, currency or book.
 
   | Section | Pages |
   |---|---|
-  | Ledger | Transactions, Accounts, Categories, Payees, Import, Reconcile |
+  | Ledger | Overview, Transactions, Categories, Payees, Import, Reconcile |
   | Investments | Overview, Instruments, Returns, Income, Gains, Prices |
-  | Planning | Budgets, Recurring, Forecast |
-  | Reports | Spending, Cashflow, Net worth, Gains, Export |
+  | Planning | Overview, Budgets, Recurring, Forecast |
+  | Reports | Overview, Spending, Cashflow, Net worth, Export |
 
-  The Ledger menu also shows up to six pinned accounts with balances and
-  *All accounts*. Gains is one page under Investments, also listed in the
-  Reports menu marked *in Investments*; a section's tab row holds only its own
-  pages, so the row never changes under the pointer.
+  Overviews hold their section's state and actions, never a copy of Home:
+  *Ledger overview* is the accounts list (pinned accounts first, then every
+  account by institution, with an *Institutions* view) and the ledger's
+  actions (Add transaction, Transfer, Import file, Reconcile, Add account);
+  it replaces the separate Accounts page. *Planning overview* shows the
+  month's budget status, recurring items due and the forecast's low point.
+  *Reports overview* lists every report with its latest figure and saved
+  reports; it links Gains, which lives in Investments. Investments already
+  has its Overview.
 
-- **Left side:** the Rekenraam mark and name is the Home link (marked current
-  on Home); there is no separate *Home* item. Phones keep *Home* at the top
-  of the menu.
-- **Right side:** hide amounts (eye), Customize (Home only), and a settings
+- **Left side:** the word *Home* is the first item of the row, styled like
+  the sections and marked current on Home. The header shows no logo or app
+  name; a mark alone was too small a target and too unclear, and beside
+  *Home* it was redundant (owner, 2026-10-29).
+- **Look:** header 56px, tab row 40px, sticky, with a translucent blurred
+  background that turns solid under `prefers-reduced-transparency`. Content
+  (cards, widgets, menus, dialogs) is never translucent. The page background
+  is a light neutral off-white with white cards.
+- **Right side:** a *Review* button with the count of items needing action
+  (the same count as Home's review line, `!` when the check failed), hide
+  amounts (eye), Customize (Home only), and a settings
   menu listing the settings pages (General, Preferences, Currencies and FX
   rates, Security, Data and backups), an inline Light / Dark / System theme
   choice and Sign out.
@@ -74,7 +96,13 @@ header on every page.
   large central bar replaces it, so there is never more than one search
   field. Keyboard: `/` and Ctrl/⌘ K focus it.
 - **Phone:** sections collapse into a menu button; search becomes an icon.
-  No bottom navigation bar.
+  No bottom navigation bar. The tab row scrolls horizontally, keeps the
+  current tab in view and fades at the edge when more tabs follow.
+- **No sidebar:** the owner rejected an account list beside registers
+  (2026-10-29): other accounts distract from the one in hand, and Ledger
+  overview is one click away. Settings keeps its own side list.
+- **Alignment:** the header, tab row and page content share one left edge
+  at every width.
 - Every existing route stays reachable. The shell keeps the current
   layout's responsibilities: setup and session gates, owner-local date
   context, shared recurring summary, logout and page titles.
@@ -91,11 +119,12 @@ widget area:
       the headline. The change is coloured by its sign in a dark, quiet green
       or red (never bright), and stays neutral while amounts are hidden; the
       sign itself still carries the meaning.
-   2. To review: “2 drafts and 1 import to review”, expanding in place to a
-      list with links; “All clear, nothing to review” only after a successful
-      check with no actionable items. An unchecked or failed source has its
-      own visible state; informational notes remain expandable when there
-      are no actionable items.
+   2. To review: “2 drafts and 1 import to review →”, a link to the
+      [Review page](#review-page); nothing expands above the search (owner,
+      2026-10-29: the list distracted, and the line already signals the
+      work). “All clear, nothing to review” only after a successful check
+      with no actionable items. An unchecked or failed source has its own
+      visible state.
 
    Below them, one small muted line states what the number covers: “All 14
    accounts in EUR · 3 prices from 24 Oct · data through 25 Oct”. It belongs
@@ -114,9 +143,27 @@ A briefing line is one sentence, chosen by the app, and either a position
 or something to act on. Anything needing a chart, a list, a period or
 settings is a widget. Notable moves (a holding's value change, a budget
 overrun) were tried as a third line and rejected: they belong in the
-Holdings and Budgets widgets. Notes such as stale prices or unassigned
-dividends appear only inside the expanded review list; failures (backup,
-self-check, price refresh errors) always count as items to review.
+Holdings and Budgets widgets. Notes such as unassigned dividends appear only
+on the Review page; failures (backup, self-check, price refresh errors)
+always count as items to review.
+
+### Review page
+
+`/app/review`, reached from Home's review line, the header's Review button
+and search; not a section. One read (the attention read) feeds it, the
+header count and Home's line.
+
+- **Needs action:** drafts, import batches, missing or out-of-date prices,
+  dividend suggestions, failed backups, self-check or refresh runs. Each is one
+  grouped line with a count and a link to the page that resolves it, never one
+  line per instrument or row.
+- **Notes:** informational items that need no action now.
+- **Status:** the state of background work, whether or not anything is
+  wrong: last backup and retention, ledger self-check, price and FX refresh,
+  each online connection's last download, staged file imports. Each row links
+  to where it is configured.
+- The page states when it was checked; a failed check says so with Retry and
+  never shows "All clear".
 
 ## Command bar
 
@@ -183,7 +230,7 @@ Searching account, category or instrument notes is later work.
 - Default My Home: Spending this month, Budgets, Accounts, Recurring, Net
   worth trend (wide).
 - The Accounts widget lists the owner's pinned accounts, the same list as the
-  Ledger menu, with a count of the rest; it falls back to the largest balances
+  top of Ledger overview, with a count of the rest; it falls back to the largest balances
   only while nothing is pinned. One owner-chosen list is easier to predict than
   two rankings (2026-10-29).
 - In an empty book a single *Start with an account* card sits above My Home and
@@ -255,7 +302,7 @@ steppers or filters. On phones the tab row scrolls horizontally.
   route is missing from it.
 - Views inside pages: Transactions *All · Drafts · Deleted* (deleted
   transactions replace the Settings "Trash", which only ever held
-  transactions); Accounts *Accounts · Institutions*; Categories *Categories ·
+  transactions); Ledger overview *Accounts · Institutions*; Categories *Categories ·
   Tags*; Import *Files · Connections · Rules and profiles · Dividends*;
   Investments Overview *Positions · Splits · Suggestions*.
 - Settings has five pages in one side list, the same list as the settings
@@ -295,23 +342,24 @@ keyboard help.
   dropped and shown in the scope line. Removing the chip makes it the global
   search, whose results open an object's default page. The global search's
   empty state offers the same chips. Reconcile uses it to pick the account.
-- **Pins.** Up to six accounts, chosen by the owner, shown in the Ledger menu
-  with balances. On first use the app offers once to pin the three to five
-  accounts with the most postings in the last 90 days; afterwards only the
-  owner changes the list. The switcher may show a labelled *Recent* group
-  below the pins.
-- **Accounts page** is the complete index, grouped by class and institution,
-  with a filter and active / closed / all. Holdings collapse under their
-  broker with a count.
+- **Pins.** Up to six accounts, chosen by the owner, shown first on Ledger
+  overview and in Home's Accounts widget, with balances. On first use the app
+  offers once to pin the three to five accounts with the most postings in the
+  last 90 days; afterwards only the owner changes the list.
+- **Recent.** Search's empty state and the switcher show the last five
+  objects opened (accounts, categories, instruments, payees, reports), below
+  the pins, as GitHub, Linear and Raycast do. Kept per browser.
+- **Ledger overview** is the complete account index, grouped by institution,
+  with a filter and active / closed / all.
 - **Holdings** are left out of the account switcher and pins by default and
   reached through Instruments and their broker; typing still finds them.
 - **Closed and archived** objects are hidden by default and one control away.
-- **Breadcrumbs** follow the hierarchy (*Accounts › DEGIRO › VWRL*,
+- **Breadcrumbs** follow the hierarchy (*Ledger › Brokerage*,
   *Categories › Housing › Energy*). A holding's register and its instrument
   page link to each other.
 - **Payees** get a *Ledger → Payees* page (#443); tags a *Tags* view on Categories (#444).
 - **Accounts are grouped by institution**, each group headed by the
-  institution and its country (#448). The Accounts page has an *Institutions* view:
+  institution and its country (#448). Ledger overview has an *Institutions* view:
   name, country, its accounts and how data arrives (file, profile or online
   connection), with add, edit and archive.
 - **A brokerage is one account** with cash and positions. Per-instrument
@@ -326,12 +374,19 @@ keyboard help.
 
 ### Other shell details
 
+- **Density:** registers, Transactions and import review offer
+  *Comfortable* and *Compact* rows, remembered per browser, as Gmail and
+  Linear do; compact keeps 24px minimum targets.
+- **Two-key shortcuts:** `g` then a letter goes to a page (`g h` Home, `g l`
+  Ledger overview, `g t` Transactions, `g i` Investments, `g p` Planning,
+  `g r` Reports, `g s` Settings), listed in `?` help and never active in
+  editable fields.
 - Hide amounts is applied in `$lib/money/format.ts`, covers chart labels,
   leaves exports, edit fields and stored data unchanged, and is remembered
   per browser.
 - Sign-in, setup and recovery lose the root top bar and get a minimal header
   with name, language and theme.
-- Back to Home restores its scroll position and expanded state.
+- Back to Home restores its scroll position.
 
 ## Delivery slices
 
@@ -341,9 +396,11 @@ Sequencing belongs in the roadmap; acceptance in the issues.
 |---|---|
 | Shell: header, section and settings menus, tab row of real routes, route registry, hide amounts, shared search, attention read; retires the sidebar and the duplicate top bar | #436 |
 | Home: briefing, command bar, shortcuts with the shared Add transaction dialog, default My Home and More to explore, composed Home read | #437 |
+| Review page: everything needing attention and background status | #453 |
 | Settings in five pages; Trash becomes Transactions › Deleted; ledger export moves to Reports › Export | #446 |
 | Import views: Files, Connections, Rules and profiles, Dividends | #447 |
-| Accounts grouped by institution, Institutions view, brokerage as one account, *Record trade or dividend* | #448 |
+| Ledger overview: accounts by institution, Institutions view, brokerage as one account, *Record trade or dividend* | #448 |
+| Planning and Reports overviews | #450 |
 | Payees page | #443 |
 | Tags view | #444 |
 | Real-book count (D11), owner-run | #449 |
@@ -351,6 +408,8 @@ Sequencing belongs in the roadmap; acceptance in the issues.
 | Personalization: layout migration and API, headline choices, Customize panel (also in Settings › Preferences), ⋯ actions with Undo, sizes and settings | #438 |
 | Search depth: payee actions with prefilled editor and last-used category, full-text transaction search | #439 |
 | Widget depth: lazy expanded returns, allocation and forecast charts; further widgets | #440 |
+| Density: compact and comfortable rows | #451 |
+| Two-key navigation shortcuts | #452 |
 
 ## Considered and dropped
 
@@ -362,7 +421,10 @@ Sequencing belongs in the roadmap; acceptance in the issues.
 - A fixed-order map with a separate shortlist: replaced by My Home plus More
   to explore.
 - Compact previews in More to explore: real-size widgets instead.
-- Hover-opened section menus and `role="menu"` for site navigation.
+- Hover-opened section menus and `role="menu"` for site navigation; later
+  section menus altogether, for plain section links and Overview tabs.
+- Capitals for section labels, and an app-name wordmark inside the app.
+- A left account rail beside registers (O3).
 - A separate object picker beside the search: the switcher is the search
   with a scope chip.
 - Tabs for objects such as accounts or instruments.

@@ -230,6 +230,15 @@ The Ledger menu has two columns: pages, and pinned accounts with balances
 considered and rejected because menus open by accident and touch laptops
 behave differently.
 
+**Revised later the same day (owner, after the prototype):** sections are
+plain links, each opening its *Overview* page, and the tab row is the only
+list of pages. Reasons: one click lands on a useful page; the pages are not
+listed twice (menu and tab row); nothing is hidden behind a layer that touch
+users miss; GitHub, Vercel, Stripe and Lunch Money work this way; and there
+is no menu focus handling to build and test. Pinned accounts move from the
+Ledger menu to the top of Ledger overview (which replaces the Accounts page)
+and Home's Accounts widget; counts move to tab badges.
+
 ### D3. Object switcher
 
 **Recommendation:** adopt O1, built as a scoped mode of the command bar

@@ -148,23 +148,30 @@ invalidation must be implemented in their slices, not copied from this artifact.
 ## Header revision (2026-10-29)
 
 After the owner found the two header rows "not neat", the rows were given
-distinct roles. Sections are sentence-case text without chevrons or dots;
-the current section is a soft tinted pill. Pages are underline tabs on the
-header's hairline, with attention shown as a number badge (*Income 3*) whose
-full sentence stays for screen readers and in menus. The brand is the mark
-alone (32px, accessible name "Rekenraam Home"), the same on every page.
-Header rows are 56px and 40px. The header is sticky with a translucent,
-blurred background, solid under `prefers-reduced-transparency`; content
-(widgets, cards, menus) stays opaque. The page background is a light neutral
-off-white (`oklch(0.975 0.003 100)`) with white cards. Home has no *My Home*
-heading; widgets follow the shortcuts directly.
+distinct roles. The row starts with the word *Home* (no logo or app name: a mark
+alone was too small and unclear, and beside *Home* redundant), then the sections in
+sentence case as plain links without chevrons or dots; the current section is
+a soft tinted pill. Each section opens its *Overview*; pages are underline
+tabs on the header's hairline, with attention shown as a number badge
+(*Import 1*) whose full sentence stays for screen readers. Header rows are
+56px and 40px. The header is sticky with a translucent, blurred background,
+solid under `prefers-reduced-transparency`; content stays opaque. The page
+background is a light neutral off-white with white cards. Home has no *My
+Home* heading; widgets follow the shortcuts directly.
 
-The owner rejected capitals and a left account rail (accounts beside a
-register distract from the account in hand). Still open, and switchable in
-the prototype bar: **Sections** as *Menus* (the accepted design: disclosure
-menus with counts and pins) or *Links* (a section opens a page directly and
-the tab row is the only page list).
+*Ledger overview* (`/app/ledger`, with `/app/accounts` redirecting) replaces
+the Accounts page: ledger actions, pinned accounts first, then every account
+by institution, and the Institutions view. Planning and Reports gained sample
+Overview pages. The prototype bar still offers the earlier *Menus* behaviour
+for comparison. Capitals and a left account rail were tried and rejected.
 
-The *Missing valuation* sample now has three unpriced instruments: the
-headline counts them, the review line includes them, and review lists them as
-one item linking to Prices filtered to missing prices.
+Sample books for valuation: *Missing valuation* has three unpriced
+instruments (headline unavailable; counted, and one grouped review item);
+*Stale prices at scale* has 180 of 240 prices older than 7 days (the total
+stays, the coverage line counts them with the oldest date, and one grouped
+review item links to Prices filtered to out-of-date prices).
+
+Home's review line no longer expands into a list above the search: it links
+to a *Review* page (`/app/review`), also reached from the header's Review
+button with its count. The page has *Needs action*, *Notes* and *Status* (backups,
+self-check, price and FX refresh, connections, staged imports).

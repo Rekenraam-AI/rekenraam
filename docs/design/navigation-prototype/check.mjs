@@ -23,10 +23,12 @@ try {
   await go('/app');
 
   // Exercise actual disclosures and links rather than only visiting fixture URLs.
-  await page.getByRole('button', { name: 'Ledger', exact: true }).click();
-  await page.locator('#nav-Ledger').getByRole('link', { name: 'Checking' }).click();
+  // A section link opens the section's Overview; Ledger's lists pinned accounts first.
+  await page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name: 'Ledger', exact: true }).click();
+  await expect(page.locator('main h1')).toHaveText('Ledger overview');
+  await page.getByRole('region', { name: 'Pinned' }).getByRole('link', { name: 'Checking' }).click();
   await expect(page.locator('main h1')).toHaveText('Checking');
-  await expect(page.getByRole('navigation', { name: 'Ledger pages' }).getByRole('link', { name: 'Accounts', exact: true })).toHaveAttribute('aria-current', 'true');
+  await expect(page.getByRole('navigation', { name: 'Ledger pages' }).getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute('aria-current', 'true');
   await page.locator('[name="q"]').fill('March');
   await page.getByRole('button', { name: 'Apply filters' }).click();
   await expect(page).toHaveURL(/q=March/);
@@ -56,17 +58,17 @@ try {
   await expect(page.getByText('Sample reconciliation finished. No checkpoint was written.')).toBeVisible();
 
   await go('/app');
-  const expandReview = async () => { if (await page.locator('#home-review').getAttribute('aria-expanded') !== 'true') await page.locator('#home-review').click(); };
-  await expandReview();
+  // Home's review line opens the Review page; nothing expands in place above the search.
+  const openReview = async () => { await page.locator('#home-review').click(); await expect(page.locator('main h1')).toHaveText('Review'); };
+  await openReview();
   await page.getByRole('link', { name: '1 import batch to review', exact: false }).click();
   await expect(page.getByRole('heading', { name: 'ING CSV · October' })).toBeVisible();
   await page.locator('#import-category').selectOption({ label: 'Groceries' });
   await page.getByRole('button', { name: 'Review sample changes' }).click();
   await expect(page.getByRole('status')).toContainText('batch remains uncommitted');
 
-  // Browser Back restores Home expansion and scroll after a real report drill-down.
+  // Browser Back restores Home's scroll after a real report drill-down.
   await go('/app');
-  await expandReview();
   await page.getByRole('link', { name: 'Open spending report →' }).scrollIntoViewIfNeeded();
   const homeScroll = await page.evaluate(() => scrollY);
   await page.getByRole('link', { name: 'Open spending report →' }).click();
@@ -75,7 +77,6 @@ try {
   await page.goBack();
   await expect(page.locator('main h1')).toHaveText('Spending');
   await page.goBack();
-  await expect(page.locator('#home-review')).toHaveAttribute('aria-expanded', 'true');
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(homeScroll);
 
   // Legacy links retain filters and switch subviews rather than leaving stale tabs.
@@ -103,8 +104,16 @@ try {
   await expect(page.locator('#home-networth')).toContainText('Unavailable');
   // Several missing prices are counted in one sentence and one review item, not listed one by one.
   await expect(page.locator('main h1')).toContainText('3 instruments have no price');
-  await expandReview();
-  await expect(page.locator('#home-review-list').getByRole('link', { name: /3 instruments have no price/ })).toHaveCount(1);
+  await openReview();
+  await expect(page.locator('main').getByRole('link', { name: /3 instruments have no price/ })).toHaveCount(1);
+  await go('/app');
+  // Hundreds of out-of-date prices keep the total, disclosed as one count and one review item.
+  await page.locator('#scenario').selectOption('stale');
+  await expect(page.locator('main h1')).toContainText('€56,750');
+  await expect(page.locator('main .brief .scope')).toContainText('180 of 240 prices older than 7 days');
+  await openReview();
+  await expect(page.locator('main').getByRole('link', { name: '180 prices out of date' })).toHaveCount(1);
+  await go('/app');
   await page.locator('#scenario').selectOption('empty');
   await expect(page.getByRole('link', { name: 'Set up accounts' })).toBeVisible();
   await page.locator('#scenario').selectOption('everyday');
@@ -154,7 +163,7 @@ try {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
     for (const theme of ['light', 'dark']) {
       await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
-      for (const path of ['/app', '/app/settings/preferences', '/app/accounts?view=institutions', '/app/accounts/1/register', '/app/reports/spending', '/app/import?batch_id=october', '/app/reconcile?account_id=1']) {
+      for (const path of ['/app', '/app/settings/preferences', '/app/accounts?view=institutions', '/app/ledger', '/app/review', '/app/accounts/1/register', '/app/reports/spending', '/app/import?batch_id=october', '/app/reconcile?account_id=1']) {
         await go(path);
         // A reload restores the prototype's chosen theme, so apply the test theme after go.
         await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
@@ -190,13 +199,13 @@ try {
       await page.screenshot({ path: resolve(screenshotDir, `register-${width}.png`), fullPage: true });
     }
   }
-  // The section-links option under review stays accessible and keep the page within the viewport.
+  // The section-menus alternative stays accessible and keeps the page within the viewport.
   await page.setViewportSize({ width: 1440, height: 1000 });
   await go('/app/accounts/1/register');
-  await page.locator('#opt-sections').selectOption('links');
-  await page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name: 'Investments' }).click();
-  // A section link reopens that section's last-visited page.
-  await expect(page.getByRole('navigation', { name: 'Investments pages' }).locator('[aria-current="page"]')).toHaveCount(1);
+  await page.locator('#opt-sections').selectOption('menus');
+  await page.getByRole('button', { name: 'Ledger', exact: true }).click();
+  await page.locator('#nav-Ledger').getByRole('link', { name: 'Savings' }).click();
+  await expect(page.locator('main h1')).toHaveText('Savings');
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     for (const path of ['/app/accounts/1/register', '/app/investments/income']) {
@@ -207,10 +216,10 @@ try {
     }
   }
   if (screenshotDir) { await page.setViewportSize({ width: 1440, height: 900 }); await go('/app/accounts/1/register'); await page.screenshot({ path: resolve(screenshotDir, 'options-register-1440.png') }); }
-  await page.locator('#opt-sections').selectOption('menus');
+  await page.locator('#opt-sections').selectOption('links');
   assert.deepEqual(errors, [], 'Browser errors');
   assert.deepEqual(remoteRequests, [], 'Prototype must not contact a remote service');
-  console.log(`Passed: ${destinations.length} destinations; entry, scoped switching, review, reconciliation, legacy links and Back; 42 page accessibility/reflow checks; Home command bar, payee prefill, widget moves with Undo and Customize; 3 open switchers; section links option; several missing prices; masking; zero remote requests.`);
+  console.log(`Passed: ${destinations.length} destinations; entry, scoped switching, review, reconciliation, legacy links and Back; 54 page accessibility/reflow checks; Review page from Home and header, Home command bar, payee prefill, widget moves with Undo and Customize; 3 open switchers; section menus alternative; several missing and stale prices; masking; zero remote requests.`);
 } finally {
   await browser.close();
 }

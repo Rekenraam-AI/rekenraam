@@ -107,18 +107,20 @@ readiness and release evidence continue in parallel.
 Deliver incrementally, tracked in #441, in this order:
 
 1. **Shell and search (#436):** replace the sidebar and duplicate top bar with
-   a light header, section and settings menus, a tab row of real page routes
-   driven by one route registry, hide amounts, compact shared search and one
-   attention read for counts.
+   a light header (Home, section links that open each section's Overview, a
+   Review button, settings menu), a tab row of real page routes driven by one
+   route registry, hide amounts, compact shared search and one attention read
+   for counts.
 2. **Home (#437):** two-line briefing, central command bar, shortcut tiles led
    by Add transaction, compact default My Home and real-size More to explore
    widgets, backed by a composed Home read and a shared transaction-entry
-   dialog.
+   dialog. Its review line links to the **Review page (#453)**, which lists
+   everything needing attention and the status of background work.
 3. **Pages in their new places**, in any order after #436: settings in five
    pages with Trash moved to Transactions › Deleted and export to Reports
-   (#446); Import views (#447); accounts grouped by institution, an
-   Institutions view and brokerages as one account (#448); Payees page
-   (#443); Tags view (#444).
+   (#446); Import views (#447); Ledger overview with accounts by institution,
+   an Institutions view and brokerages as one account (#448); Planning and
+   Reports overviews (#450); Payees page (#443); Tags view (#444).
 4. **Object navigation (#442):** the switcher as scoped search, pinned
    accounts and breadcrumbs, after #448 and the owner-run real-book count
    (#449).
@@ -129,6 +131,8 @@ Deliver incrementally, tracked in #441, in this order:
    category, payee filtering and full-text transaction search.
 7. **Widget depth (#440):** lazy expanded returns, allocation and forecast
    charts, then further widgets for existing capabilities.
+8. **Power use**, any time after #436: compact and comfortable density for
+   registers and transactions (#451) and two-key navigation shortcuts (#452).
 
 Navigation decisions (#435) are recorded in the design, and the
 [navigation prototype](design/navigation-prototype/README.md) shows the
