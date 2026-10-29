@@ -971,9 +971,10 @@ validation.
   packages passing. Both ADR 0016 triggers fire. Preparation and connection
   setup remain 30.69% / 17.79% of sampled CPU; migration work is 0.82%.
   The ranked remedy is a bounded production read-query compilation experiment.
-  Its [issue draft](reviews/race-suite-remedy-issue-draft-2026-10-29.md) awaits
-  explicit GitHub-publication authorization after automatic approval review
-  rejection; that acceptance remains open. No runtime or test-policy change.
+  The owner authorized publication on 2026-10-29; the remedy is filed as
+  [#445](https://github.com/sergeyfarin/rekenraam/issues/445) with measurable
+  acceptance. #419's measurement scope is complete; the act rule remains in
+  force. No runtime or test-policy change.
 - #418 (2026-10-26): unused `InstrumentSearchProvider` and
   `InstrumentSearchCandidate` declarations removed after the schema review.
   #417's deletion guard and #420's backup-verification exit status are
@@ -982,7 +983,7 @@ validation.
   unavailable; Chromium installation has per-phase deadlines and one retry.
   These bound runner setup stalls without removing validation.
 
-Remaining follow-ups #414/#416/#419 and explicitly deferred candidates 7–13
+Remaining follow-ups #414/#416/#445 and explicitly deferred candidates 7–13
 belong to the [roadmap](roadmap.md); completed maintenance does not close the
 separate release gates.
 

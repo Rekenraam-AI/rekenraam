@@ -171,7 +171,7 @@ sources. Sequential microprobe batches are not a production-latency benchmark.
    bucket would save 69.7 CPU s (**4.55%**), roughly 10 s at the isolated median
    **if** wall time scaled proportionally. This is a hypothesis and upper-bound
    exercise, not an observed gain or a promise of 30% headroom. The
-   [prepared follow-up](race-suite-remedy-issue-draft-2026-10-29.md) has bounded
+   [follow-up #445](https://github.com/sergeyfarin/rekenraam/issues/445) has bounded
    scope, semantic controls, measurable admission and matched suite acceptance.
 2. **Further trigger/view slimming needs a specific equivalence case first.**
    Connection setup is 17.79%; even halving all of it would only remove about
@@ -189,11 +189,12 @@ statement cache remains declined under #404; its historical incremental gain
 over explicit reuse is not fresh evidence for admission. Fixture pooling,
 coverage cuts, package splits and lower parallelism remain excluded.
 
-GitHub filing of the chosen follow-up is **pending explicit user authorization**:
-automatic approval review rejected external publication of local profiling
-results. #419's measurement and recommendation are delivered locally; its
-third acceptance item (file the remedy) remains unmet. The act rule remains in
-force before the next feature slice. No push, PR or release publication occurs.
+The owner authorized filing, tracking updates and the Git push on 2026-10-29.
+The chosen remedy is filed as
+[#445](https://github.com/sergeyfarin/rekenraam/issues/445), completing #419's
+measurement and recommendation scope. The act rule remains in force before
+the next feature slice. Publishing this evidence does not change test policy
+or authorize a release.
 
 ## Reproduction and validation
 

@@ -150,10 +150,10 @@ coverage policy changes here; the global cache remains declined.
 
 The [report and evidence](../reviews/race-suite-reprofile-2026-10-29.md)
 record phase/package timings, case digests, profile attribution and probes.
-The chosen remedy has a [reviewable issue draft](../reviews/race-suite-remedy-issue-draft-2026-10-29.md).
-Automatic approval review rejected GitHub publication without explicit user
-authorization, so filing remains pending and #419's third acceptance item
-remains open. This does not clear the act rule or authorize a feature slice.
+The owner authorized publication on 2026-10-29; the chosen remedy is filed as
+[#445](https://github.com/sergeyfarin/rekenraam/issues/445) with measurable
+acceptance. This completes #419's measurement scope, not the remedy. The act
+rule remains in force before the next feature slice.
 
 ## References
 

@@ -77,15 +77,14 @@ below is execution order, not a chain of hard dependencies.
      dividend-entry contrast fix on hosted CI after publication. The
      [local fix and regression evidence](reviews/dividend-entry-contrast-2026-10-29.md)
      are delivered with all existing accessibility coverage retained.
-   - [#419](https://github.com/sergeyfarin/rekenraam/issues/419), P3:
-     [reprofiling is delivered locally](reviews/race-suite-reprofile-2026-10-29.md).
+   - [#445](https://github.com/sergeyfarin/rekenraam/issues/445), P2:
+     measure and reduce preparation cost in the three production investment
+     read paths identified by the [#419 reprofile](reviews/race-suite-reprofile-2026-10-29.md).
      The isolated median is 226.3 s and both uncached full gates time out in
      the application package at 300 s: **investigate and act both fire**.
-     The [bounded production-query remedy draft](reviews/race-suite-remedy-issue-draft-2026-10-29.md)
-     awaits explicit authorization to file on GitHub after automatic approval
-     review rejected external publication. That filing remains #419's unmet
-     acceptance; ADR 0016 requires the cost response before the next feature
-     slice. Limits, coverage and the declined cache policy remain unchanged.
+     ADR 0016 requires the cost response before the next feature slice.
+     Limits, coverage and the declined cache policy remain unchanged; this
+     bounded experiment does not promise to restore 30% headroom by itself.
 
 3. **Continue independent readiness work.**
    [#102](https://github.com/sergeyfarin/rekenraam/issues/102) needs native
