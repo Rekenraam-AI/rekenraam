@@ -80,6 +80,15 @@ const defaultLayout = () => ({ headline: 'networth', home: ['spending', 'budgets
 let layout = defaultLayout();
 let undoLayout = null;
 const money = value => `<span class="money">${hidden ? '••••••' : esc(value)}</span>`;
+// Home summarises: amounts of 100 or more drop their cents there (rounded half up for display only).
+// Registers, reports, menus and editors always show the exact amount.
+function rounded(value) {
+  const parts = value.match(/^([+−]?)€([\d,]+)\.(\d{2})$/);
+  if (!parts) return value;
+  const amount = Number(`${parts[2].replace(/,/g, '')}.${parts[3]}`);
+  return amount < 100 ? value : `${parts[1]}€${Math.round(amount).toLocaleString('en-US')}`;
+}
+const sm = value => money(rounded(value));
 const accountPath = id => `/app/accounts/${id}/register`;
 const currentAccount = () => accounts.find(account => account.id === (route.path.match(/^\/app\/accounts\/(\d+)\/register$/)?.[1] || route.params.get('account_id'))) || accounts[0];
 const phone = () => matchMedia('(max-width: 600px)').matches;
@@ -185,30 +194,30 @@ function spark(values, label) {
 function widgetDefs() {
   const missing = scenario === 'missing';
   const empty = scenario === 'empty';
-  const bars = rows => `<div class="w-bars">${rows.map(([name, width, value, path]) => `<div class="bar-row">${link(name, path)}<span class="bar" aria-hidden="true"><span style="width:${width}%"></span></span>${money(value)}</div>`).join('')}</div>`;
+  const bars = rows => `<div class="w-bars">${rows.map(([name, width, value, path]) => `<div class="bar-row">${link(name, path)}<span class="bar" aria-hidden="true"><span style="width:${width}%"></span></span>${sm(value)}</div>`).join('')}</div>`;
   const list = rows => `<ul class="rows">${rows.map(([name, sub, right]) => `<li><span>${name}<br><small class="muted">${sub}</small></span><span>${right}</span></li>`).join('')}</ul>`;
   const defs = [
-    { id: 'spending', cat: 'Everyday', title: 'Spending this month', open: ['Open spending report', '/app/reports/spending?from=2026-10-01&to=2026-10-29'], fact: money('€3,720.40'), sub: `of ${money('€5,300.00')} budgeted · 1–29 Oct · expense categories · EUR`,
+    { id: 'spending', cat: 'Everyday', title: 'Spending this month', open: ['Open spending report', '/app/reports/spending?from=2026-10-01&to=2026-10-29'], fact: sm('€3,720.40'), sub: `of ${sm('€5,300.00')} budgeted · 1–29 Oct · expense categories · EUR`,
       body: bars([['Housing', 100, '€1,450.00', '/app/categories/11'], ['Groceries', 42, '€612.30', '/app/categories/10'], ['Transport', 20, '€284.10', '/app/transactions?category_id=12'], ['Other', 95, '€1,373.00', '/app/reports/spending']]) },
-    { id: 'budgets', cat: 'Everyday', title: 'Budgets · October', open: ['Open budgets', '/app/budgets?month=2026-10'], fact: `${money('€1,579.60')} left`, sub: 'On pace: 70% spent, 87% of the month gone',
-      body: `<ul class="rows">${[['Groceries', '€612.30', '€700.00', ''], ['Dining out', '€231.00', '€200.00', hidden ? 'over' : '€31 over'], ['Transport', '€284.10', '€350.00', '']].map(([name, used, of, note]) => `<li><span>${name}${note ? ` <span class="warning">· ${note}</span>` : ''}</span><span>${money(used)} of ${money(of)}</span></li>`).join('')}</ul>` },
-    { id: 'cashflow', cat: 'Everyday', title: 'Cashflow · October', open: ['Open cashflow report', '/app/reports/cashflow'], fact: money('+€2,140.00'), sub: 'Liquid accounts · posted actuals · EUR',
-      body: list([['Money in', 'salary, refunds', money('€8,960.00')], ['Money out', 'spending, transfers out', money('€6,820.00')]]) },
+    { id: 'budgets', cat: 'Everyday', title: 'Budgets · October', open: ['Open budgets', '/app/budgets?month=2026-10'], fact: `${sm('€1,579.60')} left`, sub: 'On pace: 70% spent, 87% of the month gone',
+      body: `<ul class="rows">${[['Groceries', '€612.30', '€700.00', ''], ['Dining out', '€231.00', '€200.00', hidden ? 'over' : '€31 over'], ['Transport', '€284.10', '€350.00', '']].map(([name, used, of, note]) => `<li><span>${name}${note ? ` <span class="warning">· ${note}</span>` : ''}</span><span>${sm(used)} of ${sm(of)}</span></li>`).join('')}</ul>` },
+    { id: 'cashflow', cat: 'Everyday', title: 'Cashflow · October', open: ['Open cashflow report', '/app/reports/cashflow'], fact: sm('+€2,140.00'), sub: 'Liquid accounts · posted actuals · EUR',
+      body: list([['Money in', 'salary, refunds', sm('€8,960.00')], ['Money out', 'spending, transfers out', sm('€6,820.00')]]) },
     // Shows the owner's pins, the same list as the Ledger menu, rather than a second "largest balances" ranking.
     { id: 'accounts', cat: 'Everyday', title: 'Accounts', open: ['All accounts', '/app/accounts'], fact: '5 open accounts', sub: 'Pinned accounts · balances at 29 Oct',
-      body: `<ul class="rows">${accounts.filter(a => a.pinned).map(a => `<li>${link(a.name, accountPath(a.id))}<span>${money(a.balance)}</span></li>`).join('')}</ul><p class="scope">+ 2 more open accounts · 1 closed</p>` },
-    { id: 'networth', cat: 'Wealth & investments', title: 'Net worth · 12 months', wide: true, open: ['Open net worth report', '/app/reports/net-worth'], fact: missing ? 'Unavailable' : money('+€7,850.05'), sub: missing ? 'VWRL has no price for 29 Oct; the total is not shown partially' : 'Nov 2025 – Oct 2026 · month-end values · EUR',
+      body: `<ul class="rows">${accounts.filter(a => a.pinned).map(a => `<li>${link(a.name, accountPath(a.id))}<span>${sm(a.balance)}</span></li>`).join('')}</ul><p class="scope">+ 2 more open accounts · 1 closed</p>` },
+    { id: 'networth', cat: 'Wealth & investments', title: 'Net worth · 12 months', wide: true, open: ['Open net worth report', '/app/reports/net-worth'], fact: missing ? 'Unavailable' : sm('+€7,850.05'), sub: missing ? 'VWRL has no price for 29 Oct; the total is not shown partially' : 'Nov 2025 – Oct 2026 · month-end values · EUR',
       body: missing ? '' : spark([48900, 49600, 49100, 50400, 51300, 50900, 52200, 53100, 52800, 53970, 54610, 56750], 'Net worth rose from about 48.9 to 56.8 thousand euro over 12 months') },
     { id: 'holdings', cat: 'Wealth & investments', title: 'Holdings', open: ['Open investments', '/app/investments'], fact: '1 position', sub: missing ? 'Known value only · 1 position unpriced' : 'Largest by value · 29 Oct',
-      body: list([[link('VWRL', '/app/investments/instruments/20'), 'Vanguard FTSE All-World · DEGIRO brokerage', missing ? 'No price' : money('€8,400.00')]]) },
+      body: list([[link('VWRL', '/app/investments/instruments/20'), 'Vanguard FTSE All-World · DEGIRO brokerage', missing ? 'No price' : sm('€8,400.00')]]) },
     { id: 'returns', cat: 'Wealth & investments', title: 'Returns · year to date', open: ['Open returns', '/app/investments/returns'], fact: missing ? 'Unavailable' : '+7.4%', sub: 'Time-weighted · 1 Jan – 29 Oct · all investment accounts', body: '' },
     { id: 'allocation', cat: 'Wealth & investments', title: 'Allocation', open: ['Open returns', '/app/investments/returns'], fact: missing ? 'Unavailable' : 'Equity 41%', sub: missing ? '1 position unpriced' : 'Investment accounts · market value 29 Oct',
       body: missing ? '' : '<div class="stack" role="img" aria-label="Equity 41 percent, cash 59 percent"><span style="width:41%"></span><span style="width:59%"></span></div><p class="scope">Equity 41% · Cash 59%</p>' },
-    { id: 'income', cat: 'Wealth & investments', title: 'Dividend income', badge: ['Review', 'warn'], open: ['Open income', '/app/investments/income'], fact: '3 to assign', sub: `${money('€412.80')} confirmed this year`,
-      body: list([['VWRL', '25 Sep · unassigned cash', money('€96.40')]]) },
+    { id: 'income', cat: 'Wealth & investments', title: 'Dividend income', badge: ['Review', 'warn'], open: ['Open income', '/app/investments/income'], fact: '3 to assign', sub: `${sm('€412.80')} confirmed this year`,
+      body: list([['VWRL', '25 Sep · unassigned cash', sm('€96.40')]]) },
     { id: 'recurring', cat: 'Planning', title: 'Recurring', badge: ['2 drafts', 'warn'], open: ['Review drafts', '/app/recurring?tab=due'], fact: 'Next: Rent on 1 Nov', sub: '9 schedules active · 2 drafts awaiting review',
-      body: list([['Rent', '1 Nov · Checking', money('−€1,450.00')], ['Energy', '3 Nov · Checking', money('−€142.00')], ['Salary', '25 Nov · Checking', money('+€3,200.00')]]) },
-    { id: 'forecast', cat: 'Planning', title: 'Forecast · liquid cash', badge: ['Estimate', 'info'], open: ['Open forecast', '/app/forecast'], fact: `${money('€33,900')} on 31 Dec`, sub: 'Includes recurring schedules and learned spending',
+      body: list([['Rent', '1 Nov · Checking', sm('−€1,450.00')], ['Energy', '3 Nov · Checking', sm('−€142.00')], ['Salary', '25 Nov · Checking', sm('+€3,200.00')]]) },
+    { id: 'forecast', cat: 'Planning', title: 'Forecast · liquid cash', badge: ['Estimate', 'info'], open: ['Open forecast', '/app/forecast'], fact: `${sm('€33,900')} on 31 Dec`, sub: 'Includes recurring schedules and learned spending',
       body: spark([36840, 35900, 36400, 35600, 35100, 36200, 35800, 34600, 33900], 'Projected liquid cash eases to about 33.9 thousand euro by 31 December') },
     { id: 'imports', cat: 'Ledger & data', title: 'Imports', badge: ['Review', 'warn'], open: ['Open import', '/app/import'], fact: '1 batch in review', sub: 'Last import 2 days ago',
       body: list([[link('ING CSV · October', '/app/import?batch_id=october'), '42 rows · 3 need a category', '']]) },
@@ -284,7 +293,7 @@ function renderHome() {
   const missing = scenario === 'missing' && layout.headline === 'networth';
   const line1 = empty ? 'Your book is ready for its first account'
     : missing ? `Net worth <span class="muted">not available</span> · VWRL has no price · ${link('Add a price', '/app/pricing?base_commodity_id=20')}`
-    : `${h.label} <strong>${money(h.value)}</strong> <span class="muted">·</span> <span class="${hidden ? '' : h.change.startsWith('−') ? 'loss' : 'gain'}">${money(h.change)}</span> <span class="muted">since 1 Oct</span>`;
+    : `${h.label} <strong>${sm(h.value)}</strong> <span class="muted">·</span> <span class="${hidden ? '' : h.change.startsWith('−') ? 'loss' : 'gain'}">${sm(h.change)}</span> <span class="muted">since 1 Oct</span>`;
   const switcher = empty ? '' : `<div class="nav-item"><button class="bl-switch" data-disclosure="headline-menu" aria-expanded="false" aria-controls="headline-menu" aria-label="Change headline">${icon('chevron')}</button>
     <div id="headline-menu" class="disclosure center" hidden>${Object.entries(headlines).map(([id, v]) => `<button data-headline="${id}" aria-pressed="${layout.headline === id}">${v.label}<small class="muted">${id === 'networth' ? 'default' : id === 'checking' ? 'one account' : 'account set'}</small></button>`).join('')}<button data-customize>Customize Home…</button></div></div>`;
   const line2 = empty ? '<p class="bl"><span class="ok">All clear, nothing to review</span></p>'

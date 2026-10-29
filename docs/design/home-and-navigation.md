@@ -162,8 +162,8 @@ Searching account, category or instrument notes is later work.
   Adding moves it up; removing returns it to More to explore, so nothing
   disappears and every feature stays discoverable by scrolling.
 - More to explore shows widgets at **real size**, exactly as they would look
-  on My Home, with a dashed outline, half their colour saturation (full colour
-  on hover or focus) and *Add to Home*. The section's subtitle reads “Add any of
+  on My Home, with a dashed outline, muted text and half their colour
+  saturation (full colour on hover or focus) and *Add to Home*. The section's subtitle reads “Add any of
   the widgets below to the home page”. The section can be
   collapsed, not removed. Categories: Everyday, Wealth & investments,
   Planning, Ledger & data.
@@ -173,6 +173,10 @@ Searching account, category or instrument notes is later work.
 - Each widget has a ⋯ menu: Move up/down, size, Settings… (period, accounts
   and similar where relevant), Remove from My Home, Open the full page. In
   More to explore: Add to My Home, Add to top, Settings…, Open.
+- Home summarises: in the briefing and widgets an amount of 100 or more in
+  its currency shows no minor units (€56,750, €612 of €700), rounded half up
+  for display only; smaller amounts keep them (€96.40). Registers, reports,
+  menus, editors and exports always show the exact amount.
 - Widgets are compact: small title, one key figure, at most three or four
   rows or a short chart, and a single *Open* link. White space belongs to the
   page around them, not inside them. Section headings carry no counts.

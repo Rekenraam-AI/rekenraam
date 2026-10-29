@@ -208,8 +208,8 @@ kbd { font: inherit; font-size: 12px; color: var(--muted); border: 1px solid var
 .loss { color: var(--loss); }
 /* Widgets not on Home keep the card surface but lose half their colour, so they
    read as previews; hovering or focusing one brings the colour back. */
-.card.explore { border-style: dashed; filter: saturate(0.45); transition: filter .15s; }
-.card.explore:hover, .card.explore:focus-within { filter: none; }
+.card.explore { border-style: dashed; color: var(--muted); filter: saturate(0.45); transition: filter .15s, color .15s; }
+.card.explore:hover, .card.explore:focus-within { color: var(--fg); filter: none; }
 .card.onboarding { margin-bottom: var(--gap); border-color: var(--accent); }
 .widget { display: flex; flex-direction: column; padding: 12px 16px 8px; font-size: 13px; }
 .widget .scope { font-size: 12px; margin: 0; }
