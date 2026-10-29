@@ -201,6 +201,8 @@ const headlines = {
   checking: { label: 'Checking', value: '€4,210.55', change: '−€1,320.10', scope: 'Checking · ING · EUR · transactions through 28 Oct' },
   liquid: { label: 'Liquid accounts', value: '€36,836.95', change: '+€2,140.00', scope: 'Liquid accounts: Checking, Savings, Revolut · EUR · transactions through 28 Oct' }
 };
+// Shown in place of net worth while a price is missing: cash accounts need no price.
+const cash = { label: 'Cash', value: '€36,836.95', change: '+€2,140.00', scope: 'Cash accounts: Checking, Savings, Revolut · EUR · transactions through 28 Oct' };
 function spark(values, label) {
   const lo = Math.min(...values), hi = Math.max(...values);
   const pts = values.map((v, i) => `${Math.round(i * 600 / (values.length - 1))} ${Math.round(135 - (v - lo) / (hi - lo || 1) * 115)}`);
@@ -340,19 +342,20 @@ function renderHome() {
   const h = headlines[layout.headline];
   const missing = scenario === 'missing' && layout.headline === 'networth';
   const line1 = empty ? 'Your book is ready for its first account'
-    : missing ? `Net worth <span class="muted">not available</span> · ${unpricedText()} · ${link(unpriced.length === 1 ? 'Add a price' : 'Add prices', missingPricesPath)}`
-    : `${h.label} <strong>${sm(h.value)}</strong> <span class="muted">·</span> <span class="${hidden ? '' : h.change.startsWith('−') ? 'loss' : 'gain'}">${sm(h.change)}</span> <span class="muted">since 1 Oct</span>`;
+    : `${(missing ? cash : h).label} <strong>${sm((missing ? cash : h).value)}</strong> <span class="muted">·</span> <span class="${hidden ? '' : (missing ? cash : h).change.startsWith('−') ? 'loss' : 'gain'}">${sm((missing ? cash : h).change)}</span> <span class="muted">since 1 Oct</span>`;
+  // Net worth with a missing price is not shown at all, not even partially: Home falls back to cash, which needs no price, and says why.
+  const notice = missing ? `<p class="bl" id="home-networth-notice"><a class="warning" href="${href(missingPricesPath)}">Net worth not shown: ${unpricedText()}</a></p>` : '';
   const switcher = empty ? '' : `<div class="nav-item"><button class="bl-switch" data-disclosure="headline-menu" aria-expanded="false" aria-controls="headline-menu" aria-label="Change headline">${icon('chevron')}</button>
     <div id="headline-menu" class="disclosure center" hidden>${Object.entries(headlines).map(([id, v]) => `<button data-headline="${id}" aria-pressed="${layout.headline === id}">${v.label}<small class="muted">${id === 'networth' ? 'default' : id === 'checking' ? 'one account' : 'account set'}</small></button>`).join('')}<button data-customize>Customize Home…</button></div></div>`;
   const line2 = empty ? '<p class="bl"><span class="ok">All clear, nothing to review</span></p>'
     : `<p class="bl"><a id="home-review" class="bl-review" href="${href('/app/review')}"><span class="dot warn"></span>${scenario === 'failed' ? '<span class="warning">Review status unavailable</span>' : scenario === 'missing' || scenario === 'stale' ? `<span><strong>2 drafts</strong>, <strong>1 import</strong> and <strong>${scenario === 'stale' ? stale.count : unpriced.length} prices</strong> to review</span>` : '<span><strong>2 drafts</strong> and <strong>1 import</strong> to review</span>'}${icon('arrow')}</a></p>`;
-  const scope = empty ? 'No accounts or transactions yet' : scenario === 'stale' && layout.headline === 'networth' ? `All 5 open accounts in EUR · <span class="warning">${staleText()}</span> · transactions through 28 Oct` : missing ? `All 5 open accounts in EUR · ${unpriced.length} required prices missing · transactions through 28 Oct` : h.scope;
+  const scope = empty ? 'No accounts or transactions yet' : scenario === 'stale' && layout.headline === 'networth' ? `All 5 open accounts in EUR · <span class="warning">${staleText()}</span> · transactions through 28 Oct` : missing ? cash.scope : h.scope;
   const defs = widgetDefs();
   const byId = Object.fromEntries(defs.map(d => [d.id, d]));
   const rest = defs.filter(d => !layout.home.includes(d.id));
   const groups = ['Everyday', 'Wealth & investments', 'Planning', 'Ledger & data'].map(cat => [cat, rest.filter(d => d.cat === cat)]);
   return `<section class="hero" aria-label="Briefing">
-      <div class="brief"><div class="bl headline"><h1>${line1}</h1>${switcher}</div>${line2}<p class="scope">${scope}</p>
+      <div class="brief"><div class="bl headline"><h1>${line1}</h1>${switcher}</div>${notice}${line2}<p class="scope">${scope}</p>
 </div>
       <div class="cmd" role="search">
         <div class="cmd-box">${icon('search')}${homeScope ? `<button id="home-scope-chip" class="chip" aria-label="Remove ${homeScope} scope">${homeScope} ×</button>` : ''}

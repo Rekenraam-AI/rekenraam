@@ -100,10 +100,13 @@ try {
   await expect(page.locator('#home-review')).toHaveText('Review status unavailable');
   await expect(page.locator('main')).not.toContainText('All clear');
   await page.locator('#scenario').selectOption('missing');
-  await expect(page.locator('main h1')).toContainText('Net worth not available');
+  // A missing price hides net worth entirely; the headline falls back to cash, which needs no price.
+  await expect(page.locator('main h1')).toContainText('Cash €36,837');
+  await expect(page.locator('main h1')).not.toContainText('56,750');
   await expect(page.locator('#home-networth')).toContainText('Unavailable');
   // Several missing prices are counted in one sentence and one review item, not listed one by one.
-  await expect(page.locator('main h1')).toContainText('3 instruments have no price');
+  await expect(page.locator('#home-networth-notice').getByRole('link')).toHaveText('Net worth not shown: 3 instruments have no price');
+  await expect(page.locator('#home-networth-notice a')).toHaveAttribute('href', '#/app/pricing?coverage=missing');
   await openReview();
   await expect(page.locator('main').getByRole('link', { name: /3 instruments have no price/ })).toHaveCount(1);
   await go('/app');

@@ -33,7 +33,15 @@ Background and reasoning:
   shortcuts, with generous empty space. Widgets start below.
 - Desktop is the priority. Phones (360–390px) must stay fully usable.
 - Every figure states its scope and completeness. A missing price or rate
-  makes a total unavailable, never silently partial.
+  makes a total unavailable, never silently partial, and never shown as a
+  labelled partial either (decided 2026-10-29).
+- When the net worth headline is unavailable, Home shows **Cash** instead
+  (open cash accounts: checking, savings, cash and e-money, in the reporting
+  currency), which needs no price, with a notice under it that links to
+  Prices filtered to the missing ones: "Net worth not shown: 3 instruments
+  have no price". The scope line names the
+  cash accounts. If cash itself lacks an FX rate, only the notice shows. A
+  chosen account or account-set headline is never replaced.
 - An out-of-date price still values its position at that price and never
   blocks a total; the coverage line counts them with the oldest date ("180 of
   240 prices older than 7 days, oldest 3 Sep") and the review list holds one

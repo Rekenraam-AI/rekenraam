@@ -166,7 +166,8 @@ Overview pages. The prototype bar still offers the earlier *Menus* behaviour
 for comparison. Capitals and a left account rail were tried and rejected.
 
 Sample books for valuation: *Missing valuation* has three unpriced
-instruments (headline unavailable; counted, and one grouped review item);
+instruments (Home shows Cash with a linked "Net worth not shown: 3
+instruments have no price"; counted, and one grouped review item);
 *Stale prices at scale* has 180 of 240 prices older than 7 days (the total
 stays, the coverage line counts them with the oldest date, and one grouped
 review item links to Prices filtered to out-of-date prices).
