@@ -189,6 +189,11 @@ These are valuable, but they are not allowed to displace the current plan:
   live read (including `instruments=true`) and saved runs against the #405
   baseline. The current large-book harness seeds no investments; this is
   evidence work, not a gate for accepted R13 delivery.
+- Values you enter [#454](https://github.com/sergeyfarin/rekenraam/issues/454):
+  house, vehicle and pension values with a per-account update interval, so
+  net worth reports them as missing or out of date like prices. Needs a
+  storage decision first (valuation observation recommended over a
+  balance-adjustment posting). #437 and #453 do not wait for it.
 - Original maintainability candidates 7–13 remain
   [explicitly deferred without issues](reviews/maintainability-audit-2026-10-24.md#explicitly-deferred-inventory-original-ranks-713).
   Revisit only on the recorded trigger and refreshed evidence; open a bounded

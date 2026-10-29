@@ -60,7 +60,8 @@ Background and reasoning:
   House", "Net worth needs 3 prices", "Net worth needs 4 values"; "Pension
   out of date", "180 prices out of date", "3 values out of date". Missing
   outranks out of date; whatever does not lead joins "N more". A named item
-  may wrap on a phone; "N more →" never splits.
+  may wrap on a phone; "N more →" never splits. Recording entered values and
+  their intervals is #454.
 - Home names nothing that grows with the book: accounts, instruments and
   review items appear as counts, never as lists.
 - Customization never changes financial data.
