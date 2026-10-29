@@ -15,6 +15,7 @@ import { expect, type Page, test } from './support/fixtures';
 import { apiJSON, csrfTokenFor } from './support/api';
 import { ensureBrowserSession } from './support/session';
 import { currentStep, secretFromOTPAuthURI, totpCode } from './support/totp';
+import { activateBrowserMFA } from './support/mfa-enrollment';
 
 const OWNER_USERNAME = 'owner';
 const OWNER_PASSWORD = 'test-password';
@@ -84,13 +85,12 @@ test.describe.serial('two-factor authentication journey', () => {
     sharedSecret = secretFromOTPAuthURI(setupLink);
     expect(sharedSecret).not.toEqual('');
 
-    // The previous step's code activates. The current step's would be burned by
-    // the replay guard, and the sign-in below needs a step the server has not
-    // seen yet.
-    const activationStep = currentStep() - 1;
-    lastSpentStep = activationStep;
-    await page.getByLabel('Code from your app').fill(totpCode(sharedSecret, activationStep));
-    await page.getByRole('button', { name: 'Turn on' }).click();
+    // Reserve the current step for sign-in, refreshing only if the previous
+    // step expires in transit. Track the step that actually activated MFA.
+    lastSpentStep = await activateBrowserMFA(page, sharedSecret, {
+      code: page.getByLabel('Code from your app'),
+      submit: page.getByRole('button', { name: 'Turn on' })
+    }, { reserveCurrentStep: true });
 
     await expect(page.getByRole('heading', { name: 'Recovery codes' })).toBeVisible();
     recoveryCodes = await page.locator('ul.font-mono li').allInnerTexts();

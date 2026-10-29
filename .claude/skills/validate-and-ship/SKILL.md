@@ -744,7 +744,12 @@ non-trivial diff (yours or reviewed):
     expected invalid-code refusal and an observed advancing step, with a bounded
     retry. Never relax production skew or mask other failures. Keep the real
     stale-clock-sample control `TestMFAEnrollmentFixtureRefreshesExpiredPreviousStep`
-    green; it uses no sleeps and retains the production auth clock.
+    green; it uses no sleeps and retains the production auth clock. Browser
+    enrollment uses `support/mfa-enrollment.ts` (#384): use the current step
+    when later sign-in uses a recovery code; reserve the current step only for
+    a subsequent TOTP login and record the step actually consumed. Keep
+    `mfa-enrollment-fixture.spec.ts` boundary, no-advance, unrelated-refusal and
+    attempt-limit controls green through the real enrollment consumer.
 
 63. **Date-shaped URL values mistaken for calendar dates** — a YYYY-MM-DD
     regex admitted February 31 and month 13, causing shared transaction links

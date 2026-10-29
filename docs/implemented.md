@@ -392,6 +392,14 @@ confirmations and pending activation codes share a per-session five-in-fifteen
 reauthentication budget that answers `429 RATE_LIMITED` with `Retry-After`
 ([#262](https://github.com/sergeyfarin/rekenraam/issues/262)).
 
+Browser enrollment fixtures (#384) use the current step for recovery-code
+locale journeys and a bounded previous-step refresh for main/proxy TOTP
+journeys. Refresh requires the exact invalid-code refusal plus observed step
+advancement; deterministic real-consumer controls retain hard failures for
+other refusals, no advancement and exhausted attempts. Production authentication
+rules remain unchanged. See the
+[validation record](reviews/browser-mfa-enrollment-2026-10-29.md).
+
 ## Books, Commodities, Accounts (Phase 1) — ✅ Complete
 
 | Capability | Status | Notes |

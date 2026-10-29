@@ -19,6 +19,7 @@ import { type BrowserContext, expect, type Page, test } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
 import process from 'node:process';
 import { currentStep, secretFromOTPAuthURI, totpCode } from '../playwright/support/totp';
+import { activateBrowserMFA } from '../playwright/support/mfa-enrollment';
 
 const OWNER_USERNAME = 'owner';
 const OWNER_PASSWORD = 'proxy-audit-password';
@@ -183,9 +184,10 @@ test.describe.serial('deploy phase', () => {
     await page.getByLabel('Your password', { exact: true }).fill(OWNER_PASSWORD);
     await page.getByRole('button', { name: 'Set up' }).click();
     state.secret = secretFromOTPAuthURI(await page.getByText(/^otpauth:\/\//).innerText());
-    state.lastStep = currentStep() - 1;
-    await page.getByLabel('Code from your app').fill(totpCode(state.secret, state.lastStep));
-    await page.getByRole('button', { name: 'Turn on' }).click();
+    state.lastStep = await activateBrowserMFA(page, state.secret, {
+      code: page.getByLabel('Code from your app'),
+      submit: page.getByRole('button', { name: 'Turn on' })
+    }, { reserveCurrentStep: true });
     await expect(page.getByRole('heading', { name: 'Recovery codes' })).toBeVisible();
     state.recoveryCodes = (await page.locator('ul.font-mono li').allInnerTexts()).map((code) => code.trim());
     expect(state.recoveryCodes).toHaveLength(10);

@@ -752,6 +752,15 @@ pnpm test:release-preflight
 - The harness also boots the Trading 212 provider stub on `127.0.0.1:16890` (move it with `TRADING212_STUB_PORT`) and starts the app with `TRADING212_BASE_URL` pointing at it, so import journeys can create connections and fetch fills without the real provider. `MARKET_DATA_BASE_URL` points every built-in quote/FX provider at the same stub, whose 404s keep background FX coverage from importing live rates into the shared e2e book (#226); both overrides are refused outside `APP_ENV=development`. Specs that need it call `requireTrading212Stub()`; against an external `E2E_BASE_URL` they skip unless `E2E_TRADING212_STUB_URL` names a stub that app is configured to use.
 - The harness sets a throwaway `REKENRAAM_SECRET_KEY` for the instance it boots, because the MFA journey cannot enrol without one — enrolment returns `CONFIG_REQUIRED` rather than storing the shared secret in the clear. Export your own `REKENRAAM_SECRET_KEY` to override it.
 - `mfa.spec.ts` shares its worker's database with the other files that worker runs, so it turns MFA back off in `afterAll`. A spec that changes account-wide authentication state must clean up the same way. A hook (`beforeAll`/`afterAll`) that opens its own page or context passes `baseURL: backend.url` from the worker fixture, since test-scoped `baseURL` is not available there.
+- Browser MFA enrollment uses `support/mfa-enrollment.ts` (#384). Locale
+  journeys use the current TOTP step because sign-in consumes a recovery code.
+  Main and proxy TOTP journeys reserve the current step and track the step
+  actually consumed. Refresh a previous-step code only after the exact
+  invalid-code 401 and an observed advancing step, with at most three total
+  submissions. Other refusals and failures without advancement fail immediately.
+  `mfa-enrollment-fixture.spec.ts` exercises the real UI and enrollment API with
+  stale fixture samples, including the boundary, refusal and attempt-limit
+  controls; the app clock and accepted security window remain unchanged.
 - Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to an existing Chromium binary when the sandbox or image cannot download the revision this Playwright release pins (`pnpm exec playwright install` fails, and the run dies with "Executable doesn't exist"). Container images that preinstall a browser usually expose one at `/opt/pw-browsers/chromium`. Prefer this over patching the browser cache by hand; leave it unset locally so Playwright uses its own pinned build.
 
 ## Area Notes

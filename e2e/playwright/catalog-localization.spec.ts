@@ -2,7 +2,8 @@ import { expect, test } from './support/fixtures';
 import { readFileSync } from 'node:fs';
 import { readyForLedger } from './support/ledger';
 import { apiJSON, csrfTokenFor } from './support/api';
-import { currentStep, secretFromOTPAuthURI, totpCode } from './support/totp';
+import { secretFromOTPAuthURI } from './support/totp';
+import { activateBrowserMFA } from './support/mfa-enrollment';
 
 test.use({ viewport: { width: 390, height: 844 } });
 const messages = (domain: string, locale: string) => JSON.parse(readFileSync(new URL(`../../frontend/messages/${domain}/${locale}.json`, import.meta.url), 'utf8'));
@@ -68,8 +69,11 @@ for (const locale of ['es', 'fr', 'nl', 'de', 'ru']) {
       await expect(page.getByRole('heading', { name: m.security_mfa_enroll_step_title, exact: true })).toBeVisible();
       await expect(page.getByText(m.security_mfa_enroll_step_hint, { exact: true })).toBeVisible();
       const secret = secretFromOTPAuthURI(await page.getByText(/^otpauth:\/\//).innerText());
-      await page.getByLabel(m.security_mfa_code_label, { exact: true }).fill(totpCode(secret, currentStep() - 1));
-      await page.getByRole('button', { name: m.security_mfa_activate, exact: true }).click();
+      // Sign-in uses a recovery code, so no TOTP step needs reserving.
+      await activateBrowserMFA(page, secret, {
+        code: page.getByLabel(m.security_mfa_code_label, { exact: true }),
+        submit: page.getByRole('button', { name: m.security_mfa_activate, exact: true })
+      });
       await expect(page.getByRole('heading', { name: m.security_mfa_recovery_title, exact: true })).toBeVisible();
       await expect(page.getByText(m.security_mfa_recovery_warning, { exact: true })).toBeVisible();
       const codes = await page.locator('ul.font-mono li').allInnerTexts();
