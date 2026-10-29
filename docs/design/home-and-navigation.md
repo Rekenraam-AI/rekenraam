@@ -3,8 +3,8 @@
 Owner-approved design direction, 2026-10-27, for the new Home page and the
 application shell around it. It records what was agreed after three mockup
 rounds; it does not set delivery order. Order lives in the
-[roadmap](../roadmap.md) and acceptance in GitHub issues: tracking #441,
-slices #436–#440, object navigation #442 and the Payees page #443. The
+[roadmap](../roadmap.md) and acceptance in GitHub issues under tracking
+#441 (listed in [Delivery slices](#delivery-slices)). The
 navigation decisions of 2026-10-29 (#435) are recorded in
 [Navigation beyond the header](#navigation-beyond-the-header); their options
 and reasoning are in the
@@ -309,9 +309,9 @@ keyboard help.
 - **Breadcrumbs** follow the hierarchy (*Accounts › DEGIRO › VWRL*,
   *Categories › Housing › Energy*). A holding's register and its instrument
   page link to each other.
-- **Payees** get a *Ledger → Payees* page (#443).
+- **Payees** get a *Ledger → Payees* page (#443); tags a *Tags* view on Categories (#444).
 - **Accounts are grouped by institution**, each group headed by the
-  institution and its country. The Accounts page has an *Institutions* view:
+  institution and its country (#448). The Accounts page has an *Institutions* view:
   name, country, its accounts and how data arrives (file, profile or online
   connection), with add, edit and archive.
 - **A brokerage is one account** with cash and positions. Per-instrument
@@ -320,7 +320,7 @@ keyboard help.
   on the brokerage account page and on the instrument page.
 - **Page actions name what they add:** *Add transaction*; brokerage accounts,
   instruments and Investments Overview also show *Record trade or dividend*.
-- Before #442 fixes grouping and the pin limit, count a real book (accounts
+- Before #442 fixes grouping and the pin limit, count a real book (#449) (accounts
   by kind, holdings per broker, closed accounts, categories by depth, payees,
   postings per account over 90 days) and record the result in the review.
 
@@ -333,23 +333,24 @@ keyboard help.
   with name, language and theme.
 - Back to Home restores its scroll position and expanded state.
 
-## Delivery slices (proposed)
+## Delivery slices
 
-Sequencing belongs in the roadmap. Slice issues: #436, #437, #438, #439, #440 in
-the order below.
+Sequencing belongs in the roadmap; acceptance in the issues.
 
-1. **Shell and search:** light header, section menus, settings menu, hide
-   amounts, compact search over pages, accounts, categories, instruments and
-   commands; retire the sidebar and the duplicate top bar.
-2. **Home:** briefing, central command bar, shortcuts with the shared Add
-   transaction dialog, default My Home and More to explore, composed Home
-   read; replaces the foundation-era overview.
-3. **Personalization:** layout migration and API, headline choices, Customize
-   panel, ⋯ actions with Undo, widget sizes and settings.
-4. **Search depth:** payee actions with prefilled editor and last-used
-   category, payee filter, full-text transaction search.
-5. **Widget depth:** lazy expanded charts for returns, allocation and
-   forecast; further widgets.
+| Slice | Issue |
+|---|---|
+| Shell: header, section and settings menus, tab row of real routes, route registry, hide amounts, shared search, attention read; retires the sidebar and the duplicate top bar | #436 |
+| Home: briefing, command bar, shortcuts with the shared Add transaction dialog, default My Home and More to explore, composed Home read | #437 |
+| Settings in five pages; Trash becomes Transactions › Deleted; ledger export moves to Reports › Export | #446 |
+| Import views: Files, Connections, Rules and profiles, Dividends | #447 |
+| Accounts grouped by institution, Institutions view, brokerage as one account, *Record trade or dividend* | #448 |
+| Payees page | #443 |
+| Tags view | #444 |
+| Real-book count (D11), owner-run | #449 |
+| Object switcher, pins and breadcrumbs | #442 |
+| Personalization: layout migration and API, headline choices, Customize panel (also in Settings › Preferences), ⋯ actions with Undo, sizes and settings | #438 |
+| Search depth: payee actions with prefilled editor and last-used category, full-text transaction search | #439 |
+| Widget depth: lazy expanded returns, allocation and forecast charts; further widgets | #440 |
 
 ## Considered and dropped
 

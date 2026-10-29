@@ -451,6 +451,11 @@ copy is enough. Record the result here.
 - #443 Payees page (D9).
 - Moving FX rates (D8) and an account panel (O3) get their own issues only if
   later chosen.
+- After the prototype's second review (same day): #446 settings in five
+  pages with Trash and export moved, #447 Import views, #448 accounts by
+  institution and brokerages as one account, #444 Tags view, #449 the D11
+  count. The design's [Delivery slices](../design/home-and-navigation.md#delivery-slices)
+  lists them all.
 
 ## Coverage review after the prototype (2026-10-29)
 

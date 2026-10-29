@@ -3,7 +3,8 @@
 Browser-openable companion to the approved [Home and navigation design](../home-and-navigation.md).
 It extends the [v3 Home canvas](../home-mockup/README.md) with destinations so
 the header, scoped object search and everyday journeys can be reviewed together.
-This is implementation preparation for #436/#437/#442, not delivery of those slices.
+This is implementation preparation for the slices tracked in #441 (shell #436, Home #437,
+moved pages #446–#448, object navigation #442), not delivery of any of them.
 
 Home was brought back in line with the approved design and canvas on
 2026-10-29 (see [Home in this prototype](#home-in-this-prototype)).
@@ -96,7 +97,7 @@ and the Home page settings. The full capability map is in the
 Record task time, wrong turns, context loss and whether each figure's scope
 was understood against today's app for the same tasks. No owner task timings,
 real-book counts or usability acceptance have been recorded by building this
-artifact. D11's real-book inventory remains #442's prerequisite for final grouping.
+artifact. D11's real-book inventory (#449) remains #442's prerequisite for final grouping.
 
 ## Validation
 

@@ -104,23 +104,38 @@ application implementation is not delivered. This follows the retained
 maintenance slots, ahead of deliberately later initiatives. Owner-dependent
 readiness and release evidence continue in parallel.
 
-Deliver incrementally using the design's proposed split:
+Deliver incrementally, tracked in #441, in this order:
 
-1. **Shell and search:** replace the sidebar and duplicate top bar with a
-   light header, section/settings menus, hide amounts and compact shared search.
-2. **Home:** two-line briefing, central command bar, shortcut tiles led by
-   Add transaction, default My Home and real-size More to explore widgets,
-   backed by a composed Home read and a shared transaction-entry dialog.
-3. **Personalization:** server-persisted layout and revision-checked API,
-   headline choices, Customize panel, item actions with Undo, sizes and settings.
-4. **Search depth:** payee actions with editor prefill and last-used category,
-   payee filtering and full-text transaction search.
-5. **Widget depth:** lazy expanded returns, allocation and forecast charts,
-   then further widgets for existing capabilities.
+1. **Shell and search (#436):** replace the sidebar and duplicate top bar with
+   a light header, section and settings menus, a tab row of real page routes
+   driven by one route registry, hide amounts, compact shared search and one
+   attention read for counts.
+2. **Home (#437):** two-line briefing, central command bar, shortcut tiles led
+   by Add transaction, compact default My Home and real-size More to explore
+   widgets, backed by a composed Home read and a shared transaction-entry
+   dialog.
+3. **Pages in their new places**, in any order after #436: settings in five
+   pages with Trash moved to Transactions › Deleted and export to Reports
+   (#446); Import views (#447); accounts grouped by institution, an
+   Institutions view and brokerages as one account (#448); Payees page
+   (#443); Tags view (#444).
+4. **Object navigation (#442):** the switcher as scoped search, pinned
+   accounts and breadcrumbs, after #448 and the owner-run real-book count
+   (#449).
+5. **Personalization (#438):** server-persisted layout and revision-checked
+   API, headline choices, Customize panel (also in Settings › Preferences),
+   item actions with Undo, sizes and settings.
+6. **Search depth (#439):** payee actions with editor prefill and last-used
+   category, payee filtering and full-text transaction search.
+7. **Widget depth (#440):** lazy expanded returns, allocation and forecast
+   charts, then further widgets for existing capabilities.
 
-Tracking issue #441; slices #436–#440, object navigation #442, Payees page
-#443, Tags view #444. Navigation decisions (#435) are recorded in the design. Preserve every existing route and financial contract, explicit
-scope/completeness, localization, both themes and usable phone/keyboard flows.
+Navigation decisions (#435) are recorded in the design, and the
+[navigation prototype](design/navigation-prototype/README.md) shows the
+result after two owner reviews. Preserve every existing route (kept or
+redirected) and financial contract, explicit scope/completeness,
+localization, both themes and usable phone/keyboard flows. README
+screenshots (#335) follow #436 and #437.
 R7a's broader entry helpers and configurable shortcut presets remain separate.
 
 ## Deliberately later
