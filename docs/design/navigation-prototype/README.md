@@ -5,17 +5,44 @@ It extends the [v3 Home canvas](../home-mockup/README.md) with destinations so
 the header, scoped object search and everyday journeys can be reviewed together.
 This is implementation preparation for #436/#437/#442, not delivery of those slices.
 
+Home was brought back in line with the approved design and canvas on
+2026-10-29 (see [Home in this prototype](#home-in-this-prototype)).
+
 Open [index.html](index.html) directly in a browser. No server, canvas runtime,
 credentials, network access or build is needed. All data is synthetic. Local
 browser storage remembers only this prototype's theme and amount masking; entry,
 import and reconciliation controls never write financial data. The original
 approved canvas remains the reference for Home styling and personalization.
 
+## Home in this prototype
+
+Home follows the [approved design](../home-and-navigation.md#home-layout) and
+the v3 canvas: two briefing lines (headline with ▾ switcher, review line that
+expands into a list) and the coverage line under them; the command bar inline
+under the briefing, with grouped results (*Payee*, *Pages, accounts and
+categories*, *Everything*) and *Narrow to* chips; shortcut tiles led by Add
+transaction with ⋯ menus and *Add shortcut*; My Home with the five default
+widgets at their real content (bars, budget rows, lists, sparklines); More to
+explore with every other widget at real size, grouped by category, each with
+*Add to My Home*. Widget and shortcut ⋯ menus, Undo and the Customize panel
+work in memory and reset on reload.
+
+Deliberate differences from the canvas, recorded in the design document:
+
+- The Accounts widget lists the pinned accounts (the Ledger menu's list), not
+  a separate "largest balances" ranking.
+- On phones, tapping the command bar opens the same search full screen.
+- An empty book shows one *Start with an account* card above My Home, and
+  widgets show *No data yet* instead of sample values.
+- The Prices widget covers security prices only; FX rates stay in Settings.
+
 ## What to review
 
 - All approved section/settings menu entries lead to distinct destinations.
   Ledger includes Payees; Gains has one canonical Investments destination and
-  a Reports link; Prices and currency/FX settings remain separate.
+  a Reports menu entry marked *in Investments*; a section's tab row lists only
+  its own pages. Settings pages use a side list, not a tab row. Prices and
+  currency/FX settings remain separate.
 - Checking and Savings registers retain applicable URL filters when switched
   using the title's scoped search. Removing the scope chip changes the same
   search into global navigation. Closed accounts are one checkbox away;
@@ -36,19 +63,23 @@ approved canvas remains the reference for Home styling and personalization.
 
 ## Bounded walkthrough
 
-1. From Home, open Ledger → Checking. Apply March and a search filter.
-2. Open Checking ▾, type Savings and press Enter. Check that the applicable
+1. On Home, type `albert` in the command bar and choose *Add expense at
+   Albert Heijn*; check the prefilled payee and category, then cancel. Remove a
+   widget with its ⋯ menu, undo, add one from More to explore, and reset in
+   Customize.
+2. From Home, open Ledger → Checking. Apply March and a search filter.
+3. Open Checking ▾, type Savings and press Enter. Check that the applicable
    filters remain. Remove the scope chip and observe that results become global.
-3. Open Add; check the selected account, type a payee, then press Escape.
+4. Open Add; check the selected account, type a payee, then press Escape.
    Retain the input or discard deliberately. Sample Save confirms the interaction
    without adding a journal or changing the displayed fixture balances.
-4. Follow Reconcile this account, preview, then finish the sample. Switch the
+5. Follow Reconcile this account, preview, then finish the sample. Switch the
    account before previewing to check context.
-5. Return Home, expand review and continue the import batch. Choose a category
+6. Return Home, expand review and continue the import batch. Choose a category
    and review the sample changes; the batch remains uncommitted.
-6. Open Spending, drill into Groceries, then use Back twice. Check Home's
+7. Open Spending, drill into Groceries, then use Back twice. Check Home's
    scroll and expanded review. Repeat on a 390px phone and with only a keyboard.
-7. Try both themes, hide amounts, the three alternate sample books and
+8. Try both themes, hide amounts, the three alternate sample books and
    320px reflow. Open a pin or report link in a new tab.
 
 Record task time, wrong turns, context loss and whether each figure's scope
@@ -67,14 +98,16 @@ pnpm exec node docs/design/navigation-prototype/check.mjs /tmp/rekenraam-navigat
 ```
 
 The focused check exercises links and context retention, editor cancellation,
-review and reconciliation, legacy URLs, Back restoration, amount masking,
-30 axe/reflow cases over five representative pages at 1440/390/320px in both
-themes, open switchers, browser errors and absence of remote requests.
+review and reconciliation, legacy URLs, Back restoration, the Home command
+bar and payee prefill, widget moves with Undo and Customize reset, amount
+masking, 36 axe/reflow cases over six representative pages at 1440/390/320px
+in both themes, open switchers, browser errors and absence of remote requests.
 This checks the design artifact only. It is not production integration,
 financial-correctness validation or native terminology sign-off.
 
-Passed locally on 2026-10-29: 30 menu/pin destinations, the walkthrough's
-automated journeys, all 30 page axe/reflow cases and three open switchers,
+Passed locally on 2026-10-29 after the Home revision: 28 menu/pin
+destinations, the walkthrough's automated journeys, all 36 page axe/reflow
+cases and three open switchers,
 masking and zero remote requests. JavaScript syntax, local Markdown targets
 and `git diff --check` also passed. Acceptance was tightened in
 [#436](https://github.com/sergeyfarin/rekenraam/issues/436) and
@@ -85,12 +118,12 @@ issues remain open for application implementation and its acceptance evidence.
 
 ## Deliberate limits
 
-Home has representative summaries and three discovery destinations rather
-than the complete widget catalog. Most other destinations identify placement
+Widget settings, sizes, drag reordering and saving the layout are not built
+(#438). Most other destinations identify placement
 and link to relevant objects rather than reproduce their full screens.
 Transfer, posting recurring drafts, uploads, actual exports, security/session
-gates, personalization, pin persistence, payee actions and live API/cache
-behavior are not implemented here. The sample editor is not the production
+gates, layout and pin persistence, and live API/cache behavior are not
+implemented here. The sample editor is not the production
 editor and does not parse or calculate money. English sample copy and simplified
 account grouping are for this artifact only; production retains the six-locale
 translation boundary, canonical exact arithmetic and all existing workflow guards.

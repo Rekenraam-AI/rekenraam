@@ -20,7 +20,7 @@
   </aside>
   <header id="shell"></header>
   <main id="main" tabindex="-1"></main>
-  <p id="notice" role="status" aria-live="polite"></p>
+  <div id="notice" role="status" aria-live="polite"></div>
   <dialog id="search-dialog" aria-labelledby="search-title">
     <div class="dialog-heading"><h2 id="search-title">Search</h2><button data-close="search-dialog" aria-label="Close search">×</button></div>
     <div class="search-tools">
@@ -53,6 +53,11 @@
         <button type="submit" class="primary">Save sample entry</button>
       </div>
     </form>
+  </dialog>
+  <dialog id="customize-dialog" aria-labelledby="customize-title">
+    <div class="dialog-heading"><h2 id="customize-title">Customize Home</h2><button data-close="customize-dialog" aria-label="Close Customize">×</button></div>
+    <p class="muted">Changes apply at once and never change financial data. This prototype keeps them only until you reload.</p>
+    <div id="customize-body"></div>
   </dialog>
   <dialog id="help-dialog" aria-labelledby="help-title">
     <div class="dialog-heading"><h2 id="help-title">Keyboard help</h2><button data-close="help-dialog" aria-label="Close help">×</button></div>

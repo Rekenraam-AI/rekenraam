@@ -58,8 +58,9 @@ header on every page.
   | Reports | Spending, Cashflow, Net worth, Gains, Export |
 
   The Ledger menu also shows up to six pinned accounts with balances and
-  *All accounts*. Gains is one page under Investments, also listed in
-  Reports.
+  *All accounts*. Gains is one page under Investments, also listed in the
+  Reports menu marked *in Investments*; a section's tab row holds only its own
+  pages, so the row never changes under the pointer.
 
 - **Right side:** hide amounts (eye), Customize (Home only), and a settings
   menu (Settings, Security, Backups and data, Language and appearance,
@@ -95,6 +96,9 @@ widget area:
    to the number, so it is not a widget and not a briefing line.
 2. **Command bar**: large, centred search and command field.
 3. **Shortcuts**: a centred row of tiles.
+
+On phones the command bar opens the same search full screen when tapped, so
+results are not squeezed under a keyboard.
 4. **My Home**: the owner's widgets, full width.
 5. **More to explore**: every other widget, full width, by category.
 
@@ -163,6 +167,12 @@ Searching account, category or instrument notes is later work.
   More to explore: Add to My Home, Add to top, Settings…, Open.
 - Default My Home: Spending this month, Budgets, Accounts, Recurring, Net
   worth trend (wide).
+- The Accounts widget lists the owner's pinned accounts, the same list as the
+  Ledger menu, with a count of the rest; it falls back to the largest balances
+  only while nothing is pinned. One owner-chosen list is easier to predict than
+  two rankings (2026-10-29).
+- In an empty book a single *Start with an account* card sits above My Home and
+  widgets show their *no data* state, rather than a grid of empty figures.
 - States: loading, ready, zero, no data, not set up (doubles as onboarding,
   for example “Set up backups”), partial, stale, failed. Estimates (forecast)
   are labelled; market-value changes are never called returns.

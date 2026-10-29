@@ -56,7 +56,8 @@ try {
   await expect(page.getByText('Sample reconciliation finished. No checkpoint was written.')).toBeVisible();
 
   await go('/app');
-  await page.locator('#home-review').evaluate(element => { element.open = true; });
+  const expandReview = async () => { if (await page.locator('#home-review').getAttribute('aria-expanded') !== 'true') await page.locator('#home-review').click(); };
+  await expandReview();
   await page.getByRole('link', { name: '1 import batch to review', exact: false }).click();
   await expect(page.getByRole('heading', { name: 'ING CSV · October' })).toBeVisible();
   await page.locator('#import-category').selectOption({ label: 'Groceries' });
@@ -65,7 +66,7 @@ try {
 
   // Browser Back restores Home expansion and scroll after a real report drill-down.
   await go('/app');
-  await page.locator('#home-review').evaluate(element => { element.open = true; });
+  await expandReview();
   await page.getByRole('link', { name: 'Open spending report →' }).scrollIntoViewIfNeeded();
   const homeScroll = await page.evaluate(() => scrollY);
   await page.getByRole('link', { name: 'Open spending report →' }).click();
@@ -74,7 +75,7 @@ try {
   await page.goBack();
   await expect(page.locator('main h1')).toHaveText('Spending');
   await page.goBack();
-  await expect(page.locator('#home-review')).toHaveAttribute('open', '');
+  await expect(page.locator('#home-review')).toHaveAttribute('aria-expanded', 'true');
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(homeScroll);
 
   // Legacy links retain filters and switch subviews rather than leaving stale tabs.
@@ -95,19 +96,49 @@ try {
   }
   await go('/app');
   await page.locator('#scenario').selectOption('failed');
-  await expect(page.locator('#home-review summary')).toHaveText('Review status unavailable');
+  await expect(page.locator('#home-review')).toHaveText('Review status unavailable');
   await expect(page.locator('main')).not.toContainText('All clear');
   await page.locator('#scenario').selectOption('missing');
-  await expect(page.locator('main h1')).toContainText('Net worth unavailable');
+  await expect(page.locator('main h1')).toContainText('Net worth not available');
+  await expect(page.locator('#home-networth')).toContainText('Unavailable');
   await page.locator('#scenario').selectOption('empty');
   await expect(page.getByRole('link', { name: 'Set up accounts' })).toBeVisible();
   await page.locator('#scenario').selectOption('everyday');
+
+  // Home's command bar is the shared search, inline: payee actions prefill the editor without posting.
+  await page.locator('#home-cmd').fill('albert');
+  await expect(page.locator('#home-cmd-list').getByRole('group', { name: 'Payee · Albert Heijn' })).toBeVisible();
+  await page.locator('#home-cmd').press('Enter');
+  await expect(page.locator('[name="payee"]')).toHaveValue('Albert Heijn');
+  await expect(page.locator('[name="category"]')).toHaveValue('Groceries');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.locator('#home-cmd').fill('');
+  await page.locator('#home-cmd').fill('savings');
+  await expect(page.locator('#home-cmd-list')).toContainText('Search all transactions for “savings”');
+  await page.locator('#home-cmd').press('Escape');
+  await expect(page.locator('#home-cmd-panel')).toBeHidden();
+
+  // A widget is in exactly one place; removal returns it to More to explore, with Undo.
+  await page.getByRole('button', { name: 'Options for Budgets · October' }).first().click();
+  await page.getByRole('button', { name: 'Remove from My Home' }).click();
+  await expect(page.locator('#home-budgets')).toHaveCount(0);
+  await expect(page.locator('#explore-budgets')).toBeVisible();
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.locator('#home-budgets')).toBeVisible();
+  await expect(page.locator('#explore-budgets')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Add Holdings to My Home' }).click();
+  await expect(page.locator('#home-holdings')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Options for Holdings' })).toBeFocused();
+  await page.getByRole('button', { name: 'Customize Home' }).click();
+  await page.getByRole('button', { name: 'Reset Home' }).click();
+  await expect(page.locator('#home-holdings')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Done' }).click();
 
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
     for (const theme of ['light', 'dark']) {
       await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
-      for (const path of ['/app', '/app/accounts/1/register', '/app/reports/spending', '/app/import?batch_id=october', '/app/reconcile?account_id=1']) {
+      for (const path of ['/app', '/app/settings/security', '/app/accounts/1/register', '/app/reports/spending', '/app/import?batch_id=october', '/app/reconcile?account_id=1']) {
         await go(path);
         // A reload restores the prototype's chosen theme, so apply the test theme after go.
         await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
@@ -145,7 +176,7 @@ try {
   }
   assert.deepEqual(errors, [], 'Browser errors');
   assert.deepEqual(remoteRequests, [], 'Prototype must not contact a remote service');
-  console.log(`Passed: ${destinations.length} destinations; entry, scoped switching, review, reconciliation, legacy links and Back; 30 page accessibility/reflow checks; 3 open switchers; masking; zero remote requests.`);
+  console.log(`Passed: ${destinations.length} destinations; entry, scoped switching, review, reconciliation, legacy links and Back; 36 page accessibility/reflow checks; Home command bar, payee prefill, widget moves with Undo and Customize; 3 open switchers; masking; zero remote requests.`);
 } finally {
   await browser.close();
 }
