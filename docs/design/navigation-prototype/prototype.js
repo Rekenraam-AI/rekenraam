@@ -217,6 +217,10 @@ const missingPricesPath = '/app/pricing?coverage=missing';
 // they are disclosed as one count with the oldest date and one grouped review item.
 const stale = { count: 180, of: 240, oldest: '3 Sep', path: '/app/pricing?coverage=stale' };
 const staleText = () => `${stale.count} of ${stale.of} prices older than 7 days, oldest ${stale.oldest}`;
+// Any value net worth depends on can be missing (blocks the total) or out of date (last value used,
+// counted): market prices, FX rates, and values the owner enters, such as a house or a pension.
+// The manual sample book has a house with no value yet and a pension last updated 30 Jun (expected quarterly).
+const blocked = () => scenario === 'missing' || scenario === 'manual';
 function widgetDefs() {
   const missing = scenario === 'missing';
   const old = scenario === 'stale';
@@ -233,8 +237,8 @@ function widgetDefs() {
     // Shows the owner's pins, the same list as the Ledger menu, rather than a second "largest balances" ranking.
     { id: 'accounts', cat: 'Everyday', title: 'Accounts', open: ['All accounts', '/app/ledger'], fact: '5 open accounts', sub: 'Pinned accounts · balances at 29 Oct',
       body: `<ul class="rows">${accounts.filter(a => a.pinned).map(a => `<li>${link(a.name, accountPath(a.id))}<span>${sm(a.balance)}</span></li>`).join('')}</ul><p class="scope">+ 2 more open accounts · 1 closed</p>` },
-    { id: 'networth', cat: 'Wealth & investments', title: 'Net worth · 12 months', wide: true, open: ['Open net worth report', '/app/reports/net-worth'], fact: missing ? 'Unavailable' : sm('+€7,850.05'), sub: missing ? `${unpricedText()} for 29 Oct; the total is not shown partially` : 'Nov 2025 – Oct 2026 · month-end values · EUR',
-      body: missing ? '' : spark([48900, 49600, 49100, 50400, 51300, 50900, 52200, 53100, 52800, 53970, 54610, 56750], 'Net worth rose from about 48.9 to 56.8 thousand euro over 12 months') },
+    { id: 'networth', cat: 'Wealth & investments', title: 'Net worth · 12 months', wide: true, open: ['Open net worth report', '/app/reports/net-worth'], fact: blocked() ? 'Unavailable' : sm('+€7,850.05'), sub: blocked() ? `${scenario === 'manual' ? 'House has no value yet' : `${unpricedText()} for 29 Oct`}; the total is not shown partially` : 'Nov 2025 – Oct 2026 · month-end values · EUR',
+      body: blocked() ? '' : spark([48900, 49600, 49100, 50400, 51300, 50900, 52200, 53100, 52800, 53970, 54610, 56750], 'Net worth rose from about 48.9 to 56.8 thousand euro over 12 months') },
     { id: 'holdings', cat: 'Wealth & investments', title: 'Holdings', open: ['Open investments', '/app/investments'], fact: missing ? '3 positions' : old ? `${stale.of} positions` : '1 position', sub: missing ? `Known value only · ${unpriced.length} positions unpriced` : old ? `Largest by value · ${stale.count} at prices older than 7 days` : 'Largest by value · 29 Oct',
       body: list(missing ? unpriced.map(code => [link(code, '/app/investments/instruments/20'), 'DEGIRO brokerage', 'No price']) : [[link('VWRL', '/app/investments/instruments/20'), 'Vanguard FTSE All-World · DEGIRO brokerage', sm('€8,400.00')]]) },
     { id: 'returns', cat: 'Wealth & investments', title: 'Returns · year to date', open: ['Open returns', '/app/investments/returns'], fact: missing ? 'Unavailable' : '+7.4%', sub: 'Time-weighted · 1 Jan – 29 Oct · all investment accounts', body: '' },
@@ -277,6 +281,8 @@ function reviewEntries() {
     ['info', link('Note: 3 dividends not yet assigned', '/app/investments/income')],
     // Many missing prices are one review item, not one per instrument; the Prices page lists them.
     ...(scenario === 'stale' ? [['warn', `${link(`${stale.count} prices out of date`, stale.path)}<small class="muted"> · oldest ${stale.oldest} · positions use their last price</small>`]] : []),
+    ...(scenario === 'manual' ? [['warn', 'House has no value yet<small class="muted"> · net worth waits for it · add one on the account</small>'],
+      ['warn', 'Pension last updated 30 Jun<small class="muted"> · you update it every 3 months · its last value is used</small>']] : []),
     ...(scenario === 'missing' ? [['warn', `${link(`${unpricedText()} for 29 Oct`, missingPricesPath)}<small class="muted"> · ${unpriced.join(', ')}</small>`]] : [])
   ];
 }
@@ -290,6 +296,7 @@ function renderReview(info) {
     ['Ledger self-check', 'Passed 28 Oct', '/app/settings/data'],
     ['Prices', scenario === 'stale' ? `<span class="warning">${staleText()}</span>` : scenario === 'missing' ? `<span class="warning">${unpricedText()}</span>` : 'Refreshed 29 Oct 06:00', '/app/pricing'],
     ['FX rates', 'Refreshed 29 Oct 06:00', '/app/settings/currencies'],
+    ...(scenario === 'manual' ? [['Values you enter', '<span class="warning">House has no value · Pension out of date</span>', '/app/ledger']] : []),
     ['Trading 212', 'Last download 29 Oct 07:10 · 4 rows', '/app/import?view=connections'],
     ['File imports', '1 batch staged, not committed', '/app/import']
   ];
@@ -340,18 +347,21 @@ function widgetCard(d, zone) {
 function renderHome() {
   const empty = scenario === 'empty';
   // Net worth with a missing price is not shown at all, not even partially: Home shows cash, which needs no price.
-  const fallback = scenario === 'missing' && layout.headline === 'networth';
+  const fallback = blocked() && layout.headline === 'networth';
   const h = fallback ? headlines.cash : headlines[layout.headline] || headlines.networth;
   const line1 = empty ? 'Your book is ready for its first account'
     : `${h.label} <strong>${sm(h.value)}</strong> <span class="muted">·</span> <span class="${hidden ? '' : h.change.startsWith('−') ? 'loss' : 'gain'}">${sm(h.change)}</span> <span class="muted">in Oct</span>`;
   const switcher = empty ? '' : `<div class="nav-item"><button class="bl-switch" data-disclosure="headline-menu" aria-expanded="false" aria-controls="headline-menu" aria-label="Change headline">${icon('chevron')}</button>
     <div id="headline-menu" class="disclosure center" hidden>${Object.entries(headlines).map(([id, v]) => `<button data-headline="${id}" aria-pressed="${layout.headline === id}">${v.label}<small class="muted">${v.scope}</small></button>`).join('')}<button data-customize>Customize Home…</button></div></div>`;
-  // One status line. A price problem leads (it explains the headline) and the rest of the review is a count;
-  // otherwise the review is named. The header's Review button carries the total.
-  const prices = scenario === 'missing' ? link(fallback ? `Net worth needs ${unpriced.length} prices` : `${unpriced.length} prices missing`, missingPricesPath, 'warning')
-    : scenario === 'stale' ? link(`${stale.count} prices out of date`, stale.path, 'warning') : '';
+  // One status line. A valuation problem leads (it explains the headline) and the rest of the review is a count;
+  // otherwise the review is named. The header's Review button carries the total. One item is named, several of
+  // one kind are counted by kind, mixed kinds are counted as values. Missing outranks out of date.
+  const lead = scenario === 'missing' ? { text: fallback ? `Net worth needs ${unpriced.length} prices` : `${unpriced.length} prices missing`, path: missingPricesPath }
+    : scenario === 'stale' ? { text: `${stale.count} prices out of date`, path: stale.path }
+    : scenario === 'manual' ? { text: fallback ? 'Net worth needs a value for House' : 'House has no value yet', path: '/app/ledger' } : null;
+  const more = reviewCount() - 1;
   const line2 = empty ? '<p class="bl muted">No accounts or transactions yet</p>'
-    : `<p class="bl status"><span class="dot warn" aria-hidden="true"></span>${prices ? `${prices}<span class="muted" aria-hidden="true">·</span>` : ''}<a id="home-review" class="bl-review" href="${href('/app/review')}"${prices && scenario !== 'failed' ? ' aria-label="2 more to review"' : ''}>${scenario === 'failed' ? '<span class="warning">Review status unavailable</span>' : prices ? '<span>2 more</span>' : '<span><strong>2 drafts</strong> and <strong>1 import</strong> to review</span>'}${icon('arrow')}</a></p>`;
+    : `<p class="bl status"><span class="dot warn" aria-hidden="true"></span>${lead ? `${link(lead.text, lead.path, 'warning')}<span class="muted" aria-hidden="true">·</span>` : ''}<a id="home-review" class="bl-review" href="${href('/app/review')}"${lead && scenario !== 'failed' ? ` aria-label="${more} more to review"` : ''}>${scenario === 'failed' ? '<span class="warning">Review status unavailable</span>' : lead ? `<span>${more} more</span>` : '<span><strong>2 drafts</strong> and <strong>1 import</strong> to review</span>'}${icon('arrow')}</a></p>`;
   const defs = widgetDefs();
   const byId = Object.fromEntries(defs.map(d => [d.id, d]));
   const rest = defs.filter(d => !layout.home.includes(d.id));
@@ -513,7 +523,7 @@ function renderOther(info) {
   if (info.name === 'Transactions') return renderTransactions(info);
   if (info.name === 'Payees') return `${heading(info, 'Payee management belongs to #443')}<section class="card"><h2>Albert Heijn</h2><p>214 transactions · last used 27 Oct</p>${link('Transactions with Albert Heijn', '/app/transactions?payee_id=30', 'button')}</section>`;
   if (info.name === 'Recurring') return `${heading(info, 'Drafts and templates are separate views')}${segmented('Recurring views', [['Due', '/app/recurring?tab=due', 'due'], ['Templates', '/app/recurring?tab=templates', 'templates']], route.params.get('tab') === 'templates' ? 'templates' : 'due')}<section class="card"><h2>${route.params.get('tab') === 'templates' ? 'Templates' : '2 drafts awaiting review'}</h2><p>Sample review destination; posting drafts is outside this navigation prototype.</p></section>`;
-  if (info.name === 'Net worth') return `${heading(info, '29 Oct 2026 · same 5 open sample accounts in EUR')}<section class="card"><h2>Valuation</h2><p class="fact">${scenario === 'missing' ? `Unavailable · ${unpricedText()}` : money('€56,750.05')}</p>${link('Inspect accounts', '/app/ledger')}</section>`;
+  if (info.name === 'Net worth') return `${heading(info, '29 Oct 2026 · same 5 open sample accounts in EUR')}<section class="card"><h2>Valuation</h2><p class="fact">${scenario === 'manual' ? 'Unavailable · House has no value yet' : scenario === 'missing' ? `Unavailable · ${unpricedText()}` : money('€56,750.05')}</p>${link('Inspect accounts', '/app/ledger')}</section>`;
   if (info.name === 'Export') return `${heading(info, 'Whole-ledger files; each report also downloads its own table as CSV')}<section class="card"><h2>Ledger CSV, QIF and archive</h2><p>Navigation destination only. No sample files are generated.</p>${link('Backups live in Settings › Data and backups', '/app/settings/data')}</section>`;
   if (info.section === 'Settings') return renderSettings(info);
   if (route.path === '/app/investments') {

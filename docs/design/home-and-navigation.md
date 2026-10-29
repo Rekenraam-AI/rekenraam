@@ -46,6 +46,21 @@ Background and reasoning:
   Prices filtered to them), the Review page adds the oldest date, and the
   review list holds one grouped item, never one per instrument (proposed
   2026-10-29). Several missing prices are likewise counted and grouped.
+- Prices are one kind of value among several. Net worth also depends on FX
+  rates and on values the owner enters, such as a house, a car or a pension
+  statement. The same two rules apply to all of them: a **missing** value
+  (an asset with no value yet, an instrument with no price, a currency with
+  no rate) makes net worth unavailable; an **out-of-date** value is used at
+  its last amount and counted. Out of date is relative to how often each
+  value is expected to change: prices and rates after 7 days, and for values
+  the owner enters, an update interval set per account (proposed defaults:
+  pension or other statement-based accounts 3 months, property and vehicles
+  12 months, or never). Wording on Home names one item, counts several of
+  one kind, and counts mixed kinds as values: "Net worth needs a value for
+  House", "Net worth needs 3 prices", "Net worth needs 4 values"; "Pension
+  out of date", "180 prices out of date", "3 values out of date". Missing
+  outranks out of date; whatever does not lead joins "N more". A named item
+  may wrap on a phone; "N more →" never splits.
 - Home names nothing that grows with the book: accounts, instruments and
   review items appear as counts, never as lists.
 - Customization never changes financial data.

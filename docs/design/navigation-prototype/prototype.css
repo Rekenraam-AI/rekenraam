@@ -178,7 +178,7 @@ p { margin: 0 0 12px; }
 .bl.status > * { vertical-align: middle; }
 .bl.status .dot { display: inline-block; margin-right: 6px; }
 .bl.status > .muted { margin: 0 6px; }
-.bl.status a.bl-review { display: inline; padding: 0; }
+.bl.status a.bl-review { display: inline; padding: 0; white-space: nowrap; }
 .bl.status a.bl-review .ic { display: inline-block; vertical-align: middle; margin-left: 4px; }
 #headline-menu > button { flex-direction: column; align-items: flex-start; gap: 0; }
 .slist { list-style: none; margin: 10px auto 0; padding: 6px; width: 100%; max-width: 520px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); text-align: left; }

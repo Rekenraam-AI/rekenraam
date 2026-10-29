@@ -126,6 +126,15 @@ try {
   await openReview();
   await expect(page.locator('main').getByRole('link', { name: '180 prices out of date' })).toHaveCount(1);
   await go('/app');
+  // Values the owner enters follow the same rules: a missing one blocks net worth and is named while it is
+  // the only one; an out-of-date one (pension, updated quarterly) is counted with the rest.
+  await page.locator('#scenario').selectOption('manual');
+  await expect(page.locator('main h1')).toContainText('Cash €36,837');
+  await expect(page.locator('main .brief .status')).toHaveText(/^Net worth needs a value for House\s*·\s*3 more$/);
+  await expect(page.locator('#home-review')).toHaveAttribute('aria-label', '3 more to review');
+  await openReview();
+  await expect(page.locator('main')).toContainText('Pension last updated 30 Jun');
+  await go('/app');
   await page.locator('#scenario').selectOption('empty');
   await expect(page.getByRole('link', { name: 'Set up accounts' })).toBeVisible();
   await page.locator('#scenario').selectOption('everyday');
@@ -231,7 +240,7 @@ try {
   await page.locator('#opt-sections').selectOption('links');
   assert.deepEqual(errors, [], 'Browser errors');
   assert.deepEqual(remoteRequests, [], 'Prototype must not contact a remote service');
-  console.log(`Passed: ${destinations.length} destinations; entry, scoped switching, review, reconciliation, legacy links and Back; 54 page accessibility/reflow checks; Review page from Home and header, Home command bar, payee prefill, widget moves with Undo and Customize; 3 open switchers; section menus alternative; several missing and stale prices; masking; zero remote requests.`);
+  console.log(`Passed: ${destinations.length} destinations; entry, scoped switching, review, reconciliation, legacy links and Back; 54 page accessibility/reflow checks; Review page from Home and header, Home command bar, payee prefill, widget moves with Undo and Customize; 3 open switchers; section menus alternative; several missing and stale prices; missing and out-of-date entered values; masking; zero remote requests.`);
 } finally {
   await browser.close();
 }

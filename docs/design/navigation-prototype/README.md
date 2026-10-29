@@ -170,7 +170,11 @@ instruments (Home shows Cash, and the status line reads "Net worth needs 3
 prices · 2 more →"; one grouped review item); *Stale prices at scale* has
 180 of 240 prices older than 7 days (the total stays, the status line reads
 "180 prices out of date · 2 more →", and one grouped review item with the
-oldest date links to Prices filtered to out-of-date prices).
+oldest date links to Prices filtered to out-of-date prices); *House and
+pension* has a house with no value yet and a pension last updated 30 Jun
+against a 3-month interval (Home shows Cash, and the status line reads "Net
+worth needs a value for House · 3 more →"; the pension is one of the 3 and
+appears on the Review page with its interval).
 
 Home's review line no longer expands into a list above the search: it links
 to a *Review* page (`/app/review`), also reached from the header's Review
