@@ -16,6 +16,9 @@
   --warn-soft: oklch(0.945 0.045 80);
   --chart: oklch(0.5 0.14 154);
   --chart-2: oklch(0.72 0.12 92);
+  /* Gains and losses: recognisably green or red, but dark and quiet. */
+  --gain: oklch(0.42 0.1 150);
+  --loss: oklch(0.45 0.13 27);
   --shadow: 0 18px 48px -22px oklch(0.2 0.02 108 / 0.35);
   --bar-shadow: 0 1px 2px oklch(0.2 0.02 108 / 0.06), 0 8px 24px -12px oklch(0.2 0.02 108 / 0.18);
   --radius: 10px;
@@ -38,6 +41,8 @@
   --warn-soft: oklch(0.32 0.055 78);
   --chart: oklch(0.69 0.13 154);
   --chart-2: oklch(0.78 0.12 92);
+  --gain: oklch(0.8 0.08 150);
+  --loss: oklch(0.78 0.09 27);
   --shadow: 0 18px 48px -20px oklch(0 0 0 / 0.7);
   --bar-shadow: 0 8px 24px -12px oklch(0 0 0 / 0.6);
 }
@@ -199,7 +204,12 @@ kbd { font: inherit; font-size: 12px; color: var(--muted); border: 1px solid var
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .card { min-width: 0; padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
 .card.wide { grid-column: span 2; }
-.card.explore { border-style: dashed; background: transparent; }
+.gain { color: var(--gain); }
+.loss { color: var(--loss); }
+/* Widgets not on Home keep the card surface but lose half their colour, so they
+   read as previews; hovering or focusing one brings the colour back. */
+.card.explore { border-style: dashed; filter: saturate(0.45); transition: filter .15s; }
+.card.explore:hover, .card.explore:focus-within { filter: none; }
 .card.onboarding { margin-bottom: var(--gap); border-color: var(--accent); }
 .widget { display: flex; flex-direction: column; padding: 12px 16px 8px; font-size: 13px; }
 .widget .scope { font-size: 12px; margin: 0; }

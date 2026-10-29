@@ -284,7 +284,7 @@ function renderHome() {
   const missing = scenario === 'missing' && layout.headline === 'networth';
   const line1 = empty ? 'Your book is ready for its first account'
     : missing ? `Net worth <span class="muted">not available</span> · VWRL has no price · ${link('Add a price', '/app/pricing?base_commodity_id=20')}`
-    : `${h.label} <strong>${money(h.value)}</strong> <span class="muted">·</span> ${money(h.change)} <span class="muted">since 1 Oct</span>`;
+    : `${h.label} <strong>${money(h.value)}</strong> <span class="muted">·</span> <span class="${hidden ? '' : h.change.startsWith('−') ? 'loss' : 'gain'}">${money(h.change)}</span> <span class="muted">since 1 Oct</span>`;
   const switcher = empty ? '' : `<div class="nav-item"><button class="bl-switch" data-disclosure="headline-menu" aria-expanded="false" aria-controls="headline-menu" aria-label="Change headline">${icon('chevron')}</button>
     <div id="headline-menu" class="disclosure center" hidden>${Object.entries(headlines).map(([id, v]) => `<button data-headline="${id}" aria-pressed="${layout.headline === id}">${v.label}<small class="muted">${id === 'networth' ? 'default' : id === 'checking' ? 'one account' : 'account set'}</small></button>`).join('')}<button data-customize>Customize Home…</button></div></div>`;
   const line2 = empty ? '<p class="bl"><span class="ok">All clear, nothing to review</span></p>'
@@ -310,7 +310,7 @@ function renderHome() {
       ${empty ? `<div class="card onboarding"><h3>Start with an account</h3><p>Add an account before entering or importing transactions. The widgets below fill in as data arrives.</p>${link('Set up accounts', '/app/accounts', 'button primary')}</div>` : ''}
       ${layout.home.length ? `<div class="grid">${layout.home.map(id => widgetCard(byId[id], 'home')).join('')}</div>` : '<p class="muted">My Home is empty. Add widgets from More to explore below.</p>'}
     </section>
-    <section class="home-section" id="explore" aria-labelledby="explore-title"><div class="section-head"><h2 id="explore-title">More to explore</h2><span class="muted">Add any of these to My Home</span>
+    <section class="home-section" id="explore" aria-labelledby="explore-title"><div class="section-head"><h2 id="explore-title">More to explore</h2><span class="muted">Add any of the widgets below to the home page</span>
       <button id="explore-toggle" aria-expanded="${layout.exploreOpen}" aria-controls="explore-body">${layout.exploreOpen ? 'Collapse' : 'Show all'}</button></div>
       <div id="explore-body" ${layout.exploreOpen ? '' : 'hidden'}>${groups.map(([cat, items]) => `<h3 class="cat">${cat} <span class="muted">${items.length}</span></h3>${items.length ? `<div class="grid">${items.map(d => widgetCard(d, 'explore')).join('')}</div>` : '<p class="muted">Everything in this group is already on your Home.</p>'}`).join('')}</div>
     </section>`;

@@ -88,7 +88,9 @@ widget area:
    medium weight.
    1. Headline: net worth (default), one account, or a named set of
       accounts, with absolute change since the start of the month. ▾ switches
-      the headline.
+      the headline. The change is coloured by its sign in a dark, quiet green
+      or red (never bright), and stays neutral while amounts are hidden; the
+      sign itself still carries the meaning.
    2. To review: “2 drafts and 1 import to review”, expanding in place to a
       list with links; “All clear, nothing to review” only after a successful
       check with no actionable items. An unchecked or failed source has its
@@ -160,7 +162,9 @@ Searching account, category or instrument notes is later work.
   Adding moves it up; removing returns it to More to explore, so nothing
   disappears and every feature stays discoverable by scrolling.
 - More to explore shows widgets at **real size**, exactly as they would look
-  on My Home, with a dashed outline and *Add to Home*. The section can be
+  on My Home, with a dashed outline, half their colour saturation (full colour
+  on hover or focus) and *Add to Home*. The section's subtitle reads “Add any of
+  the widgets below to the home page”. The section can be
   collapsed, not removed. Categories: Everyday, Wealth & investments,
   Planning, Ledger & data.
 - My Home is fully reorderable. Sizes: standard, or wide (two columns) where
