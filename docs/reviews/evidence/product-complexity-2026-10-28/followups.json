@@ -72,6 +72,17 @@
   "limits": [
     "Synthetic local app/provider fixtures; no live provider calls or owner acceptance.",
     "No backend/API/schema change; reuse original backend evidence at its pinned source.",
-    "Local commits only; push and hosted CI pending."
-  ]
+    "Local validation results; hosted CI is recorded separately in publication."
+  ],
+  "publication": {
+    "date": "2026-10-29",
+    "branch": "main",
+    "remote": "origin",
+    "source_sha": "11e8b626bc77976e0e45bbb481875e2fe0e4be1f",
+    "remote_ref_verified": true,
+    "ci_run_url": "https://github.com/sergeyfarin/rekenraam/actions/runs/40812920816",
+    "ci_observed_status": "in_progress",
+    "ci_observed_conclusion": null,
+    "scope": "Five audit/fix commits published; this follow-up updates documentation only. No release acceptance."
+  }
 }

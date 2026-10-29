@@ -142,5 +142,20 @@ is substituted for focused consumer evidence.
 
 The browser fixtures are synthetic and local. Historical source-link fixtures
 intentionally require the disposable local database; this is not live-provider,
-external-deployment or owner acceptance. Hosted CI and publication remain pending
-an explicitly requested push. The local commits are the reviewable delivery.
+external-deployment or owner acceptance. The local validation above predates
+publication; the separate record below identifies the published source and
+observed hosted CI state.
+
+## Publication — 2026-10-29
+
+At the owner's request, all five audit/fix commits were pushed to `origin/main`
+through [`11e8b626`](https://github.com/sergeyfarin/rekenraam/commit/11e8b626bc77976e0e45bbb481875e2fe0e4be1f).
+The remote `refs/heads/main` was verified at
+`11e8b626bc77976e0e45bbb481875e2fe0e4be1f`. This includes coverage/necessity
+outputs, both #433/#434 fixes and the final disposition; their commit/blob
+references now resolve on GitHub.
+
+[Hosted CI for that source](https://github.com/sergeyfarin/rekenraam/actions/runs/40812920816)
+was `in_progress` when checked. The retained local results are unchanged;
+this publication record does not claim a hosted pass or release acceptance.
+This documentation follow-up changes no runtime, API, schema or test.

@@ -918,6 +918,10 @@ counterexamples and passes 38 focused race controls. The
 retains necessary safeguards, preserves delivered ADR 0019 relaxations and
 records two new bounded findings, both fixed below. No further product-policy
 change or exhaustive application/release certification is implied.
+The audit and both fixes were published to `main` on 2026-10-29; the
+[publication record](reviews/product-complexity-disposition-2026-10-28.md#publication--2026-10-29)
+pins the pushed source and observed hosted-CI state separately from local
+validation.
 
 - #433 (2026-10-28): imported-dividend repair captures the reviewed transaction
   version with its editable fields. A reconnect/refetch retains unsaved input
