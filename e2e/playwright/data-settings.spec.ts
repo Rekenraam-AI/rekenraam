@@ -83,6 +83,19 @@ test('[acceptance] the data screen exports, backs up, and checks the ledger', as
 
 // The one thing a user must not be able to do by accident: download a QIF that
 // silently omits accounts QIF cannot express.
+test('the settings side list reaches the data screen from any settings page', async ({ page }) => {
+  await readyForLedger(page);
+
+  // The side list once omitted Data, leaving backups and export reachable only
+  // from the overview's cards.
+  await page.goto('/app/settings/security');
+  const nav = page.getByRole('navigation', { name: 'Settings sections' });
+  await nav.getByRole('link', { name: 'Data', exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/settings\/data$/);
+  await expect(page.getByTestId('data-settings')).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Data', exact: true })).toHaveAttribute('aria-current', 'page');
+});
+
 test('[acceptance] a QIF export names the accounts it cannot write before downloading', async ({ page }) => {
   const { csrfToken, currencyID } = await readyForLedger(page);
   const suffix = Date.now();
