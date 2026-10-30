@@ -1,9 +1,52 @@
 import { test, expect } from './support/owned-book';
 import { apiJSON } from './support/api';
-import { createCashAccount, readyForLedger } from './support/ledger';
+import { createCashAccount, ensureCurrency, readyForLedger } from './support/ledger';
 import { expectNoAccessibilityViolations } from './support/a11y';
 
 const review = (page: import('@playwright/test').Page) => page.locator('header').getByRole('link', { name: /^Review ·/ });
+
+test('posted non-default currency exposes missing FX in pricing and Review, then recovers with a manual rate', async ({ page }) => {
+  const { csrfToken, currencyID } = await readyForLedger(page);
+  // Keep the fixture provider-free even if queued coverage runs during it.
+  const { sources } = await apiJSON<{ sources: Array<{ id: number; code: string }> }>(page, 'GET', '/api/v1/pricing/sources');
+  const manual = sources.find(source => source.code === 'manual')!;
+  await apiJSON(page, 'PUT', '/api/v1/pricing/policy', csrfToken, {
+    base_commodity_id: currencyID, default_source_id: manual.id, refresh_enabled: false,
+    change_reason: 'Synthetic manual-only coverage fixture'
+  });
+  const foreignCode = currencyID === (await ensureCurrency(page, csrfToken, 'USD', 'US Dollar')) ? 'EUR' : 'USD';
+  const foreign = await ensureCurrency(page, csrfToken, foreignCode, foreignCode);
+  const { currencies } = await apiJSON<{ currencies: Array<{ id: number; code: string }> }>(page, 'GET', '/api/v1/currencies');
+  const quoteCode = currencies.find(currency => currency.id === currencyID)!.code;
+  const first = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: 'FX receivable', account_class: 'asset', account_kind: 'receivable', allows_postings: true
+  });
+  const second = await apiJSON<{ id: number }>(page, 'POST', '/api/v1/accounts', csrfToken, {
+    name: 'FX payable', account_class: 'liability', account_kind: 'payable', allows_postings: true
+  });
+  const { owner_today: today } = await apiJSON<{ owner_today: string }>(page, 'GET', '/api/v1/auth/session');
+  await apiJSON(page, 'POST', '/api/v1/transactions', csrfToken, {
+    status: 'posted', transaction_date: today, journal_entries: [{ postings: [
+      { account_id: first.id, commodity_id: foreign, quantity_value: '10000', quantity_scale: 2 },
+      { account_id: second.id, commodity_id: foreign, quantity_value: '-10000', quantity_scale: 2 }
+    ] }]
+  });
+  await page.goto('/app/investments/prices');
+  const pair = page.locator('li').filter({ has: page.getByRole('button', { name: `${foreignCode} in ${quoteCode}`, exact: true }) });
+  await expect(pair).toContainText('No usable observation');
+  await review(page).click();
+  const rates = page.locator('li').filter({ has: page.getByRole('link', { name: 'Missing or out-of-date exchange rates', exact: true }) });
+  await expect(rates).toContainText('1');
+  await apiJSON(page, 'POST', '/api/v1/pricing/manual', csrfToken, {
+    base_commodity_id: foreign, quote_commodity_id: currencyID, valuation_date: today,
+    price_value: '125', price_scale: 2, base_quantity_value: '1', base_quantity_scale: 0,
+    reason: 'Synthetic FX coverage recovery'
+  });
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(rates).toContainText('0');
+  await page.goto('/app/investments/prices');
+  await expect(pair).toContainText('Within age limit');
+});
 
 test('real draft count reaches header, Home and tab, and updates after discard', async ({ page }) => {
   const { csrfToken, currencyID } = await readyForLedger(page);

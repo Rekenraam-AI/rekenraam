@@ -847,6 +847,15 @@ non-trivial diff (yours or reviewed):
     desktop page narrows to phone width` tests both a last and a middle tab
     against the unmasked bounds.
 
+74. **Account defaults mistaken for currencies actually held** — a multi-currency
+    account can hold a posted currency with no default or price series (#464).
+    Current Pricing/attention discovery streams exact posted balances per
+    account/currency at the selected date; closed nonzero balances still count,
+    while exact zero, drafts, voids, deleted and superseded versions do not add
+    exposure. Compare the real reporting consumer and manual-rate recovery;
+    counts are not a certificate of historical or reporting-currency coverage.
+    Named checks: `TestPricingPostedCurrency*` and `attention.spec.ts`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

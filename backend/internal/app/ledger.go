@@ -621,15 +621,9 @@ func netWorthBucketTotals(
 	filterSet := reportFilterSetFrom(accounts, filters)
 	accountMap := ledgerAccountMap(accounts)
 
-	countsAccount := func(account db.LedgerAccountRecord) bool {
-		if account.AccountClass != "asset" && account.AccountClass != "liability" {
-			return false
-		}
-		return !account.SystemRole.Valid || account.SystemRole.String != "commodity_trading"
-	}
 	counts := func(accountID int64) bool {
 		account, ok := accountMap[accountID]
-		return ok && countsAccount(account)
+		return ok && countsNetWorthAccount(account)
 	}
 	totals := map[int64]*exact.ScaledInt{}
 	add := func(commodityID int64, amount *exact.ScaledInt) {
@@ -661,7 +655,7 @@ func netWorthBucketTotals(
 		if !ok {
 			account = settling[accountID]
 		}
-		if !countsAccount(account) {
+		if !countsNetWorthAccount(account) {
 			continue
 		}
 		included := map[int64]*exact.ScaledInt{}
@@ -697,6 +691,14 @@ func netWorthBucketTotals(
 		return shorts[i].CommodityID < shorts[j].CommodityID
 	})
 	return netWorthBucket{totals: quantities, unsettled: unsettled, unclassifiedShorts: shorts}, nil
+}
+
+// Closure does not remove a balance from net worth or current FX discovery.
+func countsNetWorthAccount(account db.LedgerAccountRecord) bool {
+	if account.AccountClass != "asset" && account.AccountClass != "liability" {
+		return false
+	}
+	return !account.SystemRole.Valid || account.SystemRole.String != "commodity_trading"
 }
 
 // foldPosting accumulates one posting into the running per-account balances.

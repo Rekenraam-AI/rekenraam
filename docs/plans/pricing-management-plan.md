@@ -12,8 +12,9 @@ remains in [the roadmap](../roadmap.md).
 
 The operator workspace composes current commodity/source choices and price-pair
 coverage in one response. Pairs include configured instruments, current open
-lot cost currencies, active account currencies relative to the configured FX
-base, and existing series. A deliberate additional pair can be inspected and
+lot cost currencies, active account default currencies relative to the configured
+FX base, nonzero posted currency balances on asset/liability accounts, and
+existing series. A deliberate additional pair can be inspected and
 entered even without a configured series. History pages sort by descending
 observation ID (recording order), with an opaque keyset cursor bound to filters;
 valuation and recorded dates remain separate, visible fields. Voided rows are
@@ -36,6 +37,40 @@ window (default seven days). #203 now supplies their shared compatible-quote
 selection and explicit date/knowledge ceilings, with seven-day stale warnings
 on retained holdings/settings values. The [R18 policy](investment-reporting-plan.md)
 records the consumer differences and remaining reproducible-profile boundary.
+
+### Posted currency discovery (#464)
+
+The same workspace supplies attention's current missing/stale price and FX
+counts. In addition to configured pairs, it discovers each currency with a
+nonzero exact posted balance on an asset or liability account, paired with the
+configured FX base (or book default). This includes currencies on accounts
+without a default commodity. It folds current, undeleted, posted transaction
+versions through the selected journal-entry date, with account classification
+effective on that date. Omitted dates use owner-local today. Drafts, voids,
+deleted transactions, superseded posting versions and future entries do not
+create current exposure. Explicit future workspace dates remain diagnostics.
+
+Closure does not erase a nonzero balance: closed accounts remain covered, as
+in net worth. A zero balance at the account/currency level creates no new pair;
+equal and opposite balances on separate accounts still require one shared
+pair, since either account can be valued separately. Income, expense, equity
+and commodity-trading residuals do not independently create current stock
+exposure. Existing series, configured instruments/lots and active account
+defaults remain discoverable even without a nonzero balance. All pair sources
+are deduplicated. Exact scale-aware accumulation happens in the application;
+the repository streams amounts inside the same read snapshot as candidates,
+without materializing posting history, SQLite monetary sums or per-row queries.
+
+This extends discovery, not observation selection or conversion policy:
+`live_raw_v1`, recording/valuation ceilings and the configured diagnostic age
+threshold still govern; a valid manual rate repairs the pair for both workspace
+and attention. These counts do not certify every historical, filtered,
+alternative-reporting-currency or trade-date/unsettled valuation. Reports,
+including Home's future reporting-currency consumer (#437), must retain their
+own dated conversion coverage and complete-only totals. Historical provider
+refresh planning remains a separate demand owner under ADR 0010; #465 tracks
+its missing posted-only currency targets. Manual rates can repair current
+coverage while that automated historical backfill gap remains open.
 
 Every observation exposes source, quote type and adjustment basis, valuation,
 observation, publication and recording times, manual/derived/approximate flags,

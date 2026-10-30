@@ -152,7 +152,7 @@ func TestCurrentReferenceSiblingsAndComposedReadsUseOwnerDay(t *testing.T) {
 			reportNames, err := db.NewPayeeRepository(f.database).ReportPayeeNames(referenceCtx, BookID, []int64{payee.ID})
 			require.NoError(t, err)
 			assert.Equal(t, "Owner current", reportNames[payee.ID])
-			workspace, err := db.NewPricingRepository(f.database).PriceManagementSnapshot(referenceCtx, BookID, tc.today, f.eurCommodityID)
+			workspace, err := db.NewPricingRepository(f.database).PriceManagementSnapshot(referenceCtx, BookID, tc.today, f.eurCommodityID, nil)
 			require.NoError(t, err)
 			assert.Contains(t, workspace.Commodities, db.PricingCommodityRecord{ID: f.eurCommodityID, Code: "EUR", Name: "Owner current", Kind: "currency", Status: "active"})
 			exports := NewExportService(db.NewExportRepository(f.database))

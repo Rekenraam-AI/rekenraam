@@ -282,9 +282,9 @@ func TestLargeBookExportAndSelfCheckStayBounded(t *testing.T) {
 	assert.Less(t, checkUsage.Wall, largeBookSelfCheckWallCeiling, "self-check wall time")
 	assert.Less(t, checkUsage.PeakHeap, uint64(largeBookSelfCheckPeakHeapCeiling), "self-check peak heap")
 
-	// The shell polls this whole-book read. Keep it aggregate-only as the
-	// transaction history grows; a first-page or per-posting implementation
-	// must not become a hidden cost of opening every route (#458).
+	// The shell polls this whole-book read. Currency discovery streams exact
+	// posted balances (#464), without retaining the posting history or adding
+	// per-row queries as the book grows.
 	_, err = writer.Exec(`UPDATE books SET default_currency_commodity_id=1 WHERE id=1`)
 	require.NoError(t, err)
 	settings := NewSettingsService(db.NewSettingsRepository(writer))
@@ -297,10 +297,15 @@ func TestLargeBookExportAndSelfCheckStayBounded(t *testing.T) {
 	t.Logf("attention: wall=%s allocated=%dMiB peak-heap=%dMiB", attentionUsage.Wall.Round(time.Millisecond), attentionUsage.Allocated>>20, attentionUsage.PeakHeap>>20)
 	assert.True(t, counts.Complete, "%+v", counts.Sources)
 	assert.False(t, counts.HasFailures)
+	assert.Equal(t, 1, counts.TotalKnown, "the non-default EUR exposure needs EUR/USD even without account defaults or a series")
 	for _, source := range counts.Sources {
 		if source.ID == "drafts" || source.ID == "transaction_review" {
 			require.NotNil(t, source.Count)
 			assert.Zero(t, *source.Count)
+		}
+		if source.ID == "rates" {
+			require.NotNil(t, source.Count)
+			assert.Equal(t, 1, *source.Count)
 		}
 	}
 	assert.Less(t, attentionUsage.Wall, 5*time.Second, "attention wall time")

@@ -521,10 +521,13 @@ focus, after successful typed-client writes and on explicit Retry. Home's full
 briefing remains #437; Review's Needs action / Notes / Status design, per-source
 last-run details and retention remain #453. Entered values join this read when
 #454 supplies the shared coverage; their absence is not a claim about asset
-valuation completeness. FX pair discovery currently follows account defaults
-and configured pairs; posted non-default currency exposures can be absent
-([#464](https://github.com/sergeyfarin/rekenraam/issues/464)). Zero attention
-is not an assurance that every reporting conversion is available.
+valuation completeness. FX pair discovery includes nonzero posted currency
+balances on asset/liability accounts, including closed accounts, alongside
+account defaults and configured pairs (#464). The
+[pricing contract](../plans/pricing-management-plan.md#posted-currency-discovery-464)
+defines exact zero, lifecycle and date scope. Zero attention is not an assurance
+that every historical or reporting-currency conversion is available; Home's
+reporting consumer must retain its own dated coverage.
 
 Each response samples independent sources; it is not a transactionally frozen
 book snapshot. `checked_at` is the UTC start time of that read. Source units are:

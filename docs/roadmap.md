@@ -117,7 +117,9 @@ Deliver incrementally, tracked in #441, in this order:
    route registry, hide amounts, compact shared search and one attention read
    for counts. Header, registry and tab routes #455 are delivered (see the
    capability ledger). Hide amounts #456, search #457 and attention read/Review
-   count #458 are delivered. Continue with #459 (page actions, widths, `?` help); #460 reviews the remaining route
+   count #458 are delivered. Its posted-currency pricing-discovery follow-up
+   #464 is delivered; historical/report-specific coverage remains the consumer's
+   responsibility. Continue with #459 (page actions, widths, `?` help); #460 reviews the remaining route
    paths afterwards.
 2. **Home (#437):** two-line briefing, central command bar, shortcut tiles led
    by Add transaction, compact default My Home and real-size More to explore

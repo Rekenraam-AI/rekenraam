@@ -459,7 +459,10 @@ Goal: add power-user workflows after the core ledger is stable.
   rechecks the reviewed dependency set atomically; a stale review writes nothing.
   This changes market valuations only, never posted trades, cost basis or active
   reconciliation. Dated management coverage is explicit about its age rule and
-  does not replace each report's valuation policy. See
+  does not replace each report's valuation policy. Current FX diagnostics also
+  discover nonzero posted currency balances on asset/liability accounts,
+  including closed accounts and accounts without a default currency; zero
+  balances and non-posted records create no new exposure obligation. See
   `docs/plans/pricing-management-plan.md`.
 - FX coverage is demand-driven and restart-safe. Activating a currency or durably
   posting an older transaction extends required provider history from the

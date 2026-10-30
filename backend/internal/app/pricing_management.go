@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -81,10 +82,41 @@ func (s *PricingService) Workspace(ctx context.Context, asOf string) (PricingWor
 	}
 	// An explicitly selected future management date is a diagnostic, not current value.
 	boundary.AsOf = asOf
-	snapshot, err := s.repository.PriceManagementSnapshot(ctx, BookID, asOf, baseID, boundary)
+	balances := map[int64]map[int64]*exact.ScaledInt{}
+	snapshot, err := s.repository.PriceManagementSnapshot(ctx, BookID, asOf, baseID, func(account db.LedgerAccountRecord, posting db.LedgerPostingRecord) {
+		if countsNetWorthAccount(account) {
+			foldPosting(balances, posting)
+		}
+	}, boundary)
 	if err != nil {
 		return result, err
 	}
+	// Keep obligations per account: equal and opposite balances in separate
+	// accounts still need a rate when either account is valued on its own.
+	pairs := map[[2]int64]bool{}
+	for _, pair := range snapshot.Pairs {
+		pairs[[2]int64{pair.BaseCommodityID, pair.QuoteCommodityID}] = true
+	}
+	if baseID > 0 {
+		for _, amounts := range balances {
+			for commodityID, amount := range amounts {
+				key := [2]int64{commodityID, baseID}
+				if commodityID != baseID && amount.Sign() != 0 && !pairs[key] {
+					pairs[key] = true
+					snapshot.Pairs = append(snapshot.Pairs, db.PricingPairRecord{BaseCommodityID: commodityID, QuoteCommodityID: baseID})
+				}
+			}
+		}
+	}
+	slices.SortFunc(snapshot.Pairs, func(a, b db.PricingPairRecord) int {
+		if a.BaseCommodityID < b.BaseCommodityID || (a.BaseCommodityID == b.BaseCommodityID && a.QuoteCommodityID < b.QuoteCommodityID) {
+			return -1
+		}
+		if a == b {
+			return 0
+		}
+		return 1
+	})
 	sources, err := s.ListSources(ctx)
 	if err != nil {
 		return result, err

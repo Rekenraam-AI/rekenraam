@@ -33,7 +33,10 @@ type PricingWorkspaceRecord struct {
 // PriceManagementSnapshot returns full reference and candidate sets, never a
 // silently capped observation list. One read transaction keeps pair discovery
 // and candidates together; no provider or durable write participates.
-func (r *PricingRepository) PriceManagementSnapshot(ctx context.Context, bookID int64, asOf string, fxBaseID int64, boundaries ...ObservationBoundary) (PricingWorkspaceRecord, error) {
+//
+// visitCurrencyPosting folds posted currency amounts without materializing the
+// ledger. It runs inside this snapshot and must not perform database I/O.
+func (r *PricingRepository) PriceManagementSnapshot(ctx context.Context, bookID int64, asOf string, fxBaseID int64, visitCurrencyPosting func(LedgerAccountRecord, LedgerPostingRecord), boundaries ...ObservationBoundary) (PricingWorkspaceRecord, error) {
 	result := PricingWorkspaceRecord{Commodities: []PricingCommodityRecord{}, Pairs: []PricingPairRecord{}, Candidates: []PriceObservationRecord{}}
 	boundary, err := r.observationBoundary(ctx, bookID, boundaries)
 	if err != nil {
@@ -46,6 +49,11 @@ func (r *PricingRepository) PriceManagementSnapshot(ctx context.Context, bookID 
 		return result, fmt.Errorf("begin price workspace: %w", err)
 	}
 	defer rollbackTx(ctx, tx)
+	if visitCurrencyPosting != nil {
+		if err := streamPricingCurrencyPostings(ctx, tx, bookID, asOf, visitCurrencyPosting); err != nil {
+			return result, err
+		}
+	}
 	rows, err := tx.QueryContext(ctx, `
 		SELECT c.id, c.code, cv.name, c.kind, cv.status
 		FROM commodities c
@@ -139,6 +147,47 @@ func (r *PricingRepository) PriceManagementSnapshot(ctx context.Context, bookID 
 	}
 
 	return result, nil
+}
+
+// Account classification is selected at the requested valuation date, as in
+// LedgerAccountsAsOf. Status is deliberately left to the consumer: closure
+// does not erase a balance. Current versions, entry dates and deletion follow
+// LedgerPostingsThrough; coefficients never enter SQLite SUM or a float.
+func streamPricingCurrencyPostings(ctx context.Context, tx *sql.Tx, bookID int64, asOf string, visit func(LedgerAccountRecord, LedgerPostingRecord)) error {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT a.id, av.account_class, a.system_role,
+			pv.commodity_id, pv.quantity_value, pv.quantity_scale
+		FROM current_transaction_versions tv
+		JOIN transactions t ON t.id = tv.transaction_id
+		JOIN journal_entries je ON je.transaction_version_id = tv.id
+		JOIN posting_versions pv ON pv.journal_entry_id = je.id
+		JOIN commodities c ON c.id = pv.commodity_id AND c.book_id = tv.book_id
+		JOIN accounts a ON a.id = pv.account_id AND a.book_id = tv.book_id
+		JOIN account_versions av ON av.id = (
+			SELECT candidate.id FROM account_versions candidate
+			WHERE candidate.account_id = a.id AND candidate.effective_from <= ?
+			ORDER BY candidate.effective_from DESC, candidate.version_seq DESC LIMIT 1)
+		WHERE tv.book_id = ? AND tv.status = 'posted' AND t.deleted_at IS NULL
+			AND je.entry_date <= ? AND c.kind = 'currency'
+	`, asOf, bookID, asOf)
+	if err != nil {
+		return fmt.Errorf("read pricing currency postings: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var account LedgerAccountRecord
+		var posting LedgerPostingRecord
+		if err := rows.Scan(&account.ID, &account.AccountClass, &account.SystemRole,
+			&posting.CommodityID, &posting.QuantityValue, &posting.QuantityScale); err != nil {
+			return fmt.Errorf("scan pricing currency posting: %w", err)
+		}
+		posting.AccountID = account.ID
+		visit(account, posting)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate pricing currency postings: %w", err)
+	}
+	return nil
 }
 
 // PriceHistoryPage uses observation ID as recording order. Inserts after page
