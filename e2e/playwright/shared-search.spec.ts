@@ -6,7 +6,7 @@ import { seedReferenceBook } from './support/reference-book';
 const search = (page: import('@playwright/test').Page) => page.getByRole('combobox', { name: 'Search', exact: true });
 
 test('shared search navigates pages and reference objects with keyboard and scoped localized matching', async ({ page }) => {
-  const { ids } = await seedReferenceBook(page);
+  const { ids, suffix } = await seedReferenceBook(page);
   await page.goto('/app');
   const requests: string[] = [];
   page.on('request', request => { if (request.url().includes('/api/v1/search/')) requests.push(request.url()); });
@@ -20,8 +20,8 @@ test('shared search navigates pages and reference objects with keyboard and scop
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL('/app/reports/spending');
   await page.keyboard.press('Control+k');
-  await search(page).fill('Reference Corp');
-  await expect(page.getByRole('option').filter({ hasText: 'Reference Corp' })).toBeVisible();
+  await search(page).fill(`Reference Corp${suffix}`);
+  await expect(page.getByRole('option').filter({ hasText: `Reference Corp${suffix}` })).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(`/app/investments/instruments/${ids.get('REF')}`);
   await page.keyboard.press('Meta+k');

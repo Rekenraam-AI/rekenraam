@@ -68,9 +68,31 @@ and attention. These counts do not certify every historical, filtered,
 alternative-reporting-currency or trade-date/unsettled valuation. Reports,
 including Home's future reporting-currency consumer (#437), must retain their
 own dated conversion coverage and complete-only totals. Historical provider
-refresh planning remains a separate demand owner under ADR 0010; #465 tracks
-its missing posted-only currency targets. Manual rates can repair current
-coverage while that automated historical backfill gap remains open.
+refresh planning remains a separate demand owner under ADR 0010 below; a valid
+manual rate can repair current coverage before automated history arrives.
+
+### Posted-only historical demand (#465)
+
+Durable FX planning derives its currency set from active account defaults plus
+every currency in the current posted ledger, and keeps required dates in the
+existing `FXCoverageStartDates` owner. The posting outbox, manual refresh, daily
+schedule and durable worker therefore share one base-relative pair set. Posting
+a multi-currency receivable or payable without a default commodity now attempts
+the required pairs instead of completing an empty sweep.
+
+Historical demand is deliberately wider than current exposure. A balance that
+later returns to zero, a closed account, an income/expense/equity posting, and
+a currency archived after posting all retain their posted rate obligation.
+Drafts, voided and deleted transactions, superseded versions, unsaved working
+copies and import previews create none; only a durable `posted` current
+transaction version does. A future-dated posted entry keeps its target identity,
+but ADR 0010 bounds fetching through owner-local today, so it requests no rate
+before that date.
+
+Provider selection, exact observation storage, the persisted pair/date cursor,
+continuation and bounded retry are unchanged. An unsupported pair remains
+explicit failed work with the pair/date in its error instead of a successful
+empty sweep that implies coverage.
 
 Every observation exposes source, quote type and adjustment basis, valuation,
 observation, publication and recording times, manual/derived/approximate flags,
