@@ -74,6 +74,10 @@ type fxDerivationLeg struct {
 
 func (s *PricingService) runFXRefresh(ctx context.Context, ownerUserID int64, sourceID int64, trigger string) (PricingRefreshRun, error) {
 	startedAt := s.now().UTC()
+	ctx, referenceErr := s.settings.referenceContext(ctx, startedAt)
+	if referenceErr != nil {
+		return PricingRefreshRun{}, referenceErr
+	}
 	policy, err := s.pricingPolicyOrDefault(ctx)
 	if err != nil {
 		return PricingRefreshRun{}, err

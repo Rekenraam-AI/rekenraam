@@ -15,12 +15,12 @@ import (
 // durable cursor is traversal progress, not proof that a publication exists.
 // Independent retry items preserve failed dates without wedging later history.
 func (s *PricingService) runFXCoverage(ctx context.Context, ownerUserID int64, payload fxCoverageWorkPayload) (PricingRefreshRun, []db.BackgroundWorkSuccessor, error) {
-	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	startedAt := s.now().UTC()
+	ctx, referenceErr := s.settings.referenceContext(ctx, startedAt)
 	if referenceErr != nil {
 		return PricingRefreshRun{}, nil, referenceErr
 	}
 
-	startedAt := s.now().UTC()
 	policy, err := s.pricingPolicyOrDefault(ctx)
 	if err != nil {
 		return PricingRefreshRun{}, nil, err

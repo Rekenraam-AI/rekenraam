@@ -358,7 +358,9 @@ func (r *PricingRepository) FXDemand(ctx context.Context, bookID int64) ([]Prici
 	}
 	defer rows.Close()
 
-	var records []PricingCurrencyDemandRecord
+	// A loaded empty set must stay distinct from nil, which the service uses
+	// for a direct triangulation call that has not loaded demand yet.
+	records := []PricingCurrencyDemandRecord{}
 	for rows.Next() {
 		var record PricingCurrencyDemandRecord
 		if err := rows.Scan(&record.CommodityID, &record.Code, &record.StartDate); err != nil {

@@ -83,6 +83,11 @@ base-relative pair set. Posting a multi-currency receivable or payable without
 a default commodity now attempts the required pairs instead of completing an
 empty sweep.
 
+An empty demand result is a loaded set, so failed triangulation attempts do
+not query it again. Immediate latest refreshes, like durable sweeps, pin
+reference-data selection to the owner-local day captured at run start, even
+if midnight passes during the run.
+
 An account default contributes only while its current version is active and
 postable and its commodity version is active; it then supplies both a start
 date and a target. A non-postable or archived default supplies neither, so a
@@ -93,9 +98,12 @@ later returns to zero, a closed account, an income/expense/equity posting, and
 a currency archived after posting all retain their posted rate obligation.
 Drafts, voided and deleted transactions, superseded versions, unsaved working
 copies and import previews create none; only a durable `posted` current
-transaction version does. A future-dated posted entry keeps its target identity,
-but ADR 0010 bounds fetching through owner-local today, so it requests no rate
-before that date.
+transaction version does. A future-dated posted entry remains in the demand
+set, and durable scans bound requests through owner-local today. Complete
+future-demand deferral remains #471: the immediate latest phase can fetch
+before the demand start, and an early zero-work sweep currently retains no
+wakeup for the posting date. The future-date test alone does not establish
+that the obligation will be served when its date arrives.
 
 Provider selection, exact observation storage, the persisted pair/date cursor,
 continuation and bounded retry are unchanged. An unsupported pair remains

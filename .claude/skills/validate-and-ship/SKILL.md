@@ -856,6 +856,15 @@ non-trivial diff (yours or reviewed):
     counts are not a certificate of historical or reporting-currency coverage.
     Named checks: `TestPricingPostedCurrency*` and `attention.spec.ts`.
 
+75. **A loaded empty demand treated as uninitialized** — nil is the FX
+    triangulation fallback's signal to query demand, so an empty repository
+    result must remain a non-nil loaded set (#466). Count actual demand reads
+    across failed derivations, including an empty book. Capture the owner day
+    at run start and pass that context through demand and target selection;
+    midnight must not change the selected currency versions mid-run. Named
+    checks: `TestFXRefreshEmptyDemandIsReadOnceAcrossTriangulationAttempts`
+    and `TestFXRefreshDemandUsesOwnerDayCapturedAtRunStart`.
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 
