@@ -293,7 +293,9 @@ func TestFXRefreshFuturePostedCurrencyDoesNotFetchBeforeItsDate(t *testing.T) {
 		Reason: "transaction_entered", CurrencyID: f.foreign, StartDate: "2026-06-13"})
 	require.NoError(t, err)
 	assert.Zero(t, run.ItemsTotal)
-	assert.Empty(t, successors)
+	require.Len(t, successors, 1, "future demand retains a durable owner-date wakeup (#471)")
+	assert.Equal(t, "2026-06-13T00:00:00Z", successors[0].AvailableAt)
+	assert.Zero(t, successors[0].Attempts)
 	assert.Zero(t, postedCurrencyObservations(t, f, "2026-06-13"))
 }
 

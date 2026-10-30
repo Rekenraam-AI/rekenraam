@@ -623,8 +623,10 @@ or report-specific conversion coverage remains the consumer's responsibility.
 Automated historical refresh targets now include posted-only currencies
 (#465; [contract](plans/pricing-management-plan.md#posted-only-historical-demand-465-466));
 drafts, voids, deletes and unsaved previews still create no demand. Future-only
-demand can lose its due-date wakeup or trigger an early latest refresh; #471
-tracks that separate scheduling repair.
+demand (#471) now retains a deduplicated owner-local midnight wakeup even with
+the daily schedule disabled. Manual/scheduled latest refreshes defer it too;
+the worker rechecks cancellation and replacement on waking, preserves earlier
+current demand, and starts provider retries only when downloads become due.
 
 Holdings/gains, reporting FX, currency settings, pricing diagnostics and
 constant-rate forecasts share `live_raw_v1` compatible raw quote admission and

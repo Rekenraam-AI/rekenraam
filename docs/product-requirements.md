@@ -471,7 +471,12 @@ Goal: add power-user workflows after the core ledger is stable.
   working copies with no database row) and import previews do not trigger
   downloads; import rows trigger only after commit posts them. Manual, daily,
   and domain-triggered refreshes use durable background work that resumes
-  after network loss or an app restart.
+  after network loss or an app restart. A currency demanded only by future
+  posted entries waits durably until its earliest needed date at owner-local
+  midnight, even with scheduled refresh disabled. Manual and scheduled refresh
+  do not override this wait. The worker rechecks current demand on waking, so
+  cancellation or date/currency replacement cannot force obsolete downloads;
+  independent current demand for the same currency remains eligible immediately.
 - Investment accounts for stocks and ETFs using the existing commodity,
   account, and ledger model.
 - Security identity and provider matching for listed instruments, including

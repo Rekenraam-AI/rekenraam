@@ -119,7 +119,8 @@ Deliver incrementally, tracked in #441, in this order:
    capability ledger). Hide amounts #456, search #457 and attention read/Review
    count #458 are delivered. Its posted-currency pricing-discovery follow-up
    #464, durable posted-only historical targets #465 and their shared demand
-   read #466 are delivered; report-specific conversion coverage remains the
+   read #466 and restart-safe future-demand deferral #471 are delivered;
+   report-specific conversion coverage remains the
    consumer's responsibility.
    Continue with #459 (page actions, widths, `?` help); #460 reviews the
    remaining route paths afterwards.

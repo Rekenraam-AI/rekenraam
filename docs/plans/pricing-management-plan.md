@@ -99,11 +99,26 @@ a currency archived after posting all retain their posted rate obligation.
 Drafts, voided and deleted transactions, superseded versions, unsaved working
 copies and import previews create none; only a durable `posted` current
 transaction version does. A future-dated posted entry remains in the demand
-set, and durable scans bound requests through owner-local today. Complete
-future-demand deferral remains #471: the immediate latest phase can fetch
-before the demand start, and an early zero-work sweep currently retains no
-wakeup for the posting date. The future-date test alone does not establish
-that the obligation will be served when its date arrives.
+set, and durable scans bound requests through owner-local today. Future-only
+currencies (#471) create no immediate latest requests, including manual and
+scheduled refreshes. The worker atomically completes the sweep and publishes
+one canonical currency/date wakeup at owner-local midnight, converting the
+IANA-zone boundary to UTC with its date's DST offset. This works with the daily
+schedule disabled and survives database reopen or process restart. If a DST
+transition skips midnight, the wakeup uses the first valid instant after the
+gap, preventing an early wakeup from repeatedly rescheduling itself.
+
+Waiting has zero provider attempts and no failure state. Repeated sweeps share
+the same active wakeup; another currency exhausting the chunk budget cannot
+discard it. Its nonempty start date prevents the posting outbox from absorbing
+new earlier/current demand into a later wait. At wake, current demand replaces
+the saved date hint: cancellation/void/delete or currency replacement removes
+the obligation, while a later posting date publishes a new wait. Independent
+current demand for the same currency remains immediately eligible. Due work
+retains the existing weekend/publication policy and eight-attempt pair/date
+retry identity; waiting does not consume that budget. Named regressions:
+`TestFXFutureDemand*`, `TestFXFutureWakeDoesNotCoalesceAwayNewCurrentDemand`,
+and `TestFXFuturePostingDoesNotDeferIndependentCurrentDemand`.
 
 Provider selection, exact observation storage, the persisted pair/date cursor,
 continuation and bounded retry are unchanged. An unsupported pair remains

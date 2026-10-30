@@ -19,8 +19,9 @@ import (
 const fxDerivedPriceScale = 12
 
 type fxRefreshTarget struct {
-	Base  db.PricingCurrencyRecord
-	Quote db.PricingCurrencyRecord
+	Base            db.PricingCurrencyRecord
+	Quote           db.PricingCurrencyRecord
+	DemandStartDate string
 }
 
 type fxRefreshSource struct {
@@ -103,8 +104,17 @@ func (s *PricingService) runFXRefresh(ctx context.Context, ownerUserID int64, so
 		counters.LastError = targetErr.Error()
 		return s.finishFXRefreshRun(ctx, runRecord.ID, counters)
 	}
+	location, locationErr := s.bookLocation(ctx)
+	if locationErr != nil {
+		counters.LastError = locationErr.Error()
+		return s.finishFXRefreshRun(ctx, runRecord.ID, counters)
+	}
+	today := startedAt.In(location).Format(time.DateOnly)
 
 	for _, target := range targets {
+		if target.DemandStartDate > today {
+			continue
+		}
 		counters.Total++
 		outcome, err := s.refreshFXTargetWithDemand(ctx, ownerUserID, target, policy, sourceID, "", startedAt, demand)
 		if err != nil {
@@ -232,8 +242,10 @@ func (s *PricingService) fxRefreshTargets(ctx context.Context, policy PricingPol
 		base.ID:            base,
 		defaultCurrency.ID: defaultCurrency,
 	}
+	starts := make(map[int64]string, len(demand))
 	for _, record := range demand {
 		currencyByID[record.CommodityID] = db.PricingCurrencyRecord{ID: record.CommodityID, Code: record.Code}
+		starts[record.CommodityID] = record.StartDate
 	}
 
 	targets := make([]fxRefreshTarget, 0, len(currencyByID)*2)
@@ -243,6 +255,7 @@ func (s *PricingService) fxRefreshTargets(ctx context.Context, policy PricingPol
 			continue
 		}
 		for _, pair := range []fxRefreshTarget{{Base: base, Quote: currency}, {Base: currency, Quote: base}} {
+			pair.DemandStartDate = starts[currency.ID]
 			key := fxPairKey(pair.Base.ID, pair.Quote.ID)
 			if seen[key] {
 				continue

@@ -865,6 +865,14 @@ non-trivial diff (yours or reviewed):
     checks: `TestFXRefreshEmptyDemandIsReadOnceAcrossTriangulationAttempts`
     and `TestFXRefreshDemandUsesOwnerDayCapturedAtRunStart`.
 
+76. **Completing future demand before it becomes due** — a zero-work sweep
+    must atomically retain an owner-date wakeup (#471), with no provider attempts
+    or early latest fetch from manual/scheduled refresh. Test the real outbox
+    and worker through database reopen, local midnight/DST, cancellation and
+    replacement, repeated sweeps and new current demand while waiting. Include
+    successor-publication rollback, other-currency chunk exhaustion and the
+    eight-attempt provider retry cap (`TestFXFutureDemand*`).
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 
