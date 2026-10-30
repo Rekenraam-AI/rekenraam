@@ -1,3 +1,4 @@
+import type { AttentionSourceID } from '#lib/api/attention.ts';
 import type { RouteIcon } from './icons';
 import { m } from '#lib/paraglide/messages.js';
 
@@ -9,10 +10,11 @@ import { m } from '#lib/paraglide/messages.js';
  * `+page.svelte` route is missing from it.
  */
 
-export type SectionID = 'home' | 'ledger' | 'investments' | 'planning' | 'reports' | 'settings';
+export type SectionID = 'home' | 'review' | 'ledger' | 'investments' | 'planning' | 'reports' | 'settings';
 
 // Keep static message references so bundling can discard unrelated catalogs.
 const titles = {
+  attention_review: m.attention_review,
   nav_home: m.nav_home,
   nav_overview: m.nav_overview,
   accounts_title: m.accounts_title,
@@ -55,6 +57,8 @@ export type RouteEntry = {
   title: () => string;
   /** Listed in its section's tab row (or the settings side list and menu). */
   tab?: true;
+  standalone?: true;
+  attention?: readonly AttentionSourceID[];
   /** A detail page marks this tab current: an account register marks Accounts. */
   parent?: string;
   /**
@@ -69,7 +73,7 @@ export type RouteEntry = {
 };
 
 export type Section = {
-  id: Exclude<SectionID, 'home' | 'settings'>;
+  id: Exclude<SectionID, 'home' | 'settings' | 'review'>;
   title: () => string;
   /** The section link opens this page, the first tab. */
   overview: string;
@@ -86,30 +90,31 @@ export const sections: readonly Section[] = [
 // overviews are placeholders until #448 and #450; Accounts stays a Ledger tab
 // until #448 folds it into the Ledger overview.
 const definitions: readonly Omit<RouteEntry, 'title' | 'keywords'>[] = [
+  { route: '/app/review', section: 'review', titleKey: 'attention_review', icon: 'scan-line', width: 'standard', standalone: true },
   { route: '/app', section: 'home', titleKey: 'nav_home', icon: 'house', width: 'fluid' },
 
   { route: '/app/ledger', section: 'ledger', titleKey: 'nav_overview', icon: 'landmark', width: 'standard', tab: true },
   { route: '/app/accounts', section: 'ledger', titleKey: 'accounts_title', icon: 'landmark', width: 'standard', tab: true },
   { route: '/app/accounts/[id]/register', section: 'ledger', titleKey: 'accounts_title', icon: 'list', width: 'fluid', parent: '/app/accounts' },
-  { route: '/app/transactions', section: 'ledger', titleKey: 'transactions_page_title', icon: 'list', width: 'fluid', tab: true },
+  { route: '/app/transactions', attention: ['transaction_review'], section: 'ledger', titleKey: 'transactions_page_title', icon: 'list', width: 'fluid', tab: true },
   { route: '/app/categories', section: 'ledger', titleKey: 'categories_title', icon: 'tags', width: 'standard', tab: true },
   { route: '/app/categories/[id]', section: 'ledger', titleKey: 'categories_title', icon: 'tags', width: 'standard', parent: '/app/categories' },
-  { route: '/app/import', section: 'ledger', titleKey: 'import_title', icon: 'download', width: 'fluid', tab: true },
+  { route: '/app/import', attention: ['imports', 'connections'], section: 'ledger', titleKey: 'import_title', icon: 'download', width: 'fluid', tab: true },
   { route: '/app/import/dividends', section: 'ledger', titleKey: 'import_dividend_title', icon: 'download', width: 'fluid', parent: '/app/import', ownHeader: true },
   { route: '/app/reconcile', section: 'ledger', titleKey: 'reconcile_title', icon: 'scan-line', width: 'fluid', tab: true },
 
-  { route: '/app/investments', section: 'investments', titleKey: 'nav_overview', icon: 'chart-no-axes-combined', width: 'standard', tab: true },
+  { route: '/app/investments', attention: ['suggestions'], section: 'investments', titleKey: 'nav_overview', icon: 'chart-no-axes-combined', width: 'standard', tab: true },
   { route: '/app/investments/instruments', section: 'investments', titleKey: 'quotes_instruments', icon: 'shapes', width: 'standard', tab: true },
   { route: '/app/investments/instruments/[id]', section: 'investments', titleKey: 'quotes_instruments', icon: 'shapes', width: 'standard', parent: '/app/investments/instruments' },
   { route: '/app/investments/returns', section: 'investments', titleKey: 'nav_returns', icon: 'trending-up', width: 'standard', tab: true, ownHeader: true },
   { route: '/app/investments/income', section: 'investments', titleKey: 'nav_income', icon: 'coins', width: 'standard', tab: true, ownHeader: true },
   { route: '/app/investments/gains', section: 'investments', titleKey: 'investments_tab_gains', icon: 'chart-line', width: 'standard', tab: true },
-  { route: '/app/investments/prices', section: 'investments', titleKey: 'nav_prices', icon: 'coins', width: 'standard', tab: true },
+  { route: '/app/investments/prices', attention: ['prices', 'refresh'], section: 'investments', titleKey: 'nav_prices', icon: 'coins', width: 'standard', tab: true },
   { route: '/app/pricing', section: 'investments', titleKey: 'nav_prices', icon: 'coins', width: 'standard', legacy: true },
 
   { route: '/app/planning', section: 'planning', titleKey: 'nav_overview', icon: 'calendar-days', width: 'standard', tab: true },
   { route: '/app/budgets', section: 'planning', titleKey: 'budgets_title', icon: 'wallet', width: 'standard', tab: true, ownHeader: true },
-  { route: '/app/recurring', section: 'planning', titleKey: 'recurring_title', icon: 'repeat', width: 'standard', tab: true },
+  { route: '/app/recurring', attention: ['drafts', 'recurring_blocked'], section: 'planning', titleKey: 'recurring_title', icon: 'repeat', width: 'standard', tab: true },
   { route: '/app/forecast', section: 'planning', titleKey: 'forecast_nav', icon: 'calendar-range', width: 'fluid', tab: true },
 
   { route: '/app/reports', section: 'reports', titleKey: 'nav_overview', icon: 'chart-pie', width: 'standard', tab: true },

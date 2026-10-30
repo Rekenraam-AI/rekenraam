@@ -1,16 +1,21 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import type { Middleware } from 'openapi-fetch';
+  import { apiClient } from '#lib/api/client.ts';
   import { browser } from '$app/env';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { createQuery } from '@tanstack/svelte-query';
+  import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
-  import { recurringSummaryQueryOptions } from '#lib/api/recurring.ts';
+  import { attentionQueryKey, attentionQueryOptions } from '#lib/api/attention.ts';
+  import { provideAttention } from '#lib/attention/context.ts';
+  import { attentionSummary, sourceBadge } from '#lib/attention/model.ts';
   import { getLocale } from '#lib/paraglide/runtime.js';
   import APIFormError from '#lib/components/api-form-error.svelte';
   import PageHeader from '#lib/components/page-header.svelte';
   import Panel from '#lib/components/panel.svelte';
   import AppHeader from '#lib/navigation/app-header.svelte';
-  import { canonicalURL, routeFor, sectionFor } from '#lib/navigation/routes.ts';
+  import { canonicalURL, routeFor, routes, sectionFor } from '#lib/navigation/routes.ts';
   import { authSessionQueryOptions, logout } from '#lib/api/auth.ts';
   import { setupStatusQueryOptions } from '#lib/api/setup.ts';
   import { APIClientError } from '#lib/api/client.ts';
@@ -77,14 +82,24 @@
   // Settings pages share one heading; the side list beside it names the page.
   const heading = $derived(entry?.section === 'settings' ? m.settings_title() : pageTitle);
 
-  // Until the composed attention read (#458), the recurring summary is the one
-  // count the shell shows.
-  const recurringSummary = createQuery(() => ({ ...recurringSummaryQueryOptions(), enabled: shellState === 'ready' && !shouldRedirectHome }));
-  const badges = $derived.by(() => {
-    const count = recurringSummary.data?.draft_count ?? 0;
-    const formatted = new Intl.NumberFormat(getLocale()).format(count);
-    return new Map([['/app/recurring', { count, label: m.recurring_badge({ count: formatted }) }]]);
+  const attention = createQuery(() => ({ ...attentionQueryOptions(), enabled: shellState === 'ready' && !shouldRedirectHome }));
+  provideAttention(() => attention);
+  const queryClient = useQueryClient();
+  // Refetch the shared count after successful API writes, including commands
+  // implemented with async handlers rather than TanStack mutations.
+  onMount(() => {
+    const middleware: Middleware = {
+      onResponse({ request, response }) {
+        if (response.ok && !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+          void queryClient.invalidateQueries({ queryKey: attentionQueryKey });
+        }
+      }
+    };
+    apiClient.use(middleware);
+    return () => apiClient.eject(middleware);
   });
+  const reviewBadge = $derived(attentionSummary(attention, getLocale()));
+  const badges = $derived(new Map(routes.filter(route => route.attention).map(route => [route.route, sourceBadge(attention, route.attention!, getLocale())])));
 
   $effect(() => {
     if (browser && shouldRedirectHome) {
@@ -165,6 +180,7 @@
     {entry}
     search={page.url.search}
     {badges}
+    {reviewBadge}
     signOutPending={logoutPending}
     signOutError={logoutError}
     onSignOut={handleLogout}

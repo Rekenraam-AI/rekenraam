@@ -1,7 +1,7 @@
 <script lang="ts">
+  import type { AttentionBadge } from '#lib/attention/model.ts';
   import type { Attachment } from 'svelte/attachments';
   import { m } from '#lib/paraglide/messages.js';
-  import { getLocale } from '#lib/paraglide/runtime.js';
   import { currentTab, sectionFor, sectionTabs, tabHref, type RouteEntry, type SectionID } from './routes';
 
   let {
@@ -14,13 +14,12 @@
     entry: RouteEntry | undefined;
     search: string;
     /** Count and its full sentence for screen readers, by tab route. */
-    badges: Map<string, { count: number; label: string }>;
+    badges: Map<string, AttentionBadge>;
   } = $props();
 
   const tabs = $derived(sectionTabs(section));
   const current = $derived(currentTab(entry));
   const sectionTitle = $derived(sectionFor(section)?.title() ?? '');
-  const numberFormat = $derived(new Intl.NumberFormat(getLocale()));
 
   let fadeStart = $state(false);
   let fadeEnd = $state(false);
@@ -66,9 +65,9 @@
           class="relative flex items-center gap-1.5 px-2.5 text-sm font-medium text-muted transition hover:text-foreground aria-[current=page]:text-foreground aria-[current=page]:after:absolute aria-[current=page]:after:inset-x-2 aria-[current=page]:after:bottom-0 aria-[current=page]:after:h-0.5 aria-[current=page]:after:rounded-full aria-[current=page]:after:bg-foreground"
         >
           {tab.title()}
-          {#if badge && badge.count > 0}
+          {#if badge && badge.text}
             <span class="rounded-full bg-foreground px-1.5 text-xs font-semibold text-background" aria-hidden="true">
-              {numberFormat.format(badge.count)}
+              {badge.text}
             </span>
             <span class="sr-only">{badge.label}</span>
           {/if}

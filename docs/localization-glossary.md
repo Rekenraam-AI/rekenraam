@@ -42,6 +42,7 @@ that term wins over a more literal translation:
 | Recurring transaction | Transacción periódica | Transaction récurrente | Periodieke transactie | Wiederkehrende Buchung | Регулярная транзакция |
 | Recurring template | Plantilla de transacción periódica | Modèle de transaction récurrente | Sjabloon voor periodieke transacties | Vorlage für wiederkehrende Buchungen | Шаблон регулярной транзакции |
 | Draft | Borrador | Brouillon | Concept | Entwurf | Черновик |
+| Review (navigation/action) | Revisar | Vérifier | Controleren | Prüfen | Проверить |
 | Due for review | Pendientes de revisión | À vérifier | Te controleren | Zur Prüfung fällig | Ожидают проверки |
 | Skip occurrence | Omitir repetición | Ignorer l’occurrence | Herhaling overslaan | Termin überspringen | Пропустить повторение |
 

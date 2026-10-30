@@ -1,5 +1,7 @@
 <script lang="ts">
+  import type { AttentionBadge } from '#lib/attention/model.ts';
   import { afterNavigate } from '$app/navigation';
+  import ListChecks from '@lucide/svelte/icons/list-checks';
   import Eye from '@lucide/svelte/icons/eye';
   import EyeOff from '@lucide/svelte/icons/eye-off';
   import { amountPrivacy, setAmountsHidden } from '#lib/money/privacy.svelte.ts';
@@ -16,13 +18,15 @@
     entry,
     search,
     badges,
+    reviewBadge,
     signOutPending,
     signOutError,
     onSignOut
   }: {
     entry: RouteEntry | undefined;
     search: string;
-    badges: Map<string, { count: number; label: string }>;
+    badges: Map<string, AttentionBadge>;
+    reviewBadge: AttentionBadge;
     signOutPending: boolean;
     signOutError: unknown;
     onSignOut: () => void;
@@ -30,7 +34,7 @@
 
   const section = $derived(entry?.section);
   const onHome = $derived(entry?.route === '/app');
-  const tabbed = $derived(section !== undefined && section !== 'home' && section !== 'settings');
+  const tabbed = $derived(section !== undefined && section !== 'home' && section !== 'settings' && section !== 'review');
 
   let menuOpen = $state(false);
   let menuButton = $state<HTMLButtonElement>();
@@ -78,18 +82,18 @@
       </nav>
 
       <!-- Phone: the same links behind one disclosure button. -->
-      <div class="relative -ml-2 lg:hidden" {@attach dismissible(() => menuOpen, closeMenu)}>
+      <div class="relative -ml-2 min-w-0 lg:hidden" {@attach dismissible(() => menuOpen, closeMenu)}>
         <button
           bind:this={menuButton}
           type="button"
           aria-expanded={menuOpen}
           aria-controls="shell-phone-menu"
           onclick={() => (menuOpen = !menuOpen)}
-          class="inline-flex min-h-10 items-center gap-2 rounded-(--radius-control) px-2 text-sm font-semibold text-foreground transition hover:bg-control-hover"
+          class="inline-flex min-h-10 max-w-full items-center gap-2 rounded-(--radius-control) px-2 text-sm font-semibold text-foreground transition hover:bg-control-hover"
         >
-          {#if menuOpen}<X size={18} aria-hidden="true" />{:else}<Menu size={18} aria-hidden="true" />{/if}
+          {#if menuOpen}<X size={18} aria-hidden="true" />{:else}<Menu size={18} class="shrink-0" aria-hidden="true" />{/if}
           <span class="sr-only">{m.nav_menu()}:</span>
-          {section && section !== 'home' && section !== 'settings' ? sectionFor(section)?.title() : section === 'settings' ? m.settings_title() : m.nav_home()}
+          <span class="truncate">{section && section !== 'home' && section !== 'settings' && section !== 'review' ? sectionFor(section)?.title() : section === 'settings' ? m.settings_title() : section === 'review' ? m.attention_review() : m.nav_home()}</span>
         </button>
 
         {#if menuOpen}
@@ -111,6 +115,9 @@
       </div>
 
       <div class="ml-auto flex min-w-0 items-center gap-1">
+        <a href="/app/review" aria-current={entry?.route === '/app/review' ? 'page' : undefined} aria-label={m.attention_review_label({ status: reviewBadge.label })} class="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-2 text-sm font-semibold text-foreground hover:bg-control-hover">
+          <ListChecks size={18} class="shrink-0 sm:hidden" aria-hidden="true" /><span class="hidden sm:inline">{m.attention_review()}</span> <span aria-hidden="true" class="rounded-full bg-foreground px-1.5 text-xs text-background">{reviewBadge.text}</span>
+        </a>
         <div class="min-w-0 md:w-48 xl:w-60"><SearchField /></div>
         <button type="button" aria-label={m.nav_hide_amounts()} title={m.nav_hide_amounts()}
           aria-pressed={amountPrivacy.hidden} onclick={() => setAmountsHidden(!amountPrivacy.hidden)}

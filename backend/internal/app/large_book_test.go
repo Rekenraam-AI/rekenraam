@@ -281,6 +281,30 @@ func TestLargeBookExportAndSelfCheckStayBounded(t *testing.T) {
 	assert.Less(t, exportUsage.PeakHeap, uint64(largeBookExportPeakHeapCeiling), "bundle export peak heap")
 	assert.Less(t, checkUsage.Wall, largeBookSelfCheckWallCeiling, "self-check wall time")
 	assert.Less(t, checkUsage.PeakHeap, uint64(largeBookSelfCheckPeakHeapCeiling), "self-check peak heap")
+
+	// The shell polls this whole-book read. Keep it aggregate-only as the
+	// transaction history grows; a first-page or per-posting implementation
+	// must not become a hidden cost of opening every route (#458).
+	_, err = writer.Exec(`UPDATE books SET default_currency_commodity_id=1 WHERE id=1`)
+	require.NoError(t, err)
+	settings := NewSettingsService(db.NewSettingsRepository(writer))
+	pricing := NewPricingService(db.NewPricingRepository(writer))
+	pricing.SetSettings(settings)
+	attention := NewAttentionService(db.NewAttentionRepository(writer), pricing)
+	probe = startResourceProbe()
+	counts := attention.Read(context.Background())
+	attentionUsage := probe.finish()
+	t.Logf("attention: wall=%s allocated=%dMiB peak-heap=%dMiB", attentionUsage.Wall.Round(time.Millisecond), attentionUsage.Allocated>>20, attentionUsage.PeakHeap>>20)
+	assert.True(t, counts.Complete, "%+v", counts.Sources)
+	assert.False(t, counts.HasFailures)
+	for _, source := range counts.Sources {
+		if source.ID == "drafts" || source.ID == "transaction_review" {
+			require.NotNil(t, source.Count)
+			assert.Zero(t, *source.Count)
+		}
+	}
+	assert.Less(t, attentionUsage.Wall, 5*time.Second, "attention wall time")
+	assert.Less(t, attentionUsage.PeakHeap, uint64(64<<20), "attention peak heap")
 }
 
 func BenchmarkLargeBookBundleExport(b *testing.B) {

@@ -105,6 +105,8 @@ paths:
     $ref: "./paths/institution-versions.yaml"
   /api/v1/setup/currencies:
     $ref: "./paths/setup-currencies.yaml"
+  /api/v1/attention:
+    $ref: "./paths/attention.yaml"
   /api/v1/search/catalog:
     $ref: "./paths/search-catalog.yaml"
   /api/v1/accounts:
@@ -908,6 +910,10 @@ components:
       $ref: "./components/schemas/accounts.yaml#/SystemAccountRole"
     AccountResponse:
       $ref: "./components/schemas/accounts.yaml#/AccountResponse"
+    AttentionResponse:
+      $ref: "./components/schemas/attention.yaml#/AttentionResponse"
+    AttentionSource:
+      $ref: "./components/schemas/attention.yaml#/AttentionSource"
     SearchCatalogItem:
       $ref: "./components/schemas/search.yaml#/SearchCatalogItem"
     SearchCatalogResponse:

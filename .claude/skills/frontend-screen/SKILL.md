@@ -52,6 +52,9 @@ description: SvelteKit frontend rules for Rekenraam - static adapter constraints
   A page is a route; a view inside it reads `page.url` on every navigation
   (never once with `untrack`). Moving a page keeps the old path as a `legacy`
   entry redirected by `canonicalURL`. Rules: `docs/conventions.md` → Frontend.
+- Shell counts come from `#lib/attention/context.ts`, one composed attention
+  query for header, tabs, Home and Review (#458). Unknown/error sources never
+  become zero or all-clear. Counting rules live in the design's attention contract.
 - Global search is `#lib/search/search-field.svelte` (#457). Mount one shortcut
   owner; reuse `scope`/`onSelect` and `variant="home"` for placement. Keep page
   filters independent, derive page hits from the route registry and consume every

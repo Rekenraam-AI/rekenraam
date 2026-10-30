@@ -391,7 +391,10 @@ pass.
 `./scripts/measure-large-book.sh` (`pnpm measure:large-book`) generates a book
 at a realistic upper bound — 250,000 posted postings over 3,020 accounts in two
 currencies across five years — and runs the bundle export and the self-check
-against it (#108). It asserts the right answer at that size (every posting in
+against it (#108). It also measures the shell attention read (#458), asserting
+successful aggregate reads and empty transaction-review queues, with ceilings
+of 5 seconds and 64 MiB peak live heap. This does not certify complete FX
+discovery from posted currencies (#464). It asserts the right answer at that size (every posting in
 `ledger.csv`, one trial-balance row per leaf and commodity, a passing check)
 and fails when wall time or peak live heap crosses a ceiling set several times
 above the measured figures, so a sharp regression fails and a slow runner does

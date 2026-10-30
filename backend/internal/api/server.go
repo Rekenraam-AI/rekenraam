@@ -15,6 +15,7 @@ type HandlerOptions struct {
 }
 
 type Services struct {
+	Attention        *app.AttentionService
 	Search           *app.SearchService
 	Setup            *app.SetupService
 	Auth             *app.AuthService

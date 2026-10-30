@@ -1,0 +1,46 @@
+AttentionSource:
+  type: object
+  required: [id, unit, state, status, count, failed]
+  properties:
+    id:
+      type: string
+      enum: [drafts, transaction_review, recurring_blocked, imports, suggestions, connections, refresh, backups, self_check, prices, rates]
+    unit:
+      type: string
+      enum: [transaction, occurrence, batch, provider_event, connection, pair, market_source, latest_run]
+    state:
+      type: string
+      enum: [ready, loading, error]
+      description: Loading means an operational check is running; error means its read failed.
+    status:
+      type: string
+      description: Latest durable run status (never if absent); running for active aggregate work, failed for queues containing failures, otherwise empty.
+    count:
+      type: [integer, 'null']
+      minimum: 0
+      description: Null when unknown. A loading aggregate can retain a known partial count; zero only after a successful complete source read.
+    failed:
+      type: boolean
+      description: A durable operation failed and requires attention; cannot be muted.
+    error_code:
+      type: string
+      enum: [INTERNAL_ERROR]
+AttentionResponse:
+  type: object
+  required: [checked_at, total_known, complete, has_failures, sources]
+  properties:
+    checked_at:
+      type: string
+      format: date-time
+    total_known:
+      type: integer
+      minimum: 0
+    complete:
+      type: boolean
+    has_failures:
+      type: boolean
+      description: True for durable failures or any source read error.
+    sources:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/AttentionSource'

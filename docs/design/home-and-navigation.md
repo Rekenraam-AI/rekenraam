@@ -510,3 +510,45 @@ Sequencing belongs in the roadmap; acceptance in the issues.
 - Usage-ordered pins that rearrange themselves.
 - Workspaces with separate layouts, bottom navigation on phones, usage-based
   automatic placement.
+
+## Attention foundation (#458)
+
+`GET /api/v1/attention` is the session-only composed read. The shell owns one
+`['api', 'attention']` query and provides its reactive result to the header,
+registry-driven tab badges, Home's temporary Review link and the bounded
+`/app/review` landing page. It refreshes every 30 seconds while visible, on
+focus, after successful typed-client writes and on explicit Retry. Home's full
+briefing remains #437; Review's Needs action / Notes / Status design, per-source
+last-run details and retention remain #453. Entered values join this read when
+#454 supplies the shared coverage; their absence is not a claim about asset
+valuation completeness. FX pair discovery currently follows account defaults
+and configured pairs; posted non-default currency exposures can be absent
+([#464](https://github.com/sergeyfarin/rekenraam/issues/464)). Zero attention
+is not an assurance that every reporting conversion is available.
+
+Each response samples independent sources; it is not a transactionally frozen
+book snapshot. `checked_at` is the UTC start time of that read. Source units are:
+
+| Source | Unit and deduplication |
+|---|---|
+| Drafts | Each undeleted current draft transaction, once regardless of posting count. |
+| Transaction review | Each undeleted current posted transaction with `needs_review`, once. Drafts are excluded. |
+| Blocked recurring | Each blocked occurrence identity; generated and skipped occurrences are excluded. |
+| Imports | Each previewing/partially committed batch with actionable pending/failed rows, or failed batch (including parse failure without rows), once. Duplicate/excluded-only previews and committed/discarded batches are excluded. Dividend rows pending in a batch are included here, not counted again as suggestions. |
+| Suggestions | Each provider event with a suggested/failed investment event suggestion, once; accepted, linked, ignored, auto-posted and superseded suggestions are excluded. |
+| Connections | Each connection whose latest fetch failed, once. |
+| Refresh | Each market-data source with an unresolved refresh-state error or a failed/partial latest ingest run, once across pairs and runs. |
+| Backup / self-check | The latest recorded run of each kind, not historical failures. A failed/errored run contributes one; self-check warning/incomplete contributes one. Pending/running is unknown, never zero. No recorded run has the explicit `never` status. A later successful run clears its predecessor. |
+| Prices / rates | Each distinct non-usable base/quote pair in the current owner-local Pricing workspace, separated by whether the base is a currency. The shared `live_raw_v1` observation owner and pricing staleness policy decide coverage; there is no separate attention valuation calculation. |
+
+The total counts **action units**, not unique objects across sources: a failed
+refresh and a missing price can both need action. Read failures retain successful
+sources, set `state=error` with a sanitized code and `count=null`; pending work
+uses `state=loading`. Running connection/refresh aggregates retain known failures
+as a partial count, or null when no result is known yet. `total_known` is a lower
+bound unless `complete=true`. Header and affected tab badges show `!` for failed reads or
+operations and `…` while unknown. Accessible labels state the known count and
+coverage. Failures have no mute setting, and cached successful data must not
+produce “All clear” after a request fails. The empty message is scoped to the
+available checks, and is shown only for a complete, successful zero result.
+GET never contacts providers, posts, generates drafts or starts checks.

@@ -152,8 +152,9 @@ func openWith(ctx context.Context, cfg config.Config, logger *slog.Logger, deps 
 	r.handler = api.NewHandler(logger, web.Handler(), api.Services{
 		Setup: setupService, Auth: authService, Settings: settingsService,
 		Book: bookService, Currency: currencyService, Institution: institutionService,
-		Search:  app.NewSearchService(db.NewSearchRepository(database), settingsService),
-		Account: accountService, Tag: tagService, Category: categoryService,
+		Attention: app.NewAttentionService(db.NewAttentionRepository(readOnlyDatabase), pricingService),
+		Search:    app.NewSearchService(db.NewSearchRepository(database), settingsService),
+		Account:   accountService, Tag: tagService, Category: categoryService,
 		Payee: payeeService, Transaction: transactionService, Recurring: recurringService,
 		Pricing: pricingService, Investment: investmentService, Import: importService,
 		ImportConnection: importConnectionService, Export: exportService,

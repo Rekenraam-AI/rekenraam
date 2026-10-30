@@ -54,7 +54,7 @@ describe('route registry', () => {
       expect(entry.icon, entry.route).toBeDefined();
       expect(entry.keywords, entry.route).toContain(entry.titleKey);
       expect(['narrow', 'standard', 'fluid'], entry.route).toContain(entry.width);
-      expect(entry.legacy || entry.route === '/app' || entry.tab || entry.parent, entry.route).toBeTruthy();
+      expect(entry.legacy || entry.route === '/app' || entry.tab || entry.parent || entry.standalone, entry.route).toBeTruthy();
     }
   });
 

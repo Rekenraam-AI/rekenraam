@@ -4893,6 +4893,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shared attention counts
+         * @description Composes current durable queues and owner-local pricing coverage without executing work or contacting providers. Sources are independent; a partial read returns 200 with per-source state/error_code and null unknown counts. total_known sums known action units, not distinct financial objects across sources. Never infer all-clear unless complete and total_known is zero. Session-only; no personal-access-token grant.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Attention counts, including explicit partial coverage */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AttentionResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/search/catalog": {
         parameters: {
             query?: never;
@@ -28688,6 +28736,34 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        AttentionResponse: {
+            /** Format: date-time */
+            checked_at: string;
+            total_known: number;
+            complete: boolean;
+            /** @description True for durable failures or any source read error. */
+            has_failures: boolean;
+            sources: components["schemas"]["AttentionSource"][];
+        };
+        AttentionSource: {
+            /** @enum {string} */
+            id: "drafts" | "transaction_review" | "recurring_blocked" | "imports" | "suggestions" | "connections" | "refresh" | "backups" | "self_check" | "prices" | "rates";
+            /** @enum {string} */
+            unit: "transaction" | "occurrence" | "batch" | "provider_event" | "connection" | "pair" | "market_source" | "latest_run";
+            /**
+             * @description Loading means an operational check is running; error means its read failed.
+             * @enum {string}
+             */
+            state: "ready" | "loading" | "error";
+            /** @description Latest durable run status (never if absent); running for active aggregate work, failed for queues containing failures, otherwise empty. */
+            status: string;
+            /** @description Null when unknown. A loading aggregate can retain a known partial count; zero only after a successful complete source read. */
+            count: number | null;
+            /** @description A durable operation failed and requires attention; cannot be muted. */
+            failed: boolean;
+            /** @enum {string} */
+            error_code?: "INTERNAL_ERROR";
         };
         SearchCatalogItem: {
             /** @enum {string} */

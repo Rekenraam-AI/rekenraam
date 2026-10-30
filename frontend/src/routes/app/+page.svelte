@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { useAttention } from '#lib/attention/context.ts';
+  import { attentionSummary } from '#lib/attention/model.ts';
+  import { getLocale } from '#lib/paraglide/runtime.js';
   import { createQuery } from '@tanstack/svelte-query';
   import Activity from '@lucide/svelte/icons/activity';
   import CheckCircle2 from '@lucide/svelte/icons/check-circle-2';
@@ -11,6 +14,8 @@
   import StatusBadge from '#lib/components/status-badge.svelte';
   import { m } from '#lib/paraglide/messages.js';
 
+  const attention = useAttention();
+  const review = $derived(attentionSummary(attention(), getLocale()));
   const healthQuery = createQuery(() => healthQueryOptions());
 
   const healthMessage = $derived.by(() => {
@@ -37,6 +42,8 @@
     return m.home_health_state_success();
   });
 </script>
+
+<p class="mb-4 text-sm text-muted"><a href="/app/review" class="inline-flex min-h-11 items-center text-foreground underline underline-offset-4">{m.attention_review_label({ status: review.label })}</a></p>
 
 <section class="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
   <Panel>

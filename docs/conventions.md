@@ -703,6 +703,11 @@ has actual installations, its migration files are immutable.
 - Use **`openapi-typescript`** (type generation) + **`openapi-fetch`** (typed HTTP client) for all frontend API calls. The OpenAPI spec is the single source of type truth.
 - Use **`@tanstack/svelte-query`** as the data layer for all server state. Use `createInfiniteQuery` for paginated lists; use query key composition to cache search results per search string. A screen that gates its form on several queries' `isPending` should pass `notifyOnChangeProps: 'all'` to those queries: the observer only notifies the properties read before the query settles, so a branch that short-circuits before reading `isPending` can leave a stale snapshot and pin the screen on its loading branch (#428, `returns-screen.svelte`).
 - Dense ledger tables are built on **`@tanstack/svelte-table` v9** (Svelte 5 runes native — no v8 compatibility wrapper). Register features explicitly through the shared `transactionTableFeatures` in `frontend/src/lib/transactions/transaction-table-types.ts`; sorting, filtering, and pagination stay server-side, so those features are deliberately not registered. Responsive column hiding stays CSS-driven (column `meta.priority`) rather than `columnVisibilityFeature`, because the static adapter prerenders without `matchMedia`. Always supply a `rowId` so rows keep identity across refetches. Add TanStack Virtual only when a screen actually needs virtualized rendering.
+- Attention counts use the shell-owned `['api', 'attention']` query and context,
+  never per-tab or per-card fetches. Preserve null unknown counts, read errors
+  and operational failures; cached data cannot imply all-clear after a failure.
+  Source counting units and retained screen scope live in the
+  [attention contract](design/home-and-navigation.md#attention-foundation-458).
 - Shared global search is `#lib/search/search-field.svelte`: mount one shortcut
   owner per page, use `scope`/`onSelect` for reuse, and keep page filters separate.
   Page hits come from the route registry; reference names come from the composed

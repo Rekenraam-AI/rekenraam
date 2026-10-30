@@ -1,0 +1,24 @@
+get:
+  summary: Shared attention counts
+  description: >-
+    Composes current durable queues and owner-local pricing coverage without
+    executing work or contacting providers. Sources are independent; a partial
+    read returns 200 with per-source state/error_code and null unknown counts.
+    total_known sums known action units, not distinct financial objects across
+    sources. Never infer all-clear unless complete and total_known is zero.
+    Session-only; no personal-access-token grant.
+  security:
+    - CookieSession: []
+  responses:
+    '200':
+      description: Attention counts, including explicit partial coverage
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/AttentionResponse'
+    '401':
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

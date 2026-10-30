@@ -44,6 +44,7 @@ type Route = {
 };
 
 const routes: Route[] = [
+  { name: 'review', route: '/app/review', path: () => '/app/review', data: true },
   { name: 'home', route: '/app', path: () => '/app', data: false },
   { name: 'ledger overview', route: '/app/ledger', path: () => '/app/ledger', data: false },
   { name: 'accounts', route: '/app/accounts', path: () => '/app/accounts', data: true },
@@ -90,7 +91,7 @@ const viewports = {
 } as const;
 
 // The shell's own gate: failing these leaves the install gate, not the route.
-const shellEndpoints = /\/api\/v1\/(health|setup\/status|auth\/session|recurring\/summary)(\?|$)/;
+const shellEndpoints = /\/api\/v1\/(health|setup\/status|auth\/session)(\?|$)/;
 
 /**
  * Waits until the route itself has rendered and stopped fetching. Each test
