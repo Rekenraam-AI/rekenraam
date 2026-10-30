@@ -27,7 +27,7 @@ func fixedReferenceDateInstance(t *testing.T, instant string) testInstance {
 	now, err := time.Parse(time.RFC3339, instant)
 	require.NoError(t, err)
 	for _, service := range []interface{ SetNowForTest(func() time.Time) }{
-		instance.services.Settings, instance.services.Account, instance.services.Institution,
+		instance.services.Search, instance.services.Settings, instance.services.Account, instance.services.Institution,
 		instance.services.Category, instance.services.Payee, instance.services.Currency,
 		instance.services.Transaction, instance.services.Investment, instance.services.Pricing,
 		instance.services.Export, instance.services.SelfCheck, instance.services.Forecast,
@@ -80,6 +80,11 @@ func TestOwnerCurrentReferenceHTTPCreateListAndFutureExclusion(t *testing.T) {
 			assert.Equal(t, "Owner today HTTP", get().Name)
 			listed = listAccountsForSession(t, handler, cookie, "?q=Future%20HTTP")
 			assert.Empty(t, listed.Accounts)
+			res := doInvestmentRequest(t, handler, cookie, "", http.MethodGet, "/api/v1/search/catalog", nil, http.StatusOK)
+			var search searchCatalogResponse
+			require.NoError(t, json.Unmarshal(res.Body.Bytes(), &search))
+			require.Len(t, search.Items, 1)
+			assert.Equal(t, "Owner today HTTP", search.Items[0].Name)
 		})
 	}
 }

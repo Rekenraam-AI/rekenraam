@@ -1,0 +1,15 @@
+meta {
+  name: shared search catalog
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/v1/search/catalog?limit=500
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

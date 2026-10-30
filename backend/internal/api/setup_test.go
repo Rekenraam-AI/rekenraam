@@ -401,6 +401,7 @@ func newTestInstanceOnDatabase(t *testing.T, database *sql.DB, databaseURL strin
 		Book:        bookService,
 		Currency:    currencyService,
 		Institution: institutionService,
+		Search:      app.NewSearchService(db.NewSearchRepository(database), settingsService),
 		Account:     accountService,
 		Tag:         tagService,
 		Category:    categoryService,

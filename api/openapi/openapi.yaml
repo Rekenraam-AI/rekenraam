@@ -105,6 +105,8 @@ paths:
     $ref: "./paths/institution-versions.yaml"
   /api/v1/setup/currencies:
     $ref: "./paths/setup-currencies.yaml"
+  /api/v1/search/catalog:
+    $ref: "./paths/search-catalog.yaml"
   /api/v1/accounts:
     $ref: "./paths/accounts.yaml"
   /api/v1/accounts/{account_id}:
@@ -906,6 +908,10 @@ components:
       $ref: "./components/schemas/accounts.yaml#/SystemAccountRole"
     AccountResponse:
       $ref: "./components/schemas/accounts.yaml#/AccountResponse"
+    SearchCatalogItem:
+      $ref: "./components/schemas/search.yaml#/SearchCatalogItem"
+    SearchCatalogResponse:
+      $ref: "./components/schemas/search.yaml#/SearchCatalogResponse"
     AccountsResponse:
       $ref: "./components/schemas/accounts.yaml#/AccountsResponse"
     AccountRequest:

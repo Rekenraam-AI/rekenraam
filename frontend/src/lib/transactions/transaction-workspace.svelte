@@ -29,6 +29,8 @@
 </script>
 
 <script lang="ts">
+  import { page } from '$app/state';
+  import { replaceState } from '$app/navigation';
   import { onMount, type Snippet } from 'svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import Plus from '@lucide/svelte/icons/plus';
@@ -105,6 +107,18 @@
       if (loadingTransactionID === transactionID) loadingTransactionID = undefined;
     }
   }
+
+  // Search's Add command opens an unsaved editor, including on this route.
+  // Consume the trigger so refresh/Back does not reopen a dismissed working copy.
+  $effect(() => {
+    const currentURL = page.shallow?.url ?? page.url;
+    if (currentURL.searchParams.get('create') === 'transaction' && create.kind === 'editor') {
+      panel = { type: 'create' };
+      const url = new URL(currentURL.href);
+      url.searchParams.delete('create');
+      void replaceState(url, page.state);
+    }
+  });
 
   const actions: TransactionWorkspaceActions = {
     showDetail: (transaction) => { panel = { type: 'detail', transaction }; },

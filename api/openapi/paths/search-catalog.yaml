@@ -1,0 +1,47 @@
+get:
+  summary: Compact shared-search reference catalog
+  description: >-
+    Composes names, codes and localization keys for accounts, categories and
+    instruments, using current owner-local reference versions. Excludes system
+    accounts; includes closed/archived objects for an explicit frontend filter.
+    No balances, notes, transactions or financial writes. Stable kind/ID cursor
+    order; consume every cursor before claiming complete search coverage.
+  security:
+    - CookieSession: []
+  parameters:
+    - in: query
+      name: cursor
+      schema:
+        type: string
+    - in: query
+      name: limit
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+        default: 500
+  responses:
+    '200':
+      description: Reference names, with a cursor when more remain
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/SearchCatalogResponse'
+    '400':
+      description: Invalid cursor or limit
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    '401':
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    '500':
+      description: Reference read failed
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

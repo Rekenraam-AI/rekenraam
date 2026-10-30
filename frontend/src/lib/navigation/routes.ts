@@ -137,6 +137,11 @@ const patterns = routes.map((entry) => ({
   pattern: new RegExp(`^${entry.route.replace(/\[[^\]]+\]/g, '[^/]+')}/?$`)
 }));
 
+/** Resolve registry search aliases at render time in the active locale. */
+export function routeSearchKeywords(entry: RouteEntry): string[] {
+  return entry.keywords.map(key => titles[key]());
+}
+
 /** The registry entry for a pathname, or undefined outside the registry. */
 export function routeFor(pathname: string): RouteEntry | undefined {
   return patterns.find(({ pattern }) => pattern.test(pathname))?.entry;

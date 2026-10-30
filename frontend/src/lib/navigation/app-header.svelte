@@ -9,6 +9,7 @@
   import { dismissible } from './disclosure';
   import { sectionFor, sections, type RouteEntry } from './routes';
   import SectionTabs from './section-tabs.svelte';
+  import SearchField from '#lib/search/search-field.svelte';
   import SettingsMenu from './settings-menu.svelte';
 
   let {
@@ -65,7 +66,7 @@
   <div class="mx-auto max-w-[100rem] px-4 sm:px-6 lg:px-8">
     <header class="flex h-14 items-center gap-2">
       <!-- Desktop: Home, then the sections as plain links to their overviews. -->
-      <nav aria-label={m.nav_sections_label()} class="-ml-3 hidden min-w-0 md:block">
+      <nav aria-label={m.nav_sections_label()} class="-ml-3 hidden min-w-0 lg:block">
         <ul class="flex items-center gap-1">
           <li><a href="/app" aria-current={onHome ? 'page' : undefined} class={linkClass}>{m.nav_home()}</a></li>
           {#each sections as item (item.id)}
@@ -77,7 +78,7 @@
       </nav>
 
       <!-- Phone: the same links behind one disclosure button. -->
-      <div class="relative -ml-2 md:hidden" {@attach dismissible(() => menuOpen, closeMenu)}>
+      <div class="relative -ml-2 lg:hidden" {@attach dismissible(() => menuOpen, closeMenu)}>
         <button
           bind:this={menuButton}
           type="button"
@@ -109,7 +110,8 @@
         {/if}
       </div>
 
-      <div class="ml-auto flex items-center gap-1">
+      <div class="ml-auto flex min-w-0 items-center gap-1">
+        <div class="min-w-0 md:w-48 xl:w-60"><SearchField /></div>
         <button type="button" aria-label={m.nav_hide_amounts()} title={m.nav_hide_amounts()}
           aria-pressed={amountPrivacy.hidden} onclick={() => setAmountsHidden(!amountPrivacy.hidden)}
           class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted transition hover:bg-control-hover hover:text-foreground">

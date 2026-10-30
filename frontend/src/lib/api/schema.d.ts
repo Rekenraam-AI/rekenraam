@@ -4893,6 +4893,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/search/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compact shared-search reference catalog
+         * @description Composes names, codes and localization keys for accounts, categories and instruments, using current owner-local reference versions. Excludes system accounts; includes closed/archived objects for an explicit frontend filter. No balances, notes, transactions or financial writes. Stable kind/ID cursor order; consume every cursor before claiming complete search coverage.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Reference names, with a cursor when more remain */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SearchCatalogResponse"];
+                    };
+                };
+                /** @description Invalid cursor or limit */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Reference read failed */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts": {
         parameters: {
             query?: never;
@@ -28619,6 +28688,26 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        SearchCatalogItem: {
+            /** @enum {string} */
+            kind: "account" | "category" | "instrument";
+            /**
+             * Format: int64
+             * @description Account/category ID or instrument commodity ID (its page identity).
+             */
+            id: number;
+            name: string;
+            code: string;
+            /** @description Resolve seeded category labels in the active frontend locale. */
+            builtin_key: string;
+            /** @enum {string} */
+            status: "active" | "closed" | "archived";
+            account_kind: string;
+        };
+        SearchCatalogResponse: {
+            items: components["schemas"]["SearchCatalogItem"][];
+            next_cursor?: string;
         };
         AccountsResponse: {
             accounts: components["schemas"]["AccountResponse"][];

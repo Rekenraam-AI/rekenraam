@@ -218,8 +218,48 @@ Existing support: the `transaction_search` FTS5 index (payee, description,
 external reference, notes), the transactions API `q` and `payee_id`
 parameters with matching Transactions URL filters, and MiniSearch-based
 payee matching in the frontend. New work: the shared editor dialog with
-prefill, a last-used-category read per payee, and the result grouping.
+prefill, a last-used-category read per payee, and payee/Everything result grouping (#439).
+The page/object/command grouping foundation is delivered in #457.
 Searching account, category or instrument notes is later work.
+
+### Shared search foundation (#457)
+
+The compact header field is one reusable combobox. `scope` restricts its result
+kind and `onSelect` lets a future switcher keep the current page's context;
+`variant="home"` supports Home placement, with the header instance omitted
+when that placement ships in #437. The mounting owner registers the global
+shortcuts once. Page-specific filter fields remain on their own pages.
+
+Pages come from the route registry, including localized search aliases, with
+legacy and parameterized routes excluded. One compact, cursor-paged catalog
+composes current owner-local account, category and instrument names/codes;
+seeded category labels are localized before indexing. It contains no balances,
+transaction history or notes. The field fetches on opening and follows every
+cursor, showing loading and partial-error coverage rather than an unsupported
+empty result. Page links and browser commands remain usable when that read
+fails. The read is refreshed on reopening; reference names are held only in the
+query cache, never browser storage.
+
+Within fixed groups (Pages, Accounts, Categories, Instruments, Commands), exact
+names precede prefix and fuzzy matches; multiword queries require all terms.
+Each group's initial six results can be expanded, with shown/total counts.
+Closed and archived objects are hidden until explicitly included. Account and
+category results open their register/detail; instruments use their commodity
+page identity. Scope changes keep keyboard focus in the input. Arrow keys move
+an active descendant, Enter chooses, Escape closes, and Tab reaches scope,
+coverage and expansion controls. `/` ignores editable fields; Ctrl/⌘ K also
+works from ordinary fields, while existing modal workflows retain their focus.
+Phones open the same field in the shared full-screen modal.
+
+Commands open an unsaved transaction editor or toggle browser presentation
+(amount visibility/theme); they never post or infer an amount/date. The entry
+URL trigger is consumed so refresh does not reopen a dismissed working copy;
+existing Transactions filters stay in place.
+Payee actions/last-used category and the Everything transaction search result
+remain #439. Recent objects, pins, hierarchy/institution grouping and switching
+while preserving context remain #442. Those existing issues own the follow-up
+acceptance; this foundation does not claim their behavior.
+
 
 ## Shortcuts
 

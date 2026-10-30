@@ -1,0 +1,33 @@
+SearchCatalogItem:
+  type: object
+  required: [kind, id, name, code, builtin_key, status, account_kind]
+  properties:
+    kind:
+      type: string
+      enum: [account, category, instrument]
+    id:
+      type: integer
+      format: int64
+      description: Account/category ID or instrument commodity ID (its page identity).
+    name:
+      type: string
+    code:
+      type: string
+    builtin_key:
+      type: string
+      description: Resolve seeded category labels in the active frontend locale.
+    status:
+      type: string
+      enum: [active, closed, archived]
+    account_kind:
+      type: string
+SearchCatalogResponse:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/SearchCatalogItem'
+    next_cursor:
+      type: string

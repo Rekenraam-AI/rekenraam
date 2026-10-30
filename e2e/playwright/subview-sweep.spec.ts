@@ -149,6 +149,17 @@ const recordForms: Array<[string, string]> = [
 ];
 
 const subViews: SubView[] = [
+  {
+    name: 'shared search', group: 'panel', path: () => '/app',
+    open: async (c) => {
+      await c.page.keyboard.press('Control+k');
+      const view = c.page.locator('dialog[open], [data-search-popup]');
+      await expect(view).toBeVisible();
+      await waitForPageReady(c.page);
+      return view;
+    },
+    close: async (c) => { await c.page.keyboard.press('Escape'); }
+  },
   // ── Transaction lifecycle and reconciliation dialogs ──────────────────
   {
     name: 'void reason', group: 'dialog', path: () => '/app/transactions',

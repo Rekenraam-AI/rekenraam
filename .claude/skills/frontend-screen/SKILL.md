@@ -52,6 +52,12 @@ description: SvelteKit frontend rules for Rekenraam - static adapter constraints
   A page is a route; a view inside it reads `page.url` on every navigation
   (never once with `untrack`). Moving a page keeps the old path as a `legacy`
   entry redirected by `canonicalURL`. Rules: `docs/conventions.md` → Frontend.
+- Global search is `#lib/search/search-field.svelte` (#457). Mount one shortcut
+  owner; reuse `scope`/`onSelect` and `variant="home"` for placement. Keep page
+  filters independent, derive page hits from the route registry and consume every
+  catalog cursor before claiming complete search coverage. The design's
+  [search contract](../../../docs/design/home-and-navigation.md#shared-search-foundation-457)
+  records retained #437/#439/#442 scope.
 - Every modal is `ModalDialog` (`#lib/components/modal-dialog.svelte`, #327):
   wrap it in `{#if}`, pass `onCancel` and `pending`, and keep Cancel before a
   destructive confirm. Never hand-roll a `fixed inset-0` + `aria-modal`
