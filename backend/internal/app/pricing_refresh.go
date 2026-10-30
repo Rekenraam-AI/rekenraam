@@ -74,6 +74,10 @@ type fxDerivationLeg struct {
 
 func (s *PricingService) runFXRefresh(ctx context.Context, ownerUserID int64, sourceID int64, trigger string) (PricingRefreshRun, error) {
 	startedAt := s.now().UTC()
+	ctx, referenceErr := s.settings.referenceContext(ctx, startedAt)
+	if referenceErr != nil {
+		return PricingRefreshRun{}, referenceErr
+	}
 	policy, err := s.pricingPolicyOrDefault(ctx)
 	if err != nil {
 		return PricingRefreshRun{}, err
@@ -89,7 +93,12 @@ func (s *PricingService) runFXRefresh(ctx context.Context, ownerUserID int64, so
 	}
 
 	counters := fxRefreshCounters{}
-	targets, targetErr := s.fxRefreshTargets(ctx, policy)
+	demand, demandErr := s.fxDemand(ctx)
+	if demandErr != nil {
+		counters.LastError = demandErr.Error()
+		return s.finishFXRefreshRun(ctx, runRecord.ID, counters)
+	}
+	targets, targetErr := s.fxRefreshTargets(ctx, policy, demand)
 	if targetErr != nil {
 		counters.LastError = targetErr.Error()
 		return s.finishFXRefreshRun(ctx, runRecord.ID, counters)
@@ -97,7 +106,7 @@ func (s *PricingService) runFXRefresh(ctx context.Context, ownerUserID int64, so
 
 	for _, target := range targets {
 		counters.Total++
-		outcome, err := s.refreshFXTarget(ctx, ownerUserID, target, policy, sourceID, "", startedAt)
+		outcome, err := s.refreshFXTargetWithDemand(ctx, ownerUserID, target, policy, sourceID, "", startedAt, demand)
 		if err != nil {
 			counters.Failed++
 			counters.LastError = err.Error()
@@ -190,7 +199,18 @@ func (s *PricingService) refreshRunSourceID(ctx context.Context, policy PricingP
 	return sourceID, nil
 }
 
-func (s *PricingService) fxRefreshTargets(ctx context.Context, policy PricingPolicy) ([]fxRefreshTarget, error) {
+// fxDemand reads the single demand set shared by coverage start dates, target
+// planning and triangulation candidates. The read is pinned to the owner-local
+// financial day so version selection cannot drift within one sweep.
+func (s *PricingService) fxDemand(ctx context.Context) ([]db.PricingCurrencyDemandRecord, error) {
+	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
+	if referenceErr != nil {
+		return nil, referenceErr
+	}
+	return s.repository.FXDemand(ctx, BookID)
+}
+
+func (s *PricingService) fxRefreshTargets(ctx context.Context, policy PricingPolicy, demand []db.PricingCurrencyDemandRecord) ([]fxRefreshTarget, error) {
 	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
 	if referenceErr != nil {
 		return nil, referenceErr
@@ -208,16 +228,12 @@ func (s *PricingService) fxRefreshTargets(ctx context.Context, policy PricingPol
 		}
 	}
 
-	currencies, err := s.repository.FXDemandCurrencies(ctx, BookID)
-	if err != nil {
-		return nil, err
-	}
 	currencyByID := map[int64]db.PricingCurrencyRecord{
 		base.ID:            base,
 		defaultCurrency.ID: defaultCurrency,
 	}
-	for _, currency := range currencies {
-		currencyByID[currency.ID] = currency
+	for _, record := range demand {
+		currencyByID[record.CommodityID] = db.PricingCurrencyRecord{ID: record.CommodityID, Code: record.Code}
 	}
 
 	targets := make([]fxRefreshTarget, 0, len(currencyByID)*2)
@@ -239,6 +255,13 @@ func (s *PricingService) fxRefreshTargets(ctx context.Context, policy PricingPol
 }
 
 func (s *PricingService) refreshFXTarget(ctx context.Context, ownerUserID int64, target fxRefreshTarget, policy PricingPolicy, overrideSourceID int64, valuationDate string, now time.Time) (fxRefreshOutcome, error) {
+	return s.refreshFXTargetWithDemand(ctx, ownerUserID, target, policy, overrideSourceID, valuationDate, now, nil)
+}
+
+// refreshFXTargetWithDemand reuses one demand read across a sweep's derived
+// attempts. A nil demand keeps direct calls self-contained by reading it when
+// triangulation is actually needed.
+func (s *PricingService) refreshFXTargetWithDemand(ctx context.Context, ownerUserID int64, target fxRefreshTarget, policy PricingPolicy, overrideSourceID int64, valuationDate string, now time.Time, demand []db.PricingCurrencyDemandRecord) (fxRefreshOutcome, error) {
 	if outcome, err := s.fetchAndStoreDirectFX(ctx, ownerUserID, target, policy, overrideSourceID, valuationDate, now); err == nil {
 		return outcome, nil
 	}
@@ -246,7 +269,7 @@ func (s *PricingService) refreshFXTarget(ctx context.Context, ownerUserID int64,
 	if policy.TriangulationMaxHops <= 0 {
 		return fxRefreshOutcome{}, fmt.Errorf("FX rate %s/%s is unavailable", target.Base.Code, target.Quote.Code)
 	}
-	return s.fetchAndStoreDerivedFX(ctx, ownerUserID, target, policy, overrideSourceID, valuationDate, now)
+	return s.fetchAndStoreDerivedFX(ctx, ownerUserID, target, policy, overrideSourceID, valuationDate, now, demand)
 }
 
 func (s *PricingService) fetchAndStoreDirectFX(ctx context.Context, ownerUserID int64, target fxRefreshTarget, policy PricingPolicy, overrideSourceID int64, valuationDate string, now time.Time) (fxRefreshOutcome, error) {
@@ -308,8 +331,8 @@ func (s *PricingService) fetchAndStoreDirectFX(ctx context.Context, ownerUserID 
 	return fxRefreshOutcome{}, lastErr
 }
 
-func (s *PricingService) fetchAndStoreDerivedFX(ctx context.Context, ownerUserID int64, target fxRefreshTarget, policy PricingPolicy, overrideSourceID int64, valuationDate string, now time.Time) (fxRefreshOutcome, error) {
-	candidates, err := s.triangulationCandidates(ctx, target)
+func (s *PricingService) fetchAndStoreDerivedFX(ctx context.Context, ownerUserID int64, target fxRefreshTarget, policy PricingPolicy, overrideSourceID int64, valuationDate string, now time.Time, demand []db.PricingCurrencyDemandRecord) (fxRefreshOutcome, error) {
+	candidates, err := s.triangulationCandidates(ctx, target, demand)
 	if err != nil {
 		return fxRefreshOutcome{}, err
 	}
@@ -333,15 +356,21 @@ func (s *PricingService) fetchAndStoreDerivedFX(ctx context.Context, ownerUserID
 // triangulationCandidates is the set of currencies a derived chain may route
 // through: the same active-account and posted-ledger demand set the refresh
 // planner visits, plus the book default, minus the pair's own endpoints.
-func (s *PricingService) triangulationCandidates(ctx context.Context, target fxRefreshTarget) ([]db.PricingCurrencyRecord, error) {
+func (s *PricingService) triangulationCandidates(ctx context.Context, target fxRefreshTarget, demand []db.PricingCurrencyDemandRecord) ([]db.PricingCurrencyRecord, error) {
 	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
 	if referenceErr != nil {
 		return nil, referenceErr
 	}
-
-	currencies, err := s.repository.FXDemandCurrencies(ctx, BookID)
-	if err != nil {
-		return nil, err
+	if demand == nil {
+		var err error
+		demand, err = s.fxDemand(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	currencies := make([]db.PricingCurrencyRecord, 0, len(demand)+1)
+	for _, record := range demand {
+		currencies = append(currencies, db.PricingCurrencyRecord{ID: record.CommodityID, Code: record.Code})
 	}
 	if defaultCurrency, err := s.repository.DefaultCurrency(ctx, BookID); err == nil {
 		currencies = append(currencies, defaultCurrency)

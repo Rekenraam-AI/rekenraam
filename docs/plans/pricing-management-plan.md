@@ -71,23 +71,39 @@ own dated conversion coverage and complete-only totals. Historical provider
 refresh planning remains a separate demand owner under ADR 0010 below; a valid
 manual rate can repair current coverage before automated history arrives.
 
-### Posted-only historical demand (#465)
+### Posted-only historical demand (#465, #466)
 
 Durable FX planning derives its currency set from active account defaults plus
-every currency in the current posted ledger, and keeps required dates in the
-existing `FXCoverageStartDates` owner. The posting outbox, manual refresh, daily
-schedule and durable worker therefore share one base-relative pair set. Posting
-a multi-currency receivable or payable without a default commodity now attempts
-the required pairs instead of completing an empty sweep.
+every currency in the current posted ledger. One `FXDemand` repository read
+returns each demanded currency, its code and earliest required date; coverage
+traversal, target planning and triangulation candidates all consume that single
+read, so a sweep does not scan the posted ledger twice. The posting outbox,
+manual refresh, daily schedule and durable worker therefore share one
+base-relative pair set. Posting a multi-currency receivable or payable without
+a default commodity now attempts the required pairs instead of completing an
+empty sweep.
+
+An empty demand result is a loaded set, so failed triangulation attempts do
+not query it again. Immediate latest refreshes, like durable sweeps, pin
+reference-data selection to the owner-local day captured at run start, even
+if midnight passes during the run.
+
+An account default contributes only while its current version is active and
+postable and its commodity version is active; it then supplies both a start
+date and a target. A non-postable or archived default supplies neither, so a
+traversal never sees a required date with no owning pair.
 
 Historical demand is deliberately wider than current exposure. A balance that
 later returns to zero, a closed account, an income/expense/equity posting, and
 a currency archived after posting all retain their posted rate obligation.
 Drafts, voided and deleted transactions, superseded versions, unsaved working
 copies and import previews create none; only a durable `posted` current
-transaction version does. A future-dated posted entry keeps its target identity,
-but ADR 0010 bounds fetching through owner-local today, so it requests no rate
-before that date.
+transaction version does. A future-dated posted entry remains in the demand
+set, and durable scans bound requests through owner-local today. Complete
+future-demand deferral remains #471: the immediate latest phase can fetch
+before the demand start, and an early zero-work sweep currently retains no
+wakeup for the posting date. The future-date test alone does not establish
+that the obligation will be served when its date arrives.
 
 Provider selection, exact observation storage, the persisted pair/date cursor,
 continuation and bounded retry are unchanged. An unsupported pair remains
