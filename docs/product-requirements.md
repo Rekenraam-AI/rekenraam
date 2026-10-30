@@ -90,7 +90,7 @@ Owner decision (2026-10-15), governed by
 ## Entered Asset Values
 
 Owner decision (2026-10-29), governed by
-[ADR 0021](adrs/0021-entered-asset-values.md) and delivered in #454:
+[ADR 0021](adrs/0021-entered-asset-values.md), with delivery tracked in #454:
 
 - A house, vehicle, pension or other asset no provider prices gets dated values
   the owner enters, kept beside the ledger. The ledger records only real money
