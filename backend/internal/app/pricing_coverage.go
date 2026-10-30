@@ -40,15 +40,15 @@ func (s *PricingService) runFXCoverage(ctx context.Context, ownerUserID int64, p
 		}
 		return run, nil, err
 	}
-	coverage, err := s.repository.FXCoverageStartDates(ctx, BookID)
+	demand, err := s.fxDemand(ctx)
 	if err != nil {
 		return fail(err)
 	}
-	starts := make(map[int64]string, len(coverage))
-	for _, record := range coverage {
+	starts := make(map[int64]string, len(demand))
+	for _, record := range demand {
 		starts[record.CommodityID] = record.StartDate
 	}
-	targets, err := s.fxRefreshTargets(ctx, policy)
+	targets, err := s.fxRefreshTargets(ctx, policy, demand)
 	if err != nil {
 		return fail(err)
 	}
@@ -143,7 +143,7 @@ scan:
 			}
 			remaining-- // Failures and earlier-date responses also consume the budget.
 			counters.Total++
-			outcome, refreshErr := s.refreshFXTarget(ctx, ownerUserID, target, policy, 0, date, startedAt)
+			outcome, refreshErr := s.refreshFXTargetWithDemand(ctx, ownerUserID, target, policy, 0, date, startedAt, demand)
 			if ctx.Err() != nil {
 				return fail(ctx.Err())
 			}

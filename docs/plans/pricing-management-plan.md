@@ -71,14 +71,22 @@ own dated conversion coverage and complete-only totals. Historical provider
 refresh planning remains a separate demand owner under ADR 0010 below; a valid
 manual rate can repair current coverage before automated history arrives.
 
-### Posted-only historical demand (#465)
+### Posted-only historical demand (#465, #466)
 
 Durable FX planning derives its currency set from active account defaults plus
-every currency in the current posted ledger, and keeps required dates in the
-existing `FXCoverageStartDates` owner. The posting outbox, manual refresh, daily
-schedule and durable worker therefore share one base-relative pair set. Posting
-a multi-currency receivable or payable without a default commodity now attempts
-the required pairs instead of completing an empty sweep.
+every currency in the current posted ledger. One `FXDemand` repository read
+returns each demanded currency, its code and earliest required date; coverage
+traversal, target planning and triangulation candidates all consume that single
+read, so a sweep does not scan the posted ledger twice. The posting outbox,
+manual refresh, daily schedule and durable worker therefore share one
+base-relative pair set. Posting a multi-currency receivable or payable without
+a default commodity now attempts the required pairs instead of completing an
+empty sweep.
+
+An account default contributes only while its current version is active and
+postable and its commodity version is active; it then supplies both a start
+date and a target. A non-postable or archived default supplies neither, so a
+traversal never sees a required date with no owning pair.
 
 Historical demand is deliberately wider than current exposure. A balance that
 later returns to zero, a closed account, an income/expense/equity posting, and

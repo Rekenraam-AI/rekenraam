@@ -66,8 +66,12 @@ type PricingCurrencyRecord struct {
 	Code string
 }
 
-type PricingCurrencyCoverageRecord struct {
+// PricingCurrencyDemandRecord is one currency with an FX conversion obligation
+// and the earliest date that obligation exists. Code travels with the date so
+// target planning and coverage traversal can share one repository read.
+type PricingCurrencyDemandRecord struct {
 	CommodityID int64
+	Code        string
 	StartDate   string
 }
 
@@ -309,14 +313,30 @@ func NewPricingRepository(database *sql.DB) *PricingRepository {
 	}
 }
 
-func (r *PricingRepository) FXCoverageStartDates(ctx context.Context, bookID int64) ([]PricingCurrencyCoverageRecord, error) {
+// FXDemand is the one demand owner for durable FX planning and coverage
+// traversal: every demanded currency with its earliest required date. Active,
+// postable account defaults with a current active commodity version contribute
+// their opened_on date. Every currency in a current posted journal entry also
+// contributes its entry date and deliberately ignores account status, current
+// balance and commodity archive state: historical financial facts require
+// dated conversion even after an account closes or its currency stops being
+// selectable. A non-postable or archived account default therefore yields
+// neither a coverage date nor a refresh target. Drafts, deleted and superseded
+// transaction versions are absent because the current posted ledger is the
+// only posted-demand owner.
+func (r *PricingRepository) FXDemand(ctx context.Context, bookID int64) ([]PricingCurrencyDemandRecord, error) {
 	rows, err := r.database.QueryContext(ctx, `
-		WITH required_dates AS (
+		WITH demanded AS (
 			SELECT av.default_commodity_id AS commodity_id, av.opened_on AS required_date
-			FROM `+CurrentReferenceVersions(ctx, "account")+` av
-			JOIN accounts a ON a.id = av.account_id
+			FROM accounts a
+			JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = a.id
 			JOIN commodities c ON c.id = av.default_commodity_id
-			WHERE a.book_id = ? AND av.status = 'active' AND c.kind = 'currency'
+			JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id = c.id
+			WHERE a.book_id = ?
+				AND av.status = 'active'
+				AND av.allows_postings = 1
+				AND c.kind = 'currency'
+				AND cv.status = 'active'
 			UNION ALL
 			SELECT pv.commodity_id, je.entry_date
 			FROM current_transaction_versions tv
@@ -326,25 +346,28 @@ func (r *PricingRepository) FXCoverageStartDates(ctx context.Context, bookID int
 			JOIN commodities c ON c.id = pv.commodity_id
 			WHERE tv.book_id = ? AND tv.status = 'posted' AND c.kind = 'currency'
 		)
-		SELECT commodity_id, MIN(required_date)
-		FROM required_dates
-		GROUP BY commodity_id
-		ORDER BY commodity_id
-	`, bookID, bookID)
+		SELECT d.commodity_id, c.code, MIN(d.required_date)
+		FROM demanded d
+		JOIN commodities c ON c.id = d.commodity_id AND c.kind = 'currency'
+		WHERE c.book_id = ?
+		GROUP BY d.commodity_id, c.code
+		ORDER BY c.code, d.commodity_id
+	`, bookID, bookID, bookID)
 	if err != nil {
-		return nil, fmt.Errorf("list FX coverage start dates: %w", err)
+		return nil, fmt.Errorf("list FX demand: %w", err)
 	}
 	defer rows.Close()
-	var records []PricingCurrencyCoverageRecord
+
+	var records []PricingCurrencyDemandRecord
 	for rows.Next() {
-		var record PricingCurrencyCoverageRecord
-		if err := rows.Scan(&record.CommodityID, &record.StartDate); err != nil {
-			return nil, fmt.Errorf("scan FX coverage start date: %w", err)
+		var record PricingCurrencyDemandRecord
+		if err := rows.Scan(&record.CommodityID, &record.Code, &record.StartDate); err != nil {
+			return nil, fmt.Errorf("scan FX demand: %w", err)
 		}
 		records = append(records, record)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate FX coverage start dates: %w", err)
+		return nil, fmt.Errorf("iterate FX demand: %w", err)
 	}
 	return records, nil
 }
@@ -432,61 +455,6 @@ func (r *PricingRepository) DefaultCurrency(ctx context.Context, bookID int64) (
 		return PricingCurrencyRecord{}, fmt.Errorf("read default pricing currency: %w", err)
 	}
 	return record, nil
-}
-
-// FXDemandCurrencies is the currency set durable FX planning may visit: active
-// account defaults plus every currency in a current posted journal entry. It
-// deliberately ignores account status, current balance and commodity archive
-// state for posted demand: historical financial facts require dated conversion
-// even after an account closes or its currency stops being selectable. Drafts,
-// deleted and superseded transaction versions are absent because the current
-// posted ledger is the only demand owner. Coverage dates still come from
-// FXCoverageStartDates; this method only names the currencies.
-func (r *PricingRepository) FXDemandCurrencies(ctx context.Context, bookID int64) ([]PricingCurrencyRecord, error) {
-	rows, err := r.database.QueryContext(ctx, `
-		WITH demanded AS (
-			SELECT av.default_commodity_id AS commodity_id
-			FROM accounts a
-			JOIN `+CurrentReferenceVersions(ctx, "account")+` av ON av.account_id = a.id
-			JOIN commodities c ON c.id = av.default_commodity_id
-			JOIN `+CurrentReferenceVersions(ctx, "commodity")+` cv ON cv.commodity_id = c.id
-			WHERE a.book_id = ?
-				AND av.status = 'active'
-				AND av.allows_postings = 1
-				AND c.kind = 'currency'
-				AND cv.status = 'active'
-			UNION
-			SELECT pv.commodity_id
-			FROM current_transaction_versions tv
-			JOIN transactions t ON t.id = tv.transaction_id AND t.deleted_at IS NULL
-			JOIN journal_entries je ON je.transaction_version_id = tv.id
-			JOIN posting_versions pv ON pv.journal_entry_id = je.id
-			JOIN commodities c ON c.id = pv.commodity_id
-			WHERE tv.book_id = ? AND tv.status = 'posted' AND c.kind = 'currency'
-		)
-		SELECT DISTINCT c.id, c.code
-		FROM demanded d
-		JOIN commodities c ON c.id = d.commodity_id
-		WHERE c.book_id = ?
-		ORDER BY c.code, c.id
-	`, bookID, bookID, bookID)
-	if err != nil {
-		return nil, fmt.Errorf("list FX demand currencies: %w", err)
-	}
-	defer rows.Close()
-
-	var records []PricingCurrencyRecord
-	for rows.Next() {
-		var record PricingCurrencyRecord
-		if err := rows.Scan(&record.ID, &record.Code); err != nil {
-			return nil, fmt.Errorf("scan FX demand currency: %w", err)
-		}
-		records = append(records, record)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate FX demand currencies: %w", err)
-	}
-	return records, nil
 }
 
 func (r *PricingRepository) CurrencyByID(ctx context.Context, bookID int64, commodityID int64) (PricingCurrencyRecord, error) {
