@@ -208,7 +208,7 @@ func (s *PricingService) fxRefreshTargets(ctx context.Context, policy PricingPol
 		}
 	}
 
-	currencies, err := s.repository.ActiveAccountCurrencies(ctx, BookID)
+	currencies, err := s.repository.FXDemandCurrencies(ctx, BookID)
 	if err != nil {
 		return nil, err
 	}
@@ -331,15 +331,15 @@ func (s *PricingService) fetchAndStoreDerivedFX(ctx context.Context, ownerUserID
 }
 
 // triangulationCandidates is the set of currencies a derived chain may route
-// through: every currency an active account uses, plus the book default,
-// minus the pair's own endpoints.
+// through: the same active-account and posted-ledger demand set the refresh
+// planner visits, plus the book default, minus the pair's own endpoints.
 func (s *PricingService) triangulationCandidates(ctx context.Context, target fxRefreshTarget) ([]db.PricingCurrencyRecord, error) {
 	ctx, referenceErr := s.settings.referenceContext(ctx, s.now())
 	if referenceErr != nil {
 		return nil, referenceErr
 	}
 
-	currencies, err := s.repository.ActiveAccountCurrencies(ctx, BookID)
+	currencies, err := s.repository.FXDemandCurrencies(ctx, BookID)
 	if err != nil {
 		return nil, err
 	}
