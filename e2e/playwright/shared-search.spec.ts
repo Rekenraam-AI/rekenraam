@@ -2,26 +2,102 @@ import { expect, test } from './support/fixtures';
 import { readyForLedger } from './support/ledger';
 import { expectNoAccessibilityViolations, expectFocusTrapped } from './support/a11y';
 import { seedReferenceBook } from './support/reference-book';
+import { observePageRequests, waitForPageReady } from './support/page-readiness';
 
 const search = (page: import('@playwright/test').Page) => page.getByRole('combobox', { name: 'Search', exact: true });
 
+for (const width of [1280, 390]) {
+  test(`search entered during Spending range repair survives completion at ${width}px (#472)`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    observePageRequests(page);
+    const { ids, suffix } = await seedReferenceBook(page);
+    await page.goto('/app');
+    if (width === 390) await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeVisible();
+    else await expect(search(page)).toBeVisible();
+    await page.keyboard.press('Control+k');
+    await expect(search(page)).toBeFocused();
+    await search(page).fill('Spending');
+    await expect(page.getByRole('option', { name: 'Spending Reports', exact: true })).toBeVisible();
+    const needle = `Reference Corp${suffix}`;
+
+    // Spending has rendered before its same-page default range is committed.
+    // Enter search at that history checkpoint, before completion callbacks,
+    // without sleeps, production test hooks or a copy of the implementation.
+    await page.evaluate(needle => {
+      const original = history.replaceState;
+      history.replaceState = function (state, unused, url) {
+        const target = new URL(String(url), location.href);
+        const result = original.call(this, state, unused, url);
+        if (target.pathname === '/app/reports/spending' &&
+          target.searchParams.has('start_date')) {
+          history.replaceState = original;
+          window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+          // Let the same rendering microtask mount the phone dialog's input.
+          queueMicrotask(() => {
+            const input = document.querySelector<HTMLInputElement>('input[role="combobox"][aria-label="Search"]')!;
+            input.focus();
+            input.value = needle;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            document.documentElement.dataset.searchCheckpoint = input.value;
+          });
+        }
+        return result;
+      };
+    }, needle);
+
+    await page.keyboard.press('Enter');
+    await expect(page.locator('html')).toHaveAttribute('data-search-checkpoint', needle);
+    await expect(page).toHaveURL(url => url.pathname === '/app/reports/spending' && url.searchParams.has('start_date'));
+    await waitForPageReady(page);
+    await expect(search(page)).toHaveValue(needle);
+    await expect(search(page)).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByRole('option').filter({ hasText: needle })).toBeVisible();
+
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(`/app/investments/instruments/${ids.get('REF')}`);
+    await waitForPageReady(page);
+    if (width === 390) await expect(page.getByRole('dialog', { name: 'Search', exact: true })).toHaveCount(0);
+    else await expect(search(page)).toHaveAttribute('aria-expanded', 'false');
+    await page.keyboard.press('Control+k');
+    await expect(search(page)).toHaveValue('');
+  });
+}
+
 test('shared search navigates pages and reference objects with keyboard and scoped localized matching', async ({ page }) => {
+  // Keep the journey meaningful on a populated book even when run alone:
+  // another reference book must not defeat this run's unique suffix (#468/#472).
+  await seedReferenceBook(page);
   const { ids, suffix } = await seedReferenceBook(page);
   await page.goto('/app');
   const requests: string[] = [];
   page.on('request', request => { if (request.url().includes('/api/v1/search/')) requests.push(request.url()); });
+  let readStart = 0;
+  const expectCatalogWalk = async () => {
+    await expect(page.getByRole('status').filter({ hasText: /Showing/ })).toBeVisible();
+    const walk = requests.slice(readStart).map(url => new URL(url));
+    expect(walk.length).toBeGreaterThan(0);
+    expect(walk.every(url => url.pathname === '/api/v1/search/catalog')).toBe(true);
+    const cursors = walk.map(url => url.searchParams.get('cursor'));
+    expect(cursors[0]).toBeNull();
+    // One composed cursor walk per opening, including on books over 500 items.
+    // Repeated cursors or a per-result endpoint still fail this assertion.
+    expect(new Set(cursors).size).toBe(cursors.length);
+    readStart = requests.length;
+  };
   await expect(search(page)).toBeVisible();
   await page.keyboard.press('/');
   await expect(search(page)).toBeFocused();
   await expect(search(page)).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByRole('status').filter({ hasText: /Showing/ })).toBeVisible();
+  await expectCatalogWalk();
   await expectNoAccessibilityViolations(page, 'desktop search results');
   await search(page).fill('Spending');
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL('/app/reports/spending');
+  // The report normalizes a missing range; its bare URL is only transient.
+  await expect(page).toHaveURL(url => url.pathname === '/app/reports/spending' && url.searchParams.has('start_date'));
   await page.keyboard.press('Control+k');
   await search(page).fill(`Reference Corp${suffix}`);
   await expect(page.getByRole('option').filter({ hasText: `Reference Corp${suffix}` })).toBeVisible();
+  await expectCatalogWalk();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(`/app/investments/instruments/${ids.get('REF')}`);
   await page.keyboard.press('Meta+k');
@@ -29,13 +105,12 @@ test('shared search navigates pages and reference objects with keyboard and scop
   await search(page).fill('Ref');
   await expect(page.getByRole('group', { name: 'Pages', exact: true })).toHaveCount(0);
   await expect(page.getByRole('group', { name: 'Accounts', exact: true })).toBeVisible();
+  await expectCatalogWalk();
   await page.keyboard.press('ArrowDown');
   const activeID = await search(page).getAttribute('aria-activedescendant');
   await expect(page.locator(`[id="${activeID}"]`)).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('Escape');
   await expect(search(page)).toHaveAttribute('aria-expanded', 'false');
-  expect(requests.length).toBeGreaterThan(0);
-  expect(requests.length).toBeLessThan(6); // One composed reference read per opening, no per-result reads.
 
   await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'nl'));
   await page.reload();

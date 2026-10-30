@@ -251,6 +251,13 @@ coverage and expansion controls. `/` ignores editable fields; Ctrl/⌘ K also
 works from ordinary fields, while existing modal workflows retain their focus.
 Phones open the same field in the shared full-screen modal.
 
+Search belongs to the current page's interaction (#472). Leaving for a different
+pathname resets it when navigation starts. Completion of an earlier navigation
+must not close or clear search reopened on the destination. Same-page query or
+fragment updates, including a report normalizing its default date range, keep
+the query, scope and result selection. Choosing a result releases search before
+the destination workflow takes focus, with no deferred close after arrival.
+
 Commands open an unsaved transaction editor or toggle browser presentation
 (amount visibility/theme); they never post or infer an amount/date. The entry
 URL trigger is consumed so refresh does not reopen a dismissed working copy;

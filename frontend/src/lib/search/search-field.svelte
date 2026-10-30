@@ -2,7 +2,7 @@
   import type { Attachment } from 'svelte/attachments';
   import { tick } from 'svelte';
   import { page } from '$app/state';
-  import { afterNavigate, goto } from '$app/navigation';
+  import { beforeNavigate, goto } from '$app/navigation';
   import { createInfiniteQuery } from '@tanstack/svelte-query';
   import Search from '@lucide/svelte/icons/search';
   import X from '@lucide/svelte/icons/x';
@@ -112,13 +112,21 @@
     media.addEventListener('change', resize);
     return () => media.removeEventListener('change', resize);
   };
-  afterNavigate(() => { close(false); query = ''; currentScope = scope; inactive = false; resetSelection(); });
+  // Reset the page we are leaving, never a new search opened on arrival.
+  // Query/hash-only navigation (such as a report repairing its default range)
+  // stays on the same page and must not erase an independent search (#472).
+  beforeNavigate(({ from, to }) => {
+    if (from?.url.pathname === to?.url.pathname) return;
+    close(false); query = ''; currentScope = scope; inactive = false; resetSelection();
+  });
 
   async function choose(item: SearchResult) {
     navigationError = false;
     try {
-      // Release the phone modal before another workflow opens its own focus scope.
-      if (onSelect || item.href || item.command === 'add-transaction') { close(false); await tick(); }
+      // Release the phone modal before another workflow opens its own focus
+      // scope. Completion must not close a later search opened by the user.
+      close(false);
+      await tick();
       if (onSelect) await onSelect(item);
       else if (item.command === 'hide-amounts') setAmountsHidden(!amountPrivacy.hidden);
       else if (item.command === 'theme') setTheme(themeState.name === 'dark' ? 'light' : 'dark');
@@ -130,7 +138,6 @@
         await goto(target);
       }
       else if (item.href) await goto(item.href);
-      close(false);
     } catch { open = true; navigationError = true; await tick(); input?.focus(); }
   }
   async function keydown(event: KeyboardEvent) {

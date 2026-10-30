@@ -61,7 +61,9 @@ description: SvelteKit frontend rules for Rekenraam - static adapter constraints
 - Global search is `#lib/search/search-field.svelte` (#457). Mount one shortcut
   owner; reuse `scope`/`onSelect` and `variant="home"` for placement. Keep page
   filters independent, derive page hits from the route registry and consume every
-  catalog cursor before claiming complete search coverage. The design's
+  catalog cursor before claiming complete search coverage. Search resets when
+  leaving a pathname, never on navigation completion or same-page URL repair;
+  a completed selection must not close a newly opened search (#472). The design's
   [search contract](../../../docs/design/home-and-navigation.md#shared-search-foundation-457)
   records retained #437/#439/#442 scope.
 - Every modal is `ModalDialog` (`#lib/components/modal-dialog.svelte`, #327):

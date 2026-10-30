@@ -873,6 +873,15 @@ non-trivial diff (yours or reviewed):
     successor-publication rollback, other-currency chunk exhaustion and the
     eight-attempt provider retry cap (`TestFXFutureDemand*`).
 
+77. **Navigation completion clearing a newer interaction** — shared search's
+    `afterNavigate` reset and post-`await goto` close erased a query reopened on
+    Spending while its default range was being repaired (#472). Reset when
+    leaving a pathname, preserve same-page query/fragment changes, and never
+    let an older selection's completion dismiss the next search. Control input
+    at actual history updates and check retained query/results after rendering;
+    also verify genuine page departure still dismisses search
+    (`shared-search.spec.ts`, `search entered during Spending range repair … (#472)`).
+
 Fix workflow for any bug: failing named test first, then the fix, then the
 full relevant suite.
 

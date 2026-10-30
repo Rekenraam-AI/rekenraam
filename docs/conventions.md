@@ -716,6 +716,10 @@ has actual installations, its migration files are immutable.
   [attention contract](design/home-and-navigation.md#attention-foundation-458).
 - Shared global search is `#lib/search/search-field.svelte`: mount one shortcut
   owner per page, use `scope`/`onSelect` for reuse, and keep page filters separate.
+  Reset at the start of a pathname change, never when earlier navigation
+  completes; same-page query/fragment updates preserve a new search (#472).
+  Release its focus scope before choosing a destination, without a late close
+  that could dismiss the user's next interaction.
   Page hits come from the route registry; reference names come from the composed
   cursor-paged catalog, never a request per result. Follow all cursors and show
   incomplete/error coverage until loaded. See the [search contract](design/home-and-navigation.md#shared-search-foundation-457).
