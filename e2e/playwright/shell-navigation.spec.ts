@@ -62,7 +62,8 @@ for (const theme of ['light', 'dark'] as const) {
       await page.goto('/app/investments/prices');
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       const pages = page.getByRole('navigation', { name: 'Investments pages', exact: true });
-      const current = pages.getByRole('link', { name: 'Prices', exact: true });
+      // Attention badges append their screen-reader sentence to the link name.
+      const current = pages.locator('a[href="/app/investments/prices"]');
       await expect(current).toHaveAttribute('aria-current', 'page');
       await expect.poll(() => current.evaluate((node) => {
         const bounds = node.getBoundingClientRect();
@@ -155,10 +156,10 @@ test('header, first tab and heading align and shell heights stay fixed', async (
 
 test('the current tab stays visible when a desktop page narrows to phone width', async ({ page }) => {
   await ensureBrowserSession(page);
-  for (const [name, path] of [['Prices', 'prices'], ['Gains', 'gains']]) {
+  for (const path of ['prices', 'gains']) {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(`/app/investments/${path}`);
-    const current = page.getByRole('navigation', { name: 'Investments pages', exact: true }).getByRole('link', { name, exact: true });
+    const current = page.getByRole('navigation', { name: 'Investments pages', exact: true }).locator(`a[href="/app/investments/${path}"]`);
     await expect(current).toHaveAttribute('aria-current', 'page');
     await page.setViewportSize({ width: 320, height: 844 });
     await expect.poll(() => current.evaluate((element) => {
