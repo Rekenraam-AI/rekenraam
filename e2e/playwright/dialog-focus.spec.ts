@@ -56,7 +56,7 @@ async function seedReconciled(page: Page, label: string, deleted = false) {
 
 test('the void dialog and its reconciliation override keep and return focus', async ({ page }) => {
   const s = await seedReconciled(page, 'Focus');
-  await page.goto(`/app/accounts/${s.checking.id}/register`);
+  await page.goto(`/app/ledger/accounts/${s.checking.id}/register`);
   await page.getByRole('row').filter({ hasText: s.description }).click();
 
   const trigger = page.getByRole('button', { name: 'Void…' });
@@ -138,7 +138,7 @@ test('an investment correction dialog keeps and returns focus', async ({ page })
     cash_amount_scale: 2, cash_commodity_id: currencyID, cost_basis_method: 'fifo'
   });
 
-  await page.goto(`/app/transactions?transaction_id=${buy.transaction.id}`);
+  await page.goto(`/app/ledger/transactions?transaction_id=${buy.transaction.id}`);
   const trigger = page.getByRole('button', { name: 'Correct buy…' });
   await trigger.focus();
   await page.keyboard.press('Enter');

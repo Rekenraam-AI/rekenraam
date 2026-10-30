@@ -39,7 +39,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
       effective_on: ago(30), holding_account_id: holding.id, commodity_id: instrument.commodity_id, ratio_numerator: 5, ratio_denominator: 4
     });
     await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
-    await page.goto(`/app/transactions?transaction_id=${split.transaction.id}`);
+    await page.goto(`/app/ledger/transactions?transaction_id=${split.transaction.id}`);
     await page.getByRole('button', { name: settings.investments_cash_in_lieu_entry_action, exact: true }).click();
     const cil = page.locator('dialog[open]').filter({ has: page.locator('#cil-quantity') });
     // Editable amounts parse in the active locale (#100).

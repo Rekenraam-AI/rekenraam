@@ -11,7 +11,7 @@ test('creates a simple transaction through the browser form', async ({ page }) =
 
   await createCashAccount(page, csrfToken, accountName, currencyID);
 
-  await page.goto('/app/transactions');
+  await page.goto('/app/ledger/transactions');
   await page.getByRole('button', { name: 'New transaction' }).click();
 
   await expect(page.getByRole('heading', { name: 'Add transaction' })).toBeVisible();
@@ -64,7 +64,7 @@ test('offers an existing payee before creating a near-duplicate', async ({ page 
     [201]
   );
 
-  await page.goto('/app/transactions');
+  await page.goto('/app/ledger/transactions');
   await page.getByRole('button', { name: 'New transaction' }).click();
   const form = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Add transaction' }) });
 

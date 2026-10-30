@@ -38,7 +38,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
       effective_on: ago(30), payment_on: ago(20), amount_value: '1000', amount_scale: 2, source_evidence: { reference: suffix, precise: '9007199254740993' } };
     const receipt = await apiJSON<{ transaction: { id: number } }>(page, 'POST', '/api/v1/investments/return-of-capital', csrfToken, receiptTerms);
     await page.evaluate((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
-    await page.goto(`/app/transactions?transaction_id=${receipt.transaction.id}`);
+    await page.goto(`/app/ledger/transactions?transaction_id=${receipt.transaction.id}`);
     const history = page.getByRole('region', { name: settings.investments_roc_history });
     let card = history.getByRole('article').filter({ hasText: settings.investments_roc_current });
     await expect(card).toContainText(settings.investments_roc_excess);
@@ -70,7 +70,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     await expect(summary.getByRole('article').filter({ hasText: suffix })).toHaveCount(1);
     await expect(summary.getByRole('article').filter({ hasText: suffix })).toContainText(settings.investments_roc_no_excess);
     await test.step('load the capital-return transaction for reversal', async () => {
-      await page.goto(`/app/transactions?transaction_id=${receipt.transaction.id}`);
+      await page.goto(`/app/ledger/transactions?transaction_id=${receipt.transaction.id}`);
     });
     await test.step('click the capital-return reversal action', async () => {
       await page.getByRole('button', { name: settings.transactions_investment_reverse_capital_return_action, exact: true }).click();
@@ -86,7 +86,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
     await test.step('wait for the capital-return reversal dialog to close', async () => {
       await expect(reversal).toBeHidden();
     });
-    await page.goto(`/app/transactions?transaction_id=${receipt.transaction.id}`);
+    await page.goto(`/app/ledger/transactions?transaction_id=${receipt.transaction.id}`);
     await expect(history.getByRole('article')).toHaveCount(3);
     await expect(history).not.toContainText(settings.investments_roc_current);
 

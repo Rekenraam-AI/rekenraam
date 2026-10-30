@@ -626,7 +626,7 @@
                         <ul class="mt-1 space-y-1 text-xs leading-5">
                           {#each result.warning_sample as warning (`${warning.transaction_id}:${warning.reason}`)}
                             <li>
-                              <a class="text-accent underline" href={`/app/transactions?transaction_id=${warning.transaction_id}`}>
+                              <a class="text-accent underline" href={`/app/ledger/transactions?transaction_id=${warning.transaction_id}`}>
                                 {m.investments_attribution_payment_link({ id: warning.transaction_id })}
                               </a>
                               {attributionReason(warning.reason)}
@@ -641,7 +641,7 @@
                         {#if result.check_id === 'investment_attribution'}
                           <ul class="mt-1 space-y-1 text-xs leading-5">
                             {#each result.unavailable_sample as transactionID (transactionID)}
-                              <li><a class="text-accent underline" href={`/app/transactions?transaction_id=${transactionID}`}>
+                              <li><a class="text-accent underline" href={`/app/ledger/transactions?transaction_id=${transactionID}`}>
                                 {m.investments_attribution_payment_link({ id: transactionID })}
                               </a></li>
                             {/each}

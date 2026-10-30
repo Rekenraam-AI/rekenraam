@@ -15,7 +15,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
       const app = JSON.parse(readFileSync(new URL(`../../frontend/messages/app/${locale}.json`, import.meta.url), 'utf8'));
       const settings = JSON.parse(readFileSync(new URL(`../../frontend/messages/settings/${locale}.json`, import.meta.url), 'utf8'));
       await page.evaluate(value => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
-      await page.goto('/app/import');
+      await page.goto('/app/ledger/import');
       const before = await apiJSON(page, 'GET', '/api/v1/imports');
       const directory = await mkdtemp(join(tmpdir(), 'rekenraam-upload-'));
       try {

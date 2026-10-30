@@ -47,6 +47,12 @@ describe('route registry', () => {
     expect(routes.filter((entry) => entry.legacy && entry.tab)).toEqual([]);
   });
 
+  it('keeps each section page under its section path', () => {
+    for (const entry of routes.filter((item) => !item.legacy && ['ledger', 'planning'].includes(item.section))) {
+      expect(entry.route.startsWith(`/app/${entry.section}`), entry.route).toBe(true);
+    }
+  });
+
   it('gives every route localized search and presentation metadata', () => {
     for (const entry of routes) {
       expect(entry.titleKey, entry.route).toBeTruthy();
@@ -59,10 +65,10 @@ describe('route registry', () => {
   });
 
   it('matches dynamic segments and marks the parent tab current', () => {
-    expect(routeFor('/app/accounts/12/register')?.route).toBe('/app/accounts/[id]/register');
-    expect(currentTab(routeFor('/app/accounts/12/register'))).toBe('/app/accounts');
+    expect(routeFor('/app/ledger/accounts/12/register')?.route).toBe('/app/ledger/accounts/[id]/register');
+    expect(currentTab(routeFor('/app/ledger/accounts/12/register'))).toBe('/app/ledger/accounts');
     expect(currentTab(routeFor('/app/investments/instruments/7'))).toBe('/app/investments/instruments');
-    expect(routeFor('/app/accounts/12')).toBeUndefined();
+    expect(routeFor('/app/ledger/accounts/12')).toBeUndefined();
     expect(routeFor('/app/reports/spending/')?.route).toBe('/app/reports/spending');
   });
 
@@ -74,11 +80,47 @@ describe('route registry', () => {
       '/app/reports/cashflow?start_date=2026-03-01&account_id=4'
     );
     expect(tabHref(overview, spending, '?start_date=2026-03-01')).toBe('/app/reports');
-    expect(tabHref(cashflow, routeFor('/app/forecast'), '?horizon_days=30')).toBe('/app/reports/cashflow');
+    expect(tabHref(cashflow, routeFor('/app/planning/forecast'), '?horizon_days=30')).toBe('/app/reports/cashflow');
   });
 });
 
 describe('legacy links', () => {
+  // Include detail routes and duplicates/empty/encoded/unknown parameters: a
+  // redirect must preserve the entire URL state, not a known filter allowlist.
+  it.each([
+    ['/app/accounts', '/app/ledger/accounts'],
+    ['/app/accounts/12/register', '/app/ledger/accounts/12/register'],
+    ['/app/transactions', '/app/ledger/transactions'],
+    ['/app/categories', '/app/ledger/categories'],
+    ['/app/categories/7', '/app/ledger/categories/7'],
+    ['/app/import', '/app/ledger/import'],
+    ['/app/import/dividends', '/app/ledger/import/dividends'],
+    ['/app/reconcile', '/app/ledger/reconcile'],
+    ['/app/budgets', '/app/planning/budgets'],
+    ['/app/recurring', '/app/planning/recurring'],
+    ['/app/forecast', '/app/planning/forecast']
+  ])('preserves every parameter and fragment from %s', (from, to) => {
+    for (const suffix of ['', '/']) {
+      const original = url(`${from}${suffix}?account_id=1&account_id=2&empty=&q=a%2Bb+%26+c&view=drafts&future=unknown#detail`);
+      const next = canonicalURL(original)!;
+      expect(routeFor(from)?.legacy).toBe(true);
+      expect(next.pathname).toBe(to);
+      expect([...next.searchParams]).toEqual([...original.searchParams]);
+      expect(next.hash).toBe('#detail');
+      expect(canonicalURL(next)).toBeNull();
+      expect(routeFor(next.pathname)?.legacy).toBeUndefined();
+    }
+  });
+
+  it('gives every legacy entry an existing canonical destination', () => {
+    for (const entry of routes.filter((item) => item.legacy)) {
+      const next = canonicalURL(url(entry.route.replace('[id]', '12')));
+      expect(next, entry.route).not.toBeNull();
+      expect(routeFor(next!.pathname)?.legacy, entry.route).toBeUndefined();
+      expect(routeFor(next!.pathname), entry.route).toBeDefined();
+    }
+  });
+
   it.each([
     ['/app/pricing?base_commodity_id=3&quote_commodity_id=1', '/app/investments/prices?base_commodity_id=3&quote_commodity_id=1'],
     [
@@ -106,7 +148,10 @@ describe('legacy links', () => {
     '/app/investments',
     '/app/investments?tab=splits&split_operation_id=4',
     '/app/investments?tab=suggestions',
-    '/app/transactions?view=drafts'
+    '/app/ledger/transactions?view=drafts',
+    '/app/accounts/12',
+    '/app/import/unknown',
+    '/app/forecasting'
   ])('leaves %s alone', (path) => {
     expect(canonicalURL(url(path))).toBeNull();
   });

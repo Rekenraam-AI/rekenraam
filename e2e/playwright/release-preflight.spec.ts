@@ -10,7 +10,7 @@ test.describe.serial('release preflight journeys', () => {
     const checking = await createCashAccount(page, csrfToken, `Preflight checking ${suffix}`, currencyID);
     const savings = await createCashAccount(page, csrfToken, `Preflight savings ${suffix}`, currencyID);
 
-    await page.goto('/app/transactions');
+    await page.goto('/app/ledger/transactions');
     await page.getByRole('button', { name: 'New transaction' }).click();
     const form = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Add transaction' }) });
     await form.getByLabel('Date').fill(todayISO());
@@ -35,7 +35,7 @@ test.describe.serial('release preflight journeys', () => {
     const account = await createCashAccount(page, csrfToken, `Preflight reconcile ${suffix}`, currencyID);
     await createSimpleTransaction(page, account.id, `Preflight reconcile entry ${suffix}`, '10.00');
 
-    await page.goto('/app/reconcile');
+    await page.goto('/app/ledger/reconcile');
     await page.getByLabel('Account').selectOption({ label: account.name });
     await page.getByLabel('Statement closing date').fill(todayISO());
     await page.getByLabel('Statement ending balance').fill('10.00');
@@ -53,7 +53,7 @@ test.describe.serial('release preflight journeys', () => {
     const suffix = Date.now();
     const account = await createCashAccount(page, csrfToken, `Preflight import ${suffix}`, currencyID);
 
-    await page.goto('/app/import');
+    await page.goto('/app/ledger/import');
     await page.locator('input[type="file"]').setInputFiles({
       name: 'preflight.qif',
       mimeType: 'application/qif',
@@ -129,7 +129,7 @@ test.describe.serial('release preflight journeys', () => {
     const suffix = Date.now();
     const account = await createCashAccount(page, csrfToken, `Preflight mobile ${suffix}`, currencyID);
 
-    await page.goto('/app/transactions');
+    await page.goto('/app/ledger/transactions');
     await page.getByRole('button', { name: 'New transaction' }).click();
     const form = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Add transaction' }) });
     await form.getByLabel('Date').fill(todayISO());
@@ -144,7 +144,7 @@ test.describe.serial('release preflight journeys', () => {
 });
 
 async function createSimpleTransaction(page: Page, accountID: number, description: string, amount: string) {
-  await page.goto('/app/transactions');
+  await page.goto('/app/ledger/transactions');
   await page.getByRole('button', { name: 'New transaction' }).click();
   const form = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Add transaction' }) });
   await form.getByLabel('Date').fill(todayISO());

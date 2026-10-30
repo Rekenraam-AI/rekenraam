@@ -44,7 +44,7 @@ test('a card purchase posted the next day lists on its posting day', async ({ pa
   const today = todayISO();
   const tomorrow = daysFromTodayISO(1);
 
-  await page.goto(`/app/accounts/${card.id}/register`);
+  await page.goto(`/app/ledger/accounts/${card.id}/register`);
   await page.getByRole('button', { name: 'New transaction' }).click();
   const form = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Add transaction' }) });
   await form.getByLabel('Date', { exact: true }).fill(today);
@@ -74,7 +74,7 @@ test('a two-day transfer posts each leg on its day and survives an edit', async 
   const today = todayISO();
   const arrival = daysFromTodayISO(2);
 
-  await page.goto(`/app/transactions?account_id=${checking.id}`);
+  await page.goto(`/app/ledger/transactions?account_id=${checking.id}`);
   await page.getByRole('button', { name: 'New transaction' }).click();
   const form = page.getByRole('complementary', { name: 'Actions' });
   await form.getByLabel('Date', { exact: true }).fill(today);
@@ -143,7 +143,7 @@ test('reorder mode moves a posting past the day edge to the next day after confi
     ] }]
   });
 
-  await page.goto(`/app/accounts/${savings.id}/register`);
+  await page.goto(`/app/ledger/accounts/${savings.id}/register`);
   await page.getByRole('button', { name: 'Reorder' }).click();
   const row = page.getByRole('row').filter({ hasText: description });
   // The only entry of its day: the arrows offer the adjacent days instead.

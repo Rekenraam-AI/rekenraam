@@ -36,7 +36,7 @@ async function seedRegister(page: Page, label: string) {
       ] }]
     });
   }
-  return { path: `/app/accounts/${account.id}/register`, descriptions };
+  return { path: `/app/ledger/accounts/${account.id}/register`, descriptions };
 }
 
 /** A holding with one bought lot; returns the instrument's display name. */

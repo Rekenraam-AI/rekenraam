@@ -124,7 +124,7 @@
       else if (item.command === 'theme') setTheme(themeState.name === 'dark' ? 'light' : 'dark');
       else if (item.command === 'add-transaction') {
         const currentURL = page.shallow?.url ?? page.url;
-        const target = new URL('/app/transactions', currentURL.href);
+        const target = new URL('/app/ledger/transactions', currentURL.href);
         if (currentURL.pathname === target.pathname) target.search = currentURL.search;
         target.searchParams.set('create', 'transaction');
         await goto(target);

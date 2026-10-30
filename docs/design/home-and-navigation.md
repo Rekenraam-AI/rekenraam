@@ -392,6 +392,38 @@ steppers or filters. On phones the tab row scrolls horizontally.
 - Tab counts and Home's status line come from one attention read, replacing
   the shell's recurring-summary query.
 
+### Section-owned paths (#460, 2026-10-30)
+
+Canonical page paths identify the section that owns them. Move the remaining
+Ledger and Planning families together, including their detail pages:
+
+| Previous path | Canonical path | Decision and reason |
+|---|---|---|
+| `/app/accounts` | `/app/ledger/accounts` | Keep the existing list as a temporary Ledger tab. #448 replaces it with Ledger Overview; both list aliases must then lead directly to `/app/ledger`. |
+| `/app/accounts/[id]/register` | `/app/ledger/accounts/[id]/register` | The account's ledger activity belongs to Ledger; this detail path survives #448's list replacement. |
+| `/app/transactions` | `/app/ledger/transactions` | Ledger owns ordinary entries, drafts and their review filters. |
+| `/app/categories` and `/app/categories/[id]` | `/app/ledger/categories` and `/app/ledger/categories/[id]` | Keep the category list and category activity in one family; the Tags view (#444) stays inside it. |
+| `/app/import` and `/app/import/dividends` | `/app/ledger/import` and `/app/ledger/import/dividends` | Keep imports and dividend repair together; #447 still owns their view consolidation. |
+| `/app/reconcile` | `/app/ledger/reconcile` | Reconciliation verifies ledger account activity. |
+| `/app/budgets` | `/app/planning/budgets` | Budgets are Planning, even when linked from spending reports. |
+| `/app/recurring` | `/app/planning/recurring` | Due items and templates are views of the same Planning page. |
+| `/app/forecast` | `/app/planning/forecast` | Projected balances belong to Planning; their ledger drill-downs remain links. |
+
+Keep `/app`, `/app/review`, all Investments and Reports paths, and the current
+Settings paths: these already name their owner or are intentionally standalone.
+Settings consolidation remains #446. Section overview paths also stay unchanged.
+Do not change `/api/v1` paths or financial contracts when moving browser pages.
+
+The extra path segment makes copied links agree with the header and tab row.
+The bounded cost is redirect stubs and mechanical link/test updates; there is
+no duplicate screen implementation. Keep every previous path as a registered
+legacy route, redirect before rendering, and replace that history entry rather
+than adding a Back stop. Keep **every** query parameter (including duplicates,
+empty values and unknown keys) and the fragment. Internal links, search and
+attention destinations use canonical paths directly. Registry tests check all
+aliases; route and subview sweeps exercise the canonical screens, while browser
+coverage checks old links, filter consumption, reload, sharing and Back/forward.
+
 ### Page header
 
 Breadcrumb on detail pages, the title or the object switcher, a scope line

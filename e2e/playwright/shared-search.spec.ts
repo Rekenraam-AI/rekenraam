@@ -48,7 +48,7 @@ test('shared search navigates pages and reference objects with keyboard and scop
 
 test('commands open an unsaved editor, shortcuts respect editable and modal fields', async ({ page }) => {
   await readyForLedger(page);
-  await page.goto('/app/transactions');
+  await page.goto('/app/ledger/transactions');
   // Existing page filters remain independent of the global command field.
   const filter = page.getByRole('searchbox').first();
   await filter.fill('sample');
@@ -66,7 +66,7 @@ test('commands open an unsaved editor, shortcuts respect editable and modal fiel
   await form.getByLabel('Amount', { exact: true }).fill('-12.34');
   await form.getByLabel('Description', { exact: true }).fill('/');
   await expect(search(page)).toHaveAttribute('aria-expanded', 'false');
-  await expect(page).toHaveURL(url => url.pathname === '/app/transactions' && !url.searchParams.has('create') && url.searchParams.get('q') === 'sample/');
+  await expect(page).toHaveURL(url => url.pathname === '/app/ledger/transactions' && !url.searchParams.has('create') && url.searchParams.get('q') === 'sample/');
   await form.getByRole('button', { name: 'Cancel', exact: true }).last().click();
   await page.reload();
   await expect(heading).toHaveCount(0);

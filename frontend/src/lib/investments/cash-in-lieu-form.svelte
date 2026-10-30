@@ -132,12 +132,12 @@
 <form onsubmit={handlePreview} class="space-y-4" aria-busy={pending}>
   <h2 class="text-base font-semibold text-foreground">{initial ? m.investments_cash_in_lieu_correct() : m.investments_cash_in_lieu_title()}</h2>
   <p class="text-sm text-muted">{m.investments_cash_in_lieu_help()}</p>
-  <p class="text-sm text-foreground">{accounts.find(a=>a.id===holdingID)?.name} · <a class="text-accent underline" href={splitID ? `/app/transactions?transaction_id=${splitID}` : `/app/investments?tab=splits&split_operation_id=${splitOperationID}`}>{m.investments_cash_in_lieu_split({id:String(splitOperationID || splitID)})}</a></p>
+  <p class="text-sm text-foreground">{accounts.find(a=>a.id===holdingID)?.name} · <a class="text-accent underline" href={splitID ? `/app/ledger/transactions?transaction_id=${splitID}` : `/app/investments?tab=splits&split_operation_id=${splitOperationID}`}>{m.investments_cash_in_lieu_split({id:String(splitOperationID || splitID)})}</a></p>
   {#if initialSplit?.historical}
     <p role="status" class="rounded-(--radius-control) border border-warning/40 bg-warning-soft p-3 text-sm text-foreground">{m.investments_cash_in_lieu_historical_parent()}</p>
   {/if}
   {#if initial?.effective_settled_operation_id && initial.effective_settled_operation_id !== splitOperationID}
-    <p class="text-sm text-foreground"><a class="text-accent underline" href={initial.effective_settled_transaction_id ? `/app/transactions?transaction_id=${initial.effective_settled_transaction_id}` : `/app/investments?tab=splits&split_operation_id=${initial.effective_settled_operation_id}`}>{m.investments_cash_in_lieu_current_parent({id:String(initial.effective_settled_operation_id)})}</a></p>
+    <p class="text-sm text-foreground"><a class="text-accent underline" href={initial.effective_settled_transaction_id ? `/app/ledger/transactions?transaction_id=${initial.effective_settled_transaction_id}` : `/app/investments?tab=splits&split_operation_id=${initial.effective_settled_operation_id}`}>{m.investments_cash_in_lieu_current_parent({id:String(initial.effective_settled_operation_id)})}</a></p>
   {/if}
   {#if loading}<p class="text-sm text-muted" role="status">{m.investments_loading()}</p>
   {:else if loadError}<p class="text-sm text-danger" role="alert">{m.investments_transfer_load_error()}</p>

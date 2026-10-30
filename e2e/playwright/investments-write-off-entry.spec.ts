@@ -201,7 +201,7 @@ test('[acceptance] a write-off of a holding sold since names the refused depende
 test('[acceptance] write-off reviews and explicitly invalidates a holding checkpoint at 390 px', async ({ page }) => {
   const s = await setup(page, 'worc');
   await s.trade('buy', 40, '3', '3000');
-  await page.goto('/app/reconcile');
+  await page.goto('/app/ledger/reconcile');
   await page.getByLabel('Account', { exact: true }).selectOption(String(s.holding.id));
   await page.getByLabel('Statement closing date').fill(todayISO());
   await page.getByLabel('Statement ending balance').fill('3');

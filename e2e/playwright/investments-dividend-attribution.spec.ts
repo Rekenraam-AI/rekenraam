@@ -106,7 +106,7 @@ for (const locale of ['en', 'es', 'fr', 'nl', 'de', 'ru']) {
       originalIDs.push(created.id);
       let current = created.id;
       for (const clear of [false, true]) {
-        await page.goto(`/app/transactions?transaction_id=${current}`);
+        await page.goto(`/app/ledger/transactions?transaction_id=${current}`);
         await page.getByRole('button', { name: separate ? copy.investments_withholding_correct_action : copy.transactions_investment_replace_dividend_action, exact: true }).click();
         const form = page.getByRole('dialog', { name: separate ? copy.investments_withholding_correct_title : copy.transactions_investment_replace_dividend_title, exact: true });
         await form.locator('#dividend-correction-payer').selectOption(clear ? '' : String(instrument.commodity_id));

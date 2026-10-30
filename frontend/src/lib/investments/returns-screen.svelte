@@ -330,7 +330,7 @@
       </StatePanel>
     {:else if result && result.resolved_account_ids.length === 0}
       <StatePanel title={m.returns_empty_title()} copy={m.returns_empty_copy()}>
-        <a href="/app/accounts" class="inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-2">{m.returns_empty_action()}</a>
+        <a href="/app/ledger/accounts" class="inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-2">{m.returns_empty_action()}</a>
       </StatePanel>
     {:else if result}
       <ReturnsResult {result} reportingCurrencyID={reportingCurrencyID ?? 0} currencies={currencies.data?.currencies ?? []} {locale}

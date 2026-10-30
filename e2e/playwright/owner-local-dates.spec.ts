@@ -21,7 +21,7 @@ test('[acceptance] financial defaults use owner-local today across midnight and 
   expect(today).not.toBe(preferences.updated_at.slice(0, 10));
   await page.clock.setFixedTime(new Date(preferences.updated_at));
   try {
-    await page.goto('/app/transactions');
+    await page.goto('/app/ledger/transactions');
     await page.getByRole('button', { name: 'New transaction', exact: true }).click();
     const form = page.locator('form').filter({ has: page.getByRole('heading', { name: 'Add transaction', exact: true }) });
     const date = form.getByLabel('Date', { exact: true });

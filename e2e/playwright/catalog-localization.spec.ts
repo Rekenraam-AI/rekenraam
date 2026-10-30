@@ -13,7 +13,7 @@ for (const locale of ['es', 'fr', 'nl', 'de', 'ru']) {
     await readyForLedger(page);
     const m = messages('app', locale);
     await page.evaluate(value => localStorage.setItem('PARAGLIDE_LOCALE', value), locale);
-    await page.goto('/app/import');
+    await page.goto('/app/ledger/import');
     const suffix = Date.now();
     const column = (name: string) => `${name}_${locale}_${suffix}`;
     const fixture = {
@@ -40,7 +40,7 @@ for (const locale of ['es', 'fr', 'nl', 'de', 'ru']) {
     await expect(page.getByRole('button', { name: m.import_commit_button, exact: true })).toBeVisible();
 
     // Reopen the file through the real saved profile; no ledger commit is needed.
-    await page.goto('/app/import');
+    await page.goto('/app/ledger/import');
     await page.locator('input[type="file"]').setInputFiles(fixture);
     const saved = page.getByRole('combobox', { name: m.import_csv_saved_profile, exact: true });
     await expect.poll(() => saved.evaluate((select: HTMLSelectElement) => select.selectedOptions[0]?.textContent?.trim())).toBe(m.import_csv_profile_suggested.replace('{name}', profileName));

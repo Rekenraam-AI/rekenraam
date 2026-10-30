@@ -51,7 +51,10 @@ description: SvelteKit frontend rules for Rekenraam - static adapter constraints
   page never adds its own top-level navigation or horizontal page padding.
   A page is a route; a view inside it reads `page.url` on every navigation
   (never once with `untrack`). Moving a page keeps the old path as a `legacy`
-  entry redirected by `canonicalURL`. Rules: `docs/conventions.md` → Frontend.
+  entry redirected by `canonicalURL`, keeping all query parameters and the
+  fragment and replacing the history entry. Canonical Ledger and Planning paths
+  live under `/app/ledger/…` and `/app/planning/…` (#460); internal links and
+  browser journeys use those paths. Rules: `docs/conventions.md` → Frontend.
 - Shell counts come from `#lib/attention/context.ts`, one composed attention
   query for header, tabs, Home and Review (#458). Unknown/error sources never
   become zero or all-clear. Counting rules live in the design's attention contract.
